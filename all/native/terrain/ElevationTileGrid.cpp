@@ -1,4 +1,5 @@
 #include "ElevationTileGrid.h"
+#include "ElevationNodeField.h"
 #include "graphics/Bitmap.h"
 #include "utils/Log.h"
 
@@ -7,7 +8,7 @@
 
 namespace massif {
 
-    ElevationTileGrid::ElevationTileGrid(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs) :
+    ElevationTileGrid::ElevationTileGrid(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs, int nodesPerEdge, int boxCells) :
         _tile(tile),
         _internalBounds(internalBounds),
         _bitmap(bitmap),
@@ -17,7 +18,10 @@ namespace massif {
         _height(bitmap ? bitmap->getHeight() : 0),
         _bytesPerTexel(bitmap ? bitmap->getBytesPerPixel() : 0),
         _minHeight(0),
-        _maxHeight(0)
+        _maxHeight(0),
+        _nodesPerEdge(0),
+        _boxCells(std::max(1, boxCells)),
+        _nodeHeights()
     {
         if (_pixelData && _width > 0 && _height > 0) {
             // One pass for the height range, which culling and the shadow box need. Everything
@@ -32,11 +36,20 @@ namespace massif {
             }
             _minHeight = minHeight;
             _maxHeight = maxHeight;
+
+            // The node field, on the decode thread where the raster is walked anyway. Edge nodes
+            // clamp here; encodeNodeTexture redoes them with the neighbours for the GPU.
+            if (nodesPerEdge > 0) {
+                _nodesPerEdge = nodesPerEdge;
+                ElevationNodeField::build(_width, _height, _nodesPerEdge, _boxCells, [this](int tx, int ty) {
+                    return getHeight(std::min(std::max(tx, 0), _width - 1), std::min(std::max(ty, 0), _height - 1));
+                }, _nodeHeights);
+            }
         }
     }
 
     std::size_t ElevationTileGrid::getDataSize() const {
-        return (_bitmap ? _bitmap->getPixelData().size() : 0) + sizeof(ElevationTileGrid);
+        return (_bitmap ? _bitmap->getPixelData().size() : 0) + _nodeHeights.size() * sizeof(float) + sizeof(ElevationTileGrid);
     }
 
     ColorFormat::ColorFormat ElevationTileGrid::getColorFormat() const {
@@ -98,6 +111,20 @@ namespace massif {
         float h01 = getHeight(gx0, gy1);
         float h11 = getHeight(gx1, gy1);
         return (h00 * (1 - dx) + h10 * dx) * (1 - dy) + (h01 * (1 - dx) + h11 * dx) * dy;
+    }
+
+    float ElevationTileGrid::sampleNodeHeight(double internalX, double internalY) const {
+        if (_nodesPerEdge < 1) {
+            return sampleHeight(internalX, internalY);
+        }
+        double boundsWidth = _internalBounds.getMax().getX() - _internalBounds.getMin().getX();
+        double boundsHeight = _internalBounds.getMax().getY() - _internalBounds.getMin().getY();
+        if (boundsWidth <= 0 || boundsHeight <= 0) {
+            return 0.0f;
+        }
+        double nx = (internalX - _internalBounds.getMin().getX()) / boundsWidth * _nodesPerEdge;
+        double ny = (internalY - _internalBounds.getMin().getY()) / boundsHeight * _nodesPerEdge;
+        return ElevationNodeField::sample(_nodeHeights, _nodesPerEdge, nx, ny);
     }
 
     void ElevationTileGrid::sampleGradient(double internalX, double internalY, float& dhdx, float& dhdy) const {
@@ -242,6 +269,129 @@ namespace massif {
         };
     }
 
+    std::function<float(int, int)> ElevationTileGrid::makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
+        // The same three cases as makeTexelSampler, in metres and for any distance past the
+        // edge: a node box reaches half a cell out, not one texel.
+        double texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
+        double texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
+        return [this, neighbours, texelX, texelY](int gx, int gy) -> float {
+            static const std::array<std::pair<int, int>, 8> DIRS = { {
+                { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+            } };
+            int dx = (gx < 0 ? -1 : (gx >= _width ? 1 : 0));
+            int dy = (gy < 0 ? -1 : (gy >= _height ? 1 : 0));
+            if (dx != 0 || dy != 0) {
+                for (std::size_t i = 0; i < DIRS.size(); i++) {
+                    if (DIRS[i].first != dx || DIRS[i].second != dy) {
+                        continue;
+                    }
+                    const std::shared_ptr<ElevationTileGrid>& neighbour = neighbours[i];
+                    if (!neighbour) {
+                        break;
+                    }
+                    bool sameLevel = neighbour->_width == _width && neighbour->_height == _height && neighbour->_tile.getZoom() == _tile.getZoom() && !(neighbour->_tile == _tile);
+                    if (sameLevel) {
+                        int nx = std::min(std::max(gx - dx * _width, 0), _width - 1);
+                        int ny = std::min(std::max(gy - dy * _height, 0), _height - 1);
+                        return neighbour->getHeight(nx, ny);
+                    }
+                    double px = _internalBounds.getMin().getX() + (gx + 0.5) * texelX;
+                    double py = _internalBounds.getMin().getY() + (gy + 0.5) * texelY;
+                    return neighbour->sampleHeight(px, py);
+                }
+            }
+            return getHeight(std::min(std::max(gx, 0), _width - 1), std::min(std::max(gy, 0), _height - 1));
+        };
+    }
+
+    std::array<int, 4> ElevationTileGrid::edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
+        // How much coarser the W, E, S, N neighbour is, as the power of two its texel is of ours
+        // (edgeFilter's rule: coarser means more than 1.5x). Its lattice cell is that much wider,
+        // so an edge node's box widens to match what the neighbour interpolates at the same spot.
+        double texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
+        double texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
+        std::array<int, 4> scales = { { 1, 1, 1, 1 } };
+        for (int side = 0; side < 4; side++) {
+            const std::shared_ptr<ElevationTileGrid>& neighbour = neighbours[side];
+            if (!neighbour || neighbour->_width < 1 || neighbour->_height < 1) {
+                continue;
+            }
+            bool alongY = side < 2;
+            double ourTexel = alongY ? texelY : texelX;
+            double neighbourTexel = alongY
+                ? (neighbour->_internalBounds.getMax().getY() - neighbour->_internalBounds.getMin().getY()) / neighbour->_height
+                : (neighbour->_internalBounds.getMax().getX() - neighbour->_internalBounds.getMin().getX()) / neighbour->_width;
+            int scale = 1;
+            while (neighbourTexel > ourTexel * scale * 1.5 && scale < 64) {
+                scale *= 2;
+            }
+            scales[side] = scale;
+        }
+        return scales;
+    }
+
+    template <typename TexelFn>
+    float ElevationTileGrid::nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel) const {
+        int n = _nodesPerEdge;
+        int boxX = ElevationNodeField::boxTexels(_width, n, _boxCells);
+        int boxY = ElevationNodeField::boxTexels(_height, n, _boxCells);
+        // A node whose box stays inside the grid is the field's own value; one that reaches out
+        // is redone with the neighbours.
+        bool edge = ElevationNodeField::boxReachesOutside(i, _width, n, boxX) || ElevationNodeField::boxReachesOutside(j, _height, n, boxY);
+        if (!edge) {
+            return _nodeHeights[static_cast<std::size_t>(j) * (n + 1) + i];
+        }
+        int scale = 1;
+        if (i == 0) scale = std::max(scale, edgeScales[0]);
+        if (i == n) scale = std::max(scale, edgeScales[1]);
+        if (j == 0) scale = std::max(scale, edgeScales[2]);
+        if (j == n) scale = std::max(scale, edgeScales[3]);
+        boxX *= scale;
+        boxY *= scale;
+        double cx = static_cast<double>(i) * _width / n;
+        double cy = static_cast<double>(j) * _height / n;
+        return ElevationNodeField::nodeHeight(cx, cy, boxX, boxY, texel);
+    }
+
+    void ElevationTileGrid::encodeNodeTexture(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const {
+        int n = _nodesPerEdge;
+        if (n < 1) {
+            textureData.clear();
+            return;
+        }
+        int stride = n + 1;
+        textureData.resize(static_cast<std::size_t>(stride) * stride * _bytesPerTexel);
+        std::function<float(int, int)> texel = makeNodeTexelSampler(neighbours);
+        std::array<int, 4> scales = edgeBoxScales(neighbours);
+        std::size_t s = 0;
+        for (int j = 0; j <= n; j++) {
+            for (int i = 0; i <= n; i++, s += _bytesPerTexel) {
+                encodeHeight(nodeTexelHeight(i, j, scales, texel), &textureData[s]);
+            }
+        }
+    }
+
+    void ElevationTileGrid::encodeNodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, BorderStrips& strips) const {
+        int n = _nodesPerEdge;
+        if (n < 1) {
+            return;
+        }
+        std::function<float(int, int)> texel = makeNodeTexelSampler(neighbours);
+        std::array<int, 4> scales = edgeBoxScales(neighbours);
+        std::size_t bytes = static_cast<std::size_t>(n + 1) * _bytesPerTexel;
+        strips.south.resize(bytes);
+        strips.north.resize(bytes);
+        strips.west.resize(bytes);
+        strips.east.resize(bytes);
+        for (int k = 0; k <= n; k++) {
+            std::size_t s = static_cast<std::size_t>(k) * _bytesPerTexel;
+            encodeHeight(nodeTexelHeight(k, 0, scales, texel), &strips.south[s]);
+            encodeHeight(nodeTexelHeight(k, n, scales, texel), &strips.north[s]);
+            encodeHeight(nodeTexelHeight(0, k, scales, texel), &strips.west[s]);
+            encodeHeight(nodeTexelHeight(n, k, scales, texel), &strips.east[s]);
+        }
+    }
+
     void ElevationTileGrid::encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const {
         int paddedWidth = _width + 2;
         int paddedHeight = _height + 2;
@@ -299,7 +449,7 @@ namespace massif {
         }
     }
 
-    std::shared_ptr<ElevationTileGrid> ElevationTileGrid::DecodeBitmap(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs) {
+    std::shared_ptr<ElevationTileGrid> ElevationTileGrid::DecodeBitmap(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs, int nodesPerEdge, int boxCells) {
         if (!bitmap) {
             return std::shared_ptr<ElevationTileGrid>();
         }
@@ -323,7 +473,7 @@ namespace massif {
         // Bitmap pixel data rows are stored bottom-up relative to the image, which means
         // row 0 of the pixel data corresponds to the southern (minimum y) edge of the tile.
         // This matches the grid row order, so the raster can be used as it is.
-        auto grid = std::make_shared<ElevationTileGrid>(tile, internalBounds, bitmap, coeffs);
+        auto grid = std::make_shared<ElevationTileGrid>(tile, internalBounds, bitmap, coeffs, nodesPerEdge, boxCells);
         if (grid->getMinHeight() < -12000.0f || grid->getMaxHeight() > 10000.0f) {
             Log::Warnf("ElevationTileGrid::DecodeBitmap: Implausible elevation range %g..%g m for tile %d/%d/%d - check that the elevation data source encoding ('terrarium'/'mapbox') matches the data",
                        grid->getMinHeight(), grid->getMaxHeight(), tile.getZoom(), tile.getX(), tile.getY());

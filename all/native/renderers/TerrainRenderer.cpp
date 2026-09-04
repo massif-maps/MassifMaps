@@ -886,7 +886,7 @@ namespace massif {
                 double internalY = originY + y * size;
                 double localZ = 0;
                 if (grid) {
-                    double meters = grid->sampleHeight(internalX, internalY);
+                    double meters = grid->sampleNodeHeight(internalX, internalY); // the drawn surface, which this depth stands in for
                     localZ = meters * exaggeration * elevationManager->getDisplayScale(internalY) * localFromInternal;
                 }
                 minLocalZ = std::min(minLocalZ, localZ);

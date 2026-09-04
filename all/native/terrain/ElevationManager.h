@@ -81,12 +81,11 @@ namespace massif {
         void setNeighbourPrefetchEnabled(bool enabled);
 
         /**
-         * Sets the terrain surface resolution (mesh cells per tile edge). Elevation levels are
-         * capped so that one elevation texel covers at most half a surface cell: finer data cannot
-         * be expressed by the mesh, but every level costs four times the tiles, decoded grids and
-         * GL textures. The cap applies to EVERY elevation query, so the displaced surface, the
-         * elevation lookups, the ray intersection used for billboard occlusion and the CPU-side
-         * element placement all agree on one height field.
+         * Sets the terrain surface resolution (mesh cells per tile edge). Every decoded grid
+         * carries a node field built for it - the DEM box-filtered to one mesh cell
+         * (ElevationNodeField) - which is what the surface is displaced from and what every
+         * display-height query here answers with, so the drawn ground, label anchors, extrusion
+         * bases and the raycast agree on one height field. Changing it drops the decoded grids.
          */
         void setSurfaceResolution(int resolution);
 
@@ -104,14 +103,24 @@ namespace massif {
         std::vector<double> getElevations(const std::vector<MapPos>& poses) const;
 
         /**
-         * Returns the elevation in meters at the given internal coordinates. Returns 0 if no data is available.
+         * Returns the elevation in meters at the given internal coordinates, from the DEM itself.
+         * Returns 0 if no data is available.
          */
         double getElevationMeters(double internalX, double internalY, LoadMode mode) const;
         /**
          * Returns the display height (internal z units, including exaggeration and Mercator scale)
-         * at the given internal coordinates. Returns 0 if no data is available.
+         * at the given internal coordinates - the height of the drawn SURFACE, i.e. the node field,
+         * not the DEM (see ElevationTileGrid::sampleNodeHeight). Returns 0 if no data is available.
          */
         double getDisplayHeight(double internalX, double internalY, LoadMode mode) const;
+        /**
+         * The same, but says whether there was any data. Returns false and leaves height untouched
+         * when no decoded grid covers the point - which getDisplayHeight cannot express, since it
+         * returns 0 both for "sea level" and for "nothing loaded". A caller that BAKES the answer
+         * into geometry needs that difference.
+         * @return True if a cached grid answered.
+         */
+        bool getDisplayHeightCached(double internalX, double internalY, double& height) const;
         /**
          * Returns the display height gradient (dz/dx, dz/dy, unitless) at the given internal coordinates.
          */
@@ -240,6 +249,7 @@ namespace massif {
         double wrapInternalX(double internalX) const;
         MapTile clampTileZoom(const MapTile& mapTile) const;
         MapTile clampDataTileZoom(const MapTile& dataTile) const;
+        static int nodeBoxCells();
         std::shared_ptr<ElevationTileGrid> lookupTileGrid(const MapTile& dataTile, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> getGridForInternalPos(double internalX, double internalY, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> loadTileGrid(const MapTile& mapTile) const;

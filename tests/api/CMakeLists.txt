@@ -204,10 +204,14 @@ add_executable(api_tests
   SpecSchemaTest.cpp
   # Header-only: AutoFlatten.h has no dependencies at all, so this costs the link nothing.
   AutoFlattenTest.cpp
+  # Same: CameraClearance.h is mapbox's minimum-height-over-terrain rule and nothing else.
+  CameraClearanceTest.cpp
   # Same: DrapeStackCuts.h is the ordering rule and nothing else.
   DrapeStackCutsTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
+  # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.
+  ElevationNodeFieldTest.cpp
   # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.
   DayCycleLightTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"

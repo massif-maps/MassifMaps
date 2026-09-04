@@ -391,6 +391,39 @@ namespace massif {
         return 0;
     }
 
+    void TileRenderer::collectSpanDrapeTiles(std::map<vt::TileId, std::size_t>& spanTiles) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->collectSpanDrapeTiles(spanTiles);
+        }
+    }
+
+    void TileRenderer::collectUnresolvedSpanEnds(std::vector<std::pair<int, cglib::vec2<double>>>& ends) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->collectUnresolvedSpanEnds(ends);
+        }
+    }
+
+    int TileRenderer::bakeSpanDrapeTile(const vt::TileId& tileId) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            return tileRenderer->bakeSpanDrapeTile(tileId);
+        }
+        return 0;
+    }
+
+    void TileRenderer::setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->setSpanDrapeTextures(textures);
+        }
+    }
+
     void TileRenderer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -794,6 +827,22 @@ namespace massif {
                         terrainDepthBias = terrainOptions->getDepthBias() * 0.1f;
                         activeTerrainOptions = terrainOptions;
                         const std::shared_ptr<ElevationManager>& elevationManager = terrainOptions->getElevationManager();
+                        // A CPU base is sampled from the TEXTURE cache, which fills a few frames
+                        // after the grid loads - so the manager's version alone leaves a base
+                        // resolved against an ancestor and never revisited. Scoped to the tiles
+                        // that actually landed: buildings outnumber bridges, and re-resolving all
+                        // of them on every DEM arrival is what made this expensive.
+                        if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
+                            std::vector<MapTile> contentChanges = elevationTextureCache->drainContentChanges();
+                            if (!contentChanges.empty()) {
+                                std::vector<vt::TileId> contentTileIds;
+                                contentTileIds.reserve(contentChanges.size());
+                                for (const MapTile& mapTile : contentChanges) {
+                                    contentTileIds.emplace_back(mapTile.getZoom(), mapTile.getX(), mapTile.getY());
+                                }
+                                tileRenderer->invalidateExtrusionBases(contentTileIds);
+                            }
+                        }
                         unsigned int elevationVersion = elevationManager->getVersion();
                         if (elevationVersion != _elevationVersion) {
                             auto now = std::chrono::steady_clock::now();
@@ -804,6 +853,12 @@ namespace massif {
                             unsigned int elevationDataVersion = elevationManager->getDataVersion();
                             bool scaleOnly = (_elevationDataVersion != 0 && elevationDataVersion == _elevationDataVersion);
                             _elevationDataVersion = elevationDataVersion;
+
+                            // An extrusion's base is a CPU getDisplayHeight, so it goes stale on a
+                            // scale change as well as on new data - the exaggeration is IN that
+                            // height. Not narrowed to the changed tiles: re-resolving a base that
+                            // did not move uploads nothing (TileGeometry::setVertexBase).
+                            tileRenderer->invalidateExtrusionBases();
 
                             std::vector<MapTile> changedTiles;
                             if (scaleOnly) {
@@ -903,8 +958,41 @@ namespace massif {
             tileRenderer->setLabelElevationProvider([elevationManager](const cglib::vec3<double>& pos) {
                 return elevationManager->getDisplayHeight(pos(0), pos(1), ElevationManager::LoadMode::CACHED_ONLY);
             });
+            // Label anchors come through in INTERNAL coordinates; the span chords are in vt's
+            // normalized ones, and a deck lookup needs them in the same space.
+            tileRenderer->setLabelPositionScale(1.0 / Const::WORLD_SIZE);
+#ifdef __ANDROID__
+            {
+                // debug.massif.labelanchor 0: anchor labels in the frame, the pre-2026-09 path.
+                char property[PROP_VALUE_MAX] = { 0 };
+                tileRenderer->setLabelAnchorOnCull(!(__system_property_get("debug.massif.labelanchor", property) > 0 && property[0] == '0'));
+            }
+#endif
+            // An extrusion BAKES its ground into its vertices, so unlike a label it cannot accept
+            // "0 means no data": a base of 0 where the ground is 215 m sinks the whole prism under
+            // the terrain. This one reports whether a grid answered.
+            // From the TEXTURE cache, not the grid LRU: the two are independent, so a grid is
+            // routinely evicted while the texture built from it keeps rendering, and a CACHED_ONLY
+            // query then answers "no data" for ground that is plainly on screen (measured at the
+            // Millau camera: 0 hits in 3900). tangram samples the raster the tile draws with for
+            // exactly this reason - one representation, so a CPU query cannot disagree with it.
+            //
+            // vt works in NORMALIZED map coordinates (-0.5..0.5); the SDK's internal space is
+            // Const::WORLD_SIZE wide. Handing the normalized pair straight over put every query in
+            // the corner of the world, where it sampled ocean and answered 0 m - which is what a
+            // bridge deck at sea level was made of.
+            if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
+                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, double& height) {
+                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, height);
+                });
+            } else {
+                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, double& height) {
+                    return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
+                });
+            }
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
+            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)>());
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());
@@ -1171,7 +1259,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return true;
     }
     
-    bool TileRenderer::refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas) {
+    bool TileRenderer::refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas, const std::vector<std::shared_ptr<const vt::Tile> >& spanReferenceTiles) {
         // Timed separately from the work: this runs inside the layer draw pass, and the tile
         // threads hold this mutex while storing decoded tiles - which is exactly when the set
         // changes. A long wait here and a short one inside setVisibleTiles mean different fixes.
@@ -1184,7 +1272,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             tiles[drawData->getVTTileId()] = drawData->getVTTile();
         }
 
-        bool changed = (tiles != _tiles) || (_horizontalLayerOffset != 0);
+        bool changed = (tiles != _tiles) || (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
         if (!changed) {
             return false;
         }
@@ -1194,10 +1282,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 if (_horizontalLayerOffset != 0) {
                     tileRenderer->teleportVisibleTiles((int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE), 0);
                 }
-                tileRenderer->setVisibleTiles(tiles);
+                tileRenderer->setVisibleTiles(tiles, spanReferenceTiles);
             }
         }
         _tiles = std::move(tiles);
+        _spanReferenceTiles = spanReferenceTiles;
         _horizontalLayerOffset = 0;
         // The changed path only - the unchanged one returns above and costs nothing. INCLUDES
         // setVisibleTiles, whose own splits break it down further.

@@ -2,6 +2,7 @@
 #include "projections/EPSG3857.h"
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
+#include "terrain/CameraClearance.h"
 #include "utils/Const.h"
 #include "utils/GeneralUtils.h"
 #include "utils/Log.h"
@@ -82,45 +83,39 @@ namespace massif {
         }
     }
 
-    void ViewState::setTerrainCameraReference(double terrainZ, double minCameraZ) {
+    void ViewState::setTerrainCameraReference(double terrainZ, double clearanceFloor) {
         if (terrainZ != _terrainCameraZ) {
             _terrainCameraZ = terrainZ;
             _cameraChanged = true; // the near plane is built on it
         }
-        _terrainMinCameraZ = minCameraZ;
+        _terrainClearanceFloor = clearanceFloor;
+        _terrainCameraBound = true;
+    }
+
+    void ViewState::clearTerrainCameraReference() {
+        if (_terrainCameraZ != 0) {
+            _terrainCameraZ = 0;
+            _cameraChanged = true;
+        }
+        _terrainClearanceFloor = 0;
+        _terrainCameraBound = false;
     }
 
     float ViewState::getTerrainMaxZoom() const {
         // Zooming scales the camera-to-FOCUS vector (clampZoom below rebuilds the camera position
         // exactly that way), so what shrinks as 1/2^zoom is the camera's height above the focus,
-        // not its height above z=0. On terrain the focus sits on the ground, hundreds or thousands
-        // of metres up, and measuring from sea level makes every bound land short of the clearance
-        // shell: the camera is still below it after the clamp, so the next frame clamps again, and
-        // a still map re-renders for ever while creeping outwards. Measured from the focus the
-        // bound lands exactly on the shell.
-        if (!(_terrainMinCameraZ > 0) || !(_cameraPos(2) > 0)) {
+        // not its height above z=0; the focus sits on the ground, hundreds or thousands of metres
+        // up. CameraClearance::maxZoom solves on that vector, and answers infinity for a camera
+        // that no zoom can raise (at or below the focus height).
+        if (!_terrainCameraBound || !(_zoom0Distance > 0)) {
             return std::numeric_limits<float>::infinity();
         }
-        double cameraHeight = _cameraPos(2) - _focusPos(2);
-        double minHeight = _terrainMinCameraZ - _focusPos(2);
-        if (!(cameraHeight > 0) || !(minHeight > 0)) {
-            // The camera is at or below the height of the focus - a horizontal view (tilt 0) or a
-            // look above the horizon (a negative tilt). Zooming moves the camera ALONG the
-            // camera-to-focus vector, so with no vertical component left there is no zoom that
-            // clears the terrain: any bound derived here is unreachable, and clampZoom chasing it
-            // walks the zoom towards minus infinity, one step per frame, until the map is gone.
-            return std::numeric_limits<float>::infinity();
-        }
-        float maxZoom = _zoom + static_cast<float>(std::log2(cameraHeight / minHeight));
-        if (maxZoom < _zoomRange.getMin()) {
-            // Unsatisfiable. The camera's height above the focus is dist * sin(tilt), so as the
-            // view approaches the horizon it rises by almost nothing as it zooms out and the bound
-            // runs off to minus infinity. Clamping to it then throws the map to its minimum zoom -
-            // an empty world - instead of keeping the camera clear of the ground, which it cannot
-            // do at any zoom anyway.
-            return std::numeric_limits<float>::infinity();
-        }
-        return maxZoom;
+        return CameraClearance::maxZoom(_zoom, _focusPos(2), _cameraPos(2), getOrbitDistance(_zoom), _terrainCameraZ,
+                                        getOrbitDistance(_zoomRange.getMax()), _terrainClearanceFloor);
+    }
+
+    double ViewState::getOrbitDistance(float zoom) const {
+        return _zoom0Distance / std::pow(2.0, static_cast<double>(zoom));
     }
 
     void ViewState::setCameraPos(const cglib::vec3<double>& cameraPos) {
@@ -141,6 +136,15 @@ namespace massif {
             return;
         }
         _focusPos = focusPos;
+    }
+
+    void ViewState::liftFocus(double deltaZ) {
+        if (!std::isfinite(deltaZ) || deltaZ == 0) {
+            return;
+        }
+        _focusPos(2) += deltaZ;
+        _cameraPos(2) += deltaZ;
+        _cameraChanged = true;
     }
     
     const cglib::vec3<double>& ViewState::getUpVec() const {
@@ -379,8 +383,9 @@ namespace massif {
 
     void ViewState::clampZoom(const Options& options) {
         // The terrain bound applies regardless of restricted panning - it is a property of
-        // the terrain, not of the pan bounds.
-        float maxZoom = std::min(options.getZoomRange().getMax(), getTerrainMaxZoom());
+        // the terrain, not of the pan bounds. It only ever STOPS a zoom in: a camera already
+        // under the clearance shell is lifted by MapRenderer, not zoomed out from here.
+        float maxZoom = std::min(options.getZoomRange().getMax(), std::max(getTerrainMaxZoom(), _zoom));
         if ((!options.isRestrictedPanning() && _zoom <= maxZoom) || _width <= 0 || _height <= 0) {
             return;
         }

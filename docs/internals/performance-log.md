@@ -1846,3 +1846,30 @@ The once-a-second average hides the frame the user feels. `PROF SPIKE:` lines
 counters that moved **during that frame** — `tileSets`, `labelMaps`, `labelsAlloc`, `snaps`,
 `cullPasses`, `geomDraws`, `surfBuilt`. A spike with `tileSets 0 labelMaps 0` is not a tile-set
 change, however plausible that sounded.
+
+## 24. Bridges over a city: what the reference tiles, the labels and a fast zoom cost (2026-09-03/04)
+
+All on emulator-5554 (arm64 image), the day-cycle-light example at Paris (48.86, 2.3376, z17.2,
+tilt 20) and the Grenoble bridge camera (45.192955, 5.719502, z19.24, tilt 40, rotation -106.38),
+profile APK (`-PprofileRender`). The emulator has no GPU timers, so every number here is CPU or
+frame time; the device run is still owed for the settle window.
+
+| what | before | after | mechanism |
+|---|---|---|---|
+| example, still camera | 2 fps, `spanUnionsMs` 1000-1300 per second, 121 reference tiles | 25-48 fps, 3.5 ms, 32 tiles | sticky reference set unbounded and named coarsest first; union meet test quadratic |
+| example, pan, label anchoring | 1.5-2.8 s per 12 s run, 19-31 `prepare` spikes of 130-190 ms | 65-150 ms, 0-1 spikes | `spanHeightAt` per label vertex against every span union; now a deduplicated chord list with bounds, and a new tile set's labels sampled on the cull thread off the lock |
+| still camera after a pan, reference tiles | 80 culls/s for ever, 145 tile loads per 8 s, deck flipping between two chords | 0 culls, 0 loads | reference tiles thrashed the preloading LRU; own map now |
+| chained instant zooms 15-18, worst `drape` in a frame | 185-212 ms | 43-71 ms | the deck's own drape bake ran outside the frame's bake budget |
+
+**What did not measure.** The 300 ms bake settle window (`DRAPE_BAKE_SETTLE_MS`, switch
+`debug.massif.drapesettle`): bake counts swung 112-503 between identical chained-zoom runs, so no
+A/B verdict on the emulator. Moving label anchoring to the cull thread UNDER the renderer's lock
+(first attempt) made frames worse, not better - the lock wait moved the spike from `prepare` to
+`other`/`sky`; only the lock-free sampling with a locked apply paid off, and only once the chord
+list made each sample cheap. The label-side win was the chord dedup, not the thread.
+
+**Method that found all of it.** A per-second `RenderStats` line plus counting log lines in a quiet
+window (`logcat -c; sleep 10; grep -c 'Loading MapTile'; grep -c 'cullUpd='`) told a live loop from
+a busy frame; a per-thread `/proc/<pid>/task/*/stat` snapshot told a hang from a load spike (every
+thread sleeping, frames still coming); `PROF SPIKE` sections named the frame's cost. Screenshots
+were counted by exact colour before any was looked at.

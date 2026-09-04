@@ -40,6 +40,10 @@ public final class DemoConfig {
         /** AndroidAssetPackage over the style project bundled in the APK assets (assets/style).
          *  The smallest complete example of a style a composite layer can weave sources into. */
         ASSETS,
+        /** ZippedAssetPackage over assets/styles/<STYLE_ASSET_ZIP_NAME>.zip - the style projects
+         *  gradle's zipStyleProjects builds from app/src/main/style-projects, and the same zips the
+         *  gallery examples load as 'assets://styles/<name>.zip'. */
+        ASSETZIP,
         /** Shield test style: a CartoCSS string that uses the APK asset package for its FONTS, so
          *  it can put a font icon next to a name and let the culler pick the side (see
          *  DemoStyles.poiTestStyle). Dense on purpose - every POI and every place carries one. */
@@ -63,6 +67,9 @@ public final class DemoConfig {
     public static String STYLE_ZIP_NAME = "osm.zip";
     /** Style project inside the APK assets, read by AndroidAssetPackage for StyleSource.ASSETS. */
     public static String STYLE_ASSETS_PATH = "style";
+    /** Which assets/styles/<name>.zip StyleSource.ASSETZIP reads. One per folder under
+     *  app/src/main/style-projects: alpine, hybrid, mapbox-standard, maptiler-streets. */
+    public static String STYLE_ASSET_ZIP_NAME = "alpine";
     /** Which project of that package to compile: assets/style/<name>.json. 'eink' is the one that
      *  turns every polygon pattern on (forest, scrub, rock, scree, wetland, vineyard). */
     public static String STYLE_ASSETS_NAME = "osm";
@@ -97,6 +104,17 @@ public final class DemoConfig {
     public static boolean LAYER_HYPSO = false;
     /** Markers on summits + a line across the valley: the terrain occlusion / drape test set. */
     public static boolean LAYER_ELEMENTS = true;
+    /**
+     * The SPAN layer: bridges and tunnels drawn from a COARSER tile than the base map, so a long
+     * one is not cut by the tile it lands in. A chord needs the feature's real portals, and those
+     * are only present while the whole span fits one tile - Millau is 2.46 km against ~1.75 km at
+     * z14, so at the zoom you look at it from it is always split. -2 makes the tile 4x wider.
+     */
+    public static boolean LAYER_SPANS = false;
+    public static float SPAN_ZOOM_BIAS = -2.0f;
+    public static String SPAN_BRIDGE_COLOR = "#7f8fa6";
+    public static String SPAN_TUNNEL_COLOR = "#b0a0c8";
+    public static float SPAN_WIDTH = 10f;
     /** Offline routes layer (needs ROUTES_MBTILES_NAME + ROUTES_STYLE_ZIP_NAME on the device). */
     public static boolean LAYER_ROUTES = false;
     /** Synthetic mountain-road route (GeoJSON tiles + CartoCSS): the line join / cap / opacity bench. */
@@ -247,7 +265,7 @@ public final class DemoConfig {
     /** Metres the camera is held above the ground. The SDK default is 200, which stops you well
      *  short of the surface; 30 lets you get close enough to judge mesh and hillshade detail.
      *  '--es clearance N' (0 disables the clamp entirely - you can then fly through the ground). */
-    public static float TERRAIN_CAMERA_CLEARANCE = 60.0f;
+    public static float TERRAIN_CAMERA_CLEARANCE = 0.0f;
     /** Render fills through an offscreen drape pass instead of displacing their geometry.
      *  ON, and it is both the correct and the fast choice - this is tangram's arrangement, where the
      *  ground draw samples a texture (`base_color = sampleRaster(0)`, res/scenes/hillshade.yaml)
@@ -603,6 +621,12 @@ public final class DemoConfig {
      */
     public static String STYLE_BUILDINGS = "";
     /**
+     * PROTOTYPE: `deck3d` draws the bridge BED as an extrusion instead of a flat ribbon, to see
+     * how an extruded deck reads and whether it shadows. Its height is a constant above the
+     * terrain, so it is not yet a straight deck - see the style's land_structure_deck.
+     */
+    public static String STYLE_DECK3D = "";
+    /**
      * The `building_tilt_drop` style parameter of a converted MapBox style: how far, in PERCENT,
      * the extrusions are flattened between tilt 80 and 90 (90 = a tenth of their height left).
      * Empty leaves the style's own default. Live - a style parameter is a redraw, not a re-decode.
@@ -804,6 +828,25 @@ public final class DemoConfig {
     /** Translucent on purpose: alpha < 1 is what turns the vt single-blend stencil pass on. */
     public static String BUG_LINE_COLOR = "#00000077";
     public static float BUG_LINE_WIDTH = 10f;
+    /**
+     * The synthetic BRIDGE / TUNNEL span (DemoMap.buildBugBridgeGeoJSON). One chord across the
+     * Bastille ridge, 207 m at its south end and 641 m at its north, with the ground bulging ~60 m
+     * ABOVE the chord in between - so a bridge that goes straight is visibly not the terrain, and a
+     * tunnel on the same chord is genuinely inside the hill at mid-span.
+     *
+     * The span carries INTERMEDIATE vertices on purpose: a two-point line is already straight
+     * undraped, and would prove nothing.
+     */
+    public static double BUG_SPAN_LON = 5.7240;
+    public static double BUG_SPAN_LAT_START = 45.1930;
+    public static double BUG_SPAN_LAT_END = 45.2074;
+    public static int BUG_SPAN_VERTICES = 24;
+    public static String BUG_BRIDGE_COLOR = "#e67e22";
+    public static String BUG_TUNNEL_COLOR = "#8e44ad";
+    public static float BUG_BRIDGE_WIDTH = 8f;
+    /** line-elevation-mode of the two span features: drape (the old behaviour), span, underground. */
+    public static String BUG_BRIDGE_MODE = "span";
+    public static String BUG_TUNNEL_MODE = "underground";
     /** Line labels along #bugline (the text-allow-overlap case). */
     public static boolean BUG_LINE_LABEL = true;
     public static float BUG_TEXT_SIZE = 14f;
@@ -1122,6 +1165,11 @@ public final class DemoConfig {
         LAYER_SATELLITE = DemoCfg.cfgBool("satLayer", LAYER_SATELLITE);
         LAYER_HYPSO = DemoCfg.cfgBool("hypso", LAYER_HYPSO);
         LAYER_ELEMENTS = DemoCfg.cfgBool("elements", LAYER_ELEMENTS);
+        LAYER_SPANS = DemoCfg.cfgBool("spans", LAYER_SPANS);
+        SPAN_ZOOM_BIAS = DemoCfg.cfgFloat("spanZoomBias", SPAN_ZOOM_BIAS);
+        SPAN_BRIDGE_COLOR = DemoCfg.cfgColor("spanBridgeColor", SPAN_BRIDGE_COLOR);
+        SPAN_TUNNEL_COLOR = DemoCfg.cfgColor("spanTunnelColor", SPAN_TUNNEL_COLOR);
+        SPAN_WIDTH = DemoCfg.cfgFloat("spanWidth", SPAN_WIDTH);
         LAYER_ROUTES = DemoCfg.cfgBool("routes", LAYER_ROUTES);
         LAYER_ROUTE_TEST = DemoCfg.cfgBool("routeTest", LAYER_ROUTE_TEST);
         LAYER_ROUTE_SELECT = DemoCfg.cfgBool("routeSelect", LAYER_ROUTE_SELECT);
@@ -1145,6 +1193,15 @@ public final class DemoConfig {
         BUG_LINE_BORDER = DemoCfg.cfgBool("bugLineBorder", BUG_LINE_BORDER);
         BUG_LINE_COLOR = DemoCfg.cfgColor("bugLineColor", BUG_LINE_COLOR);
         BUG_LINE_WIDTH = DemoCfg.cfgFloat("bugLineWidth", BUG_LINE_WIDTH);
+        BUG_SPAN_LON = DemoCfg.cfgFloat("bugSpanLon", (float) BUG_SPAN_LON);
+        BUG_SPAN_LAT_START = DemoCfg.cfgFloat("bugSpanLatStart", (float) BUG_SPAN_LAT_START);
+        BUG_SPAN_LAT_END = DemoCfg.cfgFloat("bugSpanLatEnd", (float) BUG_SPAN_LAT_END);
+        BUG_SPAN_VERTICES = DemoCfg.cfgInt("bugSpanVertices", BUG_SPAN_VERTICES);
+        BUG_BRIDGE_COLOR = DemoCfg.cfgColor("bugBridgeColor", BUG_BRIDGE_COLOR);
+        BUG_TUNNEL_COLOR = DemoCfg.cfgColor("bugTunnelColor", BUG_TUNNEL_COLOR);
+        BUG_BRIDGE_WIDTH = DemoCfg.cfgFloat("bugBridgeWidth", BUG_BRIDGE_WIDTH);
+        BUG_BRIDGE_MODE = DemoCfg.cfgStr("bugBridgeMode", BUG_BRIDGE_MODE);
+        BUG_TUNNEL_MODE = DemoCfg.cfgStr("bugTunnelMode", BUG_TUNNEL_MODE);
         BUG_LINE_LABEL = DemoCfg.cfgBool("bugLineLabel", BUG_LINE_LABEL);
         BUG_TEXT_SIZE = DemoCfg.cfgFloat("bugTextSize", BUG_TEXT_SIZE);
         BUG_TEXT_ALLOW_OVERLAP = DemoCfg.cfgBool("bugAllowOverlap", BUG_TEXT_ALLOW_OVERLAP);
@@ -1166,7 +1223,11 @@ public final class DemoConfig {
 
         // sources
         VECTOR_URL = DemoCfg.cfgStr("vectorUrl", VECTOR_URL);
+        VECTOR_MIN_ZOOM = DemoCfg.cfgInt("vectorMinZoom", VECTOR_MIN_ZOOM);
         VECTOR_MAX_ZOOM = DemoCfg.cfgInt("vectorMaxZoom", VECTOR_MAX_ZOOM);
+        // Its own db per source, or the persistent cache answers a mapbox request with the
+        // OpenMapTiles tile it already has under the same key - an empty map and no error.
+        VECTOR_CACHE_DB = DemoCfg.cfgStr("vectorCacheDb", VECTOR_CACHE_DB);
         VECTOR_ZOOM_BIAS = DemoCfg.cfgFloat("vectorZoomBias", VECTOR_ZOOM_BIAS);
         DEM_URL = DemoCfg.cfgStr("demUrl", DEM_URL);
         DEM_MAX_ZOOM = DemoCfg.cfgInt("demMaxZoom", DEM_MAX_ZOOM);
@@ -1180,6 +1241,7 @@ public final class DemoConfig {
         STYLE_DIR_NAME = DemoCfg.cfgStr("styleDir", STYLE_DIR_NAME);
         STYLE_ZIP_NAME = DemoCfg.cfgStr("styleZip", STYLE_ZIP_NAME);
         STYLE_ASSETS_PATH = DemoCfg.cfgStr("styleAssets", STYLE_ASSETS_PATH);
+        STYLE_ASSET_ZIP_NAME = DemoCfg.cfgStr("styleAssetZip", STYLE_ASSET_ZIP_NAME);
         STYLE_ASSETS_NAME = DemoCfg.cfgStr("styleName", STYLE_ASSETS_NAME);
         LIGHT_PRESET = DemoCfg.cfgStr("lightPreset", LIGHT_PRESET);
         PERSISTENT_CACHE_MB = DemoCfg.cfgInt("cacheMb", PERSISTENT_CACHE_MB);
@@ -1383,6 +1445,7 @@ public final class DemoConfig {
         INLINE_BUILDING_COLOR = DemoCfg.cfgColor("bldColor", INLINE_BUILDING_COLOR);
         INLINE_BUILDINGS_3D = DemoCfg.cfgBool("bld3d", INLINE_BUILDINGS_3D);
         STYLE_BUILDINGS = DemoCfg.cfgStr("buildings", STYLE_BUILDINGS);
+        STYLE_DECK3D = DemoCfg.cfgStr("deck3d", STYLE_DECK3D);
         STYLE_TILT_DROP = DemoCfg.cfgStr("bldTiltDrop", STYLE_TILT_DROP);
         STYLE_AO = DemoCfg.cfgStr("bldAo", STYLE_AO);
         if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {

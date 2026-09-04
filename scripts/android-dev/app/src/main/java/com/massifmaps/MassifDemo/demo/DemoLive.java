@@ -38,7 +38,8 @@ public final class DemoLive extends BroadcastReceiver {
     private static final String[] TERRAIN_KEYS = {
         "terrain", "drape", "drapeLines", "drapeResolution", "noDrape", "meshResolution", "exaggeration",
         "autoFlatten", "autoFlattenTilt", "autoFlattenMs", "fullSwitch",
-        "viewDistance", "viewDistanceMeters", "coarsening", "stitch", "textOcclusion", "lodFactor", "lodGrazing"
+        "viewDistance", "viewDistanceMeters", "coarsening", "stitch", "textOcclusion", "lodFactor", "lodGrazing",
+        "clearance"
     };
     private static final String[] LIGHT_KEYS = {
         "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness",
@@ -49,7 +50,9 @@ public final class DemoLive extends BroadcastReceiver {
     private static final String[] STYLE_KEYS = {
         "style", "styleLight", "bg", "bldColor", "bld3d", "bldLight", "bldAmbient", "bldGradient", "bldGradientHeight",
         "bldAoRadius", "bldAoIntensity", "bldAoAttenuation", "bldAoStep", "bldEdgeRadius", "bldRoofShade", "bldRoundedRoof",
-        "roadLabelOcclusion", "lightPreset", "bld3d", "buildings"
+        "roadLabelOcclusion", "lightPreset", "bld3d", "buildings", "styleAssetZip",
+        // deck3d gates a rule FILTER, so it selects which rules match - a re-decode, not a param apply.
+        "deck3d"
     };
     private static final String[] SKY_KEYS = {
         "sky", "skyColor", "horizonColor", "sunDisc",

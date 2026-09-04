@@ -291,6 +291,7 @@ namespace massif {
                 patch.grid = job.grid;
                 VT_STAT_CLOCK(patchClock);
                 job.grid->encodeTextureBorders(job.neighbours, patch.strips);
+                job.grid->encodeNodeTextureBorders(job.neighbours, patch.nodeStrips);
                 VT_STAT_SPLIT(demEncodeNs, patchClock);
                 VT_STAT_INC(demBorderPatches);
 
@@ -331,6 +332,12 @@ namespace massif {
             // terrarium, 0.1m for mapbox). The negative stride keeps the rows as copied.
             int texelBytes = job.grid->getBytesPerTexel();
             encoded.bitmap = std::make_shared<BorderBitmap>(_encodeScratch.data(), width, height, job.grid->getColorFormat(), -texelBytes * width);
+            // The node texture: (nodes + 1)^2 in the same encoding, rows south-to-north as well.
+            if (job.grid->getNodesPerEdge() > 0) {
+                int nodeSize = job.grid->getNodesPerEdge() + 1;
+                job.grid->encodeNodeTexture(job.neighbours, _nodeScratch);
+                encoded.nodeBitmap = std::make_shared<BorderBitmap>(_nodeScratch.data(), nodeSize, nodeSize, job.grid->getColorFormat(), -texelBytes * nodeSize);
+            }
             VT_STAT_SPLIT(demEncodeNs, encodeClock);
             VT_STAT_INC(demEncodes);
 
@@ -382,9 +389,14 @@ namespace massif {
             entry.bitmap = encoded.bitmap;
             VT_STAT_CLOCK(uploadClock);
             entry.texture = _glResourceManager->create<Texture>(encoded.bitmap, false, false); // no mipmaps, clamp to edge
+            if (encoded.nodeBitmap) {
+                entry.nodeBitmap = encoded.nodeBitmap;
+                entry.nodeTexture = _glResourceManager->create<Texture>(encoded.nodeBitmap, false, false);
+            }
             VT_STAT_SPLIT(demUploadNs, uploadClock);
             VT_STAT_INC(demUploads);
             _cache.insert_or_assign(encoded.gridTileId, std::move(entry));
+            if (encoded.grid) { _contentChanges.push_back(encoded.grid->getTile()); }
         }
     }
 
@@ -416,6 +428,20 @@ namespace massif {
             texture->updateSubImage(0, 0, 2, height, patch.strips.west.data());
             bitmap->writeRect(width - 2, 0, 2, height, patch.strips.east);
             texture->updateSubImage(width - 2, 0, 2, height, patch.strips.east.data());
+            // The node texture's four edge rows/columns, the only node texels a neighbour changes.
+            if (it->second.nodeBitmap && it->second.nodeTexture && !patch.nodeStrips.south.empty()) {
+                int nodeSize = patch.grid->getNodesPerEdge() + 1;
+                const std::shared_ptr<BorderBitmap>& nodeBitmap = it->second.nodeBitmap;
+                const std::shared_ptr<Texture>& nodeTexture = it->second.nodeTexture;
+                nodeBitmap->writeRect(0, 0, nodeSize, 1, patch.nodeStrips.south);
+                nodeTexture->updateSubImage(0, 0, nodeSize, 1, patch.nodeStrips.south.data());
+                nodeBitmap->writeRect(0, nodeSize - 1, nodeSize, 1, patch.nodeStrips.north);
+                nodeTexture->updateSubImage(0, nodeSize - 1, nodeSize, 1, patch.nodeStrips.north.data());
+                nodeBitmap->writeRect(0, 0, 1, nodeSize, patch.nodeStrips.west);
+                nodeTexture->updateSubImage(0, 0, 1, nodeSize, patch.nodeStrips.west.data());
+                nodeBitmap->writeRect(nodeSize - 1, 0, 1, nodeSize, patch.nodeStrips.east);
+                nodeTexture->updateSubImage(nodeSize - 1, 0, 1, nodeSize, patch.nodeStrips.east.data());
+            }
             VT_STAT_SPLIT(demPatchNs, patchUploadClock);
             VT_STAT_INC(demPatchUploads);
             it->second.borderQuality = patch.borderQuality;
@@ -466,6 +492,19 @@ namespace massif {
         // What the DEM itself resolves, for consumers that shade from it (the terrain paint):
         // the ground distance one texel covers at the equator.
         terrainTexture.metersPerTexel = static_cast<float>(texelX * Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE);
+        // The node texture: texel i is node i, on the cell corner at i / nodes of the grid, so
+        // uv 0 sits half a node before the west/south edge and uv 1 half a node past the other.
+        int nodes = entry.grid->getNodesPerEdge();
+        if (entry.nodeTexture && entry.nodeTexture->getTexId() != 0 && nodes > 0) {
+            double nodeX = (bounds.getMax().getX() - bounds.getMin().getX()) / nodes;
+            double nodeY = (bounds.getMax().getY() - bounds.getMin().getY()) / nodes;
+            terrainTexture.nodeTextureId = entry.nodeTexture->getTexId();
+            terrainTexture.nodeTextureSize = cglib::vec2<int>(nodes + 1, nodes + 1);
+            terrainTexture.nodeOrigin = cglib::vec2<double>(bounds.getMin().getX() - 0.5 * nodeX, bounds.getMin().getY() - 0.5 * nodeY);
+            terrainTexture.nodeSize = cglib::vec2<double>((nodes + 1) * nodeX, (nodes + 1) * nodeY);
+        } else {
+            terrainTexture.nodeTextureId = 0;
+        }
     }
 
     ElevationTextureCache::~ElevationTextureCache() {
@@ -496,6 +535,44 @@ namespace massif {
         }
     }
 
+    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, double& height) const {
+        if (zoom < 0) {
+            return false;
+        }
+        // The tile HOLDING the point, which is not the tile being drawn: a span reaches past its
+        // own tile by design, and its far portal belongs to a neighbour.
+        int extent = 1 << zoom;
+        double u = internalX / Const::WORLD_SIZE + 0.5;
+        double v = 0.5 - internalY / Const::WORLD_SIZE;
+        int x = static_cast<int>(std::floor(u * extent));
+        int y = static_cast<int>(std::floor(v * extent));
+        if (x < 0 || y < 0 || x >= extent || y >= extent) {
+            return false;
+        }
+        // The same mapping getTexture resolves a tile through (getDetailDataTile), walking up to
+        // an ancestor exactly as it does - so the query lands on the height field the surface is
+        // drawn from. Deliberately NOT _frameResolved: that is filled as tiles are drawn, and a
+        // span resolving before its tile's texture is fetched would find nothing and drape.
+        //
+        // The grid comes from the entry the TEXTURE holds, not from ElevationManager: the manager's
+        // grid LRU drops a grid while the texture built from it goes on rendering, which is what
+        // made a CACHED_ONLY query answer "no data" for ground plainly on screen.
+        vt::TileId tileId(zoom, x, y);
+        for (;;) {
+            MapTile dataTile = _elevationManager->getDetailDataTile(MapTile(tileId.x, tileId.y, tileId.zoom, 0), _detailLevels);
+            auto cacheIt = _cache.find(dataTile.getTileId());
+            if (cacheIt != _cache.end() && cacheIt->second.grid) {
+                double meters = cacheIt->second.grid->sampleNodeHeight(internalX, internalY); // the surface, as the extrusion base must sit on it
+                height = meters * _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
+                return true;
+            }
+            if (tileId.zoom <= 0) {
+                return false;
+            }
+            tileId = tileId.getParent();
+        }
+    }
+
     void ElevationTextureCache::beginFrame() {
         // Textures encoded since the last frame go up now, ahead of the draws that sample them,
         // and border refinements are patched into the ones already there.
@@ -507,6 +584,12 @@ namespace massif {
 #endif
         _frameResolved.clear();
         _frameStartCounter = _accessCounter;
+    }
+
+    std::vector<MapTile> ElevationTextureCache::drainContentChanges() {
+        std::vector<MapTile> changes;
+        changes.swap(_contentChanges);
+        return changes;
     }
 
     void ElevationTextureCache::clear() {

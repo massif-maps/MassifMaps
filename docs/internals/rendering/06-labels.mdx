@@ -737,6 +737,16 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   faults made it that: `TileRenderer` classified every arriving DEM tile as a *scale-only* change
   and took the blanket path (see [04-terrain.md](04-terrain.md#cpu-height-queries)), and each sample
   re-derived its tile and its latitude scale from scratch.
+  Two more, found on the day-cycle-light example at 2 fps with a city of bridges (2026-09-03):
+  every sample asked `spanHeightAt` whether the vertex stands on a deck, against every span UNION
+  — hundreds in a city, most of them the same chord — so one label cost milliseconds; the unions
+  are now folded into a deduplicated chord list with bounds (`_spanChords`), 1.5–2.8 s of
+  anchoring per twelve-second pan down to 65–140 ms. And the anchoring of a new tile set's labels
+  no longer waits for the next frame: `setVisibleTiles` samples them on the cull thread with the
+  renderer's lock released (`Label::sampleElevation`) and writes them back under it
+  (`applyElevation`); the frame keeps only the DEM-tile re-anchors. `debug.massif.labelanchor 0`
+  restores the in-frame path for an A/B — on the emulator it was 19–31 `prepare` spikes of
+  130–190 ms per pan against none.
   A label that has already been anchored and is neither placed nor on screen then **defers** its
   re-anchor (`Label::isElevationDirty`): it keeps the heights it has, at worst one LOD step out,
   and reports itself dirty again the moment the culler gives it a placement. A label that has never

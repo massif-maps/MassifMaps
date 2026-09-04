@@ -1,5 +1,6 @@
 package com.massifmaps.MassifDemo.demo;
 
+import android.content.Context;
 import android.util.Log;
 
 import com.massifmaps.core.BinaryData;
@@ -11,9 +12,11 @@ import com.massifmaps.utils.DirAssetPackage;
 import com.massifmaps.utils.ZippedAssetPackage;
 import com.massifmaps.vectortiles.MBVectorTileDecoder;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 
 /**
  * Everything style-related: builds the tile decoder for each {@link DemoConfig.StyleSource}.
@@ -41,7 +44,8 @@ public final class DemoStyles {
      * Builds a decoder for the given style source, falling back down the list (dir -> zip ->
      * inline) rather than crashing: on a device without the data files the demo must still start.
      */
-    public static MBVectorTileDecoder create(DemoConfig.StyleSource source, String dataPath) {
+    public static MBVectorTileDecoder create(Context context, DemoConfig.StyleSource source,
+                                             String dataPath) {
         switch (source) {
             case DIR: {
                 AssetPackage pack = openDir(dataPath);
@@ -64,6 +68,13 @@ public final class DemoStyles {
                 AssetPackage pack = openAppAssets();
                 if (pack != null) {
                     return new MBVectorTileDecoder(new CompiledStyleSet(pack, DemoConfig.STYLE_ASSETS_NAME));
+                }
+                break;
+            }
+            case ASSETZIP: {
+                AssetPackage pack = openAssetZip(context, DemoConfig.STYLE_ASSET_ZIP_NAME);
+                if (pack != null) {
+                    return new MBVectorTileDecoder(styleSet(pack));
                 }
                 break;
             }
@@ -143,6 +154,32 @@ public final class DemoStyles {
             return pack;
         } catch (Exception e) {
             Log.w(TAG, "app asset style not usable (" + DemoConfig.STYLE_ASSETS_PATH + "): " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * A style project zip bundled in the APK (assets/styles/<name>.zip, built by gradle's
+     * zipStyleProjects). AndroidAssetPackage cannot be used: it expects a FOLDER of assets, and
+     * these are single zip entries - the same ones the gallery examples reach through the facade
+     * as 'assets://styles/<name>.zip'.
+     */
+    private static AssetPackage openAssetZip(Context context, String name) {
+        String assetPath = "styles/" + name + ".zip";
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (InputStream in = context.getAssets().open(assetPath)) {
+                byte[] chunk = new byte[16384];
+                int read;
+                while ((read = in.read(chunk)) > 0) {
+                    out.write(chunk, 0, read);
+                }
+            }
+            lastLoadedDescription = "asset zip " + assetPath;
+            Log.i(TAG, "style: " + lastLoadedDescription);
+            return new ZippedAssetPackage(new BinaryData(out.toByteArray()));
+        } catch (Exception e) {
+            Log.w(TAG, "asset style zip not usable (" + assetPath + "): " + e.getMessage());
             return null;
         }
     }
@@ -865,11 +902,64 @@ public final class DemoStyles {
                 mss.append("  text-clip: ").append(DemoConfig.BUG_TEXT_CLIP).append(";\n");
             }
         }
-        mss.append("}");
+        mss.append("}\n");
+
+        // --- 5. the bridge / tunnel span --------------------------------------------------------
+        // Their own vt layer names, so NoDrapeLayerFilter can take them out of the drape bake by
+        // name: --es noDrape '^contour|bug(bridge|tunnel)'. Deliberately WIDE, so the shape is
+        // readable from the start camera rather than a hairline on a hillside.
+        mss.append("#bugbridge {\n")
+           .append("  line-color: ").append(DemoConfig.BUG_BRIDGE_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.BUG_BRIDGE_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("  line-elevation-mode: ").append(DemoConfig.BUG_BRIDGE_MODE).append(";\n")
+           .append("}\n");
+        mss.append("#bugtunnel {\n")
+           .append("  line-color: ").append(DemoConfig.BUG_TUNNEL_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.BUG_BRIDGE_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("  line-dasharray: 12, 8;\n")
+           .append("  line-elevation-mode: ").append(DemoConfig.BUG_TUNNEL_MODE).append(";\n")
+           .append("}");
         return mss.toString();
     }
 
     /** The CartoCSS is written here, the FONTS come from the APK asset package (as the POI style). */
+    /**
+     * The SPAN layer's style: bridges and tunnels only, off the base map's own source layer, so a
+     * second VectorTileLayer at a coarser zoom bias can draw them while the base map draws
+     * everything else. [structure] is what a MapBox source tags them with; OpenMapTiles uses
+     * [brunnel], and both are matched so the layer works against either source.
+     */
+    public static MBVectorTileDecoder createSpanDecoder() {
+        StringBuilder mss = new StringBuilder();
+        mss.append("#road[structure='bridge'],\n")
+           .append("#road[brunnel='bridge'] {\n")
+           .append("  line-color: ").append(DemoConfig.SPAN_BRIDGE_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.SPAN_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("  line-elevation-mode: span;\n")
+           .append("}\n");
+        mss.append("#road[structure='tunnel'],\n")
+           .append("#road[brunnel='tunnel'] {\n")
+           .append("  line-color: ").append(DemoConfig.SPAN_TUNNEL_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.SPAN_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("  line-dasharray: 14, 10;\n")
+           .append("  line-elevation-mode: underground;\n")
+           .append("}");
+        String css = mss.toString();
+        Log.i(TAG, "span style:\n" + css);
+        AssetPackage pack = openAppAssets();
+        return pack != null
+                ? new MBVectorTileDecoder(new CartoCSSStyleSet(css, pack))
+                : new MBVectorTileDecoder(new CartoCSSStyleSet(css));
+    }
+
     public static MBVectorTileDecoder createBugDecoder() {
         String css = bugStyle();
         Log.i(TAG, "bug repro style:\n" + css);

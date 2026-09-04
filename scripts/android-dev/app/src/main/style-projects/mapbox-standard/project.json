@@ -126,6 +126,7 @@
     "aeroway",
     "structure::land_structure_line",
     "structure::land_structure_polygon",
+    "structure::land_structure_deck",
     "water",
     "waterway",
     "landuse::pitch_outline",
@@ -1337,6 +1338,7 @@
     "landcover-fill-color-range": "#e3f4d2",
     "landcover-fill-color-scrub": "#f0fbef",
     "landcover-fill-color-snow": "#ffffff",
-    "landcover-fill-color-wood": "#c2efbe"
+    "landcover-fill-color-wood": "#c2efbe",
+    "deck3d": 1
   }
 }

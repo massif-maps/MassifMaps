@@ -1,4 +1,5 @@
 #include "ElevationManager.h"
+#include "terrain/ElevationNodeField.h"
 #include "terrain/ElevationTileGrid.h"
 #include "core/BinaryData.h"
 #include "datasources/TileDataSource.h"
@@ -15,7 +16,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
+
+#ifdef __ANDROID__
+#include <sys/system_properties.h>
+#endif
 
 namespace massif {
 
@@ -127,7 +133,7 @@ namespace massif {
     void ElevationManager::setSurfaceResolution(int resolution) {
         int value = std::max(1, resolution);
         if (_surfaceResolution.exchange(value) != value) {
-            _version++; _dataVersion++; // the elevation level cap changes with it
+            tilesChanged(); // every grid's node field was built for the old lattice
         }
     }
 
@@ -190,8 +196,29 @@ namespace massif {
     }
 
     double ElevationManager::getDisplayHeight(double internalX, double internalY, LoadMode mode) const {
-        double meters = getElevationMeters(internalX, internalY, mode);
-        return meters * _exaggeration.load() * getDisplayScale(internalY);
+        // The SURFACE's height, not the DEM's: the node field is what the ground is drawn from,
+        // and a label anchor or a raycast that took the DEM instead would miss the ground by the
+        // relief the mesh cannot carry (metres, on a lidar DEM under a coarse cell).
+        double wrappedX = wrapInternalX(internalX);
+        std::shared_ptr<ElevationTileGrid> grid = getGridForInternalPos(wrappedX, internalY, mode);
+        if (!grid) {
+            return 0.0;
+        }
+        return grid->sampleNodeHeight(wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
+    }
+
+    bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height) const {
+        // getDisplayHeight cannot say whether it HAS data - it returns 0 either way, and 0 is a
+        // legal height. A caller that bakes the answer into geometry needs the difference: an
+        // extrusion given a base of 0 where the ground is 215 m sits below the terrain and
+        // disappears. Same lookup, minus the guess.
+        double wrappedX = wrapInternalX(internalX);
+        std::shared_ptr<ElevationTileGrid> grid = getGridForInternalPos(wrappedX, internalY, LoadMode::CACHED_ONLY);
+        if (!grid) {
+            return false;
+        }
+        height = grid->sampleNodeHeight(wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
+        return true;
     }
 
     void ElevationManager::getDisplayGradient(double internalX, double internalY, LoadMode mode, double& dhdx, double& dhdy) const {
@@ -531,7 +558,7 @@ namespace massif {
             if (!cachedGrid) {
                 return 0.0;
             }
-            return cachedGrid->sampleHeight(wrappedX, internalY) * exaggeration * getDisplayScale(internalY);
+            return cachedGrid->sampleNodeHeight(wrappedX, internalY) * exaggeration * getDisplayScale(internalY);
         };
 
         // Conservative display-space search interval. Use the largest latitude scale along the ray
@@ -683,6 +710,28 @@ namespace massif {
         return internalX - worldSize * std::floor(internalX / worldSize + 0.5);
     }
 
+    // Mesh cells a node averages the DEM over (ElevationNodeField::DEFAULT_BOX_CELLS), with the
+    // measurement override:  adb shell setprop debug.massif.nodebox <cells>
+#ifdef __ANDROID__
+    int ElevationManager::nodeBoxCells() {
+        static const int cells = [] {
+            char property[PROP_VALUE_MAX] = { 0 };
+            if (__system_property_get("debug.massif.nodebox", property) > 0) {
+                int value = std::atoi(property);
+                if (value > 0) {
+                    return value;
+                }
+            }
+            return ElevationNodeField::DEFAULT_BOX_CELLS;
+        }();
+        return cells;
+    }
+#else
+    int ElevationManager::nodeBoxCells() {
+        return ElevationNodeField::DEFAULT_BOX_CELLS;
+    }
+#endif
+
     MapTile ElevationManager::clampTileZoom(const MapTile& mapTile) const {
         // Tangram's rule verbatim (RasterSource::addRasterTask): the render tile's own z/x/y,
         // adjusted by the source's zoom bias and capped by its max zoom - nothing else.
@@ -767,7 +816,11 @@ namespace massif {
         // OrderedTileDataSource. ElevationTileGrid then carries these coefficients to the CPU
         // sampler and to the GPU alike, so nothing downstream has to agree on one encoding.
         std::array<double, 4> coeffs = ElevationDecoder::Resolve(tileData, _dataSource, _elevationDecoder)->getColorComponentCoefficients();
-        std::shared_ptr<ElevationTileGrid> grid = ElevationTileGrid::DecodeBitmap(mapTile, internalBounds, tileBitmap, coeffs);
+        // Mesh nodes across this grid: the lattice is per RENDER tile, and clampTileZoom hands a
+        // grid to one render tile per DEM_TEXELS_PER_TILE_UNIT texels of its edge.
+        int renderTilesPerEdge = std::max(1, static_cast<int>(tileBitmap->getWidth()) / DEM_TEXELS_PER_TILE_UNIT);
+        int nodesPerEdge = _surfaceResolution.load() * renderTilesPerEdge;
+        std::shared_ptr<ElevationTileGrid> grid = ElevationTileGrid::DecodeBitmap(mapTile, internalBounds, tileBitmap, coeffs, nodesPerEdge, nodeBoxCells());
         if (grid && grid->getWidth() > 0) {
             _gridSizeHint.store(grid->getWidth()); // drives the elevation level cap in clampTileZoom
         }

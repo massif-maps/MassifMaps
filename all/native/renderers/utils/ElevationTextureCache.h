@@ -72,10 +72,49 @@ namespace massif {
         void beginFrame();
 
         /**
+         * Ground height at an internal position, in internal z units (exaggeration and the mercator
+         * stretch applied), sampled from the grid a cached TEXTURE was built from.
+         *
+         * This is tangram's model: it samples the elevation raster the tile renders with
+         * (`ElevationManager::getElevation` -> `elevationLerp(*raster.texture, ...)`), so there is
+         * one representation and a CPU query cannot disagree with what is drawn. Ours has been the
+         * odd one out - ElevationManager's grid LRU is independent of this cache, so a grid is
+         * routinely evicted while the texture built from it goes on rendering, and a CACHED_ONLY
+         * query answers "no data" for ground that is plainly on screen. Measured at the Millau
+         * camera: 0 hits in 3900 queries, with the terrain drawn correctly throughout.
+         *
+         * The grid is already held by the entry (CacheEntry::grid), so this needs no extra
+         * retention - only somewhere to ask.
+         *
+         * Sampled at the level the RENDERER draws `zoom` with - the same getDetailDataTile mapping
+         * getTexture resolves through - not at whatever level happens to be the most detailed one
+         * cached. Picking the most detailed made the answer depend on load order: the same bridge
+         * portal measured 441 m and 663 m within one run, so two halves of one deck were baked at
+         * different heights.
+         *
+         * @return False when the renderer has no elevation for the tile holding the point.
+         */
+        bool getDisplayHeight(double internalX, double internalY, int zoom, double& height) const;
+
+        /**
          * Resolves every tile at the elevation source's own maximum detail instead of at the level
          * the terrain mesh can express. For a cache feeding per-fragment shading (the terrain
          * paint): the mesh cap costs two zoom levels of relief, which at high zoom is all of it.
          */
+        /**
+         * The grid tiles that entered the cache since the last call, and clears the list. A CPU
+         * height query is answered from these entries, so a chord or a building base resolved
+         * while only an ancestor was cached must be resolved again once the tile's own level lands
+         * - on this terrain the two differ by 50-70 m, and the stale copy is drawn beside the
+         * fresh one. ElevationManager's own data version cannot stand in: the grid loads, and the
+         * texture is encoded some frames later.
+         *
+         * Reported per TILE rather than as a counter so the renderer re-resolves only what stands
+         * over them, which is mapbox's model - a global bump re-did every building on screen each
+         * time any DEM tile landed.
+         */
+        std::vector<MapTile> drainContentChanges();
+
         void setDetailLevels(int extraLevels);
 
         void clear();
@@ -113,6 +152,10 @@ namespace massif {
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             std::shared_ptr<BorderBitmap> bitmap; // what the texture is rebuilt from after a context loss
             std::shared_ptr<Texture> texture;
+            // The node texture beside it: the grid's node field (ElevationTileGrid::encodeNodeTexture),
+            // which the vertex stage displaces from. Same lifetime, same patching.
+            std::shared_ptr<BorderBitmap> nodeBitmap;
+            std::shared_ptr<Texture> nodeTexture;
             std::uint64_t lastUsed = 0; // LRU stamp
         };
 
@@ -135,6 +178,7 @@ namespace massif {
             std::shared_ptr<ElevationTileGrid> grid;
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             std::shared_ptr<BorderBitmap> bitmap;
+            std::shared_ptr<BorderBitmap> nodeBitmap;
         };
 
         // A neighbour arriving changes ONLY the 2-texel ring of the texture (the border itself,
@@ -149,6 +193,7 @@ namespace massif {
             std::shared_ptr<ElevationTileGrid> grid;
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             ElevationTileGrid::BorderStrips strips;
+            ElevationTileGrid::BorderStrips nodeStrips; // the node texture's edge rows/columns
         };
 
         // The texture carries the source raster's texels (3 bytes for an RGB DEM), so the cap is
@@ -179,6 +224,7 @@ namespace massif {
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
+        std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame
@@ -191,6 +237,7 @@ namespace massif {
         std::deque<EncodedTexture> _encodedQueue; // waiting for the GL thread to upload
         std::deque<BorderPatch> _patchQueue;      // waiting for the GL thread to patch
         std::vector<std::uint8_t> _encodeScratch; // worker-thread only: the encode buffer, reused
+        std::vector<std::uint8_t> _nodeScratch;   // worker-thread only: the node texture buffer
         std::unique_ptr<std::thread> _encodeThread;
         bool _encodeStopped = false;
     };

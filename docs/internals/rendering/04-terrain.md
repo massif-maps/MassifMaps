@@ -467,7 +467,7 @@ mapbox splits the two ends, and that is what is implemented here:
 | | aligned to | result |
 |---|---|---|
 | base ring | the terrain under each vertex | the wall meets the slope everywhere, no gap, no float |
-| everything above it | ONE elevation, resolved at the footprint's **centroid** on a smoothed field | the roof stays level; walls simply grow taller downhill |
+| everything above it | ONE elevation, resolved at the **building's** anchor on a smoothed field | the roof stays level; walls simply grow taller downhill |
 
 The centroid rides in the **texcoord slot**, which was free because for an extrusion `_texCoords`
 was a byte-for-byte duplicate of `_coords`. It is no longer read by the shader — the CPU pass below
@@ -480,6 +480,48 @@ overzoom the centroid of a palace lies several tiles away from the z20 piece dra
 coords' own scale it overflowed the int16 and wrapped, so every tile read its base at a garbage
 position — the same wing at two heights, a piece under the ground with no walls, only on 3D
 terrain and only zoomed in close (the Louvre, 2026-09-04). Host test `ExtrusionAnchorTest`.
+
+### One anchor per BUILDING, not per footprint
+
+A footprint is not a building. The source splits a palace into parts and the tile grid cuts it, and
+each piece anchored on its own centroid stands at its own elevation — equal heights on stepped
+bases, which is read on screen as a sawtooth of separate slabs where one roof belongs. Measured on
+mapbox-streets z16 over the Louvre (2026-09-04):
+
+| | |
+|---|---|
+| parts of one building, base spread | 0.3–1.5 m typical, **5.6 m** worst |
+| the two halves of a building the z16 border cuts | centroids 6–75 m apart, **5.5 m** worst |
+| `building_id` present on | 39 of 160 footprints — it alone leaves the palace ungrouped |
+| footprints joined by a **shared vertex** | 738 of 1815 tile vertices are shared: 160 footprints → 33 buildings |
+
+`vt::buildExtrusionAnchors` (called from `TileReader::processLayer`, host test
+`ExtrusionGroupAnchorTest`) answers both, before anything is drawn:
+
+- parts that **share a vertex**, that carry the same **`building_id`**, or that are polygons of one
+  multi-polygon feature are one building, and take the mean of every outer ring point they own.
+  mapbox groups by `building_id` alone (`_finalizeBuildingGroups`, default group id = the feature
+  id); the shared vertex is what makes it work on data that mostly does not carry the field.
+- a building crossing **exactly one edge of the source box** anchors on the MIDDLE of its crossing
+  of that edge — the one point both tiles compute identically, because the server buffer means both
+  hold the whole crossing. A **corner** cut anchors on the corner. Anything more tangled keeps the
+  centroid: there is no local rule two tiles would agree on, and a step beats a wrong elevation.
+
+The box is the **source** tile's (`LayerFeatureDecoder::getSourceBox`, the transform of the unit
+square), not the target's: under overzoom the target's edges cut nothing, the ancestor's are where
+the data was really cut.
+
+The pass needs the features **unclipped** (`createLayerFeatureIterator(..., clip = false)`) — the
+parts of a building this tile does not draw still decide where the ones it draws read their ground,
+and a group built from what one target tile's clip box kept is a different group in every tile,
+which is the bug in another form. It runs on its own decoder caches, so it cannot leak an
+out-of-box geometry into the drawing pass, and it is skipped entirely unless the transformer is
+elevation-based and the layer actually extrudes; the table is built once per layer per tile.
+
+Not grouped: nothing. **Every** attempt at a cross-TILE union was reverted before this — a global
+union in world coordinates gave the Louvre 36.2 m from one tile and 37.7 m from the next as tiles
+arrived, a crack that moved while panning. The rules above are all local to one tile's data, which
+is why two tiles agree without talking.
 
 ### The base is resolved on the CPU, not sampled in the shader
 
@@ -505,8 +547,10 @@ conversion instead applies the Mercator stretch twice and drops the exaggeration
 CPU-computed elevation (`fill_extrusion.vertex.glsl`), a building on a border is hidden until
 resolved (`HIDDEN_CENTROID`), and `updateBorders` reconciles the two halves — matching them by
 `building_id`, and **giving up the flat roof entirely when the neighbours are at different zooms**.
-We need none of that reconciliation: their lookup is per tile and each half carries its own clipped
-footprint, while ours is one global query at a centroid both halves already share.
+We need no reconciliation PASS: their lookup is per tile and each half carries its own clipped
+footprint, while ours is one global query at an anchor both halves derive identically from their own
+data (the crossing rule above). What we do not have is their border stitching, and what we have
+instead of `building_id` alone is the shared vertex.
 
 What we do copy is the timing. Nothing is guessed before elevation exists — an extrusion whose tile
 has no elevation texture yet is **not drawn at all**, because a base of 0 is sea level, not
@@ -517,25 +561,37 @@ needless re-resolve costs the queries and uploads nothing.
 
 **The ground the anchor reads is a SMOOTHED field, not the lidar level the surface is drawn
 from.** `ElevationTextureCache::getDisplayHeight(..., smooth = true)` samples the DEM at
-`SMOOTH_BASE_ZOOM` (z12, about 20 m posting, mapbox-terrain-dem's own scale), bilinear, from the
-grid LRU — an ancestor level answers too, and is asked for if none is there; the arrival bumps
-the elevation version and every base moves together. This is the answer to a family of seams that
-only exist on lidar: a 0.84 m DEM steps by metres between a courtyard and its street, and every
-piece of a building anchored on it — a part beside its pedestal, the halves a source-tile border
-cuts, the copies two zoom levels decode for a mixed-zoom cover — stood at its own height. Read
-from a field that is smooth at the scale of a building, those pieces agree to centimetres
-**without seeing each other**, which is what mapbox gets for free from its DEM. Spans (bridge
-chords) keep the drawn surface (`smooth = false`); a deck must meet the road exactly.
+`SMOOTH_BASE_POSTING` (50 m), bilinear, from the grid LRU — an ancestor level answers too, and is
+asked for if none is there; the arrival bumps the elevation version and every base moves together.
 
-**mapbox's floor, per vertex** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`):
-a vertex that rises keeps at least 2 m above the drawn ground under it, so a low part whose
-smoothed anchor sits under its own lidar street is still a building and not a hole, and nothing on
-a hillside is buried uphill. Done on the CPU through the provider, not in the shader: overzoomed
-geometry runs past the target tile, where `applyTerrain` clamps to the edge texel, and a shader
-floor read there tilted whole roofs into ramps. And per vertex, not per footprint: a floor over the
-ring vertices a tile's clip kept was per tile, and one slab came out 31.6 m in one tile and 34.4 m
-in the next. Roofs of low parts follow the ground where the floor bites; tall buildings never feel
-it. One query per rising vertex position, columns of a wall share theirs.
+The **level is derived from the grid's own resolution**, never fixed: the search starts at
+`SMOOTH_BASE_ZOOM_HINT` and walks coarser until the posting reaches 50 m. A hardcoded z12 was
+50 m only for a source serving 256 px tiles at the equator — mapterhorn serves 512 px, so z12 is
+12.6 m posting at Paris, and measured over the Louvre the "smoothed" sample agreed with the lidar
+one to 0.1–0.2 m while neighbouring parts of one palace differed by 0.3–1.5 m. At 50 m posting
+(z10 there) the same neighbours differ by 0.14 m, and buildings that touch nothing but stand
+within 80 m of each other by at most 1.7 m. This is the answer to a family of seams that
+only exist on lidar: a 0.84 m DEM steps by metres between a courtyard and its street, and the copies
+two zoom levels decode for a mixed-zoom cover stood at their own heights. Smoothing and the shared
+anchor answer different halves of it and neither replaces the other — the anchor makes the pieces of
+ONE building agree exactly, smoothing keeps the buildings AROUND it from stepping against it. The
+smoothing alone was tried first and measurably did not close the comb, which is what the numbers
+above are. Spans (bridge chords) keep the drawn surface (`smooth = false`); a deck must meet the
+road exactly.
+
+**mapbox's floor** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`): a
+building keeps at least 2 m above the drawn ground under it, so a part whose smoothed anchor sits
+under its own lidar street is still a building and not a hole, and nothing on a hillside is buried
+uphill. Done on the CPU through the provider, not in the shader: overzoomed geometry runs past the
+target tile, where `applyTerrain` clamps to the edge texel, and a shader floor read there tilted
+whole roofs into ramps.
+
+Theirs is per **vertex**; ours is per **building** — the max drawn ground over its own rising
+vertices, against its tallest of them. Per vertex on a 0.84 m lidar DEM, a low part's roof followed
+the ground down every bump it covers; the roof has to stay one plane, and one plane per building is
+the whole point of the anchor. It is accumulated per ANCHOR rather than per vertex run, since the
+pieces of one building need not be contiguous in the vertex order. One query per rising vertex
+position, columns of a wall share theirs.
 
 mapbox's `flatElevation` lift (the rise across the span, sampled at the span's corners) is NOT
 ported: its corners lie off the footprint, and beside the Seine one on the Tuileries terrace lifted

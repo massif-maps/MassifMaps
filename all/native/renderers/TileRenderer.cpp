@@ -640,6 +640,10 @@ namespace massif {
             }
             tileRenderer->setRadiance(_resolvedRadiance);
             tileRenderer->setBackgroundEmissive(_backgroundEmissive);
+            // The FALLBACK an extrusion takes when its own rule states no emissive. The 3D
+            // lighting callback uploads this too, but a rule that overrides u_emissive has to be
+            // able to put the map's value back for the next draw (GLTileRenderer).
+            tileRenderer->setBuildingEmissive(_buildingEmissive);
             tileRenderer->setTerrainLighting(terrainLighting);
         }
     }

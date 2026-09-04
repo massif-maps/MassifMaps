@@ -15,6 +15,26 @@
   ],
   "properties": [
     {
+      "cartocss": "building-elevation-mode",
+      "mapnik": "elevation-mode",
+      "symbolizer": "building",
+      "kind": "string",
+      "type": "StringProperty",
+      "default": "drape",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "building-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "building",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "-1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "building-fill",
       "mapnik": "fill",
       "symbolizer": "building",
@@ -381,6 +401,16 @@
       "kind": "string",
       "type": "StringProperty",
       "default": "",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "line-elevation-mode",
+      "mapnik": "elevation-mode",
+      "symbolizer": "line",
+      "kind": "string",
+      "type": "StringProperty",
+      "default": "drape",
       "live": false,
       "baked": false
     },
@@ -891,6 +921,16 @@
       "kind": "comp-op",
       "type": "CompOpProperty",
       "default": "src-over",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "polygon-elevation-mode",
+      "mapnik": "elevation-mode",
+      "symbolizer": "polygon",
+      "kind": "string",
+      "type": "StringProperty",
+      "default": "drape",
       "live": false,
       "baked": false
     },

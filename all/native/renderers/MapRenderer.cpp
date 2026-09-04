@@ -39,6 +39,7 @@
 #include "terrain/AutoFlatten.h"
 #include "terrain/CameraClearance.h"
 #include "terrain/DrapeStackCuts.h"
+#include "terrain/DrapeTuning.h"
 #include "terrain/ElevationManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -2975,6 +2976,13 @@ namespace massif {
                             std::size_t elevationTerm = (paintable ? 0x9e3779b9u : 0x85ebca6bu);
                             fingerprint ^= elevationTerm + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
                         }
+                        // The style's own functions are evaluated at the VIEW zoom, so a texture
+                        // baked at one zoom is wrong at another - a road's width, and anything else
+                        // that interpolates. Fold the zoom in, quantised, so drifting past the
+                        // threshold marks the tile stale and it is re-baked through the ordinary
+                        // budget. _drapeBakeZoomTerm only follows the camera once it SETTLES, so a
+                        // pinch does not re-bake every tile on every step.
+                        fingerprint ^= _drapeBakeZoomTerm + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
                         drapeTiles[tileId] = fingerprint;
                     }
 
@@ -3499,6 +3507,15 @@ namespace massif {
                     // fast: 100-144 bakes queued, 39 frames over 100 ms, the worst 375 ms.
                     bool bakeCameraMoving = std::chrono::duration<double, std::milli>(bakeNow - _drapeBakeLastMoveTime).count() < DRAPE_BAKE_SETTLE_MS;
                     _drapeBakeLastMVPMatrix = bakeMVPMatrix;
+                    // Settled: adopt this zoom for the drape. The fingerprint above reads this, so
+                    // the tiles go stale on the frame the gesture ends and are re-baked from there.
+                    if (!bakeCameraMoving) {
+                        std::size_t zoomTerm = DrapeTuning::bakeZoomTerm(viewState.getZoom(), DRAPE_REBAKE_ZOOM_THRESHOLD);
+                        if (zoomTerm != _drapeBakeZoomTerm) {
+                            _drapeBakeZoomTerm = zoomTerm;
+                            requestRedraw(); // nothing else asks for the frame the re-bake happens in
+                        }
+                    }
                     double bakeTimeBudget = (bakeCameraMoving ? DRAPE_BAKE_TIME_BUDGET : DRAPE_BAKE_TIME_BUDGET_STILL);
                     std::chrono::steady_clock::time_point bakeStart = std::chrono::steady_clock::now();
                     VT_STAT_ADD(drapeBakeQueued, static_cast<long long>(blankTiles.size() + restackTiles.size() + standInTiles.size() + partialTiles.size() + staleTiles.size()));
@@ -4097,11 +4114,13 @@ namespace massif {
     const float MapRenderer::LABEL_PLACEMENT_ZOOM_THRESHOLD = 0.25f;
     const int MapRenderer::LABEL_PLACEMENT_ZOOM_DELAY = 250;
 
+    const float MapRenderer::DRAPE_REBAKE_ZOOM_THRESHOLD = 0.25f;
+
     const int MapRenderer::ELEVATION_REFRESH_DELAY = 500;
 
-// 2.5 s, the value the android-dev demo settled on while it did this wait itself
-// (DemoMap.TERRAIN_ANIM_TILE_TIMEOUT_MS). Late 3D beats a map pinned flat by one tile that never loads.
-const float MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT = 2.5f;
+    // 2.5 s, the value the android-dev demo settled on while it did this wait itself
+    // (DemoMap.TERRAIN_ANIM_TILE_TIMEOUT_MS). Late 3D beats a map pinned flat by one tile that never loads.
+    const float MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT = 2.5f;
 
     const std::string MapRenderer::BLEND_VERTEX_SHADER = R"GLSL(
         #version 100

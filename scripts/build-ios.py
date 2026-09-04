@@ -110,7 +110,8 @@ def copyHeaders(args, baseDir, outputDir):
 
   extraHeaders = ['%s/ios/objc/utils/ExceptionWrapper.h', '%s/ios/objc/ui/MapView.h',
                   '%s/ios/objc/api/MSFMassif.h', '%s/ios/objc/api/MSFMapEvents.h',
-                  '%s/ios/objc/api/MSFMassifObject.h', '%s/ios/objc/api/MSFMassifMap.h']
+                  '%s/ios/objc/api/MSFMassifObject.h', '%s/ios/objc/api/MSFMassifMap.h',
+                  '%s/ios/objc/api/MSFValueTypes.h', '%s/ios/objc/api/MSFMassifElements.h']
   if args.metalangle:
     for extraHeader in ['MGLKit.h', 'MGLKitPlatform.h', 'MGLContext.h', 'MGLKView.h', 'MGLLayer.h', 'MGLKViewController.h']:
       extraHeaders += ['%s/libs-external/angle-metal/include/' + extraHeader]
@@ -151,7 +152,8 @@ def copyXCFrameworkHeaders(args, baseDir, outputDir):
 
   extraHeaders = ['%s/ios/objc/utils/ExceptionWrapper.h', '%s/ios/objc/ui/MapView.h',
                   '%s/ios/objc/api/MSFMassif.h', '%s/ios/objc/api/MSFMapEvents.h',
-                  '%s/ios/objc/api/MSFMassifObject.h', '%s/ios/objc/api/MSFMassifMap.h']
+                  '%s/ios/objc/api/MSFMassifObject.h', '%s/ios/objc/api/MSFMassifMap.h',
+                  '%s/ios/objc/api/MSFValueTypes.h', '%s/ios/objc/api/MSFMassifElements.h']
   if args.metalangle:
     for extraHeader in ['MGLKit.h', 'MGLKitPlatform.h', 'MGLContext.h', 'MGLKView.h', 'MGLLayer.h', 'MGLKViewController.h']:
       extraHeaders += ['%s/libs-external/angle-metal/include/' + extraHeader]

@@ -16,6 +16,7 @@
 #import "api/MSFMapEvents.h"
 #import "api/MSFMassifObject.h"
 #import "api/MSFMassifMap.h"
+#import "api/MSFMassifElements.h"
 #import "MSFOptions.h"
 #import "MSFLayers.h"
 

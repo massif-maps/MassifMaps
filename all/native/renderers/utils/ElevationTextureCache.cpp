@@ -551,23 +551,37 @@ namespace massif {
         }
         double displayScale = _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
         if (smooth) {
-            // A building's base: the DEM at SMOOTH_BASE_ZOOM, bilinear, not the lidar level the
-            // surface is drawn from. A 0.84 m DEM steps by metres between a courtyard and its
-            // street, and every piece of a building anchored on it - parts, the halves a tile
-            // border cuts, the copies two zooms decode - stood at its own height. At ~20 m posting
-            // the pieces agree to centimetres, which is what mapbox gets from its own DEM. The
-            // grid LRU holds it or it is asked for: the arrival bumps the elevation version and the
-            // bases are resolved again; the sentinel is drawn meanwhile.
-            int shift = std::max(0, zoom - SMOOTH_BASE_ZOOM);
-            MapTile coarse = _elevationManager->getDetailDataTile(MapTile(x >> shift, y >> shift, zoom - shift, 0), _detailLevels);
-            // An ancestor answering is fine - coarser is smoother - and it may be all there ever
-            // is: the grid cache resolves a level through an ancestor and then never fetches it,
-            // so insisting on the exact level left every building on the sentinel for good. The
-            // arrival of a finer level bumps the elevation version and every base moves together.
-            std::shared_ptr<ElevationTileGrid> grid = _elevationManager->getDataTileGrid(coarse, ElevationManager::LoadMode::CACHED_ONLY);
-            if (!grid) {
-                _elevationManager->prefetchTileGrid(coarse, 2);
-                return false;
+            // A building's base: the DEM smoothed to SMOOTH_BASE_POSTING metres, bilinear, not the
+            // lidar level the surface is drawn from. A 0.84 m DEM steps by metres between a
+            // courtyard and its street, and every piece of a building anchored on it stood at its
+            // own height. The grid LRU holds it or it is asked for: the arrival bumps the elevation
+            // version and the bases are resolved again; the sentinel is drawn meanwhile.
+            //
+            // The LEVEL is derived from the grid's own resolution, never fixed. A source serving
+            // 512 px tiles has half the posting of a 256 px one at the same zoom - measured over
+            // the Louvre on mapterhorn, a hardcoded z12 meant 12.6 m posting and left neighbouring
+            // parts of one palace 0.3-1.5 m apart, which is the comb it was meant to remove.
+            double metersPerInternal = 1.0 / std::max(1.0e-12, _elevationManager->getDisplayScale(internalY));
+            int shift = std::max(0, zoom - SMOOTH_BASE_ZOOM_HINT);
+            std::shared_ptr<ElevationTileGrid> grid;
+            for (int pass = 0; pass < 2; pass++) {
+                MapTile coarse = _elevationManager->getDetailDataTile(MapTile(x >> shift, y >> shift, zoom - shift, 0), _detailLevels);
+                // An ancestor answering is fine - coarser is smoother - and it may be all there
+                // ever is: the grid cache resolves a level through an ancestor and then never
+                // fetches it, so insisting on the exact level left every building on the sentinel
+                // for good. The arrival of a finer level bumps the elevation version and every base
+                // moves together.
+                grid = _elevationManager->getDataTileGrid(coarse, ElevationManager::LoadMode::CACHED_ONLY);
+                if (!grid) {
+                    _elevationManager->prefetchTileGrid(coarse, 2);
+                    return false;
+                }
+                double posting = Const::WORLD_SIZE / (1 << grid->getTile().getZoom()) / std::max(1, grid->getWidth()) * metersPerInternal;
+                int coarser = (posting > 0 ? static_cast<int>(std::ceil(std::log(SMOOTH_BASE_POSTING / posting) / std::log(2.0))) : 0);
+                if (coarser <= 0 || shift + coarser > zoom) {
+                    break;
+                }
+                shift += coarser;
             }
             height = grid->sampleHeight(internalX, internalY) * displayScale;
             return true;

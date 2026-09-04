@@ -229,8 +229,11 @@ namespace massif {
         // covers the common "the tile is decoded but not yet in the texture cache" frame; beyond
         // that the answer is a smoothed average of a region, not the ground under the point.
         static const int BASE_MAX_ANCESTOR_LEVELS = 1;
-        // The DEM level a building's base is read from: ~20 m posting, mapbox-terrain-dem's scale.
-        static const int SMOOTH_BASE_ZOOM = 12;
+        // The posting a building's base is read at, in metres. Measured over the Louvre: at 12.6 m
+        // (mapterhorn z12) neighbouring parts of one palace differ by 0.3-1.5 m, at 50 m by 0.14.
+        static constexpr double SMOOTH_BASE_POSTING = 50.0;
+        // Where the search for that posting starts; it walks coarser from here, never finer.
+        static const int SMOOTH_BASE_ZOOM_HINT = 12;
 
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         std::uint64_t _accessCounter = 0; // monotonic LRU clock

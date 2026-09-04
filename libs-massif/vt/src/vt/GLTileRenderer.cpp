@@ -84,6 +84,12 @@ namespace massif::vt {
     // mapbox's noShadowCutoff (src/render/draw_fill_extrusion.ts, terrain branch): the opacity
     // below which a FADING extrusion stops casting rather than casting at full strength.
     static constexpr float SHADOW_NO_CAST_OPACITY_CUTOFF = 0.65f;
+    // maplibre covering_tiles.ts / mercator_utils.ts, verbatim: the tallest feature a tile is
+    // assumed to carry, the angle above the horizon at which the culling box starts to grow to
+    // hold it, and the horizon itself.
+    static constexpr double ASSUMED_MAX_FEATURE_HEIGHT_METERS = 500.0;
+    static constexpr double TILE_CULLING_HORIZON_ONSET_DEGREES = 15.0;
+    static constexpr double MAX_HORIZON_ANGLE_DEGREES = 89.25;
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
         _tileSurfaceBuilder(transformer), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
     {
@@ -2061,7 +2067,35 @@ namespace massif::vt {
 
     bool GLTileRenderer::isTileVisible(const TileId& tileId) const {
         cglib::bbox3<double> bbox = _transformer->calculateTileBBox(tileId);
+        // The box is the tile's GROUND, and an extrusion stands out of it: a building is still on
+        // screen for a long time after the ground it stands on has left the frustum, and dropping
+        // the tile there takes the building with it. That is what buildings "disappearing all over
+        // the place" during a zoom was - measured with a probe over the drawn extrusion set, five
+        // of six losses were this test. maplibre grows the culling elevation for the same reason
+        // (covering_tiles.ts, getElevationForTileCulling / ASSUMED_MAX_FEATURE_HEIGHT_METERS).
+        double headroom = tileCullingHeadroom();
+        if (headroom > 0) {
+            // Every axis, not only z: the surface is planar here but need not be, and the cost of
+            // being generous is one tile's worth of culling, not a draw.
+            bbox = cglib::bbox3<double>(bbox.min - cglib::vec3<double>(headroom, headroom, headroom),
+                                        bbox.max + cglib::vec3<double>(headroom, headroom, headroom));
+        }
         return _viewState.frustum.inside(bbox);
+    }
+
+    double GLTileRenderer::tileCullingHeadroom() const {
+        // maplibre's rule, ported: nothing while the camera looks down, growing to the assumed
+        // maximum feature height as the frustum's bottom edge comes within
+        // TILE_CULLING_HORIZON_ONSET_DEGREES of the horizon. At tilt 45 with the SDK's own fov of
+        // 70 the bottom edge is 9.25 degrees up, which is 38% of the way in.
+        if (!(_metersToInternal > 0)) {
+            return 0; // no projection scale stated: fall back to the ground box, as before
+        }
+        double fovYDegrees = 2.0 * std::atan(1.0 / _viewState.projectionMatrix(1, 1)) * 180.0 / 3.14159265358979323846;
+        double bottomEdgeDegrees = MAX_HORIZON_ANGLE_DEGREES - _viewState.tilt - fovYDegrees / 2;
+        double proximity = (TILE_CULLING_HORIZON_ONSET_DEGREES - bottomEdgeDegrees) / TILE_CULLING_HORIZON_ONSET_DEGREES;
+        proximity = std::min(1.0, std::max(0.0, proximity));
+        return proximity * ASSUMED_MAX_FEATURE_HEIGHT_METERS * _metersToInternal;
     }
 
     bool GLTileRenderer::isEmptyBlendRequired(CompOp compOp) const {
@@ -2538,7 +2572,22 @@ namespace massif::vt {
                         break;
                     }
                 }
-                if (!replaced) {
+                // Nothing active covers this ground YET. Fading here is what leaves a hole: the
+                // tile that will take over is still being fetched, this layer is the only thing
+                // painting that ground, and it dies in the ten frames a fetch does not fit into.
+                // Measured on emulator-5556 (day-cycle-light, z17-19 pinch): sixteen pieces of
+                // ground at once left covered by a render tile whose layers had all been erased -
+                // `geom 0 extr 0 | tile layers 19 extr 2` - which is buildings vanishing mid-zoom.
+                // So HOLD while the tile is on screen, exactly as the covered case above does.
+                // A tile that leaves the view still goes in ONE step (delta is 1 when not visible),
+                // and a layer the style really dropped is erased by the active branch as soon as
+                // its replacement is opaque - which is why holding cannot strand content: the
+                // moment the tile has an active layer of its own, this one is fading again.
+                bool anyActive = false;
+                for (auto it2 = renderTile.renderLayers.begin(); it2 != renderTile.renderLayers.end(); it2++) {
+                    anyActive = anyActive || it2->second.active;
+                }
+                if (!replaced && !(renderTile.visible && !anyActive)) {
                     renderLayer.blend = std::max(0.0f, renderLayer.blend - delta);
                     refresh = (renderLayer.blend > 0.0f) || refresh;
 

@@ -703,6 +703,13 @@ namespace massif::vt {
         static constexpr std::size_t DRAPE_TEXTURE_POOL_SIZE = 32; // recycled drape textures kept alive between frames
 
         bool isTileVisible(const TileId& tileId) const;
+        /**
+         * How far above its ground a tile's content may stand, in internal units, for CULLING only.
+         * maplibre's ASSUMED_MAX_FEATURE_HEIGHT_METERS, grown as the frustum's bottom edge nears
+         * the horizon (covering_tiles.ts). Without it a building vanishes the moment the ground it
+         * stands on leaves the frustum, which is well before the building does.
+         */
+        double tileCullingHeadroom() const;
         bool isEmptyBlendRequired(CompOp compOp) const;
 
         unsigned int fogFlag() const;

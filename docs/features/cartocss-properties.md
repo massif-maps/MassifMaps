@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-229 properties across 12 symbolizers.
+233 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,12 +29,14 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 60 of 229.
+Live-capable properties: 61 of 233.
 
 ## `building`
 
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
+| `building-elevation-mode` | `elevation-mode` | string | `drape` |  |  |
+| `building-emissive-strength` | `emissive-strength` | float | `-1.0` | yes |  |
 | `building-fill` | `fill` | color | `#808080` | yes |  |
 | `building-fill-opacity` | `fill-opacity` | float | `1.0` | yes |  |
 | `building-geometry-transform` | `geometry-transform` | transform |  |  |  |
@@ -87,6 +89,7 @@ Live-capable properties: 60 of 229.
 | `line-color` | `stroke` | color | `#000000` | yes |  |
 | `line-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `line-dasharray` | `stroke-dasharray` | string |  |  |  |
+| `line-elevation-mode` | `elevation-mode` | string | `drape` |  |  |
 | `line-emissive-strength` | `stroke-emissive-strength` | float | `1.0` | yes |  |
 | `line-end-arrow` | `end-arrow` | bool | `false` |  |  |
 | `line-gap-width` | `gap-width` | float | `0.0` | yes |  |
@@ -158,6 +161,7 @@ Live-capable properties: 60 of 229.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `polygon-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `polygon-elevation-mode` | `elevation-mode` | string | `drape` |  |  |
 | `polygon-emissive-strength` | `fill-emissive-strength` | float | `1.0` | yes |  |
 | `polygon-fill` | `fill` | color | `#808080` | yes |  |
 | `polygon-geometry-transform` | `geometry-transform` | transform |  |  |  |

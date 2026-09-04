@@ -569,3 +569,44 @@ test('the directional light says WHERE the sun is, not only how strong', () => {
     assert.match(out, /sun-altitude: 70;/);
     assert.match(out, /building-ambient: 0.8;/);
 });
+
+/**
+ * An EXTRUSION's own emissive, under --live-light.
+ *
+ * The value was always read - EMISSIVE_SOURCE maps `building-` to fill-extrusion-emissive-strength -
+ * but EMISSIVE_TARGETS had no `building-` row, so there was nowhere to put it and it was dropped.
+ * Every extrusion then fell back to the Map block's one global, and Standard's lit windows rendered
+ * identically to its plain facades. Needs `building-emissive-strength` on the CartoCSS side, which
+ * is what the SDK half of this change adds.
+ */
+const EXTRUSION = (emissive) => ({
+    layers: [{
+        id: 'b3d', type: 'fill-extrusion', 'source-layer': 'building',
+        paint: {
+            'fill-extrusion-color': '#ddd',
+            'fill-extrusion-height': 10,
+            ...(emissive === undefined ? {} : { 'fill-extrusion-emissive-strength': emissive }),
+        },
+    }],
+});
+
+test('an extrusion carries its own emissive into the style under --live-light', () => {
+    const { mss } = convert(EXTRUSION(0.6), TABLE, { liveLight: true, variables: false });
+    assert.match(mss, /building-emissive-strength: 0\.6;/);
+});
+
+test('an extrusion that states no emissive is left to the Map block', () => {
+    // The regression guard for every style already out there: unstated must emit NOTHING, or the
+    // property starts overriding the global that every converted style relies on today.
+    const { mss } = convert(EXTRUSION(undefined), TABLE, { liveLight: true, variables: false });
+    assert.ok(!/building-emissive-strength/.test(mss), 'unstated stays unstated');
+});
+
+test('the baked path leaves an extrusion alone, colour and emissive both', () => {
+    // Without --live-light an extrusion is the one thing that is NOT folded: mapbox lights it per
+    // fragment, so baking the scene light into its colour would apply it twice. It states no
+    // emissive either - there is no live light for one to feed.
+    const { mss } = convert(EXTRUSION(0.6), TABLE, { variables: false });
+    assert.ok(!/building-emissive-strength/.test(mss), 'baked styles state no emissive');
+    assert.match(mss, /building-fill: #ddd;/, 'and the colour is left exactly as authored');
+});

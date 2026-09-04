@@ -16,6 +16,7 @@ void testExtrusionBase();
 void testSpanGeometry();
 void testShadowCasterClip();
 void testExtrusionAnchor();
+void testExtrusionEmissive();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 
@@ -30,6 +31,7 @@ int main() {
     testSpanGeometry();
     testShadowCasterClip();
     testExtrusionAnchor();
+    testExtrusionEmissive();
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
 

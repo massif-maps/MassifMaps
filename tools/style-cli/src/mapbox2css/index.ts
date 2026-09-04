@@ -157,6 +157,20 @@ export interface ConvertOptions {
     foldCasings?: boolean;
     /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
     labelSpacing?: number;
+    /**
+     * Sides a shield's TEXT may take, for a style that states no `text-variable-anchor` of its own -
+     * MapBox Standard states none anywhere. The layer also gets `shield-text-optional`, so a POI
+     * whose name fits nowhere keeps its icon instead of vanishing with it. See shieldAnchors().
+     */
+    shieldAnchors?: string;
+    /**
+     * Draw a shield's icon as a GLYPH of an icon font rather than a sprite: `shield-icon-name` +
+     * `shield-icon-face-name`, resolved per feature through the same parameter table the sprite
+     * lookup uses. `glyphs` maps a style's `icon-image` name onto the character the face carries it
+     * at. A name the face has no glyph for draws no icon - country artwork (RER, a metro roundel)
+     * has no font equivalent and is deliberately lost, which is the point of the mode.
+     */
+    iconFont?: { face: string; glyphs: Map<string, string> };
     /** Retarget the style's source layers at another tile schema - see schema.ts. */
     schema?: Schema;
     /** Which vocabulary the style's own source layers are in. Detected from them when unset. */
@@ -1555,8 +1569,8 @@ function layerDeclarations(
     // An icon AND text is ONE symbol in MapBox. Emitted as a marker beside a text label they are
     // two labels that collide, and the marker wins - a city dot with no name beside it. The shield
     // is the one-label construct, so the whole rule is renamed into it.
-    const shieldFile = iconDeclarations.find((d) => d.startsWith('shield-file:'));
-    if (shieldFile) {
+    // Any shield-* declaration: a sprite (shield-file) or a font icon (shield-icon-name).
+    if (iconDeclarations.some((d) => d.startsWith('shield-'))) {
         const renamed = out.map(asShieldDeclaration).filter((d): d is string => d !== null);
         return [...renamed, ...iconDeclarations];
     }
@@ -1580,12 +1594,13 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     // Where the plate covers only some features, its colours are transparent for the others - a
     // plate with no fill and no border draws nothing (TileLabel::Style::Plate::draws).
     const scoped = (value: string) => (icon.plateWhen ? `(${icon.plateWhen} ? ${value} : transparent)` : value);
-    const colour = (name: string, target: string, gate = false) => {
-        if (params[name] === undefined) return;
+    const colour = (name: string, target: string, gate = false): boolean => {
+        if (params[name] === undefined) return false;
         const translated = tryTranslate(params[name], `icon-image params.${name}`, layer.id, coverage);
-        if (translated === null) return;
+        if (translated === null) return false;
         out.push(`${target}: ${gate ? scoped(translated) : translated};`);
         coverage.emit(target);
+        return true;
     };
 
     // The glyph, unless the layer states an icon-color of its own - that one is already out.
@@ -1598,10 +1613,13 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     coverage.emit('shield-icon-background-radius');
     coverage.emit('shield-icon-background-padding-x');
     coverage.emit('shield-icon-background-padding-y');
-    if (icon.plate.borderWidth > 0) {
+    // Only with a colour to draw it in. `icon-background-border-fill` defaults to BLACK, and
+    // LabelPlateStyle::hasBorder is colour-and-width, so a width on its own drew an opaque black
+    // ring round the artwork - a peak's mountain glyph in a black circle, since Standard's
+    // natural_point_label states no `background-stroke` at all.
+    if (icon.plate.borderWidth > 0 && colour('background-stroke', 'shield-icon-background-border-fill', true)) {
         out.push(`shield-icon-background-border-width: ${round(icon.plate.borderWidth)};`);
         coverage.emit('shield-icon-background-border-width');
-        colour('background-stroke', 'shield-icon-background-border-fill', true);
     }
     // MapBox's `icon-stroke` is the outline it draws UNDER the glyph, which is exactly what the
     // SDK grows from a distance field - so it is the icon HALO, not the plate's border (that one is
@@ -1638,7 +1656,8 @@ function plateDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
  * equivalent of marker-width - so icon-size cannot be carried, and unlock-image is what lets the
  * text move off the icon (a POI name sits below its pin).
  */
-function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale: number, coverage: Coverage): string[] {
+function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale: number, coverage: Coverage,
+        options: ConvertOptions): string[] {
     // shield-placement comes from the renamed text-placement - one label, one placement.
     // A per-feature name arrives as a whole expression (see dynamicIconDeclarations); a constant
     // one is just a path and takes the url() around it here.
@@ -1689,12 +1708,16 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
             "sprite sheet's own colours, so a per-class tint is lost");
     }
 
-    out.push(...variableAnchorDeclarations(layer, coverage));
+    out.push(...variableAnchorDeclarations(layer, coverage, options));
 
     // Locked to the image, the text is centred ON it. MapBox anchors the TEXT and leaves the icon
     // on the point, so the image is moved clear by half its height instead - a city name sits above
     // its dot, a POI name below its pin, and neither is drawn over the other.
-    const clearance = iconClearance(layer, icon, scale);
+    //
+    // An ANCHORED shield needs none of it: the culler places the text against the icon's own edge
+    // and mirrors dx/dy as the gap, so moving the image too would double the separation.
+    const clearance = out.some((d) => d.startsWith('shield-anchors:'))
+        ? 0 : iconClearance(layer, icon, scale);
     if (clearance !== 0) {
         out.push(`shield-dy: ${clearance};`);
         coverage.emit('shield-dy');
@@ -1809,11 +1832,23 @@ const VARIABLE_ANCHORS = new Set([
  * thing from the same list, so the four properties that describe it map straight across - all of
  * them shield-only, because a side to place the text on presupposes an icon to place it beside.
  */
-function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
+function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
     const layout = layer.layout ?? {};
     const out: string[] = [];
 
     const variable = layout['text-variable-anchor'];
+    // --shield-anchors, for a style that states none. Standard is one: every POI name sits under its
+    // icon and is dropped WITH it when it does not fit, where mapbox-gl would keep the icon.
+    if (!Array.isArray(variable) && options.shieldAnchors) {
+        out.push(`shield-anchors: '${options.shieldAnchors}';`);
+        coverage.emit('shield-anchors');
+        if (layout['text-optional'] === undefined) {
+            out.push('shield-text-optional: true;');
+            coverage.emit('shield-text-optional');
+        }
+        coverage.note(`"${layer.id}": text anchored to the icon's free side (--shield-anchors), ` +
+            'which the source style does not ask for');
+    }
     if (Array.isArray(variable)) {
         const anchors = variable.filter((a): a is string => typeof a === 'string' && VARIABLE_ANCHORS.has(a));
         if (anchors.length < variable.length) {
@@ -1876,6 +1911,15 @@ function literalOrRepresentative(value: Json | undefined): Json | undefined {
     return representativeConstant(value) ?? undefined;
 }
 
+/**
+ * The INK's own size, with the transparent margin padField added round an SDF field taken back off.
+ * The quad is drawn at the padded size and that is what marker-width wants; what the text has to
+ * clear is the artwork.
+ */
+function artworkSize(icon: ExtractedIcon): [number, number] {
+    return [icon.width - 2 * icon.padding, icon.height - 2 * icon.padding];
+}
+
 function iconClearance(layer: MapboxLayer, icon: ExtractedIcon, scale: number): number {
     // Both may BRANCH - Standard's poi-label states its anchor as a step over zoom and its offset
     // as a case over the feature - and read literally each one falls back to "no anchor", which
@@ -1892,7 +1936,7 @@ function iconClearance(layer: MapboxLayer, icon: ExtractedIcon, scale: number): 
     const below = anchor === 'bottom';
     const above = anchor === 'top';
     if (!below && !above) return 0;
-    const shortfall = icon.height * scale / 2 - emPixels;
+    const shortfall = artworkSize(icon)[1] * scale / 2 - emPixels;
     if (shortfall <= 0) return 0;
     // HALF the shortfall, and the half is empirical.
     //
@@ -2091,18 +2135,31 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
     // POI icons are circles, and a median over the sheet gives the transit rule the POI's radius.
     const namedPlates: IconPlate[] = [];
     const sheetPlates: IconPlate[] = [];
+    // And their SIZES, for the same reason: `sample` is whichever sprite was reached first, and its
+    // height is what iconClearance moves the image by. Standard's POI sheet spans a 20 px glyph and
+    // a 54 px badge, so the first one taken hung every natural_point_label name a badge's height off
+    // its own icon.
+    const namedSizes: Array<[number, number]> = [];
+    const sheetSizes: Array<[number, number]> = [];
 
     // A `match` states its sprite names as LABELS even when the branch resolves per feature, and a
     // rule carries one plate geometry: Standard's transit roundel is a rounded square while its POI
     // icons are circles, so a median over the whole sheet gives the transit rule a circle's radius.
     // Only the geometry is taken here - the name still comes from the whole-sheet table.
+    // --icon-font: the table holds a CHARACTER of the icon face per name instead of a file path, so
+    // every shape below (a match table, a whole-sheet lookup, a `{token}` prefix) resolves the same
+    // way and nothing is cut out of the sheet at all.
+    const glyphs = options.iconFont?.glyphs;
+
     const notePlate = (name: string) => {
-        if (!plateMode) return;
+        if (glyphs || !plateMode) return;
         const icon = extractIconPlate(sprites.sheets, name, sprites.outDir);
         if (icon?.plate) namedPlates.push(icon.plate);
+        if (icon) namedSizes.push(artworkSize(icon));
     };
 
     const named = (name: string): string | null => {
+        if (glyphs) return glyphs.get(name) ?? null;
         // In plate mode the rule declares `shield-sdf`, and that is a statement about EVERY file it
         // can name: a raster cut handed to it is read as a distance field and comes out inverted.
         // So a sprite with no field is not named at all - it draws nothing rather than a blob.
@@ -2111,6 +2168,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             : extractIcon(sprites.sheets, name, sprites.outDir, options.flattenSdf, undefined, 1);
         if (!icon) return null;
         if (icon.plate) namedPlates.push(icon.plate);
+        namedSizes.push(artworkSize(icon));
         if (!sample || (icon.plate && !sample.plate)) sample = icon;
         return icon.file;
     };
@@ -2159,6 +2217,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
     /** Every sprite written out, each under the file the rule should name it by. */
     let everySprite: { names: string[]; file: Map<string, string> } | null = null;
     const ensureEverySprite = () => {
+        if (glyphs) return { names: [...glyphs.keys()], file: glyphs };
         if (!everySprite) {
             const file = new Map<string, string>();
             let best: ExtractedIcon | null;
@@ -2171,6 +2230,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
                 for (const { name, icon } of glyphs.entries) {
                     file.set(name, icon.file);
                     if (icon.plate) sheetPlates.push(icon.plate);
+                    sheetSizes.push(artworkSize(icon));
                 }
                 if (glyphs.skipped.length > 0) {
                     coverage.approximate(`"${layer.id}" resolves its icon through the whole sheet, ` +
@@ -2277,6 +2337,13 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
                 return null;
             });
             if (spelled.some((piece) => piece === null)) return null;
+            // A spelled name is a FILE path mapnik interpolates the fields into; an icon face has no
+            // such thing, so the name has to come out of the table instead.
+            if (glyphs) {
+                coverage.drop('icon-image', `"${layer.id}" names its sprite by spelling a path ` +
+                    '(--icon-font has no per-feature file name to spell)', layer.id);
+                return null;
+            }
             ensureEverySprite();
             return `url('icons/${spelled.join('')}.png')`;
         }
@@ -2288,7 +2355,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             for (const name of all.names) options.styleParams!.set(`${paramPrefix}${name}`, all.file.get(name)!);
             aliasSprites(all.names, all.file, paramPrefix, options);
             const field = `[param::${paramPrefix}[${node[1]}]]`;
-            if (!plateWhen || node[1] !== scope!.field) return field;
+            if (glyphs || !plateWhen || node[1] !== scope!.field) return field;
             // The features the params do NOT cover: their own artwork, from the raster table, and
             // `shield-sdf` false for them (see plateWhen in shieldImageDeclarations).
             const raster = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
@@ -2351,13 +2418,15 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
     };
 
     const expr = build(image);
+    // In font mode there is no sprite to measure: the glyph run is sized by the label.
+    if (glyphs) return expr ? `(${expr})` : null;
     if (!expr || !sample) return null;
     // One rule, one plate: the geometry is a declaration, not a per-feature lookup. The MEDIAN of
     // what the layer's icons measure - Standard's POI sheet is one disc size and its transit sheet
     // another, and each is a rule of its own, so the spread inside one is a rounding.
+    const median = (values: number[]) => values.slice().sort((a, b) => a - b)[values.length >> 1];
     const plates = namedPlates.length > 0 ? namedPlates : sheetPlates;
     if (plates.length > 0) {
-        const median = (values: number[]) => values.slice().sort((a, b) => a - b)[values.length >> 1];
         sample = {
             ...(sample as ExtractedIcon),
             plateWhen: plateWhen ?? undefined,
@@ -2366,6 +2435,17 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
                 borderWidth: median(plates.map((p) => p.borderWidth)),
                 strokeWidth: median(plates.map((p) => p.strokeWidth)),
             },
+        };
+    }
+    // The size the same way, and as the ARTWORK's - what a feature actually draws, and what the
+    // text has to clear.
+    const sizes = namedSizes.length > 0 ? namedSizes : sheetSizes;
+    if (sizes.length > 0) {
+        sample = {
+            ...(sample as ExtractedIcon),
+            width: median(sizes.map(([w]) => w)),
+            height: median(sizes.map(([, h]) => h)),
+            padding: 0,
         };
     }
     options.iconSample = sample;
@@ -2532,10 +2612,65 @@ function patternDeclarations(
     return [`${target}: url('${icon.file}');`];
 }
 
+/**
+ * A shield's icon as a GLYPH of an icon font (--icon-font), instead of a sprite.
+ *
+ * `shield-icon-name` is the run ShieldSymbolizer shapes from `shield-icon-face-name` and draws
+ * BEFORE the text, on the anchor - the same place the bitmap would have gone, so everything else
+ * about the label is unchanged. The face is resolved as a fallback of the label font, which is what
+ * puts its glyphs in the label's own atlas.
+ *
+ * The face carries one glyph per icon NAME, so a name it has none for draws no icon: an artwork
+ * shield (an RER roundel, a country's motorway plate) has no font equivalent and is lost here. That
+ * is the trade the mode is for - one font against a sheet of several hundred PNGs.
+ */
+function fontShieldDeclarations(layer: MapboxLayer, image: Json, coverage: Coverage,
+        options: ConvertOptions): string[] {
+    const font = options.iconFont!;
+    // A constant name is looked up outright; anything data-driven goes through the same parameter
+    // table the sprite lookup builds, holding characters instead of file paths.
+    const constant = typeof image === 'string' && !/\{[A-Za-z0-9_:-]+\}/.test(image);
+    const glyph = constant
+        ? (font.glyphs.has(image as string) ? `'${font.glyphs.get(image as string)}'` : null)
+        : iconExpression(image, layer, coverage, options);
+    if (glyph === null) {
+        coverage.drop('icon-image', constant
+            ? `"${image as string}" has no glyph in the "${font.face}" icon face`
+            : `no glyph name of the "${font.face}" icon face could be resolved from it`, layer.id);
+        return [];
+    }
+
+    const out = [`shield-icon-name: ${glyph};`, `shield-icon-face-name: '${font.face}';`];
+    coverage.emit('shield-icon-name');
+    coverage.emit('shield-icon-face-name');
+
+    // MapBox's icon-size SCALES a sprite; a glyph is sized in pixels, and 0 - the property's own
+    // default - already means "the label's size". So only a size that is not 1 is written, as that
+    // multiple of the text size.
+    const size = representativeScale(layer.layout?.['icon-size']);
+    if (size !== 1) {
+        const px = round(size * representativeScale(layer.layout?.['text-size'], DEFAULT_TEXT_SIZE));
+        out.push(`shield-icon-size: ${px};`);
+        coverage.emit('shield-icon-size');
+    }
+
+    emitTranslated(out, coverage, layer, 'icon-color', 'shield-icon-fill', undefined, false);
+    emitTranslated(out, coverage, layer, 'icon-opacity', 'shield-icon-opacity', undefined, false);
+    emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
+    emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
+    out.push(...variableAnchorDeclarations(layer, coverage, options));
+    return out;
+}
+
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
 function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
     const image = layer.layout?.['icon-image'];
     if (image === undefined) return [];
+    // --icon-font replaces a shield's ARTWORK with a glyph, and needs no sheet at all. Only a
+    // shield: an icon-only layer is a marker (a oneway arrow, a crossing), which has no glyph run.
+    if (options.iconFont && layer.layout?.['text-field'] !== undefined) {
+        return fontShieldDeclarations(layer, image, coverage, options);
+    }
     if (!options.sprites) {
         coverage.drop('icon-image', 'no sprite loaded (pass --sprite or let the style provide one)', layer.id);
         return [];
@@ -2549,7 +2684,7 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         if (expr && options.iconSample) {
             const scale = layer.layout?.['text-field'] !== undefined
                 ? representativeScale(layer.layout?.['icon-size']) : 1;
-            return shieldImageDeclarations(layer, { ...options.iconSample, file: `@@EXPR@@${expr}` }, scale, coverage);
+            return shieldImageDeclarations(layer, { ...options.iconSample, file: `@@EXPR@@${expr}` }, scale, coverage, options);
         }
     }
     if (typeof image !== 'string') {
@@ -2571,7 +2706,7 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         return [];
     }
 
-    if (asShield) return shieldImageDeclarations(layer, icon, scale, coverage);
+    if (asShield) return shieldImageDeclarations(layer, icon, scale, coverage, options);
 
     const out = [
         `marker-file: url('${icon.file}');`,
@@ -2579,6 +2714,21 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     ];
     coverage.emit('marker-file');
     coverage.emit('marker-placement');
+
+    // `symbol-spacing` reaches an icon-only layer nowhere else: the table maps it to text-spacing,
+    // and a layer with no text-field drops every text-* declaration it built. MarkersSymbolizer's
+    // own default is 100 against MapBox's 250, so every oneway arrow was drawn two and a half times
+    // too often. One tile unit is one CSS pixel at the tile's own zoom, so the number carries over
+    // unscaled - the same reason text-spacing takes it raw.
+    if (repeatsAlongLine(layer)) {
+        const spacing = layer.layout?.['symbol-spacing'];
+        if (spacing !== undefined && typeof spacing !== 'number') {
+            coverage.approximate(`symbol-spacing on "${layer.id}" read at one stop: ` +
+                'marker-spacing is a static property, not a ramp');
+        }
+        out.push(`marker-spacing: ${round(representativeScale(spacing, DEFAULT_SYMBOL_SPACING))};`);
+        coverage.emit('marker-spacing');
+    }
 
     const sdf = icon.sdf && !options.flattenSdf;
     if (sdf) {

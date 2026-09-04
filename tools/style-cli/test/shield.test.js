@@ -110,11 +110,12 @@ test('an icon beside text becomes ONE shield, not a marker that culls the label'
     assert.match(out, /shield-fill: #333333;/);
     assert.match(out, /shield-unlock-image: true;/);
     // 'bottom' anchors the text's bottom edge, so the text is above and the icon drops below it.
-    // HALF of half the bitmap: the SDK honours the anchor itself, so by the model the top-up should
+    // HALF of half the ARTWORK: the SDK honours the anchor itself, so by the model the top-up should
     // be 0, and the half is the empirical middle between that and pushing the name visibly further
-    // off its icon than mapbox-gl does. The bitmap is 8 + 2*6 = 20 of field, so half is 10 and the
-    // top-up is 5. See iconClearance.
-    assert.match(out, /shield-dy: 5;/);
+    // off its icon than mapbox-gl does. The 8 px sprite is written as 8 + 2*6 = 20 of field, and the
+    // 6 of margin on each side is transparent - measuring the quad instead of the ink hung the name
+    // two and a half times too far off. See iconClearance / artworkSize.
+    assert.match(out, /shield-dy: 2;/);
 });
 
 test('an SDF icon carries field around it, so the halo has room to fade before the quad ends', () => {
@@ -196,6 +197,152 @@ test('a recolourable icon is split into a glyph field and the disc it sat on', (
     const centre = png.data[((6 * 12) + 6) * 4];
     const corner = png.data[0];
     assert.ok(centre > 127.5 && corner < 127.5, 'inside the glyph, outside at the corner');
+});
+
+test('a plate with no border colour draws no border, rather than the default black one', () => {
+    // shield-icon-background-border-fill defaults to BLACK and LabelPlateStyle::hasBorder is
+    // colour-AND-width, so a width on its own drew an opaque black ring round the artwork - a peak's
+    // mountain glyph in a black circle, since Standard's natural_point_label states no
+    // `background-stroke` at all.
+    const out = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': ['image', ['get', 'maki'], { params: { icon: '#0000ff' } }] },
+        {})] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: compositeSheet(), outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(out, /shield-icon-fill: #0000ff;/);
+    assert.ok(!out.includes('shield-icon-background-border-width'), 'no colour, so no ring');
+    assert.ok(!out.includes('shield-icon-background-border-fill'));
+});
+
+test('a per-feature icon is measured by the sheet MEDIAN, not by whichever sprite came first', () => {
+    // The clearance moves the image so the name does not land on it, and it is one declaration for
+    // the whole rule. Taking `sample` - the first sprite reached - gave every feature the biggest
+    // badge's offset, so a peak's name hung a badge's height off a glyph a third that size.
+    const side = 16;
+    const cell = (w, h) => ({ width: w, height: h, pixelRatio: 1 });
+    const data = Buffer.alloc(side * side * 4);
+    for (let y = 0; y < side; y++) {
+        for (let x = 0; x < side; x++) {
+            const edge = Math.min(x, y, side - 1 - x, side - 1 - y);
+            const i = (y * side + x) * 4;
+            if (edge === 0) continue;
+            const [r, g, b] = edge === 1 ? [200, 200, 200] : (x >= 6 && x < 10 && y >= 6 && y < 10)
+                ? [255, 255, 255] : [100, 150, 220];
+            data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+        }
+    }
+    const sheetOf = (index) => new Map([['default', {
+        index, image: { width: side, height: side, data },
+    }]]);
+    const clearance = (index) => {
+        const out = convert({ layers: [symbol(
+            { 'text-field': '{name}', 'text-anchor': 'bottom', 'text-size': 12,
+                'icon-image': ['image', ['get', 'maki'], { params: { icon: '#0000ff' } }] },
+            {})] },
+        TABLE, { ...NO_PALETTE, sprites: { sheets: sheetOf(index), outDir: '/tmp/massif-style-test' } }).mss;
+        const dy = /shield-dy: ([\d.]+);/.exec(out);
+        assert.ok(dy, 'the image is moved clear of the name');
+        return Number(dy[1]);
+    };
+
+    // Three sprites over the same artwork, read at three heights: 16, 12 and 8.
+    const big = { x: 0, y: 0, ...cell(16, 16) };
+    const mid = { x: 0, y: 0, ...cell(16, 12) };
+    const small = { x: 0, y: 0, ...cell(16, 8) };
+    const spread = clearance({ big, mid, small });
+    assert.equal(spread, clearance({ mid }), 'the middle sprite is what the rule is measured by');
+    assert.ok(spread < clearance({ big }), 'and not the tallest, which is the one reached first');
+});
+
+test('--shield-anchors lets a name take a free side, and keeps the icon when none is', () => {
+    // Standard states text-variable-anchor nowhere, so every POI name sits under its icon and is
+    // dropped WITH it when it does not fit. The flag is what turns that into mapbox-gl's behaviour.
+    const sprites = new Map([['default', {
+        index: { circle: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const poi = (extra) => convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'circle', 'text-anchor': 'bottom', 'text-size': 12 },
+        { 'icon-color': '#000000' })] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' }, ...extra }).mss;
+
+    const plain = poi({});
+    assert.ok(!plain.includes('shield-anchors'), 'off by default - the style did not ask for it');
+    assert.match(plain, /shield-dy: 2;/);
+
+    const anchored = poi({ shieldAnchors: 'right,left,top,bottom' });
+    assert.match(anchored, /shield-anchors: 'right,left,top,bottom';/);
+    assert.match(anchored, /shield-text-optional: true;/);
+    // The culler places the text against the icon's own edge, so moving the image too would double
+    // the gap.
+    assert.ok(!anchored.includes('shield-dy:'));
+});
+
+test('a style that states its own variable anchors keeps them, flag or not', () => {
+    const sprites = new Map([['default', {
+        index: { circle: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const out = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'circle', 'text-variable-anchor': ['top', 'bottom-left'] },
+        { 'icon-color': '#000000' })] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' },
+        shieldAnchors: 'right,left' }).mss;
+
+    assert.match(out, /shield-anchors: 'top,bottomleft';/);
+    assert.ok(!out.includes("shield-anchors: 'right,left'"));
+});
+
+test('--icon-font draws a shield icon as a glyph, and needs no sprite sheet at all', () => {
+    const iconFont = { face: 'osm', glyphs: new Map([['mountain', ''], ['cafe', '']]) };
+    const out = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'mountain', 'text-size': 12 },
+        { 'icon-color': '#5a4632' })] }, TABLE, { ...NO_PALETTE, iconFont }).mss;
+
+    assert.match(out, /shield-icon-name: '';/);
+    assert.match(out, /shield-icon-face-name: 'osm';/);
+    assert.match(out, /shield-icon-fill: #5a4632;/);
+    assert.match(out, /shield-name: \[name\];/, 'still ONE label, not a marker beside the text');
+    assert.ok(!out.includes('shield-file'), 'no sprite is cut, so there is no file to name');
+    assert.ok(!out.includes('shield-sdf'));
+});
+
+test('a per-feature icon name reaches the font through the same parameter table', () => {
+    const iconFont = { face: 'osm', glyphs: new Map([['mountain', ''], ['cafe', '']]) };
+    const { mss: out, project } = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': ['get', 'maki'] }, {})] },
+    TABLE, { ...NO_PALETTE, iconFont });
+
+    assert.match(out, /shield-icon-name: \(\[param::icon-\[maki\]\]\);/);
+    const params = JSON.parse(project).styleparameters;
+    assert.equal(params['icon-mountain'], '', 'the table holds characters, not paths');
+    assert.equal(params['icon-cafe'], '');
+});
+
+test('an icon the face has no glyph for draws none, and the report says which', () => {
+    // Country artwork - an RER roundel, a national motorway plate - has no font equivalent. The
+    // mode trades it for one font instead of a sheet, so the loss is reported rather than faked.
+    const iconFont = { face: 'osm', glyphs: new Map([['cafe', '']]) };
+    const { mss: out, coverage } = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'rer-a' }, {})] }, TABLE, { ...NO_PALETTE, iconFont });
+
+    assert.ok(!out.includes('shield-icon-name'));
+    assert.match(out, /text-name: \[name\];/, 'the name is still drawn');
+    assert.ok(coverage.report().includes('has no glyph in the "osm" icon face'));
+});
+
+test('a marker keeps its sprite under --icon-font: a oneway arrow has no glyph run', () => {
+    const sprites = new Map([['default', {
+        index: { arrow: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const out = convert({ layers: [{
+        id: 'oneway', type: 'symbol', 'source-layer': 'road',
+        layout: { 'icon-image': 'arrow', 'symbol-placement': 'line' },
+    }] }, TABLE, { ...NO_PALETTE, iconFont: { face: 'osm', glyphs: new Map() },
+        sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(out, /marker-file: url\('icons\/arrow.png'\);/);
 });
 
 test('a recolourable sprite that is not a field is drawn as artwork, never as one', () => {

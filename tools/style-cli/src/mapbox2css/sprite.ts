@@ -152,6 +152,12 @@ export interface ExtractedIcon {
     sdf: boolean;
     /** Texels per logical pixel in the written file, so a drawn size can divide it back out. */
     pixelRatio: number;
+    /**
+     * Transparent margin padField added on EACH side, in logical pixels. It is part of width/height
+     * - the quad is drawn that big - but not of the artwork, so anything measuring the ARTWORK
+     * (iconClearance) has to take it back off.
+     */
+    padding: number;
     /** Set when the artwork was split into a glyph field and a plate - see extractIconPlate. */
     plate?: IconPlate;
     /** The CartoCSS test for the features the plate applies to, when it does not apply to all. */
@@ -218,6 +224,7 @@ export function extractIcon(
     const scaled = scale === 1 ? icon : resample(icon, scale);
 
     let out = scaled;
+    let padding = 0;
     if (entry.sdf) {
         for (let i = 0; i < scaled.data.length; i += 4) {
             const distance = scaled.data[i + 3];
@@ -232,7 +239,11 @@ export function extractIcon(
                 scaled.data[i + 3] = 255;
             }
         }
-        if (!flatten) out = padField(scaled, entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1);
+        if (!flatten) {
+            const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
+            out = padField(scaled, ratio);
+            padding = (out.height - scaled.height) / 2 / ratio;
+        }
     }
 
     const iconsDir = join(outDir, 'icons');
@@ -252,6 +263,7 @@ export function extractIcon(
         height: out.height / ratio,
         sdf: !!entry.sdf && !flatten,
         pixelRatio: ratio,
+        padding,
     };
 }
 
@@ -548,6 +560,7 @@ export function extractIconPlate(
         height: discH / ratio,
         sdf: true,
         pixelRatio: ratio,
+        padding: 0, // the field is built on the disc's own box - see buildField above
         plate: { radius: radius / ratio, borderWidth: ringTexels / ratio, strokeWidth: strokeWidth / ratio },
     };
 }
@@ -596,7 +609,7 @@ export function extractIconSilhouette(
     writeFileSync(join(iconsDir, file), PNG.sync.write(field, FIELD_PNG));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
-    return { file: `${GLYPH_DIR}/${file}`, width: w / ratio, height: h / ratio, sdf: true, pixelRatio: ratio };
+    return { file: `${GLYPH_DIR}/${file}`, width: w / ratio, height: h / ratio, sdf: true, pixelRatio: ratio, padding: 0 };
 }
 
 /** Every icon of every sheet that IS a composite, split into a glyph field and a plate. */

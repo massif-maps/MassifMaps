@@ -94,7 +94,7 @@ namespace massif {
          *
          * @return False when the renderer has no elevation for the tile holding the point.
          */
-        bool getDisplayHeight(double internalX, double internalY, int zoom, double& height) const;
+        bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height) const;
 
         /**
          * Resolves every tile at the elevation source's own maximum detail instead of at the level
@@ -229,6 +229,8 @@ namespace massif {
         // covers the common "the tile is decoded but not yet in the texture cache" frame; beyond
         // that the answer is a smoothed average of a region, not the ground under the point.
         static const int BASE_MAX_ANCESTOR_LEVELS = 1;
+        // The DEM level a building's base is read from: ~20 m posting, mapbox-terrain-dem's scale.
+        static const int SMOOTH_BASE_ZOOM = 12;
 
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         std::uint64_t _accessCounter = 0; // monotonic LRU clock

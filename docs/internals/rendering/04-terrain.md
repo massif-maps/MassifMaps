@@ -432,7 +432,7 @@ mapbox splits the two ends, and that is what is implemented here:
 | | aligned to | result |
 |---|---|---|
 | base ring | the terrain under each vertex | the wall meets the slope everywhere, no gap, no float |
-| everything above it | ONE elevation, resolved at the footprint's **centroid** | the roof stays level; walls simply grow taller downhill |
+| everything above it | ONE elevation, resolved at the footprint's **centroid** on a smoothed field | the roof stays level; walls simply grow taller downhill |
 
 The centroid rides in the **texcoord slot**, which was free because for an extrusion `_texCoords`
 was a byte-for-byte duplicate of `_coords`. It is no longer read by the shader — the CPU pass below
@@ -440,57 +440,44 @@ reads it back out of the vertex data to know where to ask for the ground, and `p
 the position for the tile clip. `packGeometry` forces `texCoordScale == coordScale` for `POLYGON3D`,
 which is what lets one scale convert either of them.
 
+**The scale is fitted to the anchors as well as the coords** (`_polygon3DAnchorExtent`). Under deep
+overzoom the centroid of a palace lies several tiles away from the z20 piece drawing it; at the
+coords' own scale it overflowed the int16 and wrapped, so every tile read its base at a garbage
+position — the same wing at two heights, a piece under the ground with no walls, only on 3D
+terrain and only zoomed in close (the Louvre, 2026-09-04). Host test `ExtrusionAnchorTest`.
+
 ### The base is resolved on the CPU, not sampled in the shader
 
-The base is **one `ElevationManager::getDisplayHeight` query at the centroid**, run on the render
+The base is **an `ElevationManager::getDisplayHeight` query at the anchor**, run on the render
 thread by `GLTileRenderer::resolveExtrusionBases` and patched into a per-vertex slot
 (`TileGeometry::setVertexBase`, `baseOffset` in the vertex layout). The vertex shader only scales
 it: `aVertexBase * uBaseScale + uElevationScale.w`.
 
-It has to be that way because **the elevation texture bound is the one the tile being drawn
-carries**. Under overzoom one source tile's geometry is drawn once per target tile, so a footprint
-spanning two of them was sampled through two different textures, got two different bases, and tore
-open along a straight line that crossed every building it met. A CPU query against the global
-elevation source is tile-independent by construction. Reproduced in Paris at
-`lon 2.34466 lat 48.84847 zoom 19.04 rotation 66 tilt 45`; `--es exaggeration 0` made it vanish,
-which is what pinned it to the elevation path rather than the geometry.
+**The ground the anchor reads is a SMOOTHED field, not the lidar level the surface is drawn
+from.** `ElevationTextureCache::getDisplayHeight(..., smooth = true)` samples the DEM at
+`SMOOTH_BASE_ZOOM` (z12, about 20 m posting, mapbox-terrain-dem's own scale), bilinear, from the
+grid LRU — an ancestor level answers too, and is asked for if none is there; the arrival bumps
+the elevation version and every base moves together. This is the answer to a family of seams that
+only exist on lidar: a 0.84 m DEM steps by metres between a courtyard and its street, and every
+piece of a building anchored on it — a part beside its pedestal, the halves a source-tile border
+cuts, the copies two zoom levels decode for a mixed-zoom cover — stood at its own height. Read
+from a field that is smooth at the scale of a building, those pieces agree to centimetres
+**without seeing each other**, which is what mapbox gets for free from its DEM. Spans (bridge
+chords) keep the drawn surface (`smooth = false`); a deck must meet the road exactly.
 
-`getDisplayHeight` returns **internal z units with the exaggeration and the Mercator stretch already
-applied** — not metres. `uBaseScale` is therefore only `1 / frameScaleZ`, the same factor folded
-into `uElevationScale.x` for heights that do come from the texture. Feeding it through the metres
-conversion instead applies the Mercator stretch twice and drops the exaggeration.
+**mapbox's floor, per vertex** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`):
+a vertex that rises keeps at least 2 m above the drawn ground under it, so a low part whose
+smoothed anchor sits under its own lidar street is still a building and not a hole, and nothing on
+a hillside is buried uphill. Done on the CPU through the provider, not in the shader: overzoomed
+geometry runs past the target tile, where `applyTerrain` clamps to the edge texel, and a shader
+floor read there tilted whole roofs into ramps. And per vertex, not per footprint: a floor over the
+ring vertices a tile's clip kept was per tile, and one slab came out 31.6 m in one tile and 34.4 m
+in the next. Roofs of low parts follow the ground where the floor bites; tall buildings never feel
+it. One query per rising vertex position, columns of a wall share theirs.
 
-**mapbox-gl-js lands in the same place from the other end.** Their `a_centroid_pos` carries a
-CPU-computed elevation (`fill_extrusion.vertex.glsl`), a building on a border is hidden until
-resolved (`HIDDEN_CENTROID`), and `updateBorders` reconciles the two halves — matching them by
-`building_id`, and **giving up the flat roof entirely when the neighbours are at different zooms**.
-We need none of that reconciliation: their lookup is per tile and each half carries its own clipped
-footprint, while ours is one global query at a centroid both halves already share.
-
-What we do copy is the timing. Nothing is guessed before elevation exists — an extrusion whose tile
-has no elevation texture yet is **not drawn at all**, because a base of 0 is sea level, not
-"unknown". `invalidateExtrusionBases` then re-resolves when the elevation version moves, including
-an exaggeration ramp, since the exaggeration is inside that height. It is a counter rather than the
-labels' per-tile list because `setVertexBase` is a no-op when the height has not moved, so a
-needless re-resolve costs the queries and uploads nothing.
-
-**A refused answer beats a coarse one.** `ElevationTextureCache::getDisplayHeight` walks up to an
-ancestor when the tile it wants is not in the texture cache - the same walk `getTexture` does, so
-the query lands on the field the surface is drawn from. The walk is bounded to
-`BASE_MAX_ANCESTOR_LEVELS = 1`: measured over Paris at z18.5, a footprint that fell all the way
-through came back at **127 m against a DEM that says 34 m**, and it kept that height because a base
-is baked into the vertices. Refused instead, the vertex keeps its sentinel and `polygon3DVsh` falls
-back to the ground under it - the same field the surface is drawn from, so the walls still meet the
-ground - a span is skipped until its chord resolves, and `invalidateExtrusionBases` re-resolves once
-the tile lands. On the emulator that took the outliers from about half of the logged footprint
-samples to **0 of 608**, and with them the buildings that jumped to a wrong height for a frame or
-two while zooming.
-
-What it does NOT fix: the base is still ONE sample at the centroid of each footprint, so on a
-0.84 m-posting lidar DEM the parts of one block disagree by a few metres and their roofs step
-against each other. mapbox never sees it because `mapbox-terrain-dem-v1` is ~30 m posting, flat
-across a block; their `flatElevation` also reads the footprint's own span
-(`_prelude_terrain.vertex.glsl`: centroid sample plus slope x span) rather than a bare centroid.
+mapbox's `flatElevation` lift (the rise across the span, sampled at the span's corners) is NOT
+ported: its corners lie off the footprint, and beside the Seine one on the Tuileries terrace lifted
+a wing 5 m above its neighbour. On a smooth field the floor covers what the lift was for.
 
 This **removes** the previous model's 5 elevation samples per above-ground vertex, measured at
 **+0.35 ms** on the `layers3D` pass on an Adreno 610 at the Grenoble city camera (2.30 vs 1.95 ms
@@ -530,14 +517,13 @@ had bound. The units were the smaller of the two bugs.
 
 ### What is still wrong
 
-The base is **one query at the centroid**, so a footprint is again represented by a single point:
-a long thin building on a slope, or an L-shaped one, takes the ground at its middle rather than the
-highest ground it stands on, and can still be partly buried uphill. Sampling the real footprint is
-possible now that the query is on the CPU — the polygon is right there — but it is not done.
-
-A footprint **split across two tiles** gets a different centroid and a different reach in each half,
-so the two can lift to different heights and step at the tile seam. Pre-existing for the centroid,
-now inherited by the reach.
+Pieces of one building each anchor at their own centroid; they agree only as well as the smoothed
+field is flat between those centroids — centimetres across a block in Paris, up to a metre across
+a 400 m palace on a real slope. mapbox groups a tile's parts by `building_id` and reconciles
+borders (`updateBorders`); tried here in three forms on 2026-09-03 (per-tile groups, source-tile
+groups, a global union) and all three made the pieces disagree by more than the field does, because
+an anchor shared across a large building is far from most of its parts. On a smooth field the
+ungrouped anchor is the smaller error.
 
 ## Bridges and tunnels: spans
 

@@ -967,17 +967,17 @@ namespace massif {
             // the corner of the world, where it sampled ocean and answered 0 m - which is what a
             // bridge deck at sea level was made of.
             if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
-                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, double& height) {
-                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, height);
+                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, bool smooth, double& height) {
+                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, smooth, height);
                 });
             } else {
-                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, double& height) {
+                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, bool, double& height) {
                     return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
                 });
             }
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
-            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)>());
+            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());

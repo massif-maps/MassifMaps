@@ -535,7 +535,7 @@ namespace massif {
         }
     }
 
-    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, double& height) const {
+    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height) const {
         if (zoom < 0) {
             return false;
         }
@@ -548,6 +548,29 @@ namespace massif {
         int y = static_cast<int>(std::floor(v * extent));
         if (x < 0 || y < 0 || x >= extent || y >= extent) {
             return false;
+        }
+        double displayScale = _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
+        if (smooth) {
+            // A building's base: the DEM at SMOOTH_BASE_ZOOM, bilinear, not the lidar level the
+            // surface is drawn from. A 0.84 m DEM steps by metres between a courtyard and its
+            // street, and every piece of a building anchored on it - parts, the halves a tile
+            // border cuts, the copies two zooms decode - stood at its own height. At ~20 m posting
+            // the pieces agree to centimetres, which is what mapbox gets from its own DEM. The
+            // grid LRU holds it or it is asked for: the arrival bumps the elevation version and the
+            // bases are resolved again; the sentinel is drawn meanwhile.
+            int shift = std::max(0, zoom - SMOOTH_BASE_ZOOM);
+            MapTile coarse = _elevationManager->getDetailDataTile(MapTile(x >> shift, y >> shift, zoom - shift, 0), _detailLevels);
+            // An ancestor answering is fine - coarser is smoother - and it may be all there ever
+            // is: the grid cache resolves a level through an ancestor and then never fetches it,
+            // so insisting on the exact level left every building on the sentinel for good. The
+            // arrival of a finer level bumps the elevation version and every base moves together.
+            std::shared_ptr<ElevationTileGrid> grid = _elevationManager->getDataTileGrid(coarse, ElevationManager::LoadMode::CACHED_ONLY);
+            if (!grid) {
+                _elevationManager->prefetchTileGrid(coarse, 2);
+                return false;
+            }
+            height = grid->sampleHeight(internalX, internalY) * displayScale;
+            return true;
         }
         // The same mapping getTexture resolves a tile through (getDetailDataTile), walking up to
         // an ancestor exactly as it does - so the query lands on the height field the surface is
@@ -567,19 +590,15 @@ namespace massif {
             // A base is BAKED into the vertices, so an ancestor far above the level the source
             // actually carries is not a coarser answer but a wrong one: measured over Paris, a
             // footprint that fell through to a far ancestor came back at 127 m where the DEM says
-            // 34 m, and neighbouring footprints in the same block disagreed by 14 m - which is the
-            // stepped rooflines and the holes between two halves of one building. Refusing it is
-            // strictly better than baking it: the vertex keeps its sentinel, polygon3DVsh falls
-            // back to the ground under each vertex - the SAME field the surface is drawn from, so
-            // the building meets the ground - and the base resolves for real once the tile lands
-            // (TileRenderer re-resolves on every elevation arrival).
+            // 34 m. Refusing it is strictly better than baking it: the vertex keeps its sentinel,
+            // and the base resolves for real once the tile lands.
             if (dataZoom - dataTile.getZoom() > BASE_MAX_ANCESTOR_LEVELS) {
                 return false;
             }
             auto cacheIt = _cache.find(dataTile.getTileId());
             if (cacheIt != _cache.end() && cacheIt->second.grid) {
-                double meters = cacheIt->second.grid->sampleNodeHeight(internalX, internalY); // the surface, as the extrusion base must sit on it
-                height = meters * _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
+                double meters = cacheIt->second.grid->sampleNodeHeight(internalX, internalY); // the surface, as a chord must sit on it
+                height = meters * displayScale;
                 return true;
             }
             if (tileId.zoom <= 0) {

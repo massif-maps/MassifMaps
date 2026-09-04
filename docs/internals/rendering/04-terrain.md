@@ -577,7 +577,12 @@ anchor answer different halves of it and neither replaces the other — the anch
 ONE building agree exactly, smoothing keeps the buildings AROUND it from stepping against it. The
 smoothing alone was tried first and measurably did not close the comb, which is what the numbers
 above are. Spans (bridge chords) keep the drawn surface (`smooth = false`); a deck must meet the
-road exactly.
+road exactly. They are sampled at ONE zoom for every piece (`_spanSampleZoom`, the finest visible
+tile's): the pieces of a deck arrive at different tile zooms, and sampled each at its own they read
+different DEM levels for the same portal — at Pont Neuf z21.2 one chord came back 1.345 on 22
+pieces and 1.306 on 22 more, a step down every tile cut. Smoothing the portals instead was tried and
+closed the cut, but put the deck end off the draped approach road. The heights are refreshed on
+every cull, so a finer DEM moves the deck with the surface.
 
 **mapbox's floor** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`): a
 building keeps at least 2 m above the drawn ground under it, so a part whose smoothed anchor sits

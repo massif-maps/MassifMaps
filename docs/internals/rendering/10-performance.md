@@ -847,5 +847,6 @@ is the culler doing the same work in a denser burst, not the mutex being held lo
 
 `adb shell setprop debug.massif.<name> <value>` — `demtaps`, `groundpaint`, `tilebg`,
 `areathreshold`, `areasourcedensity`, `linesourcedensity`, `depthshift`, `terrainpaint`,
-`paintdetail`, `asyncdepthms`, `gputimer`. They are read **once per process**, so restart the app
+`paintdetail`, `asyncdepthms`, `gputimer`, `labelanchor` (0 = anchor labels in the frame, the
+pre-2026-09 path). They are read **once per process**, so restart the app
 after setting one, and **reset them when you are done** — they survive until reboot.

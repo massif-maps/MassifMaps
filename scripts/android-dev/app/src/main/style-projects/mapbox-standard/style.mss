@@ -541,7 +541,7 @@ Map {
   line-color: linear(([view::zoom] - 1), (15, @line_stroke_2), (16, @line_stroke));
   line-emissive-strength: 0.25;
 }
-#road[zoom >= 17][structure = 'bridge'] when((([class] = 'track') ? true : (([class] = 'service') ? step(([view::zoom] - 1), (0, false), (14, true)) : false)))['mapnik::geometry_type' = 2]::bridge_minor_shadow {
+#road[zoom >= 17][structure = 'bridge'] when((([class] = 'track') ? true : (([class] = 'service') ? step(([view::zoom] - 1), (0, false), (14, true)) : false)))['param::deck3d'=0]['mapnik::geometry_type' = 2]::bridge_minor_shadow {
   line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: @bridge_stroke_3;
@@ -556,7 +556,7 @@ Map {
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (14, 1), (18, 10), (22, 100));
   line-emissive-strength: 0;
 }
-#road[zoom >= 16][structure = 'bridge'] when(([class] = 'street' || [class] = 'street_limited'))['mapnik::geometry_type' = 2]::bridge_street_shadow {
+#road[zoom >= 16][structure = 'bridge'] when(([class] = 'street' || [class] = 'street_limited'))['param::deck3d'=0]['mapnik::geometry_type' = 2]::bridge_street_shadow {
   line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: @bridge_stroke_3;
@@ -573,7 +573,7 @@ Map {
   line-opacity: step(([view::zoom] - 1), (0, 0), (14, 1));
   line-emissive-strength: 0;
 }
-#road[zoom >= 16] when(([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link'))[structure = 'bridge']['mapnik::geometry_type' = 2]::bridge_minor_link_shadow {
+#road[zoom >= 16] when(([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link'))[structure = 'bridge']['param::deck3d'=0]['mapnik::geometry_type' = 2]::bridge_minor_link_shadow {
   line-elevation-mode: span;
   line-join: step(([view::zoom] - 1), (0, 'miter'), (14, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
@@ -592,7 +592,7 @@ Map {
   line-opacity: step(([view::zoom] - 1), (0, 0), (11, 1));
   line-emissive-strength: 0;
 }
-#road[zoom >= 16][structure = 'bridge'] when(([class] = 'secondary' || [class] = 'tertiary'))['mapnik::geometry_type' = 2]::bridge_secondary_tertiary_shadow {
+#road[zoom >= 16][structure = 'bridge'] when(([class] = 'secondary' || [class] = 'tertiary'))['param::deck3d'=0]['mapnik::geometry_type' = 2]::bridge_secondary_tertiary_shadow {
   line-elevation-mode: span;
   line-color: @bridge_stroke_3;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0), (18, 26), (22, 260));
@@ -609,7 +609,7 @@ Map {
   line-opacity: step(([view::zoom] - 1), (0, 0), (10, 1));
   line-emissive-strength: 0;
 }
-#road[zoom >= 16][structure = 'bridge'][class = 'primary']['mapnik::geometry_type' = 2]::bridge_primary_shadow {
+#road[zoom >= 16][structure = 'bridge'][class = 'primary']['param::deck3d'=0]['mapnik::geometry_type' = 2]::bridge_primary_shadow {
   line-elevation-mode: span;
   line-color: @bridge_stroke_3;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 28), (22, 280));
@@ -626,7 +626,7 @@ Map {
   line-opacity: step(([view::zoom] - 1), (0, 0), (10, 1));
   line-emissive-strength: 0;
 }
-#road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway_link' || [class] = 'trunk_link'))[layer <= 1]['mapnik::geometry_type' = 2]::bridge_major_link_shadow {
+#road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway_link' || [class] = 'trunk_link'))[layer <= 1]['param::deck3d'=0]['mapnik::geometry_type' = 2]::bridge_major_link_shadow {
   line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: (([class] = 'motorway_link') ? @bridge_stroke_4 : @bridge_stroke_5);
@@ -641,7 +641,7 @@ Map {
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0.8), (18, 20), (22, 200));
   line-emissive-strength: 0;
 }
-#road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'trunk'))[layer <= 1]['mapnik::geometry_type' = 2]::bridge_motorway_trunk_shadow {
+#road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'trunk'))[layer <= 1]['param::deck3d'=0]['mapnik::geometry_type' = 2]::bridge_motorway_trunk_shadow {
   line-elevation-mode: span;
   line-color: (([class] = 'motorway') ? @bridge_stroke_4 : @bridge_stroke_5);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 30), (22, 300));

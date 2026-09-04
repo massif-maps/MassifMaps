@@ -129,4 +129,33 @@ void testSpanGeometry() {
     // The two carriageways are digitised in opposite senses, so either direction counts.
     TEST_CHECK(SpanGeometry::piecesMeet(a0, a1, true, false, at(0, 2000), b0, true, false, tolerance2),
                "a piece digitised the other way round still joins");
+
+    // A stranded piece names the tile its far end is in: the point is stepped PAST the cut,
+    // because the source's buffer leaves the cut itself inside the neighbouring copy's overlap.
+    {
+        cglib::vec2<double> e0(0.0, 0.0), e1(-0.001, 0.0);
+        cglib::vec2<double> beyond = SpanGeometry::beyondCutEnd(e0, e1, 14);
+        TEST_CHECK(near(beyond(1), 0.0) && near(beyond(0), SpanGeometry::CUT_STEP_FRACTION / 16384.0),
+                   "the point past a cut end lies along the piece, a twentieth of a tile beyond it");
+        TEST_CHECK(SpanGeometry::beyondCutEnd(e0, e0, 14) == e0, "a zero-length piece steps nowhere");
+    }
+    // A span drape covers the deck's bounds alone; the bounds grow by a margin and stay in the tile,
+    // the sampling transform follows them, and the bake's clip zoom puts them on the whole square.
+    {
+        cglib::vec4<float> bounds = SpanGeometry::expandBounds(cglib::vec4<float>(0.40f, 0.02f, 0.60f, 0.90f), 0.05f);
+        auto nearf = [](float a, double b) { return std::abs(a - b) < 1.0e-6; };
+        TEST_CHECK(nearf(bounds(0), 0.35) && nearf(bounds(1), 0.0) && nearf(bounds(2), 0.65) && nearf(bounds(3), 0.95),
+                   "bounds grow by the margin on every side and clamp at the tile edge");
+        cglib::vec4<float> transform = SpanGeometry::drapeTransformInBounds(cglib::vec4<float>(0.0f, 0.0f, 1.0f, 1.0f), cglib::vec4<float>(0.25f, 0.5f, 0.75f, 1.0f));
+        TEST_CHECK(near(transform(0), -0.5) && near(transform(1), -1.0) && near(transform(2), 2.0) && near(transform(3), 2.0),
+                   "a tile position maps into the bounds' share of the texture");
+        cglib::vec4<float> sub = SpanGeometry::drapeTransformInBounds(cglib::vec4<float>(0.5f, 0.5f, 0.5f, 0.5f), cglib::vec4<float>(0.25f, 0.5f, 0.75f, 1.0f));
+        TEST_CHECK(near(sub(0), 0.5) && near(sub(1), 0.0) && near(sub(2), 1.0) && near(sub(3), 1.0),
+                   "...also through an ancestor's sub-rect: the north-east child of that tile fills the bounds' right half");
+        cglib::mat4x4<float> zoom = SpanGeometry::clipZoomToBounds(cglib::vec4<float>(0.25f, 0.5f, 0.75f, 1.0f));
+        cglib::vec3<float> lo = cglib::transform_point(cglib::vec3<float>(-0.5f, 0.0f, 0.0f), zoom);  // uv (0.25, 0.5) in clip
+        cglib::vec3<float> hi = cglib::transform_point(cglib::vec3<float>(0.5f, 1.0f, 0.0f), zoom);   // uv (0.75, 1.0)
+        TEST_CHECK(near(lo(0), -1.0) && near(lo(1), -1.0) && near(hi(0), 1.0) && near(hi(1), 1.0),
+                   "the clip zoom sends the bounds' corners to the corners of the bake square");
+    }
 }

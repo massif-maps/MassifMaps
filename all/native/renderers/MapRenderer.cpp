@@ -37,6 +37,7 @@
 #include <set>
 #include "core/MapTile.h"
 #include "terrain/AutoFlatten.h"
+#include "terrain/CameraClearance.h"
 #include "terrain/DrapeStackCuts.h"
 #include "terrain/ElevationManager.h"
 #include "renderers/utils/Shader.h"
@@ -185,21 +186,23 @@ namespace massif {
 
             // The tile-set change path, which runs INSIDE the layer draw pass and was untimed.
             // refreshMs is the total and includes the setVisibleTiles split that follows it.
-            static long long lastTileSet[7] = { 0 };
-            const long long tileSet[7] = {
+            static long long lastTileSet[9] = { 0 };
+            const long long tileSet[9] = {
                 RenderStats::refreshTilesLockNs.load(), RenderStats::refreshTilesNs.load(),
                 RenderStats::setVisibleTilesLockNs.load(), RenderStats::terrainCoarseningNs.load(),
                 RenderStats::tileSurfacesNs.load(), RenderStats::labelMapsNs.load(),
-                RenderStats::renderTilesNs.load()
+                RenderStats::renderTilesNs.load(), RenderStats::spanUnionsNs.load(),
+                RenderStats::labelAnchorNs.load()
             };
             Log::Infof("RenderStats: tileSetChange refreshLockMs=%.1f refreshMs=%.1f | "
                        "setVisibleLockMs=%.1f coarsenMs=%.1f surfacesMs=%.1f labelMapsMs=%.1f "
-                       "renderTilesMs=%.1f (per interval)",
+                       "renderTilesMs=%.1f spanUnionsMs=%.1f labelAnchorMs=%.1f (per interval)",
                        (tileSet[0] - lastTileSet[0]) / 1.0e6, (tileSet[1] - lastTileSet[1]) / 1.0e6,
                        (tileSet[2] - lastTileSet[2]) / 1.0e6, (tileSet[3] - lastTileSet[3]) / 1.0e6,
                        (tileSet[4] - lastTileSet[4]) / 1.0e6, (tileSet[5] - lastTileSet[5]) / 1.0e6,
-                       (tileSet[6] - lastTileSet[6]) / 1.0e6);
-            for (int i = 0; i < 7; i++) { lastTileSet[i] = tileSet[i]; }
+                       (tileSet[6] - lastTileSet[6]) / 1.0e6, (tileSet[7] - lastTileSet[7]) / 1.0e6,
+                       (tileSet[8] - lastTileSet[8]) / 1.0e6);
+            for (int i = 0; i < 9; i++) { lastTileSet[i] = tileSet[i]; }
 
             // buildLabelMaps by phase. signature/list run whatever happens; merge/carry are the
             // ones reuse actually shortens.
@@ -578,6 +581,7 @@ namespace massif {
         
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
+            _pannedSinceClearance = true;
     
             // Calculate parameters for kinetic events
             newFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
@@ -1569,6 +1573,15 @@ namespace massif {
                 manual = terrainOptions->isManualFlatten(); // setFlattened hands the ratio back
             }
         } else {
+            // The rule turned off while its last answer was ON: hand the state back, or the map
+            // stays flat for good. Seen at startup: the SDK's defaults (2 px / 88 degrees) ran on
+            // the first frame, at the default tilt of 90, before the app set its own thresholds to
+            // 0 - and with the rule off nothing ever asked for 3D again. Only what the rule itself
+            // set is released; an app's explicit setFlattened(true) is not the rule's to undo.
+            if (_autoFlattenTrigger.last == 1 && !manual && terrainOptions->isFlattened()) {
+                Log::Info("MapRenderer: auto-flatten disabled while ON - releasing the flat state it set");
+                terrainOptions->setFlattened(false);
+            }
             _autoFlattenTrigger = AutoFlatten::Trigger(); // re-arm: the next answer is an edge again
         }
 
@@ -2558,48 +2571,62 @@ namespace massif {
                     }
 
                     // The clearance is a BOUND on the zoom, not a corrective event - a correction
-                    // fights whatever drives the camera down and oscillates. This per-frame
-                    // correction covers only the paths that change height without a zoom event
-                    // (pan into a hillside, tilt, elevation arriving) and, like tangram's
-                    // View::updateMatrices, only ever zooms OUT. See docs/internals/rendering/04-terrain.md.
-                    float cameraClearance = terrainOptions->getCameraClearance();
-                    float clampDuration = terrainOptions->getCameraClampDuration();
-                    if (cameraClearance > 0) {
+                    // fights whatever drives the camera down and oscillates. mapbox's model
+                    // (transform._constrainCamera): the clearance is a fraction of the camera's
+                    // distance to sea level (CameraClearance), a zoom in stops at it, and a camera
+                    // that got under it another way - a pan into a hillside, a DEM tile arriving -
+                    // is LIFTED at a constant distance to the focus, so the zoom is kept and the
+                    // tilt gives. Only a pan or a camera under the ground lifts (mapbox
+                    // adaptCameraAltitude = dragging): after a zoom the ground under the moved
+                    // camera differs by a little, and lifting for that turns every pinch tick into
+                    // a tilt. See docs/internals/rendering/04-terrain.md.
+                    {
                         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+                        float clampDuration = terrainOptions->getCameraClampDuration();
                         cglib::vec3<double> cameraPos = viewState.getCameraPos();
+                        double displayScale = elevationManager->getDisplayScale(cameraPos(1));
                         double terrainZ = elevationManager->getDisplayHeight(cameraPos(0), cameraPos(1), ElevationManager::LoadMode::CACHED_ONLY);
-                        double minCameraZ = terrainZ + cameraClearance * elevationManager->getDisplayScale(cameraPos(1));
+                        double clearanceFloor = terrainOptions->getCameraClearance() * displayScale;
                         {
                             std::lock_guard<std::recursive_mutex> lock(_mutex);
-                            _viewState.setTerrainCameraReference(terrainZ, minCameraZ);
+                            _viewState.setTerrainCameraReference(terrainZ, clearanceFloor);
                         }
-                        // Solve for the scale that LANDS on the shell: zooming out scales the
-                        // camera-to-focus vector, so minCameraZ/cameraZ lands short whenever the
-                        // focus is above sea level and the map never stops correcting (or drawing).
+                        bool panned = _pannedSinceClearance.exchange(false);
                         double focusZ = viewState.getFocusPos()(2);
-                        double deadBand = 0.005 * cameraClearance * elevationManager->getDisplayScale(cameraPos(1));
-                        // At the bottom of the zoom range there is no correction left to make, and
-                        // issuing one anyway is another per-frame redraw that changes nothing.
-                        bool zoomExhausted = viewState.getZoom() <= _options->getZoomRange().getMin() + 1.0e-4f;
-                        // A camera at or below the focus height - a horizontal view, or one looking
-                        // above the horizon - cannot be raised by zooming out at all: the zoom
-                        // scales the camera-to-focus vector, which is then horizontal. Correcting
-                        // anyway asks for a zoom that never arrives, every frame (see
-                        // ViewState::getTerrainMaxZoom, which drops its bound for the same reason).
-                        bool cameraAboveFocus = cameraPos(2) > focusZ + deadBand;
-                        if (!zoomExhausted && cameraAboveFocus && cameraPos(2) > 0 && cameraPos(2) < minCameraZ - deadBand) {
-                            double scale = (minCameraZ > focusZ
-                                ? (minCameraZ - focusZ) / (cameraPos(2) - focusZ)   // exact: the focus stays put
-                                : minCameraZ / cameraPos(2));                        // degenerate (focus above the shell)
-                            CameraZoomEvent zoomEvent;
-                            zoomEvent.setZoomDelta(static_cast<float>(-std::log2(scale))); // negative: zoom out onto the clearance
-                            // API, not GESTURE: the SDK corrects the camera here, and it does so
-                            // after a programmatic move just as much as after a gesture.
-                            calculateCameraEvent(zoomEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
+                        double orbit = viewState.getOrbitDistance(viewState.getZoom());
+                        double minHeight = CameraClearance::minHeight(focusZ, orbit, viewState.getOrbitDistance(_options->getZoomRange().getMax()), clearanceFloor);
+                        double cameraHeight = cameraPos(2) - terrainZ;
+                        double deadBand = 0.005 * minHeight;
+                        if (orbit > 0 && cameraHeight < minHeight - deadBand && (panned || cameraHeight < 0)) {
+                            // The height above the focus that puts the camera on the shell, and the
+                            // tilt that gives it (tilt 90 is straight down); past the tilt range's
+                            // top the rest comes from zooming out, about the focus.
+                            MapRange tiltRange = _options->getTiltRange();
+                            double maxTiltSin = std::sin(tiltRange.getMax() * Const::DEG_TO_RAD);
+                            double targetHeight = terrainZ + minHeight - focusZ;
+                            float tilt = viewState.getTilt();
+                            if (targetHeight <= orbit * maxTiltSin) {
+                                tilt = static_cast<float>(std::asin(std::max(0.0, targetHeight / orbit)) * Const::RAD_TO_DEG);
+                            } else {
+                                tilt = tiltRange.getMax();
+                                float maxZoom = CameraClearance::maxZoom(viewState.getZoom(), focusZ, focusZ + orbit * maxTiltSin, orbit, terrainZ,
+                                                                         viewState.getOrbitDistance(_options->getZoomRange().getMax()), clearanceFloor);
+                                float zoom = std::max(maxZoom, _options->getZoomRange().getMin());
+                                if (zoom < viewState.getZoom() - 1.0e-4f) {
+                                    CameraZoomEvent zoomEvent;
+                                    zoomEvent.setZoomDelta(zoom - viewState.getZoom());
+                                    // API, not GESTURE: the SDK corrects the camera here, and it does so
+                                    // after a programmatic move just as much as after a gesture.
+                                    calculateCameraEvent(zoomEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
+                                }
+                            }
+                            if (tilt > viewState.getTilt() + 1.0e-3f) {
+                                CameraTiltEvent tiltEvent;
+                                tiltEvent.setKeepRotation(true);
+                                tiltEvent.setTilt(tilt);
+                                calculateCameraEvent(tiltEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
+                            }
                         }
-                    } else {
-                        std::lock_guard<std::recursive_mutex> lock(_mutex);
-                        _viewState.setTerrainCameraReference(0, 0);
                     }
                 }
             }
@@ -2611,7 +2638,7 @@ namespace massif {
                 }
             }
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            _viewState.setTerrainCameraReference(0, 0); // release the terrain zoom bound
+            _viewState.clearTerrainCameraReference(); // release the terrain zoom bound
         }
 
         // Cross-layer terrain draping. Every drapeable tile layer bakes into ONE texture per
@@ -3100,6 +3127,18 @@ namespace massif {
                     // a tile that takes seconds to appear is not.
                     static const double DRAPE_BAKE_TIME_BUDGET = 16.0;       // ms, camera moving
                     static const double DRAPE_BAKE_TIME_BUDGET_STILL = 60.0; // ms, camera at rest
+                    // The moving budget outlives the move by this. debug.massif.drapesettle <ms>
+                    // overrides it for an A/B (0 = the at-rest budget the frame the camera stops).
+                    static const double DRAPE_BAKE_SETTLE_MS = [] {
+                        double settle = 300.0;
+#ifdef __ANDROID__
+                        char property[PROP_VALUE_MAX] = { 0 };
+                        if (__system_property_get("debug.massif.drapesettle", property) > 0) {
+                            settle = std::atof(property);
+                        }
+#endif
+                        return settle;
+                    }();
                     struct BakeRequest { vt::TileId tileId; std::size_t fingerprint; std::size_t drapedIndex; };
                     std::vector<BakeRequest> blankTiles, standInTiles, partialTiles, staleTiles, restackTiles;
 
@@ -3296,6 +3335,30 @@ namespace massif {
                             blankTiles.push_back(request);       // shows a flat fill: a hole
                         }
                     }
+                    // Nearest the focus first, within each class: the budget lets a few bakes
+                    // through per frame, and in cover order the corner of the screen could fill
+                    // before the point the user is looking at. Measured in tile lengths of the
+                    // tile's own zoom, so a coarse tile at the edge does not outrank a fine one
+                    // under the focus.
+                    cglib::vec3<double> bakeFocus = viewState.getFocusPos();
+                    auto focusDistance = [focusX = bakeFocus(0) / Const::WORLD_SIZE, focusY = bakeFocus(1) / Const::WORLD_SIZE](const vt::TileId& tileId) {
+                        double extent = static_cast<double>(1 << tileId.zoom);
+                        double dx = (tileId.x + 0.5) / extent - 0.5 - focusX;
+                        double dy = 0.5 - (tileId.y + 0.5) / extent - focusY;
+                        return (dx * dx + dy * dy) * extent * extent;
+                    };
+                    {
+                        auto nearestFirst = [&focusDistance](std::vector<BakeRequest>& requests) {
+                            std::stable_sort(requests.begin(), requests.end(), [&focusDistance](const BakeRequest& a, const BakeRequest& b) {
+                                return focusDistance(a.tileId) < focusDistance(b.tileId);
+                            });
+                        };
+                        nearestFirst(blankTiles);
+                        nearestFirst(restackTiles);
+                        nearestFirst(standInTiles);
+                        nearestFirst(partialTiles);
+                        nearestFirst(staleTiles);
+                    }
                     // The tiles that carry a bridge or a tunnel, and nothing else. A map with no
                     // spans leaves this empty, so it pays for no texture, no bake and no lookup.
                     // Negative: the cache reads stack > 0 as a one-channel mask, 0 as the ground's
@@ -3425,7 +3488,16 @@ namespace massif {
                     // Same "did the camera move since the previous frame" test the occlusion
                     // read-back throttle uses (TerrainRenderer::updateDepthBuffer).
                     const cglib::mat4x4<double>& bakeMVPMatrix = viewState.getModelviewProjectionMat();
-                    bool bakeCameraMoving = !(_drapeBakeLastMVPMatrix == bakeMVPMatrix);
+                    std::chrono::steady_clock::time_point bakeNow = std::chrono::steady_clock::now();
+                    if (!(_drapeBakeLastMVPMatrix == bakeMVPMatrix)) {
+                        _drapeBakeLastMoveTime = bakeNow;
+                    }
+                    // ...and for a settle window past the last move: a fast zoom is a chain of
+                    // gestures with rests of a few frames between them, and opening the at-rest
+                    // budget in each rest made every one a 60 ms frame while the new zoom's cover
+                    // baked - the map hung between the user's fingers. Watched at Paris, z15-18
+                    // fast: 100-144 bakes queued, 39 frames over 100 ms, the worst 375 ms.
+                    bool bakeCameraMoving = std::chrono::duration<double, std::milli>(bakeNow - _drapeBakeLastMoveTime).count() < DRAPE_BAKE_SETTLE_MS;
                     _drapeBakeLastMVPMatrix = bakeMVPMatrix;
                     double bakeTimeBudget = (bakeCameraMoving ? DRAPE_BAKE_TIME_BUDGET : DRAPE_BAKE_TIME_BUDGET_STILL);
                     std::chrono::steady_clock::time_point bakeStart = std::chrono::steady_clock::now();
@@ -3483,13 +3555,32 @@ namespace massif {
                     if (!spanDrapeTiles.empty()) {
                         std::map<vt::TileId, unsigned int> spanDrapeTextures;
                         beginOffscreen();
-                        for (auto it = spanDrapeTiles.begin(); it != spanDrapeTiles.end(); it++) {
+                        // Under the frame's bake budget like every other class, nearest the focus
+                        // first, and one always goes through. Unbudgeted, an integer zoom renamed
+                        // every bridge tile in view and baked them all in one frame - 150-210 ms of
+                        // it at Paris, the frame the user feels at each zoom level. A deck whose
+                        // drape is not baked yet draws its plain roof for those frames and asks
+                        // for the next.
+                        std::vector<std::pair<vt::TileId, std::size_t>> spanBakeOrder(spanDrapeTiles.begin(), spanDrapeTiles.end());
+                        std::stable_sort(spanBakeOrder.begin(), spanBakeOrder.end(), [&focusDistance](const std::pair<vt::TileId, std::size_t>& a, const std::pair<vt::TileId, std::size_t>& b) {
+                            return focusDistance(a.first) < focusDistance(b.first);
+                        });
+                        int spanBakedThisFrame = 0;
+                        bool spanBakesLeft = false;
+                        for (auto it = spanBakeOrder.begin(); it != spanBakeOrder.end(); it++) {
                             bool spanNeedsBake = false, spanHasContent = false;
                             unsigned int spanTexture = _terrainDrapeCache->acquire(it->first, SPAN_DRAPE_STACK, it->second, spanNeedsBake, spanHasContent);
                             if (spanTexture == 0) {
                                 continue;
                             }
+                            if (spanNeedsBake && spanBakedThisFrame > 0 && !bakeTimeLeft()) {
+                                spanBakesLeft = true;
+                                continue; // not handed over: an unbaked texture is not a drape
+                            }
                             if (spanNeedsBake) {
+                                spanBakedThisFrame++;
+                                bakedThisFrame++;
+                                VT_STAT_INC(drapeBakes);
                                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spanTexture, 0);
                                 glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
                                 glClear(GL_COLOR_BUFFER_BIT);
@@ -3503,6 +3594,9 @@ namespace massif {
                         }
                         for (std::size_t i = 0; i < drapeLayers.size(); i++) {
                             drapeLayers[i]->setSpanDrapeTextures(spanDrapeTextures);
+                        }
+                        if (spanBakesLeft) {
+                            requestRedraw();
                         }
                     }
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());

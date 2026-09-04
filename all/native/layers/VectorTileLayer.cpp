@@ -241,6 +241,9 @@ namespace massif {
 
     bool VectorTileLayer::tileExists(long long tileId, bool preloadingCache) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
+        if (_spanReferenceCache.count(tileId) > 0) {
+            return true;
+        }
         if (preloadingCache) {
             return _preloadingCache.exists(tileId);
         } else {
@@ -250,6 +253,9 @@ namespace massif {
     
     bool VectorTileLayer::tileValid(long long tileId, bool preloadingCache) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
+        if (_spanReferenceCache.count(tileId) > 0) {
+            return true;
+        }
         if (preloadingCache) {
             return _preloadingCache.exists(tileId) && _preloadingCache.valid(tileId);
         } else {
@@ -291,6 +297,7 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         if (preloadingTiles) {
             _preloadingCache.clear();
+            _spanReferenceCache.clear();
         } else {
             _visibleCache.clear();
         }
@@ -300,6 +307,7 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         if (preloadingTiles) {
             _preloadingCache.invalidate_all(std::chrono::steady_clock::now());
+            _spanReferenceCache.clear(); // refetched with the next cull, like an invalid tile
         } else {
             _visibleCache.invalidate_all(std::chrono::steady_clock::now());
         }
@@ -347,6 +355,12 @@ namespace massif {
         _visibleCache.read(closestTileId, tileInfo);
         if (!tileInfo.getTileMap()) {
             _preloadingCache.read(closestTileId, tileInfo);
+        }
+        if (!tileInfo.getTileMap()) {
+            auto it = _spanReferenceCache.find(closestTileId);
+            if (it != _spanReferenceCache.end()) {
+                tileInfo = it->second; // a reference tile that came into view
+            }
         }
         if (std::shared_ptr<VectorTileDecoder::TileMap> tileMap = tileInfo.getTileMap()) {
             auto it = tileMap->find(isTileMapsMode() ? closestTile.getFrameNr() : 0);
@@ -404,7 +418,33 @@ namespace massif {
                 }
             }
             
-            if (_tileRenderer->refreshTiles(drawDatas)) {
+            // The span reference tiles are fetched, never drawn (buildFetchTiles fetchOnly makes
+            // no draw data for them): handed over on their own, for the span unions alone.
+            std::vector<std::shared_ptr<const vt::Tile> > spanReferenceTiles;
+            std::set<long long> referenceTileIds;
+            for (const MapTile& referenceTile : _spanReferenceTiles) {
+                long long tileId = getTileId(referenceTile);
+                referenceTileIds.insert(tileId);
+                TileInfo tileInfo;
+                auto referenceIt = _spanReferenceCache.find(tileId);
+                if (referenceIt != _spanReferenceCache.end()) {
+                    tileInfo = referenceIt->second;
+                } else if (!_preloadingCache.read(tileId, tileInfo)) {
+                    _visibleCache.read(tileId, tileInfo);
+                }
+                if (std::shared_ptr<VectorTileDecoder::TileMap> tileMap = tileInfo.getTileMap()) {
+                    auto it = tileMap->find(isTileMapsMode() ? referenceTile.getFrameNr() : 0);
+                    if (it != tileMap->end()) {
+                        spanReferenceTiles.push_back(it->second);
+                    }
+                }
+            }
+
+            for (auto it = _spanReferenceCache.begin(); it != _spanReferenceCache.end(); ) {
+                it = referenceTileIds.count(it->first) ? std::next(it) : _spanReferenceCache.erase(it);
+            }
+
+            if (_tileRenderer->refreshTiles(drawDatas, spanReferenceTiles)) {
                 tilesChanged = true;
             }
         }
@@ -810,7 +850,18 @@ namespace massif {
                 // Store the decoded tile in cache, unless invalidated.
                 if (!isInvalidated()) {
                     if (layer->getTileTransformer() == tileTransformer) { // extra check that the tile is created with correct transformer. Otherwise simply drop it.
+                        bool spanReference = false;
                         if (isPreloadingTile()) {
+                            for (const MapTile& referenceTile : layer->_spanReferenceTiles) {
+                                if (layer->getTileId(referenceTile) == _tileId) {
+                                    spanReference = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (spanReference) {
+                            layer->_spanReferenceCache[_tileId] = tileInfo;
+                        } else if (isPreloadingTile()) {
                             layer->_preloadingCache.put(_tileId, tileInfo, tileInfo.getSize());
                             if (tileData->getMaxAge() >= 0) {
                                 layer->_preloadingCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));

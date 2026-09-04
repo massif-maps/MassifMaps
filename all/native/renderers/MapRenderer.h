@@ -366,6 +366,9 @@ namespace massif {
 
         unsigned int _layersElevationVersion = 0;
         std::optional<std::chrono::steady_clock::time_point> _lastElevationRefreshTime;
+        // When the camera last moved, for the drape bake budget: a gesture's end keeps the
+        // moving budget for a settle window, so a chain of quick zooms stays smooth.
+        std::chrono::steady_clock::time_point _drapeBakeLastMoveTime = std::chrono::steady_clock::time_point();
 
         // Render thread only: the layers held back for drawOverlayLayers this frame, and whether
         // the effect resolved into the screen framebuffer's secondary color texture.
@@ -395,6 +398,7 @@ namespace massif {
         mutable std::atomic<bool> _surfaceChanged;
         mutable std::atomic<bool> _billboardsChanged;
         mutable std::atomic<bool> _redrawPending;
+        std::atomic<bool> _pannedSinceClearance { false }; // a pan since the last clearance check lifts a camera under the shell
         // Frames still owed after a redraw request, so a change reaches the FRONT buffer and not
         // only the back one (see requestRedraw).
         mutable std::atomic<int> _redrawExtraFrames;

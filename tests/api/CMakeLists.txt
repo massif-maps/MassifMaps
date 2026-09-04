@@ -204,6 +204,8 @@ add_executable(api_tests
   SpecSchemaTest.cpp
   # Header-only: AutoFlatten.h has no dependencies at all, so this costs the link nothing.
   AutoFlattenTest.cpp
+  # Same: CameraClearance.h is mapbox's minimum-height-over-terrain rule and nothing else.
+  CameraClearanceTest.cpp
   # Same: DrapeStackCuts.h is the ordering rule and nothing else.
   DrapeStackCutsTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.

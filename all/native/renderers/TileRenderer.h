@@ -194,6 +194,14 @@ namespace massif {
         static Color evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState);
         static float evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState);
 
+        /**
+         * True once, after the GL renderer was created with tiles already waiting. Those tiles
+         * missed their label placement pass - cullLabels does nothing without a GL renderer - and
+         * a still camera never asks for another, so a labels-only layer stays invisible until the
+         * user pans. The owning layer answers by requesting a placement pass.
+         */
+        bool consumeLabelPlacementOwed();
+
     private:
         struct LabelOcclusionState;
 
@@ -248,6 +256,7 @@ namespace massif {
         std::shared_ptr<vt::TileTransformer> _tileTransformer;
 
         std::shared_ptr<VTRenderer> _vtRenderer;
+        bool _labelPlacementOwed = false; // see consumeLabelPlacementOwed
         bool _interactionMode;
         float _layerBlendingSpeed;
         float _labelBlendingSpeed;

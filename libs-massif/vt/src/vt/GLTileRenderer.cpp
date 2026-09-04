@@ -3259,6 +3259,14 @@ namespace massif::vt {
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                    // BEFORE the drape test, which now asks whether the chord resolved: a span that
+                    // is draped never reaches the draw below, so resolving there left it draped for
+                    // good - it could not lift because it was baked, and it was baked because it
+                    // had not lifted.
+                    bool span = !geometry->getSpanRecords().empty();
+                    if (span) {
+                        resolveSpanBases(renderLayer->sourceTileId, geometry);
+                    }
                     // Draped fills/lines are baked into the drape texture already - unless the
                     // layer opted out of the bake (setNoDrapeLayerFilter), in which case this pass
                     // is the only one that draws it.
@@ -3281,11 +3289,8 @@ namespace massif::vt {
                         // letters disappeared over 3D terrain, only where the ground is draped
                         // (a draped tile draws its surface at TRUE depth and writes it).
                         // A span takes its height from its own two ends, so it is NOT a decal on
-                        // the ground and must not be pulled towards it.
-                        bool span = !geometry->getSpanRecords().empty();
-                        if (span) {
-                            resolveSpanBases(renderLayer->sourceTileId, geometry);
-                        }
+                        // the ground and must not be pulled towards it. (Resolved above, before the
+                        // drape test that now reads the result.)
                         bool decal = terrainVTF && !span && (geometry->getType() == TileGeometry::Type::LINE || geometry->getType() == TileGeometry::Type::POINT);
                         if (decal) {
                             glEnable(GL_POLYGON_OFFSET_FILL);
@@ -5433,10 +5438,13 @@ namespace massif::vt {
                     drapeOrtho = *clipZoom * drapeOrtho;
                 }
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    // A span leaves the GROUND's bake by construction (isDrapeableGeometry) because
-                    // a baked pixel IS the ground. The deck's own drape is the exact complement: the
-                    // span content and nothing else, so the road lands on the deck carrying it and
-                    // not on the valley floor beside it.
+                    // A span leaves the GROUND's bake once it has a chord (isDrapeableGeometry)
+                    // because a baked pixel IS the ground. The deck's own drape is the exact
+                    // complement: the span content and nothing else, so the road lands on the deck
+                    // carrying it and not on the valley floor beside it. Taken here whether or not
+                    // the chord resolved - the extrusion lifts on its own ring's chord, which
+                    // resolves before a road line's does, and gated on resolution the deck came up
+                    // bare, a slab of structure colour with no road on it.
                     bool span = !geometry->getSpanRecords().empty();
                     bool wanted = spanOnly ? span : isDrapeableGeometry(geometry);
                     if (wanted && isLayerDraped(renderLayer.layer)) {
@@ -5971,8 +5979,13 @@ namespace massif::vt {
 
     bool GLTileRenderer::isDrapeableGeometry(const std::shared_ptr<TileGeometry>& geometry) const {
         // A span is a structure that does NOT lie on the ground, and a baked pixel IS the ground -
-        // so it leaves the bake by construction, whatever the layer filter says.
-        if (!geometry->getSpanRecords().empty()) {
+        // so it leaves the bake, whatever the layer filter says. But only ONCE IT HAS A CHORD: an
+        // unresolved span keeps the sentinel and the vertex shaders leave it on the terrain, so
+        // taken out of the bake it is live geometry exactly coplanar with the surface the bake is
+        // painted on. The two meshes tesselate differently, so their interpolated depth disagrees
+        // by float noise per fragment - a bridge apron over a river dissolves into the water it is
+        // fighting. Draped it looks like the flat map, which is what the ground it sits on is.
+        if (!geometry->getSpanRecords().empty() && geometry->isBaseResolved()) {
             return false;
         }
         TileGeometry::Type type = geometry->getType();
@@ -6099,6 +6112,17 @@ namespace massif::vt {
             combine(renderLayer.layer->getGeometries().size() * 2654435761u
                   ^ renderLayer.layer->getBitmaps().size() * 40503u
                   ^ renderLayer.layer->getBackgrounds().size());
+            // A span moves in and out of the bake as its chord resolves (isDrapeableGeometry), and
+            // that is invisible to everything above: the layer, the tile and the geometry count are
+            // all unchanged. Without this the tile keeps the bake it had, so a bridge that lifts
+            // stays painted flat on the ground under itself.
+            std::size_t resolvedSpans = 0;
+            for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                if (!geometry->getSpanRecords().empty()) {
+                    resolvedSpans = resolvedSpans * 2 + (geometry->isBaseResolved() ? 1 : 0);
+                }
+            }
+            combine(resolvedSpans);
         }
         if (anyContent && hash == 0) {
             hash = 1;

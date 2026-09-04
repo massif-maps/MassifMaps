@@ -1,0 +1,109 @@
+{
+  "$comment": "Written by fetch-commons.mjs. Public domain for COPYRIGHT; the marks are still registered trademarks of their operators.",
+  "icons": {
+    "gb-national-rail": {
+      "file": "File:National Rail logo.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ANational%20Rail%20logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/3/31/National_Rail_logo.svg",
+      "licence": "Public domain",
+      "author": "Gerry Barney of Design Research Unit",
+      "bytes": 259
+    },
+    "london-underground": {
+      "file": "File:Underground (no text).svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AUnderground%20(no%20text).svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Underground_%28no_text%29.svg",
+      "licence": "Public domain",
+      "author": "Dream out loud",
+      "bytes": 840
+    },
+    "london-overground": {
+      "file": "File:Overground roundel (no text).svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AOverground%20roundel%20(no%20text).svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/7/73/Overground_roundel_%28no_text%29.svg",
+      "licence": "Public domain",
+      "author": "Kevin Steinhardt",
+      "bytes": 854
+    },
+    "london-dlr": {
+      "file": "File:DLR roundel (no text).svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ADLR%20roundel%20(no%20text).svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/a/a9/DLR_roundel_%28no_text%29.svg",
+      "licence": "Public domain",
+      "author": "oahiyeel",
+      "bytes": 852
+    },
+    "london-tfl-rail": {
+      "file": "File:TFL Rail roundel.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ATFL%20Rail%20roundel.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/3/3f/TFL_Rail_roundel.svg",
+      "licence": "Public domain",
+      "author": "Transport for London",
+      "bytes": 1830
+    },
+    "paris-transilien": {
+      "file": "File:Paris transit icons - Train.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AParis%20transit%20icons%20-%20Train.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/9/96/Paris_transit_icons_-_Train.svg",
+      "licence": "Public domain",
+      "author": "Île-de-France Mobilités (original)Chabe01 (original uploads)Minoa (optimisation)",
+      "bytes": 1172
+    },
+    "tokyo-metro": {
+      "file": "File:Tokyo Metro logo (full).svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ATokyo%20Metro%20logo%20(full).svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Tokyo_Metro_logo_%28full%29.svg",
+      "licence": "Public domain",
+      "author": "Imagener",
+      "bytes": 6626
+    },
+    "new-york-subway": {
+      "file": "File:MTA New York City Subway logo.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AMTA%20New%20York%20City%20Subway%20logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/7/7a/MTA_New_York_City_Subway_logo.svg",
+      "licence": "Public domain",
+      "author": "™/®Metropolitan Transportation Authority",
+      "bytes": 9098
+    },
+    "osaka-subway": {
+      "file": "File:Osaka Metro logo.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AOsaka%20Metro%20logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/2/22/Osaka_Metro_logo.svg",
+      "licence": "Public domain",
+      "author": "™/®Osaka Metro Co., Ltd.",
+      "bytes": 6552
+    },
+    "taipei-metro": {
+      "file": "File:Taipei mrt logo.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ATaipei%20mrt%20logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Taipei_mrt_logo.svg",
+      "licence": "Public domain",
+      "author": "臺北大眾捷運股份有限公司",
+      "bytes": 8354
+    },
+    "delhi-metro": {
+      "file": "File:Delhi Metro logo.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ADelhi%20Metro%20logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/6/65/Delhi_Metro_logo.svg",
+      "licence": "Public domain",
+      "author": "unstated",
+      "bytes": 3002
+    },
+    "san-francisco-bart": {
+      "file": "File:Bart-logo.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ABart-logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/2/26/Bart-logo.svg",
+      "licence": "Public domain",
+      "author": "Bay Area Rapid Transit District",
+      "bytes": 5972
+    },
+    "philadelphia-septa": {
+      "file": "File:SEPTA.svg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ASEPTA.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/c/ca/SEPTA.svg",
+      "licence": "Public domain",
+      "author": "Dream out loud",
+      "bytes": 1311
+    }
+  }
+}

@@ -3182,25 +3182,14 @@ namespace massif {
                         std::vector<SeedSource> sources;
                         // Finer tiles first: they are the ones just replaced, at full detail, and
                         // together they tile this one exactly.
-                        std::function<void(const vt::TileId&, int)> collectDescendants = [&](const vt::TileId& parent, int depth) {
-                            for (int dy = 0; dy < 2; dy++) {
-                                for (int dx = 0; dx < 2; dx++) {
-                                    vt::TileId child = parent.getChild(dx, dy);
-                                    unsigned int childTexture = _terrainDrapeCache->findBaked(child, 0);
-                                    if (childTexture != 0) {
-                                        int levels = child.zoom - tileId.zoom;
-                                        int span = 1 << levels;
-                                        int ix = child.x - (tileId.x << levels);
-                                        int iy = child.y - (tileId.y << levels);
-                                        // Mirrored y: texture v runs north, the XYZ tile y runs south.
-                                        sources.push_back(SeedSource { childTexture, static_cast<float>(ix) / span, static_cast<float>(span - 1 - iy) / span, 1.0f / span, 0.0f, 0.0f, 1.0f });
-                                    } else if (depth > 0) {
-                                        collectDescendants(child, depth - 1);
-                                    }
-                                }
-                            }
-                        };
-                        collectDescendants(tileId, 2);
+                        for (const std::pair<vt::TileId, unsigned int>& descendant : _terrainDrapeCache->findBakedDescendants(tileId, 0)) {
+                            int levels = descendant.first.zoom - tileId.zoom;
+                            int span = 1 << levels;
+                            int ix = descendant.first.x - (tileId.x << levels);
+                            int iy = descendant.first.y - (tileId.y << levels);
+                            // Mirrored y: texture v runs north, the XYZ tile y runs south.
+                            sources.push_back(SeedSource { descendant.second, static_cast<float>(ix) / span, static_cast<float>(span - 1 - iy) / span, 1.0f / span, 0.0f, 0.0f, 1.0f });
+                        }
                         if (sources.empty()) {
                             vt::TileId ancestor = tileId;
                             float offsetX = 0.0f, offsetY = 0.0f, scale = 1.0f;
@@ -3308,26 +3297,21 @@ namespace massif {
                             // over the top, several levels deep. They must come AFTER this tile's own
                             // entry - the surfaces coincide and the later draw wins, so pushed first
                             // they are buried under the fill they replace (the white screen).
-                            std::function<void(const vt::TileId&, int)> drawBakedDescendants = [&](const vt::TileId& tileId, int depth) {
-                                for (int dy = 0; dy < 2; dy++) {
-                                    for (int dx = 0; dx < 2; dx++) {
-                                        vt::TileId child = tileId.getChild(dx, dy);
-                                        unsigned int childTexture = _terrainDrapeCache->findBaked(child, 0);
-                                        if (childTexture != 0 && sceneDisplaced && !hasElevationData(child)) {
-                                            childTexture = 0; // cached picture, but no ground to put it on
-                                        }
-                                        if (childTexture != 0 && (wantedMask & ~_terrainDrapeCache->bakedLayerMask(child, 0)) != 0) {
-                                            childTexture = 0; // as incomplete as the tile it would stand in for
-                                        }
-                                        if (childTexture != 0) {
-                                            drapedTiles.push_back(DrapedTile { child, childTexture, 0.0f, 0.0f, 1.0f });
-                                        } else if (depth > 0) {
-                                            drawBakedDescendants(child, depth - 1);
-                                        }
-                                    }
+                            std::vector<std::pair<vt::TileId, unsigned int>> descendants = _terrainDrapeCache->findBakedDescendants(it->first, 0);
+                            for (std::size_t i = 0; i < descendants.size(); i++) {
+                                const vt::TileId& descendantTileId = descendants[i].first;
+                                // A descendant that cannot be drawn does not take its own
+                                // descendants down with it: they are the finer generation, and one
+                                // of them may well be usable where this one is not.
+                                bool usable = !(sceneDisplaced && !hasElevationData(descendantTileId)) // no ground to put the picture on
+                                    && (wantedMask & ~_terrainDrapeCache->bakedLayerMask(descendantTileId, 0)) == 0; // as incomplete as the tile it stands in for
+                                if (!usable) {
+                                    std::vector<std::pair<vt::TileId, unsigned int>> finer = _terrainDrapeCache->findBakedDescendants(descendantTileId, 0);
+                                    descendants.insert(descendants.end(), finer.begin(), finer.end());
+                                    continue;
                                 }
-                            };
-                            drawBakedDescendants(it->first, 2);
+                                drapedTiles.push_back(DrapedTile { descendantTileId, descendants[i].second, 0.0f, 0.0f, 1.0f });
+                            }
                         }
                         // A mask evicted on its own - it is a separate cache entry - would leave the
                         // tile's live layers unmasked for as long as the colour drape stays current,
@@ -3561,6 +3545,7 @@ namespace massif {
                     for (auto it = staleTiles.begin(); it != staleTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
                         bakeTile(*it);
                     }
+
                     // Baking is rationed over several frames, so it only finishes if those frames
                     // happen. Nothing else asks for them: the tile arrived, its layer redrew once,
                     // and the budget took the first few tiles. On a map that now goes idle the rest

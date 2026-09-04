@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <map>
+#include <utility>
 #include <vector>
 
 #include <vt/TileId.h>
@@ -124,6 +125,19 @@ namespace massif {
          * every integer zoom step and left a screen of flat fills behind.
          */
         unsigned int findBaked(const vt::TileId& tileId, int stack);
+        /**
+         * The COARSEST baked tiles inside this one, whatever their depth: what a tile zoomed out
+         * from stands in on until its own bake lands. Walking the tree a fixed number of levels
+         * instead costs 4^depth lookups, so it was capped at two - and a pinch that crosses three
+         * or more levels then found nothing, leaving half the ground painted in the flat clear
+         * colour for those frames. The cache holds at most MAX_ENTRIES tiles, so one pass over it
+         * answers this at any depth.
+         *
+         * Coarsest wins: a tile whose own ancestor is in the result is left out, so the result
+         * covers the ground once rather than several times over. Everything returned counts as
+         * USED for this frame, for the reason findBaked does.
+         */
+        std::vector<std::pair<vt::TileId, unsigned int>> findBakedDescendants(const vt::TileId& tileId, int stack);
         /**
          * Returns the framebuffer to bake into, creating it on first use.
          */

@@ -406,8 +406,24 @@ buffer the bake has no equivalent of.
 
 Stand-ins from the previous generation are pushed **after** the tile's own entry, not before: the
 surfaces coincide and the later draw wins, so pushed first they are buried under the fill they were
-meant to replace — the whole screen going white for a moment on every zoom out. Several levels deep,
-because one gesture crosses several zooms.
+meant to replace — the whole screen going white for a moment on every zoom out.
+
+**At any depth, and found in the cache rather than in the tile tree.** Walking the tree down costs
+4^depth lookups, so the search was capped at two levels — and a pinch out crossing three or more
+levels then found nothing, leaving the leaf painted in the flat clear colour. The cache holds at
+most `MAX_ENTRIES` tiles, so one pass over *it* answers the same question at any depth:
+`TerrainDrapeCache::findBakedDescendants` returns the coarsest baked tiles inside a leaf (a tile
+whose own ancestor is in the result is left out, or the ground is painted twice at two
+tesselations). The same call feeds both the seed and the stand-in draw. A descendant that cannot be
+drawn — no elevation under it, or a layer mask as incomplete as the tile it would stand in for —
+does not take its own descendants down with it; they are the finer generation and one of them may
+well be usable. The selection rule is `DrapeStandIn::coarsestCover`, free of GL so it is testable on
+the host (`tests/api/DrapeStandInTest.cpp`).
+
+Measured on the day-cycle-light example, the same fast pinch out on emulator-5556, counting the
+surfaces actually drawn as a flat fill in a frame: worst frame **11 of 19 (58 %) → 9 of 25 (36 %)**.
+What is left is a cold cache, where there is genuinely nothing to stand in on — the remaining fills
+cluster in the first second after launch.
 
 A leaf already drawing its **own** bake does not get the finer generation stacked on top of it even
 when that bake is incomplete: it covers this ground and is merely missing a layer, with the re-bake

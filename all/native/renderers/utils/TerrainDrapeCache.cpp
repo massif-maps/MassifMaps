@@ -1,5 +1,6 @@
 #include "TerrainDrapeCache.h"
 #include "renderers/utils/GLContext.h"
+#include "terrain/DrapeStandIn.h"
 
 #ifdef __ANDROID__
 #include <sys/system_properties.h>
@@ -242,6 +243,28 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         it->second.used = true;
         it->second.lastUsedFrame = _frameCounter;
         return it->second.texture;
+    }
+
+    std::vector<std::pair<vt::TileId, unsigned int>> TerrainDrapeCache::findBakedDescendants(const vt::TileId& tileId, int stack) {
+        // _entries is ordered by (zoom, x, y), so the candidates come out coarsest first, which is
+        // what coarsestCover expects.
+        std::vector<vt::TileId> candidates;
+        std::vector<Entry*> entries;
+        for (auto it = _entries.begin(); it != _entries.end(); it++) {
+            if (it->first.stack != stack || !it->second.baked || it->second.stale) {
+                continue; // same rule as findBaked: a stale entry is the previous stack's picture
+            }
+            candidates.push_back(it->first.tileId);
+            entries.push_back(&it->second);
+        }
+
+        std::vector<std::pair<vt::TileId, unsigned int>> result;
+        for (std::size_t index : DrapeStandIn::coarsestCover(tileId, candidates)) {
+            entries[index]->used = true;
+            entries[index]->lastUsedFrame = _frameCounter;
+            result.emplace_back(candidates[index], entries[index]->texture);
+        }
+        return result;
     }
 
     unsigned int TerrainDrapeCache::getFrameBuffer() {

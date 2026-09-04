@@ -69,6 +69,7 @@ void testCameraClearance();
 void testElevationNodeField();
 void testDayCycleLight();
 void testDrapeStackCuts();
+void testDrapeStandIn();
 void testDrapeTuning();
 void testShadowCasterRing();
 void testTerrainTesselation();
@@ -432,6 +433,7 @@ int main() {
     testElevationNodeField();
     testDayCycleLight();
     testDrapeStackCuts();
+    testDrapeStandIn();
     testDrapeTuning();
     testShadowCasterRing();
     testTerrainTesselation();

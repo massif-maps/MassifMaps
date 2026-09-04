@@ -34,6 +34,9 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const = 0;
 
+        // Whether the layer needs the shared extrusion anchor pass - see buildExtrusionAnchors.
+        virtual bool needsExtrusionAnchors() const { return false; }
+
     protected:
         explicit Symbolizer(std::shared_ptr<Logger> logger) : _logger(std::move(logger)) {
             bindProperty("comp-op", &_compOp);

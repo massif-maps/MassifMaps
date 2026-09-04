@@ -1,4 +1,5 @@
 #include "TileReader.h"
+#include "vt/ExtrusionAnchors.h"
 #include "Predicate.h"
 #include "PredicateUtils.h"
 #include "Expression.h"
@@ -159,6 +160,61 @@ namespace massif::mvt {
         const std::set<std::string>* filterFieldsPtr = filterFields.count(std::string()) == 0 ? &filterFields : nullptr;
         const std::set<std::string>* symbolizerFieldsPtr = symbolizerFields.count(std::string()) == 0 ? &symbolizerFields : nullptr;
         const std::set<std::string>* styleFieldsPtr = styleFields.count(std::string()) == 0 ? &styleFields : nullptr;
+
+        // One anchor per BUILDING, before anything is drawn: the pieces of one building have to
+        // read the ground at the same place or they stand at different heights, and the pieces this
+        // tile does not draw are part of deciding where that place is. Skipped unless the layer
+        // actually extrudes.
+        // Nothing to share on a flat map: with one ground elevation everywhere every anchor answers
+        // the same, and the pass is pure decode cost.
+        bool extrudes = _transformer && _transformer->isElevationBased();
+        if (extrudes) {
+            extrudes = false;
+            for (const std::shared_ptr<const Rule>& rule : rules) {
+                for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
+                    extrudes = extrudes || symbolizer->needsExtrusionAnchors();
+                }
+            }
+        }
+        if (extrudes) {
+            // One pass per LAYER, not per style: a layer drawn by two extruding styles reads the
+            // same features and groups them the same way.
+            auto cacheIt = _extrusionAnchors.find(layer.get());
+            if (cacheIt != _extrusionAnchors.end()) {
+                layerBuilder.setPolygon3DAnchors(cacheIt->second);
+                extrudes = false;
+            }
+        }
+        if (extrudes) {
+            static const std::set<std::string> anchorFields { "building_id" };
+            if (auto anchorIt = createUnclippedFeatureIterator(layer, &anchorFields)) {
+                std::vector<vt::ExtrusionFootprint> footprints;
+                for (; anchorIt->valid(); anchorIt->advance()) {
+                    std::shared_ptr<const Geometry> geometry = anchorIt->getGeometry();
+                    const PolygonGeometry* polygonGeometry = (geometry ? std::get_if<PolygonGeometry>(geometry.get()) : nullptr);
+                    if (!polygonGeometry) {
+                        continue;
+                    }
+                    long long buildingId = 0;
+                    if (std::shared_ptr<const FeatureData> featureData = anchorIt->getFeatureData(false, &anchorFields)) {
+                        Value value;
+                        if (featureData->getVariable("building_id", value)) {
+                            if (const long long* id = std::get_if<long long>(&value)) {
+                                buildingId = *id;
+                            }
+                        }
+                    }
+                    for (const PolygonGeometry::VerticesList& verticesList : polygonGeometry->getPolygonList()) {
+                        if (!verticesList.empty()) {
+                            footprints.push_back(vt::ExtrusionFootprint { anchorIt->getLocalId(), buildingId, verticesList });
+                        }
+                    }
+                }
+                auto anchors = std::make_shared<const std::unordered_map<long long, cglib::vec2<float>>>(vt::buildExtrusionAnchors(footprints, getSourceBox()));
+                _extrusionAnchors[layer.get()] = anchors;
+                layerBuilder.setPolygon3DAnchors(anchors);
+            }
+        }
 
         FeatureCollection batchFeatureCollection;
         std::shared_ptr<Symbolizer::FeatureProcessor> batchFeatureProcessor;

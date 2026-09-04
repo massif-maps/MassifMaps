@@ -44,11 +44,27 @@ namespace massif::mvt {
             _tileIdOffset = tileIdOffset;
         }
 
+        /**
+         * The box the tile's own data covers, in the coordinates the features come out in. The unit
+         * square under the identity transform, an ancestor's box under overzoom - the edges the
+         * server cut the geometry at, which is what an anchor shared across a cut has to agree on.
+         */
+        cglib::bbox2<float> getSourceBox() const {
+            cglib::bbox2<float> box = cglib::bbox2<float>::smallest();
+            for (int i = 0; i < 4; i++) {
+                box.add(cglib::transform_point(cglib::vec2<float>(i & 1 ? 1.0f : 0.0f, i & 2 ? 1.0f : 0.0f), _transform));
+            }
+            return box;
+        }
+
         virtual std::vector<std::string> getLayerNames() const = 0;
 
         virtual bool hasLayer(const std::string& name) const = 0;
 
-        virtual std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const = 0;
+        // `clip` off yields every feature of the layer, whatever the clip box - the anchor pass
+        // needs the parts of a building this tile does not draw. It runs on its own caches, so it
+        // cannot leak an out-of-box geometry into the drawing pass.
+        virtual std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields, bool clip = true) const = 0;
 
         virtual bool findFeature(long long localId, std::string& layerName, Feature& feature) const = 0;
 

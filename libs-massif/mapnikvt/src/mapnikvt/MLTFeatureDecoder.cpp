@@ -10,6 +10,7 @@
 #include <mlt/tile.hpp>
 
 #include <algorithm>
+#include <limits>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
@@ -346,13 +347,22 @@ namespace massif::mvt {
         return _layerMap.find(name) != _layerMap.end();
     }
 
-    std::shared_ptr<FeatureDecoder::FeatureIterator> MLTFeatureDecoder::createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const {
+    std::shared_ptr<FeatureDecoder::FeatureIterator> MLTFeatureDecoder::createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields, bool clip) const {
         auto layerIt = _layerMap.find(name);
         if (layerIt == _layerMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
         int layerIndex = layerIt->second;
         const mlt::Layer& layer = _tile->getLayers()[layerIndex];
+
+        // Its own cache - see MBVTFeatureDecoder for why an unclipped pass must not fill the
+        // shared one.
+        if (!clip) {
+            auto geometryCache = std::make_shared<GeometryCache>();
+            geometryCache->reserve(layer.getFeatures().size());
+            cglib::bbox2<float> everything(cglib::vec2<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()), cglib::vec2<float>(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()));
+            return std::make_shared<MLTFeatureIterator>(_tile, &layer, layerIndex, _layerKeys[layerIndex], fields, _transform, everything, _featureIdOverride, _tileIdOffset, geometryCache);
+        }
 
         std::lock_guard<std::mutex> lock(_layerCacheMutex);
         if (_layerGeometryCache.first != name) {

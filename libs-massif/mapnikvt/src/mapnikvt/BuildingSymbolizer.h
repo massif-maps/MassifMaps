@@ -26,6 +26,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual bool needsExtrusionAnchors() const override { return true; }
+
     protected:
         ColorFunctionProperty _fill = ColorFunctionProperty("#808080");
         FloatFunctionProperty _fillOpacity = FloatFunctionProperty(1.0f);

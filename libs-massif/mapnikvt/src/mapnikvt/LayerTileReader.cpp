@@ -18,6 +18,14 @@ namespace massif::mvt {
         return _featureDecoder.createLayerFeatureIterator(resolveLayerName(layer), fields);
     }
 
+    std::shared_ptr<FeatureDecoder::FeatureIterator> LayerTileReader::createUnclippedFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const {
+        return _featureDecoder.createLayerFeatureIterator(resolveLayerName(layer), fields, false);
+    }
+
+    cglib::bbox2<float> LayerTileReader::getSourceBox() const {
+        return _featureDecoder.getSourceBox();
+    }
+
     bool LayerTileReader::hasLayer(const std::shared_ptr<const Layer>& layer) const {
         return _featureDecoder.hasLayer(resolveLayerName(layer));
     }

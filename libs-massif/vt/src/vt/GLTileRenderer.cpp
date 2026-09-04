@@ -4204,11 +4204,24 @@ namespace massif::vt {
         // is written unless every anchor answered - then the floors, one query per rising vertex
         // position, once. Interleaved, a geometry with one anchor still waiting for its DEM redid
         // every floor query on every frame, and the render thread held its mutex for seconds.
+        //
+        // A run is a stretch of vertices sharing an anchor; the PIECES of one building share the
+        // anchor too (buildExtrusionAnchors) and need not be contiguous, so the floor below is
+        // accumulated per anchor rather than per run - a floor per run would step a building whose
+        // parts got separated in the vertex order.
+        struct Anchor {
+            cglib::vec2<float> pos;
+            double base = 0;
+            double maxGround = 0;
+            double maxHeightZ = 0;
+            bool haveGround = false;
+        };
         struct Run {
             std::size_t begin, end;
-            cglib::vec2<float> anchor;
-            double base;
+            std::size_t anchorIndex;
         };
+        std::vector<Anchor> anchors;
+        std::map<std::pair<std::int32_t, std::int32_t>, std::size_t> anchorIndices;
         std::vector<Run> runs;
         for (std::size_t i = 0; i < vertexCount; ) {
             const std::int16_t* texCoordPtr = reinterpret_cast<const std::int16_t*>(vertexGeometry.data() + i * params.vertexSize + params.texCoordOffset);
@@ -4228,53 +4241,73 @@ namespace massif::vt {
             // sentinel and is retried next frame: writing the provider's 0 instead is what buried
             // every building, a base of 0 where the ground is 215 m puts the prism under the
             // terrain.
-            Run run { i, j, cglib::vec2<float>(u / params.texCoordScale, v / params.texCoordScale), 0.0 };
-            cglib::vec2<double> internalPos = cglib::transform_point(cglib::vec2<double>(run.anchor(0), 1.0 - run.anchor(1)), tileMatrix);
-            if (!_extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), sourceTileId.zoom, true, run.base)) {
-                return false; // still drawn, on the per-vertex ground, until the elevation lands
+            auto anchorIt = anchorIndices.find(std::make_pair(u, v));
+            if (anchorIt == anchorIndices.end()) {
+                Anchor anchor;
+                anchor.pos = cglib::vec2<float>(u / params.texCoordScale, v / params.texCoordScale);
+                cglib::vec2<double> internalPos = cglib::transform_point(cglib::vec2<double>(anchor.pos(0), 1.0 - anchor.pos(1)), tileMatrix);
+                if (!_extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), sourceTileId.zoom, true, anchor.base)) {
+                    return false; // still drawn, on the per-vertex ground, until the elevation lands
+                }
+                anchorIt = anchorIndices.emplace(std::make_pair(u, v), anchors.size()).first;
+                anchors.push_back(anchor);
             }
-            runs.push_back(run);
+            runs.push_back(Run { i, j, anchorIt->second });
             i = j;
         }
-        for (const Run& run : runs) {
-            double tileUnitsPerMeter = tileTransformer->calculateHeight(run.anchor, 1.0f);
-            cglib::vec2<double> internalPos = cglib::transform_point(cglib::vec2<double>(run.anchor(0), 1.0 - run.anchor(1)), tileMatrix);
-            double metersToZ = metersToInternal * std::cosh(2.0 * 3.14159265358979323846 * internalPos(1));
-            // mapbox's floor (fill_extrusion.vertex.glsl: max(c_ele + height, ele + base + 2)),
-            // PER VERTEX as theirs is: a vertex that rises keeps at least 2 m above the drawn
-            // ground under it, so a low part whose smoothed anchor sits under its own lidar street
-            // is still a building and not a hole, and nothing on a hillside is buried uphill -
-            // which is what mapbox's flatElevation lift was for; the lift is not kept, its span
-            // corners lie off the footprint and one on the Tuileries terrace lifted a wing 5 m.
-            // Per vertex because every other form was PER TILE: a floor over the foot ring read
-            // only the ring vertices this tile's clip kept, and the same slab came out 31.6 m in
-            // one tile and 34.4 m in the next. The ground is asked through the provider, not the
-            // tile's texture, so a vertex past the tile edge gets its real ground. Roofs of LOW
-            // parts follow the ground where the floor bites; tall buildings never feel it.
-            std::int16_t lastX = 0, lastY = 0;
-            double lastGround = 0;
-            bool haveLastGround = false, lastGroundValid = false;
-            for (std::size_t k = run.begin; k < run.end; k++) {
-                double vertexBase = run.base;
-                if (params.heightOffset >= 0 && params.coordOffset >= 0 && params.coordScale > 0) {
+        // mapbox's floor (fill_extrusion.vertex.glsl: max(c_ele + height, ele + base + 2)): a
+        // building keeps at least 2 m above the drawn ground under it, so a part whose smoothed
+        // anchor sits under its own lidar street is still a building and not a hole, and nothing on
+        // a hillside is buried uphill - which is what mapbox's flatElevation lift was for; the lift
+        // is not kept, its span corners lie off the footprint and one on the Tuileries terrace
+        // lifted a wing 5 m. Theirs is per VERTEX; ours is per building, over the ground its own
+        // rising vertices stand on and against its TALLEST of them. Per vertex, a low part's roof
+        // followed the 0.84 m lidar down every bump it covers - the roof has to stay one plane, and
+        // one plane per building is the whole point of the anchor. The ground is asked through the
+        // provider, not the tile's texture, so a vertex past the tile edge gets its real ground.
+        if (params.heightOffset >= 0 && params.coordOffset >= 0 && params.coordScale > 0) {
+            for (const Run& run : runs) {
+                Anchor& anchor = anchors[run.anchorIndex];
+                double tileUnitsPerMeter = tileTransformer->calculateHeight(anchor.pos, 1.0f);
+                if (tileUnitsPerMeter <= 0) {
+                    continue;
+                }
+                cglib::vec2<double> anchorPos = cglib::transform_point(cglib::vec2<double>(anchor.pos(0), 1.0 - anchor.pos(1)), tileMatrix);
+                double metersToZ = metersToInternal * std::cosh(2.0 * 3.14159265358979323846 * anchorPos(1));
+                std::int16_t lastX = 0, lastY = 0;
+                bool haveLast = false;
+                for (std::size_t k = run.begin; k < run.end; k++) {
                     const std::uint8_t* vertex = vertexGeometry.data() + k * params.vertexSize;
                     std::int16_t heightUnits = reinterpret_cast<const std::int16_t*>(vertex + params.heightOffset)[0];
+                    if (heightUnits <= 0) {
+                        continue;
+                    }
+                    anchor.maxHeightZ = std::max(anchor.maxHeightZ, heightUnits / static_cast<double>(params.heightScale) / tileUnitsPerMeter * metersToZ);
                     const std::int16_t* coord = reinterpret_cast<const std::int16_t*>(vertex + params.coordOffset);
-                    if (heightUnits > 0) {
-                        if (!haveLastGround || coord[0] != lastX || coord[1] != lastY) {
-                            cglib::vec2<double> at = cglib::transform_point(cglib::vec2<double>(coord[0] / static_cast<double>(params.coordScale), 1.0 - coord[1] / static_cast<double>(params.coordScale)), tileMatrix);
-                            lastGroundValid = _extrusionElevationProvider(cglib::vec3<double>(at(0), at(1), 0), sourceTileId.zoom, false, lastGround);
-                            lastX = coord[0];
-                            lastY = coord[1];
-                            haveLastGround = true;
-                        }
-                        if (lastGroundValid && tileUnitsPerMeter > 0) {
-                            double heightZ = heightUnits / static_cast<double>(params.heightScale) / tileUnitsPerMeter * metersToZ;
-                            vertexBase = std::max(vertexBase, lastGround + 2.0 * metersToZ - heightZ);
-                        }
+                    if (haveLast && coord[0] == lastX && coord[1] == lastY) {
+                        continue;
+                    }
+                    lastX = coord[0];
+                    lastY = coord[1];
+                    haveLast = true;
+                    cglib::vec2<double> at = cglib::transform_point(cglib::vec2<double>(coord[0] / static_cast<double>(params.coordScale), 1.0 - coord[1] / static_cast<double>(params.coordScale)), tileMatrix);
+                    double ground = 0;
+                    if (_extrusionElevationProvider(cglib::vec3<double>(at(0), at(1), 0), sourceTileId.zoom, false, ground)) {
+                        double floorBase = ground + 2.0 * metersToZ;
+                        anchor.maxGround = anchor.haveGround ? std::max(anchor.maxGround, floorBase) : floorBase;
+                        anchor.haveGround = true;
                     }
                 }
-                geometry->setVertexBase(k, static_cast<float>(vertexBase));
+            }
+        }
+        for (const Run& run : runs) {
+            const Anchor& anchor = anchors[run.anchorIndex];
+            double base = anchor.base;
+            if (anchor.haveGround) {
+                base = std::max(base, anchor.maxGround - anchor.maxHeightZ);
+            }
+            for (std::size_t k = run.begin; k < run.end; k++) {
+                geometry->setVertexBase(k, static_cast<float>(base));
             }
         }
         geometry->setBaseResolved(true);

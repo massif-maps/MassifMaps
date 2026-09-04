@@ -23,6 +23,10 @@ namespace massif::mvt {
         
         virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const override;
 
+        virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createUnclippedFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const override;
+
+        virtual cglib::bbox2<float> getSourceBox() const override;
+
         virtual bool hasLayer(const std::shared_ptr<const Layer>& layer) const override;
 
         std::string resolveLayerName(const std::shared_ptr<const Layer>& layer) const;

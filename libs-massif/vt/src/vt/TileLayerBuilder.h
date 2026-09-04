@@ -84,6 +84,11 @@ namespace massif::vt {
         // down. mapbox's fill-extrusion-rounded-roof.
         void setPolygon3DRoundedRoof(bool rounded) { _polygon3DRoundedRoof = rounded; }
         void setPolygonClipBox(const cglib::bbox2<float>& clipBox);
+        // The point each extruded footprint reads its ground at, keyed by the id the processor is
+        // called with. Every piece of one building shares an entry, so the pieces stand at one
+        // elevation instead of stepping against each other; a footprint the table does not name
+        // falls back to its own centroid. Built by buildExtrusionAnchors.
+        void setPolygon3DAnchors(std::shared_ptr<const std::unordered_map<long long, cglib::vec2<float>>> anchors) { _polygon3DAnchors = std::move(anchors); }
 
         void addBackground(const std::shared_ptr<TileBackground>& background);
         void addBitmap(const std::shared_ptr<TileBitmap>& bitmap);
@@ -218,6 +223,8 @@ namespace massif::vt {
         // The current extrusion's footprint centroid, carried by every one of its vertices. The
         // renderer resolves the ground there once, on the CPU (GLTileRenderer::resolveExtrusionBases).
         cglib::vec2<float> _polygon3DCentroid = cglib::vec2<float>(0, 0);
+        std::shared_ptr<const std::unordered_map<long long, cglib::vec2<float>>> _polygon3DAnchors;
+        const cglib::vec2<float>* _polygon3DAnchor = nullptr; // the current footprint's entry, if it has one
         // How far any anchor of this layer lies from the tile, so packGeometry can fit the coord
         // scale to it: a palace's centroid is tiles away from the z20 piece drawing it.
         float _polygon3DAnchorExtent = 0.0f;

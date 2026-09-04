@@ -594,6 +594,13 @@ namespace massif::vt {
                 minHeight = 0.0f;
             }
             std::size_t i0 = _coords.size();
+            _polygon3DAnchor = nullptr;
+            if (_polygon3DAnchors) {
+                auto anchorIt = _polygon3DAnchors->find(id);
+                if (anchorIt != _polygon3DAnchors->end()) {
+                    _polygon3DAnchor = &anchorIt->second;
+                }
+            }
             tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);
             if (span) {
                 // A deck stands on its chord, so min-height/height are measured from that rather
@@ -1867,14 +1874,21 @@ namespace massif::vt {
         }
         // The anchor every vertex of this extrusion is elevated at: the mean of the OUTER ring, as
         // maplibre's fill-extrusion does. A building is a rigid prism standing at one elevation -
-        // sampling the terrain per vertex instead shears the roof down the slope.
+        // sampling the terrain per vertex instead shears the roof down the slope. The anchor pass
+        // overrides it where this footprint is one piece of a bigger building, so the pieces do not
+        // step against each other (see setPolygon3DAnchors).
         _polygon3DCentroid = cglib::vec2<float>(0, 0);
-        if (!pointsList.empty() && !pointsList[0].empty()) {
+        if (_polygon3DAnchor || (!pointsList.empty() && !pointsList[0].empty())) {
             cglib::vec2<float> centroid(0, 0);
-            for (const cglib::vec2<float>& p : pointsList[0]) {
-                centroid = centroid + p;
+            if (_polygon3DAnchor) {
+                centroid = *_polygon3DAnchor;
             }
-            centroid = centroid * (1.0f / pointsList[0].size());
+            else {
+                for (const cglib::vec2<float>& p : pointsList[0]) {
+                    centroid = centroid + p;
+                }
+                centroid = centroid * (1.0f / pointsList[0].size());
+            }
             // Through the transformer, like the coords beside it: calculatePoint FLIPS Y, and
             // GLTileRenderer::resolveExtrusionBases reads this back to know where to ask for the
             // ground. Stored unflipped it asks at a mirrored position - a different hill entirely.

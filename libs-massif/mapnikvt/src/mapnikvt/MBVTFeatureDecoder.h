@@ -30,7 +30,7 @@ namespace massif::mvt {
 
         virtual bool hasLayer(const std::string& name) const override;
 
-        virtual std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const override;
+        virtual std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields, bool clip = true) const override;
 
         virtual bool findFeature(long long localId, std::string& layerName, Feature& feature) const override;
 

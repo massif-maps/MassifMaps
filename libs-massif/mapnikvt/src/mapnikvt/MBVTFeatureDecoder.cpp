@@ -382,12 +382,23 @@ namespace massif::mvt {
         return _layerMap.find(name) != _layerMap.end();
     }
 
-    std::shared_ptr<FeatureDecoder::FeatureIterator> MBVTFeatureDecoder::createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const {
+    std::shared_ptr<FeatureDecoder::FeatureIterator> MBVTFeatureDecoder::createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields, bool clip) const {
         auto layerIt = _layerMap.find(name);
         if (layerIt == _layerMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
         int layerIndex = layerIt->second;
+
+        // Its own caches: the shared geometry cache holds only features the clip box KEPT, and
+        // getGeometry returns a cached one without re-testing it, so an unclipped pass filling that
+        // cache would hand the drawing pass features from the next tile over.
+        if (!clip) {
+            auto geometryCache = std::make_shared<GeometryCache>();
+            geometryCache->reserve(_tile->layers(layerIndex).features_size());
+            auto featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
+            cglib::bbox2<float> everything(cglib::vec2<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()), cglib::vec2<float>(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()));
+            return std::make_shared<MBVTFeatureIterator>(_tile, layerIndex, fields, _transform, everything, _featureIdOverride, _tileIdOffset, geometryCache, featureDataCache);
+        }
 
         std::lock_guard<std::mutex> lock(_layerCacheMutex);
         std::string key = name;

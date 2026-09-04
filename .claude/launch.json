@@ -24,6 +24,18 @@
         "tools/style-cli/wasm"
       ],
       "port": 8099
+    },
+    {
+      "name": "mbref",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8231",
+        "--directory",
+        "/tmp/mbref"
+      ],
+      "port": 8231
     }
   ]
 }

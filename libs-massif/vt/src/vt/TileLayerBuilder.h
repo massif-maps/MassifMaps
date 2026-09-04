@@ -120,16 +120,36 @@ namespace massif::vt {
             cglib::vec2<float> translate;
             CompOp compOp;
             int glyphRenderSize;
+            // A span carries a per-vertex slot a draped line has no room for, so the two cannot
+            // share one geometry - a mode change splits the batch (see createLineProcessor).
+            LineElevationMode elevationMode;
 
             // patternUsed defaults to TRUE so every path that does not manage it (lines, points)
             // keeps sampling its pattern; only the polygon processor sets it per slot.
             BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), lineStrokeIds(), patternUsed(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternUsed.fill(true); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
+        // What a span vertex knows about its own feature, stamped per vertex and folded into
+        // TileGeometry::SpanRecord at pack time (nothing on the GPU reads it).
+        struct SpanVertexInfo {
+            cglib::vec4<float> ends = cglib::vec4<float>(0, 0, 0, 0);
+            long long featureId = 0;
+            bool portal0 = false, portal1 = false;
+            float baseOffset = 0.0f; // see TileGeometry::SpanRecord::baseOffset
+            bool operator == (const SpanVertexInfo& other) const {
+                return featureId == other.featureId && portal0 == other.portal0 && portal1 == other.portal1 && baseOffset == other.baseOffset
+                    && ends(0) == other.ends(0) && ends(1) == other.ends(1) && ends(2) == other.ends(2) && ends(3) == other.ends(3);
+            }
+        };
+
+        // The span a filled ring stands on: its two vertices FARTHEST APART, which for a
+        // deck-shaped ring are its ends. Shared by the flat bed and the extruded deck.
+        static SpanVertexInfo spanInfoForRing(const Vertices& ring, long long id, float baseOffset = 0.0f);
+
         void packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         // The skirt stream, packed once per layer into its own POLYGON3DGROUND geometry.
         void packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
-        void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
+        void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<SpanVertexInfo>& spanInfos, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         void registerStyleVariantSlot(int styleIndex);
 
         bool tesselateGlyph(const cglib::vec2<float>& point, std::int8_t styleIndex, const cglib::vec2<float>& pen, const cglib::vec2<float>& size, const GlyphMap::Glyph* glyph);
@@ -190,6 +210,11 @@ namespace massif::vt {
         VertexArray<cglib::vec2<float>> _binormals;
         VertexArray<float> _heights;
         VertexArray<cglib::vec4<std::int8_t>> _attribs;
+        // A SPAN/UNDERGROUND line's own two ends and feature id, stamped on every vertex it
+        // produced. The renderer resolves the ground at the feature's PORTALS - unioned across the
+        // tiles that cut it - and interpolates along the chord, so the DEM in between (the spike a
+        // DSM caught off a bridge deck included) never reaches the deck. Empty for a draped one.
+        VertexArray<SpanVertexInfo> _spanInfos;
         // The current extrusion's footprint centroid, carried by every one of its vertices. The
         // renderer resolves the ground there once, on the CPU (GLTileRenderer::resolveExtrusionBases).
         cglib::vec2<float> _polygon3DCentroid = cglib::vec2<float>(0, 0);

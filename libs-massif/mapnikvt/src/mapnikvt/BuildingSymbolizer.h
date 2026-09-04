@@ -21,6 +21,7 @@ namespace massif::mvt {
             bindProperty("min-height", &_minHeight);
             bindProperty("roof-shape", &_roofShape);
             bindProperty("roof-height", &_roofHeight);
+            bindProperty("elevation-mode", &_elevationMode);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -34,6 +35,9 @@ namespace massif::mvt {
         // has always been; the rest raise a roof on top of the walls rather than capping them.
         StringProperty _roofShape = StringProperty("flat");
         FloatProperty _roofHeight = FloatProperty(0.0f);
+        // 'span' stands the prism on its own chord instead of on the ground - a bridge DECK, whose
+        // min-height/height are then a thickness rather than a height above the terrain.
+        StringProperty _elevationMode = StringProperty("drape");
 
         ColorFunctionBuilder _fillFuncBuilder;
     };

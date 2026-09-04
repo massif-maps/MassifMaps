@@ -401,6 +401,28 @@ namespace massif::vt {
     }
 
     void Label::updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) {
+        applyElevation(sampleElevation(heightFunc));
+    }
+
+    std::vector<double> Label::sampleElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) const {
+        std::vector<double> heights;
+        heights.reserve(_tilePoints.size() + _tileLines.size() * 4 + 1);
+        for (const TilePoint& tilePoint : _tilePoints) {
+            heights.push_back(heightFunc(tilePoint.position));
+        }
+        for (const TileLine& tileLine : _tileLines) {
+            for (const cglib::vec3<double>& vertex : tileLine.vertices) {
+                heights.push_back(heightFunc(vertex));
+            }
+        }
+        // The placement's own anchor last, for a point placement (see applyElevation).
+        if (_placement) {
+            heights.push_back(heightFunc(_placement->position));
+        }
+        return heights;
+    }
+
+    void Label::applyElevation(const std::vector<double>& heights) {
         // Refresh anchor heights from the elevation data. Label geometry is built when the
         // tile is decoded, possibly before its elevation data has arrived - this re-anchors
         // the labels onto the terrain when the elevation version changes. A line placement
@@ -408,8 +430,12 @@ namespace massif::vt {
         // glyph run keeps following the terrain profile it is drawn over.
         bool changed = false;
         _elevationAnchored = true;
+        std::size_t n = 0;
         for (TilePoint& tilePoint : _tilePoints) {
-            double height = heightFunc(tilePoint.position);
+            if (n >= heights.size()) {
+                return; // geometry grew since the sample (a merge): sampled again next time
+            }
+            double height = heights[n++];
             if (height != tilePoint.position(2)) {
                 tilePoint.position(2) = height;
                 changed = true;
@@ -417,7 +443,10 @@ namespace massif::vt {
         }
         for (TileLine& tileLine : _tileLines) {
             for (cglib::vec3<double>& vertex : tileLine.vertices) {
-                double height = heightFunc(vertex);
+                if (n >= heights.size()) {
+                    return;
+                }
+                double height = heights[n++];
                 if (height != vertex(2)) {
                     vertex(2) = height;
                     changed = true;
@@ -458,7 +487,9 @@ namespace massif::vt {
             }
         }
         if (!placement) {
-            position(2) = heightFunc(position);
+            if (n < heights.size()) {
+                position(2) = heights[n];
+            }
             auto pointPlacement = std::make_shared<Placement>(*_placement);
             pointPlacement->position = position;
             placement = std::move(pointPlacement);

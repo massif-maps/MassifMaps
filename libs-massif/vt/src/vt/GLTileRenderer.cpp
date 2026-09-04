@@ -1,4 +1,5 @@
 #include "GLTileRenderer.h"
+#include "SpanGeometry.h"
 #include "GLTileRendererShaders.h"
 #include "Color.h"
 #include "TileGeometryIterator.h"
@@ -8,10 +9,12 @@
 #include "RenderStats.h"
 
 #include <cassert>
+#include <unordered_map>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <set>
 
 namespace {
     const GLvoid* bufferGLOffset(int offset) {
@@ -967,7 +970,7 @@ namespace massif::vt {
         _pendingLabelElevationTiles.insert(_pendingLabelElevationTiles.end(), tileIds.begin(), tileIds.end());
     }
 
-    void GLTileRenderer::setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, double&)> provider) {
+    void GLTileRenderer::setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)> provider) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _extrusionElevationProvider = std::move(provider);
@@ -978,6 +981,12 @@ namespace massif::vt {
         // A counter rather than the labels' per-tile list: setVertexBase is a no-op when the height
         // has not moved, so a needless re-resolve costs the elevation queries and uploads nothing.
         _extrusionBaseVersion.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    void GLTileRenderer::invalidateExtrusionBases(const std::vector<TileId>& tileIds) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _pendingExtrusionBaseTiles.insert(_pendingExtrusionBaseTiles.end(), tileIds.begin(), tileIds.end());
     }
 
     void GLTileRenderer::updateTerrainSkirts() {
@@ -1108,7 +1117,7 @@ namespace massif::vt {
         return _colorFuncCache.emplace(key, std::make_pair(func.function(), value)).first->second.second;
     }
     
-    void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles) {
+    void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles) {
         using TilePair = std::pair<TileId, std::shared_ptr<const Tile>>;
 
         // Clear the 'visible' label list for now (used only for culling)
@@ -1137,6 +1146,9 @@ namespace massif::vt {
 
         // All other operations must be synchronized
         VT_STAT_CLOCK(visibleClock);
+        std::vector<std::shared_ptr<Label>> dirtyLabels;
+        std::function<double(const cglib::vec3<double>&)> heightFunc;
+        {
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_SPLIT(setVisibleTilesLockNs, visibleClock);
 
@@ -1150,6 +1162,41 @@ namespace massif::vt {
         VT_STAT_SPLIT(labelMapsNs, visibleClock);
         buildRenderTiles(tiles);
         VT_STAT_SPLIT(renderTilesNs, visibleClock);
+        buildSpanUnions(tiles, spanReferenceTiles);
+        VT_STAT_SPLIT(spanUnionsNs, visibleClock);
+        // The labels this tile set brought, and the whole screen when a deck resolved: named
+        // here, sampled below OFF the lock, applied under it again.
+        if (_labelElevationProvider && _labelAnchorOnCull) {
+            markPendingLabelsDirty();
+            for (const std::shared_ptr<Label>& label : _labels) {
+                if (label->isElevationDirty()) {
+                    dirtyLabels.push_back(label);
+                }
+            }
+            heightFunc = labelHeightFunc();
+        }
+        }
+
+        // Anchoring the new labels onto the terrain used to wait for the next frame, on the
+        // render thread: a tile set that brought 300 labels was a 50-75 ms frame at ~233 us
+        // each. Sampled here on the cull thread with the lock RELEASED - the frame keeps
+        // drawing the labels at their old height meanwhile - and written back under it. A
+        // sample reads the geometry's x,y only, which nothing changes after a label is built;
+        // the z it writes belongs to this thread and the frame's own re-anchor, both locked.
+        if (!dirtyLabels.empty()) {
+            std::vector<std::vector<double>> heights(dirtyLabels.size());
+            for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
+                heights[i] = dirtyLabels[i]->sampleElevation(heightFunc);
+            }
+            std::lock_guard<std::mutex> lock(_mutex);
+            for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
+                if (dirtyLabels[i]->isElevationDirty()) {
+                    dirtyLabels[i]->applyElevation(heights[i]);
+                    dirtyLabels[i]->setElevationDirty(false);
+                }
+            }
+            VT_STAT_SPLIT(labelAnchorNs, visibleClock);
+        }
     }
 
     const std::set<TileId>& GLTileRenderer::terrainSurfaceTileIds() const {
@@ -1382,46 +1429,51 @@ namespace massif::vt {
         }
         VT_STAT_SPLIT(prepTileBlendNs, prepClock);
         
-        // Re-anchor labels onto the terrain. Label geometry is built flat when its tile is
-        // decoded, so a newly built label is always anchored here; an existing one only when
-        // the elevation under one of its tiles changed. Anchoring costs an elevation sample
-        // per label vertex - doing it for every label whenever any elevation tile decodes (or
-        // whenever the visible tile set changes, which rebuilds the label list) resamples the
-        // whole screen several times a second while panning.
+        // Re-anchor labels onto the terrain - here only for the elevation tiles that landed since
+        // the last frame. A NEW label is anchored where the tile set is built (setVisibleTiles,
+        // on the cull thread): built flat when its tile decodes, it used to wait for this frame,
+        // and a tile-set change that brought 300 labels was a 50-75 ms frame at ~233 us each.
         if (_labelElevationProvider) {
-            if (_pendingLabelElevationAll || !_pendingLabelElevationTiles.empty()) {
-                for (const std::shared_ptr<Label>& label : _labels) {
-                    if (label->isElevationDirty()) {
-                        continue;
-                    }
-                    if (_pendingLabelElevationAll) {
-                        label->setElevationDirty(true);
-                        continue;
-                    }
-                    for (const TileId& tileId : _pendingLabelElevationTiles) {
-                        if (label->hasGeometryOverTile(tileId)) {
-                            label->setElevationDirty(true);
-                            break;
+            refresh = anchorDirtyLabels() || refresh;
+            VT_STAT_SPLIT(prepElevUpdateNs, prepClock);
+        }
+
+        // Only the extrusions standing over an elevation tile that just landed. A building's
+        // centroid is inside its own tile, so matching the geometry's SOURCE tile against the
+        // changed one is exact - and it is what keeps a DEM tile arriving from re-resolving every
+        // base on screen. Spans are excluded: a chord samples its portals, which are routinely
+        // outside the tile, so they follow the global version instead.
+        if (!_pendingExtrusionBaseTiles.empty()) {
+            if (_renderTiles) {
+                for (const RenderTile& renderTile : *_renderTiles) {
+                    for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                        const RenderTileLayer& renderLayer = it->second;
+                        if (!renderLayer.layer) {
+                            continue;
+                        }
+                        bool affected = false;
+                        for (const TileId& tileId : _pendingExtrusionBaseTiles) {
+                            if (renderLayer.sourceTileId.getWrapped().intersects(tileId)) { // elevation and content tiles are different sets
+                                affected = true;
+                                break;
+                            }
+                        }
+                        if (!affected && !renderLayer.layer->hasSpanGeometry()) {
+                            continue; // nothing here to re-resolve
+                        }
+                        for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                            // A span samples its PORTALS, which sit outside the tile as often as
+                            // not, so no tile test can say whether it went stale - and there are
+                            // few enough of them that redoing all of them costs nothing.
+                            bool span = !geometry->getSpanRecords().empty();
+                            if (span || (affected && geometry->getType() == TileGeometry::Type::POLYGON3D)) {
+                                geometry->setBaseResolved(false);
+                            }
                         }
                     }
                 }
-                _pendingLabelElevationAll = false;
-                _pendingLabelElevationTiles.clear();
             }
-            VT_STAT_SPLIT(prepElevDirtyNs, prepClock);
-            // Re-anchoring costs one elevation sample per label vertex (~233 us a label) and a
-            // whole screen of labels goes dirty at once while elevation tiles stream in, so
-            // this loop is 2.5-4.1 ms of a frame. It still has to run to completion: a label
-            // left dirty is drawn, and culled, at the height it had before the elevation
-            // arrived - which reads as labels popping in at the wrong place and then settling.
-            for (const std::shared_ptr<Label>& label : _labels) {
-                if (label->isElevationDirty()) {
-                    label->updateElevation(_labelElevationProvider);
-                    label->setElevationDirty(false);
-                    refresh = true;
-                }
-            }
-            VT_STAT_SPLIT(prepElevUpdateNs, prepClock);
+            _pendingExtrusionBaseTiles.clear();
         }
 
         // Update labels
@@ -3163,7 +3215,7 @@ namespace massif::vt {
                     // Draped fills/lines are baked into the drape texture already - unless the
                     // layer opted out of the bake (setNoDrapeLayerFilter), in which case this pass
                     // is the only one that draws it.
-                    if (drapedTile && isDrapeableGeometry(geometry->getType()) && isLayerDraped(renderLayer->layer)) {
+                    if (drapedTile && isDrapeableGeometry(geometry) && isLayerDraped(renderLayer->layer)) {
                         continue;
                     }
                     // POLYGON3DGROUND is a contact shadow for the 3D pass, not 2D content.
@@ -3181,7 +3233,13 @@ namespace massif::vt {
                         // glyph of clipped text is tens of metres wide - and it was left out: whole
                         // letters disappeared over 3D terrain, only where the ground is draped
                         // (a draped tile draws its surface at TRUE depth and writes it).
-                        bool decal = terrainVTF && (geometry->getType() == TileGeometry::Type::LINE || geometry->getType() == TileGeometry::Type::POINT);
+                        // A span takes its height from its own two ends, so it is NOT a decal on
+                        // the ground and must not be pulled towards it.
+                        bool span = !geometry->getSpanRecords().empty();
+                        if (span) {
+                            resolveSpanBases(renderLayer->sourceTileId, geometry);
+                        }
+                        bool decal = terrainVTF && !span && (geometry->getType() == TileGeometry::Type::LINE || geometry->getType() == TileGeometry::Type::POINT);
                         if (decal) {
                             glEnable(GL_POLYGON_OFFSET_FILL);
                             glPolygonOffset(-2.0f, -8.0f);
@@ -3309,7 +3367,20 @@ namespace massif::vt {
                     if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
                         // Always drawn: an extrusion whose ground has not resolved yet keeps the
                         // sentinel and the shader falls back to the ground under each vertex.
-                        resolveExtrusionBases(renderLayer->sourceTileId, renderLayer->targetTileId, geometry);
+                        bool baseResolved = resolveExtrusionBases(renderLayer->sourceTileId, renderLayer->targetTileId, geometry);
+                        // ...but that fallback is only safe for a BUILDING, whose base is the ground
+                        // it stands on anyway. A span deck's base is its chord, hundreds of metres
+                        // up: mixing resolved and sentinel vertices stretches a wall between the two
+                        // and the deck fans out across the valley. Wait for the whole piece instead.
+                        //
+                        // And a deck is a 3D THING ON TERRAIN: with the map flat, or before the DEM
+                        // has arrived, there is no chord for it to stand on and a bridge drawn as a
+                        // box over a flat map is simply wrong. Both cases are one test - no terrain,
+                        // or a base that has not resolved - and both mean "not yet", not "draw it
+                        // somewhere plausible".
+                        if (!geometry->getSpanRecords().empty() && (!_terrainMode || !baseResolved)) {
+                            continue;
+                        }
                         // NOTE: geometry comp op is not supported for 3D polygons. Blending is disabled, setGLBlendState not needed
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, pass.geometryOpacity, renderLayer->tileSize, geometry);
                     }
@@ -3905,6 +3976,9 @@ namespace massif::vt {
             glUniform1f(shaderProgram.uniforms[U_BASESCALE], 0.0f);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], 1.0f, 1.0f, 1.0f, 1.0f);
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
+            glUniform1i(shaderProgram.uniforms[U_ELEVATIONNODETEXTURE], 1);
+            glUniform4f(shaderProgram.uniforms[U_ELEVATIONNODEUV], 0.0f, 0.0f, 0.0f, 0.0f);
+            glUniform4f(shaderProgram.uniforms[U_ELEVATIONNODETEXELSIZE], 1.0f, 1.0f, 1.0f, 1.0f);
             glUniform2f(shaderProgram.uniforms[U_TILEUNITSCALE], 0.0f, 0.0f); // no tile clipping without elevation
             glUniform2f(shaderProgram.uniforms[U_TILEUNITOFFSET], 0.0f, 0.0f);
             glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], 0.0f);
@@ -3915,12 +3989,31 @@ namespace massif::vt {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, terrainTexture.textureId);
         glUniform1i(shaderProgram.uniforms[U_ELEVATIONTEXTURE], 1);
+        // The node texture, which the VERTEX stage displaces from (see commonVsh). A provider
+        // without one hands the full texture over in its place, and the vertex stage samples the
+        // DEM point by point as it used to.
+        bool nodes = terrainTexture.nodeTextureId != 0 && terrainTexture.nodeTextureSize(0) > 0 && terrainTexture.nodeTextureSize(1) > 0
+                  && terrainTexture.nodeSize(0) > 0 && terrainTexture.nodeSize(1) > 0;
+                glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, nodes ? terrainTexture.nodeTextureId : terrainTexture.textureId);
+        glUniform1i(shaderProgram.uniforms[U_ELEVATIONNODETEXTURE], 5);
         glActiveTexture(GL_TEXTURE0);
 
         cglib::vec2<double> frameOrigin(vertexFrameMatrix(0, 3), vertexFrameMatrix(1, 3));
         cglib::vec2<double> frameScale(vertexFrameMatrix(0, 0), vertexFrameMatrix(1, 1));
         double invSizeX = 1.0 / terrainTexture.internalSize(0);
         double invSizeY = 1.0 / terrainTexture.internalSize(1);
+        const cglib::vec2<double>& nodeOrigin = nodes ? terrainTexture.nodeOrigin : terrainTexture.internalOrigin;
+        double invNodeSizeX = 1.0 / (nodes ? terrainTexture.nodeSize(0) : terrainTexture.internalSize(0));
+        double invNodeSizeY = 1.0 / (nodes ? terrainTexture.nodeSize(1) : terrainTexture.internalSize(1));
+        glUniform4f(shaderProgram.uniforms[U_ELEVATIONNODEUV],
+            static_cast<float>((frameOrigin(0) - nodeOrigin(0)) * invNodeSizeX),
+            static_cast<float>((frameOrigin(1) - nodeOrigin(1)) * invNodeSizeY),
+            static_cast<float>(frameScale(0) * invNodeSizeX),
+            static_cast<float>(frameScale(1) * invNodeSizeY));
+        float nodeTexelSizeX = static_cast<float>(std::max(1, nodes ? terrainTexture.nodeTextureSize(0) : terrainTexture.textureSize(0)));
+        float nodeTexelSizeY = static_cast<float>(std::max(1, nodes ? terrainTexture.nodeTextureSize(1) : terrainTexture.textureSize(1)));
+        glUniform4f(shaderProgram.uniforms[U_ELEVATIONNODETEXELSIZE], nodeTexelSizeX, nodeTexelSizeY, 1.0f / nodeTexelSizeX, 1.0f / nodeTexelSizeY);
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONUV],
             static_cast<float>((frameOrigin(0) - terrainTexture.internalOrigin(0)) * invSizeX),
             static_cast<float>((frameOrigin(1) - terrainTexture.internalOrigin(1)) * invSizeY),
@@ -3933,15 +4026,15 @@ namespace massif::vt {
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], texelSizeX, texelSizeY, 1.0f / texelSizeX, 1.0f / texelSizeY);
         // Lattice clamp: draped geometry snaps its height to the same regular grid the surface is
         // built from. The cell size is a property of the tile+texture, identical for the surface and
-        // every draped layer whatever their frame; 0 in adaptive mode.
+        // every draped layer whatever their frame, in NODE-uv units; 0 in adaptive mode.
         // THE SURFACE DOES NOT NEED IT - its vertices ARE the nodes, so the clamp returns the same
         // height for 16 texture fetches a vertex instead of one. Except on a stitched edge, where
         // the clamp is what bends the outermost cell onto the coarse neighbour's chords.
         bool latticeNodes = gridSurface && edgeCoarsening == cglib::vec4<float>(1, 1, 1, 1);
         if (_terrainRegularGrid && _terrainRegularGridResolution > 0 && _terrainDemTaps >= 16 && !latticeNodes) {
             double worldTileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
-            float latticeCellX = static_cast<float>(worldTileSize * invSizeX / _terrainRegularGridResolution);
-            float latticeCellY = static_cast<float>(worldTileSize * invSizeY / _terrainRegularGridResolution);
+            float latticeCellX = static_cast<float>(worldTileSize * invNodeSizeX / _terrainRegularGridResolution);
+            float latticeCellY = static_cast<float>(worldTileSize * invNodeSizeY / _terrainRegularGridResolution);
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], latticeCellX, latticeCellY);
         } else {
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
@@ -3982,6 +4075,12 @@ namespace massif::vt {
 
     bool GLTileRenderer::resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const {
         const TileGeometry::VertexGeometryLayoutParameters& params = geometry->getVertexGeometryLayoutParameters();
+        // A DECK stands on its own chord, not on the ground under it, so its base comes from the
+        // span union per vertex - the same resolve a draped span line takes. Its min-height and
+        // height are then a thickness measured from the deck, not a height above the terrain.
+        if (!geometry->getSpanRecords().empty()) {
+            return resolveSpanBases(sourceTileId, geometry);
+        }
         if (params.baseOffset < 0 || params.texCoordOffset < 0 || !_extrusionElevationProvider) {
             return true; // not an extrusion, or no elevation at all - the ground is the base
         }
@@ -4024,7 +4123,7 @@ namespace massif::vt {
                 cglib::vec2<double> tilePos(u / static_cast<double>(params.texCoordScale),
                                             1.0 - v / static_cast<double>(params.texCoordScale));
                 cglib::vec2<double> internalPos = cglib::transform_point(tilePos, tileMatrix);
-                haveHeight = _extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), lastHeight);
+                haveHeight = _extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), sourceTileId.zoom, lastHeight);
                 lastU = u;
                 lastV = v;
                 haveLast = true;
@@ -4043,6 +4142,515 @@ namespace massif::vt {
         }
         geometry->setBaseResolved(true);
         geometry->setBaseElevationVersion(version);
+        return true;
+    }
+
+    void GLTileRenderer::buildSpanUnions(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles) {
+        // One piece of one span, in world coordinates. `portalN` marks an end the tile did NOT cut.
+        struct SpanPiece {
+            cglib::vec2<double> e0, e1;
+            bool portal0 = false, portal1 = false;
+            SpanPieceKey key;
+        };
+
+        // Grouped by ZOOM alone. NOT by feature id: the symbolizer passes a TILE-LOCAL id
+        // (LineSymbolizer -> FeatureCollection::getLocalId, a layer offset plus an index), so the
+        // three tiles holding the Millau deck give its one OSM way three unrelated ids. Geometry
+        // is what identifies a piece here. Zoom still separates them - while tiles load the same
+        // bridge is present at two zooms, and pairing one simplification's end with the other's
+        // gives a different chord per geometry.
+        std::map<int, std::vector<SpanPiece>> piecesByZoom;
+        std::set<const Tile*> visited;
+        // The reference tiles first: at the source's max zoom they hold a piece UNCUT by the
+        // overzoomed targets on screen, and the visited set then skips a visible tile that is
+        // the same object.
+        std::vector<std::shared_ptr<const Tile>> spanTiles(spanReferenceTiles);
+        for (auto it = tiles.begin(); it != tiles.end(); it++) {
+            spanTiles.push_back(it->second);
+        }
+        for (const std::shared_ptr<const Tile>& tile : spanTiles) {
+            if (!tile || !visited.insert(tile.get()).second) {
+                continue;
+            }
+            // The records are in the SOURCE tile's space, the one the geometry was built in.
+            cglib::mat3x3<double> tileMatrix = calculateTileMatrix2D(tile->getTileId(), 1.0f);
+            for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                if (!layer->hasSpanGeometry()) {
+                    continue; // a style with no elevation-mode never gets past here
+                }
+                for (const std::shared_ptr<TileGeometry>& geometry : layer->getGeometries()) {
+                    for (const TileGeometry::SpanRecord& record : geometry->getSpanRecords()) {
+                        SpanPiece piece;
+                        piece.e0 = cglib::transform_point(cglib::vec2<double>(record.p0(0), 1.0 - record.p0(1)), tileMatrix);
+                        piece.e1 = cglib::transform_point(cglib::vec2<double>(record.p1(0), 1.0 - record.p1(1)), tileMatrix);
+                        piece.portal0 = record.portal0;
+                        piece.portal1 = record.portal1;
+                        piece.key = SpanPieceKey { tile->getTileId(), record.featureId, record.vertexOffset, geometry->getType() };
+                        piecesByZoom[tile->getTileId().zoom].push_back(piece);
+                    }
+                }
+            }
+        }
+
+        // Two pieces are the same structure when their CUT ends meet. The source's own buffer
+        // makes neighbouring copies OVERLAP rather than touch - the Millau pieces by ~110 m at
+        // z14 - so this is a proximity test over a fraction of a tile. Only a cut can continue
+        // into another piece; a real portal ends the run. The direction test keeps a crossing
+        // structure out of the chain.
+        auto meets = [](const SpanPiece& a, const SpanPiece& b, double tolerance2) {
+            return SpanGeometry::piecesMeet(a.e0, a.e1, a.portal0, a.portal1,
+                                            b.e0, b.e1, b.portal0, b.portal1, tolerance2);
+        };
+        // Keep the two portals FARTHEST apart: a structure can enter and leave the same tile, and
+        // it is the outermost pair the deck spans between.
+        auto addPortal = [](SpanUnion& span, const cglib::vec2<double>& p) {
+            if (!span.have0) {
+                span.portal0 = p;
+                span.have0 = true;
+                return;
+            }
+            if (!span.have1) {
+                if (p != span.portal0) {
+                    span.portal1 = p;
+                    span.have1 = true;
+                }
+                return;
+            }
+            double best = cglib::norm(span.portal1 - span.portal0);
+            if (cglib::norm(p - span.portal0) > best) {
+                span.portal1 = p;
+            }
+            else if (cglib::norm(p - span.portal1) > best) {
+                span.portal0 = p;
+            }
+        };
+
+        // Remember a resolved chord, and lend it back to a piece whose far end has left the view -
+        // or was never in it: the coarser reference tiles the owner fetches for a stranded piece
+        // (collectUnresolvedSpanEnds) resolve here too, and the zoom groups below run coarsest
+        // first, so their chord is in the cache by the time the fine pieces look for one.
+        // 512: a city view holds a chord per structure per zoom group, and at 64 the cache
+        // evicted chords the pieces on screen still borrowed, so they went stranded again.
+        constexpr std::size_t MAX_CACHED_CHORDS = 512;
+        auto rememberChord = [this](const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
+            for (CachedChord& chord : _spanChordCache) {
+                if (chord.portal0 == portal0 && chord.portal1 == portal1) {
+                    chord.stamp = ++_spanChordClock;
+                    return;
+                }
+            }
+            if (_spanChordCache.size() >= MAX_CACHED_CHORDS) {
+                auto oldest = std::min_element(_spanChordCache.begin(), _spanChordCache.end(),
+                    [](const CachedChord& a, const CachedChord& b) { return a.stamp < b.stamp; });
+                _spanChordCache.erase(oldest);
+            }
+            _spanChordCache.push_back(CachedChord { portal0, portal1, ++_spanChordClock });
+        };
+        std::vector<std::pair<int, cglib::vec2<double>>> unresolvedEnds;
+
+        std::map<SpanPieceKey, SpanUnion> spanUnions;
+        for (auto it = piecesByZoom.begin(); it != piecesByZoom.end(); it++) {
+            const std::vector<SpanPiece>& pieces = it->second;
+            // A fraction of a tile at this zoom: the overlap is the source's own buffer, so the
+            // tolerance scales with the tile, not with the ground.
+            double tolerance = 0.1 / (1 << it->first);
+            double tolerance2 = tolerance * tolerance;
+            std::vector<std::size_t> group(pieces.size());
+            for (std::size_t i = 0; i < group.size(); i++) {
+                group[i] = i;
+            }
+            std::function<std::size_t(std::size_t)> root = [&group, &root](std::size_t i) {
+                return group[i] == i ? i : (group[i] = root(group[i]));
+            };
+            // Bucketed by end, a cell per tolerance: two pieces can only meet when an end of one
+            // lies within the tolerance of an end of the other, so the candidates are the pieces
+            // with an end in the 3x3 cells around each of this one's. The quadratic pass this
+            // replaces was fine for a handful of pieces per way and took a second per build once
+            // the reference tiles brought a city's every bridge at z14 - thousands of pieces.
+            auto cellKey = [tolerance](const cglib::vec2<double>& p, int dx, int dy) -> long long {
+                long long cx = static_cast<long long>(std::floor(p(0) / tolerance)) + dx;
+                long long cy = static_cast<long long>(std::floor(p(1) / tolerance)) + dy;
+                return (cx << 32) ^ (cy & 0xffffffffLL);
+            };
+            std::unordered_map<long long, std::vector<std::size_t>> cells;
+            for (std::size_t i = 0; i < pieces.size(); i++) {
+                cells[cellKey(pieces[i].e0, 0, 0)].push_back(i);
+                cells[cellKey(pieces[i].e1, 0, 0)].push_back(i);
+            }
+            for (std::size_t i = 0; i < pieces.size(); i++) {
+                for (const cglib::vec2<double>& end : { pieces[i].e0, pieces[i].e1 }) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            auto cellIt = cells.find(cellKey(end, dx, dy));
+                            if (cellIt == cells.end()) {
+                                continue;
+                            }
+                            for (std::size_t j : cellIt->second) {
+                                if (j > i && meets(pieces[i], pieces[j], tolerance2)) {
+                                    group[root(i)] = root(j);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            std::map<std::size_t, SpanUnion> groupUnions;
+            std::map<std::size_t, std::vector<cglib::vec2<double>>> groupEnds;
+            for (std::size_t i = 0; i < pieces.size(); i++) {
+                if (pieces[i].portal0) {
+                    addPortal(groupUnions[root(i)], pieces[i].e0);
+                }
+                if (pieces[i].portal1) {
+                    addPortal(groupUnions[root(i)], pieces[i].e1);
+                }
+                std::vector<cglib::vec2<double>>& ends = groupEnds[root(i)];
+                ends.push_back(pieces[i].e0);
+                ends.push_back(pieces[i].e1);
+            }
+            // How far the group's own geometry reaches, which is what its chord has to span.
+            std::map<std::size_t, double> groupDiameters2;
+            for (auto endsIt = groupEnds.begin(); endsIt != groupEnds.end(); endsIt++) {
+                const std::vector<cglib::vec2<double>>& ends = endsIt->second;
+                double diameter2 = 0;
+                for (std::size_t a = 0; a < ends.size(); a++) {
+                    for (std::size_t b = a + 1; b < ends.size(); b++) {
+                        diameter2 = std::max(diameter2, cglib::norm(ends[a] - ends[b]));
+                    }
+                }
+                groupDiameters2[endsIt->first] = diameter2;
+            }
+            for (std::size_t i = 0; i < pieces.size(); i++) {
+                auto groupIt = groupUnions.find(root(i));
+                SpanUnion span;
+                if (groupIt != groupUnions.end()) {
+                    span = groupIt->second;
+                }
+                // Both ends of ONE abutment, seen in two neighbouring tiles, read as two portals -
+                // and their 45 m chord passed the have0/have1 test, so the far portal being off
+                // screen looked resolved and sank a 1.3 km deck instead of borrowing its chord.
+                if (span.have0 && span.have1
+                 && !SpanGeometry::chordSpansGroup(cglib::norm(span.portal1 - span.portal0), groupDiameters2[root(i)])) {
+                    span = SpanUnion();
+                }
+                if (!span.have0 || !span.have1) {
+                    // Lend it a chord resolved earlier. Probed with the piece's own MIDPOINT, not
+                    // with a portal: a piece in the middle of a long bridge is cut at both ends and
+                    // has no portal to offer, and those are exactly the pieces left stranded when
+                    // the far end of the deck is off screen and its tiles are gone.
+                    cglib::vec2<double> middle = (pieces[i].e0 + pieces[i].e1) * 0.5;
+                    for (const CachedChord& chord : _spanChordCache) {
+                        if (!SpanGeometry::isOnChord(middle, chord.portal0, chord.portal1)) {
+                            continue;
+                        }
+                        span.portal0 = chord.portal0;
+                        span.portal1 = chord.portal1;
+                        span.have0 = span.have1 = true;
+                        span.haveHeights = false; // resolved below, against this zoom's elevation
+                        break;
+                    }
+                }
+                span.zoom = pieces[i].key.tileId.zoom;
+                if (span.have0 && span.have1) {
+                    rememberChord(span.portal0, span.portal1);
+                } else {
+                    // Still no chord: name the tiles its far ends are in, for the owner to fetch.
+                    if (!pieces[i].portal0) {
+                        unresolvedEnds.emplace_back(span.zoom, SpanGeometry::beyondCutEnd(pieces[i].e0, pieces[i].e1, span.zoom));
+                    }
+                    if (!pieces[i].portal1) {
+                        unresolvedEnds.emplace_back(span.zoom, SpanGeometry::beyondCutEnd(pieces[i].e1, pieces[i].e0, span.zoom));
+                    }
+                }
+                spanUnions[pieces[i].key] = span;
+            }
+        }
+        _unresolvedSpanEnds = std::move(unresolvedEnds);
+
+        // A dual carriageway is TWO features running side by side, and sampling each one's own
+        // abutment put the two decks 20 m apart vertically - one visibly stepping over the other.
+        // Spans that start and end together are one structure, so they share one chord.
+        constexpr double PAIR_TOLERANCE = 100.0 / 40075017.0; // 100 m, in normalized world units
+        {
+            std::vector<SpanUnion*> merged;
+            for (auto it = spanUnions.begin(); it != spanUnions.end(); it++) {
+                if (!it->second.have0 || !it->second.have1) {
+                    continue;
+                }
+                double tolerance2 = PAIR_TOLERANCE * PAIR_TOLERANCE;
+                cglib::vec2<double> mid = (it->second.portal0 + it->second.portal1) * 0.5;
+                double length2 = cglib::norm(it->second.portal1 - it->second.portal0);
+                SpanUnion* match = nullptr;
+                for (SpanUnion* candidate : merged) {
+                    // Their ENDS are staggered - each carriageway's bridge is tagged over a slightly
+                    // different chainage - but their middles and lengths are not.
+                    cglib::vec2<double> candidateMid = (candidate->portal0 + candidate->portal1) * 0.5;
+                    double candidateLength2 = cglib::norm(candidate->portal1 - candidate->portal0);
+                    if (cglib::norm(candidateMid - mid) < tolerance2 && length2 > 0 && candidateLength2 > 0) {
+                        double ratio = length2 / candidateLength2;
+                        if (ratio > 0.8 && ratio < 1.25) {
+                            match = candidate;
+                            break;
+                        }
+                    }
+                }
+                if (match) {
+                    it->second = *match; // one chord for both decks
+                }
+                else {
+                    merged.push_back(&it->second);
+                }
+            }
+        }
+
+        // Resolve the chord heights NOW, not when the geometry is drawn. Labels are re-anchored in
+        // startFrame, before any geometry resolves, so a chord without heights sent every label on
+        // a bridge back to the terrain - and nothing made them dirty again once the heights landed.
+        bool gainedHeights = false;
+        if (_extrusionElevationProvider) {
+            for (auto it = spanUnions.begin(); it != spanUnions.end(); it++) {
+                SpanUnion& span = it->second;
+                if (!span.have0 || !span.have1 || span.haveHeights) {
+                    continue;
+                }
+                double h0 = 0, h1 = 0;
+                if (_extrusionElevationProvider(cglib::vec3<double>(span.portal0(0), span.portal0(1), 0), span.zoom, h0)
+                 && _extrusionElevationProvider(cglib::vec3<double>(span.portal1(0), span.portal1(1), 0), span.zoom, h1)) {
+                    span.height0 = h0;
+                    span.height1 = h1;
+                    span.haveHeights = true;
+                    gainedHeights = true;
+                }
+            }
+        }
+
+        if (spanUnions != _spanUnions) {
+            _spanUnions = std::move(spanUnions);
+            rebuildSpanChords();
+            _spanUnionVersion.fetch_add(1, std::memory_order_relaxed);
+        }
+        if (gainedHeights) {
+            _pendingLabelElevationAll = true; // a deck a label could not reach before
+        }
+    }
+
+    void GLTileRenderer::markPendingLabelsDirty() {
+        // Label geometry is built flat when its tile is decoded, so a newly built label is
+        // always dirty; an existing one only when the elevation under one of its tiles changed.
+        // Doing it for every label whenever any elevation tile decodes (or whenever the visible
+        // tile set changes, which rebuilds the label list) resamples the whole screen several
+        // times a second while panning.
+        if (!_pendingLabelElevationAll && _pendingLabelElevationTiles.empty()) {
+            return;
+        }
+        for (const std::shared_ptr<Label>& label : _labels) {
+            if (label->isElevationDirty()) {
+                continue;
+            }
+            if (_pendingLabelElevationAll) {
+                label->setElevationDirty(true);
+                continue;
+            }
+            for (const TileId& tileId : _pendingLabelElevationTiles) {
+                if (label->hasGeometryOverTile(tileId)) {
+                    label->setElevationDirty(true);
+                    break;
+                }
+            }
+        }
+        _pendingLabelElevationAll = false;
+        _pendingLabelElevationTiles.clear();
+    }
+
+    std::function<double(const cglib::vec3<double>&)> GLTileRenderer::labelHeightFunc() const {
+        // A label ON a bridge belongs to the deck, not to the ground under it - road names,
+        // POIs and one-way arrows are all symbols, so they all come through here.
+        if (_spanChords.empty()) {
+            return _labelElevationProvider;
+        }
+        // A copy of the chords and the provider: the sampler outlives the lock it was made under.
+        std::vector<SpanChord> chords = _spanChords;
+        std::function<double(const cglib::vec3<double>&)> provider = _labelElevationProvider;
+        double scale = _labelPositionScale;
+        return [chords, provider, scale](const cglib::vec3<double>& pos) {
+            double deck = 0;
+            if (chordHeightAt(chords, cglib::vec2<double>(pos(0) * scale, pos(1) * scale), deck)) {
+                return deck;
+            }
+            return provider(pos);
+        };
+    }
+
+    bool GLTileRenderer::anchorDirtyLabels() {
+        // Under the lock, in the frame: for the elevation tiles that landed since the last one,
+        // a few labels. Re-anchoring costs one elevation sample per label vertex (~233 us a
+        // label) and has to run to completion: a label left dirty is drawn, and culled, at the
+        // height it had before the elevation arrived - which reads as labels popping in at the
+        // wrong place and then settling. The bulk - every label a new tile set brings - is
+        // sampled off the lock in setVisibleTiles.
+        VT_STAT_CLOCK(anchorClock);
+        markPendingLabelsDirty();
+        VT_STAT_SPLIT(prepElevDirtyNs, anchorClock);
+        std::function<double(const cglib::vec3<double>&)> heightFunc = labelHeightFunc();
+        bool anchored = false;
+        for (const std::shared_ptr<Label>& label : _labels) {
+            if (label->isElevationDirty()) {
+                label->updateElevation(heightFunc);
+                label->setElevationDirty(false);
+                anchored = true;
+            }
+        }
+        return anchored;
+    }
+
+    bool GLTileRenderer::spanHeightAt(const cglib::vec2<double>& pos, double& height) const {
+        return chordHeightAt(_spanChords, pos, height);
+    }
+
+    void GLTileRenderer::rebuildSpanChords() const {
+        _spanChords.clear();
+        for (auto it = _spanUnions.begin(); it != _spanUnions.end(); it++) {
+            const SpanUnion& span = it->second;
+            if (!span.haveHeights) {
+                continue;
+            }
+            bool known = false;
+            for (const SpanChord& chord : _spanChords) {
+                if (chord.portal0 == span.portal0 && chord.portal1 == span.portal1) {
+                    known = true;
+                    break;
+                }
+            }
+            if (known) {
+                continue;
+            }
+            SpanChord chord;
+            chord.portal0 = span.portal0;
+            chord.portal1 = span.portal1;
+            chord.height0 = span.height0;
+            chord.height1 = span.height1;
+            // The bounds isOnChord could ever accept: the portals, out by the match allowance.
+            double allowance = SpanGeometry::matchAllowance(cglib::length(span.portal1 - span.portal0));
+            cglib::vec2<double> margin(allowance, allowance);
+            chord.boundsMin = cglib::vec2<double>(std::min(span.portal0(0), span.portal1(0)), std::min(span.portal0(1), span.portal1(1))) - margin;
+            chord.boundsMax = cglib::vec2<double>(std::max(span.portal0(0), span.portal1(0)), std::max(span.portal0(1), span.portal1(1))) + margin;
+            _spanChords.push_back(chord);
+        }
+    }
+
+    bool GLTileRenderer::chordHeightAt(const std::vector<SpanChord>& chords, const cglib::vec2<double>& pos, double& height) {
+        for (const SpanChord& chord : chords) {
+            if (pos(0) < chord.boundsMin(0) || pos(0) > chord.boundsMax(0) || pos(1) < chord.boundsMin(1) || pos(1) > chord.boundsMax(1)) {
+                continue;
+            }
+            if (!SpanGeometry::isOnChord(pos, chord.portal0, chord.portal1)) {
+                continue;
+            }
+            height = SpanGeometry::chordHeight(chord.height0, chord.height1,
+                                               SpanGeometry::chordParam(pos, chord.portal0, chord.portal1));
+            return true;
+        }
+        return false;
+    }
+
+    bool GLTileRenderer::resolveSpanBases(const TileId& sourceTileId, const std::shared_ptr<TileGeometry>& geometry) const {
+        const TileGeometry::VertexGeometryLayoutParameters& params = geometry->getVertexGeometryLayoutParameters();
+        const std::vector<TileGeometry::SpanRecord>& spanRecords = geometry->getSpanRecords();
+        if (params.baseOffset < 0 || spanRecords.empty() || !_extrusionElevationProvider) {
+            return true; // not a span, or no elevation at all - the line stays on the ground
+        }
+        unsigned int version = _extrusionBaseVersion.load(std::memory_order_relaxed);
+        unsigned int spanVersion = _spanUnionVersion.load(std::memory_order_relaxed);
+        if (geometry->isBaseResolved() && geometry->getBaseElevationVersion() == version && geometry->getBaseSpanVersion() == spanVersion) {
+            return true;
+        }
+        const VertexArray<std::uint8_t>& vertexGeometry = geometry->getVertexGeometry();
+        if (vertexGeometry.empty() || params.vertexSize <= 0) {
+            return false;
+        }
+
+        // On the CPU because it must be TILE-INDEPENDENT. Sampling the two ends from the elevation
+        // texture of the tile being drawn only works while they are inside it, and a long bridge's
+        // portals sit well outside the tile its middle lands in - that is the whole case here.
+        cglib::mat3x3<double> tileMatrix = calculateTileMatrix2D(sourceTileId, 1.0f);
+        std::size_t vertexCount = vertexGeometry.size() / params.vertexSize;
+        bool allResolved = true;
+        // A record's baseOffset is in metres and the chord in internal z units: the same factor
+        // the vertex shader applies to a DEM sample (metres to world z at the equator, then the
+        // mercator stretch at the vertex's own latitude), from any tile's elevation texture - the
+        // factor is the projection's, not the tile's.
+        double metersToInternal = _metersToInternal;
+        {
+            const std::pair<bool, TerrainTexture>& resolved = resolveTerrainTexture(sourceTileId);
+            if (resolved.first && resolved.second.metersToInternal > 0) {
+                metersToInternal = resolved.second.metersToInternal;
+            }
+        }
+        auto baseOffsetAt = [&](const cglib::vec2<double>& w, float metres) -> double {
+            return metres * metersToInternal * std::cosh(6.283185307179586 * w(1)); // 2 pi: normalized world y to the mercator angle
+        };
+        // Every vertex or none. A record covers the run of vertices that carried the same span
+        // info, and an EXTRUSION has vertices that no record reaches - the walls and the ground
+        // skirt are emitted around the ring, not with it. Those kept the sentinel and were drawn
+        // on the ground while the rest stood on the chord, which stretches a wall from the deck
+        // down to the valley floor: the deck fans out across half the screen. A line has no such
+        // vertices, so this only ever widens the patch for a deck.
+        std::vector<bool> patched(vertexCount, false);
+        for (const TileGeometry::SpanRecord& record : spanRecords) {
+            auto it = _spanUnions.find(SpanPieceKey { sourceTileId, record.featureId, record.vertexOffset, geometry->getType() });
+            // Both portals or nothing: a chord to a tile CUT dives to whatever the ground does
+            // there, which is worse than draping. Missing pieces resolve on a later frame.
+            if (it == _spanUnions.end() || !it->second.have0 || !it->second.have1) {
+                allResolved = false;
+                continue;
+            }
+            const cglib::vec2<double>& w0 = it->second.portal0;
+            const cglib::vec2<double>& w1 = it->second.portal1;
+            // The ground AT the junction, which is where the approach road is drawn: that road is
+            // draped, so it sits on the DEM there, and anchoring the deck to the same value is what
+            // makes the two meet instead of stepping. Usually already resolved when the union was
+            // built - labels need it a pass earlier than this - so this is the late arrival.
+            double h0 = it->second.height0, h1 = it->second.height1;
+            if (!it->second.haveHeights) {
+                if (!_extrusionElevationProvider(cglib::vec3<double>(w0(0), w0(1), 0), sourceTileId.zoom, h0)
+                 || !_extrusionElevationProvider(cglib::vec3<double>(w1(0), w1(1), 0), sourceTileId.zoom, h1)) {
+                    allResolved = false;
+                    continue;
+                }
+                it->second.height0 = h0;
+                it->second.height1 = h1;
+                it->second.haveHeights = true;
+                rebuildSpanChords();
+            }
+            std::size_t last = std::min(vertexCount, record.vertexOffset + record.vertexCount);
+            for (std::size_t i = record.vertexOffset; i < last; i++) {
+                const std::uint8_t* vertex = vertexGeometry.data() + i * params.vertexSize;
+                const std::int16_t* pos = reinterpret_cast<const std::int16_t*>(vertex + params.coordOffset);
+                cglib::vec2<double> p(pos[0] / static_cast<double>(params.coordScale), pos[1] / static_cast<double>(params.coordScale));
+                cglib::vec2<double> w = cglib::transform_point(cglib::vec2<double>(p(0), 1.0 - p(1)), tileMatrix);
+                geometry->setVertexBase(i, static_cast<float>(SpanGeometry::chordHeight(h0, h1, SpanGeometry::chordParam(w, w0, w1)) + baseOffsetAt(w, record.baseOffset)));
+                patched[i] = true;
+            }
+            // ...and the same chord for whatever the records did not reach. One geometry holds one
+            // structure here, so the first resolved chord is the right one for all of it.
+            for (std::size_t i = 0; i < vertexCount; i++) {
+                if (patched[i]) {
+                    continue;
+                }
+                const std::uint8_t* vertex = vertexGeometry.data() + i * params.vertexSize;
+                const std::int16_t* pos = reinterpret_cast<const std::int16_t*>(vertex + params.coordOffset);
+                cglib::vec2<double> p(pos[0] / static_cast<double>(params.coordScale), pos[1] / static_cast<double>(params.coordScale));
+                cglib::vec2<double> w = cglib::transform_point(cglib::vec2<double>(p(0), 1.0 - p(1)), tileMatrix);
+                geometry->setVertexBase(i, static_cast<float>(SpanGeometry::chordHeight(h0, h1, SpanGeometry::chordParam(w, w0, w1)) + baseOffsetAt(w, record.baseOffset)));
+                patched[i] = true;
+            }
+        }
+        if (!allResolved) {
+            return false;
+        }
+        geometry->setBaseResolved(true);
+        geometry->setBaseElevationVersion(version);
+        geometry->setBaseSpanVersion(spanVersion);
         return true;
     }
 
@@ -4411,6 +5019,147 @@ namespace massif::vt {
         return bakeDrapeUnits(targetTileId, std::numeric_limits<int>::min());
     }
 
+    void GLTileRenderer::setSpanDrapeTextures(const std::map<TileId, GLuint>& textures) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _spanDrapeTextures = textures;
+    }
+
+    bool GLTileRenderer::resolveSpanDrape(const TileId& targetTileId, GLuint& texture, cglib::vec4<float>& uvTransform) const {
+        if (_spanDrapeTextures.empty()) {
+            return false; // no bridge anywhere in the view - the ordinary case, and it costs one test
+        }
+        // The deck's tile, or the ancestor that holds its drape: the same sub-rect rule the
+        // coverage masks use, since a drape tile can be coarser than the geometry drawn on it.
+        for (TileId tileId = targetTileId; true; tileId = tileId.getParent()) {
+            auto it = _spanDrapeTextures.find(tileId);
+            if (it != _spanDrapeTextures.end()) {
+                float scale = 1.0f / (1 << (targetTileId.zoom - tileId.zoom));
+                float u = (targetTileId.x - (tileId.x << (targetTileId.zoom - tileId.zoom))) * scale;
+                float v = (targetTileId.y - (tileId.y << (targetTileId.zoom - tileId.zoom))) * scale;
+                texture = it->second;
+                uvTransform = cglib::vec4<float>(u, v, scale, scale);
+                // ...into the bounds the drape tile was actually baked over (bakeSpanDrapeTile).
+                auto boundsIt = _spanDrapeBounds.find(tileId);
+                if (boundsIt != _spanDrapeBounds.end()) {
+                    uvTransform = SpanGeometry::drapeTransformInBounds(uvTransform, boundsIt->second);
+                }
+                return true;
+            }
+            if (tileId.zoom <= 0) {
+                return false;
+            }
+        }
+    }
+
+    int GLTileRenderer::bakeSpanDrapeTile(const TileId& targetTileId) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        resetProgramState();
+
+        if (_terrainPaint.enabled) {
+            return 0; // a paint shades the ground; a deck is not the ground
+        }
+        // Only the deck's own bounds go into the texture (see collectSpanDrapeTiles), so the
+        // texels it does get are spent on the deck: a deck stands above the ground and is that
+        // much closer to the camera, so its drape is magnified past what the ground's is, and a
+        // tile-wide bake of a narrow deck wasted most of the texture on empty tile.
+        cglib::mat4x4<float> clipZoom = cglib::mat4x4<float>::identity();
+        auto boundsIt = _spanDrapeBounds.find(targetTileId);
+        if (boundsIt != _spanDrapeBounds.end()) {
+            clipZoom = SpanGeometry::clipZoomToBounds(boundsIt->second);
+        }
+        return bakeDrapeUnits(targetTileId, std::numeric_limits<int>::min(), true, &clipZoom);
+    }
+
+    void GLTileRenderer::collectSpanDrapeTiles(std::map<TileId, std::size_t>& spanTiles) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (_terrainPaint.enabled || !_visibleRenderTiles) {
+            return;
+        }
+        // ONLY the tiles that actually carry a bridge or a tunnel. A map with no span anywhere
+        // returns nothing here, so it pays for no texture, no bake and no cache entry.
+        // With each tile, the drape-uv bounds of what its spans cover, from the pieces' two ends
+        // (a deck ring's are its farthest pair) with a margin for the deck's width and a line's
+        // stroke: 4% of the tile, never under ~25 m. The bake covers the bounds alone.
+        std::set<TileId> keep;
+        for (const RenderTile& renderTile : *_visibleRenderTiles) {
+            if (!renderTile.visible) {
+                continue;
+            }
+            cglib::mat3x3<double> invTargetMatrix = cglib::inverse(calculateTileMatrix2D(renderTile.targetTileId, 1.0f));
+            cglib::vec4<float> bounds(1.0f, 1.0f, 0.0f, 0.0f);
+            bool anySpan = false;
+            bool anyDraped = false;
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                const RenderTileLayer& renderLayer = it->second;
+                if (!renderLayer.layer || !renderLayer.layer->hasSpanGeometry()) {
+                    continue;
+                }
+                // The bake holds the DRAPED spans (the road), but the bounds must hold the DECK that
+                // samples it, which is an extrusion and never draped. Bounded by the road alone, a
+                // deck wider than the road's margin sampled the texture's clamped edge over its
+                // outer lanes - the edge texels smeared down the deck as dark streaks and a line.
+                bool draped = hasSpanContent(renderLayer);
+                anyDraped = anyDraped || draped;
+                cglib::mat3x3<double> sourceMatrix = calculateTileMatrix2D(renderLayer.sourceTileId, 1.0f);
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                    if (geometry->getSpanRecords().empty()) {
+                        continue;
+                    }
+                    if (draped) {
+                        std::size_t& fingerprint = spanTiles[renderTile.targetTileId];
+                        fingerprint ^= reinterpret_cast<std::size_t>(geometry.get()) + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
+                    }
+                    for (const TileGeometry::SpanRecord& record : geometry->getSpanRecords()) {
+                        for (const cglib::vec2<float>& p : { record.p0, record.p1 }) {
+                            // The record is in the SOURCE tile's vertex frame; the drape's uv is the
+                            // target tile's, y up - the same path polygon3DFsh takes to sample it.
+                            cglib::vec2<double> w = cglib::transform_point(cglib::vec2<double>(p(0), 1.0 - p(1)), sourceMatrix);
+                            cglib::vec2<double> t = cglib::transform_point(w, invTargetMatrix);
+                            float u = static_cast<float>(t(0)), v = static_cast<float>(1.0 - t(1));
+                            bounds = cglib::vec4<float>(std::min(bounds(0), u), std::min(bounds(1), v), std::max(bounds(2), u), std::max(bounds(3), v));
+                            anySpan = true;
+                        }
+                    }
+                }
+            }
+            if (anySpan && anyDraped) {
+                double tileMeters = 40075017.0 / (1 << renderTile.targetTileId.zoom);
+                float margin = static_cast<float>(std::max(0.04, 25.0 / tileMeters));
+                _spanDrapeBounds[renderTile.targetTileId] = SpanGeometry::expandBounds(bounds, margin);
+                keep.insert(renderTile.targetTileId);
+            }
+        }
+        // The bounds belong to the tiles on screen; kept for every tile ever seen they grow for as
+        // long as the map is panned. A tile coming back recomputes the same bounds next pass.
+        for (auto it = _spanDrapeBounds.begin(); it != _spanDrapeBounds.end(); ) {
+            it = keep.count(it->first) ? std::next(it) : _spanDrapeBounds.erase(it);
+        }
+    }
+
+    void GLTileRenderer::collectUnresolvedSpanEnds(std::vector<std::pair<int, cglib::vec2<double>>>& ends) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        ends.insert(ends.end(), _unresolvedSpanEnds.begin(), _unresolvedSpanEnds.end());
+    }
+
+    bool GLTileRenderer::hasSpanContent(const RenderTileLayer& renderLayer) const {
+        if (!renderLayer.layer || !isLayerDraped(renderLayer.layer)) {
+            return false;
+        }
+        if (!renderLayer.layer->hasSpanGeometry()) {
+            return false; // the cheap per-layer test, so an ordinary tile stops here
+        }
+        for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+            if (!geometry->getSpanRecords().empty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     int GLTileRenderer::bakeDrapeCoverage(const TileId& targetTileId, int fromStyleLayerIdx) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -4428,7 +5177,7 @@ namespace massif::vt {
         return baked;
     }
 
-    int GLTileRenderer::bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx) {
+    int GLTileRenderer::bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx, bool spanOnly, const cglib::mat4x4<float>* clipZoom) {
         if (!_visibleRenderTiles) {
             return 0;
         }
@@ -4471,7 +5220,7 @@ namespace massif::vt {
             const RenderTile& renderTile = *renderTilePtr;
             for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
                 const RenderTileLayer& renderLayer = it->second;
-                if (!hasDrapeableContent(renderLayer)) {
+                if (!(spanOnly ? hasSpanContent(renderLayer) : hasDrapeableContent(renderLayer))) {
                     continue;
                 }
                 // A coverage bake starts part-way up the style stack: only the units ABOVE the live
@@ -4493,17 +5242,29 @@ namespace massif::vt {
                 // each case.
                 float geometryOpacity = calculateDrapeOpacity(renderLayer);
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.targetTileId, targetTileId);
-                for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
+                if (clipZoom) {
+                    drapeOrtho = *clipZoom * drapeOrtho;
+                }
+                for (const std::shared_ptr<TileBackground>& background : (spanOnly ? std::vector<std::shared_ptr<TileBackground>>() : renderLayer.layer->getBackgrounds())) {
                     renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
                     bakedPrimitives++;
                 }
-                for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
+                for (const std::shared_ptr<TileBitmap>& bitmap : (spanOnly ? std::vector<std::shared_ptr<TileBitmap>>() : renderLayer.layer->getBitmaps())) {
                     renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
                     bakedPrimitives++;
                 }
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
+                if (clipZoom) {
+                    drapeOrtho = *clipZoom * drapeOrtho;
+                }
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    if (isDrapeableGeometry(geometry->getType()) && isLayerDraped(renderLayer.layer)) {
+                    // A span leaves the GROUND's bake by construction (isDrapeableGeometry) because
+                    // a baked pixel IS the ground. The deck's own drape is the exact complement: the
+                    // span content and nothing else, so the road lands on the deck carrying it and
+                    // not on the valley floor beside it.
+                    bool span = !geometry->getSpanRecords().empty();
+                    bool wanted = spanOnly ? span : isDrapeableGeometry(geometry);
+                    if (wanted && isLayerDraped(renderLayer.layer)) {
                         renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, geometry);
                         bakedPrimitives++;
                     }
@@ -4537,10 +5298,15 @@ namespace massif::vt {
                 bool draped = isLayerDraped(renderLayer.layer);
                 bool drapeable = !renderLayer.layer->getBackgrounds().empty() || !renderLayer.layer->getBitmaps().empty();
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    drapeable = drapeable || isDrapeableGeometry(geometry->getType());
+                    drapeable = drapeable || isDrapeableGeometry(geometry);
                 }
-                if (drapeable) {
-                    drapedByLayer[renderLayer.layer->getLayerIndex()] = draped;
+                // A layer whose geometry is ALL spans - a bridge bed layer - still occupies its
+                // place in the stack. Dropping it shifts every later layer's coverage-mask index,
+                // which masked the whole road network away. Narrowed to spans on purpose: a layer
+                // of points or of 3D buildings is not drapeable either, and has been left out of
+                // this list forever, so widening it would change every existing style.
+                if (drapeable || renderLayer.layer->hasSpanGeometry()) {
+                    drapedByLayer[renderLayer.layer->getLayerIndex()] = draped && drapeable;
                 }
             }
         }
@@ -4614,6 +5380,14 @@ namespace massif::vt {
         cglib::mat4x4<double> cameraViewProj = _viewState.projectionMatrix * _viewState.cameraMatrix;
         _shadowCasterViewProj = &cameraViewProj;
         forEachVisibleExtrusion(nullptr, [this, &drawn](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+            // A SPAN extrusion is the surface its own symbols stand on: a bridge deck carries the
+            // road's one-way arrows and its name, and those anchor on the chord a few centimetres
+            // above the deck's roof. Written here, the deck's depth meets theirs within the fade
+            // ramp and the bridge hides everything on it - they flicker in as the camera moves and
+            // go again. A building has no symbols on its roof, so only the deck needs the exception.
+            if (!geometry->getSpanRecords().empty()) {
+                return true;
+            }
             // The tile's own blend, as the shadow caster uses: an extrusion fades in by GROWING,
             // so a full-height occluder hides labels behind a building that is not there yet.
             renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
@@ -5020,7 +5794,13 @@ namespace massif::vt {
         }
     }
 
-    bool GLTileRenderer::isDrapeableGeometry(TileGeometry::Type type) const {
+    bool GLTileRenderer::isDrapeableGeometry(const std::shared_ptr<TileGeometry>& geometry) const {
+        // A span is a structure that does NOT lie on the ground, and a baked pixel IS the ground -
+        // so it leaves the bake by construction, whatever the layer filter says.
+        if (!geometry->getSpanRecords().empty()) {
+            return false;
+        }
+        TileGeometry::Type type = geometry->getType();
         // The maplibre drapeable set: backgrounds, fills, lines and rasters go into the texture;
         // 3D extrusions and point symbols stay live in the scene (they are not surface-conformal,
         // so flattening them into the terrain skin would be wrong, not just imprecise).
@@ -5182,7 +5962,7 @@ namespace massif::vt {
             return true;
         }
         for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-            if (isDrapeableGeometry(geometry->getType())) {
+            if (isDrapeableGeometry(geometry)) {
                 return true;
             }
         }
@@ -5312,7 +6092,7 @@ namespace massif::vt {
                 // needs the sub-rect transform to land on the target tile's texture.
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    if (isDrapeableGeometry(geometry->getType())) {
+                    if (isDrapeableGeometry(geometry)) {
                         renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, geometry);
                     }
                 }
@@ -5777,10 +6557,10 @@ namespace massif::vt {
             shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag());
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | (styleGapWidth ? GAPWIDTH_FLAG : 0) | (styleBlur ? BLUR_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag());
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | (styleGapWidth ? GAPWIDTH_FLAG : 0) | (styleBlur ? BLUR_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (!geometry->getSpanRecords().empty() ? SPAN_FLAG : 0));
             break;
         case TileGeometry::Type::POLYGON:
-            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag());
+            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (!geometry->getSpanRecords().empty() ? SPAN_FLAG : 0));
             break;
         case TileGeometry::Type::POLYGON3DGROUND:
             // Flat on the ground, so it takes the terrain displacement and the same clearance a
@@ -5805,7 +6585,14 @@ namespace massif::vt {
             // SHADOW_SINGLE_TAP: an extrusion cannot use the terrain's screen-space mask - that holds
             // the ground's shadow, not its own - so it is the one receiver still running the kernel
             // per fragment, over a wall that is shadowed or lit almost in one piece.
-            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG : 0) | fogFlag());
+            {
+                GLuint spanDrapeTexture = 0;
+                cglib::vec4<float> spanDrapeTransform(0, 0, 1, 1);
+                bool spanDrape = !geometry->getSpanRecords().empty() && resolveSpanDrape(targetTileId, spanDrapeTexture, spanDrapeTransform);
+                shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG : 0) | (!geometry->getSpanRecords().empty() ? SPAN_FLAG : 0) | (spanDrape ? SPAN_DRAPE_FLAG : 0) | fogFlag());
+                _pendingSpanDrape = spanDrape ? spanDrapeTexture : 0;
+                _pendingSpanDrapeTransform = spanDrapeTransform;
+            }
             break;
         default:
             return;
@@ -5977,9 +6764,18 @@ namespace massif::vt {
             glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, groundTileMatrix.data());
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
             float heightUnits = 1.0f / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale;
+            bool spanDeck = !geometry->getSpanRecords().empty();
             glUniform1f(shaderProgram.uniforms[U_UVSCALE], 1.0f / vertexGeomLayoutParams.texCoordScale);
-            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], buildingHeightScale(blend) * heightUnits);
-            glUniform1f(shaderProgram.uniforms[U_SHADOWHEIGHTSCALE], casterHeightScale(blend) * heightUnits);
+            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], buildingHeightScale(blend, spanDeck) * heightUnits);
+            glUniform1f(shaderProgram.uniforms[U_SHADOWHEIGHTSCALE], casterHeightScale(blend, spanDeck) * heightUnits);
+            glUniform1f(shaderProgram.uniforms[U_FLOATINGBASE], spanDeck ? 1.0f : 0.0f);
+            if (_pendingSpanDrape != 0) {
+                glActiveTexture(GL_TEXTURE4);
+                glBindTexture(GL_TEXTURE_2D, _pendingSpanDrape);
+                glUniform1i(shaderProgram.uniforms[U_SPANDRAPETEXTURE], 4); // units 0-3 are taken (see renderTileGeometry)
+                glUniform4fv(shaderProgram.uniforms[U_SPANDRAPETRANSFORM], 1, _pendingSpanDrapeTransform.data());
+                glActiveTexture(GL_TEXTURE0);
+            }
             cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(sourceTileId));
             if (styleParams.translate) {
                 float zoomScale = std::pow(2.0f, sourceTileId.zoom - _viewState.zoom);
@@ -6180,6 +6976,7 @@ namespace massif::vt {
             if (vertexGeomLayoutParams.baseOffset >= 0) {
                 enableVertexAttrib(shaderProgram.attribs[A_VERTEXBASE], 1, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.baseOffset));
             }
+
         }
 
         if (!(vertexGeomLayoutParams.attribsOffset >= 0)) {
@@ -6198,6 +6995,7 @@ namespace massif::vt {
         if (compiledGeometry.geometryVAO != 0) {
             glBindVertexArray(0);
         } else {
+
             if (vertexGeomLayoutParams.baseOffset >= 0) {
                 disableVertexAttrib(shaderProgram.attribs[A_VERTEXBASE]);
             }

@@ -26,7 +26,17 @@ namespace massif::mvt {
         }
         float roofHeight = _roofHeight.getValue(exprContext);
 
-        vt::Polygon3DStyle style(fillFunc, geometryTransform, roofShape, roofHeight);
+        std::string elevationModeName = _elevationMode.getValue(exprContext);
+        vt::LineElevationMode elevationMode = vt::LineElevationMode::DRAPE;
+        if (elevationModeName == "span") {
+            elevationMode = vt::LineElevationMode::SPAN;
+        } else if (elevationModeName == "underground") {
+            elevationMode = vt::LineElevationMode::UNDERGROUND;
+        } else if (elevationModeName != "drape") {
+            _logger->write(Logger::Severity::WARNING, "Unsupported elevation-mode: " + elevationModeName);
+        }
+
+        vt::Polygon3DStyle style(fillFunc, geometryTransform, roofShape, roofHeight, elevationMode);
 
         return [style, height, minHeight, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             bool suppressWarning = false;

@@ -142,6 +142,8 @@ namespace massif::vt {
         static inline std::atomic<long long> tileSurfacesNs{0};
         static inline std::atomic<long long> labelMapsNs{0};
         static inline std::atomic<long long> renderTilesNs{0};
+        static inline std::atomic<long long> spanUnionsNs{0};          // bridge chords, reference tiles included
+        static inline std::atomic<long long> labelAnchorNs{0};         // new labels onto the terrain, off the render thread
         // Terrain drape bakes: how many a frame gets through, how many were waiting, and what
         // one costs. This is what decides how fast 3D content appears.
         static inline std::atomic<long long> drapeBakes{0};

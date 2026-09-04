@@ -693,6 +693,8 @@ namespace massif::css {
         { "line-arrow-path", "arrow-path" },
         { "line-arrow-scale", "arrow-scale" },
         { "line-arrow-rotation", "arrow-rotation" },
+        { "line-elevation-mode", "elevation-mode" },
+        { "polygon-elevation-mode", "elevation-mode" },
         { "line-geometry-transform", "geometry-transform" },
         { "line-comp-op", "comp-op" },
 
@@ -888,6 +890,7 @@ namespace massif::css {
         { "building-height", "height" },
         { "building-min-height", "min-height" },
         { "building-geometry-transform", "geometry-transform" },
+        { "building-elevation-mode", "elevation-mode" },
         // NOTE: comp-op not supported for building symbolizer
 
         // Config symbolizers for external data sources (CompositeVectorTileLayer).

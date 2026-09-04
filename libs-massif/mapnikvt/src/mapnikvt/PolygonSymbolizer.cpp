@@ -13,7 +13,17 @@ namespace massif::mvt {
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(fillColorFunc, fillOpacityFunc);
         std::optional<vt::Transform> geometryTransform = _geometryTransform.getValue(exprContext);
 
-        vt::PolygonStyle style(compOp, fillFunc, std::shared_ptr<vt::BitmapPattern>(), geometryTransform, _fillEmissive.getFunction(exprContext));
+        std::string elevationModeName = _elevationMode.getValue(exprContext);
+        vt::LineElevationMode elevationMode = vt::LineElevationMode::DRAPE;
+        if (elevationModeName == "span") {
+            elevationMode = vt::LineElevationMode::SPAN;
+        } else if (elevationModeName == "underground") {
+            elevationMode = vt::LineElevationMode::UNDERGROUND;
+        } else if (elevationModeName != "drape") {
+            _logger->write(Logger::Severity::WARNING, "Unsupported elevation-mode: " + elevationModeName);
+        }
+
+        vt::PolygonStyle style(compOp, fillFunc, std::shared_ptr<vt::BitmapPattern>(), geometryTransform, _fillEmissive.getFunction(exprContext), elevationMode);
 
         return [style, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             bool suppressWarning = false;

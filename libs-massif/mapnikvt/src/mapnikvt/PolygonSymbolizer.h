@@ -17,6 +17,7 @@ namespace massif::mvt {
             bindProperty("fill", &_fill);
             bindProperty("fill-opacity", &_fillOpacity);
             bindProperty("fill-emissive-strength", &_fillEmissive);
+            bindProperty("elevation-mode", &_elevationMode);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -26,6 +27,9 @@ namespace massif::mvt {
         FloatFunctionProperty _fillOpacity = FloatFunctionProperty(1.0f);
         // mapbox's fill-emissive-strength: 1 draws the fill as authored, 0 hands it to the light.
         FloatFunctionProperty _fillEmissive = FloatFunctionProperty(1.0f);
+
+        // A bridge BED is a polygon; "span" lifts it onto the deck instead of draping it.
+        StringProperty _elevationMode = StringProperty("drape");
 
         ColorFunctionBuilder _fillFuncBuilder;
     };

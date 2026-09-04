@@ -21,7 +21,16 @@
 namespace massif::vt {
     class TileLayer final {
     public:
-        explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) { }
+        explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) {
+            // Answered once here so the renderer's per-frame span pass can skip a layer - and, in a
+            // style that uses no elevation-mode at all, every layer - without walking its geometry.
+            for (const std::shared_ptr<TileGeometry>& geometry : _geometries) {
+                if (!geometry->getSpanRecords().empty()) {
+                    _hasSpanGeometry = true;
+                    break;
+                }
+            }
+        }
 
         const std::string& getLayerName() const { return _layerName; }
         int getLayerIndex() const { return _layerIdx; }
@@ -31,6 +40,9 @@ namespace massif::vt {
         const std::vector<std::shared_ptr<TileBackground>>& getBackgrounds() const { return _backgrounds; }
         const std::vector<std::shared_ptr<TileBitmap>>& getBitmaps() const { return _bitmaps; }
         const std::vector<std::shared_ptr<TileGeometry>>& getGeometries() const { return _geometries; }
+
+        /** Whether any geometry here is a SPAN - false for every layer of a style that uses none. */
+        bool hasSpanGeometry() const { return _hasSpanGeometry; }
         const std::vector<std::shared_ptr<TileLabel>>& getLabels() const { return _labels; }
 
         std::size_t getFeatureCount() const {
@@ -55,6 +67,7 @@ namespace massif::vt {
         const std::vector<std::shared_ptr<TileBackground>> _backgrounds;
         const std::vector<std::shared_ptr<TileBitmap>> _bitmaps;
         const std::vector<std::shared_ptr<TileGeometry>> _geometries;
+        bool _hasSpanGeometry = false;
         const std::vector<std::shared_ptr<TileLabel>> _labels;
     };
 }

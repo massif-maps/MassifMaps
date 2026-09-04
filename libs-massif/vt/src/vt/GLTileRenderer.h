@@ -96,6 +96,14 @@ namespace massif::vt {
             float metersToInternal = 0.0f; // meters -> world z units at the equator (exaggeration included)
             float mercatorYScale = 0.0f;   // world y -> mercator angle (for the per-vertex 1/cos(latitude) factor)
             float metersPerTexel = 0.0f;   // ground meters per texel at the equator (the 1/cos(latitude) stretch is per fragment)
+            // The NODE texture: the same DEM box-filtered to the surface lattice, one texel per
+            // mesh node, which is what the VERTEX stage displaces from (the fragment stage keeps
+            // the full texture above). 0 when the provider has none; the vertex stage then
+            // samples the full texture, which aliases relief finer than a cell.
+            GLuint nodeTextureId = 0;
+            cglib::vec2<int> nodeTextureSize = cglib::vec2<int>(0, 0);
+            cglib::vec2<double> nodeOrigin = cglib::vec2<double>(0, 0); // world position of node uv (0,0)
+            cglib::vec2<double> nodeSize = cglib::vec2<double>(0, 0);   // world size covered by node uv [0,1]
         };
 
         using TerrainTextureProvider = std::function<bool(const TileId&, TerrainTexture&)>;
@@ -340,6 +348,22 @@ namespace massif::vt {
         // first renderer bakes, so later layers composite over earlier ones. Returns the number
         // of primitives drawn, so the owner can tell "nothing to bake" from "bake did nothing".
         int bakeDrapeTile(const TileId& targetTileId);
+        // The DECK's own drape: the span content of this tile and nothing else, so a bridge's road
+        // lands on the deck carrying it instead of on the valley floor beside it. Exact complement
+        // of bakeDrapeTile, which excludes spans by construction.
+        int bakeSpanDrapeTile(const TileId& targetTileId);
+        // The tiles that carry a bridge or a tunnel, with a fingerprint of what would be baked.
+        // Empty for a map with no spans, which is what keeps this free for everyone else.
+        void collectSpanDrapeTiles(std::map<TileId, std::size_t>& spanTiles) const;
+        // The cut ends of the span pieces that could not be given a chord - their far portal is in
+        // no tile the renderer holds - each stepped just past the cut, with the zoom of the piece.
+        // The owner fetches the (coarser) tile each point lands in, unseen, so its piece can
+        // resolve and lend its chord: a map opened in the middle of a bridge otherwise drapes the
+        // deck onto the valley until the abutments are scrolled into view.
+        void collectUnresolvedSpanEnds(std::vector<std::pair<int, cglib::vec2<double>>>& ends) const;
+        // The baked span drape per tile, handed back by the owner after baking. Empty = no bridge
+        // in view, which is the only cost a map without spans pays.
+        void setSpanDrapeTextures(const std::map<TileId, GLuint>& textures);
         // This renderer's style layers with drapeable content in the visible set, in draw order,
         // each flagged draped (goes in the bake) or live (matched setNoDrapeLayerFilter). The owner
         // concatenates these across layers into one ordered stack, which is where a live layer's
@@ -385,6 +409,15 @@ namespace massif::vt {
         void setDebugSurfacePrefill(bool enabled);
         void setTerrainBackgroundColor(const Color& color);
         void setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider);
+        /**
+         * What multiplies a LABEL anchor position to get vt's normalized map coordinates. Label
+         * geometry arrives in the SDK's internal space (WORLD_SIZE wide), unlike everything else
+         * here, so the span chords cannot be compared against it without this.
+         */
+        void setLabelPositionScale(double scale) { _labelPositionScale = scale; }
+        // Measurement switch (TileRenderer reads debug.massif.labelanchor): 0 anchors every label
+        // in the frame as before, 1 samples a new tile set's labels on the cull thread.
+        void setLabelAnchorOnCull(bool enabled) { _labelAnchorOnCull = enabled; }
         // Ask for labels to be re-anchored onto the terrain on the next frame. Re-anchoring
         // samples the elevation once per label vertex, so it is driven by what actually
         // changed: the tileIds overload only marks the labels whose geometry lies over one of
@@ -393,12 +426,78 @@ namespace massif::vt {
         void invalidateLabelElevation();
         void invalidateLabelElevation(const std::vector<TileId>& tileIds);
         // The same for the extrusion bases (see resolveExtrusionBases): new elevation data means
-        // every building's ground has to be asked for again.
+        // every building's ground has to be asked for again. The tileIds overload re-resolves only
+        // the extrusions standing OVER those elevation tiles - a building's centroid is inside its
+        // own tile, so that scoping is exact, and buildings outnumber bridges by orders of
+        // magnitude. Spans keep the global path: a chord samples its PORTALS, which are routinely
+        // in another tile than the geometry.
         void invalidateExtrusionBases();
+        void invalidateExtrusionBases(const std::vector<TileId>& tileIds);
+        // Which PIECE a union belongs to. A feature id is a whole OSM way and carries several
+        // disjoint bridges, so the id alone spans the gaps between them - measured 7.1 km against
+        // a 3.8 km bridge. The pieces are grouped by connectivity first, and each group is keyed
+        // back to the piece that asks for it.
+        struct SpanPieceKey {
+            TileId tileId = TileId(0, 0, 0);
+            long long featureId = 0;
+            std::size_t vertexOffset = 0;
+            // One structure is several GEOMETRIES of the same feature in the same tile - a bridge
+            // is a bed polygon, an extruded deck and the road lines on it - and they all start at
+            // vertexOffset 0, so without the type they share a key and overwrite each other's
+            // union. They must not: a ring's two ends (farthest apart) are not a line's two ends,
+            // so the survivor resolved the others against the wrong chord and the deck broke back
+            // into per-tile pieces.
+            TileGeometry::Type type = TileGeometry::Type::NONE;
+            bool operator == (const SpanPieceKey& other) const {
+                return tileId == other.tileId && featureId == other.featureId && vertexOffset == other.vertexOffset && type == other.type;
+            }
+            bool operator < (const SpanPieceKey& other) const {
+                if (!(tileId == other.tileId)) return tileId < other.tileId;
+                if (featureId != other.featureId) return featureId < other.featureId;
+                if (vertexOffset != other.vertexOffset) return vertexOffset < other.vertexOffset;
+                return type < other.type;
+            }
+        };
+
+        /**
+         * The two PORTALS a span feature runs between, in world coordinates, unioned over every
+         * visible tile holding a piece of it. The tile grid cuts a long bridge into pieces and no
+         * single one holds both ends - Millau is 3.7 km of bridge against ~3.5 km at z13 - so the
+         * portals are collected by feature id, which mapbox tiles keep stable across tiles.
+         */
+        struct SpanUnion {
+            cglib::vec2<double> portal0, portal1;
+            bool have0 = false, have1 = false;
+            // The chord's resolved ground heights, kept so a LABEL over the deck can be anchored
+            // to it without paying the elevation queries again.
+            double height0 = 0, height1 = 0;
+            bool haveHeights = false;
+            int zoom = 0; // the tile zoom the pieces came from, for the elevation query
+            bool operator == (const SpanUnion& other) const {
+                return have0 == other.have0 && have1 == other.have1 && portal0 == other.portal0 && portal1 == other.portal1;
+            }
+        };
+        // Written in setVisibleTiles under _mutex, read by the resolve during the frame - the same
+        // build-then-consume pattern the render tiles use.
+        mutable std::map<SpanPieceKey, SpanUnion> _spanUnions; // heights filled by the resolve
+        // The DISTINCT resolved chords of _spanUnions with their bounds: a label anchor asks
+        // "is this vertex on a deck" per vertex, and against the unions that was one chord test
+        // per piece - hundreds in a city, most of them the same chord - for every vertex of every
+        // label. Rebuilt wherever the unions gain a chord or a height; a sampler takes a COPY,
+        // so the cull thread can anchor labels with the renderer's lock released.
+        struct SpanChord {
+            cglib::vec2<double> portal0, portal1;
+            double height0 = 0, height1 = 0;
+            cglib::vec2<double> boundsMin, boundsMax;
+        };
+        mutable std::vector<SpanChord> _spanChords;
+        void rebuildSpanChords() const;
+        static bool chordHeightAt(const std::vector<SpanChord>& chords, const cglib::vec2<double>& pos, double& height);
+        std::atomic<unsigned int> _spanUnionVersion { 0 };
         // The ground under an extrusion, in internal z units. Unlike the label provider this one
         // REPORTS whether there was data: a base is baked into the vertices, so guessing 0 where
         // the ground is 215 m puts the whole prism under the terrain.
-        void setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, double&)> provider);
+        void setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)> provider);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
@@ -418,7 +517,10 @@ namespace massif::vt {
         void setClickHandlerLayerFilter(const std::optional<std::regex>& filter);
         void setViewState(const ViewState& viewState);
         void setLineAntialiasScale(float scale);
-        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles);
+        // `spanReferenceTiles`: tiles fetched UNSEEN for the chord of a stranded bridge piece
+        // (collectUnresolvedSpanEnds). They join the span unions and nothing else - not drawn,
+        // no labels - so a reference that overlaps the view does not double its geometry.
+        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles = {});
         void teleportVisibleTiles(int dx, int dy);
 
         void initializeRenderer();
@@ -615,10 +717,23 @@ namespace massif::vt {
 
         bool testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const;
         bool isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const;
+        bool hasSpanContent(const RenderTileLayer& renderLayer) const;
+        bool resolveSpanDrape(const TileId& targetTileId, GLuint& texture, cglib::vec4<float>& uvTransform) const;
+        std::map<TileId, GLuint> _spanDrapeTextures;
+        // The part of each span drape tile the bake covers, in drape uv (u0, v0, u1, v1): the deck's
+        // own extent rather than the whole tile, so a narrow deck gets the texture's full width
+        // across itself. Collected with the tiles, read by the bake and by the sampling transform.
+        mutable std::map<TileId, cglib::vec4<float>> _spanDrapeBounds;
+        std::vector<std::pair<int, cglib::vec2<double>>> _unresolvedSpanEnds; // see collectUnresolvedSpanEnds
+        bool _labelAnchorOnCull = true;
+        GLuint _pendingSpanDrape = 0;
+        cglib::vec4<float> _pendingSpanDrapeTransform = cglib::vec4<float>(0, 0, 1, 1);
         // The body shared by bakeDrapeTile and bakeDrapeCoverage: the same covering tiles, the same
         // transforms, restricted to the style layers at or after fromStyleLayerIdx. Caller holds the
         // mutex and has already handled the terrain-paint case.
-        int bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx);
+        // clipZoom, when given, is premultiplied onto the bake matrix: the span drape bakes only the
+        // deck's bounds (see _spanDrapeBounds), scaled up to the whole texture.
+        int bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx, bool spanOnly = false, const cglib::mat4x4<float>* clipZoom = nullptr);
         // The mask a live style layer is occluded by over one target tile, and the transform taking
         // target-tile units to that mask tile's. False when there is no mask, or when the drape tile
         // is FINER than the target tile - one draw cannot sample several masks, so it draws as it
@@ -703,6 +818,37 @@ namespace massif::vt {
          * instead loses the building outright, and any wrong-but-plausible base buries it.
          */
         bool resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const;
+        /**
+         * The same for a SPAN line, resolved on the CPU so it is TILE-INDEPENDENT: the ground at
+         * the feature's own two ends, interpolated along the chord into a per-vertex slot. The
+         * elevation texture of the tile being drawn cannot answer for a portal outside it, which
+         * is exactly the case when spans come from a coarser tile than the base map.
+         */
+        bool resolveSpanBases(const TileId& sourceTileId, const std::shared_ptr<TileGeometry>& geometry) const;
+        // Rebuilt whenever the visible set changes: a neighbouring tile arriving can complete a
+        // bridge whose chord was unresolvable before, so the version bump re-resolves the pieces.
+        void buildSpanUnions(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles);
+        // A chord that was resolved once, kept after the tiles that proved it left the view. A
+        // bridge's portals are a property of the WORLD, not of what is on screen: zooming into one
+        // end drops the far piece from the visible set, and without this the chord shortens to
+        // whatever is still loaded and the deck visibly changes angle.
+        struct CachedChord {
+            cglib::vec2<double> portal0, portal1;
+            std::uint64_t stamp = 0;
+        };
+        std::vector<CachedChord> _spanChordCache;
+        std::uint64_t _spanChordClock = 0;
+        /**
+         * The DECK height over a point standing on a span, for anything anchored to the ground
+         * that belongs to the bridge rather than to the terrain under it - a road name, a POI, a
+         * one-way arrow. Without it they sit on the ground the bridge flies over.
+         *
+         * @return False when the point is not on a resolved span.
+         */
+        void markPendingLabelsDirty();
+        std::function<double(const cglib::vec3<double>&)> labelHeightFunc() const;
+        bool anchorDirtyLabels();
+        bool spanHeightAt(const cglib::vec2<double>& pos, double& height) const;
         void renderTileMask(const TileId& tileId);
         void renderStencilDebugOverlay();
         // Bakes the DEM-derived paint of one target tile into the currently bound drape
@@ -722,7 +868,7 @@ namespace massif::vt {
         GLuint ensureDrapeTexture(const TileId& tileId);
         void releaseDrapeTexture(GLuint texture);
         void deleteDrapeResources();
-        bool isDrapeableGeometry(TileGeometry::Type type) const;
+        bool isDrapeableGeometry(const std::shared_ptr<TileGeometry>& geometry) const;
         // Builds the lit raster program ahead of the zoom-out that first needs it, so its compile
         // does not land inside the gesture.
         void warmTerrainRasterShader();
@@ -871,11 +1017,22 @@ namespace massif::vt {
         // keep their length. Everything else, the label-occlusion depth included, matches the
         // screen. A style that means "not there yet" uses buildingHeightScale, which the caster
         // does follow: no building, no shadow.
-        float buildingHeightScale(float blend) const {
+        //
+        // A span DECK takes NONE of it. Every one of these multipliers means "this building is not
+        // there yet" or "the view has turned away from it", and a bridge is structure: Standard
+        // ramps extrusions to 0 below z15, which flattened a deck to zero height at every camera a
+        // bridge is actually looked at.
+        float buildingHeightScale(float blend, bool span = false) const {
+            if (span) {
+                return 1.0f;
+            }
             return _shadowCasterSun ? casterHeightScale(blend) : casterHeightScale(blend) * _buildingHeightViewScale;
         }
         // The height the shadow MAP holds, which is what a receiver must look its own depth up at.
-        float casterHeightScale(float blend) const {
+        float casterHeightScale(float blend, bool span = false) const {
+            if (span) {
+                return 1.0f;
+            }
             return _buildingHeightScale * (_buildingGrowOnAppear && !_shadowCasterViewProj ? blend : 1.0f);
         }
 
@@ -943,9 +1100,11 @@ namespace massif::vt {
         std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;
         TerrainTextureProvider _terrainTextureProvider;
         std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;
-        std::function<bool(const cglib::vec3<double>&, double&)> _extrusionElevationProvider;
+        std::function<bool(const cglib::vec3<double>&, int, double&)> _extrusionElevationProvider;
         std::atomic<unsigned int> _extrusionBaseVersion { 1 }; // bumped by invalidateExtrusionBases
         std::vector<TileId> _pendingLabelElevationTiles; // elevation tiles whose labels must be re-anchored
+        double _labelPositionScale = 1.0; // label anchors are in internal coordinates, not vt's
+        std::vector<TileId> _pendingExtrusionBaseTiles;  // ...and whose extrusion bases must be re-resolved
         bool _pendingLabelElevationAll = false;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;

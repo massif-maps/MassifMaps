@@ -34,6 +34,7 @@ namespace massif::mvt {
             bindProperty("arrow-path", &_arrowPath);
             bindProperty("arrow-scale", &_arrowScale);
             bindProperty("arrow-rotation", &_arrowRotation);
+            bindProperty("elevation-mode", &_elevationMode);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -83,6 +84,10 @@ namespace massif::mvt {
         // direction of travel - an icon drawn pointing up needs 90.
         FloatProperty _arrowScale = FloatProperty(1.0f);
         FloatProperty _arrowRotation = FloatProperty(0.0f);
+        // 'drape' (the default, and what every style did before this existed), 'span' for a bridge
+        // or 'underground' for a tunnel: a structure that does NOT follow the ground but takes its
+        // height from its own two ends. See vt::LineElevationMode.
+        StringProperty _elevationMode = StringProperty("drape");
 
         ColorFunctionBuilder _strokeFuncBuilder;
         ColorFunctionBuilder _borderColorFuncBuilder;

@@ -97,7 +97,17 @@ namespace massif::mvt {
             }
         }
 
-        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape, gapWidthFunc, blurFunc, _strokeEmissive.getFunction(exprContext), _borderColorFuncBuilder.createColorOpacityFunction(_borderColor.getFunction(exprContext), strokeOpacityFunc), borderWidthFunc);
+        std::string elevationModeName = _elevationMode.getValue(exprContext);
+        vt::LineElevationMode elevationMode = vt::LineElevationMode::DRAPE;
+        if (elevationModeName == "span") {
+            elevationMode = vt::LineElevationMode::SPAN;
+        } else if (elevationModeName == "underground") {
+            elevationMode = vt::LineElevationMode::UNDERGROUND;
+        } else if (elevationModeName != "drape") {
+            _logger->write(Logger::Severity::WARNING, "Unsupported elevation-mode: " + elevationModeName);
+        }
+
+        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape, gapWidthFunc, blurFunc, _strokeEmissive.getFunction(exprContext), _borderColorFuncBuilder.createColorOpacityFunction(_borderColor.getFunction(exprContext), strokeOpacityFunc), borderWidthFunc, elevationMode);
         
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

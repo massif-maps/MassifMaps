@@ -42,6 +42,19 @@ namespace massif {
         static std::size_t bytesPerTile(int size) {
             return static_cast<std::size_t>(size) * size * 4;
         }
+
+        /**
+         * The zoom a drape tile is baked FOR, quantised: equal across a drift smaller than the
+         * threshold, different across a larger one. Folded into the tile's content fingerprint, so
+         * a tile whose term moved is stale and re-bakes. Clamped at 0 - a negative zoom exists
+         * (free roam) and would wrap the cast into a term that never repeats.
+         */
+        static std::size_t bakeZoomTerm(float zoom, float threshold) {
+            if (!(zoom > 0) || !(threshold > 0)) {
+                return 0;
+            }
+            return static_cast<std::size_t>(zoom / threshold);
+        }
     };
 
 }

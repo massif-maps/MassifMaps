@@ -1,6 +1,7 @@
 /*
- * Tests for the drape bake resolution rule (all/native/terrain/DrapeTuning.h): the power of two the
- * screen asks for, and the cap the drape cache's byte budget puts on it.
+ * Tests for the drape bake tuning rules (all/native/terrain/DrapeTuning.h): the power of two the
+ * screen asks for, the cap the drape cache's byte budget puts on it, and the quantised zoom a tile
+ * is baked for.
  *
  * The case that matters is the BOUNDARY. A working set of 24 against the 96 MB budget lets a
  * 1024 x 1024 x RGBA tile through with nothing to spare - 24 * 4 MB is 96 MB exactly - so the
@@ -13,6 +14,10 @@
  * size. Both are device checks - the 13.4 ms / 5.2 ms drape numbers in the rule's comment came off
  * a Crosscall north pan, not off this suite. Nor is TileRenderer::resolveDrapeResolution itself
  * reached: it needs ViewState, Options and the GL cache, i.e. the renderer.
+ *
+ * The zoom term has the same boundary: these check the quantisation only. That the term is adopted
+ * when the camera SETTLES and held while it moves - so a pinch does not re-bake every tile on every
+ * step - is a branch in MapRenderer::drawLayers on the bake path, and is a device check.
  */
 
 #include "terrain/DrapeTuning.h"
@@ -68,6 +73,41 @@ namespace {
         TEST_CHECK(resolve(4.0, 64) == 512, "... which is not what the same call does with one");
     }
 
+    // MapRenderer::DRAPE_REBAKE_ZOOM_THRESHOLD, the same quantum the label re-placement uses.
+    const float STEP = 0.25f;
+
+    void testZoomTermHoldsInsideOneStep() {
+        // A tile must NOT re-bake for a drift the style's own functions cannot resolve. Both ends
+        // of a step are the same term, so the fingerprint they feed is unchanged.
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(15.0f, STEP) == DrapeTuning::bakeZoomTerm(15.24f, STEP),
+                   "a drift inside one quarter-level leaves the bake term alone");
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(15.0f, STEP) != DrapeTuning::bakeZoomTerm(15.26f, STEP),
+                   "... and a drift past it does not, so the tile goes stale and re-bakes");
+    }
+
+    void testZoomTermStepsFourTimesPerLevel() {
+        // Four bakes per zoom level, not one: the old behaviour re-baked only when a new tile level
+        // brought new textures, so a road's width stepped once per integer level instead of growing.
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(16.0f, STEP) - DrapeTuning::bakeZoomTerm(15.0f, STEP) == 4,
+                   "one zoom level is four bake terms");
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(15.0f, STEP) != DrapeTuning::bakeZoomTerm(15.5f, STEP),
+                   "half a level apart is two terms apart, never a collision");
+    }
+
+    void testZoomTermIsMonotonicAndNeverWraps() {
+        // The term is cast to an unsigned, so a negative zoom - free roam reaches one - would wrap
+        // to a huge value that no later zoom repeats: every tile permanently stale.
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(-3.0f, STEP) == 0, "a negative zoom clamps to 0 rather than wrapping");
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(0.0f, STEP) == 0, "... and meets zoom 0 there");
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(-3.0f, STEP) == DrapeTuning::bakeZoomTerm(-9.0f, STEP),
+                   "two negative zooms are the same term, so a camera below zero does not thrash");
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(24.0f, STEP) > DrapeTuning::bakeZoomTerm(23.0f, STEP),
+                   "the term still rises at the top of the zoom range");
+        // A zero threshold would be a division by zero; the guard makes it "never re-bake" instead.
+        TEST_CHECK(DrapeTuning::bakeZoomTerm(15.0f, 0.0f) == DrapeTuning::bakeZoomTerm(3.0f, 0.0f),
+                   "a zero threshold degrades to one constant term, not a division by zero");
+    }
+
 }
 
 void testDrapeTuning() {
@@ -76,4 +116,7 @@ void testDrapeTuning() {
     testScreenLadderRoundsUp();
     testClampsStayInsideTheRange();
     testDisabledBudgetDoesNotClamp();
+    testZoomTermHoldsInsideOneStep();
+    testZoomTermStepsFourTimesPerLevel();
+    testZoomTermIsMonotonicAndNeverWraps();
 }

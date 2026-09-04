@@ -286,6 +286,13 @@ namespace massif {
         // Zoom change that asks for a label placement pass of its own, and how long after the last
         // one the pass runs (see viewChanged).
         static const float LABEL_PLACEMENT_ZOOM_THRESHOLD;
+        // How far the zoom may drift before a drape tile is re-baked. The bake is otherwise
+        // triggered by CONTENT alone, so a style's zoom-dependent widths stayed frozen at whatever
+        // zoom the tile was first baked at and only changed when a new tile level brought new
+        // textures - a road stepped once per integer level instead of growing with the zoom.
+        // Same quantum as the label re-placement above: four bakes per zoom level, which the
+        // per-frame bake budget then spreads over frames.
+        static const float DRAPE_REBAKE_ZOOM_THRESHOLD;
         static const int LABEL_PLACEMENT_ZOOM_DELAY;
 
         static const int ELEVATION_REFRESH_DELAY; // milliseconds between vector layer refreshes caused by elevation data changes
@@ -348,6 +355,11 @@ namespace massif {
         // Camera pose the last drape-bake pass ran against, to tell a moving frame from a
         // still one (see the bake time budget in onDrawFrame).
         cglib::mat4x4<double> _drapeBakeLastMVPMatrix = cglib::mat4x4<double>::identity();
+        // The zoom the drape is currently baked for, quantised. Held while the camera MOVES and
+        // updated when it settles - which is what mapbox does: the drape does not re-render during
+        // a pinch, it re-renders once the gesture ends. Re-baking mid-gesture would spend a bake
+        // per tile per step on a picture that is about to change again.
+        std::size_t _drapeBakeZoomTerm = 0;
         std::unique_ptr<ScreenMaskBuffer> _terrainShadowMaskBuffer;
         std::unique_ptr<ScreenMaskBuffer> _groundAOMaskBuffer;
         // Depth of the 3D occluders, for per-label occlusion (see the pass in drawLayers).

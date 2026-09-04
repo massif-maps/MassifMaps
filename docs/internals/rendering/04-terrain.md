@@ -383,6 +383,21 @@ Three things then keep the bakes off the critical path:
   second the vector layers need. That is **the flash**. A tile counts as usable only when every
   layer that has something for it is in it.
 
+**What makes a tile stale is a fingerprint over its CONTENT — and the zoom is content.** Each cover
+leaf mixes in every collected tile that bakes into it, plus whether the paint layer can reach it;
+a contributor left out is a tile that stays stale for as long as it is cached. The zoom was left
+out. But a style's functions are evaluated at the *view* zoom, so a road's width — and anything else
+that interpolates — is baked in at whatever zoom the tile was first baked at, and only changed when
+a new tile level happened to bring new textures. A road stepped once per integer level instead of
+growing with the zoom.
+
+The zoom now goes into the fingerprint quantised (`DrapeTuning::bakeZoomTerm`), at the same quarter
+of a level the label re-placement uses: four bakes per zoom level, spread over frames by the bake
+budget above. The term follows the camera **only once it settles** — mapbox does the same, their
+drape does not re-render during a pinch — because re-baking mid-gesture spends a bake per tile per
+step on a picture that is about to change again. The frame the term moves in has to be asked for
+explicitly (`requestRedraw`); nothing else was going to draw it.
+
 A bake pins the layer *blend* to 1 on purpose — a cached texture must not have a transient fade
 burnt into it — but it also used to pin the style's own layer **opacity** to 1, so a draped layer
 with `opacity: 0.5` baked fully opaque. `calculateDrapeOpacity` now supplies it, matching what the

@@ -94,9 +94,13 @@ namespace massif {
          * the SDK ships no dependency, and the source is a facade object like any other.
          *
          * TileDataSource has had this since the facade landed; this is its vector counterpart.
+         *
+         * The parameter is `vectorSource`, not `source`: Objective-C has no overloading and
+         * builds its selector from the parameter names, so two `source` overloads are one
+         * duplicate `adopt:objectId:source:`.
          */
         static int adopt(const std::string& kind, const std::string& objectId,
-                         const std::shared_ptr<VectorDataSource>& source);
+                         const std::shared_ptr<VectorDataSource>& vectorSource);
 
         /**
          * The same for an asset package, which is the one a binding cannot express as a spec.

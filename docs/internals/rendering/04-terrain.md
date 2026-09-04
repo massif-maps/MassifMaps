@@ -919,6 +919,26 @@ it. A span extrusion also gets no ground-AO skirt (it hangs from a chord, the sk
 sliding over ground it never touches) and is skipped by the label occlusion depth pass (it hid
 its own road's arrows and name).
 
+**What lights it.** The drape is composited AFTER `applyLighting3D`, not before, and the draped
+part takes `uSpanDrapeLight` — the GROUND's light — rather than the extrusion's. A draped pixel is
+a finished ground pixel: the bake drew that road exactly as the surface draws it, so lighting it
+again with the facade model (an ambient/sun sum in linear space, plus the roof-shade term
+`u_verticalGradient.y`) applies a building's light to a piece of road. It is invisible at noon,
+where that factor is ~1, and ruinous at a low sun: at Pont Neuf, z17.5, hour 22 the deck measured
+**23** against a quay road at ~100 — the bridge darker than the water under it, and the bug behind
+every "the bridge is black at night" report. Composited after, the same deck reads **104**.
+
+The light itself is `SpanDrapeLight::resolve`, host-tested, and is `backgroundFsh`'s own
+expression: the ambient is the floor and the sun fills the remaining headroom. It is a CPU value
+because a deck is FLAT — the ground's per-fragment N·L collapses to the sun's own height, so there
+is one value per frame instead of a term in the shader. A `colors-prelit` style resolves to exactly
+1 (`TileRenderer::buildTerrainLighting` hands the ground a neutral light rather than none, so the
+shadow still lands), which is what every converted Mapbox Standard wants — those colours already
+carry their hour. The walls are untouched: they keep the full facade model and darken at night like
+any building, which is the whole point of splitting the two by `vSpanRoof` rather than reaching for
+`building-emissive-strength` on the deck rule. That style-level workaround does neutralise the
+double light, but it neutralises it on the WALLS too, and they go flat-bright at midnight.
+
 The union build is timed in the profile build's `RenderStats: tileSetChange … spanUnionsMs` line:
 at Grenoble it is 3.5–6.8 ms per second of panning against 55–100 ms of cull work, most of it
 label maps.

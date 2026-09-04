@@ -36,7 +36,15 @@ namespace massif::mvt {
             _logger->write(Logger::Severity::WARNING, "Unsupported elevation-mode: " + elevationModeName);
         }
 
-        vt::Polygon3DStyle style(fillFunc, geometryTransform, roofShape, roofHeight, elevationMode);
+        // UNSET stays unset: the renderer then takes the Map block's building-emissive, so a rule
+        // that says nothing renders exactly as it did before this property existed.
+        vt::FloatFunction emissiveRaw = _emissive.getFunction(exprContext);
+        std::optional<vt::FloatFunction> emissiveFunc;
+        if (!(emissiveRaw == vt::FloatFunction(-1.0f))) {
+            emissiveFunc = emissiveRaw;
+        }
+
+        vt::Polygon3DStyle style(fillFunc, geometryTransform, roofShape, roofHeight, elevationMode, emissiveFunc);
 
         return [style, height, minHeight, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             bool suppressWarning = false;

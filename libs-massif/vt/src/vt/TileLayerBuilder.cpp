@@ -560,11 +560,15 @@ namespace massif::vt {
         }
 
         if (_builderParameters.type != TileGeometry::Type::POLYGON3D || _builderParameters.translate != translate || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS
-         || _builderParameters.elevationMode != style.elevationMode) {
-            appendGeometry(); // a deck resolves its base from the chord, a building from the ground
+         || _builderParameters.elevationMode != style.elevationMode
+         || _builderParameters.polygon3DEmissiveFunc != style.emissiveFunc) {
+            // a deck resolves its base from the chord, a building from the ground - and the two
+            // take different emissives, which is one uniform per draw rather than one per slot
+            appendGeometry();
         }
         _builderParameters.type = TileGeometry::Type::POLYGON3D;
         _builderParameters.elevationMode = style.elevationMode;
+        _builderParameters.polygon3DEmissiveFunc = style.emissiveFunc;
         _builderParameters.translate = translate;
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
@@ -1023,6 +1027,7 @@ namespace massif::vt {
         }
         styleParameters.compOp = _builderParameters.compOp;
         styleParameters.glyphRenderSize = _builderParameters.glyphRenderSize;
+        styleParameters.polygon3DEmissiveFunc = _builderParameters.polygon3DEmissiveFunc;
 
         if (_builderParameters.strokeMap) {
             bool strokeUsed = std::any_of(_builderParameters.lineStrokeIds.begin(), _builderParameters.lineStrokeIds.begin() + _builderParameters.parameterCount, [](StrokeMap::StrokeId strokeId) { return strokeId != 0; });

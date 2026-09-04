@@ -7011,6 +7011,14 @@ namespace massif::vt {
             _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D && _lightingShader3D) {
             _lightingShader3D->setupFunc(shaderProgram.program, _viewState);
+            // ...which uploaded the MAP's building-emissive. A rule that states its own replaces it
+            // here, for this draw alone - and one that does not writes the map's value back, since
+            // the program is shared and the previous draw may have overridden it. Written
+            // unconditionally so the two cases cannot drift apart.
+            if (shaderProgram.uniforms[U_EMISSIVE] >= 0) {
+                float emissive = (styleParams.polygon3DEmissiveFunc ? evaluateFloatFunc(*styleParams.polygon3DEmissiveFunc) : _buildingEmissive);
+                glUniform1f(shaderProgram.uniforms[U_EMISSIVE], emissive);
+            }
         }
         VT_STAT_SPLIT(geomBindNs, statClock);
 

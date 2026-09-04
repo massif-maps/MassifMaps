@@ -61,6 +61,14 @@ namespace massif::vt {
             std::optional<cglib::vec2<float>> translate;
             CompOp compOp;
             int glyphRenderSize;
+            // An EXTRUSION's emissive, for the whole geometry rather than per slot: the 3D lighting
+            // runs per fragment against one uniform, while emissiveFuncs above are folded into the
+            // colour on the CPU - and folding an extrusion's there would grade it toward the ground
+            // radiance AND then light it, which is the same colour twice. Unset, the extrusion
+            // takes the Map block's building-emissive. Rules that differ in it do not batch
+            // together (TileLayerBuilder::createPolygon3DProcessor), the same way elevationMode
+            // already splits them.
+            std::optional<FloatFunction> polygon3DEmissiveFunc;
 
             StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };

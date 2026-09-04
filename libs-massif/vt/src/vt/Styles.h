@@ -230,9 +230,16 @@ namespace massif::vt {
         // See LineElevationMode. A building stands on the ground (DRAPE); a bridge DECK stands on
         // its own chord, so min-height/height are measured from that instead.
         LineElevationMode elevationMode = LineElevationMode::DRAPE;
+        // building-emissive-strength for THIS rule. Unset, the extrusion takes the Map block's
+        // building-emissive - which is what every style did before this existed, so an unset value
+        // is not "0", it is "whatever the map says". A rule needs its own only where the extrusion
+        // stands in for something that is not a building: a bridge DECK replaces the flat road
+        // casing 2D styles draw, and that casing carries its own emissive, so lighting the deck at
+        // full strength beside it leaves a bright road on a black slab once the sun is low.
+        std::optional<FloatFunction> emissiveFunc;
 
         explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform) : colorFunc(std::move(colorFunc)), transform(transform) { }
-        explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform, RoofShape roofShape, float roofHeight, LineElevationMode elevationMode = LineElevationMode::DRAPE) : colorFunc(std::move(colorFunc)), transform(transform), roofShape(roofShape), roofHeight(roofHeight), elevationMode(elevationMode) { }
+        explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform, RoofShape roofShape, float roofHeight, LineElevationMode elevationMode = LineElevationMode::DRAPE, std::optional<FloatFunction> emissiveFunc = std::optional<FloatFunction>()) : colorFunc(std::move(colorFunc)), transform(transform), roofShape(roofShape), roofHeight(roofHeight), elevationMode(elevationMode), emissiveFunc(std::move(emissiveFunc)) { }
     };
 
     struct PointLabelStyle final {

@@ -306,6 +306,11 @@ namespace massif::vt {
         // How much of the map background's colour is emitted rather than lit. It is a Map setting,
         // so it is one value for the whole style rather than a per-geometry function.
         void setBackgroundEmissive(float emissive) { _backgroundEmissive = emissive; }
+        // The Map block's building-emissive, which an EXTRUSION takes unless its own rule states
+        // one (Polygon3DStyle::emissiveFunc). Held here so the draw can fall back to it: the
+        // lighting shader's callback uploads it too, but a rule that overrides u_emissive has to
+        // put the map's value back for the next draw that does not.
+        void setBuildingEmissive(float emissive) { _buildingEmissive = emissive; }
         // The projection's metres-to-internal factor, so shadows do not need a DEM to be fitted.
         void setMetersToInternal(double metersToInternal) { _metersToInternal = metersToInternal; }
         void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, MAX_SHADOW_CASCADES>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
@@ -1082,6 +1087,7 @@ namespace massif::vt {
         double _metersToInternal = 0;
         cglib::vec3<float> _radiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         float _backgroundEmissive = 1.0f;
+        float _buildingEmissive = 0.0f; // the Map block's; a rule may override it per draw
         int _terrainShadowCascades = 1;
         // mapbox's u_shadow_bias: constant, slope scale, slope cap - normalised depth, all cascades.
         cglib::vec3<float> _terrainShadowBias = cglib::vec3<float>(0.0f, 0.0f, 0.0f);

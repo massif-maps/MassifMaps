@@ -128,6 +128,9 @@ namespace massif::vt {
             // A span carries a per-vertex slot a draped line has no room for, so the two cannot
             // share one geometry - a mode change splits the batch (see createLineProcessor).
             LineElevationMode elevationMode;
+            // See TileGeometry::StyleParameters::polygon3DEmissiveFunc. One uniform per draw, so a
+            // change splits the batch like elevationMode does.
+            std::optional<FloatFunction> polygon3DEmissiveFunc;
 
             // patternUsed defaults to TRUE so every path that does not manage it (lines, points)
             // keeps sampling its pattern; only the polygon processor sets it per slot.

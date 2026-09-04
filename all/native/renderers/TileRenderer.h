@@ -118,7 +118,11 @@ namespace massif {
         static constexpr int MAX_DRAPE_RESOLUTION = 2048;
         // Tiles the automatic resolution assumes are cached at once: the live cover plus what a pan
         // is about to need back. The resolution is lowered until that many fit the cache budget.
-        static constexpr std::size_t DRAPE_WORKING_SET = 64;
+        // 24, not 64: at 64 the arithmetic pins the automatic resolution to 512 on EVERY device
+        // (64 x 1024^2 x 4 = 256 MB against a 96 MB budget), which is half mapbox's linear
+        // resolution for the same tile - they bake at 1024 - and that is the drape sharpness gap.
+        // A real cover was measured at 15-34 leaves, so 64 was buying headroom nothing used.
+        static constexpr std::size_t DRAPE_WORKING_SET = 24;
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
         int bakeDrapeTile(const vt::TileId& tileId);

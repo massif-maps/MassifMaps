@@ -208,6 +208,8 @@ add_executable(api_tests
   CameraClearanceTest.cpp
   # Same: DrapeStackCuts.h is the ordering rule and nothing else.
   DrapeStackCutsTest.cpp
+  # Same: DrapeTuning.h is the bake resolution arithmetic and nothing else.
+  DrapeTuningTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
   # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.

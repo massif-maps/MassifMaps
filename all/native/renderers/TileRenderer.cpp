@@ -18,6 +18,7 @@
 #include "renderers/utils/TerrainDrapeCache.h"
 #include "renderers/utils/VTRenderer.h"
 #include "layers/HillshadeRasterTileLayer.h"
+#include "terrain/DrapeTuning.h"
 #include "terrain/ElevationManager.h"
 #include "utils/Const.h"
 #include "utils/Log.h"
@@ -320,23 +321,17 @@ namespace massif {
         // above it the extra texels can never be resolved. Rounded UP to a power of two, since the
         // cache holds one texture size and pools them.
         double tileDrawSize = (options ? options->getTileDrawSize() : 256);
-        double edge = 2.0 * tileDrawSize * (viewState.getDPI() / Const::UNSCALED_DPI);
-        int size = MIN_DRAPE_RESOLUTION;
-        while (size < edge && size < MAX_DRAPE_RESOLUTION) {
-            size *= 2;
-        }
-        // ... and then what MEMORY allows, which is the binding constraint: the rule above asks for
-        // 1024 on the Crosscall, and a drape texture at 1024 x 1024 x RGBA is 4 MB PER TILE, so the
-        // cache's 160 entries would be 640 MB. What the device does with that is thrash - measured
-        // on the north pan, the drape section is 13.4 ms at 1024 and 5.2 ms at 512, for a
-        // difference the screen cannot show once the texture is mipmapped.
-        // So: the largest power of two at which a working cover still fits the cache's budget.
-        std::size_t bytesPerTile = static_cast<std::size_t>(size) * size * 4;
-        while (TerrainDrapeCache::isBudgetEnabled() && size > MIN_DRAPE_RESOLUTION && bytesPerTile * DRAPE_WORKING_SET > TerrainDrapeCache::MAX_BYTES) {
-            size /= 2;
-            bytesPerTile = static_cast<std::size_t>(size) * size * 4;
-        }
-        return size;
+        // ... and then what MEMORY allows, which is the binding constraint: a drape texture at
+        // 1024 x 1024 x RGBA is 4 MB PER TILE, and an unbounded cache of those thrashes - measured
+        // on the north pan, the drape section is 13.4 ms at 1024 and 5.2 ms at 512.
+        //
+        // That measurement came with the conclusion "a difference the screen cannot show once the
+        // texture is mipmapped", and that conclusion was WRONG: it was never compared against
+        // mapbox, which bakes the same tile at 1024. With DRAPE_WORKING_SET at 64 the arithmetic
+        // pinned this to 512 on every device - half mapbox's linear resolution, a quarter of the
+        // texels - and that is the gap seen as a blurry, stretched drape at a grazing angle.
+        std::size_t budgetBytes = (TerrainDrapeCache::isBudgetEnabled() ? TerrainDrapeCache::MAX_BYTES : 0);
+        return DrapeTuning::resolution(tileDrawSize, viewState.getDPI() / Const::UNSCALED_DPI, DRAPE_WORKING_SET, budgetBytes, MIN_DRAPE_RESOLUTION, MAX_DRAPE_RESOLUTION);
     }
 
     int TileRenderer::getStyleLayerCount() const {

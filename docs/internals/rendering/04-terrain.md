@@ -324,6 +324,15 @@ else: their cover caps at `floor(camera zoom)` exactly as ours does (`shouldSpli
 `2 × tileDrawSize × dpiScale` over a 256 px one. Past the source max was the only place they were
 ahead.
 
+**...except that the byte budget was silently taking it back.** The ladder above is only the first
+half of `resolveDrapeResolution`; the second caps it at the largest power of two a working cover
+still fits in the drape cache's 96 MB (`DrapeTuning::resolution`). With `DRAPE_WORKING_SET` at 64
+that cap was 512 on **every** device — 64 × 1024² × 4 B is 256 MB — so the screen's 1024 was asked
+for and never granted, and the comparison above was wrong in our favour: we were baking at half
+mapbox's linear resolution, a quarter of the texels, which is the blurry stretched drape at a
+grazing angle. A real cover measures 15–34 leaves, so 64 was headroom nothing used. At **24** the
+arithmetic lands on the budget exactly (24 × 4 MB = 96 MB) and 1024 gets through.
+
 **Still open: the oblique near ground.** At a low tilt the ground at the bottom of the screen is
 magnified several times past what a cover at `floor(camera zoom)` resolves, and neither model splits
 deeper there — `--es drapeResolution 2048` visibly sharpens it, which is what says it is texel-bound

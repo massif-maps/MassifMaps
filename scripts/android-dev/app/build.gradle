@@ -13,6 +13,17 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // A Mapbox access token for the examples that draw mapbox-streets-v8, taken from
+        // ~/.mapbox_token so it is never checked in. Absent, the placeholder stays and those
+        // examples load no tiles - which is what "the example shows nothing" looks like.
+        def tokenFile = new File(System.getProperty('user.home'), '.mapbox_token')
+        def mapboxToken = tokenFile.exists() ? tokenFile.text.trim() : ''
+        buildConfigField 'String', 'MAPBOX_TOKEN', "\"${mapboxToken}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {

@@ -8,7 +8,7 @@ Map {
   background-emissive-strength: linear([view::brightness], (0.25, 0), (0.3, 0.25));
   building-ao-intensity: [param::building_ao] * (linear(([view::zoom] - 1), (16, 0), (16.8, 0.15)));
   building-ao-ground-radius: linear(([view::zoom] - 1), (16, 0), (16.8, 8));
-  building-edge-radius: 0.4;
+  building-edge-radius: [param::building_edge_radius];
   building-height-scale: linear(([view::zoom] - 1), (15, 0), (15.3, 1));
   building-ambient: @building_ambient;
   building-light-intensity: @building_light_intensity;
@@ -19,7 +19,7 @@ Map {
   building-vertical-gradient: @building_vertical_gradient;
   building-height-view-scale: 1 - ([param::building_tilt_drop] * 0.01) * linear([view::tilt], (80, 0), (90, 1));
   building-ao-ground-attenuation: 1.75;
-  building-rounded-roof: 1;
+  building-rounded-roof: [param::building_rounded_roof];
   building-fade-on-appear: 0;
   colors-prelit: 1;
 }
@@ -194,6 +194,7 @@ Map {
   line-emissive-strength: 0.2;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'tertiary') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::tunnel_oneway_arrow_b1 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -203,6 +204,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'tertiary') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::tunnel_oneway_arrow_b2 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -212,6 +214,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::tunnel_oneway_arrow_trunk_b1 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -221,6 +224,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::tunnel_oneway_arrow_trunk_b2 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -230,6 +234,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::tunnel_oneway_arrow_motorway_b1 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -239,6 +244,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::tunnel_oneway_arrow_motorway_b2 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -710,6 +716,7 @@ Map {
   line-emissive-strength: 0.6;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::bridge_oneway_arrow_b1 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -719,6 +726,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::bridge_oneway_arrow_b2 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -728,6 +736,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::bridge_oneway_arrow_trunk_b1 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -737,6 +746,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::bridge_oneway_arrow_trunk_b2 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -746,6 +756,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::bridge_oneway_arrow_motorway_b1 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -755,6 +766,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::bridge_oneway_arrow_motorway_b2 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -863,7 +875,7 @@ Map {
 #building[zoom >= 16]['param::buildings'>1][extrude = 'true'][underground = 'false']::_3d_building {
   building-fill: @v3d_building_fill;
   building-height: ([est_height]) ?? ([height]);
-  building-fill-opacity: 1;
+  building-fill-opacity: [param::building_opacity];
   building-min-height: (([min_height] >= 0) ? [min_height] : 0);
 }
 #road[zoom >= 13] when((([layer] != null) ? ([layer] >= 0) : true)) when(step(([view::zoom] - 1), (0, (([class] = 'pedestrian') ? true : false)), (15, (([class] = 'path' || [class] = 'pedestrian') ? true : false))))::path_pedestrian_label {

@@ -31,6 +31,7 @@ import com.massifmaps.api.MassifMap;
 import com.massifmaps.components.PanningMode;
 import com.massifmaps.api.Position;
 import com.massifmaps.projections.EPSG4326;
+import com.massifmaps.ui.MapEventListener;
 import com.massifmaps.ui.MapView;
 
 /**
@@ -132,6 +133,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         mapView.getOptions().setClickTypeDetection(true);
 
         map = MassifMap.attach(mapView, entry.id()).eventProjection("EPSG:4326");
+        installCameraReadout();
         // '--es ui false' strips the chrome, the same key the bench uses. A gallery vignette is a
         // picture of the MAP; the back button and the caption are the app around it.
         if ("false".equals(getIntent().getStringExtra("ui"))) {
@@ -147,8 +149,10 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         // without a relaunch - which is the only way to see whether one change reaches every pass
         // in the same frame.
         live = new ExampleLive(map);
+        // EXPORTED, as the bench's own receiver is: the sender is `adb shell am broadcast`, which
+        // runs as the shell uid, and NOT_EXPORTED silently drops it (`result=0`, no receiver log).
         ContextCompat.registerReceiver(this, live, new IntentFilter(ExampleLive.ACTION),
-                                       ContextCompat.RECEIVER_NOT_EXPORTED);
+                                       ContextCompat.RECEIVER_EXPORTED);
         start();
     }
 
@@ -226,6 +230,24 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
             map.camera().moveTo(new Position(lon, lat), zoom, rotation, tilt);
         }
         logCamera();
+    }
+
+    /**
+     * The bench's camera readout, on the gallery too: pan to whatever looks wrong and the position
+     * is in logcat, in the form the launch extras take.
+     *
+     *   adb logcat -s ExampleActivity | grep camera
+     *
+     * Every move, as the bench does - a settled-only readout misses the frame an artifact showed on.
+     */
+    private void installCameraReadout() {
+        mapView.setMapEventListener(new MapEventListener() {
+            @Override
+            public void onMapMoved(int reason) {
+                super.onMapMoved(reason);
+                logCamera();
+            }
+        });
     }
 
     /**
@@ -392,6 +414,12 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                 Toast.makeText(ExampleActivity.this, text, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public float option(String key, float fallback) {
+        Bundle extras = getIntent() != null ? getIntent().getExtras() : null;
+        return extras != null ? (float) number(extras, key, fallback) : fallback;
     }
 
     @Override

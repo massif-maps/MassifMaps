@@ -1220,8 +1220,8 @@ namespace massif {
         return _tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
     }
 
-    float TileLayer::shadowCasterFadeSignature() const {
-        return _tileRenderer->shadowCasterFadeSignature();
+    float TileLayer::shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const {
+        return _tileRenderer->shadowCasterFadeSignature(coveredBy);
     }
 
     int TileLayer::consumeShadowCastersMissingElevation() {
@@ -1284,8 +1284,8 @@ namespace massif {
         return 0;
     }
 
-    void TileLayer::setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const std::array<float, 4>& depthBiases, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs) {
-        _tileRenderer->setTerrainShadowMap(texture, mapSize, cascades, depthBiases, strength, softness, depthTexture, hardwarePCF, normalOffset, sunDir, lightViewProjs);
+    void TileLayer::setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, 4>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs) {
+        _tileRenderer->setTerrainShadowMap(texture, mapSize, cascades, depthBias, depthScales, strength, softness, depthTexture, hardwarePCF, normalOffset, fadeRange, sunDir, lightViewProjs);
     }
 
     void TileLayer::setTerrainSunLighting(const ResolvedLighting& lighting) {

@@ -140,6 +140,28 @@ namespace massif {
         }
 
         /**
+         * How much of the light is DIRECT, which is all a shadow can take away: mapbox's
+         * `calculateGroundShadowFactor` (3d-style/render/shadow_utils.ts) states the complement -
+         * their fully shadowed ground keeps `ambient / (ambient + direct)`. Collapsed to one
+         * scalar, because the shadow strength is one uniform rather than a per-channel tint.
+         *
+         * `sunUp` is the sun direction's z, so this is 0 once the sun is under the horizon: no
+         * direct light, no shadow, whatever strength the application asked for.
+         */
+        static float directShare(const Setup& light, float sunUp) {
+            auto luminance = [](const float channels[3], float intensity) {
+                float linear[3];
+                for (int i = 0; i < 3; i++) {
+                    linear[i] = std::pow(std::max(0.0f, std::min(1.0f, channels[i])), 2.2f);
+                }
+                return (0.2126f * linear[0] + 0.7152f * linear[1] + 0.0722f * linear[2]) * std::max(0.0f, intensity);
+            };
+            float ambient = luminance(light.ambient, light.ambientIntensity);
+            float direct = luminance(light.direct, light.directIntensity) * std::max(0.0f, sunUp);
+            return ambient + direct > 0.0f ? direct / (ambient + direct) : 0.0f;
+        }
+
+        /**
          * mapbox's `calculateGroundRadiance` (3d-style/render/lights.ts) with the ground normal:
          * what a light does to a flat, upward-facing surface. `sunUp` is the sun direction's z.
          *

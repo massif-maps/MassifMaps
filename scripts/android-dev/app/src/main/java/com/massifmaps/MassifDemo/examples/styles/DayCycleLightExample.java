@@ -1,5 +1,6 @@
 package com.massifmaps.MassifDemo.examples.styles;
 
+import com.massifmaps.MassifDemo.BuildConfig;
 import com.massifmaps.MassifDemo.examples.ExampleHost;
 import com.massifmaps.MassifDemo.examples.ExampleInfo;
 import com.massifmaps.MassifDemo.examples.MapExample;
@@ -23,9 +24,12 @@ public class DayCycleLightExample extends MapExample {
 
     /**
      * Mapbox Standard reads MAPBOX's own vector tiles - its layers name mapbox-streets-v8 source
-     * layers, so no other tileset can feed it. Put your own token here; a demo cannot ship one.
+     * layers, so no other tileset can feed it. A demo cannot ship a token, so the build takes one
+     * from ~/.mapbox_token (app/build.gradle); without that file this stays the placeholder and
+     * the Mapbox style loads no tiles at all.
      */
-    private static final String MAPBOX_TOKEN = "<your-mapbox-access-token>";
+    private static final String MAPBOX_TOKEN =
+        BuildConfig.MAPBOX_TOKEN.isEmpty() ? "<your-mapbox-access-token>" : BuildConfig.MAPBOX_TOKEN;
 
     /**
      * The two styles, both converted by `massif-style mapbox2css --live-light`: the colours stay as
@@ -137,6 +141,11 @@ public class DayCycleLightExample extends MapExample {
         this.host = host;
         MassifMap map = host.map();
 
+        // '--es hour 12': the hour is the whole example, so a run that wants daylight must be able
+        // to start there. Without it every scripted run opens at dusk and only a hand on the
+        // slider gets it anywhere else.
+        hour = host.option("hour", START_HOUR);
+
         // How far a TILTED far field may coarsen. The LOD area test drops a tile a level for
         // distance and again for the grazing angle it is seen at; unbounded, the second term makes
         // the horizon band jump between levels as the camera turns, so one side of the screen keeps
@@ -174,8 +183,9 @@ public class DayCycleLightExample extends MapExample {
             .set("terrainLightingEnabled", true)
             // Buildings cast: a low sun is what the curve is most worth looking at, and it is also
             // when the shadows are longest. They follow the same sun the curve reads, so they
-            // stretch and swing round as the hour is swept.
-            .set("shadowStrength", 0.35)
+            // stretch and swing round as the hour is swept - and fade out as it sets, because the
+            // SDK scales this by how much of the light is direct. 1 is the physical depth.
+            .set("shadowStrength", 1.0)
             .set("shadowSoftness", 1.2));
 
         // A sky, because the hour is the whole example: the atmosphere is integrated against the
@@ -206,7 +216,7 @@ public class DayCycleLightExample extends MapExample {
         // The HOUR, because that is what a day is: the sun walks its real arc, so dawn and dusk
         // come with the azimuth swinging round rather than being picked by hand. Forcing a height
         // instead is the gear panel's `sun altitude`, which overrides this until it is dragged again.
-        host.slider("Hour", 0f, 24f, START_HOUR, new ExampleHost.OnValue() {
+        host.slider("Hour", 0f, 24f, hour, new ExampleHost.OnValue() {
             @Override
             public void onValue(float value) {
                 hour = value;

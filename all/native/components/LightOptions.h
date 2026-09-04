@@ -225,14 +225,18 @@ namespace massif {
 
         /**
          * Returns the shadow strength.
-         * @return The shadow strength. The default is 0 (no shadows).
+         * @return The shadow strength. The default is 1 (MapBox's own shadow-intensity default).
          */
         float getShadowStrength() const;
         /**
-         * Sets how strongly the sun's shadows darken the terrain, 0 (off) to 1 (full).
-         * Shadows are cast by the terrain itself onto the terrain, so ridges shade valleys
-         * at low sun. Requires terrain lighting.
-         * @param strength The new shadow strength (clamped to 0..1).
+         * Sets how strongly the sun's shadows darken the terrain. Shadows are cast by the terrain
+         * itself onto the terrain, so ridges shade valleys at low sun. Requires terrain lighting.
+         *
+         * NOT the depth drawn: a shadow only hides the direct light, so this is multiplied by the
+         * sun's share of the scene light, which is 0 once the sun is under the horizon. 1 is
+         * therefore the physically correct shadow - MapBox's - and not a maximum: values above it
+         * exaggerate, and are clamped where the two are resolved together.
+         * @param strength The new shadow strength (0 = off, 1 = physical; negatives clamped away).
          */
         void setShadowStrength(float strength);
 
@@ -251,7 +255,7 @@ namespace massif {
 
         /**
          * Returns the number of shadow cascades.
-         * @return The cascade count. The default is 3.
+         * @return The cascade count. The default is 2, as mapbox uses.
          */
         int getShadowCascades() const;
         /**
@@ -314,17 +318,19 @@ namespace massif {
         void setShadowSoftness(float softness);
 
         /**
-         * Returns the shadow depth bias.
-         * @return The shadow depth bias in meters. The default is 0.5.
+         * Returns the shadow depth bias scale.
+         * @return The scale on MapBox's shadow bias. The default is 1 (theirs unchanged).
          */
         float getShadowBias() const;
         /**
-         * Sets the shadow depth bias in meters: the depth slack that keeps a lit surface from
-         * shadowing itself. Too small gives acne (dark speckle on lit slopes), too large detaches
-         * shadows from what casts them. It is metric on purpose - expressed as a fraction of the
-         * light frustum it would grow with the shadowed area, and the shadow would drift away
-         * from its caster as the view zoomed out.
-         * @param bias The new shadow bias.
+         * Scales the shadow depth bias: the depth slack that keeps a lit surface from shadowing
+         * itself. Too small gives acne (dark speckle on lit slopes), too large detaches shadows
+         * from what casts them.
+         *
+         * UNITLESS. The bias itself is MapBox's - a constant plus a term growing with the angle
+         * between the surface and the light, capped - in normalised light depth, so 1 is their
+         * shadow exactly and this only scales it.
+         * @param bias The new shadow bias scale.
          */
         void setShadowBias(float bias);
 

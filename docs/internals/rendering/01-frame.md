@@ -85,6 +85,15 @@ and `BuildingRenderOrder` (`LAYER` = the 2D pass, `LAST` = the 3D one), and they
 to the same pass: labels to `LAYER`, buildings to `LAST`. Inside one pass the order is
 2D geometry → flat labels → extrusions → billboard labels, which is the order those four want.
 
+A **translucent extrusion** (a fill opacity below 1, per feature, as Mapbox Standard's
+`building_opacity` sets it) is drawn twice: depth only, then colour with the depth pulled one
+unit towards the camera, so exactly one fragment per pixel blends — the nearest, and the first
+drawn among equals (`GLTileRenderer::renderGeometry3D`). Blended straight in, every wall showed
+through every other and two coincident party walls fought for the pixel. mapbox does the same with
+a depth prepass and a stencil that admits each pixel once; the stencil here belongs to the 2D
+pass, and the depth offset gives the same result without it. A *layer* opacity below 1 already
+took the overlay path (opaque in its own buffer, composited once) and is unchanged.
+
 A **billboard label follows the later of the two** (`TileRenderer::drawsBillboardLabelsHere`).
 It stands out of the map, so with the default pair — labels at `LAYER`, buildings at `LAST` — its
 own layer's extrusions were drawn a whole pass after it and painted over every one: POI names cut

@@ -19,7 +19,7 @@ map.light(Spec.of("light")
     .set("dayCycleLightsEnabled", true)   // the sun's height drives the light
     .set("sunOverridingStyle", true)      // the app's sun beats the style's
     .set("terrainLightingEnabled", true)  // needed for cast shadows - see below
-    .set("shadowStrength", 0.35));
+    .set("shadowStrength", 1));       // 1 = MapBox's depth; it fades itself out at dusk
 
 // The curve is anchored on the sun's HEIGHT, so that is what to drive.
 map.light().apply(Spec.object()
@@ -155,8 +155,8 @@ terrain are lit with, and `view::brightness`. There is no second theme to keep i
 however high the strength goes. The renderer says so if you read its log:
 
 ```
-MapRenderer: shadows off    (strength 0.35, terrain lighting 1, cover tiles 0)
-MapRenderer: shadows ACTIVE (strength 0.35, terrain lighting 1, cover tiles 1)
+MapRenderer: shadows off    (strength 1.00, terrain lighting 1, cover tiles 0)
+MapRenderer: shadows ACTIVE (strength 1.00, terrain lighting 1, cover tiles 1)
 ```
 
 A flat city still wants one — it is there for the light, not the relief:

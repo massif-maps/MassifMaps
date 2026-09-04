@@ -240,11 +240,14 @@ answers. The real fix is a depth pre-pass — extrusions rendered depth-only fir
 The caster pass draws **exactly the terrain surfaces that are about to be drawn on screen**, from the
 sun, into a packed-depth texture; the surface shader then looks itself up in it. Casters and
 receivers share one vertex shader and one elevation fetch, so the shadow geometry cannot disagree
-with the rendered geometry.
+with the rendered geometry. The extrusion caster keeps the drawn extrusion's half-open tile clip
+too (`polygon3DShadowCasterFsh`): under overzoom every target tile holds the whole source geometry,
+and an unclipped copy whose base has not resolved yet stood above the drawn building and shadowed
+its roof (a wedge with a texel ladder, Louvre Pyramid, 2026-09-03).
 
 Design points, each measured:
 
-- **Cascades** (up to `TerrainShadowMap::MAX_CASCADES = 4`, default 3 × 1024). Each cascade fits its
+- **Cascades** (up to `TerrainShadowMap::MAX_CASCADES = 4`, default 2 × 1024, mapbox's count). Each cascade fits its
   light box to **its own** piece of ground's relief, not the whole scene's — at a low sun that is
   what sets the box size.
 - **The shadow sun is not always the lighting sun.** A shadow is as long as the caster is tall over
@@ -254,6 +257,81 @@ Design points, each measured:
   grey wash that appears and disappears with the cover. The **shadow pass alone** floors the sun
   altitude at 15°, keeping the azimuth, which caps shadow length at ~3.7× the relief. N·L lighting
   keeps the true sun, so a low sun still reads as a low sun.
+- **`shadowStrength` is not the depth drawn.** A shadow hides the DIRECT light and nothing else, so
+  `resolveLighting` multiplies the strength by that light's share of the scene —
+  `DayCycleLight::directShare`, which is mapbox's `calculateGroundShadowFactor`
+  (3d-style/render/shadow_utils.ts) read the other way round: their fully shadowed ground keeps
+  `ambient / (ambient + direct)`, with `direct` weighted by `max(0, sunUp)`. Under the horizon the
+  share is 0, so the caster pass is skipped outright. **The default is `1`** — mapbox's
+  `shadow-intensity` default, and with the share applied that is their shadow exactly rather than a
+  maximum. Above 1 exaggerates; the product is clamped to 1 because the shaders read it as
+  `mix(1, lit, strength)`, which a value past 1 would invert. The bench and the example panel let it
+  reach 2 for that reason.
+
+  What this fixed, on the `day-cycle-light` example at Paris (`shadowStrength 0.35`): the shadow map
+  was still being drawn all night — cast from the 15° floor above, azimuth intact — so shadow blocks
+  were visible on the ground and on facades at 22:04 with the sun 34° down, and they swung round
+  until sunrise. The same constant strength over a dimming scene is why dusk shadows read as *deeper*
+  than midday ones.
+
+  The share is not monotone in the hour, and that is Standard's palette rather than a bug: its dusk
+  ambient is a dark blue, so the warm sun is a bigger fraction of a much smaller total than the white
+  sun is at noon. Read off the built-in dusk curve:
+
+  | sun altitude | ≤ 0° | 2.5° | 7.5° | 12.5° | 20° | 30° | 41° |
+  |---|---|---|---|---|---|---|---|
+  | share | 0 | 0.13 | 0.30 | **0.41** | 0.19 | 0.13 | 0.14 |
+
+  So the deepest shadows of the day fall in the twilight band, they thin out over the last two
+  degrees, and midday keeps about a seventh of the strength an application sets.
+- **A wall's N·L does not close on its own.** An extrusion's normal has no z, so
+  `dot(N, sunDir)` stays positive with the sun *below* the map — night facades were lit from
+  underground, and (before the fade above) passed the back-face test and got a shadow-map lookup that
+  dimmed their ambient. `LIGHTING_SHADER_3D` fades the direct term over the horizon crossing
+  (`smoothstep(-0.035, 0, u_sunDir.z)`, i.e. −2° to 0°). The ground needs no such term: its normal
+  points up, so N·L reaches 0 by itself.
+- **The depth bias is mapbox's, ported whole.** `0.5·bias.x + clamp(bias.y · tan(acos(N·L)), 0, bias.z)`
+  (`_prelude_shadow.fragment.glsl`), with their constants — `[0.00010, 0.0012, 0.012]` when the
+  normal offset is on, `[0.00036, 0.0012, 0.012]` when it is not — in NORMALISED light depth and
+  shared by every cascade, as theirs is. `LightOptions.ShadowBias` scales the triple, so 1 is
+  theirs unchanged.
+
+  What it replaced, and why: a per-cascade metric bias (`shadowBias / depthRangeMeters`) plus a
+  receiver-plane term from screen-space derivatives. That term's clamp, `0.02 / uShadowParams.x`,
+  let ONE texel be worth 0.02 of the light box — more than mapbox's entire bias budget (0.012) —
+  and it was subtracted from the reference depth *and* added per PCF tap. Every silhouette it
+  touched over-darkened. Symptom at `lon 2.33355 lat 48.86327 z19.09 rot -21 tilt 45`, hour 8:25,
+  `shadowStrength 2`: dense speckle over every facade, plus long tapering wedges thrown from wall
+  corners across the plaza. The wedges scaled with the CASCADE COUNT (1 clean, 2 a thin line, 3 the
+  full wedge) because a page-index probe showed the whole view sitting in cascade 0 — more cascades
+  only shrink that box, which raises the screen-space derivatives and hits the clamp harder.
+
+  **Then it had to come back, for the GROUND only.** Removing it wholesale traded the facade speckle
+  for a mesh over the whole ground below ~z17, reaching every zoom down to 0. mapbox needs no
+  receiver-plane term because their ground cannot self-shadow — their shadow receiver is a flat
+  plane at `z = 0` (`ground_shadow.vertex.glsl`) and terrain never casts, only extrusions do. Ours
+  DOES cast the terrain, so the depth stored for a texel CENTRE is up to half a texel from the
+  fragment reading it, which on ground at a grazing sun is metres of height. Porting their bias
+  whole meant dropping the one term our own feature depends on.
+
+  It is now gated to the ground by `SHADOW_RECEIVER_3D_FLAG`, set on the `polygon3d` receiver
+  program alone. Each receiver keeps only the defence that suits it: the ground has no normal to
+  offset along and uses the plane bias; an extrusion has the normal offset and must NOT use the
+  plane bias, because its shadow position is discontinuous across the bevel band at a vertical edge
+  — a quad straddling it sees a huge derivative, the bias saturates unevenly, and that is the
+  serrated wedge. The clamp is master's `0.02 / uShadowParams.x` again, and it has to stay
+  SCALE-FREE: capping it in metres instead (`uShadowBias.z * depthScale`) collapses to nothing in
+  normalised depth as the light box grows, so the bias dies at low zoom and the mesh returns — which
+  is exactly what a metric cap did before this was understood.
+- **The cascade count IS part of it, and 2 — mapbox's own count — is now the default.** This was
+  read the other way round once: dropping to 2 was called a masking effect of a coarser near box and
+  reverted. It is not. More cascades make each box smaller, which raises the screen-space
+  derivatives on a building's bevel band and serrates its vertical edges; at 2 the wedge is gone.
+  The trade is real and stated rather than hidden: `sliceFarAt` reproduces mapbox's split exactly
+  (cascade 0 at `cutout / 3` = 1.5 × the camera distance, the cutout at 4.5 ×), so going from 3 to 2
+  moves the near page from 0.5 × to 1.5 × — 3 × coarser texels — and since
+  `shadowSoftness` is counted in TEXELS the penumbra widens in metres with it. At z16.5 over the
+  Louvre that washed the building shadows out and dropped the smallest of them entirely.
 - **Caster margin, bounded by the shadow THROW.** Casters are the cover plus a ring, because a
   mountain off screen still throws its shadow into the view. The ring's reach is
   `relief / tan(sun altitude)` — capped at about 3.7 x the relief by the 15-degree floor — and NOT a

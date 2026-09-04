@@ -357,6 +357,9 @@ public class DemoMap {
         setStyleParameter("deck3d", DemoConfig.STYLE_DECK3D);
         setStyleParameter("building_tilt_drop", DemoConfig.STYLE_TILT_DROP);
         setStyleParameter("building_ao", DemoConfig.STYLE_AO);
+        setStyleParameter("building_opacity", DemoConfig.STYLE_BUILDING_OPACITY);
+        setStyleParameter("building_edge_radius", DemoConfig.STYLE_EDGE_RADIUS);
+        setStyleParameter("building_rounded_roof", DemoConfig.STYLE_ROUNDED_ROOF);
     }
 
     private void setStyleParameter(String name, String value) {

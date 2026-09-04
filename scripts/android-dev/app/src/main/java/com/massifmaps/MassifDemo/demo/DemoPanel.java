@@ -811,7 +811,8 @@ public final class DemoPanel {
         });
 
         header(context, "SHADOWS");
-        slider(context, "strength", 0, 1, DemoConfig.SHADOW_STRENGTH, false, new FloatSetting() {
+        // Past 1 on purpose: 1 is the physical depth, and a bench wants to be able to exaggerate.
+        slider(context, "strength", 0, 2, DemoConfig.SHADOW_STRENGTH, false, new FloatSetting() {
             public void set(float value) { DemoConfig.SHADOW_STRENGTH = value; demo.lightOptions.setShadowStrength(value); }
         });
         slider(context, "softness (texels)", 0, 4, DemoConfig.SHADOW_SOFTNESS, false, new FloatSetting() {
@@ -1026,6 +1027,39 @@ public final class DemoPanel {
         // draws whatever it was authored with.
         check(context, "3D buildings (inline style)", DemoConfig.INLINE_BUILDINGS_3D, new BoolSetting() {
             public void set(boolean value) { DemoConfig.INLINE_BUILDINGS_3D = value; demo.rebuildBaseLayer(); }
+        });
+        // See-through walls, for telling a GEOMETRY artifact from a SHADOW one: with the fill
+        // translucent the mesh's own edges stay visible while the shading is out of the way. A
+        // converted style reads it as `param::building_opacity`, so it is a redraw, not a re-decode.
+        slider(context, "building opacity (converted style)", 0f, 1f,
+               DemoConfig.STYLE_BUILDING_OPACITY.isEmpty()
+                   ? 1f : Float.parseFloat(DemoConfig.STYLE_BUILDING_OPACITY),
+               false, new FloatSetting() {
+            public void set(float value) {
+                DemoConfig.STYLE_BUILDING_OPACITY = Float.toString(value);
+                demo.applyStyleParameters();
+                demo.mapView.requestRender();
+            }
+        });
+        // The BEVEL: the chamfer rounding a vertical edge, and the roof it runs into. Mesh, so
+        // each change is a re-decode - hence applyOnRelease. 0 / off is the no-bevel comparison a
+        // wall-corner artifact has to be judged against.
+        slider(context, "building edge radius (converted style)", 0f, 2f,
+               DemoConfig.STYLE_EDGE_RADIUS.isEmpty()
+                   ? 0.4f : Float.parseFloat(DemoConfig.STYLE_EDGE_RADIUS),
+               true, new FloatSetting() {
+            public void set(float value) {
+                DemoConfig.STYLE_EDGE_RADIUS = Float.toString(value);
+                demo.applyStyleParameters();
+            }
+        });
+        check(context, "rounded roof (converted style)",
+              DemoConfig.STYLE_ROUNDED_ROOF.isEmpty() || Float.parseFloat(DemoConfig.STYLE_ROUNDED_ROOF) > 0f,
+              new BoolSetting() {
+            public void set(boolean value) {
+                DemoConfig.STYLE_ROUNDED_ROOF = value ? "1.0" : "0.0";
+                demo.applyStyleParameters();
+            }
         });
 
         header(context, "FOG / DISTANCE");

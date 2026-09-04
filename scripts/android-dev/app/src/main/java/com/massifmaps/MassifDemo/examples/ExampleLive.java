@@ -12,6 +12,8 @@ import com.massifmaps.api.Position;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Changes a knob on a RUNNING example, from adb, with no relaunch:
@@ -89,6 +91,14 @@ public final class ExampleLive extends BroadcastReceiver {
 
     private final MassifMap map;
 
+    /**
+     * The writes run HERE, not on the main thread. A property write reaches the SDK and blocks on
+     * whatever the render thread holds, and a BroadcastReceiver runs on the main thread with a
+     * deadline - so a broadcast sent while the renderer is busy ANRs the app, which is exactly when
+     * an A/B wants to send one. ONE thread, so successive broadcasts still apply in order.
+     */
+    private final ExecutorService worker = Executors.newSingleThreadExecutor();
+
     public ExampleLive(MassifMap map) {
         this.map = map;
     }
@@ -100,6 +110,17 @@ public final class ExampleLive extends BroadcastReceiver {
             return;
         }
         Log.i(TAG, "config " + extras);
+        // Held before returning: the Bundle is not ours once onReceive is done.
+        final Bundle config = new Bundle(extras);
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                apply(config);
+            }
+        });
+    }
+
+    private void apply(Bundle extras) {
         for (String key : extras.keySet()) {
             String[] knob = KNOBS.get(key);
             if (knob == null) {

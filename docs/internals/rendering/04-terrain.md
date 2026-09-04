@@ -443,7 +443,7 @@ mapbox splits the two ends, and that is what is implemented here:
 | | aligned to | result |
 |---|---|---|
 | base ring | the terrain under each vertex | the wall meets the slope everywhere, no gap, no float |
-| everything above it | ONE elevation, resolved at the footprint's **centroid** | the roof stays level; walls simply grow taller downhill |
+| everything above it | ONE elevation, resolved at the footprint's **centroid** on a smoothed field | the roof stays level; walls simply grow taller downhill |
 
 The centroid rides in the **texcoord slot**, which was free because for an extrusion `_texCoords`
 was a byte-for-byte duplicate of `_coords`. It is no longer read by the shader — the CPU pass below
@@ -451,9 +451,15 @@ reads it back out of the vertex data to know where to ask for the ground, and `p
 the position for the tile clip. `packGeometry` forces `texCoordScale == coordScale` for `POLYGON3D`,
 which is what lets one scale convert either of them.
 
+**The scale is fitted to the anchors as well as the coords** (`_polygon3DAnchorExtent`). Under deep
+overzoom the centroid of a palace lies several tiles away from the z20 piece drawing it; at the
+coords' own scale it overflowed the int16 and wrapped, so every tile read its base at a garbage
+position — the same wing at two heights, a piece under the ground with no walls, only on 3D
+terrain and only zoomed in close (the Louvre, 2026-09-04). Host test `ExtrusionAnchorTest`.
+
 ### The base is resolved on the CPU, not sampled in the shader
 
-The base is **one `ElevationManager::getDisplayHeight` query at the centroid**, run on the render
+The base is **an `ElevationManager::getDisplayHeight` query at the anchor**, run on the render
 thread by `GLTileRenderer::resolveExtrusionBases` and patched into a per-vertex slot
 (`TileGeometry::setVertexBase`, `baseOffset` in the vertex layout). The vertex shader only scales
 it: `aVertexBase * uBaseScale + uElevationScale.w`.
@@ -484,6 +490,32 @@ has no elevation texture yet is **not drawn at all**, because a base of 0 is sea
 an exaggeration ramp, since the exaggeration is inside that height. It is a counter rather than the
 labels' per-tile list because `setVertexBase` is a no-op when the height has not moved, so a
 needless re-resolve costs the queries and uploads nothing.
+
+**The ground the anchor reads is a SMOOTHED field, not the lidar level the surface is drawn
+from.** `ElevationTextureCache::getDisplayHeight(..., smooth = true)` samples the DEM at
+`SMOOTH_BASE_ZOOM` (z12, about 20 m posting, mapbox-terrain-dem's own scale), bilinear, from the
+grid LRU — an ancestor level answers too, and is asked for if none is there; the arrival bumps
+the elevation version and every base moves together. This is the answer to a family of seams that
+only exist on lidar: a 0.84 m DEM steps by metres between a courtyard and its street, and every
+piece of a building anchored on it — a part beside its pedestal, the halves a source-tile border
+cuts, the copies two zoom levels decode for a mixed-zoom cover — stood at its own height. Read
+from a field that is smooth at the scale of a building, those pieces agree to centimetres
+**without seeing each other**, which is what mapbox gets for free from its DEM. Spans (bridge
+chords) keep the drawn surface (`smooth = false`); a deck must meet the road exactly.
+
+**mapbox's floor, per vertex** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`):
+a vertex that rises keeps at least 2 m above the drawn ground under it, so a low part whose
+smoothed anchor sits under its own lidar street is still a building and not a hole, and nothing on
+a hillside is buried uphill. Done on the CPU through the provider, not in the shader: overzoomed
+geometry runs past the target tile, where `applyTerrain` clamps to the edge texel, and a shader
+floor read there tilted whole roofs into ramps. And per vertex, not per footprint: a floor over the
+ring vertices a tile's clip kept was per tile, and one slab came out 31.6 m in one tile and 34.4 m
+in the next. Roofs of low parts follow the ground where the floor bites; tall buildings never feel
+it. One query per rising vertex position, columns of a wall share theirs.
+
+mapbox's `flatElevation` lift (the rise across the span, sampled at the span's corners) is NOT
+ported: its corners lie off the footprint, and beside the Seine one on the Tuileries terrace lifted
+a wing 5 m above its neighbour. On a smooth field the floor covers what the lift was for.
 
 This **removes** the previous model's 5 elevation samples per above-ground vertex, measured at
 **+0.35 ms** on the `layers3D` pass on an Adreno 610 at the Grenoble city camera (2.30 vs 1.95 ms
@@ -523,14 +555,144 @@ had bound. The units were the smaller of the two bugs.
 
 ### What is still wrong
 
-The base is **one query at the centroid**, so a footprint is again represented by a single point:
-a long thin building on a slope, or an L-shaped one, takes the ground at its middle rather than the
-highest ground it stands on, and can still be partly buried uphill. Sampling the real footprint is
-possible now that the query is on the CPU — the polygon is right there — but it is not done.
+Pieces of one building each anchor at their own centroid; they agree only as well as the smoothed
+field is flat between those centroids — centimetres across a block in Paris, up to a metre across
+a 400 m palace on a real slope. mapbox groups a tile's parts by `building_id` and reconciles
+borders (`updateBorders`); tried here in three forms on 2026-09-03 (per-tile groups, source-tile
+groups, a global union) and all three made the pieces disagree by more than the field does, because
+an anchor shared across a large building is far from most of its parts. On a smooth field the
+ungrouped anchor is the smaller error.
 
-A footprint **split across two tiles** gets a different centroid and a different reach in each half,
-so the two can lift to different heights and step at the tile seam. Pre-existing for the centroid,
-now inherited by the reach.
+## Bridges and tunnels: spans
+
+A road on 3D terrain is **draped** — painted into the terrain texture — so it follows every bump
+the DEM has. That is right for a road on the ground and wrong for one on a bridge: the deck sags
+into the valley it crosses, and a tunnel climbs over the hill it goes through. A DSM makes it
+worse, since it catches the deck itself as terrain and spikes the middle upward.
+
+`line-elevation-mode` / `polygon-elevation-mode` (`drape` | `span` | `underground`) mark the
+features that do not lie on the ground. A span leaves the drape bake by construction —
+`isDrapeableGeometry` returns false for any geometry carrying span records, whatever the layer
+filter says — and takes its height from a **chord** between its two portals instead of from the
+DEM under it.
+
+### Portals, and why the tile is the test
+
+A span's portals are the feature's own two ends. The tile grid cuts a long bridge into pieces, and
+an end the tile cut is not a portal: a chord between two cut points dives to whatever the ground
+does at the cut.
+
+The classification tests the **tile**, not the clip box. The source clips at its own buffer
+(mapbox: 1/64 of a tile), so every cut end lands well inside our 1/8 clip box and would read as a
+real portal — which is what drew the Millau viaduct as two 30% ramps and a middle. The same point
+is inside the *neighbouring* tile's copy, which is where its portal is seen.
+
+### Joining the pieces
+
+The pieces are matched **by geometry, not by feature id**: `LineSymbolizer` passes
+`FeatureCollection::getLocalId`, a layer offset plus an index, so one OSM way gets a different id
+in every tile it crosses. Two pieces are one structure when the ends the tile *cut* meet — the
+buffer makes neighbouring copies overlap rather than touch, so this is proximity (13–18 m between
+the Millau pieces at z15) with a direction test to keep a crossing bridge out of the chain.
+
+Joined, the Millau viaduct resolves as one chord — **2472 m at 3.3%** against 2460 m at 3.025% in
+reality when it was first measured, **3440 m** on the tile set measured since (see below). The
+portals are sampled at the junctions, where the approach road is draped and so sits
+on the DEM — anchoring the deck to the same value is what makes the two meet instead of stepping.
+
+A resolved chord is remembered in a small LRU, because a bridge's portals are a property of the
+world and not of what is on screen: zooming into one end drops the far piece from the visible set,
+and without the cache the chord shortens to whatever is still loaded and the deck changes angle.
+A piece with no portal of its own borrows a cached chord by its own **midpoint**, since a piece in
+the middle of a long deck is cut at both ends and has none to offer.
+
+**Two portals are not a resolved chord.** Neighbouring tiles each hold a copy of the same abutment,
+so a group whose far portal is off screen still collects two portal points — 45 m apart at z15,
+across pieces running 1305 m — and that chord passed every other test here. Measured on the viaduct
+at z15.16, all eleven of its pieces resolved to that 45 m chord: the deck sagged onto the DEM and
+its labels went with it, which is what read as "the join fails when part of the bridge is off
+screen". The rule is `SpanGeometry::chordSpansGroup` — a chord must reach across **the group's own
+diameter** (95%, for the buffer overlap) — and a group that fails it is unresolved, so the cache
+borrow runs and hands it the 3440 m chord it resolved at z14.
+
+### Everything else that stands on the deck
+
+- The **bed polygon** (mapbox's `structure`/`class=land`) takes `polygon-elevation-mode`; its
+  portals are the two vertices farthest apart, which for a deck-shaped ring are its ends.
+- **Labels, POIs and one-way arrows** ask `spanHeightAt` before the terrain: lifted up to 151 m at
+  mid-span on the viaduct, tapering to 0 at the abutments. The allowance scales with the span
+  (2%, floor 25 m) because a long deck *curves* in plan while its chord is straight — Millau's
+  ~20 km radius puts mid-deck some 36 m off its own chord, and a fixed 25 m missed exactly the
+  labels standing on the bridge.
+- A span is lit **flat**, not by `terrainNdl`. Borrowing the terrain's normal is right for a road
+  lying on the ground and wrong for one flying over it: the deck came out shaded by the valley wall
+  beneath it and stepped in tone against its own draped approach.
+- A layer whose geometry is *all* spans still occupies its place in the drape unit stack. Dropping
+  it shifts every later layer's coverage-mask index, which masked the whole road network away.
+
+### The deck as an extrusion
+
+`building-elevation-mode: span` stands a `BuildingSymbolizer`'s prism on the **chord** instead of on
+the ground, so `min-height`/`height` become a thickness measured from the deck rather than a height
+above the terrain (negative values hang the structure below the road surface). It is the same
+mechanism the span lines already use and not a second one: both write a per-vertex `baseOffset`, so
+`resolveExtrusionBases` simply hands a geometry carrying span records to `resolveSpanBases`, which
+takes the base from each vertex's own position along the chord. A building keeps the old path — one
+elevation query per footprint centroid, giving the flat base a building wants.
+
+`Polygon3DStyle` therefore carries an `elevationMode`, and `TileLayerBuilder` splits the batch on it
+(a deck and a building resolve their bases differently, so they cannot share one geometry) and emits
+the same `SpanVertexInfo` a filled bed does. Both get their two ends from
+`SpanGeometry::farthestPair` — a ring has no ends, so its span is its longest axis, found
+centroid → farthest → farthest again. Getting that wrong lays the chord across the deck's *width*,
+which resolves as a metre-long span and leaves the deck on the ground; `tests/vt/SpanGeometryTest.cpp`
+pins it on a 2460 × 32 m ring.
+
+What this buys beyond looks: labels, POIs and one-way arrows on a deck stop being a special case,
+because the deck becomes the same "POI on top of a building" query, and the existing extrusion
+shadow pass applies to it unchanged.
+
+Two things had to be got out of the way before any of it drew, and both are worth knowing on their
+own:
+
+**A style's building height ramp flattens a deck to nothing.** A converted Mapbox Standard carries
+`building-height-scale: linear(zoom, (15, 0), (15.3, 1))`, so every extrusion is multiplied by
+**zero** below mb zoom 15 — which is every camera a bridge is looked at. A span deck now takes none
+of the three building multipliers (the ramp, the tilt drop, grow-on-appear): they all mean "this
+building is not there yet", and a bridge is structure.
+
+**A style parameter can only narrow what draws, never widen it.** A rule whose filter is false for
+the parameter's *declared* value is pruned when the style compiles and cannot come back at runtime.
+`--es buildings 1` works because Standard declares `buildings: 2` and the runtime value only
+removes rules; `--es deck3d 1` could never work while `deck3d` was declared `0`, and every test run
+through that knob was silently testing nothing. The demo declares `deck3d: 1` for this reason, and
+`--es deck3d 0` turns it off — the direction that works.
+
+**What it looks like.** Verified side-on from west of the viaduct
+(`--es lat 44.0790 --es lon 2.9960 --es zoom 15.0 --es tilt 12 --es rotation 90`): the deck reads as
+a solid band with thickness. From ABOVE it correctly shows only the road surface, and at a 6.5 m
+thickness that is ~2 px at z14 — so "the deck is missing" from a top-down camera is the geometry
+being thin, not a rendering failure. What makes a bridge read at those zooms is its shadow and its
+piers, neither of which this draws yet.
+
+The pure geometry is in `vt/SpanGeometry.h` and tested on the host (`tests/vt/SpanGeometryTest.cpp`);
+none of these rules fails loudly when wrong.
+
+### What is still wrong
+
+**A structure never seen whole has no chord to borrow.** The cache carries a bridge across a zoom
+or a pan, but it is only ever filled by a group that resolved on its own. Opening the map already
+zoomed into one abutment leaves the deck draped until the far end comes into view once.
+
+**The chord runs long.** The viaduct joins as 3440 m against a 2460 m deck — the chain reaches into
+the structure beyond its northern abutment. Not visibly wrong at the cameras tested (the extra
+length is bridge too), but it is not the bridge, and 2472 m is what an earlier tile set gave.
+
+**Tunnels are unimplemented.** `underground` parses and is carried through, but nothing draws a
+tunnel see-through against the terrain in front of it.
+
+**The converter emits neither property.** `mapbox2css` does not translate `[structure]` into
+`line-elevation-mode`, so a regenerated style loses the annotations.
 
 ## Bridges and tunnels: spans
 

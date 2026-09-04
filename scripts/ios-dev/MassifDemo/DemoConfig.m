@@ -97,7 +97,7 @@ static NSMutableDictionary *sValues = nil;
         @"sunAltitude":         @9.0f,
         @"sunIntensity":        @1.0f,
         @"ambient":             @1.0f,
-        @"shadow":              @0.3f,
+        @"shadow":              @1.0f,   // mapbox's depth; the SDK scales it by the sun's share
         @"shadowSoftness":      @1.0f,
         @"shadowMapSize":       @1024,
         @"shadowCascades":      @3,

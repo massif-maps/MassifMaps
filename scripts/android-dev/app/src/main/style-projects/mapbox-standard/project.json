@@ -139,6 +139,9 @@
   ],
   "styleparameters": {
     "building_ao": 1,
+    "building_edge_radius": 0.4,
+    "building_opacity": 1.0,
+    "building_rounded_roof": 1.0,
     "building_tilt_drop": 90,
     "buildings": 2,
     "glyph-ae-d-route-3": "icons-glyph/ae-d-route-3.png",

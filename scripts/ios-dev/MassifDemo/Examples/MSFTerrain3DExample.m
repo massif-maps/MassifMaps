@@ -110,7 +110,7 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
         set:@"terrainLightingEnabled" value:@YES]
         set:@"sunAzimuth" value:@315]
         set:@"sunAltitude" value:@42]
-        set:@"shadowStrength" value:@0.35]
+        set:@"shadowStrength" value:@1.0]
         set:@"shadowSoftness" value:@1.5] error:nil];
 
     // Looking SOUTH at the Matterhorn from high over Zermatt. tilt 90 is straight down in this SDK,

@@ -489,11 +489,11 @@ namespace massif {
         return false;
     }
 
-    float TileRenderer::shadowCasterFadeSignature() const {
+    float TileRenderer::shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            return tileRenderer->shadowCasterFadeSignature();
+            return tileRenderer->shadowCasterFadeSignature(coveredBy);
         }
         return 0.0f;
     }
@@ -598,11 +598,11 @@ namespace massif {
         return 0;
     }
 
-    void TileRenderer::setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const std::array<float, 4>& depthBiases, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs) {
+    void TileRenderer::setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, 4>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            tileRenderer->setTerrainShadowMap(static_cast<GLuint>(texture), mapSize, cascades, depthBiases, strength, softness, depthTexture, hardwarePCF, normalOffset, sunDir, lightViewProjs);
+            tileRenderer->setTerrainShadowMap(static_cast<GLuint>(texture), mapSize, cascades, depthBias, depthScales, strength, softness, depthTexture, hardwarePCF, normalOffset, fadeRange, sunDir, lightViewProjs);
         }
     }
 
@@ -982,17 +982,17 @@ namespace massif {
             // the corner of the world, where it sampled ocean and answered 0 m - which is what a
             // bridge deck at sea level was made of.
             if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
-                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, double& height) {
-                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, height);
+                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, bool smooth, double& height) {
+                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, smooth, height);
                 });
             } else {
-                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, double& height) {
+                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, bool, double& height) {
                     return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
                 });
             }
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
-            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)>());
+            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());
@@ -1687,7 +1687,10 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             // model layers - reaching for it here flattens the whole point: a low dawn sun should
             // leave a roof (N.L = sin(altitude)) well under the wall facing it, and wrapping lifts
             // the roof by half the gap. The nuance between the walls comes from the ambient below.
-            mediump float sunNdl = max(0.0, ndl);
+            // Faded out as the sun crosses the horizon: a wall's normal has no z, so N.L stays
+            // positive with the sun BELOW the map and a night facade was lit from underground.
+            // The ground needs no such term - its normal points up, so N.L closes on its own.
+            mediump float sunNdl = max(0.0, ndl) * smoothstep(-0.035, 0.0, u_sunDir.z);
             // Sky is brighter near the sun: faces turned away lose up to 30% of the ambient,
             // scaled by how bright the sun actually is.
             mediump float dirLuminance = dot(u_sunColor, vec3(0.2126, 0.7152, 0.0722));

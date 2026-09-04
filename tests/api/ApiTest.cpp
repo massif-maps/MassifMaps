@@ -65,6 +65,7 @@ void testSetAll();
 void testAliases();
 void testWriteProjection();
 void testAutoFlatten();
+void testCameraClearance();
 void testElevationNodeField();
 void testDayCycleLight();
 void testDrapeStackCuts();
@@ -424,6 +425,7 @@ int main() {
     testAliases();
     testWriteProjection();
     testAutoFlatten();
+    testCameraClearance();
     testElevationNodeField();
     testDayCycleLight();
     testDrapeStackCuts();

@@ -49,7 +49,7 @@ namespace massif {
         _depthBias(0.0002f),
         // 60 m, not 200: 200 stops the camera well short of the surface, so a close approach swings
         // the view into the nearest hillside instead of flying between the peaks.
-        _cameraClearance(60.0f),
+        _cameraClearance(0.0f),
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
         _billboardOcclusionTolerance(0.0f),

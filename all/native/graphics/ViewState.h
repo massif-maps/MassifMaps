@@ -216,13 +216,17 @@ namespace massif {
 
         /**
          * Sets the terrain reference under the camera (in internal units), published once
-         * per frame by the renderer: the ground height there, and the minimum camera height
-         * the clearance imposes. The height bounds the near plane (the ground cannot be
-         * further than that below the camera), the minimum drives the terrain zoom bound.
+         * per frame by the renderer, and turns the terrain zoom bound on. The ground height
+         * bounds the near plane (the ground cannot be further than that below the camera);
+         * the clearance is CameraClearance::minHeight over it, with the app's floor.
          * @param terrainZ The terrain height under the camera.
-         * @param minCameraZ The minimum camera height, 0 to disable the zoom bound.
+         * @param clearanceFloor The app's minimum camera clearance, 0 for none.
          */
-        void setTerrainCameraReference(double terrainZ, double minCameraZ);
+        void setTerrainCameraReference(double terrainZ, double clearanceFloor);
+        /**
+         * Turns the terrain zoom bound off (no terrain, or a non-planar projection).
+         */
+        void clearTerrainCameraReference();
         /**
          * Returns the maximum zoom allowed by the terrain clearance, or infinity when
          * no terrain bound is active. Evaluated against the CURRENT camera state, so it
@@ -230,10 +234,18 @@ namespace massif {
          * clearance shell. Every zoom path (gesture, animation, kinetic fling, API) is
          * clamped by it, which is what keeps the camera from being pushed into the
          * terrain and then corrected back out - the correction/gesture fight that makes
-         * zooming jump back and forth.
+         * zooming jump back and forth. Below the current zoom when the camera is already
+         * under the shell: the bound then stops a zoom in, and MapRenderer's correction
+         * lifts the camera.
          * @return The terrain-imposed maximum zoom.
          */
         float getTerrainMaxZoom() const;
+        /**
+         * Returns the camera-to-focus distance at the given zoom, what the zoom is calibrated on.
+         * @param zoom The zoom.
+         * @return The distance in internal units.
+         */
+        double getOrbitDistance(float zoom) const;
 
         /**
          * Returns the vertical field of view angle.
@@ -490,7 +502,8 @@ namespace massif {
 
         float _terrainHeightMin = 0.0f;
         float _terrainHeightMax = 0.0f;
-        double _terrainMinCameraZ = 0.0; // 0 = no terrain zoom bound
+        bool _terrainCameraBound = false;
+        double _terrainClearanceFloor = 0.0; // the app's CameraClearance, internal units
         double _terrainCameraZ = 0.0; // terrain height under the camera, 0 = unknown
     
         int _fovY;

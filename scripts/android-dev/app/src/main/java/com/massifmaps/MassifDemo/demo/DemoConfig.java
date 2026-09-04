@@ -265,7 +265,7 @@ public final class DemoConfig {
     /** Metres the camera is held above the ground. The SDK default is 200, which stops you well
      *  short of the surface; 30 lets you get close enough to judge mesh and hillshade detail.
      *  '--es clearance N' (0 disables the clamp entirely - you can then fly through the ground). */
-    public static float TERRAIN_CAMERA_CLEARANCE = 60.0f;
+    public static float TERRAIN_CAMERA_CLEARANCE = 0.0f;
     /** Render fills through an offscreen drape pass instead of displacing their geometry.
      *  ON, and it is both the correct and the fast choice - this is tangram's arrangement, where the
      *  ground draw samples a texture (`base_color = sampleRaster(0)`, res/scenes/hillshade.yaml)

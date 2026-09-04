@@ -398,6 +398,7 @@ namespace massif {
         mutable std::atomic<bool> _surfaceChanged;
         mutable std::atomic<bool> _billboardsChanged;
         mutable std::atomic<bool> _redrawPending;
+        std::atomic<bool> _pannedSinceClearance { false }; // a pan since the last clearance check lifts a camera under the shell
         // Frames still owed after a redraw request, so a change reaches the FRONT buffer and not
         // only the back one (see requestRedraw).
         mutable std::atomic<int> _redrawExtraFrames;

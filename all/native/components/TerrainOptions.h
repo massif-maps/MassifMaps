@@ -576,16 +576,19 @@ namespace massif {
         void setMaxTileZoomOffset(int offset);
 
         /**
-         * Returns the camera terrain clearance: the minimum height the camera is kept
-         * above the terrain surface, in meters.
-         * @return The camera clearance in meters. The default is 60. 0 disables camera terrain-following.
+         * Returns the camera terrain clearance floor: an explicit minimum height the camera
+         * is kept above the terrain surface, in meters.
+         * @return The camera clearance floor in meters. The default is 0.
          */
         float getCameraClearance() const;
         /**
-         * Sets the camera terrain clearance: the minimum height the camera is kept above
-         * the terrain surface, in meters. When the camera would dive below this, it is
-         * corrected by zooming out through the normal camera event path.
-         * @param clearance The new clearance in meters. 0 disables camera terrain-following.
+         * Sets the camera terrain clearance floor, in meters. The camera is always kept a
+         * height above the terrain under it that scales with the zoom, as in mapbox: a
+         * sixteenth of its distance to sea level, so zooming in is never blocked by the
+         * clearance alone. This floor is added under that rule for apps that want a fixed
+         * minimum. A zoom in stops at the clearance; a camera pushed under it by a pan or
+         * by arriving elevation is lifted at a constant zoom, by reducing the tilt.
+         * @param clearance The new clearance floor in meters. 0 (the default) applies the zoom-relative rule alone.
          */
         void setCameraClearance(float clearance);
 

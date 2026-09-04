@@ -37,6 +37,7 @@
 #include <set>
 #include "core/MapTile.h"
 #include "terrain/AutoFlatten.h"
+#include "terrain/CameraClearance.h"
 #include "terrain/DrapeStackCuts.h"
 #include "terrain/ElevationManager.h"
 #include "renderers/utils/Shader.h"
@@ -579,6 +580,7 @@ namespace massif {
         
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
+            _pannedSinceClearance = true;
     
             // Calculate parameters for kinetic events
             newFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
@@ -2503,48 +2505,62 @@ namespace massif {
                     }
 
                     // The clearance is a BOUND on the zoom, not a corrective event - a correction
-                    // fights whatever drives the camera down and oscillates. This per-frame
-                    // correction covers only the paths that change height without a zoom event
-                    // (pan into a hillside, tilt, elevation arriving) and, like tangram's
-                    // View::updateMatrices, only ever zooms OUT. See docs/internals/rendering/04-terrain.md.
-                    float cameraClearance = terrainOptions->getCameraClearance();
-                    float clampDuration = terrainOptions->getCameraClampDuration();
-                    if (cameraClearance > 0) {
+                    // fights whatever drives the camera down and oscillates. mapbox's model
+                    // (transform._constrainCamera): the clearance is a fraction of the camera's
+                    // distance to sea level (CameraClearance), a zoom in stops at it, and a camera
+                    // that got under it another way - a pan into a hillside, a DEM tile arriving -
+                    // is LIFTED at a constant distance to the focus, so the zoom is kept and the
+                    // tilt gives. Only a pan or a camera under the ground lifts (mapbox
+                    // adaptCameraAltitude = dragging): after a zoom the ground under the moved
+                    // camera differs by a little, and lifting for that turns every pinch tick into
+                    // a tilt. See docs/internals/rendering/04-terrain.md.
+                    {
                         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+                        float clampDuration = terrainOptions->getCameraClampDuration();
                         cglib::vec3<double> cameraPos = viewState.getCameraPos();
+                        double displayScale = elevationManager->getDisplayScale(cameraPos(1));
                         double terrainZ = elevationManager->getDisplayHeight(cameraPos(0), cameraPos(1), ElevationManager::LoadMode::CACHED_ONLY);
-                        double minCameraZ = terrainZ + cameraClearance * elevationManager->getDisplayScale(cameraPos(1));
+                        double clearanceFloor = terrainOptions->getCameraClearance() * displayScale;
                         {
                             std::lock_guard<std::recursive_mutex> lock(_mutex);
-                            _viewState.setTerrainCameraReference(terrainZ, minCameraZ);
+                            _viewState.setTerrainCameraReference(terrainZ, clearanceFloor);
                         }
-                        // Solve for the scale that LANDS on the shell: zooming out scales the
-                        // camera-to-focus vector, so minCameraZ/cameraZ lands short whenever the
-                        // focus is above sea level and the map never stops correcting (or drawing).
+                        bool panned = _pannedSinceClearance.exchange(false);
                         double focusZ = viewState.getFocusPos()(2);
-                        double deadBand = 0.005 * cameraClearance * elevationManager->getDisplayScale(cameraPos(1));
-                        // At the bottom of the zoom range there is no correction left to make, and
-                        // issuing one anyway is another per-frame redraw that changes nothing.
-                        bool zoomExhausted = viewState.getZoom() <= _options->getZoomRange().getMin() + 1.0e-4f;
-                        // A camera at or below the focus height - a horizontal view, or one looking
-                        // above the horizon - cannot be raised by zooming out at all: the zoom
-                        // scales the camera-to-focus vector, which is then horizontal. Correcting
-                        // anyway asks for a zoom that never arrives, every frame (see
-                        // ViewState::getTerrainMaxZoom, which drops its bound for the same reason).
-                        bool cameraAboveFocus = cameraPos(2) > focusZ + deadBand;
-                        if (!zoomExhausted && cameraAboveFocus && cameraPos(2) > 0 && cameraPos(2) < minCameraZ - deadBand) {
-                            double scale = (minCameraZ > focusZ
-                                ? (minCameraZ - focusZ) / (cameraPos(2) - focusZ)   // exact: the focus stays put
-                                : minCameraZ / cameraPos(2));                        // degenerate (focus above the shell)
-                            CameraZoomEvent zoomEvent;
-                            zoomEvent.setZoomDelta(static_cast<float>(-std::log2(scale))); // negative: zoom out onto the clearance
-                            // API, not GESTURE: the SDK corrects the camera here, and it does so
-                            // after a programmatic move just as much as after a gesture.
-                            calculateCameraEvent(zoomEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
+                        double orbit = viewState.getOrbitDistance(viewState.getZoom());
+                        double minHeight = CameraClearance::minHeight(focusZ, orbit, viewState.getOrbitDistance(_options->getZoomRange().getMax()), clearanceFloor);
+                        double cameraHeight = cameraPos(2) - terrainZ;
+                        double deadBand = 0.005 * minHeight;
+                        if (orbit > 0 && cameraHeight < minHeight - deadBand && (panned || cameraHeight < 0)) {
+                            // The height above the focus that puts the camera on the shell, and the
+                            // tilt that gives it (tilt 90 is straight down); past the tilt range's
+                            // top the rest comes from zooming out, about the focus.
+                            MapRange tiltRange = _options->getTiltRange();
+                            double maxTiltSin = std::sin(tiltRange.getMax() * Const::DEG_TO_RAD);
+                            double targetHeight = terrainZ + minHeight - focusZ;
+                            float tilt = viewState.getTilt();
+                            if (targetHeight <= orbit * maxTiltSin) {
+                                tilt = static_cast<float>(std::asin(std::max(0.0, targetHeight / orbit)) * Const::RAD_TO_DEG);
+                            } else {
+                                tilt = tiltRange.getMax();
+                                float maxZoom = CameraClearance::maxZoom(viewState.getZoom(), focusZ, focusZ + orbit * maxTiltSin, orbit, terrainZ,
+                                                                         viewState.getOrbitDistance(_options->getZoomRange().getMax()), clearanceFloor);
+                                float zoom = std::max(maxZoom, _options->getZoomRange().getMin());
+                                if (zoom < viewState.getZoom() - 1.0e-4f) {
+                                    CameraZoomEvent zoomEvent;
+                                    zoomEvent.setZoomDelta(zoom - viewState.getZoom());
+                                    // API, not GESTURE: the SDK corrects the camera here, and it does so
+                                    // after a programmatic move just as much as after a gesture.
+                                    calculateCameraEvent(zoomEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
+                                }
+                            }
+                            if (tilt > viewState.getTilt() + 1.0e-3f) {
+                                CameraTiltEvent tiltEvent;
+                                tiltEvent.setKeepRotation(true);
+                                tiltEvent.setTilt(tilt);
+                                calculateCameraEvent(tiltEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
+                            }
                         }
-                    } else {
-                        std::lock_guard<std::recursive_mutex> lock(_mutex);
-                        _viewState.setTerrainCameraReference(0, 0);
                     }
                 }
             }
@@ -2556,7 +2572,7 @@ namespace massif {
                 }
             }
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            _viewState.setTerrainCameraReference(0, 0); // release the terrain zoom bound
+            _viewState.clearTerrainCameraReference(); // release the terrain zoom bound
         }
 
         // Cross-layer terrain draping. Every drapeable tile layer bakes into ONE texture per

@@ -730,6 +730,15 @@ namespace massif::vt {
             if (!extrusionCastsShadow(renderLayer)) {
                 return true;
             }
+            // Same rule as the on-screen draw (renderGeometry3D), and the caster runs FIRST in the
+            // frame: a span deck whose base has not resolved is not drawn, so it must not cast
+            // either. Cast with the sentinel still in it, its resolved and unresolved vertices
+            // fan a wall from the deck down to the ground, and that wall's shadow lands on the
+            // roofs and the water beside the bridge until the base resolves - the dark flash.
+            bool baseResolved = resolveExtrusionBases(renderLayer.sourceTileId, renderLayer.targetTileId, geometry);
+            if (!geometry->getSpanRecords().empty() && !baseResolved) {
+                return true;
+            }
             renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
             draws++;
             return true;

@@ -2,6 +2,7 @@
 #include "core/MapTile.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/ElevationTileGrid.h"
+#include "terrain/TesselationBounds.h"
 
 #include <algorithm>
 #include <cmath>
@@ -321,6 +322,22 @@ namespace massif {
         bool split02 = dist02 > _divideThreshold;
         bool split12 = dist12 > _divideThreshold;
         if (!split01 && !split02 && !split12) {
+            indices.append(i0, i1, i2);
+            return;
+        }
+        // ... but only over the tile ITSELF. A source tile keeps a buffer around its data, and at
+        // overzoom that buffer is scaled with everything else: a z14 source drawn into a z19 target
+        // reaches 2.2 tile widths past the border, while the threshold is the z19 one. The polygon
+        // gate upstream is an INTERSECTS test, so one triangle touching the tile was refined across
+        // its whole extent - measured over Paris at z19, 145 m against a 2.4 m threshold, 4096
+        // triangles out of one and ~1000 such triangles in a frame, which is a 2.5 GB kill or a
+        // hang. Everything past the border is clipped per fragment anyway, so subdividing it buys
+        // nothing; the sub-triangles that still touch the tile are refined exactly as before, so
+        // the split rule stays edge-local and the surface keeps no T-vertex where it is drawn.
+        cglib::bbox2<float> bounds(coords[i0]);
+        bounds.add(coords[i1]);
+        bounds.add(coords[i2]);
+        if (!TesselationBounds::refines(bounds)) {
             indices.append(i0, i1, i2);
             return;
         }

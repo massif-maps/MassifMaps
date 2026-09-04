@@ -212,6 +212,8 @@ add_executable(api_tests
   DrapeTuningTest.cpp
   # Same: ShadowCasterRing.h is the caster ring's zoom bound and nothing else.
   ShadowCasterRingTest.cpp
+  # Same: TesselationBounds.h is the extent the surface refinement covers and nothing else.
+  TerrainTesselationTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
   # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.

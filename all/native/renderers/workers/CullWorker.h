@@ -52,6 +52,8 @@ namespace massif {
 
         static const float VIEWPORT_SCALE;
 
+        static const int SURFACE_WAIT_RETRY_DELAY;
+
         std::map<std::shared_ptr<Layer>, std::chrono::steady_clock::time_point> _layerWakeupMap;
         
         bool _firstCull;

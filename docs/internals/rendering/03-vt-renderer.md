@@ -48,6 +48,27 @@ ancestor), one `RenderTileLayer` per style layer, with `active` telling whether 
 or one retained for the cross-fade. `buildRenderTiles` merges the new set with what was on screen so
 a tile can blend out rather than pop.
 
+**A retained layer holds while nothing has replaced it.** `updateRenderTile` fades an inactive layer
+out only when an active layer covers the same ground, or when the tile has left the view (where the
+blend step is 1, so it goes in a single frame). Fading it on a timer instead is a hole: the tile
+that will take over is still being fetched, this layer is the only thing painting that ground, and
+it dies in the ten frames a fetch does not fit into. The render tile then survives as an empty
+shell — a good `tile` pointer, no render layers — and everything it was drawing is simply gone.
+Measured on the day-cycle-light example, pinching z17–19: **sixteen pieces of ground at once** left
+covered by a shell (`geom 0 extr 0 | tile layers 19 extr 2`), which is what "buildings disappearing
+all over the place while zooming" was. This cannot strand content: the moment the tile has an active
+layer of its own, the branch above erases the retained one as soon as the replacement is opaque.
+
+**The culling box has to hold what stands on the tile, not just its ground.** `isTileVisible` tests
+`calculateTileBBox`, which is the tile's ground, and an extrusion stands out of it — so a building
+is still on screen well after the ground it stands on has left the frustum, and culling there takes
+the building with it. maplibre grows the culling elevation for exactly this reason
+(`covering_tiles.ts`, `getElevationForTileCulling`): nothing while the camera looks down, rising to
+`ASSUMED_MAX_FEATURE_HEIGHT_METERS` (500 m) as the frustum's bottom edge comes within 15° of the
+horizon. Ported whole as `tileCullingHeadroom`. At tilt 45 with the SDK's default fov of 70 the
+bottom edge is 9.25° up, which is 38 % of the way in — 191 m of headroom. Before it, five of six
+measured building losses during a zoom were this test.
+
 ### What a draw costs
 
 Measured on an Adreno 610: a 6-style-layer and a 21-style-layer style submit the same ~300k indices,

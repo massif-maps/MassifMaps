@@ -1502,6 +1502,8 @@ public class DemoMap {
         terrainOptions.setDrapeLinesEnabled(DemoConfig.TERRAIN_DRAPE_LINES);
         terrainOptions.setNoDrapeLayerFilter(DemoConfig.TERRAIN_NO_DRAPE_FILTER);
         terrainOptions.setDrapeResolution(DemoConfig.TERRAIN_DRAPE_RESOLUTION);
+        terrainOptions.setDrapeCacheSize(DemoConfig.TERRAIN_DRAPE_CACHE_SIZE);
+        terrainOptions.setDrapeWorkingSet(DemoConfig.TERRAIN_DRAPE_WORKING_SET);
         terrainOptions.setTileEdgeStitchingEnabled(DemoConfig.TERRAIN_TILE_EDGE_STITCHING);
         terrainOptions.setSeamlessTileEdgesEnabled(DemoConfig.TERRAIN_SEAMLESS_TILE_EDGES);
         terrainOptions.setElevationPrefetchEnabled(DemoConfig.TERRAIN_ELEVATION_PREFETCH);

@@ -223,6 +223,12 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyData;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDataExtent;
 /** Returns the original data source that the cache uses. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDataSource;
+/** Returns the day-cycle light curve - the "formula" an hour is turned into a look by. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDayCycleLightStops;
+/** Returns whether the sun's COLOURS follow its position. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDayCycleLightsEnabled;
+/** Returns the curve used while the sun is RISING, if the app set one. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDayCycleRisingLightStops;
 /** Returns the state of the tile border debug overlay. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDebugTileBorders;
 /** Returns the default layer buffer in tile pixels. */
@@ -791,6 +797,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertySunColor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertySunDiscEnabled;
 /** Returns the sun light intensity. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySunIntensity;
+/** Returns whether this sun overrides the one a style states. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertySunOverridingStyle;
 /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceShaderSource;
 /** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */

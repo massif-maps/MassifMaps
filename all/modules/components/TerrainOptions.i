@@ -58,6 +58,8 @@
 %attributeval(massif::TerrainOptions, massif::Color, BackgroundColor, getBackgroundColor, setBackgroundColor)
 %attribute(massif::TerrainOptions, float, ViewDistanceFactor, getViewDistanceFactor, setViewDistanceFactor)
 %attribute(massif::TerrainOptions, float, ViewDistance, getViewDistance, setViewDistance)
+%attribute(massif::TerrainOptions, int, DrapeCacheSize, getDrapeCacheSize, setDrapeCacheSize)
+%attribute(massif::TerrainOptions, int, DrapeWorkingSet, getDrapeWorkingSet, setDrapeWorkingSet)
 %attribute(massif::TerrainOptions, int, MaxTileZoomCoarsening, getMaxTileZoomCoarsening, setMaxTileZoomCoarsening)
 %attribute(massif::TerrainOptions, float, DepthBias, getDepthBias, setDepthBias)
 // How far above the ground the camera is kept, in metres, and how long the clamp takes. Both

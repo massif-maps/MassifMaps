@@ -1,5 +1,6 @@
 #include "TerrainDrapeCache.h"
 #include "renderers/utils/GLContext.h"
+#include "terrain/DrapeStandIn.h"
 
 #ifdef __ANDROID__
 #include <sys/system_properties.h>
@@ -33,6 +34,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
     }
 
     TerrainDrapeCache::TerrainDrapeCache() :
+        _maxBytes(MAX_BYTES),
         _resolution(1024),
         _stackSignature(0),
         _frameBuffer(0),
@@ -183,7 +185,10 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         needsBake = !entry.baked || entry.stale || entry.fingerprint != fingerprint;
         // A seeded texture is not a bake, but it does show this tile's ground - sampling it is
         // right, and it is the difference between a stand-in and a flat fill.
-        hasContent = entry.baked || entry.seeded;
+        // A bake with no layer in it is not a picture: the tile's own content had not arrived and
+        // the finer proxies covering it are left out of the bake, so drawing that texture puts the
+        // flat clear colour over ground the cached finer generation still shows.
+        hasContent = DrapeStandIn::hasPicture(entry.baked, entry.seeded, entry.layerMask);
         return entry.texture;
     }
 
@@ -234,7 +239,8 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         // A stale entry must never be a source: seeding or standing in with it copies the previous
         // stack's picture into tiles that never had it, and a seed carries no fingerprint, so the
         // old content then survives every check that would have replaced it.
-        if (it == _entries.end() || !it->second.baked || it->second.stale) {
+        // Nor an empty bake (DrapeStandIn::hasPicture): it would stand in with the clear colour.
+        if (it == _entries.end() || !DrapeStandIn::hasPicture(it->second.baked, false, it->second.layerMask) || it->second.stale) {
             return 0;
         }
         // Standing in for a tile that has no texture of its own IS use: without this the entry
@@ -242,6 +248,28 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         it->second.used = true;
         it->second.lastUsedFrame = _frameCounter;
         return it->second.texture;
+    }
+
+    std::vector<std::pair<vt::TileId, unsigned int>> TerrainDrapeCache::findBakedDescendants(const vt::TileId& tileId, int stack) {
+        // _entries is ordered by (zoom, x, y), so the candidates come out coarsest first, which is
+        // what coarsestCover expects.
+        std::vector<vt::TileId> candidates;
+        std::vector<Entry*> entries;
+        for (auto it = _entries.begin(); it != _entries.end(); it++) {
+            if (it->first.stack != stack || !DrapeStandIn::hasPicture(it->second.baked, false, it->second.layerMask) || it->second.stale) {
+                continue; // same rules as findBaked: a stale entry is the previous stack's picture, an empty bake no picture
+            }
+            candidates.push_back(it->first.tileId);
+            entries.push_back(&it->second);
+        }
+
+        std::vector<std::pair<vt::TileId, unsigned int>> result;
+        for (std::size_t index : DrapeStandIn::coarsestCover(tileId, candidates)) {
+            entries[index]->used = true;
+            entries[index]->lastUsedFrame = _frameCounter;
+            result.emplace_back(candidates[index], entries[index]->texture);
+        }
+        return result;
     }
 
     unsigned int TerrainDrapeCache::getFrameBuffer() {
@@ -283,6 +311,10 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
     }
 #endif
 
+    void TerrainDrapeCache::setMaxBytes(std::size_t maxBytes) {
+        _maxBytes = (maxBytes > 0 ? maxBytes : MAX_BYTES);
+    }
+
     std::size_t TerrainDrapeCache::maxEntries() const {
         if (!isBudgetEnabled()) {
             return MAX_ENTRIES;
@@ -291,7 +323,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         if (bytesPerEntry == 0) {
             return MAX_ENTRIES;
         }
-        std::size_t entries = MAX_BYTES / bytesPerEntry;
+        std::size_t entries = _maxBytes / bytesPerEntry;
         return std::min(MAX_ENTRIES, std::max(MIN_ENTRIES, entries));
     }
 
@@ -309,9 +341,18 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         // MIN_ENTRIES stays the floor, in colour-drape equivalents.
         std::size_t maxCount = maxEntries();
         std::size_t colourBytes = static_cast<std::size_t>(_resolution) * _resolution * 4;
-        std::size_t maxBytes = (isBudgetEnabled() ? std::max(MAX_BYTES, MIN_ENTRIES * colourBytes) : MAX_ENTRIES * colourBytes);
+        std::size_t maxBytes = (isBudgetEnabled() ? std::max(_maxBytes, MIN_ENTRIES * colourBytes) : MAX_ENTRIES * colourBytes);
+        // COLOUR entries only. A coverage mask (#175) is a quarter of a drape in bytes and one
+        // more entry in the map, so counting them here made a style with one mask cut halve the
+        // tiles the cache could hold - measured as 56 entries against a cap of 24 on a 28-leaf
+        // cover, evicting the whole previous generation every frame of a zoom, which is what the
+        // stand-in then had nothing to read (docs/internals/rendering/04-terrain.md).
+        std::size_t colourEntries = 0;
+        for (auto it = _entries.begin(); it != _entries.end(); it++) {
+            colourEntries += (it->first.stack == 0 ? 1 : 0);
+        }
         std::size_t bytes = cachedBytes();
-        if (_entries.size() <= maxCount && bytes <= maxBytes) {
+        if (colourEntries <= maxCount && bytes <= maxBytes) {
             return; // keep unused tiles cached; they come back constantly while panning/zooming
         }
         // Over budget: evict the least recently used entries, never one used this frame.
@@ -326,7 +367,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             return a.first < b.first;
         });
         for (std::size_t i = 0; i < candidates.size(); i++) {
-            if (_entries.size() <= maxCount && bytes <= maxBytes) {
+            if (colourEntries <= maxCount && bytes <= maxBytes) {
                 break;
             }
             auto it = _entries.find(candidates[i].second);
@@ -341,6 +382,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
                 glDeleteTextures(1, &texture);
             }
             bytes -= std::min(bytes, it->second.bytes);
+            colourEntries -= (candidates[i].second.stack == 0 && colourEntries > 0 ? 1 : 0);
             _entries.erase(it);
         }
     }

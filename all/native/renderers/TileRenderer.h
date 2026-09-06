@@ -193,8 +193,12 @@ namespace massif {
         // this renderer. What the style leaves unset comes from LightOptions/TerrainOptions.
         void setStyleEnvironment(const StyleEnvironment& env);
 
-        static Color evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState);
-        static float evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState);
+        // `brightness` is what the function reads as view::brightness. It has to be passed in:
+        // a ViewState built here defaults to 1, so a Map setting ramped over the scene light -
+        // background-emissive-strength, which every converted Mapbox style carries - resolved at
+        // full daylight whatever the hour, and the map's largest surface never went dark.
+        static Color evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness = 1.0f);
+        static float evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness = 1.0f);
 
         /**
          * True once, after the GL renderer was created with tiles already waiting. Those tiles

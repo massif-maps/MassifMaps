@@ -182,6 +182,24 @@ exactly like a zoom ramp:
 marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
 ```
 
+**A Map-block property reads it too, and the env is therefore read TWICE.**
+`ViewState::lightBrightness` defaults to **1** — the daylight end of every one of these ramps — and
+the view states `TileRenderer::evaluateFloatFunc` / `evaluateColorFunc` build for a Map setting are
+not the frame's, so both now take the brightness as an argument.
+
+The catch is that the brightness is derived from the lights, and the lights are Map settings read by
+the same pass. `VectorTileLayer::getStyleEnvironment` breaks the cycle by calling
+`readStyleEnvironment` twice: once at the default to settle the sun and the ambient, then again at
+the brightness those imply. It is a few dozen function evaluations per frame, nearly all of them an
+`isDefined()` early-out.
+
+What this cost while it was read once: `background-emissive-strength` is
+`linear([view::brightness], (0.25, 0), (0.3, 0.25))` in every converted Mapbox style, so the map's
+largest surface sat a quarter emissive around the clock. At the `day-cycle-light` example's hour 24
+the ground drew `(97, 99, 113)` against gl-js's `(43, 46, 62)` — a light grey plaza under a midnight
+sky, with every symbolizer over it correctly dark. Reading it at the resolved brightness puts it at
+`(58, 61, 79)`; the rest of that gap is the deliberate night-ambient lift below.
+
 `DayCycleLight::brightness` is mapbox's `calculateLightsBrightness` ported — the mean of the two
 lights' W3C relative luminance, the directional one weighted by the sun's height. It lands on their
 own numbers for day (0.478), dawn (0.396) and dusk (0.027). **Night is deliberately different**:

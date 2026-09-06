@@ -84,6 +84,20 @@ namespace massif {
         void init();
         void deinit();
 
+        /**
+         * Forgets that the camera has been moved. The view a map is constructed with is the SDK's
+         * own, not a placed camera, and the auto-flatten rule does not judge it - see AutoFlatten.
+         */
+        void resetCameraPlaced();
+
+        /**
+         * Holds the view against the render thread, so that a sequence of camera calls lands in
+         * ONE frame. moveTo sets the zoom, rotation, tilt and focus one after the other, and a
+         * frame drawn in between showed the world zoomed in but not yet tilted or panned - and let
+         * the auto-flatten rule judge that view. Recursive: the camera calls take it again inside.
+         */
+        std::unique_lock<std::recursive_mutex> holdView() const;
+
         std::shared_ptr<RedrawRequestListener> getRedrawRequestListener() const;
         void setRedrawRequestListener(const std::shared_ptr<RedrawRequestListener>& listener);
 
@@ -324,6 +338,8 @@ namespace massif {
         // flattening is what stops the elevation decode that would prove it wrong.
         bool _autoFlattenSeenTerrain = false;
         std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
+        // Set by every camera event; the rule stays quiet while it is false. See AutoFlatten::Trigger.
+        std::atomic<bool> _cameraPlaced { false };
 
         std::shared_ptr<GLResourceManager> _glResourceManager;
 

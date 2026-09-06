@@ -419,6 +419,14 @@ namespace massif {
         _options->registerOnChangeListener(_optionsListener);
     }
 
+    void MapRenderer::resetCameraPlaced() {
+        _cameraPlaced = false;
+    }
+
+    std::unique_lock<std::recursive_mutex> MapRenderer::holdView() const {
+        return std::unique_lock<std::recursive_mutex>(_mutex);
+    }
+
     void MapRenderer::deinit() {
         _options->unregisterOnChangeListener(_optionsListener);
         _optionsListener.reset();
@@ -583,6 +591,7 @@ namespace massif {
         
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
+            _cameraPlaced = true;
             _pannedSinceClearance = true;
     
             // Calculate parameters for kinetic events
@@ -624,6 +633,7 @@ namespace massif {
             
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
+            _cameraPlaced = true;
             
             // Calculate parameters for kinetic events
             float rotation = _viewState.getRotation();
@@ -659,6 +669,7 @@ namespace massif {
             
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
+            _cameraPlaced = true;
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called
@@ -688,6 +699,7 @@ namespace massif {
             
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
+            _cameraPlaced = true;
             
             // Calculate parameters for kinetic events
             float zoom = _viewState.getZoom();
@@ -1568,7 +1580,7 @@ namespace massif {
             double parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
             bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, terrainOptions->isFlattened());
             // Only on a CHANGE of the rule's own answer - see AutoFlatten::Trigger.
-            if (_autoFlattenTrigger.changed(flatten)) {
+            if (_autoFlattenTrigger.changed(flatten, _cameraPlaced)) {
                 Log::Infof("MapRenderer: auto-flatten %s (parallax %.1f px vs %.1f, tilt %.1f vs %.1f, data quiet %.1f s, seen terrain %d)",
                     flatten ? "ON" : "off", parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, _autoFlattenDataQuiet, _autoFlattenSeenTerrain ? 1 : 0);
                 terrainOptions->setFlattened(flatten);

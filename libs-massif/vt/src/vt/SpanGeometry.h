@@ -126,6 +126,54 @@ namespace massif::vt {
         }
 
         /**
+         * Whether a chord lies ON another - both its portals within the other's allowance and
+         * between its ends. The same deck seen from two source tiles: each tile clips the ring where
+         * it likes, so the copies end metres apart, resolve two chords and step where the source
+         * changes. Same structure, one chord - the longer, whose ends sit on the abutments.
+         */
+        static bool chordLiesOn(const cglib::vec2<double>& p0, const cglib::vec2<double>& p1, const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
+            return isOnChord(p0, portal0, portal1) && isOnChord(p1, portal0, portal1);
+        }
+
+        /** Whether a point is one of the chord's two portals, within the match allowance. */
+        static bool isChordEnd(const cglib::vec2<double>& pos, const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
+            double allowance = matchAllowance(cglib::length(portal1 - portal0));
+            return cglib::norm(pos - portal0) <= allowance * allowance || cglib::norm(pos - portal1) <= allowance * allowance;
+        }
+
+        /**
+         * The cached chord a stranded piece borrows, or `end`. A structure leaves a chord per
+         * feature (bed, deck, rails, road), portals metres apart and heights decimetres apart, and
+         * every one of them passes the midpoint test - so the first hit depended on cache order,
+         * and the two pieces of one feature either side of a tile cut stood on different chords: a
+         * step down the cut, and a deck that jumped as the cache moved. A piece that kept one
+         * portal of its own takes the SHORTEST chord that ends there - its own feature's, resolved
+         * uncut in a coarser copy; the deck's portal is often within the allowance too - and only
+         * a piece cut at both ends falls back to the longest, the whole structure's.
+         */
+        template <typename It>
+        static It borrowChord(const cglib::vec2<double>& e0, bool portal0, const cglib::vec2<double>& e1, bool portal1, It begin, It end) {
+            cglib::vec2<double> middle = (e0 + e1) * 0.5;
+            It best = end;
+            bool bestOwn = false;
+            double bestLength2 = 0;
+            for (It it = begin; it != end; it++) {
+                if (!isOnChord(middle, it->portal0, it->portal1)) {
+                    continue;
+                }
+                bool own = (portal0 && isChordEnd(e0, it->portal0, it->portal1)) || (portal1 && isChordEnd(e1, it->portal0, it->portal1));
+                double length2 = cglib::norm(it->portal1 - it->portal0);
+                bool better = own ? (length2 < bestLength2) : (length2 > bestLength2);
+                if (best == end || (own && !bestOwn) || (own == bestOwn && better)) {
+                    best = it;
+                    bestOwn = own;
+                    bestLength2 = length2;
+                }
+            }
+            return best;
+        }
+
+        /**
          * Whether two pieces are the same structure. Only an end the tile CUT can continue into
          * another piece - a real portal ends the run - and the source's buffer makes neighbouring
          * copies overlap rather than touch, so this is proximity, not equality. The direction test

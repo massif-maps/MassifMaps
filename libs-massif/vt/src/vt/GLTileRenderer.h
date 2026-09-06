@@ -906,6 +906,10 @@ namespace massif::vt {
         // layer has a comp-op (which the bake can not reproduce).
         float calculateDrapeOpacity(const RenderTileLayer& renderLayer) const;
         bool tileCovers(const TileId& tileId, const TileId& targetTileId) const;
+        // The ONE zoom every span portal is sampled at (the finest visible tile's): pieces of a
+        // deck arrive at different tile zooms, and sampled each at its own they read different
+        // DEM levels for the same portal - a step down every tile cut.
+        int _spanSampleZoom = 0;
         bool isTileDraped(const TileId& targetTileId) const;
         cglib::mat4x4<float> calculateDrapeMVPMatrix(const TileId& sourceTileId, const TileId& targetTileId) const;
         std::size_t calculateDrapeFingerprint(const RenderTile& renderTile) const;

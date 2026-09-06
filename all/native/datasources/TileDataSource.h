@@ -9,6 +9,7 @@
 
 #include "core/MapTile.h"
 #include "core/MapBounds.h"
+#include "core/Variant.h"
 #include "datasources/components/TileData.h"
 
 #include <atomic>
@@ -91,6 +92,26 @@ namespace massif {
         virtual std::string getEncoding() const;
 
         /**
+         * Returns a meta data element corresponding to the key. The well-known key is
+         * "dem_encoding" ("terrarium" or "mapbox"), which is the value setEncoding sets: the
+         * hillshade, the contours and the terrain read their elevation decoder from it.
+         * Falls back to the container's own metadata (see getMetaData) when the key was not set
+         * on the source itself. If no value is found, a null variant is returned.
+         * @param key The key to use.
+         * @return The value corresponding to the key, or an empty variant.
+         */
+        Variant getMetaDataElement(const std::string& key) const;
+
+        /**
+         * Adds a new key-value pair to the meta data map. If the key already exists in the map,
+         * its value will be replaced by the new value. The map is attached to every tile this
+         * source loads. Takes effect for tiles loaded after the call.
+         * @param key The new key.
+         * @param element The new value.
+         */
+        void setMetaDataElement(const std::string& key, const Variant& element);
+
+        /**
          * Reads one entry of the source's own metadata, when it has any - the MBTiles or PMTiles
          * metadata table, for instance. Sources that carry none return an empty string, as do keys
          * they do not define.
@@ -98,6 +119,14 @@ namespace massif {
          * @return The value, or empty string if the source does not provide it.
          */
         virtual std::string getMetaData(const std::string& key) const;
+
+        /**
+         * Reads one entry of the source's own metadata. Same as getMetaData, under the name the
+         * 6.1 API uses.
+         * @param key The metadata key, as named by the container's specification.
+         * @return The value, or empty string if the source does not provide it.
+         */
+        std::string getContainerMetaData(const std::string& key) const;
 
         /**
          * Returns the extent of the tiles in this data source.
@@ -181,6 +210,7 @@ namespace massif {
         std::atomic<int> _maxOverzoomLevel;
         const std::shared_ptr<Projection> _projection;
         std::string _encoding;
+        std::map<std::string, Variant> _metaData;
     
     private:
         std::vector<std::shared_ptr<OnChangeListener> > _onChangeListeners;

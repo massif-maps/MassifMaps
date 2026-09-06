@@ -128,6 +128,9 @@ namespace massif {
             if (!_encoding.empty()) {
                 metadata["encoding"] = std::make_shared<Variant>(_encoding);
             }
+            for (const auto& entry : _metaData) {
+                metadata[entry.first] = std::make_shared<Variant>(entry.second);
+            }
         }
         
         return metadata;
@@ -157,8 +160,46 @@ namespace massif {
         return _encoding;
     }
 
+    Variant TileDataSource::getMetaDataElement(const std::string& key) const {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = _metaData.find(key);
+            if (it != _metaData.end()) {
+                return it->second;
+            }
+        }
+        // "dem_encoding" is setEncoding's value, so a source configured either way answers both ways.
+        // getEncoding is virtual: a wrapper answers with its wrapped source's encoding.
+        if (key == "dem_encoding") {
+            std::string encoding = getEncoding();
+            if (!encoding.empty()) {
+                return Variant(encoding);
+            }
+        }
+        // Fall back to the container's own metadata, so a tileset that already declares the key
+        // (an MBTiles metadata table row, say) works without the application repeating it.
+        std::string containerValue = getMetaData(key);
+        return containerValue.empty() ? Variant() : Variant(containerValue);
+    }
+
+    void TileDataSource::setMetaDataElement(const std::string& key, const Variant& element) {
+        if (key == "dem_encoding") {
+            setEncoding(element.getString());
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _metaData[key] = element;
+        }
+        notifyTilesChanged(false);
+    }
+
     std::string TileDataSource::getMetaData(const std::string& key) const {
         return std::string();
+    }
+
+    std::string TileDataSource::getContainerMetaData(const std::string& key) const {
+        return getMetaData(key);
     }
 
 }

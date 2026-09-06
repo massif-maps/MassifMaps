@@ -179,6 +179,30 @@ New with it: `enabled` (a real switch — no more toggling fog by driving a dist
 `highColor`, `spaceColor`, `starIntensity` (Mapbox `high-color` / `space-color` / `star-intensity`),
 and `shaderSource` for a custom fog blend across map and sky.
 
+### `TileDataSource` DEM encoding: `setEncoding` or `setMetaDataElement` (6.0.2)
+
+6.1 replaces `TileDataSource.setEncoding()` / `getEncoding()` with a general meta data map, keyed
+`"dem_encoding"`. **6.0.2 accepts both spellings**, so code written against the 6.1 documentation
+compiles and runs here:
+
+```java
+source.setEncoding("terrarium");                                  // 6.0.x
+source.setMetaDataElement("dem_encoding", new Variant("terrarium")); // same thing, 6.0.2+
+```
+
+```objc
+[source setEncoding:@"terrarium"];
+[source setMetaDataElement:@"dem_encoding" element:[[MSFVariant alloc] initWithString:@"terrarium"]];
+```
+
+`getMetaDataElement("dem_encoding")` answers with whichever of the two was set, then falls back to
+the container's own metadata. `getContainerMetaData(key)` is the 6.1 name of `getMetaData(key)`, and
+both work in 6.0.2.
+
+What is **not** backported: the per-tile encoding resolution (two differently encoded DEM sources
+behind one `OrderedTileDataSource`), and the map accessors `getMetaData()` / `setMetaData()`. Those
+need 6.1.
+
 ## Deliberately NOT renamed
 
 These name data or upstream work, not this SDK:

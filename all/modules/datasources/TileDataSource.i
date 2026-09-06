@@ -6,7 +6,7 @@
 
 %module(directors="1") TileDataSource
 
-!proxy_imports(massif::TileDataSource, core.MapTile, core.MapBounds, core.StringMap, datasources.components.TileData, projections.Projection)
+!proxy_imports(massif::TileDataSource, core.MapTile, core.MapBounds, core.StringMap, core.Variant, datasources.components.TileData, projections.Projection)
 
 %{
 #include "datasources/TileDataSource.h"
@@ -21,6 +21,7 @@
 %import "core/MapTile.i"
 %import "core/MapBounds.i"
 %import "core/StringMap.i"
+%import "core/Variant.i"
 %import "datasources/components/TileData.i"
 %import "projections/Projection.i"
 %import "datasources/TileDataSource.i"

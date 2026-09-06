@@ -51,6 +51,7 @@ void testCAbi();
 void testCAbiEvents();
 void testAdopt();
 void testCustomSource();
+void testGetterLock();
 void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
@@ -415,6 +416,7 @@ int main() {
     testCAbiEvents();
     testAdopt();
     testCustomSource();
+    testGetterLock();
     testBundleAssets();
     testTileMetaData();
     testElevationDecoderResolve();

@@ -58,6 +58,7 @@ namespace massif {
         setRotation(0, 0);
         setTilt(90, 0);
         setZoom(0, 0);
+        _mapRenderer->resetCameraPlaced(); // the default view is the SDK's, not the app's camera
 
         Log::Infof("BaseMapView: %s", GetSDKVersion().c_str());
     }
@@ -158,6 +159,10 @@ namespace massif {
         // is dragged back to the bounds centre - the equator - and the zoom that follows does not
         // undo it. Zooming out is the other way round, so the pan goes first and the zoom clamps
         // afterwards, which is the wanted behaviour.
+        //
+        // ONE frame for the four: without the hold the render thread drew in between them, at the
+        // world view zoomed in but still straight down - and auto-flattened it.
+        std::unique_lock<std::recursive_mutex> hold = _mapRenderer->holdView();
         bool zoomIn = zoom > getZoom();
         if (zoomIn) {
             setZoom(zoom, 0);

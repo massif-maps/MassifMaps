@@ -32,6 +32,42 @@ xcodebuild -project MassifDemo.xcodeproj -scheme MassifDemo -sdk iphonesimulator
 `MassifDemo.xcodeproj`, `Info.plist`, `.sdkproj` and `.angle` are all generated and gitignored.
 `project.yml` is the source of truth.
 
+## Feeding a NativeScript app from source
+
+`build-plugin-lib.sh` is the same loop for an app that consumes the SDK through
+`@nativescript-community/ui-massifmaps`: it builds the simulator slice and drops it into the
+plugin's `MassifMaps.xcframework`, so `ns run ios` links what is in `all/native` right now.
+
+```sh
+./build-plugin-lib.sh            # build + install, ~5 s when one .cpp changed
+./build-plugin-lib.sh --restore  # put the released lib back
+```
+
+It shares this directory's build tree (`build/ios_metal-SIMULATOR-arm64`), because the plugin's
+framework is a **MetalANGLE** build - `MGLKView`/`MGLContext` are *defined* in the shipped lib,
+angle having been merged in by the libtool step. Checking that with `nm -u` says the opposite and
+is wrong: the merged symbols are defined, not undefined. There is no Apple GL alternative to build
+instead - `vt/GLExtensions.h` includes `<GLES3/gl3.h>` unconditionally and that header only exists
+on the include path when `_MASSIF_USE_METALANGLE` is set.
+
+Only the `.a` is replaced. The shipped headers stay, which is correct as long as `all/modules/*.i`
+is untouched; change a `.i` and the headers must be regenerated and reinstalled too.
+
+The released lib is kept beside it as `MassifMaps.a.orig` on the first run, and its x86_64 half is
+cached as `.dev-x86_64.a`. Only arm64 is built, so the fresh arm64 is fused back onto the released
+x86_64 - the slice is advertised as `arm64 x86_64` in the xcframework's `Info.plist` and a thin lib
+would contradict it. Everything lives inside the xcframework, which is gitignored in `ui-carto`.
+
+An app can run this automatically from a `before-prepareNativeApp` hook in
+`nativescript.config.js`, so a clean build sets itself up:
+
+```js
+hooks: [{ type: 'before-prepareNativeApp', script: 'tools/scripts/before-prepareNativeApp-massif.js' }]
+```
+
+`MASSIF_DEV_SDK=0` or `CI` skips it; `MASSIF_SDK_DIR` points it at a different checkout. The hook
+fails the build when the SDK build fails, rather than letting the app link the previous binary.
+
 ## Configuring a run
 
 Android takes its knobs as intent extras; iOS takes them as launch arguments, which UIKit folds

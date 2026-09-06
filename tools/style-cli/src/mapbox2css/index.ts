@@ -298,12 +298,29 @@ const EMISSIVE_TARGETS: Array<[string, string]> = [
     ['polygon-', 'polygon-emissive-strength'],
     ['line-', 'line-emissive-strength'],
     ['background-', 'background-emissive-strength'],
+    // An EXTRUSION states its own, and until `building-emissive-strength` existed there was nowhere
+    // to put it: the value was looked up (EMISSIVE_SOURCE maps `building-` to
+    // fill-extrusion-emissive-strength) and then dropped, leaving every building on the Map block's
+    // one global. Standard lights a lit window and a plain facade differently, and both came out
+    // the same.
+    ['building-', 'building-emissive-strength'],
     // A shield's icon and its text are one symbolizer here, so they take one value - mapbox's
     // text-emissive-strength, which is the one its own shields state.
     ['shield-', 'shield-emissive-strength'],
     ['marker-', 'marker-emissive-strength'],
     ['text-', 'text-emissive-strength'],
 ];
+
+/**
+ * Targets the SDK already has a FALLBACK for, so an unstated value must stay unstated rather than
+ * take mapbox's property default.
+ *
+ * Everywhere else the default has to be written down, because this SDK draws an unstated colour as
+ * authored where mapbox would light it. An extrusion is the exception: it falls back to the Map
+ * block's `building-emissive-strength`, so emitting mapbox's default 0 here would pin every
+ * converted building to 0 and the global would stop working.
+ */
+const EMISSIVE_NO_DEFAULT = new Set(['building-emissive-strength']);
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
     options = { ...options, styleParams: options.styleParams ?? new Map() };
@@ -524,6 +541,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 if (target === null || emitted.has(target)) continue;
                 const source = emissiveProperty(property);
                 const stated = source ? layer.paint?.[source] : undefined;
+                if (stated === undefined && EMISSIVE_NO_DEFAULT.has(target)) continue;
                 // A CAP, not just a default: Standard states 1 on its shields deliberately, so a
                 // style that wants them to follow the light has to be able to say so over the top.
                 const cap = LABEL_EMISSIVE.has(source ?? '') ? options.labelEmissive : undefined;
@@ -669,7 +687,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         // An EXTRUSION is lit by the renderer, not baked: mapbox draws it through apply_lighting
         // and its `fill-extrusion-emissive-strength` is 0, so folding the scene light in here as
         // well multiplied it twice - once at conversion, once per fragment.
-        const renderLit = symbolizer === 'building';
+        //
+        // Under --live-light nothing is folded for ANY layer - light() only appends the emissive
+        // for the renderer to apply - so the bypass would cost the extrusion its own strength and
+        // leave it on the Map block's one global. Standard lights a lit window and a plain facade
+        // differently, and both came out the same.
+        const renderLit = symbolizer === 'building' && options.liveLight !== true;
         blocks.push({ selector, owner: layer.id, declarations: renderLit ? declarations : light(layer, declarations) });
         drawOrder.push({ sourceLayer, attachment, index: layerIndex });
     }

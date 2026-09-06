@@ -644,6 +644,10 @@ namespace massif {
             }
             tileRenderer->setRadiance(_resolvedRadiance);
             tileRenderer->setBackgroundEmissive(_backgroundEmissive);
+            // The FALLBACK an extrusion takes when its own rule states no emissive. The 3D
+            // lighting callback uploads this too, but a rule that overrides u_emissive has to be
+            // able to put the map's value back for the next draw (GLTileRenderer).
+            tileRenderer->setBuildingEmissive(_buildingEmissive);
             tileRenderer->setTerrainLighting(terrainLighting);
         }
     }
@@ -1228,6 +1232,13 @@ namespace massif {
         return refresh;
     }
     
+    bool TileRenderer::consumeLabelPlacementOwed() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        bool owed = _labelPlacementOwed;
+        _labelPlacementOwed = false;
+        return owed;
+    }
+
     bool TileRenderer::cullLabels(vt::LabelCuller& culler, const ViewState& viewState) {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         cglib::mat4x4<double> modelViewMat;
@@ -1589,6 +1600,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
             tileRenderer->setVisibleTiles(_tiles);
+            // These tiles were handed over before this renderer existed, so their placement pass
+            // found no GL renderer and did nothing (cullLabels bails out). setVisibleTiles rebuilds
+            // the label maps but places nothing, and on a still camera nothing asks again - which
+            // left a labels-only layer (markers, icons) invisible until the user panned.
+            _labelPlacementOwed = !_tiles.empty();
 
             if (!std::dynamic_pointer_cast<PlanarProjectionSurface>(mapRenderer->getProjectionSurface())) {
                 vt::GLTileRenderer::LightingShader lightingShader2D(true, LIGHTING_SHADER_2D, [this](GLuint shaderProgram, const vt::ViewState& viewState) {

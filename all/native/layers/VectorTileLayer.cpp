@@ -582,6 +582,12 @@ namespace massif {
                 mapRenderer->blendAndUnbindScreenFBO(opacity);
             }
 
+            // The renderer was created with tiles already waiting, so those tiles never got a
+            // placement pass. Nothing else asks for one while the camera is still.
+            if (_tileRenderer->consumeLabelPlacementOwed()) {
+                mapRenderer->vtLabelsChanged(shared_from_this(), false);
+            }
+
             return refresh;
         }
         return false;

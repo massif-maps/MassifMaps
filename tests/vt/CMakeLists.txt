@@ -16,8 +16,10 @@ add_executable(vt_tests
   ExtrusionBaseTest.cpp
   ShadowCasterClipTest.cpp
   ExtrusionAnchorTest.cpp
+  ExtrusionEmissiveTest.cpp
   ExtrusionGroupAnchorTest.cpp
   SpanGeometryTest.cpp
+  SpanDrapeLightTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/ExtrusionAnchors.cpp"

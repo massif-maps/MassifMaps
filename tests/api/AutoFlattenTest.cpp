@@ -145,11 +145,34 @@ namespace {
         TEST_CHECK(trigger.last == 1, "and it says flat, which is what the app already asked for");
     }
 
+    void testRuleWaitsForTheCamera() {
+        // The SDK's own default view is top-down at world zoom, and the first frame is often drawn
+        // at it, before the app's moveTo lands: the rule said 'flat' to a camera nobody had placed,
+        // and the map went 2D -> WARMING -> ramp -> 3D while its tiles arrived instead of just 3D.
+        AutoFlatten::Trigger trigger;
+        const float tiltThreshold = 88.0f;
+        TEST_CHECK(!trigger.changed(AutoFlatten::shouldFlatten(0, 0, 90, tiltThreshold, false), false),
+                   "the default view is not judged, even straight down");
+        TEST_CHECK(trigger.last == -1, "and nothing is remembered of it");
+        TEST_CHECK(!trigger.changed(AutoFlatten::shouldFlatten(0, 0, 90, tiltThreshold, false), false),
+                   "however many frames it is drawn");
+        // The app places the camera at tilt 45: the first judged answer is 3D, written as an edge.
+        TEST_CHECK(trigger.changed(AutoFlatten::shouldFlatten(0, 0, 45, tiltThreshold, false), true),
+                   "the first frame at the app's camera is an edge");
+        TEST_CHECK(trigger.last == 0, "and it says 3D");
+        // A camera placed straight down IS judged - a top-down app flattens on its first frame.
+        AutoFlatten::Trigger topDown;
+        TEST_CHECK(topDown.changed(AutoFlatten::shouldFlatten(0, 0, 90, tiltThreshold, false), true),
+                   "a camera the app placed top-down is judged at once");
+        TEST_CHECK(topDown.last == 1, "and flattens");
+    }
+
 }
 
 void testAutoFlatten() {
     testTriggerFiresOnEdges();
     testAppCanLeadTheCamera();
+    testRuleWaitsForTheCamera();
     testParallax();
     testThresholdsOff();
     testParallaxThreshold();

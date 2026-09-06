@@ -88,8 +88,8 @@ Map {
 #structure[zoom >= 14][class = 'land']['mapnik::geometry_type' = 3]['param::deck3d'>0]::land_structure_deck {
   building-fill: #98a0b0;
   building-elevation-mode: 'span';
-  building-min-height: -7;
-  building-height: 0;
+  building-min-height: -1.5;
+  building-height: -0.1;
 }
 #structure[zoom >= 14][class = 'land']['mapnik::geometry_type' = 2]::land_structure_line {
   line-cap: 'square';

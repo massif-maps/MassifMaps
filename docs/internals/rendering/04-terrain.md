@@ -684,7 +684,19 @@ A resolved chord is remembered in a small LRU, because a bridge's portals are a 
 world and not of what is on screen: zooming into one end drops the far piece from the visible set,
 and without the cache the chord shortens to whatever is still loaded and the deck changes angle.
 A piece with no portal of its own borrows a cached chord by its own **midpoint**, since a piece in
-the middle of a long deck is cut at both ends and has none to offer.
+the middle of a long deck is cut at both ends and has none to offer. Which cached chord matters:
+a structure leaves one per feature (bed, deck, rails, road), portals metres apart and heights
+decimetres apart, and every one passes the midpoint test. A piece that kept one portal takes the
+shortest chord ending there — its own feature's, resolved uncut in a coarser copy — and a piece
+cut at both ends the longest (`SpanGeometry::borrowChord`); the first cache hit changed as the
+cache moved, and the deck jumped with it.
+
+**The same deck from two source tiles resolves two chords.** Each tile clips the ring where it
+likes, so at Pont Neuf z19 the two copies ended 30 m apart and read 1.3358/1.3148 against
+1.4256/1.1267 — the second's ends on the quay slopes — and the deck stepped 38 px where the source
+changed. The dual-carriageway merge (middles within 100 m, lengths within 0.8–1.25) rejected them
+at ratio 0.73. A chord whose both ends lie ON another (`chordLiesOn`) is the same structure whatever
+the lengths; the merge runs longest first so the copy with the better-placed ends is the one kept.
 
 **Two portals are not a resolved chord.** Neighbouring tiles each hold a copy of the same abutment,
 so a group whose far portal is off screen still collects two portal points — 45 m apart at z15,

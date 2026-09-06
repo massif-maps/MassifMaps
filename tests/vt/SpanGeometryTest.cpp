@@ -158,4 +158,31 @@ void testSpanGeometry() {
         TEST_CHECK(near(lo(0), -1.0) && near(lo(1), -1.0) && near(hi(0), 1.0) && near(hi(1), 1.0),
                    "the clip zoom sends the bounds' corners to the corners of the bake square");
     }
+    // A stranded piece borrows its OWN feature's chord when it kept a portal - the chord that ends
+    // there - and only a piece cut at both ends takes the longest chord over its midpoint.
+    {
+        struct Chord { cglib::vec2<double> portal0, portal1; };
+        std::vector<Chord> chords = {
+            { at(0, 0), at(0, 1000) },     // the whole deck's chord, first in the cache
+            { at(0, 0), at(0, 200) },      // an abutment feature's own chord
+            { at(500, 100), at(600, 100) } // a crossing street, over neither piece
+        };
+        auto own = SpanGeometry::borrowChord(at(0, 0), true, at(0, 120), false, chords.begin(), chords.end());
+        TEST_CHECK(own == chords.begin() + 1, "a piece with its own portal takes the chord ending there, not the first hit");
+        auto middle = SpanGeometry::borrowChord(at(0, 60), false, at(0, 140), false, chords.begin(), chords.end());
+        TEST_CHECK(middle == chords.begin(), "a piece cut at both ends takes the longest chord over its midpoint");
+        TEST_CHECK(SpanGeometry::borrowChord(at(300, 100), false, at(300, 120), false, chords.begin(), chords.end()) == chords.end(),
+                   "and a piece on no chord borrows nothing");
+    }
+    // The same deck from two source tiles resolves two chords whose ends sit metres apart; the
+    // shorter lies on the longer and is the same structure. A bridge further along is not.
+    {
+        cglib::vec2<double> south = at(0, 0), north = at(0, 240);
+        TEST_CHECK(SpanGeometry::chordLiesOn(at(4, 20), at(-3, 232), south, north),
+                   "a copy clipped 20 m short at one end still lies on the full chord");
+        TEST_CHECK(!SpanGeometry::chordLiesOn(at(0, 200), at(0, 400), south, north),
+                   "a chord running past the far portal is another structure");
+        TEST_CHECK(!SpanGeometry::chordLiesOn(at(60, 20), at(60, 220), south, north),
+                   "and so is a parallel one 60 m aside");
+    }
 }

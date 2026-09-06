@@ -62,7 +62,16 @@ namespace massif {
         struct Trigger {
             int last = -1; // -1 until the rule has answered once
 
-            bool changed(bool decision) {
+            /**
+             * cameraPlaced is whether the app has put the camera anywhere yet. Until it has, the
+             * view is the SDK's own default - top-down at world zoom - and the rule does not judge
+             * it: a first frame drawn before the app's moveTo flattened a map that was about to
+             * tilt, and dragged it through the whole 2D->3D switch while its tiles arrived.
+             */
+            bool changed(bool decision, bool cameraPlaced = true) {
+                if (!cameraPlaced) {
+                    return false;
+                }
                 int value = decision ? 1 : 0;
                 if (last == value) {
                     return false;

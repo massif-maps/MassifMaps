@@ -369,7 +369,20 @@ Three things then keep the bakes off the critical path:
   hanging between the fingers. The deck's own drape (the span bake, per render tile) is under the
   same budget now, nearest first, one always through: unbudgeted, an integer zoom renamed every
   bridge tile in view and baked them all in one frame — 150–210 ms of `drape` in that frame at
-  Paris, 43–71 ms after. A deck whose drape is not baked yet draws its plain roof for those frames.
+  Paris, 43–71 ms after. A deck whose drape has never been baked draws its plain roof for those
+  frames. Two more rules (2026-09-04), from a z20→19 step at the Louvre with 14 span tiles in view:
+  the span bakes run **right after the blank ground**, not last — run last they queued behind the
+  zoom's ground re-bakes at one per frame and the decks were bare for 14 frames; and a deck whose
+  drape is **baked but re-fingerprinted** (its proxy gave way to the native tile, which happens once
+  per deck per zoom step) is handed over as it is while its re-bake waits, an older road on the deck
+  rather than a bare one. Only a texture that has never been baked stays out of the hand-over. Bare
+  deck draws over that step: 27 → 11-16, and their span 2.7 s → 0.35-1.5 s. Then, 2026-09-05,
+  `DRAPE_BAKE_BUDGET_SPAN = 3` span bakes go through before the time budget is consulted (was one):
+  emulator A/B, same build, `debug.massif.spanbudget` 1 vs 3 over two 0.1-step 20→19 zooms — decks
+  waiting for a drape 30 vs 25 deck-frames, both over 3 frames (~0.18 s), and zero on the second zoom
+  of each pair since the textures stay cached. Small on the emulator, where the reorder already
+  drains the queue in 3 frames; the case it is for is a GPU where one ground bake fills the 16 ms
+  budget and spans would otherwise dress one per frame. That case is not measured.
 - **Seeding.** A tile entering the cover has no texture and until its bake is budgeted it can only
   be a flat fill — the white sheet over the terrain on every zoom out. But the cache already holds
   this ground: the finer tiles it replaces, or a coarser one covering it. Copying those into the new
@@ -406,13 +419,62 @@ buffer the bake has no equivalent of.
 
 Stand-ins from the previous generation are pushed **after** the tile's own entry, not before: the
 surfaces coincide and the later draw wins, so pushed first they are buried under the fill they were
-meant to replace — the whole screen going white for a moment on every zoom out. Several levels deep,
-because one gesture crosses several zooms.
+meant to replace — the whole screen going white for a moment on every zoom out.
+
+**At any depth, and found in the cache rather than in the tile tree.** Walking the tree down costs
+4^depth lookups, so the search was capped at two levels — and a pinch out crossing three or more
+levels then found nothing, leaving the leaf painted in the flat clear colour. The cache holds at
+most `MAX_ENTRIES` tiles, so one pass over *it* answers the same question at any depth:
+`TerrainDrapeCache::findBakedDescendants` returns the coarsest baked tiles inside a leaf (a tile
+whose own ancestor is in the result is left out, or the ground is painted twice at two
+tesselations). The same call feeds both the seed and the stand-in draw. A descendant that cannot be
+drawn — no elevation under it, or a layer mask as incomplete as the tile it would stand in for —
+does not take its own descendants down with it; they are the finer generation and one of them may
+well be usable. The selection rule is `DrapeStandIn::coarsestCover`, free of GL so it is testable on
+the host (`tests/api/DrapeStandInTest.cpp`).
+
+Measured on the day-cycle-light example, the same fast pinch out on emulator-5556, counting the
+surfaces actually drawn as a flat fill in a frame: worst frame **11 of 19 (58 %) → 9 of 25 (36 %)**.
+What is left is a cold cache, where there is genuinely nothing to stand in on — the remaining fills
+cluster in the first second after launch.
+
+### The cache has to hold two generations, not one
+
+Searching the cache is worthless if the cache has already been emptied, and it had: the budget was
+sized for **one** cover. Two things did it, both measured on the same pinch at dusk (where a flat
+fill is obvious — it is painted in the style's background colour, unlit, so it reads as a light
+patch on lit ground):
+
+- `DrapeResolution` **defaulted to 1024**, so the automatic path never ran and the cache held
+  `96 MB / 4 MB = 24` tiles against a cover of 17–28 leaves.
+- the entry-count cap counted **coverage masks as whole tiles** (28 colour + 28 masks = 56 against
+  a cap of 24), which its own comment says it should not — a mask is a quarter of a drape in bytes.
+
+Together they evicted 21–28 entries *every frame* of a zoom, so `seeded 0`, `blank 16`, and the
+stand-in had nothing to read. The resolution now defaults to automatic, the count cap counts colour
+entries only, and `DRAPE_WORKING_SET` is **64** — the live cover plus the generation behind it —
+which steps the bake to 512. Both ends of that trade are now the app's: `TerrainOptions::
+DrapeCacheSize` (MB) and `TerrainOptions::DrapeWorkingSet` (tiles); an app that wants mapbox's 1024
+raises the budget to pay for it.
+
+Measured, four fast two-level zooms: frames drawing a flat fill **13 → 7**, worst frame **18 of 23
+(78 %) → 11 of 20 (55 %)**, and — the point — a **second pass over the same ground fell from 14–18
+fills to 1–2**, because the previous generation now survives to stand in. The first traversal is
+still cold and that is honest: there is nothing cached to show yet.
 
 A leaf already drawing its **own** bake does not get the finer generation stacked on top of it even
 when that bake is incomplete: it covers this ground and is merely missing a layer, with the re-bake
 already queued. Stacking a finer tesselation over it was a two-frame mesh pop at every integer zoom
 out (`showsOwnBake` in `MapRenderer`, same rule as `showsAncestor` above it).
+
+The exception is a bake with **nothing in it**. A render tile whose native tile has not arrived
+holds only the finer proxies it retains, and the bake leaves those out (they do not *cover* the
+target), so the bake produces no layer at all and is still marked baked. Drawn as the tile's own
+picture that texture is the flat clear colour — measured at a z20→19 step as one z18 leaf blank for
+4 s over cached z19/z20 drapes that had the map. An empty bake is therefore not a picture
+(`DrapeStandIn::hasPicture`): the leaf seeds from the cached generation like a fresh tile, or draws
+the descendants over itself, and it is never *complete* (`DrapeStandIn::isComplete`) until a bake
+with content lands. `findBaked` skips it too, so it never stands in for a neighbour.
 
 ### The outgoing generation at an integer zoom out
 
@@ -577,7 +639,12 @@ anchor answer different halves of it and neither replaces the other — the anch
 ONE building agree exactly, smoothing keeps the buildings AROUND it from stepping against it. The
 smoothing alone was tried first and measurably did not close the comb, which is what the numbers
 above are. Spans (bridge chords) keep the drawn surface (`smooth = false`); a deck must meet the
-road exactly.
+road exactly. They are sampled at ONE zoom for every piece (`_spanSampleZoom`, the finest visible
+tile's): the pieces of a deck arrive at different tile zooms, and sampled each at its own they read
+different DEM levels for the same portal — at Pont Neuf z21.2 one chord came back 1.345 on 22
+pieces and 1.306 on 22 more, a step down every tile cut. Smoothing the portals instead was tried and
+closed the cut, but put the deck end off the draped approach road. The heights are refreshed on
+every cull, so a finer DEM moves the deck with the surface.
 
 **mapbox's floor** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`): a
 building keeps at least 2 m above the drawn ground under it, so a part whose smoothed anchor sits
@@ -684,7 +751,19 @@ A resolved chord is remembered in a small LRU, because a bridge's portals are a 
 world and not of what is on screen: zooming into one end drops the far piece from the visible set,
 and without the cache the chord shortens to whatever is still loaded and the deck changes angle.
 A piece with no portal of its own borrows a cached chord by its own **midpoint**, since a piece in
-the middle of a long deck is cut at both ends and has none to offer.
+the middle of a long deck is cut at both ends and has none to offer. Which cached chord matters:
+a structure leaves one per feature (bed, deck, rails, road), portals metres apart and heights
+decimetres apart, and every one passes the midpoint test. A piece that kept one portal takes the
+shortest chord ending there — its own feature's, resolved uncut in a coarser copy — and a piece
+cut at both ends the longest (`SpanGeometry::borrowChord`); the first cache hit changed as the
+cache moved, and the deck jumped with it.
+
+**The same deck from two source tiles resolves two chords.** Each tile clips the ring where it
+likes, so at Pont Neuf z19 the two copies ended 30 m apart and read 1.3358/1.3148 against
+1.4256/1.1267 — the second's ends on the quay slopes — and the deck stepped 38 px where the source
+changed. The dual-carriageway merge (middles within 100 m, lengths within 0.8–1.25) rejected them
+at ratio 0.73. A chord whose both ends lie ON another (`chordLiesOn`) is the same structure whatever
+the lengths; the merge runs longest first so the copy with the better-placed ends is the one kept.
 
 **Two portals are not a resolved chord.** Neighbouring tiles each hold a copy of the same abutment,
 so a group whose far portal is off screen still collects two portal points — 45 m apart at z15,
@@ -694,6 +773,14 @@ its labels went with it, which is what read as "the join fails when part of the 
 screen". The rule is `SpanGeometry::chordSpansGroup` — a chord must reach across **the group's own
 diameter** (95%, for the buffer overlap) — and a group that fails it is unresolved, so the cache
 borrow runs and hands it the 3440 m chord it resolved at z14.
+
+**An unresolved deck is not drawn — and does not cast.** The on-screen draw waits for the whole
+piece (`renderGeometry3D`), because a deck with resolved and sentinel vertices mixed fans a wall from
+the chord down to the ground. The shadow caster pass runs *first* in the frame and used to take every
+visible extrusion regardless: that wall, invisible on screen, was in the shadow map, and its shadow
+landed on the roofs and the water beside the bridge until the base resolved — the dark flash on the
+Louvre passage and the Pont des Arts at every zoom step (2026-09-05). `renderShadowCasters` now
+resolves the bases and applies the same rule.
 
 ### Everything else that stands on the deck
 
@@ -1200,6 +1287,22 @@ frame, at the default tilt of 90, before an app has set its own thresholds — a
 sets them to 0 turned the rule off with its last answer ON, so nothing ever asked for 3D again:
 the map came up flat, at random, whenever that first frame beat the app's setters. A rule disabled
 while ON now releases the flat state it set (never an app's own `setFlattened(true)`), and logs it.
+
+**The rule does not judge a camera the app has not placed.** The same first frame, drawn at the
+SDK's default view (top-down, world zoom) before the app's `moveTo` landed, flattened a map that
+was about to tilt — and the release then dragged it through the whole switch while its tiles were
+still arriving: flat unlit 2D in WARMING, three slow ramp frames over a still-blank drape, and the
+first shadow frame, six distinct looks in the first two seconds (day-cycle-light, 10 fps recordings,
+2026-09-05). `MapRenderer::_cameraPlaced` is set by every camera event and cleared once after the
+constructor's defaults; until it is set, `AutoFlatten::Trigger` answers nothing, so the first judged
+frame is the app's camera. A camera the app places top-down is judged at once. Host test:
+`testRuleWaitsForTheCamera`.
+
+The gate alone left 1 launch in 12 flattening: `moveTo` sets the zoom, rotation, tilt and focus as
+four camera events, and a frame drawn between the first and the third saw a *placed* camera at
+z17 still straight down. `BaseMapView::moveTo` now holds the renderer's view lock
+(`MapRenderer::holdView`) across the four, so they land in one frame. The listeners still hear
+four moves; only the render thread waits.
 
 **The clearance is mapbox's, a fraction of the height, not a fixed 60 m.** The camera is kept a
 height above the ground *under it* (`terrain/CameraClearance.h`, the port of

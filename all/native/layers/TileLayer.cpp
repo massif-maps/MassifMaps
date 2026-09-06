@@ -318,6 +318,9 @@ namespace massif {
         if (_projectionSurface.lock() != projectionSurface || _glResourceManager.lock() != glResourceManager) {
             clearTileCaches(true);
             resetTileTransformer();
+            // The tile set was calculated against the old transformer; keeping it here froze a set
+            // built before the surface existed, and the camera is still, so nothing recalculated it.
+            _tileCullState.reset();
             _projectionSurface = projectionSurface;
             _glResourceManager = glResourceManager;
         }
@@ -414,8 +417,11 @@ namespace massif {
             }
         }
 
-        // Check if tiles need to be recalculated
-        bool recalculateTiles = (!_tileCullState || _frameNr != _lastFrameNr || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
+        // Check if tiles need to be recalculated. An empty tile set counts as "needs recalculating":
+        // the set is otherwise frozen until the MVP changes, so a single cull that ran before the
+        // layer had what it needs (data extent, transformer, style) leaves the layer blank until the
+        // user pans. Cheap to redo - an empty set means the recursion stops at the root tile.
+        bool recalculateTiles = (!_tileCullState || _visibleTiles.empty() || _frameNr != _lastFrameNr || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
         if (recalculateTiles) {
             VT_STAT_INC(tileRecalculations);
             // If the view has changed calculate new visible tiles, otherwise use the old ones

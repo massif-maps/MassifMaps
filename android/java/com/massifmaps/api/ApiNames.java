@@ -223,6 +223,12 @@ public final class ApiNames {
     public static final MassifObject.Key<String> DATA_EXTENT = MassifObject.key("dataExtent");
     /** Returns the original data source that the cache uses. */
     public static final MassifObject.Key<MassifObject> DATA_SOURCE = MassifObject.key("dataSource");
+    /** Returns the day-cycle light curve - the "formula" an hour is turned into a look by. */
+    public static final MassifObject.Key<String> DAY_CYCLE_LIGHT_STOPS = MassifObject.key("dayCycleLightStops");
+    /** Returns whether the sun's COLOURS follow its position. */
+    public static final MassifObject.Key<Boolean> DAY_CYCLE_LIGHTS_ENABLED = MassifObject.key("dayCycleLightsEnabled");
+    /** Returns the curve used while the sun is RISING, if the app set one. */
+    public static final MassifObject.Key<String> DAY_CYCLE_RISING_LIGHT_STOPS = MassifObject.key("dayCycleRisingLightStops");
     /** Returns the state of the tile border debug overlay. */
     public static final MassifObject.Key<Boolean> DEBUG_TILE_BORDERS = MassifObject.key("debugTileBorders");
     /** Returns the default layer buffer in tile pixels. */
@@ -791,6 +797,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> SUN_DISC_ENABLED = MassifObject.key("sunDiscEnabled");
     /** Returns the sun light intensity. */
     public static final MassifObject.Key<Double> SUN_INTENSITY = MassifObject.key("sunIntensity");
+    /** Returns whether this sun overrides the one a style states. */
+    public static final MassifObject.Key<Boolean> SUN_OVERRIDING_STYLE = MassifObject.key("sunOverridingStyle");
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     public static final MassifObject.Key<String> SURFACE_SHADER_SOURCE = MassifObject.key("surfaceShaderSource");
     /** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */

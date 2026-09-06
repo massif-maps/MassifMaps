@@ -194,6 +194,7 @@ add_executable(api_tests
   MethodTest.cpp
   AdoptTest.cpp
   CustomSourceTest.cpp
+  GetterLockTest.cpp
   BundleAssetsTest.cpp
   CAbiTest.cpp
   MetaDataTest.cpp
@@ -208,6 +209,8 @@ add_executable(api_tests
   CameraClearanceTest.cpp
   # Same: DrapeStackCuts.h is the ordering rule and nothing else.
   DrapeStackCutsTest.cpp
+  # Same: DrapeStandIn.h is the cover of cached tiles a leaf stands in on, and nothing else.
+  DrapeStandInTest.cpp
   # Same: DrapeTuning.h is the bake resolution arithmetic and nothing else.
   DrapeTuningTest.cpp
   # Same: ShadowCasterRing.h is the caster ring's zoom bound and nothing else.
@@ -240,6 +243,8 @@ target_include_directories(api_tests PRIVATE
   "${SDK_BASE_DIR}/libs-external/cglib"
   "${SDK_BASE_DIR}/libs-external/stdext"
   "${SDK_BASE_DIR}/libs-external/picojson"
+  # DrapeStandIn.h is written in tile ids, which live in vt.
+  "${SDK_BASE_DIR}/libs-massif/vt/src"
   # RoutingRequest uses boost::algorithm for its parameter paths - see ../../BUILDING.md for the
   # symlink this expects.
   "${SDK_BASE_DIR}/libs-external/boost"

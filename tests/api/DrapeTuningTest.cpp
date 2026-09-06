@@ -45,6 +45,26 @@ namespace {
         TEST_CHECK(resolve(2.0, 25) == 512, "... and one tile more is over it, so the next power of two down");
     }
 
+    void testTheWorkingSetHasToHoldMoreThanOneCover() {
+        // The cache has to hold the LIVE cover AND the generation a stand-in reads from. A real
+        // cover was measured at 15-34 leaves, so a working set of 24 fits one cover and nothing
+        // else: at 1024 that is 24 entries against a 28-leaf cover, the previous generation is
+        // evicted every frame of a zoom, and the leaves are painted in the flat background colour.
+        // That is the ground blinking during a fast zoom - see
+        // docs/internals/rendering/04-terrain.md.
+        TEST_CHECK(resolve(2.0, 24) == 1024, "a working set of one cover keeps 1024...");
+        TEST_CHECK(DrapeTuning::bytesPerTile(1024) * 28 > BUDGET, "...but 28 leaves at 1024 are already over the budget");
+        TEST_CHECK(resolve(2.0, 64) == 512, "the shipped working set of 64 steps down to 512");
+        TEST_CHECK(DrapeTuning::bytesPerTile(512) * 64 <= BUDGET, "... where a cover AND the generation behind it fit");
+    }
+
+    void testABiggerBudgetBuysTheSharperBake() {
+        // TerrainOptions::DrapeCacheSize is the other end of the same trade: an app that wants
+        // mapbox's 1024 pays for it in video memory rather than in a thrashing cache.
+        TEST_CHECK(resolve(2.0, 64, 256 * 1024 * 1024) == 1024, "at 256 MB a working set of 64 keeps 1024");
+        TEST_CHECK(resolve(2.0, 64, 32 * 1024 * 1024) == 256, "and a small budget steps further down");
+    }
+
     void testOldWorkingSetPinnedEveryDeviceTo512() {
         // The regression this rule was changed for: at 64 the clamp fires whatever the screen asks.
         TEST_CHECK(resolve(2.0, 64) == 512, "at a working set of 64 a 1024 screen request is clamped to 512");
@@ -112,6 +132,8 @@ namespace {
 
 void testDrapeTuning() {
     testBudgetBoundaryLets1024Through();
+    testTheWorkingSetHasToHoldMoreThanOneCover();
+    testABiggerBudgetBuysTheSharperBake();
     testOldWorkingSetPinnedEveryDeviceTo512();
     testScreenLadderRoundsUp();
     testClampsStayInsideTheRange();

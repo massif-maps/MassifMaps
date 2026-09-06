@@ -1054,21 +1054,33 @@ namespace massif { namespace api {
 
     Result Context::getProperty(Handle handle, const std::string& path, PropertyValue& value,
                                 const std::string& projection) const {
-        std::lock_guard<std::mutex> lock(_mutex);
         ObjectRef target;
-        Result result = RESULT_OK;
+        const PropertyEntry* entry = nullptr;
         std::size_t variantRest = std::string::npos;
         std::string indexKey;
-        const PropertyEntry* entry = lookup(handle, path, target, result, &variantRest, &indexKey);
-        if (!entry) {
-            return result;
+        std::shared_ptr<Projection> from;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            Result result = RESULT_OK;
+            entry = lookup(handle, path, target, result, &variantRest, &indexKey);
+            if (!entry) {
+                return result;
+            }
+            if (indexKey.empty() && !entry->getter) {
+                return RESULT_UNSUPPORTED_TYPE;
+            }
+            if (entry->flags & PF_POSITION) {
+                from = sourceProjection(target, handle);
+            }
         }
         if (!indexKey.empty()) {
             return readBagEntry(*entry, target, indexKey, value);
         }
-        if (!entry->getter) {
-            return RESULT_UNSUPPORTED_TYPE;
-        }
+        // UNLOCKED, as the setter is: a getter takes the object's own lock - the camera's is the
+        // renderer's - and the render thread takes that lock first and only then reaches this
+        // context, through a map-moved listener that reads the camera back. Holding this mutex
+        // across the getter deadlocked the map at startup whenever the two crossed.
+        //
         // Guarded like every other call into the SDK: an accessor is free to validate, and an
         // exception crossing a binding boundary kills the process.
         try {
@@ -1081,7 +1093,6 @@ namespace massif { namespace api {
         const std::string& wanted = wantedProjection(projection);
         if (entry->flags & PF_POSITION) {
             std::shared_ptr<Projection> to = Projections::find(wanted);
-            std::shared_ptr<Projection> from = sourceProjection(target, handle);
             if (!to) {
                 return RESULT_UNKNOWN_TYPE;
             }

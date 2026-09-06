@@ -309,7 +309,7 @@ namespace massif {
         }
     }
 
-    int TileRenderer::resolveDrapeResolution(int setting, const ViewState& viewState, const std::shared_ptr<Options>& options) {
+    int TileRenderer::resolveDrapeResolution(int setting, const ViewState& viewState, const std::shared_ptr<Options>& options, std::size_t budgetMegabytes, int workingSet) {
         if (setting > 0) {
             return setting;
         }
@@ -327,11 +327,15 @@ namespace massif {
         //
         // That measurement came with the conclusion "a difference the screen cannot show once the
         // texture is mipmapped", and that conclusion was WRONG: it was never compared against
-        // mapbox, which bakes the same tile at 1024. With DRAPE_WORKING_SET at 64 the arithmetic
-        // pinned this to 512 on every device - half mapbox's linear resolution, a quarter of the
-        // texels - and that is the gap seen as a blurry, stretched drape at a grazing angle.
-        std::size_t budgetBytes = (TerrainDrapeCache::isBudgetEnabled() ? TerrainDrapeCache::MAX_BYTES : 0);
-        return DrapeTuning::resolution(tileDrawSize, viewState.getDPI() / Const::UNSCALED_DPI, DRAPE_WORKING_SET, budgetBytes, MIN_DRAPE_RESOLUTION, MAX_DRAPE_RESOLUTION);
+        // mapbox, which bakes the same tile at 1024. Going the other way and pinning it to 1024
+        // was worse: the cache then holds 24 tiles against a cover of 15-34, so it evicts the
+        // generation a stand-in reads from on every frame of a zoom and the ground blinks in the
+        // flat background colour. Both are the same trade, and both ends of it are now the app's
+        // (TerrainOptions::DrapeCacheSize / DrapeWorkingSet).
+        std::size_t budget = (budgetMegabytes > 0 ? budgetMegabytes * 1024 * 1024 : TerrainDrapeCache::MAX_BYTES);
+        std::size_t budgetBytes = (TerrainDrapeCache::isBudgetEnabled() ? budget : 0);
+        std::size_t tiles = (workingSet > 0 ? static_cast<std::size_t>(workingSet) : DRAPE_WORKING_SET);
+        return DrapeTuning::resolution(tileDrawSize, viewState.getDPI() / Const::UNSCALED_DPI, tiles, budgetBytes, MIN_DRAPE_RESOLUTION, MAX_DRAPE_RESOLUTION);
     }
 
     int TileRenderer::getStyleLayerCount() const {
@@ -1044,7 +1048,9 @@ namespace massif {
         //   adb shell setprop debug.massif.nodrapelayers "^contour.*" ("none" drapes everything)
         tileRenderer->setNoDrapeLayerFilter(noDrapeLayerFilter(
             activeTerrainOptions ? activeTerrainOptions->getNoDrapeLayerFilter() : std::string()));
-        tileRenderer->setTerrainDrapeResolution(resolveDrapeResolution(activeTerrainOptions ? activeTerrainOptions->getDrapeResolution() : 0, viewState, _options.lock()));
+        tileRenderer->setTerrainDrapeResolution(resolveDrapeResolution(activeTerrainOptions ? activeTerrainOptions->getDrapeResolution() : 0, viewState, _options.lock(),
+            activeTerrainOptions ? static_cast<std::size_t>(activeTerrainOptions->getDrapeCacheSize()) : 0,
+            activeTerrainOptions ? activeTerrainOptions->getDrapeWorkingSet() : 0));
         // Sun lighting of the draped surface. Once every 2D layer is baked into the drape
         // texture the surface is the only lit ground geometry in the scene, so the whole map
         // is shaded by one directional light that follows the time of day - and the pre-baked
@@ -1226,6 +1232,13 @@ namespace massif {
         return refresh;
     }
     
+    bool TileRenderer::consumeLabelPlacementOwed() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        bool owed = _labelPlacementOwed;
+        _labelPlacementOwed = false;
+        return owed;
+    }
+
     bool TileRenderer::cullLabels(vt::LabelCuller& culler, const ViewState& viewState) {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         cglib::mat4x4<double> modelViewMat;
@@ -1587,6 +1600,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
             tileRenderer->setVisibleTiles(_tiles);
+            // These tiles were handed over before this renderer existed, so their placement pass
+            // found no GL renderer and did nothing (cullLabels bails out). setVisibleTiles rebuilds
+            // the label maps but places nothing, and on a still camera nothing asks again - which
+            // left a labels-only layer (markers, icons) invisible until the user panned.
+            _labelPlacementOwed = !_tiles.empty();
 
             if (!std::dynamic_pointer_cast<PlanarProjectionSurface>(mapRenderer->getProjectionSurface())) {
                 vt::GLTileRenderer::LightingShader lightingShader2D(true, LIGHTING_SHADER_2D, [this](GLuint shaderProgram, const vt::ViewState& viewState) {

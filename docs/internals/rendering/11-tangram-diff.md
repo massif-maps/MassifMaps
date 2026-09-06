@@ -212,3 +212,22 @@ knowingly differ from mapbox:
 One thing we do that mapbox does not: **the fog colour is lit by the sun** before it is used
 (`resolveFog`), so a haze tuned for daylight darkens through the night instead of floating bright
 white over a dark map.
+
+## Porting a constant from a reference renderer
+
+The rules `CLAUDE.md` states in short form, with what produced them:
+
+- **Copy their constants, do not derive your own** — `grep` the reference source for the value
+  before choosing one. Every constant this fork invented was wrong and cost a round.
+- **If they do something, there is a reason: port it whole.** Adopting half of a model produces
+  artifacts that look like new bugs. When a piece looks unnecessary, assume it is load-bearing.
+- **Read the SCENE/style files, not only the shaders.** tangram's `res/scenes/terrain-3d.yaml`
+  holds the depth model its `polygon.vs` only hints at.
+- **A ported constant is only portable if its UNITS are.** mapbox's shadow bias is a fraction of
+  *their* light box; against ours it was a 3 km bias that erased every shadow. Check the quantity
+  the number is a fraction of.
+
+Checked out read-only for comparison: `/Volumes/dev/carto/maplibre-gl-js`,
+`/Volumes/dev/carto/maplibre-native` (terrain, hillshade; no shadows), `/Volumes/dev/carto/tangram-ng`
+(terrain + its depth model; no shadows). mapbox-gl-js is not checked out — fetch from
+`mapbox/mapbox-gl-js` on GitHub; it is the only one of the three with shadows, lighting and fog.

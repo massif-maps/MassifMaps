@@ -134,7 +134,7 @@ The gallery has the same channel through `ExampleLive` (same short keys). Two tr
 `ExampleActivity` logs the camera on every move, in the form the launch extras take:
 
 ```bash
-adb logcat -s ExampleActivity | grep camera
+python3 scripts/devtap.py logs android --grep camera
 ```
 
 ### Things that look like bugs and are not
@@ -156,44 +156,35 @@ adb logcat -s ExampleActivity | grep camera
 
 ## Debugging the renderer — what actually works
 
-**Measure first, look second.** Reading a screenshot is by far the most expensive thing in a
-debugging loop, both in wall-clock and in context. Compute a number, and only open the image when
-the number says something changed:
+**Measure first, look second.** Reading a screenshot, or a raw log, is by far the most expensive
+thing in a debugging loop — in wall-clock and, for an agent, in context. `scripts/devtap.py` does
+the bulk work on disk and prints a summary; the full artifact lands in `build/devtap/` for grepping.
+Use it instead of `adb logcat`, `adb screencap`, `xcrun simctl log show` or opening a `.ips`:
 
 ```bash
-# Did anything change at all?
-python3 -c "
-from PIL import Image, ImageChops, ImageStat
-a=Image.open('before.png').convert('L'); b=Image.open('after.png').convert('L')
-d=ImageChops.difference(a,b)
-print('mean %.2f  max %d' % (ImageStat.Stat(d).mean[0], d.getextrema()[1]))"
+python3 scripts/devtap.py logs android --max 20        # 2087 raw lines -> 10
+python3 scripts/devtap.py logs ios --since 3m          # 15193 -> 8
+python3 scripts/devtap.py crash android                # tombstone, ndk-stack symbolicated
+python3 scripts/devtap.py crash ios                    # 112 KB .ips -> faulting thread, 17 lines
+python3 scripts/devtap.py shot android --compare before.png
+python3 scripts/devtap.py diff before.png after.png
 ```
 
-`mean 0.00 max 0` means the two frames are identical — no need to look at either, and it is also
-how you catch a knob that never applied. Then, when you do look, crop and downscale to the region
-in question rather than reading a full 1080×2400 frame:
+`logs android` scopes to the demo app's pid, drops the system noise tags, and collapses lines that
+differ only in numbers into one `xN` entry — the header names what it dropped, so a surprising
+count is itself a signal. `--grep REGEX` bypasses every filter for one specific probe.
+`--device` is mandatory when several emulators are attached; devtap refuses to guess.
 
-```bash
-python3 -c "
-from PIL import Image
-Image.open('shot.png').crop((0,700,1080,1500)).save('crop.png')"
-```
-
-Other measurements that beat looking:
-
-```bash
-# Brightness/contrast of one region, e.g. is a shadow there at all?
-python3 -c "
-from PIL import Image, ImageStat
-im=Image.open('shot.png').convert('L').crop((560,950,1050,1230)); s=ImageStat.Stat(im)
-print('mean %.1f stddev %.1f' % (s.mean[0], s.stddev[0]))"
-```
+`shot` and `diff` print per-band mean/stddev and the changed-region bbox, **not the image**.
+`mean 0.00 max 0` means the two frames are identical — that is the answer, and it is how you catch
+a knob that never applied. Only open the png when a number moved, and crop first (`--crop
+x0,y0,x1,y1`) rather than reading a full 1080×2400 frame.
 
 - **A/B by feature, per screen row band, before probing the plumbing.** Screenshot with a layer on
-  and off (`--es hs false`, `--es sat false`, `--es drape false`), diff the two, and count differing
-  pixels per horizontal band (PIL, no numpy on this machine). If a band is 0.0% different, that
-  content is *not being drawn there*; if it differs, it is drawn and the problem is elsewhere. This
-  is what separated "tile never loaded" from "tile drawn but depth-rejected".
+  and off (`--es hs false`, `--es sat false`, `--es drape false`) and `devtap diff` the two. If a
+  band is 0.0% different, that content is *not being drawn there*; if it differs, it is drawn and
+  the problem is elsewhere. This is what separated "tile never loaded" from "tile drawn but
+  depth-rejected".
 - Probes go in these places, in this order — layer culling → draw data → vt render tiles → draw:
   `TileLayer::buildFetchTiles` (visible set + cache misses, `typeid(*this).name()` tells you which
   layer), `TileRenderer::refreshTiles` (per-zoom tiles/bitmaps/geometries, log `this` to separate a

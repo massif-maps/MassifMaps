@@ -20,6 +20,26 @@ delivery thread and real map payloads, projections on both the read and the writ
 sugar layer for Java and Objective-C.**
 See [Known gaps](#known-gaps).
 
+## What a new feature owes the facade
+
+Two public surfaces: the object API (`all/modules/*.i`) and this one. A feature on only one is a
+half-feature. Usually free — check, do not assume:
+
+| What you added | What the facade needs |
+|---|---|
+| a getter/setter declared with `%attribute*` in a `.i` | nothing |
+| a new option class reached from an existing one | nothing |
+| a new **class** an app constructs | one `!spec(...)` line in its `.i` |
+| a new **event** on an existing listener | a bridge method in `MapEventBridge.cpp` |
+| a new **listener interface** | a bridge class beside the others |
+| a new **method** (not a property) | a `call` entry, plus a converter for binary/bulk data |
+| a derived value a binding would otherwise compute | **an SDK method, not a facade one** — declare it as an attribute and both surfaces gain it |
+
+- **Add the flag, not the special case.** Behaviour that depends on what a property *is* belongs in
+  `scripts/gen-api-tables.py` as a flag the table carries. Never a per-class branch in `Context`.
+- **A `.i` signature change is breaking for every binding** even when the C++ compiles.
+- **Demo it** — add the knob to `scripts/android-dev/.../demo/DemoLive.java`.
+
 ## Why a facade at all
 
 Every capability of the SDK is an object you construct and wire by hand. That buys two things worth
@@ -89,9 +109,18 @@ MassifApi.setObject → Context::setObjectProperty        takes _mutex
 Both setters now resolve under the lock and invoke outside it. The `ObjectRef` holds a
 `shared_ptr`, and a `PropertyEntry*` points into the static table, so both stay valid unlocked.
 
-**The host suite cannot reach this**: it needs an accessor that re-enters the context, and every
-one that does pulls in `Options` and the renderer. It is a device check — the 3D terrain example,
-which subscribes and then writes `terrainOptions`.
+A **getter** is not exempt, and its failure is across two threads. The camera getters take
+`MapRenderer::_mutex`, and the render thread holds that mutex for a whole frame — from inside which
+the auto-flatten rule writes `Flattened`, the option notifies `viewChanged`, and an app's map-moved
+listener reads the camera back through the facade. The app thread reading the camera at that moment
+held `_mutex` while its getter waited for the renderer; the render thread waited for `_mutex`.
+The day-cycle-light example hung at startup about one launch in sixty, no log, no crash.
+`getProperty` now runs the getter unlocked too; `tests/api/GetterLockTest.cpp` models the two
+threads with one lock standing in for the renderer's, and fails within ten seconds on the old code.
+
+**The host suite cannot reach the setter chain**: it needs an accessor that re-enters the context,
+and every one that does pulls in `Options` and the renderer. It is a device check — the 3D terrain
+example, which subscribes and then writes `terrainOptions`.
 
 ## The property table
 

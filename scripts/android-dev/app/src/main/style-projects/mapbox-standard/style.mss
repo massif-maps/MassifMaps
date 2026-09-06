@@ -265,7 +265,7 @@ Map {
   line-color: @path_stroke;
   line-opacity: linear(([view::zoom] - 1), (15, (([type] = 'piste') ? 1 : 0)), (16, 0.5));
   line-offset: (0 - (linear(([view::zoom] - 1), (12, 0), (18, (([type] = 'piste') ? 0 : -2)), (22, (([type] = 'piste') ? 0 : -20)))));
-  line-dasharray: 13.3,13.3;
+  line-dasharray: 1.33,1.33;
   line-emissive-strength: 0.2;
 }
 #road[zoom >= 9][type = 'ferry']::ferry {
@@ -409,7 +409,7 @@ Map {
   line-color: @path_stroke;
   line-offset: (0 - (linear(([view::zoom] - 1), (12, 0), (18, (([type] = 'piste') ? 0 : -2)), (22, (([type] = 'piste') ? 0 : -20)))));
   line-opacity: linear(([view::zoom] - 1), (15, (([type] = 'piste') ? 1 : 0)), (16, 1));
-  line-dasharray: 13.3,13.3;
+  line-dasharray: 1.33,1.33;
   line-emissive-strength: 0.6;
 }
 #road[zoom >= 14] when(([class] = 'major_rail' || [class] = 'minor_rail')) when(([structure] = 'none' || [structure] = 'ford'))::road_rail {
@@ -799,7 +799,7 @@ Map {
   line-width: linear(([view::zoom] - 1), (12, (([type] = 'piste') ? 0.5 : 0)), (18, (([type] = 'piste') ? 4 : 2)), (22, (([type] = 'piste') ? 40 : 20)));
   line-offset: (0 - (linear(([view::zoom] - 1), (12, 0), (18, (([type] = 'piste') ? 0 : -2)), (22, (([type] = 'piste') ? 0 : -20)))));
   line-opacity: linear(([view::zoom] - 1), (15, (([type] = 'piste') ? 1 : 0)), (16, 1));
-  line-dasharray: 13.3,13.3;
+  line-dasharray: 1.33,1.33;
   line-emissive-strength: 0.6;
 }
 #road[zoom >= 14][structure = 'bridge'] when(([class] = 'major_rail' || [class] = 'minor_rail'))::bridge_rail {

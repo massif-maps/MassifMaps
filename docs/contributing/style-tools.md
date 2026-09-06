@@ -782,6 +782,13 @@ takes ONE pattern where MapBox takes a ramp. Two rules follow from that:
 - **The width is read AT that stop's zoom**, not averaged over the ramp. Standard's steps ramp to
   80 px by z22, so the mean is 43 px — a width nothing on screen ever has — and the 0.1 dash came
   out at 4.3 px where gl-js draws 1.5. The stairs drew as coarse bands instead of fine treads.
+- **A width stop that is itself data-driven resolves to its FALLBACK branch.** Standard's cycleway
+  width is `interpolate(zoom, 12, match(type, piste, 0.5, 0), 18, match(…, 4, 2), 22, match(…, 40,
+  20))`. Reading the ramp used to fail on the first non-number and fall back to the mean of every
+  literal in it — 13.3 px, against the 1.3 gl-js draws at the zoom the pattern starts, so the green
+  cycleway dashes came out two and a half times too long with gaps to match. The `match`/`case`
+  fallback is the width nearly every feature has; a piste is the exception, and one pattern cannot
+  serve both.
 
 ## The light, not the colours: how a preset gets dark
 

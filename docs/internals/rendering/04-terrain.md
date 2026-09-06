@@ -639,12 +639,22 @@ anchor answer different halves of it and neither replaces the other — the anch
 ONE building agree exactly, smoothing keeps the buildings AROUND it from stepping against it. The
 smoothing alone was tried first and measurably did not close the comb, which is what the numbers
 above are. Spans (bridge chords) keep the drawn surface (`smooth = false`); a deck must meet the
-road exactly. They are sampled at ONE zoom for every piece (`_spanSampleZoom`, the finest visible
-tile's): the pieces of a deck arrive at different tile zooms, and sampled each at its own they read
-different DEM levels for the same portal — at Pont Neuf z21.2 one chord came back 1.345 on 22
-pieces and 1.306 on 22 more, a step down every tile cut. Smoothing the portals instead was tried and
-closed the cut, but put the deck end off the draped approach road. The heights are refreshed on
-every cull, so a finer DEM moves the deck with the surface.
+road exactly. A chord holds ONE pair of heights for every piece on it (`CachedChord`), each portal
+read at the zoom of the visible tile holding it (`spanSampleZoomAt`) — the tile whose DEM level the
+approach road is draped with — and a portal in no visible tile at the asking piece's own zoom (the
+finest visible zoom asked for lidar tiles 8 km from the camera that nothing had loaded). Before that the pair was sampled per piece at the piece's own zoom,
+and the pieces of one deck read different DEM levels for the same portal: at Pont Neuf z21.2 one
+chord came back 1.345 on 22 pieces and 1.306 on 22 more, a step down every tile cut. Smoothing the
+portals instead was tried and closed the cut, but put the deck end off the draped approach road.
+The heights are refreshed on every cull, so a finer DEM moves the deck with the surface, and a
+chord whose portal cannot be read this cull keeps the pair it had.
+
+The exact-level query (`smooth = false`) answers from the texture cache, which only a **drawn**
+tile fills — and a bridge's far portal is routinely in a tile that is not drawn. It falls back to
+the same grid in the manager's LRU (the same height field, `sampleNodeHeight`), and asks for the
+tile when neither has it; before that a portal one tile off screen at z17+ had no height, nothing
+ever fetched it, and the deck stayed hidden until the camera happened to draw that tile. Measured
+at Cité z16.2 before the fallback: every deck piece had both portals and no heights.
 
 **mapbox's floor** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`): a
 building keeps at least 2 m above the drawn ground under it, so a part whose smoothed anchor sits
@@ -740,7 +750,13 @@ The pieces are matched **by geometry, not by feature id**: `LineSymbolizer` pass
 `FeatureCollection::getLocalId`, a layer offset plus an index, so one OSM way gets a different id
 in every tile it crosses. Two pieces are one structure when the ends the tile *cut* meet — the
 buffer makes neighbouring copies overlap rather than touch, so this is proximity (13–18 m between
-the Millau pieces at z15) with a direction test to keep a crossing bridge out of the chain.
+the Millau pieces at z15) with a direction test to keep a crossing bridge out of the chain, and a
+**lateral** test: each cut end must lie within 25 m of the other piece's line
+(`SpanGeometry::MEET_LATERAL_TOLERANCE`). The radius alone is a tenth of a tile, 245 m at z14, and
+at the reference zoom it chained every Seine bridge crossing the same tile edge into one group —
+parallel, so the direction test passed them — whose diameter no chord could span (measured: 111 of
+194 groups, up to 34 pieces). A continuation is on the same line; a neighbour is off it by its
+spacing.
 
 Joined, the Millau viaduct resolves as one chord — **2472 m at 3.3%** against 2460 m at 3.025% in
 reality when it was first measured, **3440 m** on the tile set measured since (see below). The
@@ -756,14 +772,54 @@ a structure leaves one per feature (bed, deck, rails, road), portals metres apar
 decimetres apart, and every one passes the midpoint test. A piece that kept one portal takes the
 shortest chord ending there — its own feature's, resolved uncut in a coarser copy — and a piece
 cut at both ends the longest (`SpanGeometry::borrowChord`); the first cache hit changed as the
-cache moved, and the deck jumped with it.
+cache moved, and the deck jumped with it. The cache entry also carries the chord's **heights**: a
+union is rebuilt from scratch every cull and keyed by the piece's tile, so a piece whose tile had
+just entered the view had no previous pair to keep and hid until the DEM under a portal answered —
+the flicker on every pan, one tile of a deck drawn and the next not.
 
 **The same deck from two source tiles resolves two chords.** Each tile clips the ring where it
 likes, so at Pont Neuf z19 the two copies ended 30 m apart and read 1.3358/1.3148 against
 1.4256/1.1267 — the second's ends on the quay slopes — and the deck stepped 38 px where the source
 changed. The dual-carriageway merge (middles within 100 m, lengths within 0.8–1.25) rejected them
 at ratio 0.73. A chord whose both ends lie ON another (`chordLiesOn`) is the same structure whatever
-the lengths; the merge runs longest first so the copy with the better-placed ends is the one kept.
+the lengths; the merge runs longest first so the copy with the better-placed ends is the one kept —
+**after** every road chord (`SpanUnion::line`), and among chords the cache already holds with
+heights, the one used last cull first (its stamp; only merge winners are remembered). The copies
+of one bridge at z18, z19 and z20 give three chords metres apart, which set is present changes with
+the zoom, and longest-first crowned a different one each cull — the deck jumped between their
+heights on every zoom step (Pont au Double: three chords over one zoom in and out, one after).
+
+**A deck polygon's portals are the centres of its ends, not its farthest corners**
+(`SpanGeometry::endCentres`). The corner chord runs diagonally and ends over the bank beside the
+road, where the node field is pulled down by the water: at Petit-Pont the corners read 34.6 m against
+36.0 m raw and 35.9 m at the road's own ends, and the deck sat 1.3 m under both approaches. The end
+centres sit on the road the deck carries. A deck split lengthwise by a tile edge gives two half-width
+strips with the same ends, merged by `chordLiesOn`.
+
+**The offset under a deck is metres, not exaggerated metres.** `min-height: -7` puts the base 7 m
+under the chord and the shader adds the 7 m of thickness back unexaggerated (`aVertexHeight *
+uHeightScale`). Converted with the terrain texture's `metersToInternal`, which carries the
+exaggeration, the two cancelled only at exaggeration 1: through the auto-flatten ramp the base sank
+with the ground while the thickness did not, and the deck ROSE 7 m as the terrain fell (Petit-Pont,
+measured base 1.149 → −0.230 over the ramp with the roof staying put). The offset now uses the
+renderer's plain `metersToInternal`.
+
+**A chord is re-read whenever the elevation version moves, and a failed read retries every frame.**
+The flatten ramp is an exaggeration ramp, so a pair read once at a cull stayed at its 3D height while
+the ground sank; the flat state drops the DEM, so through the rise every read failed and the pair
+kept was the flattened zero — the deck stayed on the water and the POIs on it with it, until the
+next cull. `CachedChord::baseVersion` drives the re-read in `resolveSpanBases`; a failure leaves the
+geometry's version unset so it is asked again next frame; and the pair always comes from the chord
+entry, never from the union's copy — the copy is only what the cull saw, and the entry may have been
+refreshed by another piece on the same chord in the same frame. The label chords (`_spanChords`) are
+rebuilt from the entries whenever the version moved, so a POI on a deck follows too. Each record
+remembers the chord it resolved on (`TileGeometry::SpanChordRef`): a piece drawn from a tile the cull
+no longer holds keeps reading that entry instead of freezing on its last bases.
+
+**A piece drawn from a retained tile keeps its last bases.** A render tile held on screen while its
+replacement loads is not in the cull's tile set, so its pieces have no union that cull; failing them
+hid the deck for every hold — 224 such records in one zoom-step frame. `resolveSpanBases` leaves a
+previously resolved geometry's vertices as they are for a record it cannot resolve now.
 
 **Two portals are not a resolved chord.** Neighbouring tiles each hold a copy of the same abutment,
 so a group whose far portal is off screen still collects two portal points — 45 m apart at z15,

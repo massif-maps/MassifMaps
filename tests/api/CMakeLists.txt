@@ -194,6 +194,7 @@ add_executable(api_tests
   MethodTest.cpp
   AdoptTest.cpp
   CustomSourceTest.cpp
+  GetterLockTest.cpp
   BundleAssetsTest.cpp
   CAbiTest.cpp
   MetaDataTest.cpp

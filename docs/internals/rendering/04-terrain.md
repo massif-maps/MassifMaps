@@ -839,11 +839,23 @@ and the approach drawn on the ground, at the portal's height (Martin's "deck ove
 roads"); cutting the deck at the portals instead stopped it short of the structure (his "bridge stops
 too early", south end). Each span vertex now carries its UNCLAMPED chord parameter
 (`SpanGeometry::chordParamRaw`, `TileGeometry::chordOffset`, written with the base), and outside
-[0, 1] the roof wears the target tile's own GROUND drape (`uGroundDrapeTexture`, the texture
-`renderTileSurfaceDrape` draws that frame, same parametrization as the span bake) in place of the
-span drape - the crosswalk and the quay road appear on the deck's overhang, which sits at ground
+[0, 1] the roof wears the GROUND drape (`uGroundDrapeTexture`) in place of the span drape: the
+owner's composite for the drape tile holding the render tile, handed over per frame with the
+sub-rect it is drawn through (`MapRenderer` → `TileLayer::setGroundDrapeTextures`, next to the span
+drapes; the vt renderer's own `_drapeTextures` are not in play when the SDK composites the stack,
+which is why a first cut that read them drew the overhang bare) - the crosswalk and the quay road appear on the deck's overhang, which sits at ground
 level there. A bed fill is simply discarded past the portals: it has no drape to wear and the ground
 under it is the surface.
+
+**A ring's ends are squared outward before tessellation.** The skew cuts both ways: at
+Petit-Pont's north end the east corner ran 9 m past the road's portal and the WEST corner stopped
+5 m short of it, so the road ran bare on the ground for those metres before the approach began -
+the "drape ends too soon" break. `TileLayerBuilder::subdivideSpanRing` first squares the ring
+(`SpanGeometry::squareEnds`): every vertex within 12 m of the ring's extreme chainage along its
+longest edge - a side, the road's direction - is moved along that edge to the extreme, so both
+corners reach as far as the farther one did, and the roof past the portal wears the ground. Moving
+the packed vertices at resolve time instead (tried first) left wall fins wherever a later resolve
+came with another chord.
 
 **The end band follows the ground up.** The two sides of an abutment are not at one height - the
 quay slopes to the water - and a deck level across its width at the portal's height showed a wedge
@@ -851,7 +863,9 @@ of ground through one corner and a gap under the other (Martin, Petit-Pont south
 abutment retains the ground, so over its last `SpanGeometry::END_BAND_METRES` (12 m, at most a
 quarter of the span) a fill or a deck rises to the ground under each vertex wherever that is higher
 than the chord (`endBandWeight`: 1 at and past the portal, 0 a band in), and never sinks - the wall
-hanging 7 m under it covers the low side. The builder splits a span ring's edges to
+hanging under it covers the low side as far as it reaches (the demo's deck is now
+`building-min-height: -1.5; building-height: -0.1`, a 1.4 m slab 0.1 m under the road, so a bank
+dropping more than that under a corner shows under it). The builder splits a span ring's edges to
 `SUBDIVISION_METRES` (4 m, at most 40 edges along the span) so the band has vertices to bend at and
 the centreline stays on the road chord; the live road line sinks into the raised roof on the high
 side, where the roof's drape shows it. Both host-tested.

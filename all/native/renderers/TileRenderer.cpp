@@ -423,6 +423,14 @@ namespace massif {
         }
     }
 
+    void TileRenderer::setGroundDrapeTextures(const std::map<vt::TileId, vt::GLTileRenderer::GroundDrape>& drapes) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->setGroundDrapeTextures(drapes);
+        }
+    }
+
     void TileRenderer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
         std::lock_guard<std::mutex> lock(_mutex);
 

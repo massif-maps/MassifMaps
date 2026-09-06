@@ -1198,6 +1198,19 @@ namespace massif {
         _tileRenderer->setSpanDrapeTextures(textures);
     }
 
+    void TileLayer::setGroundDrapeTextures(const std::map<vt::TileId, GroundDrapeRef>& drapes) {
+        std::map<vt::TileId, vt::GLTileRenderer::GroundDrape> vtDrapes;
+        for (auto it = drapes.begin(); it != drapes.end(); it++) {
+            vt::GLTileRenderer::GroundDrape drape;
+            drape.texture = it->second.texture;
+            drape.uvOffsetX = it->second.uvOffsetX;
+            drape.uvOffsetY = it->second.uvOffsetY;
+            drape.uvScale = it->second.uvScale;
+            vtDrapes[it->first] = drape;
+        }
+        _tileRenderer->setGroundDrapeTextures(vtDrapes);
+    }
+
     void TileLayer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
         _tileRenderer->collectDrapeStackOrder(units);
     }

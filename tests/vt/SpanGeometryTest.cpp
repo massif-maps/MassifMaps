@@ -71,6 +71,14 @@ void testSpanGeometry() {
     TEST_CHECK(near(SpanGeometry::endBandWeight(0.5, band), 0.0), "mid-span the chord alone");
     TEST_CHECK(near(SpanGeometry::endBandWeight(1.0, band), 1.0), "and the far portal like the near one");
     {
+        // A 40 x 20 m deck with a skewed north end: east corner at 45, west at 35.
+        std::vector<cglib::vec2<float>> skewed = { cglib::vec2<float>(-10, 0), cglib::vec2<float>(10, 0), cglib::vec2<float>(10, 45), cglib::vec2<float>(-10, 35) };
+        std::vector<cglib::vec2<float>> squared = SpanGeometry::squareEnds(skewed, 12.0f);
+        TEST_CHECK(std::abs(squared[3](1) - 45.0f) < 1.0e-3f && std::abs(squared[3](0) + 10.0f) < 1.0e-3f, "the short corner is pushed out to the far corner's chainage, sideways untouched");
+        TEST_CHECK(std::abs(squared[2](1) - 45.0f) < 1.0e-3f, "the far corner stays");
+        TEST_CHECK(std::abs(squared[0](1)) < 1.0e-3f && std::abs(squared[1](1)) < 1.0e-3f, "and a square end is left alone");
+    }
+    {
         std::vector<cglib::vec2<float>> square = { cglib::vec2<float>(0, 0), cglib::vec2<float>(10, 0), cglib::vec2<float>(10, 10), cglib::vec2<float>(0, 10) };
         std::vector<cglib::vec2<float>> split = SpanGeometry::subdivideRing(square, 4.0f);
         TEST_CHECK(split.size() == 12, "a 10 m square at 4 m edges gets two extra vertices per side");

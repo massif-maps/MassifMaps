@@ -1388,10 +1388,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         tileRenderer->findBitmapIntersections(rays, results);
     }
 
-    Color TileRenderer::evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState) {
+    Color TileRenderer::evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness) {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        vtViewState.lightBrightness = brightness;
         return Color(colorFunc(vtViewState).value());
     }
 
@@ -1401,9 +1402,10 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         _styleEnvironment = env;
     }
 
-    float TileRenderer::evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState) {
+    float TileRenderer::evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness) {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        vtViewState.lightBrightness = brightness;
         return floatFunc(vtViewState);
     }
 

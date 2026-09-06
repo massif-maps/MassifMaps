@@ -221,6 +221,9 @@ namespace massif {
         virtual Color getBackgroundColor(const ViewState& viewState) const;
 
         virtual bool getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const;
+        // Every Map setting read at ONE brightness, which is what a property ramped over
+        // view::brightness reads. See getStyleEnvironment for why it is called twice.
+        bool readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const;
         virtual std::shared_ptr<Bitmap> getSkyBitmap(const ViewState& viewState) const;
 
         virtual void registerDataSourceListener();

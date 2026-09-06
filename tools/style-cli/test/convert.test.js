@@ -132,6 +132,23 @@ test('a dash is scaled by the line width AT the zoom its stop starts', () => {
     assert.match(out, /line-dasharray: 1.51,1.51;/);
 });
 
+test('a width whose stops are data-driven still scales the dash at that zoom', () => {
+    // Standard's cycleway: every stop of the width ramp is a `match` on the type. Reading the ramp
+    // failed on the first non-number and the dash fell back to the mean of every literal in it -
+    // 13.3 px, where gl-js draws 1.3 at the zoom the pattern starts. The match's FALLBACK is the
+    // width nearly every feature has; the piste branch is the exception.
+    const cycleway = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['interpolate', ['linear'], ['zoom'],
+            12, ['match', ['get', 'type'], ['piste'], 0.5, 0],
+            18, ['match', ['get', 'type'], ['piste'], 4, 2],
+            22, ['match', ['get', 'type'], ['piste'], 40, 20]],
+        'line-dasharray': ['step', ['zoom'], ['literal', [1]], 16, ['literal', [1, 1]]],
+    } };
+    const out = convert({ layers: [cycleway] }, table, NO_PALETTE).mss;
+    // width(16) = 0 + (16-12)/6 * 2 = 1.33 for the fallback branch, which is gl-js's own.
+    assert.match(out, /line-dasharray: 1.33,1.33;/);
+});
+
 test('a fill pattern names a FILE, not the sheet-qualified sprite', () => {
     // 'misc:construction_pattern' reached the decoder verbatim and no such file has ever existed,
     // so every construction area drew as a bare outline. The sheet only says where to look.

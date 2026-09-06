@@ -577,7 +577,12 @@ anchor answer different halves of it and neither replaces the other — the anch
 ONE building agree exactly, smoothing keeps the buildings AROUND it from stepping against it. The
 smoothing alone was tried first and measurably did not close the comb, which is what the numbers
 above are. Spans (bridge chords) keep the drawn surface (`smooth = false`); a deck must meet the
-road exactly.
+road exactly. They are sampled at ONE zoom for every piece (`_spanSampleZoom`, the finest visible
+tile's): the pieces of a deck arrive at different tile zooms, and sampled each at its own they read
+different DEM levels for the same portal — at Pont Neuf z21.2 one chord came back 1.345 on 22
+pieces and 1.306 on 22 more, a step down every tile cut. Smoothing the portals instead was tried and
+closed the cut, but put the deck end off the draped approach road. The heights are refreshed on
+every cull, so a finer DEM moves the deck with the surface.
 
 **mapbox's floor** (`fill_extrusion.vertex.glsl`: `max(c_ele + height, ele + base + 2)`): a
 building keeps at least 2 m above the drawn ground under it, so a part whose smoothed anchor sits
@@ -1212,6 +1217,22 @@ frame, at the default tilt of 90, before an app has set its own thresholds — a
 sets them to 0 turned the rule off with its last answer ON, so nothing ever asked for 3D again:
 the map came up flat, at random, whenever that first frame beat the app's setters. A rule disabled
 while ON now releases the flat state it set (never an app's own `setFlattened(true)`), and logs it.
+
+**The rule does not judge a camera the app has not placed.** The same first frame, drawn at the
+SDK's default view (top-down, world zoom) before the app's `moveTo` landed, flattened a map that
+was about to tilt — and the release then dragged it through the whole switch while its tiles were
+still arriving: flat unlit 2D in WARMING, three slow ramp frames over a still-blank drape, and the
+first shadow frame, six distinct looks in the first two seconds (day-cycle-light, 10 fps recordings,
+2026-09-05). `MapRenderer::_cameraPlaced` is set by every camera event and cleared once after the
+constructor's defaults; until it is set, `AutoFlatten::Trigger` answers nothing, so the first judged
+frame is the app's camera. A camera the app places top-down is judged at once. Host test:
+`testRuleWaitsForTheCamera`.
+
+The gate alone left 1 launch in 12 flattening: `moveTo` sets the zoom, rotation, tilt and focus as
+four camera events, and a frame drawn between the first and the third saw a *placed* camera at
+z17 still straight down. `BaseMapView::moveTo` now holds the renderer's view lock
+(`MapRenderer::holdView`) across the four, so they land in one frame. The listeners still hear
+four moves; only the render thread waits.
 
 **The clearance is mapbox's, a fraction of the height, not a fixed 60 m.** The camera is kept a
 height above the ground *under it* (`terrain/CameraClearance.h`, the port of

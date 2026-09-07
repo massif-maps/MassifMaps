@@ -157,6 +157,17 @@ because it now sees the pointer crossing the whole page. And coordinates have to
 `clientX/clientY` minus the canvas rect, not from `targetX/targetY` - those are relative to
 whatever the listener was bound to, which is no longer the map.
 
+### Two double-click zooms
+
+The host listened for the browser's `dblclick` and zoomed. So did the SDK, from the pointer stream
+it is already given: `TouchHandler::doubleClick` puts the map into `SINGLE_POINTER_ZOOM`, which is
+BOTH the double-tap zoom and the double-tap-and-drag zoom, and on release it only adds the tap zoom
+when the gesture did not actually drag (`singlePointerZoomStop`).
+
+A double-tap-and-drag therefore zoomed continuously, and then zoomed once more when the button came
+up - the browser's `dblclick` arriving on top of a gesture the SDK had already handled. There is no
+`dblclick` listener now; the SDK owns the gesture.
+
 ### A flight and a gesture fighting over the camera
 
 `TouchHandler` cancelled the pan, rotation, tilt and zoom animations whenever the user touched the

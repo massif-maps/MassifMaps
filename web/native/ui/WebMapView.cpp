@@ -42,8 +42,6 @@ namespace massif {
         // A line-mode wheel event carries lines, not pixels; 40 is what the browsers agreed on.
         const double WHEEL_LINE_HEIGHT = 40.0;
 
-        const float DOUBLE_CLICK_ZOOM_DURATION = 0.3f;
-
         // maplibre's clickTolerance, in dp - which on the web is a CSS pixel.
         const float MOUSE_CLICK_MOVING_TOLERANCE = 3.0f;
 
@@ -130,8 +128,12 @@ namespace massif {
         emscripten_set_touchend_callback(_canvasSelector.c_str(), this, EM_FALSE, OnTouch);
         emscripten_set_touchcancel_callback(_canvasSelector.c_str(), this, EM_FALSE, OnTouch);
         emscripten_set_wheel_callback(_canvasSelector.c_str(), this, EM_FALSE, OnWheel);
-        emscripten_set_dblclick_callback(_canvasSelector.c_str(), this, EM_FALSE, OnDoubleClick);
         emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, EM_FALSE, OnResize);
+
+        // No dblclick listener on purpose. The SDK detects a double click from the pointer stream
+        // itself and, with zoom gestures on, uses it for BOTH the double-tap zoom and the
+        // double-tap-and-drag zoom (TouchHandler::doubleClick -> SINGLE_POINTER_ZOOM). A browser
+        // dblclick on top of that fired a second zoom when a drag-zoom was released.
 
         // A right-drag rotates the map, so the canvas must not open the browser's context menu.
         EM_ASM({
@@ -293,15 +295,6 @@ namespace massif {
         default:
             return EM_FALSE;
         }
-        return EM_TRUE;
-    }
-
-    EM_BOOL WebMapView::OnDoubleClick(int eventType, const EmscriptenMouseEvent* event, void* userData) {
-        WebMapView* view = static_cast<WebMapView*>(userData);
-        double pixelRatio = emscripten_get_device_pixel_ratio();
-        ScreenPos screenPos(static_cast<float>(event->targetX * pixelRatio), static_cast<float>(event->targetY * pixelRatio));
-        // Shift halves instead of doubling, same as every other web map.
-        view->zoom(event->shiftKey ? -1.0f : 1.0f, view->screenToMap(screenPos), DOUBLE_CLICK_ZOOM_DURATION);
         return EM_TRUE;
     }
 

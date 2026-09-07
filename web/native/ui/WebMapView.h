@@ -53,7 +53,6 @@ namespace massif {
         static EM_BOOL OnPointer(int eventType, const EmscriptenMouseEvent* event, void* userData);
         static EM_BOOL OnTouch(int eventType, const EmscriptenTouchEvent* event, void* userData);
         static EM_BOOL OnWheel(int eventType, const EmscriptenWheelEvent* event, void* userData);
-        static EM_BOOL OnDoubleClick(int eventType, const EmscriptenMouseEvent* event, void* userData);
         static EM_BOOL OnResize(int eventType, const EmscriptenUiEvent* event, void* userData);
         static EM_BOOL OnBlur(int eventType, const EmscriptenFocusEvent* event, void* userData);
 

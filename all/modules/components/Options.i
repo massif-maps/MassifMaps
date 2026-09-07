@@ -65,6 +65,7 @@
 %attribute(massif::Options, float, FreeRoamMoveSpeed, getFreeRoamMoveSpeed, setFreeRoamMoveSpeed)
 %attribute(massif::Options, bool, DebugTileBorders, isDebugTileBorders, setDebugTileBorders)
 %attribute(massif::Options, bool, ClickTypeDetection, isClickTypeDetection, setClickTypeDetection)
+%attribute(massif::Options, float, ClickMovingTolerance, getClickMovingTolerance, setClickMovingTolerance)
 %attribute(massif::Options, bool, DoubleClickDetection, isDoubleClickDetection, setDoubleClickDetection)
 %attribute(massif::Options, float, LongClickDuration, getLongClickDuration, setLongClickDuration)
 %attribute(massif::Options, float, DoubleClickMaxDuration, getDoubleClickMaxDuration, setDoubleClickMaxDuration)

@@ -11,27 +11,57 @@
     font: 12px/1.5 ui-monospace, Menlo, monospace; color: #fff;
     background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none;
   }
+  #controls { position: fixed; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  #controls button {
+    font: 13px/1 system-ui, sans-serif; color: #fff; background: rgba(0, 0, 0, .6);
+    border: 1px solid rgba(255, 255, 255, .25); border-radius: 4px; padding: 7px 11px; cursor: pointer;
+  }
+  #controls button:hover { background: rgba(0, 0, 0, .8); }
 </style>
 </head>
 <body>
 <canvas id="map"></canvas>
+<div id="controls">
+  <button id="to3d">3D</button>
+  <button id="to2d">2D</button>
+  <button id="north">North up</button>
+</div>
 <div id="camera">starting…</div>
 <!-- Classic script, not a module: it needs document.currentScript to register itself. Only does
      anything when the host serves no COOP/COEP of its own, which is the GitHub Pages case. -->
 <script src="./coi-serviceworker.js"></script>
 <script type="module">
-  import Module from './massif-demo.mjs';
   import { Massif, MassifCamera } from '../js/massif.mjs';
 
-  // The canvas the GL context is created on has to be registered before the runtime starts.
+  // Optional, gitignored: what /demo/ shows with no query string. See config.example.json.
+  try {
+    const response = await fetch('./config.json', { cache: 'no-store' });
+    if (response.ok) {
+      globalThis.MASSIF_DEFAULTS = await response.json();
+    }
+  } catch (error) {
+    // No config.json is the normal case - the C++ defaults to an OSM raster layer.
+  }
+
+  // Imported after the defaults exist: main() runs as the module starts and reads them.
+  const { default: Module } = await import('./massif-demo.mjs');
   const module = await Module({ canvas: document.getElementById('map') });
 
   const massif = new Massif(module);
   // Exposed before the camera is built, so a failure there still leaves something to poke at:
-  // massif.call(camera.handle, 'flyTo', {...})
+  // massif.call(camera.handle, 'flyTo', [[2.35, 48.86], 15, 0, 60, 0, 1.5])
   Object.assign(globalThis, { massif, module, Massif, MassifCamera });
   const camera = await MassifCamera.attach(massif);
   globalThis.camera = camera;
+
+  // flyTo is positional: position, zoom, rotation, tilt, climbHeight, seconds. Tilt is 90 looking
+  // straight down here, so "3D" is a SMALLER tilt - the opposite of mapbox's pitch.
+  // focusPos comes back as [lon, lat, altitude]; flyTo wants just the pair.
+  const flyTo = (tilt, rotation) => massif.call(camera.handle, 'flyTo',
+    [camera.focusPos.slice(0, 2), camera.zoom, rotation ?? camera.rotation, tilt, 0, 0.8]);
+  document.getElementById('to3d').onclick = () => flyTo(45);
+  document.getElementById('to2d').onclick = () => flyTo(90);
+  document.getElementById('north').onclick = () => flyTo(camera.tilt, 0);
 
   const readout = document.getElementById('camera');
   const render = () => {

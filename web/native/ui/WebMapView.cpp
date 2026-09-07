@@ -43,6 +43,9 @@ namespace massif {
         const double WHEEL_LINE_HEIGHT = 40.0;
 
         const float DOUBLE_CLICK_ZOOM_DURATION = 0.3f;
+
+        // maplibre's clickTolerance, in dp - which on the web is a CSS pixel.
+        const float MOUSE_CLICK_MOVING_TOLERANCE = 3.0f;
     }
 
     class WebMapView::RedrawListener : public RedrawRequestListener {
@@ -152,6 +155,9 @@ namespace massif {
         // 1x screen, draws every tile at half the size it should be, and asks for four times as
         // many. Set here rather than in start() so it follows a window moved to another display.
         getOptions()->setDPI(Const::UNSCALED_DPI * static_cast<float>(pixelRatio));
+        // A mouse is not a finger: the SDK's 32 dp default made a drag feel stuck for its first
+        // half-centimetre. 3 is maplibre's clickTolerance.
+        getOptions()->setClickMovingTolerance(MOUSE_CLICK_MOVING_TOLERANCE);
         int pixelWidth = static_cast<int>(width * pixelRatio);
         int pixelHeight = static_cast<int>(height * pixelRatio);
         if (pixelWidth <= 0 || pixelHeight <= 0 || (pixelWidth == _width && pixelHeight == _height)) {

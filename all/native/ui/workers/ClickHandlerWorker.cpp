@@ -1,5 +1,6 @@
 #include "ClickHandlerWorker.h"
 #include "components/Options.h"
+#include "utils/Const.h"
 #include "ui/TouchHandler.h"
 #include "utils/Log.h"
 #include "utils/ThreadUtils.h"
@@ -108,13 +109,16 @@ namespace massif {
         _pointer1Moved = screenPos;
     
         float dpi = _options->getDPI();
+        // dp, so the same physical distance whatever the display - and settable, because a mouse
+        // needs a far smaller one than a finger.
+        const float movingTolerance = _options->getClickMovingTolerance() / Const::UNSCALED_DPI;
         if (_clickMode == LONG_CLICK) {
-            if (_pointer1MovedSum / dpi >= MOVING_TOLERANCE_INCHES) {
+            if (_pointer1MovedSum / dpi >= movingTolerance) {
                 _chosen = true;
                 _canceled = true;
             }
         } else if (_clickMode == DUAL_CLICK) {
-            if (_pointer1MovedSum / dpi >= MOVING_TOLERANCE_INCHES && _pointersDown >= 2) {
+            if (_pointer1MovedSum / dpi >= movingTolerance && _pointersDown >= 2) {
                 _chosen = true;
                 _canceled = true;
             }
@@ -174,8 +178,11 @@ namespace massif {
         _pointer2Moved = screenPos;
     
         float dpi = _options->getDPI();
+        // dp, so the same physical distance whatever the display - and settable, because a mouse
+        // needs a far smaller one than a finger.
+        const float movingTolerance = _options->getClickMovingTolerance() / Const::UNSCALED_DPI;
         if (_clickMode == DUAL_CLICK) {
-            if (_pointer2MovedSum / dpi >= MOVING_TOLERANCE_INCHES && _pointersDown == 2) {
+            if (_pointer2MovedSum / dpi >= movingTolerance && _pointersDown == 2) {
                 _chosen = true;
                 _canceled = true;
             }
@@ -359,7 +366,6 @@ namespace massif {
     const std::chrono::milliseconds ClickHandlerWorker::DUAL_CLICK_END_DURATION = std::chrono::milliseconds(300);
         
     const float ClickHandlerWorker::DOUBLE_CLICK_TOLERANCE_INCHES = 1.3f;
-    const float ClickHandlerWorker::MOVING_TOLERANCE_INCHES = 0.2f;
     
 }
 

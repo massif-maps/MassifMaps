@@ -46,11 +46,19 @@ namespace {
         "#building { polygon-fill: #d9d0c9; }\n"
         "#road { line-color: #ffffff; line-width: 2; line-cap: round; line-join: round; }\n";
 
+    /**
+     * The query string first, then whatever the page put in globalThis.MASSIF_DEFAULTS - which is
+     * how web/demo/config.json (gitignored, because it holds a tile-provider token) sets what
+     * /demo/ shows with no parameters at all.
+     */
     std::string queryParam(const char* name, const char* fallback) {
         char* value = reinterpret_cast<char*>(EM_ASM_PTR({
             var name = UTF8ToString($0);
             var found = new URLSearchParams(globalThis.location.search).get(name);
-            return found === null ? 0 : stringToNewUTF8(found);
+            if (found === null && globalThis.MASSIF_DEFAULTS) {
+                found = globalThis.MASSIF_DEFAULTS[name] ?? null;
+            }
+            return found === null ? 0 : stringToNewUTF8(String(found));
         }, name));
         if (!value) {
             return fallback;

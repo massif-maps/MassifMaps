@@ -245,6 +245,19 @@ namespace massif {
          * @param enabled The new state of the click type detection flag.
          */
         void setClickTypeDetection(bool enabled);
+
+        /**
+         * Returns how far a pointer may travel before a press stops counting as a click.
+         * @return The tolerance in density-independent pixels (dp). The default is 32.
+         */
+        float getClickMovingTolerance() const;
+        /**
+         * Sets how far a pointer may travel before a press stops counting as a click and the map
+         * starts panning. The default, 32 dp, is a finger-sized threshold; a mouse wants far less
+         * (maplibre uses 3 px), which is why a desktop or web host lowers it.
+         * @param tolerance The new tolerance in density-independent pixels (dp).
+         */
+        void setClickMovingTolerance(float tolerance);
     
         /**
          * Returns the double click detection state.
@@ -804,6 +817,8 @@ namespace massif {
         static const Color DEFAULT_AMBIENT_LIGHT_COLOR;
         static const Color DEFAULT_MAIN_LIGHT_COLOR;
         static const MapVec DEFAULT_MAIN_LIGHT_DIR;
+        // 0.2 inch at 160 dpi, the finger-sized threshold this has always used.
+        static const float DEFAULT_CLICK_MOVING_TOLERANCE;
         
         void notifyOptionChanged(const std::string& optionName);
         
@@ -815,6 +830,7 @@ namespace massif {
     
         bool _debugTileBorders;
         bool _clickTypeDetection;
+        float _clickMovingTolerance;
         bool _doubleClickDetection;
         float _longClickDuration;
         float _doubleClickMaxDuration;

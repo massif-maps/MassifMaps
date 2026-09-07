@@ -43,7 +43,8 @@ export class Massif {
       getBool: cwrap('mm_get_bool', 'number', ['number', 'number', 'string', 'number']),
       getDouble: cwrap('mm_get_double', 'number', ['number', 'number', 'string', 'number']),
       getString: cwrap('mm_get_string', 'number', ['number', 'number', 'string', 'string', 'number', 'number', 'number']),
-      call: cwrap('mm_call', 'number', ['number', 'number', 'string', 'string', 'number', 'number', 'number']),
+      call: cwrap('mm_call', 'number', ['number', 'number', 'string', 'string', 'number']),
+      destroyHandle: cwrap('mm_destroy_handle', 'number', ['number', 'number']),
       on: cwrap('mm_on', 'number', ['number', 'number', 'string', 'number', 'number', 'number']),
       off: cwrap('mm_off', 'number', ['number', 'number']),
       drain: cwrap('mm_drain', 'number', ['number', 'number']),
@@ -62,9 +63,14 @@ export class Massif {
     return code;
   }
 
-  /** Runs `body(pointer)` with `size` bytes of scratch, and always frees them. */
+  /**
+   * Runs `body(pointer)` with `size` bytes of scratch, and always frees them.
+   * Zeroed: malloc does not, and an out-parameter the ABI leaves alone then reads as garbage - a
+   * void method's result length came back as 4 and parsed as a control character.
+   */
   #withBuffer(size, body) {
     const pointer = this.#module._malloc(size);
+    this.#module.HEAPU8.fill(0, pointer, pointer + size);
     try {
       return body(pointer);
     } finally {
@@ -143,12 +149,34 @@ export class Massif {
       this.#fn.getString(this.#ctx, handle, path, projection, buffer, size, lengthOut));
   }
 
-  /** Calls a facade method. `args` is a plain object; the result comes back parsed. */
+  /**
+   * Calls a facade method. `args` is positional - `flyTo` takes
+   * `[[lon, lat], zoom, rotation, tilt, climbHeight, seconds]` - and the result comes back parsed.
+   * A method that produces nothing returns undefined.
+   */
   call(handle, method, args) {
-    const argsJson = JSON.stringify(args ?? {});
-    const text = this.#readString((buffer, size, lengthOut) =>
-      this.#fn.call(this.#ctx, handle, method, argsJson, buffer, size, lengthOut));
-    return text ? JSON.parse(text) : undefined;
+    // The result is a HANDLE to a registered value, not a string - so it is read like any other
+    // object and then released, or the context keeps it forever.
+    const resultHandle = this.#withBuffer(4, (out) => {
+      this.#check(this.#fn.call(this.#ctx, handle, method, JSON.stringify(args ?? []), out), `call ${method}`);
+      return this.#module.getValue(out, 'i32');
+    });
+    if (!resultHandle) {
+      return undefined; // the method produced nothing, which is most of them
+    }
+    try {
+      const text = this.getString(resultHandle, '');
+      if (!text) {
+        return undefined;
+      }
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return text; // not every result is JSON
+      }
+    } finally {
+      this.#fn.destroyHandle(this.#ctx, resultHandle);
+    }
   }
 
   /**

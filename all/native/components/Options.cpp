@@ -23,6 +23,7 @@ namespace massif {
         _renderProjectionMode(RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR),
         _debugTileBorders(false),
         _clickTypeDetection(true),
+        _clickMovingTolerance(DEFAULT_CLICK_MOVING_TOLERANCE),
         _doubleClickDetection(true),
         _longClickDuration(DEFAULT_LONG_CLICK_DURATION),
         _doubleClickMaxDuration(DEFAULT_DOUBLE_CLICK_MAX_DURATION),
@@ -197,6 +198,22 @@ namespace massif {
             _clickTypeDetection = enabled;
         }
         notifyOptionChanged("ClickTypeDetection");
+    }
+
+    float Options::getClickMovingTolerance() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _clickMovingTolerance;
+    }
+
+    void Options::setClickMovingTolerance(float tolerance) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_clickMovingTolerance == tolerance) {
+                return;
+            }
+            _clickMovingTolerance = tolerance;
+        }
+        notifyOptionChanged("ClickMovingTolerance");
     }
     
     bool Options::isDoubleClickDetection() const {
@@ -1034,6 +1051,7 @@ namespace massif {
     const Color Options::DEFAULT_AMBIENT_LIGHT_COLOR = Color(112, 112, 112, 255);
     const Color Options::DEFAULT_MAIN_LIGHT_COLOR = Color(143, 143, 143, 255);
     const MapVec Options::DEFAULT_MAIN_LIGHT_DIR = MapVec(0.35, 0.35, -0.87);
+    const float Options::DEFAULT_CLICK_MOVING_TOLERANCE = 32.0f;
 
     std::shared_ptr<Bitmap> Options::_DefaultBackgroundBitmap;
     

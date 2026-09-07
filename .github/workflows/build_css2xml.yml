@@ -36,7 +36,7 @@ jobs:
 
       - name: fetch externals
         run: |
-          git submodule update --init --remote --recursive
+          git submodule update --init --recursive
 
       - name: Install build tools
         if: matrix.variant == 'android'

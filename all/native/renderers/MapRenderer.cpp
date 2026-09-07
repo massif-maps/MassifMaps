@@ -3309,14 +3309,19 @@ namespace massif {
                         }
                         return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - bakeStart).count() < bakeTimeBudget;
                     };
-                    int budget = DRAPE_BAKE_BUDGET_BLANK;
-                    for (auto it = blankTiles.begin(); it != blankTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
-                        bakeTile(*it);
-                    }
-                    budget = DRAPE_BAKE_BUDGET_RESTACK;
-                    for (auto it = restackTiles.begin(); it != restackTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
-                        bakeTile(*it);
-                    }
+                    // Whether a class ran out of budget with tiles still queued. It is the ONLY
+                    // reason to ask for another frame: asking on the queue SIZE instead compares it
+                    // with the wrong budget and spins the render loop forever on a still map.
+                    bool drapeBakesLeft = false;
+                    auto bakeSome = [&](std::vector<BakeRequest>& tiles, int budget) {
+                        auto it = tiles.begin();
+                        for (; it != tiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
+                            bakeTile(*it);
+                        }
+                        drapeBakesLeft = drapeBakesLeft || it != tiles.end();
+                    };
+                    bakeSome(blankTiles, DRAPE_BAKE_BUDGET_BLANK);
+                    bakeSome(restackTiles, DRAPE_BAKE_BUDGET_RESTACK);
                     // The DECK's own drape, baked per RENDER tile rather than per drape leaf: the deck
                     // is drawn with its render tile and one draw cannot sample several textures. Placed
                     // right after the blank ground - a deck with no drape is a hole like a flat fill.
@@ -3370,29 +3375,17 @@ namespace massif {
                             requestRedraw();
                         }
                     }
-                    budget = DRAPE_BAKE_BUDGET_STANDIN;
-                    for (auto it = standInTiles.begin(); it != standInTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
-                        bakeTile(*it);
-                    }
-                    budget = DRAPE_BAKE_BUDGET_PARTIAL;
-                    for (auto it = partialTiles.begin(); it != partialTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
-                        bakeTile(*it);
-                    }
+                    bakeSome(standInTiles, DRAPE_BAKE_BUDGET_STANDIN);
+                    bakeSome(partialTiles, DRAPE_BAKE_BUDGET_PARTIAL);
                     // One stale tile per frame is the right ration while the camera moves. On a map at
                     // REST it is a livelock: only the bakes themselves ask for frames, so a backlog
                     // drains over half a minute. At rest the wall-clock budget rations it instead.
-                    budget = (bakeCameraMoving ? DRAPE_BAKE_BUDGET_STALE : DRAPE_BAKE_BUDGET_BLANK);
-                    for (auto it = staleTiles.begin(); it != staleTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
-                        bakeTile(*it);
-                    }
+                    bakeSome(staleTiles, bakeCameraMoving ? DRAPE_BAKE_BUDGET_STALE : DRAPE_BAKE_BUDGET_BLANK);
 
                     // Baking is rationed over several frames, so it only finishes if those frames
                     // happen - and nothing else asks for them once the map goes idle. Keep asking
                     // while there is baking left to do.
-                    if (blankTiles.size() > DRAPE_BAKE_BUDGET_BLANK
-                        || standInTiles.size() > DRAPE_BAKE_BUDGET_STANDIN
-                        || partialTiles.size() > DRAPE_BAKE_BUDGET_PARTIAL
-                        || staleTiles.size() > DRAPE_BAKE_BUDGET_STALE) {
+                    if (drapeBakesLeft) {
                         requestRedraw();
                     }
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());
@@ -3493,7 +3486,10 @@ namespace massif {
                     drapeMsCount++;
                     static int drapeStateFrame = 0;
                     if ((drapeStateFrame++ % 60) == 0 && drapedTiles.size() > 0) {
-                        Log::Infof("MapRenderer: RTT drape cost avg %.1f ms, max %.1f ms over %d frames", drapeMsSum / std::max(1, drapeMsCount), drapeMsMax, drapeMsCount);
+                        Log::Infof("MapRenderer: RTT drape cost avg %.1f ms, max %.1f ms over %d frames; queued blank %d stand-in %d partial %d stale %d, more left %d",
+                                   drapeMsSum / std::max(1, drapeMsCount), drapeMsMax, drapeMsCount,
+                                   static_cast<int>(blankTiles.size()), static_cast<int>(standInTiles.size()),
+                                   static_cast<int>(partialTiles.size()), static_cast<int>(staleTiles.size()), drapeBakesLeft ? 1 : 0);
                         drapeMsSum = 0; drapeMsMax = 0; drapeMsCount = 0;
                     }
                     if ((drapeStateFrame % 600) == 1 && drapedTiles.size() > 0) {

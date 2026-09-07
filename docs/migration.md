@@ -523,6 +523,11 @@ SWIG-free" a checkable property rather than an intention — see
 
 ### `TileDataSource.encoding` became a general meta data map
 
+**Applies to 6.1.0 and later.** In **6.0.0** and **6.0.1**, `setEncoding` is the only spelling —
+`setMetaDataElement` does not exist there. **6.0.2** backports `getMetaDataElement` /
+`setMetaDataElement` / `getContainerMetaData`, alongside `setEncoding`, but not the map accessors
+or the per-tile resolution below.
+
 `setEncoding` / `getEncoding` were a DEM-only setting on the base class of **every** data source,
 and the name already collided: `getMetaData("encoding")` meant the *tile format* (`mvt` / `mlt`) on
 the same object. They are replaced by the meta data bag `VectorElement` and `Layer` already use, and

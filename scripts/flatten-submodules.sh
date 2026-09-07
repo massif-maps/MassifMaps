@@ -3,8 +3,10 @@
 # Flatten libs-external / libs-massif from submodules into the main repo, keeping
 # every third-party fork a submodule at its current path (like integrations/nativescript).
 #
-# History is grafted with `git merge -s ours` + `git read-tree --prefix` (what `git subtree add`
-# does; Apple Git ships no git-subtree). No existing commit is rewritten, so no force-push.
+# History is re-prefixed with git-filter-repo on a THROWAWAY CLONE of the submodule, then merged
+# in. filter-repo never touches this repo, so no SHA here changes and no force-push is needed.
+# Re-prefixing is what keeps `git log -- libs-massif/vt/...` working: a plain subtree-style graft
+# leaves the historical paths at the root and the log stops dead at the merge.
 #
 # Procedure and follow-up checklist: docs/maintenance/flatten-submodules.md
 #
@@ -66,8 +68,14 @@ run() {
 preflight_main() {
     say "preflight: main repo"
 
-    if [ -n "$(git status --porcelain)" ]; then
-        die "main working tree is dirty. Commit or stash first — this script deletes and recreates whole directories."
+    command -v git-filter-repo >/dev/null || \
+        die "git-filter-repo not on PATH. brew install git-filter-repo — without it the history import leaves git log dead on every imported path."
+
+    # Tracked state only: the migration rewrites the index and the submodule directory, and never
+    # touches an untracked file elsewhere in the tree. An untracked file *inside* the submodule
+    # would be destroyed, but preflight_submodule catches that separately.
+    if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+        die "main working tree has uncommitted tracked changes. Commit them first — this script deletes and recreates whole directories."
     fi
 
     local branch
@@ -117,23 +125,52 @@ Prepares the history graft that puts its content in-tree. No behaviour change:
 the next commit restores the same files at the same path."
 }
 
-# Graft the submodule's history under its own path. Two parents, no rewrite.
-graft_history() {
-    local path="$1" url="$2" sha="$3"
+# Re-prefix the submodule's history in a throwaway clone, then merge it in.
+#
+# Measured on the real repo: with the paths re-prefixed, `git log -- libs-massif/vt/src/vt/
+# GLTileRenderer.cpp` keeps 198 commits and blame still reaches mtehver. Without it — the plain
+# `merge -s ours` + `read-tree --prefix` subtree recipe — the same command returns 1 commit (the
+# graft) and `--follow` returns 0. All 677 commits and 8 tags survive either way; only the paths
+# recorded in them differ.
+#
+# Split in two: the clone has to happen while the submodule directory still exists, and
+# drop_submodule deletes it.
+SCRATCH_SRC=""
+
+prepare_history() {
+    local path="$1" sha="$2"
+    local scratch
+
+    say "re-prefix history in a throwaway clone: $path @ $sha"
+    scratch="$(mktemp -d)"
+    SCRATCH_SRC="$scratch/src"
+    note "scratch: $SCRATCH_SRC"
+
+    # --no-local: a real fetch, never hardlinks into the source object store.
+    # filter-repo needs the commit on a branch — a detached HEAD leaves it nothing to rewrite.
+    run git clone --quiet --no-local "$ROOT/$path" "$SCRATCH_SRC"
+    run git -C "$SCRATCH_SRC" checkout --quiet -B flatten-src "$sha"
+    run git -C "$SCRATCH_SRC" filter-repo --force --to-subdirectory-filter "$path"
+}
+
+merge_history() {
+    local path="$1" url="$2"
     local remote="flatten-$path"
 
-    say "graft history: $path @ $sha"
-    run git remote add --no-tags "$remote" "$url"
+    say "merge the re-prefixed history"
+    run git remote add --no-tags "$remote" "$SCRATCH_SRC"
     run git fetch --quiet "$remote"
-    run git merge -s ours --no-commit --allow-unrelated-histories "$sha"
-    run git read-tree --prefix="$path/" -u "$sha"
+    # paths no longer collide with anything here, so this is an ordinary merge
+    run git merge --no-commit --allow-unrelated-histories "$remote/flatten-src"
     run git commit -m "chore!: flatten $path into the repo
 
 $url is a single-consumer fork of an archived CartoDB repo: no releases, no CI,
 no other consumer, and no upstream left to merge from. Keeping it a submodule cost
 a second branch, a second PR and a pointer bump per change.
 
-History is grafted, not rewritten: no SHA in this repo changes.
+Full history comes with it, re-prefixed so git log and blame still work on every
+file. No SHA in THIS repo changes; the imported commits get new SHAs, so old
+references to $path commits only resolve in $url, which stays online.
 
 BREAKING CHANGE: $path is no longer a submodule. Existing checkouts need
 git submodule deinit -f -- $path && git submodule update --init --recursive"
@@ -194,8 +231,9 @@ flatten() {
         note "will restore boost symlink -> $boost_target"
     fi
 
+    prepare_history "$path" "$sha"      # must clone before the directory is deleted
     drop_submodule "$path"
-    graft_history "$path" "$url" "$sha"
+    merge_history "$path" "$url"
     hoist_nested_gitmodules "$path"
 
     say "re-initialize"
@@ -218,11 +256,12 @@ esac
 
 preflight_main
 
-if [ "$PHASES" = external ] || [ "$PHASES" = all ]; then
-    flatten libs-external https://github.com/massif-maps/massif-external-libs
-fi
+# libs-massif first: the bigger win and the simpler graft (no nested submodules of its own)
 if [ "$PHASES" = massif ] || [ "$PHASES" = all ]; then
     flatten libs-massif https://github.com/massif-maps/massif-maps-libs
+fi
+if [ "$PHASES" = external ] || [ "$PHASES" = all ]; then
+    flatten libs-external https://github.com/massif-maps/massif-external-libs
 fi
 
 say "done — follow-up, NOT done by this script"

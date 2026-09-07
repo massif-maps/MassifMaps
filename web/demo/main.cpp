@@ -28,6 +28,7 @@
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "components/TerrainOptions.h"
 #include "rastertiles/TerrariumElevationDataDecoder.h"
+#include "rastertiles/MapBoxElevationDataDecoder.h"
 
 #include <cstdlib>
 #include <memory>
@@ -40,6 +41,9 @@ namespace {
     std::shared_ptr<massif::WebMapView> _MapView;
 
     const char* const DEFAULT_SOURCE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+    // TerrainOptions clamps this to 2..256; 64 is the SDK's phone-sized default.
+    const int WEB_TERRAIN_MESH_RESOLUTION = 128;
 
     // Enough to see that a vector tile decoded: land, water, roads, buildings.
     const char* const DEFAULT_CSS =
@@ -133,9 +137,23 @@ int main() {
     std::string terrain = queryParam("terrain", "");
     if (!terrain.empty()) {
         auto elevationSource = std::make_shared<massif::HTTPTileDataSource>(0, static_cast<int>(queryNumber("terrainMaxZoom", 12)), terrain);
-        auto terrainOptions = std::make_shared<massif::TerrainOptions>(elevationSource,
-            std::make_shared<massif::TerrariumElevationDataDecoder>());
+        // ?demEncoding=mapbox for Terrain-RGB, the default is Terrarium.
+        std::shared_ptr<massif::ElevationDecoder> elevationDecoder;
+        if (queryParam("demEncoding", "terrarium") == "mapbox") {
+            elevationDecoder = std::make_shared<massif::MapBoxElevationDataDecoder>();
+        } else {
+            elevationDecoder = std::make_shared<massif::TerrariumElevationDataDecoder>();
+        }
+        auto terrainOptions = std::make_shared<massif::TerrainOptions>(elevationSource, elevationDecoder);
         terrainOptions->setEnabled(true);
+        // Desktop terrain defaults, which are not a phone's. Auto-flatten exists so a phone stops
+        // paying for a height field it cannot see from straight above; a desktop GPU can hold the
+        // terrain up the whole time, and dropping it every time the map returns to 88 degrees is a
+        // visible sink-and-rise. Setting both auto triggers to 0 is how TerrainOptions documents
+        // "off". The mesh doubles for the same reason - 64 cells per tile edge is a phone budget.
+        terrainOptions->setAutoFlattenTilt(0.0f);
+        terrainOptions->setAutoFlattenParallax(0.0f);
+        terrainOptions->setMeshResolution(WEB_TERRAIN_MESH_RESOLUTION);
         _MapView->getOptions()->setTerrainOptions(terrainOptions);
     }
 

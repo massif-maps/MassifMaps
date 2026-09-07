@@ -138,6 +138,24 @@ Mapterhorn's planet archive (`https://download.mapterhorn.com/planet.pmtiles`) i
 Terrarium-coded WebP, z0-12, and serves `access-control-allow-origin: *` - only the ranges actually
 read are fetched.
 
+### 3D terrain, and what a desktop should set differently
+
+`?terrain=<url>` attaches a DEM. Verified against Mapterhorn's planet archive and against AWS's
+terrarium tiles; both read the same elevation, so **Terrarium is the right decoder for Mapterhorn**
+(`?demEncoding=mapbox` switches to Terrain-RGB and is visibly wrong - the clearance shoves the
+camera out to zoom 6).
+
+Elevation comes back in PROJECTED units, not metres: Mont Blanc reads 6849 where the mountain is
+4808, because the Mercator scale at 45.8 degrees is 1/cos = 1.435. 4808 x 1.435 = 6900. Nothing is
+wrong with the DEM when that number looks too big.
+
+The bench sets two things a phone would not:
+
+| Setting | Phone default | Web | Why |
+|---|---|---|---|
+| `autoFlattenTilt` / `autoFlattenParallax` | 88 / 2 | **0 / 0** (off) | Auto-flatten drops the height field when the map looks straight down, to save a phone the cost. A desktop can hold it up, and dropping it every time the map returns to 88 degrees is a visible sink-and-rise |
+| `meshResolution` | 64 | **128** | Cells per tile edge, clamped to 2..256. 64 is a phone budget |
+
 ### Draw distance
 
 `Options.drawDistance` defaults to 16, which is a phone's battery talking: tilt the map and

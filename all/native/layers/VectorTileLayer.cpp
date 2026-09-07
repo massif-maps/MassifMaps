@@ -7,6 +7,7 @@
 #include "graphics/utils/BackgroundBitmapGenerator.h"
 #include "graphics/utils/SkyBitmapGenerator.h"
 #include "datasources/TileDataSource.h"
+#include "layers/TileStyleZoom.h"
 #include "layers/VectorTileEventListener.h"
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
@@ -310,6 +311,14 @@ namespace massif {
         } else {
             _visibleCache.invalidate_all(std::chrono::steady_clock::now());
         }
+    }
+
+    void VectorTileLayer::onTargetTileZoomChanged() {
+        // Every decoded tile matched its rules at the previous target zoom. Invalidate rather than
+        // clear the visible ones: they stay on screen, correct for the zoom they came from, while
+        // they decode again.
+        invalidateTiles(false);
+        clearTiles(true);
     }
 
     std::shared_ptr<VectorTileDecoder::TileMap> VectorTileLayer::getTileMap(long long tileId) const {
@@ -829,7 +838,8 @@ namespace massif {
     }
     
     VectorTileLayer::FetchTask::FetchTask(const std::shared_ptr<VectorTileLayer>& layer, long long tileId, const MapTile& tile, bool preloadingTile) :
-        FetchTaskBase(layer, tileId, tile, preloadingTile)
+        FetchTaskBase(layer, tileId, tile, preloadingTile),
+        _styleTileZoom(calculateStyleTileZoom(tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift()))
     {
     }
     
@@ -864,7 +874,7 @@ namespace massif {
             std::shared_ptr<vt::TileTransformer> tileTransformer = layer->getTileTransformer();
             std::shared_ptr<VectorTileDecoder::TileMap> tileMap;
             if (std::shared_ptr<BinaryData> data = tileData->getData()) {
-                tileMap = layer->_tileDecoder->decodeTile(vtDataSourceTile, vtTile, tileTransformer, data);
+                tileMap = layer->_tileDecoder->decodeTile(vtDataSourceTile, vtTile, _styleTileZoom, tileTransformer, data);
                 if (!tileMap && !data->empty()) {
                     Log::Error("VectorTileLayer::FetchTask: Failed to decode tile");
                 }

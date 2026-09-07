@@ -110,7 +110,7 @@ namespace massif {
         return std::shared_ptr<VectorTileFeatureCollection>();
     }
 
-    std::shared_ptr<TorqueTileDecoder::TileMap> TorqueTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData) const {
+    std::shared_ptr<TorqueTileDecoder::TileMap> TorqueTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData) const {
         if (!tileData) {
             Log::Warn("TorqueTileDecoder::decodeTile: Null tile data");
             return std::shared_ptr<TileMap>();
@@ -139,7 +139,7 @@ namespace massif {
             auto tileMap = std::make_shared<TileMap>();
             for (int frame = 0; frame < frameCount; frame++) {
                 mvt::TorqueTileReader reader(map, frame, true, tileTransformer, *symbolizerContext, decoder, _logger);
-                if (std::shared_ptr<vt::Tile> tile = reader.readTile(targetTile)) {
+                if (std::shared_ptr<vt::Tile> tile = reader.readTile(targetTile, styleZoom)) {
                     (*tileMap)[frame] = tile;
                 }
             }

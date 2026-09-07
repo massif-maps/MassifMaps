@@ -22,6 +22,7 @@
 !enum(massif::PivotMode::PivotMode)
 !enum(massif::FreeRoamMode::FreeRoamMode)
 !enum(massif::PanningSpeedMode::PanningSpeedMode)
+!enum(massif::TileLODProfile::TileLODProfile)
 !shared_ptr(massif::Options, components.Options)
 
 // The map events. They fire on whatever handle the Options were registered under.
@@ -94,7 +95,9 @@
 %attribute(massif::Options, int, TileThreadPoolSize, getTileThreadPoolSize, setTileThreadPoolSize)
 %attribute(massif::Options, int, TileDrawSize, getTileDrawSize, setTileDrawSize)
 %attribute(massif::Options, float, TileLODFactor, getTileLODFactor, setTileLODFactor)
-%attribute(massif::Options, float, TileLODForeshorteningLimit, getTileLODForeshorteningLimit, setTileLODForeshorteningLimit)
+%attribute(massif::Options, float, TileLODMaxZoomLevelsOnScreen, getTileLODMaxZoomLevelsOnScreen, setTileLODMaxZoomLevelsOnScreen)
+%attribute(massif::Options, float, TileLODTileCountRatio, getTileLODTileCountRatio, setTileLODTileCountRatio)
+%attribute(massif::Options, int, TileStyleZoomLift, getTileStyleZoomLift, setTileStyleZoomLift)
 %attribute(massif::Options, float, DPI, getDPI, setDPI)
 %attribute(massif::Options, float, DrawDistance, getDrawDistance, setDrawDistance)
 %std_exceptions(massif::Options::setBaseProjection)

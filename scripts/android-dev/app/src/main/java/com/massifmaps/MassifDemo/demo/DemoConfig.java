@@ -231,11 +231,21 @@ public final class DemoConfig {
      *  (fewer tiles, fewer far labels); 0 refines everything to the camera zoom.
      *  '--es lodFactor 2'. */
     public static float TILE_LOD_FACTOR = 0.5f;
-    /** Zoom levels a tile may lose to the grazing angle alone, 0 = no limit (the tangram rule).
-     *  Bounds only the foreshortening half of the LOD area test, never the distance half, so far
-     *  ground stays coarse while a tilted mid-field is refined. Costs ~2x the tiles per level.
-     *  '--es lodGrazing 1.25'. */
-    public static float TILE_LOD_GRAZING = 0f;
+    /** How many distinct zoom levels a tilted frame may spread over - maplibre's
+     *  maxZoomLevelsOnScreen. Higher decays faster toward the horizon (fewer tiles), lower keeps
+     *  far ground finer. 9.314 is maplibre's, and our area rule exactly. '--es lodLevels 12'. */
+    public static float TILE_LOD_LEVELS_ON_SCREEN = 9.314f;
+    /** Cap on how many more tiles a tilted view may load than a top-down one - maplibre's
+     *  tileCountMaxMinRatio. Inert unless lodLevels asks for a gentler far field. '--es lodRatio 3'. */
+    public static float TILE_LOD_COUNT_RATIO = 3f;
+    /** reference | mobile | desktop - one call for TileLODFactor + the two above + the style zoom
+     *  lift. Empty leaves the individual knobs alone. '--es lodProfile mobile'. */
+    public static String TILE_LOD_PROFILE = "";
+    /** Zoom levels above its own a coarsened tile matches its style rules at. The LOD hands back a
+     *  coarser tile and CartoCSS [zoom] gates on the tile, so 0 loses every '[zoom >= 16]' rule at
+     *  the first coarsening ring; a large lift styles the horizon at the camera's zoom and pays for
+     *  it. '--es styleZoomLift 0'. */
+    public static int TILE_STYLE_ZOOM_LIFT = 2;
     /** Metres beyond which the inline style's street labels are not placed (0 = no limit). Only
      *  the inline style uses it; it is the 'text-max-distance' CartoCSS property.
      *  '--es labelMaxDistance 2000'. */
@@ -281,7 +291,7 @@ public final class DemoConfig {
     public static boolean TERRAIN_DRAPE_LINES = true;
     /** 3D bridges: span features on their chord, decks as extrusions. OFF in the SDK; the demo
      *  turns it on to show them. '--es bridges3d false' is the A/B for the cost when off. */
-    public static boolean TERRAIN_BRIDGES_3D = true;
+    public static boolean TERRAIN_BRIDGES_3D = false;
     /** 0 = derive from the screen, which the cache's memory budget then clamps to 512. Set
      *  explicitly, so the extrusions' contact shadow baked into the drape is more than a texel
      *  wide: at 512 a drape texel is ~1.7 m on the ground and the shadow reaches under 1 m. */
@@ -1274,7 +1284,10 @@ public final class DemoConfig {
         // terrain
         TILE_THREAD_POOL_SIZE = DemoCfg.cfgInt("tilePool", TILE_THREAD_POOL_SIZE);
         TILE_LOD_FACTOR = DemoCfg.cfgFloat("lodFactor", TILE_LOD_FACTOR);
-        TILE_LOD_GRAZING = DemoCfg.cfgFloat("lodGrazing", TILE_LOD_GRAZING);
+        TILE_LOD_LEVELS_ON_SCREEN = DemoCfg.cfgFloat("lodLevels", TILE_LOD_LEVELS_ON_SCREEN);
+        TILE_LOD_COUNT_RATIO = DemoCfg.cfgFloat("lodRatio", TILE_LOD_COUNT_RATIO);
+        TILE_LOD_PROFILE = DemoCfg.cfgStr("lodProfile", TILE_LOD_PROFILE);
+        TILE_STYLE_ZOOM_LIFT = DemoCfg.cfgInt("styleZoomLift", TILE_STYLE_ZOOM_LIFT);
         LABEL_MAX_DISTANCE = DemoCfg.cfgFloat("labelMaxDistance", LABEL_MAX_DISTANCE);
         TERRAIN_ENABLED = DemoCfg.cfgBool("terrain", TERRAIN_ENABLED);
         TERRAIN_CAMERA_CLEARANCE = DemoCfg.cfgFloat("clearance", TERRAIN_CAMERA_CLEARANCE);

@@ -489,6 +489,15 @@ class ProjectionSurface;
 
     protected:
 
+        // The tile zoom the last cull asked for, and how far above its own zoom a coarsened tile may
+        // be styled - together they give a fetched tile its style zoom (TileStyleZoom.h).
+        int getTargetTileZoom() const { return _targetTileZoom; }
+        int getTileStyleZoomLift() const { return _tileStyleZoomLift; }
+
+        // Nothing to do for a layer whose tiles decode the same however the camera is placed - only
+        // a styled tile carries the target zoom into its content.
+        virtual void onTargetTileZoomChanged() { }
+
         const DirectorPtr<TileDataSource> _dataSource;
         std::shared_ptr<DataSourceListener> _dataSourceListener;
 
@@ -560,11 +569,13 @@ class ProjectionSurface;
         int _maxStandInLevel;
         int _maxUnderzoomLevel;
 
+        int _targetTileZoom = -1; // the tile zoom the camera asks for, before the LOD coarsens anything
+        int _tileStyleZoomLift = 0; // last Options tile style zoom lift a cull ran with
         int _terrainMaxTileZoom = 1000;
         int _terrainMinTileZoom = 0; // terrain mode: the coarsest tile zoom the LOD rule may pick
         double _maxVisibleDistance = 0; // internal units; 0 = as far as the camera can see
         double _lodMaxTileArea = 0; // screen pixels squared; the tangram LOD threshold, 0 = no area test
-        double _lodMinCosTheta = 0; // cos of the most grazing incidence the LOD charges for, 0 = no limit
+        double _lodCosThetaExponent = 0; // maplibre's p - 1: extra power on cos(incidence), 0 = the plain area rule
         double _lodElevation = 0; // world z the LOD projects a tile at when the DEM has no data for it (the terrain under the focus)
         std::shared_ptr<ElevationManager> _lodElevationManager; // held for one cull pass, per-tile terrain height for the LOD
         bool _terrainOverzoomTargets = false; // terrain mode: target tiles may exceed the data source max zoom (overzoom-fed)

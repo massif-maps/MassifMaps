@@ -156,7 +156,7 @@ public:
         decoder.setTransform(calculateTileTransform(tileId, targetTileId));
 
         massif::mvt::LayerTileReader reader(_map, _transformer, *_context, decoder, _logger);
-        auto vectorTile = reader.readTile(targetTileId);
+        auto vectorTile = reader.readTile(targetTileId, targetTileId.zoom);
 
         std::ofstream ofs(destFilePath.c_str());
         if (!ofs.good()) {

@@ -301,6 +301,14 @@ An enum property takes either the **name** or the number. The name is the portab
 | `TILE_FORMAT_MVT` | 1 | MapBox Vector Tile, the protobuf format. |
 | `TILE_FORMAT_MLT` | 2 | MapLibre Tile, the columnar format. Smaller tiles and faster decoding, but the whole tile is decoded at once - MVT decodes only the layers and attributes the style asks for. |
 
+## TileLODProfile {#enum-tilelodprofile}
+
+| Value | # | Description |
+|---|---|---|
+| `TILE_LOD_PROFILE_REFERENCE` | 0 | The reference density: TileLODFactor 1, which is tangram's rule, mapbox's and maplibre's alike - a tile is refined while it covers more than a 2x2 block of nominal tiles. Fewest tiles, and what every reference renderer ships. |
+| `TILE_LOD_PROFILE_MOBILE` | 1 | Half a level finer than the reference, with a shorter style zoom lift. Meant for a phone: visibly sharper than the reference at roughly twice its tile count. |
+| `TILE_LOD_PROFILE_DESKTOP` | 2 | A full level finer than the reference (TileLODFactor 0.5, the historical default), about 4x its tile count. Meant for a desktop or a web page on a real GPU. |
+
 ## TileSubstitutionPolicy {#enum-tilesubstitutionpolicy}
 
 | Value | # | Description |

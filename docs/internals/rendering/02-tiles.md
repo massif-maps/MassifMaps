@@ -36,11 +36,56 @@ rule (`TileManager::updateTileSets` + `View::getTileScreenArea`), ported whole:
 bool subDivide = screenArea >= _lodMaxTileArea;   // (2 * tileSizePixels * lodFactor)^2, x 4^-zoomLevelBias
 ```
 
-`Options::TileLODFactor` scales it: 1 (the default) is their rule verbatim, larger keeps tiles
-coarser everywhere at a tilt - fewer tiles, fewer far labels, less far detail - and 0 turns the area
-test off, refining everything to the camera zoom (the behaviour before this rule).
+`Options::TileLODFactor` scales it: 1 is their rule verbatim, larger keeps tiles coarser everywhere
+at a tilt - fewer tiles, fewer far labels, less far detail - and 0 turns the area test off, refining
+everything to the camera zoom (the behaviour before this rule).
 
-with three bounds applied: the data source's `getMaxZoom()`, the camera's discrete zoom
+:::warning Our default is a level finer than every reference
+`TileLODFactor` defaults to **0.5**, which asks for **one whole zoom level finer than tangram,
+mapbox and maplibre alike**. It costs nothing in the near field, where the discrete zoom bound is
+what stops refinement anyway - it costs where the AREA rule is the binding constraint, up to 4x the
+tiles there, and at a grazing tilt that is most of the frame. It was never a measured decision.
+`Options::setTileLODProfile` names the three densities so a platform picks one instead of
+discovering this by tuning: `REFERENCE` (1.0), `MOBILE` (0.71, half a level), `DESKTOP` (0.5,
+today's default). Not yet measured against fps on a device - see the PR.
+:::
+
+### maplibre's two numbers, on top of the area rule
+
+The area rule and maplibre's `calculateTileZoom` decompose to the same thing (see
+[bounding what the grazing angle may cost](#bounding-what-the-grazing-angle-may-cost)), so porting
+theirs is not a new walk - it is two corrections to ours, both in `all/native/layers/TileLODRule.h`:
+
+- `Options::TileLODMaxZoomLevelsOnScreen` (maplibre's `maxZoomLevelsOnScreen`, default **9.314**)
+  sets the power `p` on `cos(incidence)`. The area already carries one power of it, so the walk
+  applies `p - 1`. At maplibre's default `p = 1.000`, which is our area rule exactly - **adopting
+  their formula changes nothing until the number is moved**. Higher decays faster toward the
+  horizon and costs fewer tiles; lower keeps far ground finer.
+- `Options::TileLODTileCountRatio` (`tileCountMaxMinRatio`, default **3**) caps how many more tiles
+  a pitched view may ask for than a flat one, shedding levels uniformly across the frame when it
+  would be exceeded.
+
+**The cap is inert at the default, and that is not a bug.** At `p >= 1` the integrand `cos^(p-1)` is
+at most 1, so a pitched view never counts as asking for more tiles than a flat one. The cap exists
+to bound the bill of asking for a *gentler* far field (`p < 1`); it does not rescue a view that is
+slow for another reason - for that, raise `TileLODMaxZoomLevelsOnScreen` or the profile.
+`TileLODForeshorteningLimit` is gone: it bounded the same term from the other side with a number
+that had no reference behind it.
+
+:::danger The pitch gate does NOT port, and it was tried
+Both references keep the whole frame at one zoom below ~60 degrees of pitch - maplibre's
+`allowVariableZoom` (`78.5 - fov/2`, capped at 60), mapbox's `MIN_LOD_PITCH` (60). Adopting it made
+the demo unusable at **tilt 30**, which is pitch 60 exactly: constant zoom means every tile refined
+to the camera's zoom, and where they stop drawing we keep going to tangram's view distance. That is
+the whole visible ground paved at full detail - buildings to the horizon and a map that does not
+move.
+
+It is affordable for them because **their `maxPitch` IS 60**: at the gate's threshold the horizon is
+never on screen, so constant zoom covers a bounded patch. We allow a lower tilt than that and draw
+much further. Do not re-add it without also bounding the view distance.
+:::
+
+Three bounds apply on top of all of it: the data source's `getMaxZoom()`, the camera's discrete zoom
 (`viewState.getZoom() + bias + DISCRETE_ZOOM_LEVEL_BIAS`), and, in terrain mode,
 `TerrainOptions::MaxTileZoomOffset`.
 
@@ -51,6 +96,51 @@ foreshortening while its distance barely grows: at tilt 10 the old rule kept ref
 horizon band, and measured at 45.187/5.719 z16.2 t10 the visible set went from ~66 tiles a frame to
 ~24, with the submitted index count down 4x. That band is also where every one of those tiles
 contributed a full set of labels for a few pixels of screen.
+
+### The style zoom is the camera's, not the tile's
+
+The LOD decides which **tile** to draw. It must not decide which **rules** that tile draws with, and
+for a long time it did: `TileReader::readTile` set the expression context's adjusted zoom from the
+tile id, so a converted MapBox style's `#building[zoom >= 16]` — a *view*-zoom gate in the original,
+mechanically turned into a *tile*-zoom filter by `mapbox2css` — stopped matching the moment the LOD
+handed back a z13 tile under a z16 camera. One level of coarsening, and the far half of a tilted
+view lost every building along a straight tile edge, with the whole region flipping at once as the
+ring moved during a pan.
+
+`TileLayer::calculateVisibleTiles` therefore publishes `_targetTileZoom`, the zoom the camera asked
+for, and each `VectorTileLayer::FetchTask` snapshots
+`calculateStyleTileZoom(tile.zoom, target, lift)` (`all/native/layers/TileStyleZoom.h`) for the
+decoder to match rules at. **Which tiles are drawn does not change at all** — the area rule, the
+levels and the tile count are identical; only the rules a coarse tile matches move. A tile at the
+target zoom is unchanged too, so the near field is byte-identical.
+
+`Options::TileStyleZoomLift` bounds how far above its own zoom a tile may be styled, and that bound
+is the whole balance. Unbounded (the first attempt) a horizon tile is styled at the camera's zoom
+and emits the entire near-field content — every label, every arrow, every building — over ground
+tens of times wider; measured on the demo at Paris that was buildings visible to the horizon and a
+visibly slower map. The default **2** covers the first two coarsening steps, which is where the
+visible edge sits (foreshortening alone costs 1.0–1.5 levels at 75°–83° of incidence, so the first
+ring is one to two levels down). Past it the lift is not partial - the tile styles at exactly its
+own zoom, so the horizon band costs precisely what it did before the lift existed. `0` is the old
+tile-zoom behaviour everywhere.
+
+Two consequences worth knowing:
+
+- **The style zoom is part of a decoded tile's identity, and the cache key is not.** When
+  `_targetTileZoom` or the lift moves, every decoded tile is stale, so the cull invalidates the visible tiles
+  (they stay on screen and reload) and drops the preloading cache. Target zoom is clamped by
+  `getMaxZoom()`, so above a source's max zoom it never moves at all; below it, it moves only when
+  the camera crosses an integer zoom, which already refetches the near field. mapbox instead keys
+  tiles on `OverscaledTileID.overscaledZ` and keeps both versions cached.
+- **This goes beyond both references, deliberately.** mapbox's `reparseOverscaled` only raises the
+  parse zoom of a tile already at the source max zoom (`covering_tiles`: `overscaledZ` is used only
+  when `it.zoom === maxZoom`); a coarsened tile is parsed at its own zoom, and its layer `minzoom`
+  is then gated on that zoom in the worker (`worker_tile.ts`) as well as on the view zoom at render
+  time (`painter.ts`). So mapbox drops a coarsened tile's `minzoom` layers exactly as we used to —
+  it just does not get there, because its LOD is far gentler than ours at a grazing angle (see
+  [bounding what the grazing angle may cost](#bounding-what-the-grazing-angle-may-cost)) and its
+  styles gate 3D buildings below the levels its LOD reaches. Ours are converted MapBox styles whose
+  gates sit *at* the camera zoom, so they need the camera's zoom fed in at decode.
 
 Three terrain-specific details, each of which was a bug once:
 

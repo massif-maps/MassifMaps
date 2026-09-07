@@ -76,6 +76,8 @@ void testShadowCasterRing();
 void testTerrainTesselation();
 void testFlattenSwitch();
 void testPrefetchOrder();
+void testTileStyleZoom();
+void testTileLODRule();
 
 namespace {
 
@@ -442,6 +444,8 @@ int main() {
     testTerrainTesselation();
     testFlattenSwitch();
     testPrefetchOrder();
+    testTileStyleZoom();
+    testTileLODRule();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

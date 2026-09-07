@@ -31,10 +31,10 @@ namespace massif::mvt {
     {
     }
 
-    std::shared_ptr<vt::Tile> TileReader::readTile(const vt::TileId& tileId) const {
+    std::shared_ptr<vt::Tile> TileReader::readTile(const vt::TileId& tileId, int styleZoom) const {
         ExpressionContext exprContext;
         exprContext.setTileId(tileId);
-        exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
+        exprContext.setAdjustedZoom(styleZoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
         exprContext.setStyleParameterStore(_symbolizerContext.getSettings().getStyleParameterStore());
         exprContext.setRender3D(_transformer && _transformer->isElevationBased());
 

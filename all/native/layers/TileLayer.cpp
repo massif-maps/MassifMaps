@@ -1,4 +1,5 @@
 #include "TileLayer.h"
+#include "layers/TileLODRule.h"
 #include "core/BinaryData.h"
 #include "components/Exceptions.h"
 #include "components/CancelableTask.h"
@@ -409,6 +410,18 @@ namespace massif {
             }
         }
 
+        // The style zoom lift, unlike the rest, is baked INTO a decoded tile - moving it is a
+        // re-decode, not a re-cull.
+        // Only when the options are actually there: reading a default through a dropped weak_ptr
+        // makes this differ from itself every other cull, and each difference re-decodes the map.
+        if (auto options = getOptions()) {
+            int styleZoomLift = options->getTileStyleZoomLift();
+            if (_tileStyleZoomLift != styleZoomLift) {
+                _tileStyleZoomLift = styleZoomLift;
+                onTargetTileZoomChanged();
+            }
+        }
+
         // An empty tile set counts as "needs recalculating": the set is otherwise frozen until the
         // MVP changes, so one cull that ran before the layer had what it needs leaves it blank until
         // the user pans. Cheap to redo - an empty set stops the recursion at the root tile.
@@ -730,11 +743,22 @@ namespace massif {
             }
         }
 
-        // How far the map is drawn: tangram's view distance (ViewState::calculateViewDistance), which
-        // the style may EXTEND with an absolute one in metres (and may make it depend on the zoom).
-        // Looking along the ground the camera sees to the horizon, which is hundreds of tiles, almost
-        // all of them a few pixels tall and each carrying its own labels; this is what keeps that view
-        // affordable. Pair a short one with fog, or the ground simply ends.
+        // The zoom the camera asks for. Tile-independent, so it is also the zoom the STYLE of every
+        // tile evaluates at, however coarse the LOD lets that tile be; when it moves, the tiles
+        // already decoded carry a stale [zoom] and have to go through the decoder again.
+        {
+            int maxTargetZoom = getMaxZoom() + (_terrainOverzoomTargets ? getMaxOverzoomLevel() : 0);
+            int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(cullState->getViewState().getZoom() + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
+            targetTileZoom = std::min(targetTileZoom, _terrainMaxTileZoom);
+            if (_targetTileZoom != targetTileZoom) {
+                _targetTileZoom = targetTileZoom;
+                onTargetTileZoomChanged();
+            }
+        }
+
+        // How far the map is drawn: tangram's view distance, which the style may EXTEND with an
+        // absolute one in metres. Along the ground the camera sees hundreds of tiles to the horizon,
+        // each carrying its own labels. Pair a short one with fog, or the ground simply ends.
         _maxVisibleDistance = 0;
         {
             StyleEnvironment env;
@@ -780,7 +804,7 @@ namespace massif {
         }
 
         _lodMaxTileArea = 0;
-        _lodMinCosTheta = 0;
+        _lodCosThetaExponent = 0;
         if (auto options = getOptions()) {
             const ViewState& viewState = cullState->getViewState();
             double tileSizePixels = options->getTileDrawSize() * viewState.getDPI() / Const::UNSCALED_DPI;
@@ -790,10 +814,15 @@ namespace massif {
             // A source whose tiles are bigger than the nominal size carries a zoom bias; the same
             // bias applies to the area it is allowed to cover (tangram: maxArea * exp2(2*zoomBias)).
             _lodMaxTileArea = maxEdge * maxEdge * std::pow(4.0, -getZoomLevelBias());
-            // Floor on cos(incidence): the area falls with the distance AND with the grazing angle,
-            // and only the second term is bounded here (docs/internals/rendering/02-tiles.md).
-            float limit = options->getTileLODForeshorteningLimit();
-            _lodMinCosTheta = limit > 0 ? std::pow(2.0, -2.0 * limit) : 0.0;
+
+            // maplibre's rule on top of it: an exponent on the area's cos(incidence) term, and a
+            // level dropped from every tile to keep the pitched tile count in budget. A level is
+            // 4x the area threshold (TileLODRule.h, docs/internals/rendering/02-tiles.md).
+            double pitch = 90.0 - viewState.getTilt();
+            TileLODRule lodRule = calculateTileLODRule(options->getTileLODMaxZoomLevelsOnScreen(), options->getTileLODTileCountRatio(),
+                                                       viewState.getFOVY(), std::max(0.0, pitch) * Const::DEG_TO_RAD);
+            _lodCosThetaExponent = lodRule.cosThetaExponent;
+            _lodMaxTileArea *= std::pow(4.0, lodRule.uniformLevelDrop);
         }
 
         // Recursively calculate visible tiles
@@ -891,31 +920,26 @@ namespace massif {
                     area += p(0) * q(1) - q(0) * p(1);
                 }
                 screenArea = std::abs(area) * 0.5;
-                if (_lodMinCosTheta > 0) {
+                // The area already carries one power of cos(incidence); maplibre's rule wants p of
+                // them, so the exponent applied here is p - 1 and 0 leaves the area rule alone.
+                if (_lodCosThetaExponent != 0) {
                     cglib::vec3<double> toTile = tileCenter + cglib::vec3<double>(0, 0, lodElevation) - viewState.getCameraPos();
                     double dist = cglib::length(toTile);
                     double cosTheta = dist > 0 ? std::abs(toTile(2)) / dist : 1.0;
-                    if (cosTheta > 0 && cosTheta < _lodMinCosTheta) {
-                        screenArea *= _lodMinCosTheta / cosTheta; // the area this tile would have at the limit
+                    if (cosTheta > 0) {
+                        screenArea *= std::pow(cosTheta, _lodCosThetaExponent);
                     }
                 }
             }
         }
         bool subDivide = !(_lodMaxTileArea > 0) || screenArea >= _lodMaxTileArea;
-        // TERRAIN: the tile surface is the depth OCCLUDER, and its tesselation is proportional to
-        // the tile size. Let a tile coarsen freely and its ridge crests are chopped flat, so
-        // content drawn over a finer tile of another layer - a road, a contour - shows through the
-        // ridge in front of it. Layers also coarsen independently (each runs the area test with its
-        // own tile size and zoom bias), so the occluder can end up coarser than the content it is
-        // meant to hide. Bounding how far BELOW the camera zoom a tile may sit bounds that
-        // mismatch, and costs only the horizon band, where the area rule would otherwise drop 5 or
-        // 6 levels at once.
+        // TERRAIN: the tile surface is the depth OCCLUDER and its tesselation follows the tile size,
+        // so a freely coarsening tile has chopped crests that finer content shows through - and
+        // layers coarsen independently. Bounding how far BELOW the camera zoom a tile sits bounds it.
         if (_terrainMinTileZoom > 0 && tile.getZoom() < _terrainMinTileZoom) {
             subDivide = true;
         }
-        int maxTargetZoom = getMaxZoom() + (_terrainOverzoomTargets ? getMaxOverzoomLevel() : 0);
-        int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(viewState.getZoom() + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
-        targetTileZoom = std::min(targetTileZoom, _terrainMaxTileZoom);
+        int targetTileZoom = _targetTileZoom;
         if (getMinZoom() > tile.getZoom()) {
             subDivide = true;
         } else if (targetTileZoom <= tile.getZoom()) {

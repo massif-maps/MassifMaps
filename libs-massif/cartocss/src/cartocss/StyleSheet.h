@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2016 CartoDB. All rights reserved.
+ * Copying and using this code is allowed only according
+ * to license terms, as given in https://cartodb.com/terms/
+ */
+
+#ifndef _MASSIF_CARTOCSS_STYLESHEET_H_
+#define _MASSIF_CARTOCSS_STYLESHEET_H_
+
+#include "Value.h"
+#include "Expression.h"
+#include "Predicate.h"
+
+#include <memory>
+#include <string>
+#include <variant>
+#include <vector>
+#include <deque>
+#include <map>
+#include <utility>
+#include <functional>
+
+namespace massif::css {
+    class Selector final {
+    public:
+        Selector() = default;
+        explicit Selector(std::vector<Predicate> predicates) : _predicates(std::move(predicates)) { }
+
+        const std::vector<Predicate>& getPredicates() const { return _predicates; }
+
+    private:
+        std::vector<Predicate> _predicates; // all must match
+    };
+
+    class PropertyDeclaration final {
+    public:
+        PropertyDeclaration() = default;
+        explicit PropertyDeclaration(std::string field, Expression expr, int order) : _field(std::move(field)), _expr(std::move(expr)), _order(order) { }
+
+        const std::string& getField() const { return _field; }
+        const Expression& getExpression() const { return _expr; }
+        int getOrder() const { return _order; }
+
+    private:
+        std::string _field;
+        Expression _expr;
+        int _order = 0;
+    };
+
+    class RuleSet;
+
+    class Block final {
+    public:
+        using Element = std::variant<PropertyDeclaration, RuleSet>;
+
+        Block() = default;
+        explicit Block(std::vector<Element> elements); // defined below: Element needs RuleSet complete
+
+        const std::vector<Element>& getElements() const { return _elements; }
+
+    private:
+        std::vector<Element> _elements;
+    };
+
+    class RuleSet final {
+    public:
+        RuleSet() = default;
+        explicit RuleSet(std::vector<Selector> selectors, Block block) : _selectors(std::move(selectors)), _block(std::move(block)) { }
+
+        const std::vector<Selector>& getSelectors() const { return _selectors; }
+        const Block& getBlock() const { return _block; }
+
+    private:
+        std::vector<Selector> _selectors; // any may match, or empty
+        Block _block;
+    };
+
+    inline Block::Block(std::vector<Element> elements) : _elements(std::move(elements)) { }
+
+    class VariableDeclaration final {
+    public:
+        VariableDeclaration() = default;
+        explicit VariableDeclaration(std::string var, Expression expr) : _var(std::move(var)), _expr(std::move(expr)) { }
+
+        const std::string& getVariable() const { return _var; }
+        const Expression& getExpression() const { return _expr; }
+
+    private:
+        std::string _var;
+        Expression _expr;
+    };
+
+    class StyleSheet final {
+    public:
+        using Element = std::variant<VariableDeclaration, RuleSet>;
+
+        StyleSheet() = default;
+        explicit StyleSheet(std::vector<Element> elements) : _elements(std::move(elements)) { }
+
+        const std::vector<Element>& getElements() const { return _elements; }
+
+        std::vector<Selector> findRuleSetSelectors() const {
+            std::deque<const RuleSet*> ruleSets;
+            for (const Element& element : _elements) {
+                if (auto ruleSet = std::get_if<RuleSet>(&element)) {
+                    ruleSets.push_back(ruleSet);
+                }
+            }
+            std::vector<Selector> selectors;
+            while (!ruleSets.empty()) {
+                const RuleSet* ruleSet = ruleSets.front();
+                ruleSets.pop_front();
+                selectors.insert(selectors.end(), ruleSet->getSelectors().begin(), ruleSet->getSelectors().end());
+                std::vector<const RuleSet*> subRuleSets;
+                for (const Block::Element& element : ruleSet->getBlock().getElements()) {
+                    if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
+                        subRuleSets.push_back(subRuleSet);
+                    }
+                }
+                ruleSets.insert(ruleSets.begin(), subRuleSets.begin(), subRuleSets.end());
+            }
+            return selectors;
+        }
+
+    private:
+        std::vector<Element> _elements;
+    };
+}
+
+#endif

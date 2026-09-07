@@ -1,0 +1,198 @@
+#include "MapGenerator.h"
+#include "Map.h"
+#include "FontSet.h"
+#include "Expression.h"
+#include "Predicate.h"
+#include "Filter.h"
+#include "Rule.h"
+#include "Style.h"
+#include "Layer.h"
+#include "Map.h"
+#include "MapSettingsTable.h"
+#include "GeneratorUtils.h"
+#include "Symbolizer.h"
+#include "SymbolizerGenerator.h"
+#include "ScaleUtils.h"
+#include "Logger.h"
+
+#include <boost/lexical_cast.hpp>
+
+namespace massif::mvt {
+    std::shared_ptr<pugi::xml_document> MapGenerator::generateMap(const Map& map) const {
+        auto doc = std::make_shared<pugi::xml_document>();
+        pugi::xml_node mapNode = doc->append_child("Map");
+
+        Map::Settings mapSettings = map.getSettings();
+        mapNode.append_attribute("font-directory").set_value(mapSettings.fontDirectory.c_str());
+        mapNode.append_attribute("background-image").set_value(mapSettings.backgroundImage.c_str());
+        mapNode.append_attribute("background-color").set_value(generateExpressionString(mapSettings.backgroundColor.getExpression(), true).c_str());
+        mapNode.append_attribute("north-pole-color").set_value(generateExpressionString(mapSettings.northPoleColor.getExpression(), true).c_str());
+        mapNode.append_attribute("south-pole-color").set_value(generateExpressionString(mapSettings.southPoleColor.getExpression(), true).c_str());
+        if (mapSettings.bufferSize >= 0.0f) {
+            mapNode.append_attribute("buffer-size").set_value(mapSettings.bufferSize);
+        }
+
+        // Only what the style actually set: writing a default back would make it look declared, and
+        // a declared value overrides the application's own setting.
+        for (const auto& floatProperty : MAP_SETTINGS_FLOAT_PROPERTIES) {
+            const FloatFunctionProperty& prop = mapSettings.*floatProperty.second;
+            if (prop.isDefined()) {
+                mapNode.append_attribute(floatProperty.first).set_value(generateExpressionString(prop.getExpression(), false).c_str());
+            }
+        }
+        for (const auto& colorProperty : MAP_SETTINGS_COLOR_PROPERTIES) {
+            const ColorFunctionProperty& prop = mapSettings.*colorProperty.second;
+            if (prop.isDefined()) {
+                mapNode.append_attribute(colorProperty.first).set_value(generateExpressionString(prop.getExpression(), true).c_str());
+            }
+        }
+
+        // Parameters
+        pugi::xml_node paramsNode = mapNode.append_child("Parameters");
+        for (auto it = map.getParameterMap().begin(); it != map.getParameterMap().end(); it++) {
+            const Parameter& param = it->second;
+            pugi::xml_node paramNode = paramsNode.append_child("Parameter");
+            paramNode.append_attribute("name").set_value(param.getName().c_str());
+            paramNode.append_child(pugi::node_pcdata).set_value(param.getValue().c_str());
+        }
+
+        // StyleParameters
+        pugi::xml_node styleParamsNode = mapNode.append_child("StyleParameters");
+        for (auto it = map.getStyleParameterMap().begin(); it != map.getStyleParameterMap().end(); it++) {
+            const StyleParameter& styleParam = it->second;
+            pugi::xml_node styleParamNode = styleParamsNode.append_child("StyleParameter");
+            styleParamNode.append_attribute("name").set_value(styleParam.getName().c_str());
+            styleParamNode.append_attribute("type").set_value(generateTypeString(styleParam.getDefaultValue()).c_str());
+            styleParamNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(styleParam.getDefaultValue()).c_str());
+            if (styleParam.selectsFeatures()) {
+                styleParamNode.append_attribute("selects").set_value(true);
+            }
+
+            for (auto it2 = styleParam.getEnumMap().begin(); it2 != styleParam.getEnumMap().end(); it2++) {
+                pugi::xml_node valueNode = styleParamNode.append_child("Value");
+                valueNode.append_attribute("id").set_value(it2->first.c_str());
+                valueNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(it2->second).c_str());
+            }
+        }
+
+        // FontSets
+        for (auto it = map.getFontSets().begin(); it != map.getFontSets().end(); it++) {
+            const FontSet& fontSet = **it;
+            pugi::xml_node fontSetNode = mapNode.append_child("FontSet");
+            fontSetNode.append_attribute("name").set_value(fontSet.getName().c_str());
+            for (const StringProperty& faceName : fontSet.getFaceNames()) {
+                pugi::xml_node fontNode = fontSetNode.append_child("Font");
+                fontNode.append_attribute("face-name").set_value(generateExpressionString(faceName.getExpression(), true).c_str());
+            }
+        }
+
+        // Styles
+        for (auto it = map.getStyles().begin(); it != map.getStyles().end(); it++) {
+            const Style& style = **it;
+            pugi::xml_node styleNode = mapNode.append_child("Style");
+            styleNode.append_attribute("name").set_value(style.getName().c_str());
+            if (style.getOpacity() != 1.0f) {
+                styleNode.append_attribute("opacity").set_value(style.getOpacity());
+            }
+            if (!style.getImageFilters().empty()) {
+                styleNode.append_attribute("image-filters").set_value(style.getImageFilters().c_str());
+            }
+            if (style.getCompOp()) {
+                std::string compOp = generateCompOpString(*style.getCompOp());
+                styleNode.append_attribute("comp-op").set_value(compOp.c_str());
+            }
+            if (!style.getSimplify().empty()) {
+                styleNode.append_attribute("simplify").set_value(style.getSimplify().c_str());
+            }
+
+            switch (style.getFilterMode())
+            {
+            case Style::FilterMode::FIRST:
+                styleNode.append_attribute("filter-mode").set_value("first");
+                break;
+            case Style::FilterMode::ALL:
+                break; // the parser's default, nothing to write
+            }
+            bool styleNodeHasRules = false;
+            for (auto it2 = style.getRules().begin(); it2 != style.getRules().end(); it2++) {
+                const Rule& rule = **it2;
+                pugi::xml_node ruleNode = styleNode.append_child("Rule");
+                ruleNode.append_attribute("name").set_value(rule.getName().c_str());
+                
+                ruleNode.append_child("MinScaleDenominator").append_child(pugi::node_pcdata).set_value(boost::lexical_cast<std::string>(zoom2ScaleDenominator(rule.getMaxZoom() - 1)).c_str());
+                ruleNode.append_child("MaxScaleDenominator").append_child(pugi::node_pcdata).set_value(boost::lexical_cast<std::string>(zoom2ScaleDenominator(rule.getMinZoom() - 1)).c_str());
+                
+                if (std::shared_ptr<const Filter> filter = rule.getFilter()) {
+                    if (filter->getPredicate()) {
+                        pugi::xml_node filterNode;
+                        switch (filter->getType()) {
+                        case Filter::Type::FILTER:
+                            filterNode = ruleNode.append_child("Filter");
+                            break;
+                        case Filter::Type::ELSEFILTER:
+                            filterNode = ruleNode.append_child("ElseFilter");
+                            break;
+                        case Filter::Type::ALSOFILTER:
+                            filterNode = ruleNode.append_child("AlsoFilter");
+                            break;
+                        }
+                        filterNode.append_child(pugi::node_pcdata).set_value(generateExpressionString(*filter->getPredicate(), false).c_str());
+                    }
+                }
+                bool hasSymbolizers = false;
+                for (auto it3 = rule.getSymbolizers().begin(); it3 != rule.getSymbolizers().end(); it3++) {
+                    const Symbolizer& symbolizer = **it3;
+                    pugi::xml_node symbolizerNode = ruleNode.append_child();
+                    _symbolizerGenerator->generateSymbolizer(symbolizer, symbolizerNode);
+                    if(symbolizerNode.attributes().empty()) {
+                        ruleNode.remove_child(symbolizerNode);
+                    } else {
+                        hasSymbolizers = true;
+                    }
+                }
+                if (!hasSymbolizers) {
+                    styleNode.remove_child(ruleNode);
+                } else {
+                    styleNodeHasRules = true;
+                }
+            }
+            if (!styleNodeHasRules) {
+                mapNode.remove_child(styleNode);
+            }
+        }
+
+        // Layers
+        for (auto it = map.getLayers().begin(); it != map.getLayers().end(); it++) {
+            const Layer& layer = **it;
+            if (layer.getStyleNames().empty()) {
+                continue;
+            }
+            pugi::xml_node layerNode = mapNode.append_child("Layer");
+            layerNode.append_attribute("name").set_value(layer.getName().c_str());
+
+            for (auto it2 = layer.getStyleNames().begin(); it2 != layer.getStyleNames().end(); it2++) {
+                layerNode.append_child("StyleName").append_child(pugi::node_pcdata).set_value((*it2).c_str());
+            }
+        }
+
+        return doc;
+    }
+
+    std::string MapGenerator::generateTypeString(const Value& value) const {
+        struct TypeExtractor {
+            std::string operator() (std::monostate) const { return ""; }
+            std::string operator() (bool) const { return "bool"; }
+            std::string operator() (double) const { return "float"; }
+            std::string operator() (long long) const { return "int"; }
+            std::string operator() (const std::string&) const { return "string"; }
+            std::string operator() (const std::shared_ptr<const ValueArray>&) const { return "array"; }
+            std::string operator() (const std::shared_ptr<const ValueObject>&) const { return "object"; }
+        };
+
+        std::string typeString = std::visit(TypeExtractor(), value);
+        if (typeString.empty()) {
+            _logger->write(Logger::Severity::WARNING, "Unsupported value type");
+        }
+        return typeString;
+    }
+}

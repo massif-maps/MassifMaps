@@ -460,8 +460,11 @@ if(EMSCRIPTEN AND BUILD_WEB_DEMO)
     # JavaScript one added to the table at runtime.
     "-sALLOW_TABLE_GROWTH=1")
   # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
-  # /fonts in the virtual filesystem. Drop TTFs in web/demo/fonts to give the bench labels; without
-  # the directory the build simply carries no font.
+  # /fonts in the virtual filesystem. web/fonts is TRACKED and carries the one face the preview
+  # needs - without it a CI build renders geometry and no labels at all, which is exactly what it
+  # did before this line existed.
+  target_link_options(massif-demo PRIVATE "SHELL:--preload-file ${SDK_BASE_DIR}/web/fonts@/fonts")
+  # And web/demo/fonts on top, for faces dropped in by hand while developing. Not tracked.
   if(EXISTS "${SDK_BASE_DIR}/web/demo/fonts")
     # SHELL: keeps the flag and its path as one argument - CMake de-duplicates a repeated
     # --preload-file token and orphans the second path.

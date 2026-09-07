@@ -3646,7 +3646,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the shadow depth bias."
+          "doc": "Returns the shadow depth bias scale."
         },
         {
           "name": "shadowCascades",
@@ -7682,6 +7682,15 @@
           "doc": "Returns the billboard/label terrain occlusion tolerance."
         },
         {
+          "name": "bridges3DEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether bridges and tunnels stand on their own chord (3D bridges)."
+        },
+        {
           "name": "cameraClampDuration",
           "type": "FLOAT",
           "readOnly": false,
@@ -7697,7 +7706,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters."
+          "doc": "Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters."
         },
         {
           "name": "depthBias",
@@ -7707,6 +7716,15 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain."
+        },
+        {
+          "name": "drapeCacheSize",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the drape cache budget in megabytes."
         },
         {
           "name": "drapeFillsEnabled",
@@ -7734,6 +7752,15 @@
           "position": false,
           "cppType": "int",
           "doc": "Returns the per-tile drape texture resolution, 0 when it follows the screen."
+        },
+        {
+          "name": "drapeWorkingSet",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many drape tiles the automatic resolution assumes are cached at once."
         },
         {
           "name": "elevationPrefetchEnabled",

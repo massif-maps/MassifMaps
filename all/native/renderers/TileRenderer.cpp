@@ -1052,6 +1052,9 @@ namespace massif {
         // source density / subdivided to match it.
         bool drapeLines = drapeFills && activeTerrainOptions && activeTerrainOptions->isDrapeLinesEnabled();
         tileRenderer->setTerrainDrapeFills(drapeFills, drapeLines);
+        // 3D bridges are opt-in: off, a span feature drapes like the ground and the renderer's
+        // span machinery never runs (see GLTileRenderer::setSpansEnabled).
+        tileRenderer->setSpansEnabled(terrainMode && activeTerrainOptions && activeTerrainOptions->isBridges3DEnabled());
         // ...except the layers the application keeps sharp (contours by default), drawn live instead.
         //   adb shell setprop debug.massif.nodrapelayers "^contour.*" ("none" drapes everything)
         tileRenderer->setNoDrapeLayerFilter(noDrapeLayerFilter(

@@ -108,6 +108,7 @@ export type ClassName =
   | "massif::Layer"
   | "massif::Layers"
   | "massif::LightOptions"
+  | "massif::LightStop"
   | "massif::Line"
   | "massif::LineGeometry"
   | "massif::LineStyle"
@@ -1809,18 +1810,24 @@ export interface PropertyTypes {
     "terrainOptions.billboardOcclusionEnabled": boolean;
     /** Returns the billboard/label terrain occlusion tolerance. */
     "terrainOptions.billboardOcclusionTolerance": number;
+    /** Returns whether bridges and tunnels stand on their own chord (3D bridges). */
+    "terrainOptions.bridges3DEnabled": boolean;
     /** Returns the duration of the camera terrain-following correction animation. */
     "terrainOptions.cameraClampDuration": number;
-    /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+    /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "terrainOptions.cameraClearance": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "terrainOptions.depthBias": number;
+    /** Returns the drape cache budget in megabytes. */
+    "terrainOptions.drapeCacheSize": number;
     /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "terrainOptions.drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "terrainOptions.drapeLinesEnabled": boolean;
     /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
     "terrainOptions.drapeResolution": number;
+    /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
+    "terrainOptions.drapeWorkingSet": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "terrainOptions.elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -2917,7 +2924,13 @@ export interface PropertyTypes {
     "ambientColor": number;
     /** Returns the ambient light intensity. */
     "ambientIntensity": number;
-    /** Returns the shadow depth bias. */
+    /** Returns the day-cycle light curve - the "formula" an hour is turned into a look by. */
+    "dayCycleLightStops": Json;
+    /** Returns whether the sun's COLOURS follow its position. */
+    "dayCycleLightsEnabled": boolean;
+    /** Returns the curve used while the sun is RISING, if the app set one. */
+    "dayCycleRisingLightStops": Json;
+    /** Returns the shadow depth bias scale. */
     "shadowBias": number;
     /** Returns the number of shadow cascades. */
     "shadowCascades": number;
@@ -2941,8 +2954,22 @@ export interface PropertyTypes {
     "sunColor": number;
     /** Returns the sun light intensity. */
     "sunIntensity": number;
+    /** Returns whether this sun overrides the one a style states. */
+    "sunOverridingStyle": boolean;
     /** Returns whether the sun lights the 3D terrain surface. */
     "terrainLightingEnabled": boolean;
+  };
+  "massif::LightStop": {
+    /** (read-only) Returns the ambient colour. */
+    readonly "ambientColor": number;
+    /** (read-only) Returns the ambient intensity. */
+    readonly "ambientIntensity": number;
+    /** (read-only) Returns the sun height this light belongs to. */
+    readonly "sunAltitude": number;
+    /** (read-only) Returns the directional colour. */
+    readonly "sunColor": number;
+    /** (read-only) Returns the directional intensity. */
+    readonly "sunIntensity": number;
   };
   "massif::Line": {
     /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
@@ -3931,7 +3958,13 @@ export interface PropertyTypes {
     "light.ambientColor": number;
     /** Returns the ambient light intensity. */
     "light.ambientIntensity": number;
-    /** Returns the shadow depth bias. */
+    /** Returns the day-cycle light curve - the "formula" an hour is turned into a look by. */
+    "light.dayCycleLightStops": Json;
+    /** Returns whether the sun's COLOURS follow its position. */
+    "light.dayCycleLightsEnabled": boolean;
+    /** Returns the curve used while the sun is RISING, if the app set one. */
+    "light.dayCycleRisingLightStops": Json;
+    /** Returns the shadow depth bias scale. */
     "light.shadowBias": number;
     /** Returns the number of shadow cascades. */
     "light.shadowCascades": number;
@@ -3955,6 +3988,8 @@ export interface PropertyTypes {
     "light.sunColor": number;
     /** Returns the sun light intensity. */
     "light.sunIntensity": number;
+    /** Returns whether this sun overrides the one a style states. */
+    "light.sunOverridingStyle": boolean;
     /** Returns whether the sun lights the 3D terrain surface. */
     "light.terrainLightingEnabled": boolean;
     /** Returns the light (sun) options. May be null. */
@@ -3963,7 +3998,13 @@ export interface PropertyTypes {
     "lightOptions.ambientColor": number;
     /** Returns the ambient light intensity. */
     "lightOptions.ambientIntensity": number;
-    /** Returns the shadow depth bias. */
+    /** Returns the day-cycle light curve - the "formula" an hour is turned into a look by. */
+    "lightOptions.dayCycleLightStops": Json;
+    /** Returns whether the sun's COLOURS follow its position. */
+    "lightOptions.dayCycleLightsEnabled": boolean;
+    /** Returns the curve used while the sun is RISING, if the app set one. */
+    "lightOptions.dayCycleRisingLightStops": Json;
+    /** Returns the shadow depth bias scale. */
     "lightOptions.shadowBias": number;
     /** Returns the number of shadow cascades. */
     "lightOptions.shadowCascades": number;
@@ -3987,6 +4028,8 @@ export interface PropertyTypes {
     "lightOptions.sunColor": number;
     /** Returns the sun light intensity. */
     "lightOptions.sunIntensity": number;
+    /** Returns whether this sun overrides the one a style states. */
+    "lightOptions.sunOverridingStyle": boolean;
     /** Returns whether the sun lights the 3D terrain surface. */
     "lightOptions.terrainLightingEnabled": boolean;
     /** Returns the long click duration in seconds. */
@@ -4092,18 +4135,24 @@ export interface PropertyTypes {
     "terrain.billboardOcclusionEnabled": boolean;
     /** Returns the billboard/label terrain occlusion tolerance. */
     "terrain.billboardOcclusionTolerance": number;
+    /** Returns whether bridges and tunnels stand on their own chord (3D bridges). */
+    "terrain.bridges3DEnabled": boolean;
     /** Returns the duration of the camera terrain-following correction animation. */
     "terrain.cameraClampDuration": number;
-    /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+    /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "terrain.cameraClearance": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "terrain.depthBias": number;
+    /** Returns the drape cache budget in megabytes. */
+    "terrain.drapeCacheSize": number;
     /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "terrain.drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "terrain.drapeLinesEnabled": boolean;
     /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
     "terrain.drapeResolution": number;
+    /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
+    "terrain.drapeWorkingSet": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "terrain.elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -4156,18 +4205,24 @@ export interface PropertyTypes {
     "terrainOptions.billboardOcclusionEnabled": boolean;
     /** Returns the billboard/label terrain occlusion tolerance. */
     "terrainOptions.billboardOcclusionTolerance": number;
+    /** Returns whether bridges and tunnels stand on their own chord (3D bridges). */
+    "terrainOptions.bridges3DEnabled": boolean;
     /** Returns the duration of the camera terrain-following correction animation. */
     "terrainOptions.cameraClampDuration": number;
-    /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+    /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "terrainOptions.cameraClearance": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "terrainOptions.depthBias": number;
+    /** Returns the drape cache budget in megabytes. */
+    "terrainOptions.drapeCacheSize": number;
     /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "terrainOptions.drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "terrainOptions.drapeLinesEnabled": boolean;
     /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
     "terrainOptions.drapeResolution": number;
+    /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
+    "terrainOptions.drapeWorkingSet": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "terrainOptions.elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -5377,18 +5432,24 @@ export interface PropertyTypes {
     "billboardOcclusionEnabled": boolean;
     /** Returns the billboard/label terrain occlusion tolerance. */
     "billboardOcclusionTolerance": number;
+    /** Returns whether bridges and tunnels stand on their own chord (3D bridges). */
+    "bridges3DEnabled": boolean;
     /** Returns the duration of the camera terrain-following correction animation. */
     "cameraClampDuration": number;
-    /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+    /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "cameraClearance": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "depthBias": number;
+    /** Returns the drape cache budget in megabytes. */
+    "drapeCacheSize": number;
     /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "drapeLinesEnabled": boolean;
     /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
     "drapeResolution": number;
+    /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
+    "drapeWorkingSet": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -7290,7 +7351,13 @@ export interface OptionsSpec_light {
   ambientColor?: number;
   /** Returns the ambient light intensity. */
   ambientIntensity?: number;
-  /** Returns the shadow depth bias. */
+  /** Returns the day-cycle light curve - the "formula" an hour is turned into a look by. */
+  dayCycleLightStops?: Json;
+  /** Returns whether the sun's COLOURS follow its position. */
+  dayCycleLightsEnabled?: boolean;
+  /** Returns the curve used while the sun is RISING, if the app set one. */
+  dayCycleRisingLightStops?: Json;
+  /** Returns the shadow depth bias scale. */
   shadowBias?: number;
   /** Returns the number of shadow cascades. */
   shadowCascades?: number;
@@ -7314,6 +7381,8 @@ export interface OptionsSpec_light {
   sunColor?: number;
   /** Returns the sun light intensity. */
   sunIntensity?: number;
+  /** Returns whether this sun overrides the one a style states. */
+  sunOverridingStyle?: boolean;
   /** Returns whether the sun lights the 3D terrain surface. */
   terrainLightingEnabled?: boolean;
 }
@@ -7364,18 +7433,24 @@ export interface OptionsSpec_terrain {
   billboardOcclusionEnabled?: boolean;
   /** Returns the billboard/label terrain occlusion tolerance. */
   billboardOcclusionTolerance?: number;
+  /** Returns whether bridges and tunnels stand on their own chord (3D bridges). */
+  bridges3DEnabled?: boolean;
   /** Returns the duration of the camera terrain-following correction animation. */
   cameraClampDuration?: number;
-  /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+  /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
   cameraClearance?: number;
   /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
   depthBias?: number;
+  /** Returns the drape cache budget in megabytes. */
+  drapeCacheSize?: number;
   /** Returns whether polygon fills are draped as a render-to-texture surface. */
   drapeFillsEnabled?: boolean;
   /** Returns whether vt tile lines are also draped (in addition to fills). */
   drapeLinesEnabled?: boolean;
   /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
   drapeResolution?: number;
+  /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
+  drapeWorkingSet?: number;
   /** Returns whether elevation tile prefetching is enabled. */
   elevationPrefetchEnabled?: boolean;
   /** Returns the enabled state of the terrain. */
@@ -7904,6 +7979,8 @@ export interface MethodTypes {
     set: (index: number, layer: Handle) => void;
   };
   "massif::LightOptions": {
+  };
+  "massif::LightStop": {
   };
   "massif::Line": {
   };
@@ -8487,6 +8564,8 @@ export interface EventTypes {
   "massif::Layers": {
   };
   "massif::LightOptions": {
+  };
+  "massif::LightStop": {
   };
   "massif::Line": {
   };

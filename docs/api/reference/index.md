@@ -31,4 +31,4 @@ Generated from the same table the SDK resolves `set`, `get`, `call` and `create`
 
 Plus [value types](types.md) — what a property, payload or result can be — and every [enum](enums.md).
 
-239 classes, 767 properties, 52 spec types, 39 enums.
+240 classes, 779 properties, 52 spec types, 39 enums.

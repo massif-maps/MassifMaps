@@ -1500,6 +1500,7 @@ public class DemoMap {
         terrainOptions.setCameraClearance(DemoConfig.TERRAIN_CAMERA_CLEARANCE);
         terrainOptions.setDrapeFillsEnabled(DemoConfig.TERRAIN_DRAPE_FILLS);
         terrainOptions.setDrapeLinesEnabled(DemoConfig.TERRAIN_DRAPE_LINES);
+        terrainOptions.setBridges3DEnabled(DemoConfig.TERRAIN_BRIDGES_3D);
         terrainOptions.setNoDrapeLayerFilter(DemoConfig.TERRAIN_NO_DRAPE_FILTER);
         terrainOptions.setDrapeResolution(DemoConfig.TERRAIN_DRAPE_RESOLUTION);
         terrainOptions.setDrapeCacheSize(DemoConfig.TERRAIN_DRAPE_CACHE_SIZE);

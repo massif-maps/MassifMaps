@@ -53,7 +53,10 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 |---|---|---|---|
 | `ambientColor` | color | read/write | Returns the ambient light color. |
 | `ambientIntensity` | number | read/write | Returns the ambient light intensity. |
-| `shadowBias` | number | read/write | Returns the shadow depth bias. |
+| `dayCycleLightStops` | struct `std::vector<massif::LightStop>` | read/write | Returns the day-cycle light curve - the "formula" an hour is turned into a look by. |
+| `dayCycleLightsEnabled` | boolean | read/write | Returns whether the sun's COLOURS follow its position. |
+| `dayCycleRisingLightStops` | struct `std::vector<massif::LightStop>` | read/write | Returns the curve used while the sun is RISING, if the app set one. |
+| `shadowBias` | number | read/write | Returns the shadow depth bias scale. |
 | `shadowCascades` | integer | read/write | Returns the number of shadow cascades. |
 | `shadowCasterMargin` | integer | read/write | Returns the shadow caster margin in tiles. |
 | `shadowDistance` | number | read/write | Returns the shadow distance. |
@@ -65,6 +68,7 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | `sunAzimuth` | number | read/write | Returns the sun azimuth in degrees. |
 | `sunColor` | color | read/write | Returns the sun (directional light) color. |
 | `sunIntensity` | number | read/write | Returns the sun light intensity. |
+| `sunOverridingStyle` | boolean | read/write | Returns whether this sun overrides the one a style states. |
 | `terrainLightingEnabled` | boolean | read/write | Returns whether the sun lights the 3D terrain surface. |
 
 ## `"sky"` — SkyOptions {#spec-sky}
@@ -111,12 +115,15 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | `backgroundColor` | color | read/write | Returns the terrain background color. |
 | `billboardOcclusionEnabled` | boolean | read/write | Returns the billboard/label terrain occlusion state. |
 | `billboardOcclusionTolerance` | number | read/write | Returns the billboard/label terrain occlusion tolerance. |
+| `bridges3DEnabled` | boolean | read/write | Returns whether bridges and tunnels stand on their own chord (3D bridges). |
 | `cameraClampDuration` | number | read/write | Returns the duration of the camera terrain-following correction animation. |
-| `cameraClearance` | number | read/write | Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. |
+| `cameraClearance` | number | read/write | Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. |
 | `depthBias` | number | read/write | Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. |
+| `drapeCacheSize` | integer | read/write | Returns the drape cache budget in megabytes. |
 | `drapeFillsEnabled` | boolean | read/write | Returns whether polygon fills are draped as a render-to-texture surface. |
 | `drapeLinesEnabled` | boolean | read/write | Returns whether vt tile lines are also draped (in addition to fills). |
 | `drapeResolution` | integer | read/write | Returns the per-tile drape texture resolution, 0 when it follows the screen. |
+| `drapeWorkingSet` | integer | read/write | Returns how many drape tiles the automatic resolution assumes are cached at once. |
 | `elevationPrefetchEnabled` | boolean | read/write | Returns whether elevation tile prefetching is enabled. |
 | `enabled` | boolean | read/write | Returns the enabled state of the terrain. |
 | `exaggeration` | number | read/write | Returns the terrain height exaggeration factor. |

@@ -279,6 +279,9 @@ public final class DemoConfig {
      *  draped (Crosscall, packaged style, 5.724/45.188 z15 t45). Contours stay sharp - see
      *  TerrainOptions.NoDrapeLayerFilter. '--es drapeLines false' goes back for an A/B. */
     public static boolean TERRAIN_DRAPE_LINES = true;
+    /** 3D bridges: span features on their chord, decks as extrusions. OFF in the SDK; the demo
+     *  turns it on to show them. '--es bridges3d false' is the A/B for the cost when off. */
+    public static boolean TERRAIN_BRIDGES_3D = true;
     /** 0 = derive from the screen, which the cache's memory budget then clamps to 512. Set
      *  explicitly, so the extrusions' contact shadow baked into the drape is more than a texel
      *  wide: at 512 a drape texel is ~1.7 m on the ground and the shadow reaches under 1 m. */
@@ -1284,6 +1287,7 @@ public final class DemoConfig {
         TERRAIN_MESH_RESOLUTION = DemoCfg.cfgInt("meshResolution", TERRAIN_MESH_RESOLUTION);
         TERRAIN_DRAPE_FILLS = DemoCfg.cfgBool("drape", TERRAIN_DRAPE_FILLS);
         TERRAIN_DRAPE_LINES = DemoCfg.cfgBool("drapeLines", TERRAIN_DRAPE_LINES);
+        TERRAIN_BRIDGES_3D = DemoCfg.cfgBool("bridges3d", TERRAIN_BRIDGES_3D);
         TERRAIN_DRAPE_RESOLUTION = DemoCfg.cfgInt("drapeResolution", TERRAIN_DRAPE_RESOLUTION);
         TERRAIN_DRAPE_CACHE_SIZE = DemoCfg.cfgInt("drapeCacheSize", TERRAIN_DRAPE_CACHE_SIZE);
         TERRAIN_DRAPE_WORKING_SET = DemoCfg.cfgInt("drapeWorkingSet", TERRAIN_DRAPE_WORKING_SET);

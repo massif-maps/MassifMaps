@@ -548,6 +548,9 @@ public final class DemoPanel {
         check(context, "drape lines", DemoConfig.TERRAIN_DRAPE_LINES, new BoolSetting() {
             public void set(boolean value) { DemoConfig.TERRAIN_DRAPE_LINES = value; demo.terrainOptions.setDrapeLinesEnabled(value); }
         });
+        check(context, "3D bridges", DemoConfig.TERRAIN_BRIDGES_3D, new BoolSetting() {
+            public void set(boolean value) { DemoConfig.TERRAIN_BRIDGES_3D = value; demo.terrainOptions.setBridges3DEnabled(value); }
+        });
         slider(context, "drape resolution", 256, 2048, DemoConfig.TERRAIN_DRAPE_RESOLUTION, true, new FloatSetting() {
             public void set(float value) {
                 DemoConfig.TERRAIN_DRAPE_RESOLUTION = Math.max(256, ((int) value / 256) * 256);

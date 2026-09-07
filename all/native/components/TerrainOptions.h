@@ -337,6 +337,23 @@ namespace massif {
         void setDrapeLinesEnabled(bool enabled);
 
         /**
+         * Returns whether bridges and tunnels stand on their own chord (3D bridges).
+         * @return True if a `span` feature is lifted onto the chord between its portals and a
+         * span deck is drawn as an extrusion. The default is false.
+         */
+        bool isBridges3DEnabled() const;
+        /**
+         * Enables or disables 3D bridges: a feature styled `line-elevation-mode: span` (or the
+         * polygon/building variants) is laid straight between its two portals instead of draped
+         * over the terrain, and a span deck stands as an extrusion carrying its road. Off, every
+         * such feature drapes like the ground and none of the span machinery runs - no chord
+         * resolution, no deck drape bakes, no reference tile fetches. Needs terrain.
+         * See docs/internals/rendering/04-terrain.md, "Bridges and tunnels: spans".
+         * @param enabled True to lift spans onto their chord, false to drape them.
+         */
+        void setBridges3DEnabled(bool enabled);
+
+        /**
          * Returns the style layers that are kept out of the terrain drape bake.
          * @return A regular expression matched against vt style layer names. The default is
          *         "^contour.*"; an empty string drapes everything the geometry type allows.
@@ -818,6 +835,7 @@ namespace massif {
         std::atomic<bool> _tileEdgeStitchingEnabled;
         std::atomic<bool> _drapeFillsEnabled;
         std::atomic<bool> _drapeLinesEnabled;
+        std::atomic<bool> _bridges3DEnabled;
         std::atomic<int> _drapeResolution;
         std::atomic<int> _minZoom;
         std::atomic<int> _maxTileZoomOffset;

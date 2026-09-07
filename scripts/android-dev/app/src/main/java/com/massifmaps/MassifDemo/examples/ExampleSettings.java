@@ -92,6 +92,7 @@ public final class ExampleSettings {
         { Kind.INT,    Group.TERRAIN, "meshResolution",      "mesh resolution",  8f, 128f },
         { Kind.TOGGLE, Group.TERRAIN, "drapeFillsEnabled",   "drape fills" },
         { Kind.TOGGLE, Group.TERRAIN, "drapeLinesEnabled",   "drape lines" },
+        { Kind.TOGGLE, Group.TERRAIN, "bridges3DEnabled",    "3D bridges" },
         { Kind.INT,    Group.TERRAIN, "drapeResolution",     "drape resolution", 256f, 2048f },
         { Kind.SLIDER, Group.TERRAIN, "viewDistanceFactor",  "view distance",    0f,   4f },
         { Kind.INT,    Group.TERRAIN, "maxTileZoomCoarsening", "tile coarsening", 0f,  6f },

@@ -482,6 +482,16 @@ Inherited from `StyleBuilder`:
 | `remove` | layer: handle | bool |
 | `set` | index: int, layer: handle | void |
 
+## `LightStop`
+
+| Property | Type | Access | Description |
+|---|---|---|---|
+| `ambientColor` | color | read-only | Returns the ambient colour. |
+| `ambientIntensity` | number | read-only | Returns the ambient intensity. |
+| `sunAltitude` | number | read-only | Returns the sun height this light belongs to. |
+| `sunColor` | color | read-only | Returns the directional colour. |
+| `sunIntensity` | number | read-only | Returns the directional intensity. |
+
 ## `Log`
 
 | Property | Type | Access | Description |

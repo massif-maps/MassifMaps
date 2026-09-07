@@ -48,6 +48,7 @@ public final class ExampleLive extends BroadcastReceiver {
         knob("meshResolution", "terrain", "meshResolution");
         knob("drape", "terrain", "drapeFillsEnabled");
         knob("drapeLines", "terrain", "drapeLinesEnabled");
+        knob("bridges", "terrain", "bridges3DEnabled");
         knob("drapeResolution", "terrain", "drapeResolution");
         knob("clearance", "terrain", "cameraClearance");
         knob("viewDistance", "terrain", "viewDistanceFactor");

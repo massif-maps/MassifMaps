@@ -727,6 +727,18 @@ the DEM has. That is right for a road on the ground and wrong for one on a bridg
 into the valley it crosses, and a tunnel climbs over the hill it goes through. A DSM makes it
 worse, since it catches the deck itself as terrain and spikes the middle upward.
 
+**Opt-in: `TerrainOptions::setBridges3DEnabled`, default false.** Off, the vt renderer's
+`_spansEnabled` gate makes every span feature drape like the ground and skips every span deck:
+`buildSpanUnions` returns before touching a piece, `resolveSpanBases` answers "unresolved" without
+a read, `collectSpanDrapeTiles` names no tile (so the owner bakes no span drape and hands none
+over), `collectUnresolvedSpanEnds` is empty (no reference tile fetches), and the line, polygon
+and extrusion programs are built without the `SPAN` flag. What remains is the per-geometry
+"has span records?" test that a map without spans made already, and the span records and the
+per-vertex chord slot the builder still emits for a styled span (a few bytes per vertex of a
+bridge). Turning it on later resolves from a clean cache; turning it off clears the chords and
+re-anchors the labels. Not measured as an A/B on device; the demo's `--es bridges3d false` is the
+switch for one.
+
 `line-elevation-mode` / `polygon-elevation-mode` (`drape` | `span` | `underground`) mark the
 features that do not lie on the ground. A span leaves the drape bake by construction —
 `isDrapeableGeometry` returns false for any geometry carrying span records, whatever the layer

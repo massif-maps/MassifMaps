@@ -46,20 +46,16 @@ namespace massif::vt {
     public:
         using ElevationProvider = std::function<bool(const cglib::vec3<double>&, int, bool, double&)>;
 
-        // Which PIECE a union belongs to. A feature id is a whole OSM way and carries several
-        // disjoint bridges, so the id alone spans the gaps between them - measured 7.1 km against
-        // a 3.8 km bridge. The pieces are grouped by connectivity first, and each group is keyed
-        // back to the piece that asks for it.
+        // Which PIECE a union belongs to. A feature id is a whole OSM way carrying several disjoint
+        // bridges, so the id alone spans the gaps between them - 7.1 km against a 3.8 km bridge. Pieces
+        // are grouped by connectivity first, and each group is keyed back to the piece asking.
         struct SpanPieceKey {
             TileId tileId = TileId(0, 0, 0);
             long long featureId = 0;
             std::size_t vertexOffset = 0;
-            // One structure is several GEOMETRIES of the same feature in the same tile - a bridge
-            // is a bed polygon, an extruded deck and the road lines on it - and they all start at
-            // vertexOffset 0, so without the type they share a key and overwrite each other's
-            // union. They must not: a ring's two ends (farthest apart) are not a line's two ends,
-            // so the survivor resolved the others against the wrong chord and the deck broke back
-            // into per-tile pieces.
+            // One structure is several GEOMETRIES of the same feature in one tile - a bed polygon, an
+            // extruded deck, the road lines - all starting at vertexOffset 0, so without the type they
+            // overwrite each other's union. A ring's two ends are not a line's two ends.
             TileGeometry::Type type = TileGeometry::Type::NONE;
             bool operator == (const SpanPieceKey& other) const {
                 return tileId == other.tileId && featureId == other.featureId && vertexOffset == other.vertexOffset && type == other.type;
@@ -91,11 +87,9 @@ namespace massif::vt {
                 return have0 == other.have0 && have1 == other.have1 && portal0 == other.portal0 && portal1 == other.portal1;
             }
         };
-        // The DISTINCT resolved chords of _spanUnions with their bounds: a label anchor asks
-        // "is this vertex on a deck" per vertex, and against the unions that was one chord test
-        // per piece - hundreds in a city, most of them the same chord - for every vertex of every
-        // label. Rebuilt wherever the unions gain a chord or a height; a sampler takes a COPY,
-        // so the cull thread can anchor labels with the renderer's lock released.
+        // The DISTINCT resolved chords of _spanUnions with their bounds: a label anchor asks "is this
+        // vertex on a deck" per vertex, which against the unions was hundreds of chord tests per vertex.
+        // A sampler takes a COPY, so the cull thread can anchor labels with the lock released.
         struct SpanChord {
             cglib::vec2<double> portal0, portal1;
             double height0 = 0, height1 = 0;
@@ -109,10 +103,9 @@ namespace massif::vt {
         void setElevationProvider(ElevationProvider provider);
         void setMetersToInternal(double metersToInternal);
 
-        // The cull: group the pieces of every tile (and of the reference tiles fetched for
-        // stranded pieces) into structures, resolve their chords, read the portal heights.
-        // `visibleTileIds` names the tiles whose DEM level a portal is read at; `baseVersion` is
-        // the elevation version the reads belong to.
+        // The cull: group the pieces of every tile into structures, resolve their chords, read the
+        // portal heights. `visibleTileIds` names the tiles whose DEM level a portal is read at;
+        // `baseVersion` is the elevation version the reads belong to.
         void build(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles, const std::set<TileId>& visibleTileIds, unsigned int baseVersion);
         // True once after a build that gave a chord its heights for the first time: a label that
         // could not reach the deck before can now.
@@ -134,25 +127,18 @@ namespace massif::vt {
         static cglib::mat3x3<double> tileMatrix2D(const TileId& tileId, float coordScale = 1.0f);
 
     private:
-        // A chord that was resolved once, kept after the tiles that proved it left the view. A
-        // bridge's portals are a property of the WORLD, not of what is on screen: zooming into one
-        // end drops the far piece from the visible set, and without this the chord shortens to
-        // whatever is still loaded and the deck visibly changes angle.
-        // The heights live HERE, with the chord, not with the pieces standing on it. A union is
-        // rebuilt from scratch every cull and keyed by the piece's tile, so a piece whose tile
-        // just entered the view had no previous heights to keep and hid until the DEM under a
-        // portal answered - which, for a portal off screen, could be never. A chord is one pair
-        // of heights whatever tile asks, and it keeps the last pair it resolved.
+        // A chord resolved once, kept after the tiles that proved it left the view: a bridge's portals
+        // are a property of the WORLD, and without this the chord shortens to whatever is still loaded.
+        // The heights live HERE, with the chord, since a union is rebuilt from scratch every cull.
         struct CachedChord {
             cglib::vec2<double> portal0, portal1;
             std::uint64_t stamp = 0;
             double height0 = 0, height1 = 0;
             bool haveHeights = false;
             unsigned int sampledCull = 0; // the buildSpanUnions pass that last read it
-            // The elevation version the pair was read at. An exaggeration ramp (the auto-flatten)
-            // moves the ground every frame and buildings re-resolve on each bump; a chord read
-            // once at a cull stayed at its 3D height while the ground sank under it, and a deck
-            // flattened at zero stayed on the water once the ground came back.
+            // The elevation version the pair was read at: an exaggeration ramp moves the ground every
+            // frame and buildings re-resolve on each bump, while a chord read once at a cull stayed at
+            // its 3D height as the ground sank under it.
             unsigned int baseVersion = 0;
         };
         // Keyed by the portals: a city view at a tilt holds well over a thousand distinct chords
@@ -162,11 +148,11 @@ namespace massif::vt {
         static ChordKey chordKey(const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
             return ChordKey { portal0(0), portal0(1), portal1(0), portal1(1) };
         }
-        // The zoom of the finest visible tile holding the point, which is the tile whose DEM level
-        // the road at a portal is drawn with; `fallbackZoom` for a point in no visible tile.
-        // Read a chord's portal heights, each at its own tile's zoom, a portal off screen at the
-        // asking piece's. False and the chord unchanged when a portal's DEM is not there: the
-        // last good pair is kept.
+        // The zoom of the finest visible tile holding the point, which is the tile whose DEM level the
+        // road at a portal is drawn with; `fallbackZoom` for a point in no visible tile.
+
+        // Read a chord's portal heights, each at its own tile's zoom. False and the chord unchanged when
+        // a portal's DEM is not there, so the last good pair is kept.
         CachedChord& rememberChord(const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1);
         int spanSampleZoomAt(const cglib::vec2<double>& pos, int fallbackZoom) const;
         bool sampleChordHeights(CachedChord& chord, int pieceZoom) const;

@@ -120,10 +120,9 @@ namespace massif {
 
             case Phase::MANUAL: {
                 float asked = std::min(1.0f, std::max(0.0f, input.manualRatio));
-                // Asking for any 3D asks for its tiles, and the ground is HELD flat until they are
-                // there - the same gate WARMING is, because the same unsubdivided geometry would
-                // otherwise be displaced over the relief. TerrainOptions::isSwitching is how an app
-                // sees the hold rather than wondering why its ratio does nothing.
+                // Asking for any 3D asks for its tiles, and the ground is HELD flat until they
+                // arrive, or unsubdivided geometry is displaced over the relief.
+                // TerrainOptions::isSwitching is how an app sees the hold.
                 next.decode3D = !input.fullSwitch || asked < 1.0f;
                 bool held = asked < 1.0f && state.ratio >= 1.0f && !input.tilesReady;
                 next.ratio = held ? 1.0f : asked;

@@ -36,9 +36,8 @@ namespace massif {
     void TerrainShadowMap::setSize(int size, int cascades) {
         int clampedCascades = std::min(MAX_CASCADES, std::max(1, cascades));
         // The pages sit side by side in ONE texture, so the widest supported texture caps the
-        // per-cascade resolution, not the resolution alone. Ask the driver instead of assuming
-        // 4096: that assumption silently capped 3 x 2048 at 3 x 1365, so raising the shadow map
-        // size did nothing on hardware that would have taken it (8192 and 16384 are common).
+        // per-cascade resolution. Ask the driver rather than assume 4096: that silently capped
+        // 3 x 2048 at 3 x 1365 on hardware that would have taken it.
         static int maxTextureSize = 0;
         if (maxTextureSize == 0) {
             GLint value = 0;
@@ -79,10 +78,9 @@ namespace massif {
     }
 
     bool TerrainShadowMap::createResourcesAtSize() {
-        // The DEPTH BUFFER IS THE MAP: the caster pass writes depth alone instead of depth plus a
-        // packed-RGB copy of it, the atlas is 16 bits instead of 32 + 16, and the receiver reads
-        // the hardware's own value. ES 3.0 core, so the only way back to the packed-colour path is
-        // the incomplete-framebuffer fallback below.
+        // The DEPTH BUFFER IS THE MAP: the caster pass writes depth alone rather than depth plus a
+        // packed-RGB copy, so the atlas is 16 bits instead of 32 + 16. ES 3.0 core, so the only way
+        // back to the packed-colour path is the incomplete-framebuffer fallback below.
 
         glGenTextures(1, &_texture);
         glBindTexture(GL_TEXTURE_2D, _texture);
@@ -93,10 +91,9 @@ namespace massif {
         } else {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _size * _cascades, _size, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         }
-        // A COMPARISON sampler: the texture unit does four depth compares per fetch and returns
-        // their bilinear average, so LINEAR is right here. On the packed-colour fallback the filter
-        // must be NEAREST - depth is not a filterable quantity, and interpolating two depths gives
-        // a third, meaningless one.
+        // A COMPARISON sampler: the unit does four depth compares per fetch and returns their
+        // bilinear average, so LINEAR is right. On the packed-colour fallback it must be NEAREST -
+        // interpolating two depths gives a third, meaningless one.
         _hardwarePCF = _depthTextureMode;
         if (_hardwarePCF) {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
@@ -167,11 +164,9 @@ namespace massif {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glDepthMask(GL_TRUE);
-        // Slope-scaled offset on the CASTER, which is the only bias that works here: one shadow
-        // texel covers tens of metres of ground, so on a slope lit at a grazing angle the depth
-        // varies across a single texel by far more than any constant bias can absorb, and the
-        // surface shadows itself in a regular hatch. A constant bias large enough to cover that
-        // would detach the shadows from the ridges casting them.
+        // Slope-scaled offset on the CASTER, the only bias that works here: one shadow texel covers
+        // tens of metres, so at a grazing angle the depth varies across a texel by more than any
+        // constant bias absorbs - and one large enough would detach the shadows from their ridges.
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(1.0f, 2.0f);
         // White = depth 1 = nothing in the way, which is what an untouched texel must mean.

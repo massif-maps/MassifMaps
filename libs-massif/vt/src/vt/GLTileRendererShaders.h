@@ -125,17 +125,15 @@ namespace massif::vt {
         FOG_FLAG = 512,
         GROUND_BASE_FLAG = 2048,
         DEM_HW_FILTER_FLAG = 4096,
-        // How many cascades the shadow lookup is compiled for (none of these = one). The count is
-        // a compile-time constant because it decides how many matrices the vertex stage applies and
-        // how many highp varyings it interpolates, and that - not the PCF taps - is what the
-        // shadowed surface costs (docs/rendering/08-lighting-sky-fog.md).
+        // How many cascades the shadow lookup is compiled for (none of these = one). Compile-time,
+        // because it decides how many matrices the vertex stage applies and how many highp varyings
+        // it interpolates - that, not the PCF taps, is what a shadowed surface costs.
         SHADOW_CASCADES2_FLAG = 8192,
         SHADOW_CASCADES3_FLAG = 16384,
         SHADOW_CASCADES4_FLAG = 32768,
         // The shadow of the terrain SURFACE, computed once per screen pixel into a half-resolution
-        // mask (OUT) and then sampled by every surface that covers that pixel (IN). The lookup is
-        // the most expensive thing a shadowed fragment does and the ground is drawn over the whole
-        // screen, sometimes twice - once as the drape and once as the paint over it.
+        // mask (OUT) and sampled by every surface covering that pixel (IN). The lookup is the most
+        // expensive thing a shadowed fragment does, and the ground covers the whole screen.
         SHADOW_MASK_OUT_FLAG = 65536,
         SHADOW_MASK_IN_FLAG = 131072,
         // One tap instead of the kernel. For 3D extrusion fragments: a wall is shadowed or lit over
@@ -404,14 +402,9 @@ namespace massif::vt {
         uniform float uDepthShift;       // painter-order near-camera separation boost
         uniform float uDepthClearance;   // METRE-constant clearance: proj[2][3] * metres (see below)
         // Three depth terms, selected by which uniforms are non-zero:
-        //  - slack (occluder) model: (uDepthBias*w + uDepthBiasClip) pulls the draw towards the
-        //    viewer so draped content clears the surface pre-pass;
-        //  - painter-order (tangram): uLayerDepthOffset*(DELTA*w + uDepthShift), DELTA = 2^-19 -
-        //    a fixed per-layer delta, no occluder and no distance-growing slack;
-        //  - uDepthClearance: worth the SAME METRES at every range. ndc = -proj[2][2] + proj[2][3]/d,
-        //    so moving a vertex by c gives a clip term proj[2][3]*c/w - the 1/w below. Constant-NDC
-        //    is worth distance^2/near and constant-CLIP distance/near; only this one is what a
-        //    draped LINE needs, since its chord over relief is a fixed number of metres.
+        //  - slack (occluder): (uDepthBias*w + uDepthBiasClip) pulls the draw towards the viewer;
+        //  - painter-order (tangram): uLayerDepthOffset*(2^-19*w + uDepthShift), a per-layer delta;
+        //  - uDepthClearance: worth the SAME METRES at every range, which is what a draped LINE needs.
         vec4 applyDepthBias(vec4 clipPos) {
             float z = clipPos.z
                 + uLayerDepthOffset * (0.0000019073486328125 * clipPos.w + uDepthShift)
@@ -440,20 +433,13 @@ namespace massif::vt {
         #else
         #define SHADOW_CASCADES 1
         #endif
-        // Tile-local -> light clip space, one matrix per cascade. The matrices are built per tile
-        // so their input stays in [0,1] and float precision is never asked to hold a world
-        // coordinate. EVERY cascade is computed here: which one a fragment ends up using is
-        // decided in the fragment stage from the result, and a varying cannot be written
-        // conditionally on something only the fragment stage knows. Compiled for the cascade count
-        // in use, because each one is a matrix per vertex and a highp varying per fragment.
+        // Tile-local -> light clip space, one matrix per cascade, built per tile so their input stays
+        // in [0,1]. EVERY cascade is computed here: the fragment stage picks one from the result, and
+        // a varying cannot be written conditionally on what only that stage knows.
         uniform highp mat4 uShadowMatrix[SHADOW_CASCADES];
-        // NORMAL OFFSET, mapbox's model (3d-style/shaders/_prelude_shadow.vertex.glsl): the point
-        // looked up in the shadow map is pushed OUT ALONG ITS OWN NORMAL, per cascade, in tile-local
-        // units. Acne then goes away by moving the sample sideways instead of by lifting its depth,
-        // so the depth bias can stay small and the shadow stays ATTACHED to the wall that casts it -
-        // which is the whole difference on a building. A dedicated sun uniform: uSunDir belongs to
-        // the fragment stage here, and one name declared in two blocks of the same stage is a link
-        // error.
+        // NORMAL OFFSET, mapbox's model: the point looked up in the shadow map is pushed OUT ALONG ITS
+        // OWN NORMAL, per cascade, so acne goes away by moving the sample sideways rather than lifting
+        // its depth and the shadow stays ATTACHED to the wall casting it.
         uniform mediump vec4 uShadowNormalOffset;
         uniform mediump vec3 uShadowSunDir;
         varying highp vec3 vShadowPos0;
@@ -511,32 +497,22 @@ namespace massif::vt {
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         uniform highp vec2 uElevationLatticeCell; // regular-grid surface cell size in NODE-uv units (0 = off = plain node sample)
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
-        // The NODE texture: the same DEM box-filtered to the surface lattice, one texel per mesh
-        // node. The vertex stage displaces from THIS, never from uElevationTexture: a lattice
-        // sampling a lidar-grade DEM point by point aliases every relief finer than its cell
-        // (a road's cut under a 6.7 m cell came out as a sawtooth at a grazing tilt), and the
-        // box filter is what removes it. The full texture stays the FRAGMENT stage's, for the
-        // shading and contours that resolve more than the mesh can.
+        // The NODE texture: the same DEM box-filtered to the surface lattice, one texel per mesh node.
+        // The vertex stage displaces from THIS - point-sampling a lidar DEM aliases every relief finer
+        // than a cell. The full texture stays the FRAGMENT stage's, for shading and contours.
         uniform highp sampler2D uElevationNodeTexture;
         uniform highp vec4 uElevationNodeUV;        // node texture uv = uv.xy + pos.xy * uv.zw
         uniform highp vec4 uElevationNodeTexelSize; // xy: texture size in texels, zw: 1 / size
 
-        // GPU draping: the vertex z is REPLACED with the height sampled from the node texture,
-        // the same texture for every layer, so all of them agree exactly.
-        // The bilinear filter is MANUAL - 4 samples at exact texel centres plus mix - because
-        // several mobile GPUs filter VERTEX-stage fetches as NEAREST whatever is requested, and
-        // that deviates from the depth-writing surface by up to a full texel step (tens of metres
-        // on a cliff). At texel centres both filters return the same texel, so this is identical
-        // everywhere, and it matches ElevationTileGrid::sampleNodeHeight on the CPU side.
+        // GPU draping: the vertex z is REPLACED with the height sampled from the node texture, the same
+        // one for every layer. The bilinear filter is MANUAL because several mobile GPUs filter
+        // VERTEX-stage fetches as NEAREST, which deviates by up to a full texel step.
         float sampleNode(highp vec2 uv) {
             return dot(texture2D(uElevationNodeTexture, uv), uElevationDecode) + uElevationOffset;
         }
-        // Manual bilinear of the node texture at uv (4 texel-center taps). At the nominal zoom a
-        // surface vertex IS a node, so all four taps read one texel and the height is exact.
-        // DEM_HW_FILTER collapses it to ONE hardware-filtered fetch, which is what tangram's
-        // terrain vertex does. It exists because some mobile GPUs ignore LINEAR for vertex texture
-        // fetch and return NEAREST, which shows as terraced geometry - so it is a measurement
-        // switch, not a default, until a device says the filtering is honoured.
+        // Manual bilinear of the node texture at uv (4 texel-centre taps). DEM_HW_FILTER collapses it
+        // to ONE hardware-filtered fetch, as tangram's terrain vertex does - a measurement switch, not
+        // a default, since some mobile GPUs ignore LINEAR here and return terraced geometry.
         #ifdef DEM_HW_FILTER
         float nodeMeters(highp vec2 uv) {
             return sampleNode(uv);
@@ -558,19 +534,13 @@ namespace massif::vt {
             highp vec2 uv = uElevationNodeUV.xy + pos.xy * uElevationNodeUV.zw;
             float meters;
             if (uElevationLatticeCell.x != 0.0) {
-                // LATTICE CLAMP: take the 4 surrounding grid-corner heights (each a node sample)
-                // and interpolate them with the SAME two-triangle split the surface mesh
-                // uses, so draped geometry follows the surface everywhere, not only at the nodes.
-                // A bilinear blend instead leaves an in-cell twist that exceeds the (near zero)
-                // painter-order slack at large cells and cracks draped lines.
-                // buildRegularGridSurface emits (a,b,c),(a,c,d) with a=(i,j)..d=(i,j+1), and vertex
-                // y is 1-v, so in elevation-uv fg-space d=(0,0)=H00, c=(1,0)=H10, a=(0,1)=H01,
-                // b=(1,1)=H11 and the shared edge is the ANTI-diagonal fg.x+fg.y=1. Match it.
-                // CROSS-LOD STITCHING: a coarser neighbour's lattice is a strict subset of this
-                // one's, so scaling the cell along a shared edge reproduces its chords exactly
-                // (factors are 1 by default; a corner sits on every lattice, so double scaling is
-                // harmless). The edge test is in TILE units - draped CONTENT arrives in its own
-                // frame and must be converted, or the ground is stitched and the road on it is not.
+                // LATTICE CLAMP: interpolate the 4 surrounding node heights with the SAME two-triangle
+                // split the surface mesh uses, so draped geometry follows the surface between the nodes
+                // too. The shared edge is the ANTI-diagonal fg.x + fg.y = 1; match it.
+
+                // CROSS-LOD STITCHING: a coarser neighbour's lattice is a strict subset of this one's,
+                // so scaling the cell along a shared edge reproduces its chords exactly. The edge test
+                // is in TILE units - draped content arrives in its own frame and must be converted.
                 highp vec2 unitPos = pos.xy * uTileUnitScale;
                 highp vec2 cell = uElevationLatticeCell;
                 if (unitPos.x < 0.00001) cell.y *= uTerrainEdgeCoarsening.x;       // west edge
@@ -611,11 +581,9 @@ namespace massif::vt {
             return pos;
         }
         #endif
-        // 2D content shaded or shadowed by the terrain needs the elevation uv of the fragment and
-        // the local mercator height stretch, so its fragment stage can take the SAME terrain
-        // normal the surface takes (see commonFsh). The surface shaders declare these themselves
-        // under TERRAIN_LIGHT - declaring them twice in one program is a link error, so this copy
-        // exists only for the programs that have no lighting of their own.
+        // 2D content shaded or shadowed by the terrain needs the fragment's elevation uv and the local
+        // mercator stretch, so it can take the SAME terrain normal the surface takes. Only for programs
+        // with no lighting of their own - the surface shaders declare these under TERRAIN_LIGHT.
         #if defined(TERRAIN) && (defined(TERRAIN_SHADOW) || defined(GEOMETRY_LIGHT)) && !defined(TERRAIN_LIGHT)
         varying highp vec2 vElevUV;
         varying mediump float vElevCosh;
@@ -624,10 +592,9 @@ namespace massif::vt {
             highp float slopeMY = uElevationScale.y + pos.y * uElevationScale.z;
             vElevCosh = 0.5 * (exp(slopeMY) + exp(-slopeMY));
         }
-        // A span is NOT on the ground, so it must not take the ground's normal: the deck would be
-        // shaded by the valley wall under it and step in tone where it meets its own draped
-        // approach. Zeroing the stretch flattens the gradient terrainNdl() builds, which is the
-        // horizontal normal a deck actually has.
+        // A span is NOT on the ground, so it must not take the ground's normal - the deck would be
+        // shaded by the valley wall under it. Zeroing the stretch flattens the gradient terrainNdl()
+        // builds, which is the horizontal normal a deck actually has.
         void setSpanFlatShading() {
             vElevCosh = 0.0;
         }
@@ -639,11 +606,9 @@ namespace massif::vt {
         #endif
     )GLSL";
 
-    // The model itself: pure functions of the fog uniforms, always the SDK's, so the tile content,
-    // the sky, the background plane and the terrain surface share ONE definition of it.
-    //
-    // VERBATIM COPY of FogShader::HELPERS in all/native/renderers/utils/FogShader.cpp in the SDK
-    // repository, which is the master. A difference between the two is a bug.
+    // The model itself: pure functions of the fog uniforms, so tile content, sky, background plane and
+    // terrain surface share ONE definition. VERBATIM COPY of FogShader::HELPERS in all/native, which is
+    // the master - a difference between the two is a bug.
     static const std::string fogHelpersFsh = R"GLSL(
         highp vec3 fogRayVec() {
             return uFogRay * vec3(gl_FragCoord.x, gl_FragCoord.y, 1.0);
@@ -670,12 +635,9 @@ namespace massif::vt {
         }
     )GLSL";
 
-    // The blends, substituted into commonFsh at $FOG_BLEND$ unless the application supplied its own
-    // (GLTileRenderer::setFogShaderSource) - a custom source replaces all three.
-    //
-    // VERBATIM COPY of FogShader::BUILTIN, same master as above. Colours are PREMULTIPLIED, so the
-    // fog colour is premultiplied by this fragment's own alpha; the fog tints what is there rather
-    // than adding coverage, so alpha is left alone.
+    // The blends, substituted into commonFsh at $FOG_BLEND$ unless the application supplied its own.
+    // VERBATIM COPY of FogShader::BUILTIN, same master as above. Colours are PREMULTIPLIED, so the fog
+    // tints what is there rather than adding coverage and alpha is left alone.
     static const std::string fogBlendFsh = R"GLSL(
         lowp vec4 applyFog(lowp vec4 color, highp vec3 dir, highp float dist, highp float heightM) {
             lowp float amount = fogOpacity(fogRange(dist)) * fogHorizonBlend(dir);
@@ -725,10 +687,9 @@ namespace massif::vt {
         // so one custom block covers the tile content, the background plane and the sky.
         $FOG_BLEND$
 
-        // Direction and distance WITHOUT a varying - see fogRayVec. An orthographic pass, the drape
-        // bake, has gl_FragCoord.w = 1, which is a whole world in internal units, so it never fogs:
-        // exactly right, since the bake is flat content that gets fogged later as part of the
-        // terrain surface it is painted on.
+        // Direction and distance WITHOUT a varying - see fogRayVec. The orthographic drape bake has
+        // gl_FragCoord.w = 1, a whole world in internal units, so it never fogs - which is right, the
+        // bake being fogged later as part of the surface it is painted on.
         lowp vec4 applyFog(lowp vec4 color) {
             highp vec3 rayVec = fogRayVec();
             highp float rayLen = length(rayVec);
@@ -745,12 +706,9 @@ namespace massif::vt {
             return 1.0;
         }
         #endif
-        // The terrain normal at this fragment, for 2D content that is lit or shadowed by the
-        // ground and has no lighting of its own. Same 3x3 stencil, same uniforms and same varyings
-        // as the surface takes (backgroundFsh), so a road and the ground it lies on get the SAME
-        // N.L - and with it the same slope-scaled shadow bias and the same back-face rule. Taken at
-        // normal incidence instead, a coplanar receiver gets the minimum bias against a caster it
-        // shares its depth with, so half the PCF taps fail and the whole ground shadows itself.
+        // The terrain normal at this fragment, for 2D content lit or shadowed by the ground with no
+        // lighting of its own. Same stencil, uniforms and varyings as the surface takes, so a road and
+        // its ground get the SAME N.L, the same slope-scaled bias and the same back-face rule.
         #if defined(TERRAIN) && (defined(TERRAIN_SHADOW) || defined(GEOMETRY_LIGHT)) && !defined(TERRAIN_LIGHT)
         uniform highp sampler2D uElevationTexture;
         uniform highp vec4 uElevationDecode; // 'vec4' in the vertex stage means highp there
@@ -826,11 +784,9 @@ namespace massif::vt {
         uniform sampler2D uShadowTexture;
         #endif
         uniform mediump vec4 uShadowParams; // x = 1/mapSize within one cascade, y = strength, z = PCF radius in texels, w = 1/cascade count
-        // mapbox's u_shadow_bias SHAPE (3d-style/render/shadow_renderer.ts): x = constant, y = how
-        // fast the bias grows as the surface turns away from the light, z = the CAP on that growth.
-        // In METRES, not their normalised depth: our light box spans hundreds of km even fitted to
-        // the cascade sphere, so their 0.0001 came out as a kilometres-deep bias that erased every
-        // shadow. uShadowDepthScale converts, per cascade, because each box normalises its own depth.
+        // mapbox's u_shadow_bias SHAPE: x = constant, y = how fast it grows as the surface turns from
+        // the light, z = the cap. In METRES, not their normalised depth - our light box spans hundreds
+        // of km, where their 0.0001 is a kilometres-deep bias. uShadowDepthScale converts per cascade.
         uniform mediump vec3 uShadowBias;
         uniform highp vec4 uShadowDepthScale; // 1 / depth range in metres, per cascade
         // Where the outermost cascade fades out, as a VIEW DEPTH in internal units:
@@ -854,9 +810,8 @@ namespace massif::vt {
             return pos.x < margin || pos.x > 1.0 - margin || pos.y < margin || pos.y > 1.0 - margin || pos.z < 0.0 || pos.z > 1.0;
         }
 
-        // The caster pass packs window-space depth into RGB; unpack and compare with a slope
-        // independent constant plus the caller's bias. The uv is in ATLAS space: the cascades are
-        // pages of one texture, side by side, near page first.
+        // The caster pass packs window-space depth into RGB; unpack and compare against the caller's
+        // bias. The uv is in ATLAS space - the cascades are pages of one texture, near page first.
         // One tap: is this reference depth in front of what the map holds here? 1 = lit.
         mediump float shadowTap(highp vec2 uv, highp float ref) {
         #if defined(SHADOW_HW)
@@ -869,16 +824,13 @@ namespace massif::vt {
             return ref <= dot(enc.rgb, vec3(1.0, 1.0 / 255.0, 1.0 / 65025.0)) ? 1.0 : 0.0;
         #endif
         }
-        // 3x3 PCF over a radius in shadow-map texels. One shadow texel covers many metres of
-        // ground, so a single tap gives hard stair-stepped edges; averaging over a small kernel is
-        // what makes a finite-resolution shadow map look like a shadow rather than a mask.
-        // ndl scales the bias with the angle between the surface and the light: at a grazing
-        // angle one shadow texel spans a large depth range, and a constant bias cannot cover it.
-        // Left constant, the residual self-shadowing lands in bands of constant height - which on
-        // a hillside reads as ripples following the contour lines.
-        // mapLit is the part of the answer the shadow MAP gave: 1 wherever the map was not
-        // consulted (back-facing, or outside every cascade). A receiver that dims its ambient in
-        // shadow must use this and not the return value, or its own back faces lose the sky too.
+        // 3x3 PCF over a radius in shadow-map texels: one texel covers many metres of ground, so a
+        // single tap gives hard stair-stepped edges. ndl scales the bias with the angle to the light,
+        // where one texel spans a large depth range; left constant it ripples along the contours.
+
+        // mapLit is the part of the answer the shadow MAP gave: 1 wherever it was not consulted
+        // (back-facing, or outside every cascade). A receiver dimming its ambient must use this, not
+        // the return value, or its own back faces lose the sky too.
         mediump float shadowFactorSlopeParts(mediump float ndl, out mediump float mapLit) {
             mapLit = 1.0;
             // Cascades, near page first: a fragment takes the sharpest page it falls inside. The
@@ -908,20 +860,13 @@ namespace massif::vt {
             highp float o = uShadowParams.x * uShadowParams.z;
             highp float ref = pos.z;
             mediump float facing = smoothstep(0.0, 0.15, ndl);
-            // RECEIVER-PLANE slope, from screen-space derivatives: how this receiver's own depth
-            // changes per unit of shadow uv. The stored depth belongs to the TEXEL CENTRE, up to
-            // half a texel from this fragment, and on ground seen at a grazing sun that half texel
-            // is metres of height - so without this the SURFACE shadows itself in a regular mesh.
-            // mapbox needs no equivalent: their ground receiver is a flat plane at z=0 and terrain
-            // never casts (ground_shadow.vertex.glsl), so their bias never had a self-shadowing
-            // ground to cover. Ours does, which is why this cannot be dropped for their model.
-            // GROUND ONLY. On an extrusion the shadow position is DISCONTINUOUS across the bevel
-            // band at a vertical edge, so a quad straddling it sees a huge derivative and the bias
-            // saturates on some fragments and not others - which is the serrated wedge at a corner.
-            // An extrusion has the normal offset for its acne and needs no plane bias; the ground
-            // has no normal and needs nothing else.
-            // Taken BEFORE any early return: a fragment that returns early leaves its quad
-            // neighbours with an undefined gradient.
+            // RECEIVER-PLANE slope from screen-space derivatives: the stored depth belongs to the TEXEL
+            // CENTRE, and at a grazing sun half a texel is metres of height, so without this the surface
+            // shadows itself in a regular mesh. mapbox needs none - their ground is a flat plane.
+
+            // GROUND ONLY: on an extrusion the shadow position is DISCONTINUOUS across the bevel band,
+            // so a quad straddling it saturates the bias on some fragments and not others. Taken BEFORE
+            // any early return, or a returning fragment leaves its quad neighbours undefined.
             highp vec2 dzduv = vec2(0.0);
         #if defined(DERIVATIVES) && !defined(SHADOW_RECEIVER_3D)
             {
@@ -931,12 +876,9 @@ namespace massif::vt {
                 if (abs(det) > 1.0e-12) {
                     dzduv.x = ( dpdy.y * dpdx.z - dpdx.y * dpdy.z) / det;
                     dzduv.y = (-dpdy.x * dpdx.z + dpdx.x * dpdy.z) / det;
-                    // SCALE-FREE cap: how far the receiver may rise over ONE texel, as a fraction
-                    // of the box depth. It has to be scale-free - a metric ceiling collapses to
-                    // nothing in normalised depth as the box grows, so the bias dies at low zoom
-                    // and the mesh comes back, which is what a metres-based cap did here.
-                    // A near-silhouette texel has an unbounded gradient; this is also what stops it
-                    // inverting the comparison and punching holes in the shadow.
+                    // SCALE-FREE cap: how far the receiver may rise over ONE texel, as a fraction of
+                    // the box depth. A metric ceiling collapses to nothing in normalised depth as the
+                    // box grows. It also stops a near-silhouette texel punching holes in the shadow.
                     highp float limit = 0.02 / max(1.0e-6, uShadowParams.x);
                     dzduv = clamp(dzduv, vec2(-limit), vec2(limit));
                 }
@@ -949,23 +891,14 @@ namespace massif::vt {
                 return mix(1.0, facing, uShadowParams.y);
             }
             // A surface turned away from the sun is in its own shadow whatever the map says, so the
-            // taps cannot change the answer: skipping them there is free. It is worth its own branch
-            // because that is a third of a hillside and about half of every building wall - the 3D
-            // pass is where this pays most.
+            // taps cannot change the answer. Worth its own branch: that is a third of a hillside and
+            // half of every building wall.
             if (facing <= 0.0) {
                 return mix(1.0, 0.0, uShadowParams.y);
             }
-            // mapbox's slope-scaled bias, verbatim (_prelude_shadow.fragment.glsl): a constant plus
-            // a term that grows with the angle between the surface and the light, CAPPED. The cap
-            // is what our own model was missing - a receiver-plane bias from screen-space
-            // derivatives, whose clamp allowed one texel to be worth 0.02 of the light box, more
-            // than mapbox's entire bias budget, and darkened every silhouette it touched
-            // (docs/internals/rendering/08-lighting-sky-fog.md).
-            // tan(acos(x)) written as sqrt(1-x*x)/x: the direct form runs to infinity as the
-            // surface turns edge-on to the light, and this block is mediump - the overflow came
-            // back as a NaN that poisoned ref for EVERY fragment, which reads as the shadows
-            // simply not being there. The floor on x caps the ratio at 20, well past the point
-            // where uShadowBias.z clamps it anyway.
+            // mapbox's slope-scaled bias verbatim: a constant plus a term growing with the angle to
+            // the light, CAPPED - the cap is what our own derivative-based model was missing.
+            // tan(acos(x)) as sqrt(1-x*x)/x, since the direct form overflows mediump into a NaN.
             mediump float ndlBias = clamp(ndl, 0.05, 1.0);
             mediump float slope = sqrt(1.0 - ndlBias * ndlBias) / ndlBias;
             highp float depthScale = uShadowDepthScale.x;
@@ -1003,15 +936,9 @@ namespace massif::vt {
             }
             lit *= 0.25;
         #endif
-            // The outermost cascade ends somewhere - at the shadow distance, or at the point where
-            // covering more ground would only coarsen every texel. Ending it abruptly draws a line
-            // across the terrain, so the shadow fades out first. Faded over VIEW DEPTH, mapbox's
-            // model (_prelude_shadow.fragment.glsl: mix(occlusion, 0.0, smoothstep(u_fade_range.x,
-            // u_fade_range.y, view_depth))), not over the page's own uv edge: a page edge is a
-            // straight line in LIGHT space, which projects to a hard line crossing the map that
-            // swings with the camera. View depth fades it as a ring at the horizon instead.
-            // Earlier pages must not fade: a fragment leaving one of those is picked up by the next
-            // cascade, and fading there would thin the shadow along every cascade boundary.
+            // The outermost cascade ends somewhere, and ending it abruptly draws a line across the
+            // terrain - so the shadow fades over VIEW DEPTH, mapbox's model. Not over the page's uv
+            // edge, which projects to a hard line. Earlier pages must not fade: the next one takes over.
             mediump float lastPage = 1.0 / uShadowParams.w - 1.0;
             if (page >= lastPage - 0.5 && uShadowFadeRange.y > 0.0) {
                 // 1 / gl_FragCoord.w is the clip w, i.e. the distance along the view axis - the
@@ -1019,10 +946,9 @@ namespace massif::vt {
                 highp float viewDepth = 1.0 / max(1.0e-9, gl_FragCoord.w);
                 lit = mix(lit, 1.0, smoothstep(uShadowFadeRange.x, uShadowFadeRange.y, viewDepth));
             }
-            // A surface turned away from the sun is in its own shadow whatever the map says, and
-            // the map cannot say anything useful there anyway: its texels are seen edge-on, so the
-            // depth stored for one covers the whole face. Shadowing those outright is both correct
-            // and what makes it safe to keep the bias small everywhere else.
+            // A surface turned away from the sun is in its own shadow whatever the map says, and the
+            // map cannot say anything useful there - its texels are seen edge-on. Shadowing them
+            // outright is what makes it safe to keep the bias small everywhere else.
             mapLit = mix(1.0, lit, uShadowParams.y);
             lit = min(lit, facing);
             return mix(1.0, lit, uShadowParams.y);
@@ -1035,10 +961,9 @@ namespace massif::vt {
             return shadowFactorSlope(1.0);
         }
         #endif
-        // 2D content standing ON the ground, drawn in the 3D scene instead of baked into the drape:
-        // it takes the ground's sun AND the ground's shadow, from the terrain normal under it.
-        // Without the sun a no-drape layer (contours) kept its full style colour while everything
-        // draped around it was lit - GEOMETRY_LIGHT is what closes that.
+        // 2D content standing ON the ground and drawn in the 3D scene rather than baked into the
+        // drape takes the ground's sun AND shadow, from the terrain normal under it. Without the sun a
+        // no-drape layer kept its full style colour while everything draped around it was lit.
         #if defined(TERRAIN) && defined(GEOMETRY_LIGHT) && !defined(TERRAIN_LIGHT)
         uniform lowp vec4 uSunColor;        // rgb = colour, a = unused
         uniform lowp vec4 uAmbientColor;    // rgb = colour, a = unused
@@ -1071,10 +996,9 @@ namespace massif::vt {
             return color;
         }
         #endif
-        // The whole drape composite is drawn before any live geometry, so a layer left out of the
-        // bake can only land on top of it. This is what puts it back in its style position: the
-        // accumulated coverage of the DRAPED layers that come after it, sampled in drape-tile uv
-        // (docs/internals/rendering/04-terrain.md).
+        // The whole drape composite is drawn before any live geometry, so a layer left out of the bake
+        // could only land on top of it. This puts it back in its style position: the accumulated
+        // coverage of the DRAPED layers after it, sampled in drape-tile uv.
         #ifdef DRAPE_MASK
         uniform lowp sampler2D uDrapeMask;
         uniform highp vec4 uDrapeMaskUVTransform; // target-tile units -> mask-tile units
@@ -1089,10 +1013,9 @@ namespace massif::vt {
         #endif
     )GLSL";
 
-    // Per-fragment terrain lighting needs the elevation uv of the fragment and the local mercator
-    // height stretch; both are linear in the vertex position, so they interpolate. Prepended to
-    // every vertex shader whose fragment stage takes the terrain normal - commonVsh cannot hold it,
-    // the terrain-paint path declares the same varyings itself.
+    // Per-fragment terrain lighting needs the fragment's elevation uv and the local mercator stretch,
+    // both linear in the vertex position. Prepended to every vertex shader whose fragment stage takes
+    // the terrain normal - commonVsh cannot hold it, the paint path declares the same varyings.
     static const std::string terrainLightVsh = R"GLSL(
         #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
         varying highp vec2 vElevUV;
@@ -1170,10 +1093,8 @@ namespace massif::vt {
     )GLSL";
 
     // The extrusion caster: the same depth packing, behind the same half-open tile clip the drawn
-    // extrusion applies (polygon3DFsh). Under overzoom every target tile holds the whole source
-    // geometry, and a buffer-margin copy from the neighbouring source tile holds it again - drawn
-    // unclipped, a copy whose base has not resolved yet stands above the drawn one and shadows
-    // its whole roof. mapbox draws the same bucket in both passes, so its clip is the same too.
+    // extrusion applies. Under overzoom a buffer-margin copy from the neighbouring source tile is
+    // there twice, and unclipped the unresolved copy stands above the drawn one and shadows its roof.
     static const std::string polygon3DShadowCasterFsh = R"GLSL(
         varying highp_opt vec2 vTilePos;
 
@@ -1207,11 +1128,9 @@ namespace massif::vt {
         varying highp vec2 vElevUV;
         varying mediump float vElevCosh;
 
-        // The DEM gradient, as tangram's `normal` block takes it - see terrainSampleDem below for
-        // why the stencil is quadratic rather than a central difference. The surface is displaced by
-        // exactly this height field in the vertex stage, so this is the normal of what is drawn.
-        // No decode offset needed (only differences are used); highp because heights reach several
-        // thousand metres and mediump would leave the differences as rounding noise.
+        // The DEM gradient, as tangram's `normal` block takes it - terrainSampleDem says why the
+        // stencil is quadratic. The vertex stage displaces by exactly this height field, so this is
+        // the normal of what is drawn. highp, or differences of thousands of metres are noise.
         mediump vec3 terrainNormal() {
             highp vec2 duv = uElevationTexelSize.zw;
             highp vec2 ij = vElevUV * uElevationTexelSize.xy;
@@ -1285,11 +1204,9 @@ namespace massif::vt {
             // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
             mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #ifdef TERRAIN_SHADOW
-            // The shadow multiplies the FINAL colour; an extrusion dims its ambient by the map
-            // part alone (skyShadow), which is the same depth of shadow under a caster.
-            // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
-            // left), so ground and buildings disagreed about what a shadow is. Shadow depth is
-            // the strength parameter's job, not the ambient level's.
+            // The shadow multiplies the FINAL colour; an extrusion dims its ambient by the map part
+            // alone (skyShadow), the same depth of shadow under a caster. Folded into N.L it vanished
+            // at ambient 1, so ground and buildings disagreed about what a shadow is.
             lit *= shadowFactorSlope(ndl);
         #endif
             color = vec4(min(color.rgb * lit, vec3(color.a)), color.a);
@@ -1368,11 +1285,9 @@ namespace massif::vt {
             // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
             mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #ifdef TERRAIN_SHADOW
-            // The shadow multiplies the FINAL colour; an extrusion dims its ambient by the map
-            // part alone (skyShadow), which is the same depth of shadow under a caster.
-            // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
-            // left), so ground and buildings disagreed about what a shadow is. Shadow depth is
-            // the strength parameter's job, not the ambient level's.
+            // The shadow multiplies the FINAL colour; an extrusion dims its ambient by the map part
+            // alone (skyShadow), the same depth of shadow under a caster. Folded into N.L it vanished
+            // at ambient 1, so ground and buildings disagreed about what a shadow is.
             lit *= shadowFactorSlope(ndl);
         #endif
             color = vec4(min(color.rgb * lit, vec3(color.a)), color.a);
@@ -1412,10 +1327,9 @@ namespace massif::vt {
         }
     )GLSL";
 
-    // Prepended to the normal-map lighting shader (custom or built-in) so both the injected shader
-    // and the base fragment shader can read the DEM. Declares the shared samplers/uniforms and the
-    // elevation helpers a CUSTOM shader can call: getElevation() (meters at this fragment),
-    // getMapZoom() (fractional map zoom) and sampleElevation(uv). Only used in the normal-map path.
+    // Prepended to the normal-map lighting shader so both it and the base fragment shader can read the
+    // DEM. Declares the shared samplers and the helpers a CUSTOM shader may call: getElevation(),
+    // getMapZoom() and sampleElevation(uv). Normal-map path only.
     static const std::string normalmapCustomPrelude = R"GLSL(
         uniform sampler2D uBitmap;
         uniform highp_opt vec4 uUVScale;
@@ -1510,12 +1424,9 @@ namespace massif::vt {
         }
     )GLSL";
 
-    // Terrain paint: hillshading computed directly from the shared terrain elevation texture,
-    // as one quad per tile, instead of from a per-tile normal map raster of its own. There is
-    // no tile set behind it - the DEM the 3D terrain already has bound IS the data - so the
-    // paint costs one draw where a hillshade layer costs a tile set, a decode, a normal map
-    // and a surface pass. The lighting itself is unchanged: the same normal-map lighting
-    // shader (built-in or custom) is injected and fed a normal rebuilt from the DEM gradient.
+    // Terrain paint: hillshading computed from the shared terrain elevation texture, one quad per
+    // tile, instead of from a per-tile normal map of its own - so it costs one draw where a hillshade
+    // layer costs a tile set, a decode, a normal map and a surface pass. Same lighting shader.
     static const std::string terrainPaintPrelude = R"GLSL(
         uniform highp sampler2D uElevationTexture;
         // Precision qualifiers must match the vertex-stage declarations exactly, or the program
@@ -1533,15 +1444,9 @@ namespace massif::vt {
             return dot(texture2D(uElevationTexture, uv), uElevationDecode) + uElevationOffset;
         }
 
-        // Tangram's DEM sample, ported whole from the `normal` block of hillshade.yaml: ONE 3x3
-        // stencil at TEXEL CENTRES (exact whatever the hardware filter does) plus a quadratic Taylor
-        // expansion, grad = grad0 + curv*f and elev = h11 + f.grad0 + 0.5*f.curv.f. The gradient is
-        // the point - a central difference at a fixed step is CONSTANT over a texel cell and breaks
-        // the shading into texel-sized facets (the "pixelated hillshade" close up); the 9 taps
-        // replace the 8 the Sobel took. highp because differences of thousands of metres in mediump
-        // are rounding noise. Our textures carry a 1-texel neighbour border, so unlike tangram no
-        // edge extrapolation is needed. Taken ONCE per fragment in terrainPaintPrepare() and read
-        // from here by the slope, the sun normal, the contours and a custom getElevation().
+        // Tangram's DEM sample, ported whole from hillshade.yaml: one 3x3 stencil at TEXEL CENTRES
+        // plus a quadratic Taylor expansion. The gradient is the point - a central difference is
+        // CONSTANT over a texel cell and breaks the shading into facets. Taken once per fragment.
         highp float gTerrainElev;      // metres at this fragment
         highp vec2 gTerrainGrad;       // metres per elevation texel, (du, dv), v growing north
 
@@ -1609,30 +1514,23 @@ namespace massif::vt {
 
     static const std::string terrainPaintFsh = R"GLSL(
         #ifdef GROUND_BASE
-        // The paint IS the ground in this mode, so it carries the ground's own colour underneath
-        // its shading and there is no separate fill draw - tangram's arrangement, where the terrain
-        // raster's `color` block starts from a base colour (res/scenes/hillshade.yaml:
-        // `base_color = vec4(0.88, 0.88, 0.88, 1.0)` under TANGRAM_TERRAIN_3D) and shades THAT.
+        // The paint IS the ground in this mode, so it carries the ground's own colour underneath its
+        // shading and there is no separate fill draw - tangram's arrangement, where the terrain
+        // raster's `color` block starts from a base colour and shades THAT.
         uniform lowp vec4 uGroundColor;
         #endif
         #ifdef PAINT_SURFACE
-        // Contour lines as a fragment block on the terrain draw, which is where tangram puts them
-        // (res/scenes/hillshade.yaml computes hillshade, hypsometric tint and contours in the
-        // `color` block of the raster style that IS the terrain surface). Same uniforms and the
-        // same screen-width anti-aliasing as the normal-map path, so a layer gets identical
-        // contours whether it shades a per-tile normal map or the shared DEM - the paint used to
-        // switch itself off when contours were asked for, precisely because it lacked this.
-        // Declared here and NOT in the prelude: normalmapFsh is not part of this program.
+        // Contour lines as a fragment block on the terrain draw, where tangram puts them. Same
+        // uniforms and screen-width anti-aliasing as the normal-map path, so a layer gets identical
+        // contours either way. Declared here, not in the prelude - normalmapFsh is not in this program.
         uniform lowp vec4 u_contourColor;
         uniform highp_opt float u_contourInterval; // metres between contour lines; <= 0 disables them
         uniform mediump float u_contourWidth;      // contour half-width in screen pixels
         #endif
         #if defined(PAINT_SURFACE) && defined(TERRAIN_LIGHT)
-        // Drawn as the terrain surface, so it takes the sun and the shadow map the surface takes -
-        // otherwise the paint covers a lit, shadowed ground with an unlit copy of it and the
-        // shadows simply disappear under the hillshade. The uniforms the paint prelude already
-        // declares (elevation sampler, texel size, vElevUV) are NOT redeclared here: a second
-        // declaration of the same name is a link error.
+        // Drawn as the terrain surface, so it takes the sun and the shadow map the surface takes - or
+        // the paint covers a lit, shadowed ground with an unlit copy and the shadows disappear. What
+        // the paint prelude already declares is NOT redeclared here: that is a link error.
         uniform mediump vec3 uSunDir;          // east, north, up - the frame the tile mesh lives in
         uniform lowp vec4 uSunColor;           // rgb = colour, a = unused
         uniform lowp vec4 uAmbientColor;       // rgb = colour, a = unused
@@ -1674,10 +1572,9 @@ namespace massif::vt {
             color = vec4(min(color.rgb * lit, vec3(color.a)), color.a);
         #endif
             if (u_contourInterval > 0.0) {
-                // Distance to the nearest contour in metres, divided by the per-pixel elevation
-                // change, gives a screen-space width that stays constant as the ground tilts away.
-                // Composited OVER the shaded ground, premultiplied - the same order and the same
-                // result as normalmapFsh, so switching a layer to the paint does not move the lines.
+                // Distance to the nearest contour in metres over the per-pixel elevation change gives a
+                // screen-space width that holds as the ground tilts away. Composited OVER the shaded
+                // ground, premultiplied, in the same order as normalmapFsh.
                 highp_opt float e = getElevation(); // the quadratic reconstruction: contours that
                                                     // do not kink at every texel boundary
                 highp_opt float frac = fract(e / u_contourInterval);
@@ -1722,12 +1619,9 @@ namespace massif::vt {
 
     static const std::string labelVsh = R"GLSL(
         attribute vec3 aVertexPosition;
-        // Glyph quad corner, relative to the label anchor in aVertexPosition. Already scaled.
-        // aVertexAttribs[3] says how to orient it: 0 = a world offset ready to add (labels
-        // whose axes come from their placement, computed once on the CPU), 1 = x/y on the
-        // camera axes. Resolving the camera case here rather than on the CPU takes the camera
-        // out of the vertex data, which is what lets a label batch be uploaded once instead
-        // of once per frame.
+        // Glyph quad corner relative to the label anchor, already scaled. aVertexAttribs[3] orients it:
+        // 0 = a world offset ready to add, 1 = x/y on the camera axes. Resolving the camera case here
+        // takes the camera out of the vertex data, so a label batch uploads once, not once per frame.
         attribute vec3 aVertexOffset;
         #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
         attribute vec3 aVertexNormal;
@@ -1772,9 +1666,8 @@ namespace massif::vt {
             vec4 borderColor = plate ? uColorTable[borderIndex] : vec4(0.0, 0.0, 0.0, 0.0);
             vUV = aVertexUV * uUVScale;
             // [1] is the halo width in SCREEN PIXELS, [3] the antialias ramp - one screen pixel of
-            // signed distance. The fragment shader measures the halo in ramps, so both are the
-            // same unit and a halo is as wide as the style asks whatever raster size the label
-            // landed on (the ramp is re-measured per fragment when derivatives are available).
+            // signed distance. The fragment shader measures the halo in ramps, so a halo is as wide as
+            // the style asks whatever raster size the label landed on.
             vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], 0.0, uSDFRamp / size);
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal) * opacity;
@@ -1790,10 +1683,9 @@ namespace massif::vt {
                 ? uLabelAxisX * aVertexOffset.x + uLabelAxisY * aVertexOffset.y
                 : aVertexOffset;
         #ifdef LABEL_OCCLUSION
-            // Is the ANCHOR behind a 3D occluder? Four taps around it, each a soft comparison,
-            // averaged - so a label goes out as it slides behind a building rather than popping,
-            // and one texel of a half-resolution buffer cannot decide it alone. Per LABEL, not per
-            // fragment: the glyph run is never cut in half by a wall crossing it.
+            // Is the ANCHOR behind a 3D occluder? Four soft comparisons around it, averaged, so a label
+            // fades as it slides behind a building and no single texel of a half-resolution buffer
+            // decides it. Per LABEL, so a glyph run is never cut in half by a wall.
             highp vec4 anchorClip = uMVPMatrix * vec4(aVertexPosition, 1.0);
             if (anchorClip.w > 0.0) {
                 highp vec2 anchorUV = anchorClip.xy / anchorClip.w * 0.5 + 0.5;
@@ -1842,10 +1734,9 @@ namespace massif::vt {
                 color = color * vColor;
             } else {
         #ifdef DERIVATIVES
-                // The gradient of the field itself is the width of one screen pixel expressed in
-                // the field's own units - it needs no constant and, unlike the per-batch value
-                // below, it follows a label the perspective magnifies (one lying on the ground
-                // under a tilt is drawn at a scale that varies over the label).
+                // The gradient of the field itself is one screen pixel in the field's own units: no
+                // constant needed, and unlike the per-batch value below it follows a label the
+                // perspective magnifies, whose scale varies across the label.
                 mediump float size = max(length(vec2(dFdx(color.r), dFdy(color.r))), 0.00001);
         #else
                 mediump float size = vAttribs[3];
@@ -1854,15 +1745,9 @@ namespace massif::vt {
                 // its own width in screen pixels - 'size' being exactly one of those.
                 float offset = 0.5 * (1.0 - size * (1.0 + 2.0 * vAttribs[1]));
                 mediump float ink = clamp((color.r - 0.5 * (1.0 - size)) / size, 0.0, 1.0);
-                // A halo is its own quad, drawn under ALL of the label's ink (so that no glyph's
-                // halo covers its neighbour). It paints the RING only - the glyph's own shape is
-                // punched out of it - because ink over a SOLID halo leaves halo * a * (1 - a)
-                // showing through at any alpha below one: a shield went dark for the length of its
-                // fade-in, and a translucent fill stayed dark. Same rule as a plate's border.
-                // What is punched out reaches half a pixel FURTHER IN than the ink's own edge
-                // (threshold 0.5 against the ink's 0.5 - size/2), so the ink's antialiased edge
-                // still has solid halo under it - ending the ring on that edge leaves the two ramps
-                // summing to less than opaque, which reads as a hole around every glyph.
+                // A halo is its own quad under ALL of the label's ink, and paints the RING only: over a
+                // SOLID halo, ink at any alpha below one leaves halo * a * (1 - a) showing through. The
+                // punch-out reaches half a pixel further in, so the ink's edge keeps solid halo under it.
                 mediump float alpha = vAttribs[1] > 0.0
                     ? clamp((color.r - offset) / size, 0.0, 1.0) - clamp((color.r - 0.5) / size, 0.0, 1.0)
                     : ink;
@@ -1940,11 +1825,9 @@ namespace massif::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            // Sample the terrain at the EXTRUDED corner, exactly as the line shader does: a quad
-            // placed at the anchor's height and then offset sideways is a flat plate, and on a
-            // slope its uphill half sits under the ground, where the depth test against the terrain
-            // surface eats it. A glyph quad of clipped text is wide enough for that to cut letters
-            // in half.
+            // Sample the terrain at the EXTRUDED corner, as the line shader does: a quad placed at the
+            // anchor's height and offset sideways is a flat plate, and on a slope its uphill half sits
+            // under the ground. A glyph quad of clipped text is wide enough to cut letters in half.
             setTerrainSlopeVaryings(pos + delta);
             highp vec3 terrainPos = applyTerrain(pos + delta);
             applyShadowPos(terrainPos);
@@ -1999,13 +1882,9 @@ namespace massif::vt {
     static const std::string lineVsh = R"GLSL(
         attribute vec3 aVertexPosition;
         #if defined(TERRAIN) && defined(SPAN)
-        // A bridge or tunnel deck: the feature's OWN two ends, (p0, p1) in this vertex frame. The
-        // deck is the chord between the ground at those two points, so the ground in between - a
-        // DSM spike off the deck included - never lifts it.
-        //
-        // The chord height for THIS vertex, resolved on the CPU (resolveLineSpanBases) in internal
-        // z units. The sentinel means unresolved - a span the tile cut, or elevation not in yet -
-        // and the line stays on the terrain, which is what it did before.
+        // A bridge or tunnel deck: the feature's OWN two ends in this vertex frame. The deck is the
+        // chord between the ground at those points, so nothing in between lifts it. The chord height
+        // is resolved on the CPU; the sentinel means unresolved, and the line stays on the terrain.
         attribute float aVertexBase;
         uniform float uBaseScale;
         #endif
@@ -2081,10 +1960,9 @@ namespace massif::vt {
         #endif
             vDist = vec2(aVertexAttribs[1], aVertexAttribs[2]) * (roundedWidth * gamma); // will be 0,0 for polygons
             vWidth = width > 0.0 ? (width - 1.0) * gamma + 1.0 : 1.0; // will be 1 for polygons
-            // The inner edge in the same units vDist is measured in. vDist is scaled by
-            // roundedWidth, not by the width, so the cut is a FRACTION of the outer edge - taking
-            // innerWidth directly put the gap (width + 1) / width too far in, which is a third off
-            // on a three-unit line. 0 leaves a plain line untouched.
+            // The inner edge in the units vDist is measured in. vDist is scaled by roundedWidth, not
+            // by the width, so the cut is a FRACTION of the outer edge - innerWidth directly put the
+            // gap (width + 1) / width too far in. 0 leaves a plain line untouched.
             vInnerWidth = width > 0.0 ? vWidth * (innerWidth / width) : 0.0;
         #ifdef BLUR
             // In the same units vDist is measured in, so the ramp below stays one expression.
@@ -2101,11 +1979,9 @@ namespace massif::vt {
             vNormal = aVertexNormal;
         #endif
         #ifdef TERRAIN
-            // Tangram's line model (extrude in model space, displace onto the terrain) with a
-            // CEILING: their quad tapers with distance, which is right, but grows without bound
-            // towards the camera and turns a near contour into a blob. Measure the offset on screen
-            // and shrink it back to the nominal width when it exceeds it - the factor is <= 1 by
-            // construction, so this can never manufacture an oversized quad.
+            // Tangram's line model (extrude in model space, displace onto the terrain) with a CEILING:
+            // their quad tapers with distance, which is right, but grows without bound towards the
+            // camera. The shrink factor is <= 1 by construction, so it cannot enlarge a quad.
             setTerrainSlopeVaryings(pos);
             vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
             highp vec3 centerPos = applyTerrain(pos);
@@ -2122,13 +1998,9 @@ namespace massif::vt {
             highp vec4 centerClip = uMVPMatrix * vec4(centerPos, 1.0);
             highp vec3 edgePos = applyTerrain(pos + delta);
         #ifdef SPAN
-            // The OUTER edge belongs to the deck too. Leaving it on the terrain hung the far side
-            // of every quad down on the ground while its centre stayed up on the chord - a ribbon
-            // twisted on its long axis, which reads as a wedge at the span and inflates edgeLen
-            // enough to trip the ceiling below, so the deck came out the wrong width as well.
-            // The outer edge belongs to the deck too - left on the terrain it hangs the far side
-            // of every quad down on the ground and twists the ribbon. The chord varies along the
-            // line, not across it, so the edge takes the SAME height as its centre.
+            // The OUTER edge belongs to the deck too: left on the terrain it hangs the far side of
+            // every quad down on the ground and twists the ribbon. The chord varies along the line,
+            // not across it, so the edge takes the SAME height as its centre.
             if (spanResolved) {
                 edgePos.z = spanZ;
                 setSpanFlatShading();
@@ -2139,22 +2011,16 @@ namespace massif::vt {
             edgeDir = vec2(edgeDir.x * uScreenScale.x, edgeDir.y); // NDC is anisotropic, work in height units
             highp float edgeLen = length(edgeDir);
             // The ceiling is what this vertex is EXTRUDED by, not one line width: a cap corner sits
-            // sqrt(2) widths out and an end arrow's barb several, and clamping those to one width
-            // squashes the shape they belong to back into the line's own silhouette. The binormal
-            // is PACKED (int16, per-geometry scale), so its length only means widths once scaled -
-            // raw it is ~32768 and the ceiling never engages at all.
+            // sqrt(2) widths out and an arrow's barb several. The binormal is PACKED, so its length
+            // only means widths once scaled - raw it is ~32768 and the ceiling never engages.
             highp float nominalLen = roundedWidth * length(aVertexBinormal * uBinormalUnitScale) * uScreenScale.y;
             if (edgeLen > nominalLen && nominalLen > 0.0) {
                 highp float shrink = nominalLen / edgeLen;
                 edgeDir = edgeDir * shrink;
                 highp vec2 offset = vec2(edgeDir.x / uScreenScale.x, edgeDir.y);
-                // The capped vertex keeps the SCREEN offset (so the width is exactly nominal,
-                // and neighbouring vertices can not disagree about it) but takes its DEPTH from
-                // the terrain-following position it was shrunk towards. Keeping centerClip.z
-                // instead put the outer edge of a wide line at the centreline's height, which on
-                // a cross-slope is below the ground on the uphill side: the depth test against
-                // the terrain surface then ate the line from that side, worst on the widest
-                // layer - a route's casing broke up while its fill survived.
+                // The capped vertex keeps the SCREEN offset but takes its DEPTH from the terrain-
+                // following position it was shrunk towards. Keeping centerClip.z put a wide line's
+                // outer edge at the centreline's height, which on a cross-slope is under the ground.
                 highp vec4 depthClip = uMVPMatrix * vec4(mix(centerPos, edgePos, shrink), 1.0);
                 gl_Position = applyDepthBias(vec4((centerClip.xy / centerClip.w + offset) * depthClip.w, depthClip.z, depthClip.w));
             } else {
@@ -2189,26 +2055,21 @@ namespace massif::vt {
         #endif
 
         void main(void) {
-            // CLIP TO THE TILE. A tile's line buffer is an eighth of a tile wide, so it carries its
-            // neighbours' roads and draws them with ITS OWN elevation mapping - the same road twice,
-            // at two heights, which coincide looking straight down and separate on a tilt. The
-            // stencil masks used to clip this, but there is no stencil buffer on this target.
-            // uTileUnitScale is 0 when the tile has no elevation, which disables the test.
+            // CLIP TO THE TILE: a tile's line buffer carries its neighbours' roads and draws them with
+            // ITS OWN elevation mapping - the same road twice, at two heights, which separate on a
+            // tilt. uTileUnitScale is 0 when the tile has no elevation, which disables the test.
             if (uTileUnitScale != vec2(0.0)) {
                 if (vTileUnit.x < -0.0005 || vTileUnit.x > 1.0005 || vTileUnit.y < -0.0005 || vTileUnit.y > 1.0005) {
                     discard;
                 }
             }
-            // The antialias ramp, in DEVICE pixels: line widths are given in unscaled-DPI units and
-            // a unit is not a pixel, so uAntialiasScale (screen height over the normalized
-            // resolution) converts. A contour a pixel wide was otherwise mostly ramp - the blur.
-            // mapbox's `line-blur` widens this ramp rather than moving the edges (line.fragment.glsl).
+            // The antialias ramp, in DEVICE pixels: widths are in unscaled-DPI units, so uAntialiasScale
+            // converts, or a contour a pixel wide is mostly ramp. mapbox's `line-blur` widens this ramp
+            // rather than moving the edges.
             lowp float ramp = 1.0 + vBlur * uAntialiasScale;
-            // Distance from the OUTER edge, and - for a gapped line - from the inner one too, so
-            // the middle is cut with the same ramp that antialiases the outside. The inner ramp
-            // fades INTO the gap, as mapbox's does: opaque at the gap edge, gone one ramp inside
-            // it. Fading the other way instead ate a whole ramp off the strip, which is a 27 px
-            // bite out of a bridge shadow at blur 10.
+            // Distance from the OUTER edge, and for a gapped line from the inner one too, so the middle
+            // is cut with the same ramp. The inner ramp fades INTO the gap as mapbox's does - the other
+            // way it ate a whole ramp off the strip, 27 px out of a bridge shadow at blur 10.
             float d = length(vDist);
             float dist = (vWidth - d) * uAntialiasScale;
             if (vInnerWidth > 0.0) {
@@ -2271,10 +2132,9 @@ namespace massif::vt {
         varying mediump vec2 vTileUnit;
         #endif
         #if defined(SPAN) && defined(TERRAIN)
-        // A bridge BED, lifted onto the deck's chord: the height resolved on the CPU, in internal
-        // z units. The sentinel means unresolved and the fill stays on the terrain. Only under
-        // TERRAIN - uElevationScale, which converts it, does not exist otherwise, and a bed has
-        // nothing to be lifted off without a terrain anyway.
+        // A bridge BED lifted onto the deck's chord, resolved on the CPU in internal z units; the
+        // sentinel means unresolved and the fill stays on the terrain. Only under TERRAIN, since
+        // uElevationScale does not exist otherwise.
         attribute float aVertexBase;
         uniform float uBaseScale;
         // Where the vertex sits along the chord, unclamped: the fill is cut past the portals.
@@ -2372,14 +2232,9 @@ namespace massif::vt {
         }
     )GLSL";
 
-    // The contact shadow an extrusion casts on the ground it stands on: one quad per footprint
-    // edge, covering that edge's bounding capsule. It carries no colour of its own - only the
-    // fragment's own distance to the segment.
-    //
-    // Drawn ONLY into the offscreen mask (GLTileRenderer::renderGroundAOMask), under MIN blending,
-    // so that a corner, a building:part and a neighbour meeting on one pixel take the darkest of
-    // the three. The frame gets the resolved mask multiplied in once, as one screen quad - per-quad
-    // compositing would multiply again at every overlap and undo exactly what MIN just resolved.
+    // The contact shadow an extrusion casts on the ground it stands on: one quad per footprint edge,
+    // covering that edge's bounding capsule, carrying only the fragment's distance to the segment.
+    // Drawn ONLY into the offscreen mask under MIN blending, and multiplied into the frame once.
     static const std::string polygon3DGroundVsh = R"GLSL(
         attribute vec3 aVertexPosition;
         attribute vec3 aVertexNormal;
@@ -2417,13 +2272,9 @@ namespace massif::vt {
         varying lowp float vGroundBlend;
 
         void main(void) {
-            // This tile's ground only. Under overzoom one source tile's capsules are handed to
-            // every target tile derived from it, and each of those draws displaces them with ITS
-            // OWN elevation texture - so without this the same footprint casts a second shadow at
-            // a neighbouring tile's height, floating beside the right one.
-            // HALF-OPEN, [0,1), for the reason the wall's own clip gives: a symmetric tolerance
-            // overlaps the plane instead of partitioning it, so both neighbours keep a band either
-            // side of every border and the same skirt is drawn twice.
+            // This tile's ground only: under overzoom every target tile derived from one source draws
+            // its capsules with ITS OWN elevation texture, so the same footprint casts a second shadow
+            // at a neighbour's height. HALF-OPEN [0,1), or both neighbours keep a band of the border.
             if (vTilePos.x < 0.0 || vTilePos.x >= 1.0 || vTilePos.y < 0.0 || vTilePos.y >= 1.0) {
                 discard;
             }
@@ -2432,16 +2283,13 @@ namespace massif::vt {
             // the next; a per-vertex distance is linear inside a triangle and facets there.
             mediump float t = clamp(vSegment.x, 0.0, vSegment.z);
             // Under the building the ground is fully occluded, so the band holds there instead of
-            // falling off (positive across = the side the walls stand on). Alongside the edge only:
-            // past its ends that half-plane leaves the footprint, and the next edge's own quad
-            // covers what is left. This is also what hides the seam where a draped shadow meets a
-            // wall on a slope - the dark side is the side the displacement moves it towards.
+            // falling off. Alongside the edge only - past its ends that half-plane leaves the
+            // footprint, and the next edge's quad covers what is left.
             mediump float across = (vSegment.y > 0.0 && vSegment.x == t) ? 0.0 : vSegment.y;
             mediump float dist = min(1.0, length(vec2(vSegment.x - t, across)));
-            // Occlusion = (1 - d)^k: full against the wall, zero at the radius, and above 1 it
-            // reaches the radius with zero slope so there is no crease to read as an outline.
-            // k IS the style's ground-attenuation - the default 1.75 halves the shadow by a third
-            // of the way out (0.5 -> 0.3), which is the profile a contact shadow wants.
+            // Occlusion = (1 - d)^k: full against the wall, zero at the radius, and above 1 it reaches
+            // the radius with zero slope so there is no crease to read as an outline. k IS the style's
+            // ground-attenuation; the default 1.75 halves the shadow a third of the way out.
             mediump float occlusion = pow(1.0 - dist, uGroundAOParams.y);
             mediump float f = 1.0 - uGroundAOParams.x * vGroundBlend * occlusion;
             glFragColor = vec4(f, f, f, 1.0);
@@ -2454,12 +2302,9 @@ namespace massif::vt {
         attribute vec3 aVertexBinormal;
         attribute vec2 aVertexUV;
         attribute float aVertexHeight;
-        // The ground this footprint stands on, in INTERNAL z units - exaggeration and the mercator
-        // stretch already in, straight from ElevationManager::getDisplayHeight - resolved on the
-        // CPU (see TileGeometry::setVertexBase). Identical for every vertex of one building, which
-        // is what sampling the elevation texture here could not guarantee: the texture bound is the
-        // one the TILE BEING DRAWN carries, so a building spanning two tiles got two bases and tore
-        // apart. uBaseScale is the only conversion left, internal z -> this vertex frame.
+        // The ground this footprint stands on, in INTERNAL z units, resolved on the CPU. Identical for
+        // every vertex of one building, which sampling the elevation texture here cannot guarantee -
+        // a building spanning two tiles got two bases and tore apart.
         attribute float aVertexBase;
         attribute vec4 aVertexAttribs;
         #ifdef TRANSFORM
@@ -2471,10 +2316,9 @@ namespace massif::vt {
         uniform float uHeightScale;
         #ifdef TERRAIN
         uniform float uBaseScale;   // internal z units -> this vertex frame (1 / frameScaleZ)
-        // A building's base ring belongs on the GROUND it stands on, so the resolved base is used
-        // only where the extrusion rises. A bridge DECK stands on nothing: its underside belongs on
-        // the chord like the rest of it, and leaving it on the terrain stretches the walls from the
-        // valley floor up to the deck. 1 = every vertex takes the base, whatever its height.
+        // A building's base ring belongs on the GROUND, so the resolved base is used only where the
+        // extrusion rises. A bridge DECK stands on nothing - its underside belongs on the chord too, or
+        // the walls stretch from the valley floor. 1 = every vertex takes the base.
         uniform float uFloatingBase;
         #endif
         // The height the SHADOW MAP was baked at. Equal to uHeightScale unless the style flattens
@@ -2517,30 +2361,18 @@ namespace massif::vt {
             // foot of the building, 1 once past the gradient's reach.
             float wallT = aVertexAttribs[3] * (1.0 / 127.0);
             vec3 pos = aVertexPosition;
-            // Anything ABOVE the ground is measured from ONE elevation - the HIGHEST ground under
-            // the footprint - so the roof stays level instead of shearing down the slope, and no
-            // part of the building is left buried. The ground ring itself keeps the terrain under
-            // each vertex, so the wall still meets the slope everywhere and the walls simply grow
-            // taller downhill. mapbox's fill-extrusion base-alignment terrain + height-alignment
-            // flat. Anchoring the base to one point too (maplibre's rigid prism) buries a building
-            // whole wherever the hillside rises more than its own height; clamping the finished top
-            // to the ground instead collapses those walls to nothing.
-            //
-            // That one elevation is resolved on the CPU and arrives in aVertexBase - see there for
-            // why sampling it here could not be made to agree across a tile border.
+            // Anything ABOVE the ground is measured from ONE elevation - the highest under the
+            // footprint - so the roof stays level while the ground ring keeps the terrain under each
+            // vertex. mapbox's fill-extrusion base-alignment terrain + height-alignment flat.
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
             float groundZ = applyTerrain(pos).z;
             float baseZ = groundZ;
         #ifdef TERRAIN
-            // Flat ground has one elevation everywhere, so the base is the ground and the CPU pass
-            // has nothing to resolve - uElevationScale is not even declared without TERRAIN.
-            //
-            // An unresolved base (the pack-time sentinel, still there while the elevation for this
-            // tile has not arrived) falls back to the ground under this vertex. That is the
-            // pre-CPU behaviour: a roof that shears down the slope, which is wrong but visible -
-            // skipping the draw instead loses the building entirely, and a base of 0 buries it.
+            // Flat ground has one elevation everywhere, so the base IS the ground. An unresolved base
+            // falls back to the ground under this vertex: a roof that shears down the slope, wrong but
+            // visible - skipping the draw loses the building, and a base of 0 buries it.
             if ((aVertexHeight > 0.0 || uFloatingBase > 0.5) && aVertexBase > -1.0e29) {
                 baseZ = aVertexBase * uBaseScale + uElevationScale.w;
             }
@@ -2553,12 +2385,9 @@ namespace massif::vt {
             vShadowNormal = normal;
         #endif
             vec4 color = uColorTable[styleIndex];
-            // The overzoom clip, per VERTEX. Not on the centroid: a building can reach into a tile
-            // while its centroid sits in another, and a centroid test then drops it from every tile
-            // that holds it - walls missing until a zoom-out retiles them. The position works here
-            // because an extrusion's texcoords carry the centroid at the COORD scale (see
-            // packGeometry), so uUVScale converts either of them. Y is flipped back out of the
-            // transformer's frame - uTileMatrix works in tile space.
+            // The overzoom clip, per VERTEX. Not on the centroid: a building can reach into a tile while
+            // its centroid sits in another, and a centroid test then drops it from every tile that holds
+            // it. Y is flipped back out of the transformer's frame - uTileMatrix works in tile space.
             vec2 vertexTile = aVertexPosition.xy * uUVScale;
             vTilePos = (uTileMatrix * vec3(vertexTile.x, 1.0 - vertexTile.y, 1.0)).xy;
         #ifdef LIGHTING_VSH
@@ -2592,16 +2421,14 @@ namespace massif::vt {
         // tile position into it, the same sub-rect an ancestor drape tile needs elsewhere.
         uniform sampler2D uSpanDrapeTexture;
         uniform mediump vec4 uSpanDrapeTransform;
-        // The GROUND's light for a flat, up-facing surface, which is what a deck is. Resolved on
-        // the CPU because a deck is horizontal, so the ground's per-fragment term is constant over
-        // it - see spanDrapeLight(). 1 for a `colors-prelit` style, where the ground is lit
-        // neutrally and the drape already carries its light.
+        // The GROUND's light for a flat, up-facing surface, which is what a deck is. Resolved on the
+        // CPU because a deck is horizontal, so the ground's per-fragment term is constant over it.
+        // 1 for a `colors-prelit` style, where the drape already carries its light.
         uniform mediump vec3 uSpanDrapeLight;
         varying lowp float vSpanRoof;
-        // The tile's own ground drape, worn by the roof PAST the road's portals: a deck ring runs
-        // on past its road's bridge segment (Petit-Pont, 10 m onto the south quay), and there the
-        // roof is ground - the approach, the crosswalk - not deck. uGroundDrape is 0 when the
-        // tile has no drape this frame.
+        // The tile's own ground drape, worn by the roof PAST the road's portals: a deck ring runs on
+        // past its road's bridge segment, and there the roof is ground - approach, crosswalk - not
+        // deck. uGroundDrape is 0 when the tile has no drape this frame.
         uniform sampler2D uGroundDrapeTexture;
         uniform mediump vec4 uGroundDrapeTransform; // the target tile's share of the owner's drape texture
         uniform mediump float uGroundDrape;
@@ -2621,49 +2448,32 @@ namespace massif::vt {
         #endif
 
         void main(void) {
-            // HALF-OPEN, [0,1): under overzoom every target tile derived from one source tile draws
-            // the whole building, and this is what keeps each fragment to the tile that owns it.
-            // A symmetric tolerance does NOT partition the plane - it overlaps it, so both
-            // neighbours keep a band 0.02 of a tile wide either side of every border and rasterise
-            // the SAME wall twice from two tile origins. The two copies land microns apart and
-            // z-fight, which reads edge-on as a thin vertical fin standing on the roofline, on the
-            // tile grid and scaling with the tile level rather than with anything in the building.
-            // Half-open gives a border fragment to exactly one side: no doubled band, and no gap,
-            // because the two tiles' vTilePos differ by float noise (~1e-7 of a tile) at worst.
-            // Not on the centroid - see the vertex stage for why that was tried and rejected.
+            // HALF-OPEN, [0,1): under overzoom every target tile derived from one source draws the whole
+            // building, and this keeps each fragment to the tile that owns it. A symmetric tolerance
+            // overlaps instead of partitioning, and the doubled band z-fights into a fin on the roofline.
             if (vTilePos.x < 0.0 || vTilePos.x >= 1.0 || vTilePos.y < 0.0 || vTilePos.y >= 1.0) {
                 discard;
             }
-            // Extrusions receive as well as cast: a building in the shadow of a ridge, or of a
-            // taller neighbour, darkens the same way the ground does.
-            // N.L is the extrusion's own normal, not normal incidence: a roof IS its own caster,
-            // so at N.L = 1 it gets the minimum bias against its own depth in the map and speckles
-            // itself as soon as a shadow texel covers more ground than a roof is wide - which is
-            // what shredded the buildings on zooming out. It also lets the back-face rule shadow
-            // a wall facing away from the sun, which no depth comparison can decide.
+            // Extrusions receive as well as cast. N.L is the extrusion's OWN normal, not normal
+            // incidence: a roof is its own caster, so at N.L = 1 it takes the minimum bias against its
+            // own depth and speckles itself. It also lets the back-face rule shadow a wall.
             mediump float shadow = 1.0;
             // Only what the MAP occluded dims the sky as well (skyShadow): standing in another
-            // building's shadow does hide part of the sky, and with mapbox's ambient at 0.8 against
-            // a directional 0.2 the sun term alone moved a shadowed wall by ~4% - invisible, while
-            // the ground beside it went to a fifth of its light.
+            // building's shadow does hide part of it, and with mapbox's 0.8 ambient the sun term alone
+            // moved a shadowed wall by ~4% while the ground beside it went to a fifth.
             mediump float skyShadow = 1.0;
         #ifdef TERRAIN_SHADOW
             shadow = shadowFactorSlopeParts(max(0.0, dot(normalize(vShadowNormal), uSunDir)), skyShadow);
         #endif
             lowp vec4 surfaceColor = vColor;
         #if defined(SPAN) || defined(SPAN_DRAPE)
-            // vTilePos is this geometry's tile position, which is also where the span drape baked
-            // the road, so the two line up without any projection of their own. It carries the
-            // extrusion's own 1-y flip (see polygon3DVsh); the drape was baked in the surface's
-            // unflipped tile parametrization, so flip back to meet it.
+            // vTilePos is this geometry's tile position, which is where the span drape baked the road,
+            // so the two line up without a projection of their own. It carries the extrusion's 1-y
+            // flip, while the drape was baked unflipped - so flip back to meet it.
             highp_opt vec2 spanUV = vec2(vTilePos.x, 1.0 - vTilePos.y);
-            // This tile's share of the deck alone, drape or no drape. A roof triangle is emitted
-            // whole into every target tile it touches (TileLayerBuilder::appendPolygon3D), so
-            // past the tile edge a neighbour's copy of the same deck can win the depth test -
-            // with a drape that stops at ITS tile, a plain strip of roof along every cut; with
-            // no drape yet, a whole uncut roof whose walls exist only near its own tile, so the
-            // deck's side goes missing wherever that copy wins. mapbox tiles its extrusions
-            // exactly the same way, by cutting at the tile.
+            // This tile's share of the deck alone, drape or no drape: a roof triangle is emitted whole
+            // into every target tile it touches, so past the tile edge a neighbour's copy can win the
+            // depth test. mapbox tiles its extrusions the same way, by cutting at the tile.
             if (spanUV.x < 0.0 || spanUV.x > 1.0 || spanUV.y < 0.0 || spanUV.y > 1.0) {
                 discard;
             }
@@ -2687,32 +2497,24 @@ namespace massif::vt {
         #endif
         #endif
         #ifdef LIGHTING_FSH
-            // The deck's OWN colour: its walls, and the roof wherever the drape covers nothing.
-            // The shadow goes INTO the lighting, where it dims the sun alone. Multiplied over the
-            // finished colour instead it took the ambient with it, and since a wall facing away
-            // from the sun is fully shadowed by the back-face rule above, every such wall went
-            // black - the whole reason facades did not match mapbox.
+            // The deck's OWN colour: its walls, and the roof wherever the drape covers nothing. The
+            // shadow goes INTO the lighting, where it dims the sun alone - multiplied over the finished
+            // colour it took the ambient too, and every back-facing wall went black.
             surfaceColor = applyLighting3D(surfaceColor, normalize(vNormal), vWallT, vSideVertex, shadow, skyShadow);
         #endif
         #ifdef SPAN_DRAPE
-            // A draped pixel is a FINISHED GROUND pixel - the bake drew the road exactly as the
-            // ground draws it - so it takes the GROUND's light, and takes it once. Composited
-            // before applyLighting3D it went through the extrusion's light as well, which is a
-            // facade model: an ambient/sun sum in linear space plus the roof-shade term, applied
-            // to a piece of road. Invisible at noon, where that factor is ~1; at night it left a
-            // deck at a quarter of the road it carries (Pont Neuf, z17.5, hour 22: deck 37 against
-            // a quay road at 101, the deck darker than the water).
+            // A draped pixel is a FINISHED GROUND pixel, so it takes the GROUND's light and takes it
+            // once. Composited before applyLighting3D it went through the extrusion's facade model as
+            // well - invisible at noon, but at night the deck came out darker than the water.
             lowp vec3 drapeColor = draped.rgb * uSpanDrapeLight;
         #ifdef LIGHTING_FSH
             // The ground multiplies its own shadow into the same term (backgroundFsh). In the
             // per-vertex path the tail below multiplies the whole fragment by it instead.
             drapeColor *= shadow;
         #endif
-            // PREMULTIPLIED, like every other bake this renderer samples (see the pattern composite
-            // in the surface shader): the bake draws the road onto a cleared, fully transparent
-            // target, so a half-covered texel holds half the road's colour, not the road's colour
-            // at half alpha. Mixed as straight alpha it came out half black - a dark fringe down
-            // every line on the deck, and a dark band wherever the bake had nothing.
+            // PREMULTIPLIED, like every other bake this renderer samples: the bake draws onto a cleared
+            // transparent target, so a half-covered texel holds half the road's colour, not the colour
+            // at half alpha. Mixed as straight alpha it came out half black.
             surfaceColor = vec4(surfaceColor.rgb * (1.0 - draped.a * vSpanRoof) + drapeColor * vSpanRoof, surfaceColor.a);
         #endif
             glFragColor = applyFog(surfaceColor);

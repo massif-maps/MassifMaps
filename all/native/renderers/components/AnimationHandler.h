@@ -93,10 +93,9 @@ namespace massif {
         float _zoomTarget;
         std::optional<MapPos> _zoomTargetPos;
     
-        // Van Wijk flight state. _flightS is the total path length in their units and _flightU1
-        // the ground distance; the rest is the precomputed parametrisation (their r0, and the
-        // widths at both ends). _flightZeroPath marks the degenerate case of a pure zoom, where
-        // their formula divides by the distance.
+        // Van Wijk flight state: _flightS is the total path length in their units, _flightU1 the
+        // ground distance, the rest their precomputed parametrisation. _flightZeroPath marks a pure
+        // zoom, where their formula divides by the distance.
         bool _flightActive;
         bool _flightStarted;
         bool _flightZeroPath;

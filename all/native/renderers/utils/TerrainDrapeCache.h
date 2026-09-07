@@ -79,9 +79,8 @@ namespace massif {
          * layerMask is the set of drape layers that actually put something in the texture.
          */
         // What the cached drape textures may cost in total, the DEFAULT for setMaxBytes. Public
-        // because the automatic bake resolution is chosen against it
-        // (TileRenderer::resolveDrapeResolution): the two have to agree, or the cache evicts what
-        // the resolution assumed would stay.
+        // because the automatic bake resolution is chosen against it: the two have to agree, or the
+        // cache evicts what the resolution assumed would stay.
         static const std::size_t MAX_BYTES;
         /**
          * Overrides the byte budget (TerrainOptions::DrapeCacheSize). 0 restores MAX_BYTES.

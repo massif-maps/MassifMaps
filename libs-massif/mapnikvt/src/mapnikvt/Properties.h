@@ -385,22 +385,16 @@ namespace massif::mvt {
         }
 
         T getFunction(const ExpressionContext& context) const {
-            // No context variables means the expression reads nothing but the view state, so
-            // the function built once in setExpression is the same one buildFunction would
-            // return here - and returning it hands every tile and every feature the SAME
-            // function object. That is what lets the renderer memoise the evaluation for a
-            // frame instead of re-running the expression interpreter once per draw call.
-            // (Disabled while linear() key frames were invisible to the dependency checker;
-            // ExpressionVariableVisitor now descends into them.)
+            // No context variables means the expression reads nothing but the view state, so the
+            // function built once in setExpression is the same one buildFunction would return - and
+            // returning it hands every tile and feature the SAME object, which the renderer memoises.
             if (!_contextVars && !_styleParamVars) {
                 return _func;
             }
             if (!_contextVars) {
-                // Reads parameters (and possibly the view state) and nothing else, so the function
-                // is the same for every feature of every tile decoded against this store - build it
-                // once per store, or every feature gets its own function object and the renderer
-                // can neither memoise it nor batch geometries that share it. Keyed by store because
-                // a compiled map may be shared by several decoders, each with its own values.
+                // Reads parameters and the view state and nothing else, so the function is the same for
+                // every feature decoded against this store - built once per store, or every feature gets
+                // its own object and the renderer can neither memoise nor batch it.
                 const StyleParameterStore* store = context.getStyleParameterStore().get();
                 std::lock_guard<std::mutex> lock(_liveFuncMutex);
                 for (const std::pair<const StyleParameterStore*, T>& liveFunc : _liveFuncs) {
@@ -454,11 +448,9 @@ namespace massif::mvt {
             return _styleParamVars && !(_selectionFoldable && context.hasStyleParameterOverride());
         }
 
-        // Whether the parameters have to stay behind the store, or can be resolved now. An
-        // expression that also reads a feature field is not live-capable (isLiveCapable), so
-        // changing such a parameter decodes the tiles again anyway - keeping a closure there would
-        // only re-run the interpreter per feature at render time, and hand every feature its own
-        // function object, which splits the batches.
+        // Whether the parameters have to stay behind the store, or can be resolved now. An expression
+        // that also reads a feature field is not live-capable, so changing such a parameter decodes the
+        // tiles again anyway - a closure there would only split the batches.
         bool foldsStyleParams(const ExpressionContext& context) const {
             return !(readsLiveStyleParams(context) && !_contextVars);
         }

@@ -8,14 +8,9 @@
 namespace massif {
 
     namespace {
-        // tangram's preamble, verbatim from core/src/gl/shaderSource.cpp. The shader sources - and
-        // the application GLSL spliced into them through SkyOptions/FogOptions/TerrainOptions/
-        // CustomRasterTileLayer/PostProcessEffect - stay written in ESSL 1.00 and are translated
-        // here, so an app's shader needs no migration.
-        //
-        // '#define gl_FragColor' is legal: ESSL reserves the GL_ prefix for MACRO names, while
-        // gl_FragColor is a built-in variable that ESSL 3.00 does not declare. Measured through
-        // ANGLE's translator, not assumed - see docs/internals/rendering/16-graphics-api-migration.md.
+        // tangram's preamble, verbatim from core/src/gl/shaderSource.cpp: every shader source, an
+        // app's spliced GLSL included, stays ESSL 1.00 and is translated here. '#define gl_FragColor'
+        // is legal - ESSL reserves the GL_ prefix for MACRO names. 16-graphics-api-migration.md.
         const std::string ESSL3_VERSION = "#version 300 es\n";
 
         const std::string ESSL3_VERT_HEADER = R"GLSL(

@@ -148,10 +148,6 @@ namespace massif::mvt {
         if (!file.empty()) {
             backgroundImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, IMAGE_UPSAMPLING_SCALE);
         }
-        // if (!backgroundImage || !backgroundImage->bitmap) {
-        //     _logger->write(Logger::Severity::ERROR, "Failed to load shield bitmap " + file);
-        //     return FeatureProcessor();
-        // }
 
         bool allowOverlap = _allowOverlap.getValue(exprContext);
         // Its own property, not a synonym for allow-overlap - see TextSymbolizer. A shield IS a
@@ -162,10 +158,9 @@ namespace massif::mvt {
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        // The shield image's own scale, on top of the display's. Everything the IMAGE is measured
-        // by takes it; the text keeps fontScale alone.
-        // Baked at a static value - the image glyph has ONE size - and re-scaled at draw by the
-        // ratio to the live ramp, so mapbox's icon-size animation survives (see Label::iconScale).
+        // The shield image's own scale, on top of the display's: everything the IMAGE is measured by
+        // takes it, the text keeps fontScale alone. Baked at a static value - the image glyph has ONE
+        // size - and re-scaled at draw by the ratio to the live ramp.
         float imageScale = fontScale * _imageScale.getStaticValue(exprContext);
         vt::FloatFunction imageScaleFunc = _imageScaleFuncBuilder.createScaledFloatFunction(_imageScale.getFunction(exprContext), fontScale);
         float pixelScale = symbolizerContext.getSettings().getPixelScale();
@@ -195,10 +190,9 @@ namespace massif::mvt {
         vt::TextFormatter shieldFormatter(font, sizeStatic, shieldFormatterOptions);
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LabelOrientation placement = getPlacement(exprContext);
-        // Same split as TextSymbolizer: every line placement repeats along the line, only the ones
-        // that lay a glyph RUN out get the line itself. A shield never runs along it - 'line' has
-        // always drawn it upright on the surface - so the two 'billboard-line' spellings differ
-        // here only in the plane the icon faces.
+        // Same split as TextSymbolizer: every line placement repeats along the line, only the ones laying
+        // a glyph RUN out get the line itself. A shield never runs along it, so the two 'billboard-line'
+        // spellings differ here only in the plane the icon faces.
         bool billboardRepeat = (placement == vt::LabelOrientation::LINE_BILLBOARD_REPEAT);
         bool repeatAlongLine = (placement == vt::LabelOrientation::LINE || placement == vt::LabelOrientation::LINE_BILLBOARD_3D || billboardRepeat);
         vt::LabelOrientation orientation = placement;
@@ -249,9 +243,8 @@ namespace massif::mvt {
         vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
         vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
         // Style pixels, like the text size beside it: the halo has to keep its width RELATIVE to the
-        // glyphs on every display, and the renderer measures it in device pixels. Left unscaled it
-        // shrank against its own text as the dpi rose (1.2 drew 1.8 px where mapbox draws 3.2 on a
-        // 2.6x screen).
+        // glyphs on every display, and the renderer measures in device pixels. Left unscaled it shrank
+        // against its own text as the dpi rose.
         vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale * pixelScale);
 
         vt::TileId tileId = exprContext.getTileId();
@@ -413,11 +406,9 @@ namespace massif::mvt {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 
-                    // One counter for the WHOLE feature: it makes the id of each repeat along the line
-                    // unique. Restarting it per segment (generateLinePoints returns one entry per
-                    // segment) gave the same id to one repeat in every segment, and labels sharing an
-                    // id are merged into a single one - so text-spacing placed the repeats and then
-                    // collapsed them, leaving one label per line.
+                    // One counter for the WHOLE feature, so each repeat along the line gets a unique id.
+                    // Restarting it per segment gave one repeat in every segment the same id, and labels
+                    // sharing an id are merged - so text-spacing placed the repeats then collapsed them.
                     int counter = 0;
                     for (const auto& vertices : verticesList) {
                         // The line carries the label only when no repeat is generated on it. A

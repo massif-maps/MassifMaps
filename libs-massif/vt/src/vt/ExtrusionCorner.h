@@ -37,11 +37,9 @@ namespace massif::vt {
         return cglib::vec2<float>(t(1), -t(0));
     }
 
-    // How far a wall stops short of a footprint corner so a chamfer can round the vertical edge
-    // there: mapbox's `radius * tan(halfAngle)` (fill_extrusion_bucket's _getRoundedEdgeOffset),
-    // capped at a third of either edge so the two corners of a short wall cannot cross. `radius`
-    // is tile-local, as the result is. 0 where no chamfer fits - a collinear vertex, a spike, or
-    // two edges that double back on each other.
+    // How far a wall stops short of a footprint corner so a chamfer can round the vertical edge:
+    // mapbox's `radius * tan(halfAngle)`, capped at a third of either edge so the two corners of a short
+    // wall cannot cross. 0 where no chamfer fits - a collinear vertex, a spike, a doubled-back edge.
     inline float extrusionCornerCutback(const cglib::vec2<float>& prev, const cglib::vec2<float>& p, const cglib::vec2<float>& next, float radius) {
         cglib::vec2<float> na = extrusionEdgeNormal(prev, p);
         cglib::vec2<float> nb = extrusionEdgeNormal(p, next);

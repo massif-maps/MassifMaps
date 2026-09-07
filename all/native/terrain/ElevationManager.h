@@ -299,12 +299,9 @@ namespace massif {
         std::function<void()> _dataChangedListener; // called outside _mutex, see setDataChangedListener
         mutable std::mutex _mutex;
 
-        // Background prefetch worker: loads elevation tiles requested by the render thread
-        // (visible tiles + their neighbours) without ever blocking it. The thread is started
-        // on the first request and joined in the destructor.
-        // The request's priority travels with it: the drain orders by priority first and by
-        // distance second, so the 1-vs-0 difference (edge neighbour before diagonal) can no longer
-        // ride on the tile's position in the deque.
+        // Background prefetch worker: loads the tiles the render thread asks for without blocking
+        // it, started on the first request and joined in the destructor. The request's priority
+        // travels with it - the drain orders by priority first, distance second.
         struct PrefetchEntry {
             MapTile tile;
             int priority;

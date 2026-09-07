@@ -43,10 +43,8 @@ namespace massif {
         return forced;
     }
 
-    // Measurement switch for what AREA subdivision costs: it is the expensive half (a triangle
-    // subdivides 1/factor^2, see TerrainTileTransformer.h) and it is on for correctness, not for
-    // speed - an un-subdivided fill floats above the ground and hides every ground-shaped draw
-    // stacked after it. Off = the shipped behaviour.
+    // Measurement switch for what AREA subdivision costs: it is the expensive half and it is on for
+    // correctness, not speed - an un-subdivided fill floats above the ground. Off = shipped.
     //   adb shell setprop debug.massif.areasourcedensity 1
     static bool isAreaSourceDensityForced() {
         static const bool forced = [] {
@@ -336,10 +334,9 @@ namespace massif {
             bool terrainEnabled = terrainOptions && terrainOptions->isDecodeActive();
             int terrainMeshResolution = terrainOptions ? terrainOptions->getMeshResolution() : 0;
             int terrainMinZoom = terrainOptions ? terrainOptions->getMinZoom() : 0;
-            // Fills stay subdivided even under draping, because draping is decided per tile at
-            // render time and this density globally at decode time - see docs/internals/rendering/02-tiles.md.
-            // MUST match what resetTileTransformer() passes, or tiles decoded for the other mode
-            // stay in the cache forever.
+            // Fills stay subdivided even under draping: draping is decided per tile at render time,
+            // this density globally at decode time. MUST match what resetTileTransformer() passes,
+            // or tiles decoded for the other mode stay in the cache forever.
             bool terrainTangramContent = terrainEnabled && terrainOptions && !terrainOptions->isDrapeFillsEnabled();
             bool terrainSourceDensity = isAreaSourceDensityForced();
             bool terrainSourceDensityLines = terrainTangramContent || (terrainOptions && terrainOptions->isDrapeLinesEnabled()) || isLineSourceDensityForced();
@@ -377,13 +374,9 @@ namespace massif {
             _calculatingTiles = false;
             VT_STAT_INC(tileLayersSkipped);
 
-            // Report the real change, not an unconditional one. This path runs on every cull
-            // pass for as long as the layer stays hidden, and a hardcoded 'changed' makes a
-            // VectorTileLayer request a redraw and a full label placement pass every time -
-            // and the redraw brings the cull worker straight back here. A hidden layer then
-            // burns a placement pass over every OTHER layer's labels, several times a second,
-            // on a completely still map. refreshTiles below still reports true once, on the
-            // pass that empties the tile set, which is the only change there is to report.
+            // Report the real change, not an unconditional one: this runs on every cull pass while
+            // the layer stays hidden, and a hardcoded 'changed' burns a placement pass over every
+            // OTHER layer's labels, several times a second, on a completely still map.
             refreshDrawData(cullState, false);
             return;
         }
@@ -396,9 +389,8 @@ namespace massif {
             float lodFactor = 0.0f;
             int coarsening = 0;
             // The DECODE state, not the render one: the tile set is what 3D is PREPARED with, and
-            // the 2D/3D switch waits for it before the terrain rises. Following the render state
-            // instead re-culls at the instant the terrain appears, which is the tile set arriving
-            // late over a map that is already 3D.
+            // the switch waits for it. Following the render state re-culls at the instant the
+            // terrain appears, which is the tile set arriving late over a map already in 3D.
             bool terrainActive = false;
             if (auto options = getOptions()) {
                 lodFactor = options->getTileLODFactor();
@@ -417,10 +409,9 @@ namespace massif {
             }
         }
 
-        // Check if tiles need to be recalculated. An empty tile set counts as "needs recalculating":
-        // the set is otherwise frozen until the MVP changes, so a single cull that ran before the
-        // layer had what it needs (data extent, transformer, style) leaves the layer blank until the
-        // user pans. Cheap to redo - an empty set means the recursion stops at the root tile.
+        // An empty tile set counts as "needs recalculating": the set is otherwise frozen until the
+        // MVP changes, so one cull that ran before the layer had what it needs leaves it blank until
+        // the user pans. Cheap to redo - an empty set stops the recursion at the root tile.
         bool recalculateTiles = (!_tileCullState || _visibleTiles.empty() || _frameNr != _lastFrameNr || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
         if (recalculateTiles) {
             VT_STAT_INC(tileRecalculations);
@@ -635,14 +626,9 @@ namespace massif {
     }
 
     void TileLayer::collectSpanReferenceTiles() {
-        // A span piece cut by the tile grid takes its chord from the two portals of the whole
-        // structure, which live in other tiles - and a map opened in the middle of a bridge holds
-        // none of them, so the deck stays draped onto the valley until the abutments come into
-        // view. The renderer reports every cut end it could not resolve, stepped just past the
-        // cut; the tile that point lands in, a few levels COARSER so a long deck is a handful of
-        // tiles rather than a chain of twenty, is fetched unseen. Its pieces resolve on their own
-        // (or report their own cut ends, which walks the chain one hop per cull) and lend the
-        // chord back through the renderer's chord cache.
+        // A span piece cut by the tile grid takes its chord from the portals of the whole structure,
+        // which live in other tiles. The renderer reports every cut end it could not resolve, and the
+        // tile that point lands in - a few levels COARSER - is fetched unseen to lend the chord back.
         _spanReferenceTiles.clear();
         if (!_terrainActive || !_tileRenderer) {
             _spanReferences.clear();
@@ -655,20 +641,15 @@ namespace massif {
         for (const SpanReference& reference : _spanReferences) {
             seen.insert(getTileId(reference.tile));
         }
-        // Finest zoom first - the renderer lists its ends coarsest first, and named in that order
-        // the horizon's pieces took every slot and the deck under the camera never got its tile.
-        // And a HARD bound: a set full of tiles all named this cull takes no new one, or a city
-        // view at z14 (a thousand stranded ends) grew it to 121 tiles and a second per union build.
+        // Finest zoom first: the renderer lists its ends coarsest first, and in that order the
+        // horizon's pieces took every slot. HARD bound too - a city view at z14 grew the set to
+        // 121 tiles and a second per union build.
         std::size_t named = 0;
         for (auto endIt = ends.rbegin(); endIt != ends.rend(); endIt++) {
             const std::pair<int, cglib::vec2<double>>& end = *endIt;
             // Coarser than the piece, but not below where a tile set still carries its bridges
-            // (OSM-derived sets: z13-14). A piece already at the floor walks to its NEIGHBOUR at
-            // the same zoom instead, one hop per cull, which is how the two halves of a long
-            // deck meet - dropping further hands back tiles with no span in them at all.
-            // And never past the data source's own max zoom: a tile beyond it is the same source
-            // data cut again at the finer grid, so a z19 piece (z16 source) took its reference at
-            // z16 by luck and a z20 one would have had a z17 cut with the same stranded ends.
+            // (z13-14), and never past the source's max zoom - beyond it the same data is cut again
+            // at a finer grid. A piece at the floor walks to its NEIGHBOUR instead, one hop per cull.
             int zoom = std::max(getMinZoom(), std::min(end.first, std::max(SPAN_REFERENCE_MIN_ZOOM, end.first - SPAN_REFERENCE_ZOOM_DROP)));
             if (std::shared_ptr<TileDataSource> dataSource = getDataSource()) {
                 zoom = std::min(zoom, dataSource->getMaxZoom());
@@ -726,25 +707,18 @@ namespace massif {
         _visibleTiles.clear();
         _preloadingTiles.clear();
 
-        // In terrain mode the distance-based LOD picks higher-zoom tiles near the camera
-        // than flat rendering would show at the same camera zoom; if the style renders
-        // differently at different tile zooms, the LOD rings become visible as patches.
-        // TerrainOptions::setMaxTileZoomOffset caps the tile detail relative to what flat
-        // rendering would use.
+        // In terrain mode the distance-based LOD picks higher-zoom tiles near the camera than flat
+        // rendering would, so a style that renders differently per tile zoom shows LOD rings.
+        // TerrainOptions::setMaxTileZoomOffset caps the tile detail against the flat case.
         _terrainMaxTileZoom = 1000;
         _terrainMinTileZoom = 0;
         _terrainOverzoomTargets = false;
         if (auto options = getOptions()) {
             if (auto terrainOptions = options->getTerrainOptions()) {
                 if (terrainOptions->isDecodeActive()) {
-                    // Terrain mode: allow target tiles BEYOND the data source maximum
-                    // zoom (fed from ancestor tiles by the regular overzoom machinery).
-                    // The tile surfaces are the terrain depth occluders and their
-                    // tesselation is proportional to the tile size - capping targets at
-                    // the data source maximum (e.g. a z12 DEM-derived hillshade under a
-                    // z15 camera) leaves cells many times coarser than the base map's,
-                    // and the resulting blunted ridges are leaky occluders that content
-                    // and vector elements show through near crests.
+                    // Terrain mode: allow target tiles BEYOND the data source maximum zoom. The
+                    // tile surfaces are the depth occluders and their tesselation follows the tile
+                    // size, so a capped coarse tile has blunted ridges that content shows through.
                     _terrainOverzoomTargets = true;
                     const ViewState& viewState = cullState->getViewState();
                     int cameraTileZoom = static_cast<int>(viewState.getZoom() + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS);
@@ -1007,11 +981,9 @@ namespace massif {
             MapTile tile(visTile.getX() & tileMask, visTile.getY() & tileMask, visTile.getZoom(), visTile.getFrameNr());
             long long tileId = getTileId(tile);
 
-            // A tile wanted only for what it CONTAINS, never drawn (the span reference tiles): it
-            // takes the fetch and nothing else. The substitution search below walks a coarse tile's
-            // whole subtree and builds draw data for every cached descendant it meets - for a tile
-            // three levels above the camera that is hundreds of draw datas per cull, per tile,
-            // which is what filled the heap until the app was killed.
+            // A tile wanted only for what it CONTAINS, never drawn (a span reference): it takes the
+            // fetch and nothing else. The substitution search below walks a coarse tile's whole
+            // subtree and builds draw data for every cached descendant - hundreds per cull.
             if (fetchOnly) {
                 bool cached = tileExists(tileId, preloadingTiles) || tileExists(tileId, !preloadingTiles);
                 bool valid = tileValid(tileId, preloadingTiles) || tileValid(tileId, !preloadingTiles);
@@ -1124,10 +1096,9 @@ namespace massif {
     }
 
     void TileLayer::collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState) {
-        // The same gate the draw path uses (loadData, onDrawFrame). Under a cross-layer drape the
-        // bake IS the drawing, so a layer that would not be drawn must not be collected either -
-        // otherwise a layer outside its visible zoom range, or at zero opacity, is baked into the
-        // terrain texture and shows up as ground that no style asked for.
+        // The same gate the draw path uses. Under a cross-layer drape the bake IS the drawing, so a
+        // layer that would not be drawn must not be collected either - or a layer outside its zoom
+        // range is baked into the terrain texture as ground no style asked for.
         if (isVisible() && getVisibleZoomRange().inRange(viewState.getZoom()) && getOpacity() > 0) {
             drapeLayers.push_back(std::static_pointer_cast<TileLayer>(shared_from_this()));
         }
@@ -1139,10 +1110,8 @@ namespace massif {
 
     std::size_t TileLayer::drapeStackSignature() const {
         // The contact shadows belong here rather than in the per-tile fingerprint: a drape tile is
-        // fingerprinted from the render tiles OF ITS OWN ZOOM, while the shadow it carries can come
-        // from a coarser render tile covering it. A tile baked before the extrusions had decoded
-        // then kept no shadow and nothing ever asked it to bake again - which is a launch with a
-        // warm tile cache showing no contact shadows until a zoom rebuilds the drape.
+        // fingerprinted from render tiles OF ITS OWN ZOOM, while its shadow can come from a coarser
+        // one. A tile baked before the extrusions decoded kept none, and never re-baked.
         std::size_t signature = static_cast<std::size_t>(reinterpret_cast<std::uintptr_t>(this));
         if (isGroundAOBakeable()) {
             signature ^= 0x9e3779b9;
@@ -1323,12 +1292,9 @@ namespace massif {
             }
             else if (auto terrainOptions = options->getTerrainOptions()) {
                 if (terrainOptions->isDecodeActive()) {
-                    // The source-density flags must match the ones calculateDrawData compares
-                    // against: they decide the tesselation the tiles in the cache were built with,
-                    // so a mismatch leaves tiles decoded for the other mode in place forever
-                    // (un-subdivided fills sagging through the terrain once draping is switched off).
-                    // MUST match what calculateDrawData compares against, or tiles decoded for the
-                    // other mode stay in the cache forever.
+                    // MUST match what calculateDrawData compares against: these decide the
+                    // tesselation the cached tiles were built with, so a mismatch leaves tiles
+                    // decoded for the other mode in place forever.
                     bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
                     tileTransformer = std::make_shared<TerrainTileTransformer>(static_cast<float>(Const::WORLD_SIZE), terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
                 }
@@ -1512,17 +1478,15 @@ namespace massif {
     const int TileLayer::TERRAIN_COVER_TILE_BUDGET = 256;
 
     const int TileLayer::MAX_PARENT_SEARCH_DEPTH = 6;
-    // As deep as the parent search: a stand-in must be able to cover a zoom-in of several levels,
-    // or the map goes EMPTY exactly when the user asked to see more. A deep stand-in only looked bad
-    // while coarse parents were also being fetched AHEAD of the wanted tiles (PARENT_PRIORITY_OFFSET
-    // was positive); with that order fixed, what is shown meanwhile is whatever was already there.
+    // As deep as the parent search: a stand-in must cover a zoom-in of several levels, or the map
+    // goes EMPTY exactly when the user asked to see more. A deep stand-in only looked bad while
+    // coarse parents were fetched AHEAD of the wanted tiles.
     const int TileLayer::MAX_STAND_IN_DEPTH = MAX_PARENT_SEARCH_DEPTH;
     const int TileLayer::MAX_CHILD_SEARCH_DEPTH = 3;
 
-    // NEGATIVE on purpose: the parent fetched as a preview is dispatched AFTER the tiles that are
-    // actually wanted. It used to be +1, so a coarse stand-in was requested first and the map showed
-    // it even when the real tile would have arrived just as fast - and for a source that generates
-    // its tiles (traced contours) that preview is a full pass whose result is thrown away.
+    // NEGATIVE on purpose: the parent fetched as a preview is dispatched AFTER the tiles actually
+    // wanted. At +1 the map showed a coarse stand-in even when the real tile arrived just as fast,
+    // and for a generating source (traced contours) that preview is a full pass thrown away.
     const int TileLayer::PARENT_PRIORITY_OFFSET = -1;
     const int TileLayer::PRELOADING_PRIORITY_OFFSET = -2;
     const int TileLayer::SPAN_REFERENCE_ZOOM_DROP = 3;

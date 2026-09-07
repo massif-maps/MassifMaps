@@ -55,11 +55,9 @@ namespace massif::mvt {
         static std::vector<vt::LabelAnchor> parseAnchors(const std::string& anchors);
         // 'left' / 'middle' / 'right' / 'auto' - see _textHorizontalAlignment.
         static vt::LabelLineAlign parseLineAlign(const std::string& align);
-        // The icon run: the glyphs of 'icon-name' shaped from 'icon-face-name', scaled, centred on
-        // the anchor and marked as the icon run so that they keep their place when the text moves.
-        // The face is resolved as a FALLBACK of the label font, which is what puts its glyphs in
-        // the label's own atlas (FontManagerFont::shapeGlyphs) - a font of its own has an atlas of
-        // its own, and one label can only be drawn from one.
+        // The icon run: the glyphs of 'icon-name' shaped from 'icon-face-name', centred on the anchor
+        // and marked as the icon run so they keep their place when the text moves. The face is resolved
+        // as a FALLBACK of the label font, which puts its glyphs in the label's own atlas.
         std::vector<vt::Font::Glyph> buildIconGlyphs(const std::shared_ptr<const vt::Font>& font, const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext, float fontSize) const;
 
         StringProperty _file;
@@ -84,10 +82,8 @@ namespace massif::mvt {
         FloatProperty _iconDx = FloatProperty(0.0f);
         FloatProperty _iconDy = FloatProperty(0.0f);
         // How the LINES of a wrapped name are justified inside the text block - 'left', 'middle',
-        // 'right' or 'auto'. 'auto' follows the side the culler put the name on (see
-        // shield-anchors): flush against the icon on either side, which is what makes a two-line
-        // name look the same distance from it as a one-line one. Unset keeps every line centred,
-        // which is what a label did before the property existed.
+        // 'right' or 'auto'. 'auto' follows the side the culler put the name on, flush against the icon
+        // either way. Unset keeps every line centred.
         StringProperty _textHorizontalAlignment = StringProperty("");
         // The plate behind the ICON, mirroring 'background-*' (which is the one behind the text).
         // The shield image is a distance field, drawn like a glyph rather than blitted.

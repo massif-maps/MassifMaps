@@ -64,11 +64,9 @@ namespace massif {
     }
 
     void ElevationTileGrid::encodeHeight(float height, std::uint8_t* dst) const {
-        // Both supported encodings are POSITIONAL in base 256 - terrarium (256, 1, 1/256, -32768)
-        // and mapbox (6553.6, 25.6, 0.1, -10000) - so the digits are the base-256 split of the
-        // height in the smallest unit. Splitting that way rather than dividing greedily by each
-        // coefficient in turn keeps the carry exact: a greedy split can leave a remainder that
-        // rounds the last digit to 256, and clamping it there loses a whole quantum.
+        // Both encodings are POSITIONAL in base 256, so the digits are the base-256 split of the
+        // height in the smallest unit. That keeps the carry exact, where a greedy division by each
+        // coefficient can round the last digit to 256 and lose a whole quantum when clamped.
         double quantum = (_bytesPerTexel >= 3 ? _coeffs[2] : (_bytesPerTexel >= 2 ? _coeffs[1] : _coeffs[0]));
         long long units = (quantum != 0 ? static_cast<long long>(std::floor((height - _coeffs[3]) / quantum + 0.5)) : 0);
         int digits = std::min(_bytesPerTexel, 3);
@@ -151,17 +149,13 @@ namespace massif {
             // differently encoded one: its bytes mean different heights.
             return grid && grid->_width == _width && grid->_height == _height && grid->_bytesPerTexel == _bytesPerTexel && grid->_coeffs == _coeffs && grid->_tile.getZoom() == _tile.getZoom() && !(grid->_tile == _tile);
         };
-        // Different level (a coarser ancestor grid stands in for the neighbour): sample the
-        // neighbour's height field at the geographic position of the border texel center.
-        // Real DEM data at the tile edge beats duplicating our own edge texel, which leaves
-        // a full-texel height step (tens of meters on a slope) at the tile border.
+        // Coarser ancestor standing in for the neighbour: sample its height field at the border
+        // texel centre. Real DEM beats duplicating our own edge texel, which leaves a full-texel
+        // height step - tens of metres on a slope - at the tile border.
         double texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
         double texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
-        // EDGE BOX FILTER. A coarser neighbour interpolates 2^k averages along a shared edge while
-        // this tile interpolates its own texels; backfill alone leaves half the local detail as a
-        // dotted speckle line. Averaging this tile's outermost row/column over the neighbour's
-        // footprint makes both sides meet on the same value. Only towards a coarser neighbour, and
-        // groups are found geographically so an unaligned one degrades to a no-op.
+        // EDGE BOX FILTER: a coarser neighbour interpolates 2^k averages along a shared edge, so
+        // averaging this tile's outermost row/column over its footprint makes both sides meet.
         // alongY: the edge runs north-south, so texel ROWS are grouped and fixedIndex is the column.
         auto edgeFilter = [&, this](const std::shared_ptr<ElevationTileGrid>& neighbour, bool alongY, int fixedIndex) -> std::vector<float> {
             std::vector<float> result;
@@ -203,10 +197,9 @@ namespace massif {
         std::vector<float> southEdge = edgeFilter(neighbours[2], false, 0);
         std::vector<float> northEdge = edgeFilter(neighbours[3], false, _height - 1);
 
-        // Texel at padded coordinates (gx, gy in [-1, width/height]); border texels come from the
-        // neighbour that actually covers them, falling back to edge clamping.
-        // Captured BY VALUE: the sampler outlives this call, and the edge filters are the
-        // expensive part of it.
+        // Texel at padded (gx, gy) in [-1, width/height]; border texels come from the neighbour
+        // that covers them, falling back to edge clamping. Captured BY VALUE - the sampler outlives
+        // this call, and the edge filters are the expensive part of it.
         return [this, neighbours, texelX, texelY, westEdge, eastEdge, southEdge, northEdge](int gx, int gy, std::uint8_t* dst) {
             auto sameLevel = [this](const std::shared_ptr<ElevationTileGrid>& grid) {
                 return grid && grid->_width == _width && grid->_height == _height && grid->_bytesPerTexel == _bytesPerTexel && grid->_coeffs == _coeffs && grid->_tile.getZoom() == _tile.getZoom() && !(grid->_tile == _tile);
@@ -399,11 +392,9 @@ namespace massif {
 
         std::function<void(int, int, std::uint8_t*)> texelValue = makeTexelSampler(neighbours);
 
-        // Only the border ring and the two outermost own rows/columns can come from anywhere but
-        // this grid: the border ring by definition, the outermost own texels because a coarser
-        // neighbour box-filters them (edgeFilter above). Everything else is this grid's own texel
-        // at its own index, and a whole row of those is one memcpy - the copy is what replaced the
-        // per-texel re-encode this used to do (measured 4.3ms a tile on the encode worker).
+        // Only the border ring and the two outermost own rows/columns come from elsewhere (a
+        // coarser neighbour box-filters them); the rest is this grid's own texel at its own index,
+        // so a whole row is one memcpy - it replaced a per-texel re-encode worth 4.3 ms a tile.
         std::size_t i = 0;
         for (int gy = -1; gy <= _height; gy++) {
             bool ownRow = (gy > 0 && gy < _height - 1);

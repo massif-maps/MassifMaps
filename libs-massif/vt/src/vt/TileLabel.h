@@ -39,11 +39,9 @@ namespace massif::vt {
             std::optional<Transform> transform;
             std::shared_ptr<const GlyphMap> glyphMap;
             int glyphRenderSize;
-            // Meters from the camera beyond which the label is not placed at all; 0 = no limit.
-            // A label glyph is screen-space, so a street name 5km away is drawn at the same size as
-            // one 50m away, and a tilted view fills its horizon band with unreadable labels. Which
-            // labels a tile carries is already decided by the style at the TILE's zoom, so this is
-            // the second half of that: how far the ones that exist may be seen.
+            // Metres from the camera beyond which the label is not placed at all; 0 = no limit. A label
+            // glyph is screen-space, so a name 5 km away is drawn at the size of one 50 m away and a
+            // tilted view fills its horizon band with unreadable labels.
             float maxDistance;
             // What this label keeps while its anchor is hidden by 3D content (mapbox's
             // text-occlusion-opacity, per style layer). Unset = the layer's own default.
@@ -82,13 +80,9 @@ namespace massif::vt {
             std::optional<cglib::vec2<float>> calloutLineAnchor;
             std::optional<cglib::vec2<float>> calloutBandAnchor;
             std::optional<GlyphMap::Glyph> calloutLineGlyph;
-            // A plate drawn behind part of the label (see LabelPlateStyle). 'glyph' is the atlas
-            // cell it is nine-sliced from, so the corners keep their radius however wide the text is.
-            // Fill AND border come from that ONE cell - r is the fill's coverage, a the whole
-            // plate's - so both are drawn by one quad in one blend: two quads leave the border
-            // showing through the fill wherever the label is mid-fade or the fill translucent.
-            // 'radius'/'borderWidth' are what the cell was actually built at (quarter pixels), and
-            // the geometry has to use them rather than the style's own values.
+            // A plate drawn behind part of the label. 'glyph' is the atlas cell it is nine-sliced from,
+            // and fill AND border come from that ONE cell (r the fill's coverage, a the whole plate's),
+            // so one quad draws both. 'radius'/'borderWidth' are what the cell was built at.
             struct Plate {
                 LabelPlateStyle style;
                 std::optional<GlyphMap::Glyph> glyph;
@@ -119,10 +113,9 @@ namespace massif::vt {
             explicit Style(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float scale, float ascent, float descent, const std::optional<Transform>& transform, std::shared_ptr<const GlyphMap> glyphMap, int glyphRenderSize, float maxDistance = 0.0f, const std::optional<ColorFunction>& secondaryColorFunc = std::optional<ColorFunction>(), FloatFunction rankFunc = FloatFunction(0.0f), float calloutScreenAnchor = -1.0f, float calloutOffset = 0.0f, float calloutStep = 0.0f, int calloutMaxRows = 8, int calloutPersistPasses = 0, float calloutLineWidth = 1.0f, const std::optional<cglib::vec2<float>>& calloutLineAnchor = std::optional<cglib::vec2<float>>(), const std::optional<cglib::vec2<float>>& calloutBandAnchor = std::optional<cglib::vec2<float>>(), const std::optional<GlyphMap::Glyph>& calloutLineGlyph = std::optional<GlyphMap::Glyph>(), const Plate& textPlate = Plate(), const Plate& iconPlate = Plate(), float textLineAlign = 0.0f, const std::optional<ColorFunction>& iconColorFunc = std::optional<ColorFunction>()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), scale(scale), ascent(ascent), descent(descent), transform(transform), glyphMap(std::move(glyphMap)), glyphRenderSize(glyphRenderSize), maxDistance(maxDistance), secondaryColorFunc(secondaryColorFunc), rankFunc(std::move(rankFunc)), calloutScreenAnchor(calloutScreenAnchor), calloutOffset(calloutOffset), calloutStep(calloutStep), calloutMaxRows(calloutMaxRows), calloutPersistPasses(calloutPersistPasses), calloutLineWidth(calloutLineWidth), calloutLineAnchor(calloutLineAnchor), calloutBandAnchor(calloutBandAnchor), calloutLineGlyph(calloutLineGlyph), textPlate(textPlate), iconPlate(iconPlate), textLineAlign(textLineAlign), iconColorFunc(iconColorFunc) { }
         };
 
-        // One candidate layout of the label's TEXT (see TextLabelStyle::anchors). The icon glyphs
-        // that come before the first line break are never moved, so a shield keeps its icon on the
-        // feature whichever side the culler ends up putting the name on. An empty variant list is
-        // the fixed layout every style had before the property existed.
+        // One candidate layout of the label's TEXT. The icon glyphs before the first line break are
+        // never moved, so a shield keeps its icon on the feature whichever side the culler puts the name
+        // on. An empty variant list is the fixed layout.
         struct Variant {
             cglib::vec2<float> shift; // glyph units, added to the text pen
             bool drawText;            // false = the icon alone, the last resort of 'text-optional'

@@ -25,10 +25,9 @@
 #include <cglib/mat.h>
 
 namespace massif::vt {
-    // The hash of the value a style parameter currently holds, shared between whoever sets the
-    // parameter and the renderer. A feature keeps the hash of the field value that parameter is
-    // compared with, so a selection change is a byte rewrite in the vertex data instead of a tile
-    // decode. Written by the application thread, read by the render thread.
+    // The hash of the value a style parameter currently holds, shared between whoever sets it and the
+    // renderer. A feature keeps the hash of the field value it is compared with, so a selection change
+    // is a byte rewrite rather than a tile decode. Written by the app thread, read by the render one.
     using StyleStateRef = std::shared_ptr<const std::atomic<std::uint64_t>>;
 
     class TileGeometry final {
@@ -61,23 +60,17 @@ namespace massif::vt {
             std::optional<cglib::vec2<float>> translate;
             CompOp compOp;
             int glyphRenderSize;
-            // An EXTRUSION's emissive, for the whole geometry rather than per slot: the 3D lighting
-            // runs per fragment against one uniform, while emissiveFuncs above are folded into the
-            // colour on the CPU - and folding an extrusion's there would grade it toward the ground
-            // radiance AND then light it, which is the same colour twice. Unset, the extrusion
-            // takes the Map block's building-emissive. Rules that differ in it do not batch
-            // together (TileLayerBuilder::createPolygon3DProcessor), the same way elevationMode
-            // already splits them.
+            // An EXTRUSION's emissive, for the whole geometry rather than per slot: the 3D lighting runs
+            // per fragment against one uniform, while emissiveFuncs above fold into the colour on the
+            // CPU - which would grade it toward the ground radiance AND then light it.
             std::optional<FloatFunction> polygon3DEmissiveFunc;
 
             StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
-        // A run of vertices that a style parameter can repoint, so a feature it picks out repaints
-        // instead of the tile being decoded again. The decoder folded the comparison both ways, so
-        // both of the styles the run can take are already slots of this geometry: it takes
-        // styleIndices[1] while the parameter hashes to stateKey and styleIndices[0] otherwise.
-        // One feature owns several runs when the repacking splits its vertices.
+        // A run of vertices a style parameter can repoint, so a feature it picks out repaints instead of
+        // the tile being decoded again. Both styles the run can take are already slots of this geometry:
+        // styleIndices[1] while the parameter hashes to stateKey, styleIndices[0] otherwise.
         struct FeatureStyleRange {
             std::uint64_t stateKey;
             std::uint32_t firstVertex;
@@ -102,11 +95,9 @@ namespace massif::vt {
             cglib::vec2<float> p0, p1;                 // in packed vertex space
             bool portal0 = false, portal1 = false;     // an end the tile did NOT cut
             std::size_t vertexOffset = 0, vertexCount = 0;
-            // Where the piece sits relative to its chord, in METRES (resolveSpanBases converts it
-            // to internal z units, where the chord is). A deck HANGS under the road it carries,
-            // and a negative vertex height cannot express that: the extrusion shader only takes
-            // the resolved base where the height is positive, so a negative one left every vertex
-            // on the terrain. The offset moves the BASE instead and the heights stay positive.
+            // Where the piece sits relative to its chord, in METRES (resolveSpanBases converts). A deck
+            // HANGS under the road it carries, which a negative vertex height cannot express - the
+            // shader only takes the resolved base where the height is positive.
             float baseOffset = 0.0f;
         };
 
@@ -119,13 +110,9 @@ namespace massif::vt {
             int normalOffset;
             int binormalOffset;
             int heightOffset;
-            // Extrusions only: the ground the prism stands on, in internal z units, resolved on
-            // the CPU from the SDK's elevation source and patched in after the fact (see
-            // setVertexBase). Sampled in the vertex shader it came from the elevation texture the
-            // TILE BEING DRAWN happens to have bound, so one building spanning two tiles got two
-            // bases and cracked apart. Starts at UNRESOLVED_BASE, which the shader reads as "use
-            // the ground under this vertex" - the pre-CPU behaviour, so a building whose elevation
-            // never resolves is drawn slightly wrong rather than not at all.
+            // Extrusions only: the ground the prism stands on, in internal z units, resolved on the CPU.
+            // Sampled in the vertex shader it came from whichever tile was being drawn, so a building
+            // spanning two tiles cracked apart. UNRESOLVED_BASE reads as "the ground under this vertex".
             int baseOffset;
             // Span fills and decks only: where the vertex sits along its chord, unclamped
             // (SpanGeometry::chordParamRaw), resolved with the base. The shader discards the

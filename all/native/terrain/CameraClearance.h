@@ -67,10 +67,9 @@ namespace massif {
          * @param floorZ An app's explicit minimum clearance, 0 for none.
          */
         static float maxZoom(float zoom, double focusZ, double cameraZ, double terrainZ, double maxZoomOrbit, double floorZ) {
-            // A zoom scales the camera-to-focus vector by s, so the camera height is
-            // focusZ + s * hz and its clearance above terrainZ must reach
-            // max(FRACTION * (focusZ + s * hz), c): two linear constraints on s, each a lower
-            // bound when its slope is positive, and no bound at all when it is not.
+            // A zoom scales the camera-to-focus vector by s, so the camera height is focusZ + s*hz
+            // and its clearance must reach max(FRACTION * (focusZ + s*hz), c): two linear constraints
+            // on s, each a lower bound only when its slope is positive.
             double hz = cameraZ - focusZ;
             double c = std::max(std::max(0.0, maxZoomOrbit) * FRACTION, floorZ);
             double sMin = 0;

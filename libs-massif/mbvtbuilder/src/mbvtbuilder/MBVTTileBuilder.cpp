@@ -12,25 +12,12 @@
 
 namespace massif::mbvtbuilder
 {
-    // geojson-vt's tile pyramid, driven by our own drill instead of its GeoJSONVT glue.
-    //
-    // Same algorithm - a tile is cut from the slice its parent already made, axis-separated so the
-    // left half is clipped once and shared by both children - but four things differ, each of which
-    // cost real time when measured against upstream's class on a device:
-    //
-    //  - the root is the deepest tile that contains the layer (upstream always roots at z0, so a
-    //    city-sized layer paid ~9 levels of whole-dataset copies before the first real cut),
-    //  - only the REQUESTED tile is turned into int16 tile coordinates; upstream builds that for
-    //    every node it walks through,
-    //  - nothing caches the built tile, because the SDK caches the encoded MVT above us,
-    //  - splitting STOPS once nothing in the node is bigger than the tile being asked for, and
-    //    that tile is cut straight out of the node. Splitting costs a pass over the whole node per
-    //    level and only helps features that have to be CUT; one smaller than the tile is thrown out
-    //    by the clipper's per-feature bbox test for two comparisons either way. Without this stop,
-    //    5000 short routes cost 583 ms over 256 tiles at z14 where the old scan-every-feature
-    //    builder took 209 ms. Note the test is against the TARGET zoom, not the next level down: a
-    //    piece that fits one child can still span dozens of tiles at the zoom actually wanted, and
-    //    stopping on it cost the long-route set 575 ms instead of 274 ms.
+    // geojson-vt's tile pyramid, driven by our own drill instead of its GeoJSONVT glue. Four
+    // differences, each measured against upstream's class on a device:
+    //  - the root is the deepest tile containing the layer, not z0;
+    //  - only the REQUESTED tile is turned into int16 tile coordinates;
+    //  - nothing caches the built tile - the SDK caches the encoded MVT above us;
+    //  - splitting STOPS once nothing in the node is bigger than the TARGET tile.
     struct MBVTTileIndex
     {
         using VTFeatures = mapbox::geojsonvt::detail::vt_features;
@@ -47,10 +34,9 @@ namespace massif::mbvtbuilder
         struct Node
         {
             VTFeatures features;
-            // Widest feature in the node, in unit space. Splitting only helps features bigger than
-            // the tile being asked for; anything smaller is thrown out by the clipper's per-feature
-            // bbox test for two comparisons either way. Kept per node so the test is O(1) instead
-            // of a pass over every feature on every tile.
+            // Widest feature in the node, in unit space. Splitting only helps features bigger than the
+            // tile being asked for; anything smaller is thrown out by the clipper's bbox test anyway.
+            // Kept per node, so the test is O(1) rather than a pass over every feature.
             double maxSpan = 0;
         };
 
@@ -422,9 +408,8 @@ namespace massif::mbvtbuilder
         }
 
         // Cuts the pyramid down towards (zoom, tileX, tileY), reusing whatever slice is cached and
-        // stopping early on a small node. Returns the deepest node on the path, with its own tile
-        // coordinates in nodeZoom/nodeX/nodeY - which is the wanted tile only when it drilled all
-        // the way. Null means the tile holds none of the layer.
+        // stopping early on a small node. Returns the deepest node on the path, which is the wanted tile
+        // only when it drilled all the way; null means the tile holds none of the layer.
         const MBVTTileIndex::Node *drillToTile(MBVTTileIndex &index, int zoom, std::uint32_t tileX, std::uint32_t tileY, int &nodeZoom, std::uint32_t &nodeX, std::uint32_t &nodeY)
         {
             auto nodeAt = [&index](int z, std::uint32_t x, std::uint32_t y) -> const MBVTTileIndex::Node *
@@ -521,10 +506,9 @@ namespace massif::mbvtbuilder
             const double minX = (tileX - p) / z2, maxX = (tileX + 1 + p) / z2;
             const double minY = (tileY - p) / z2, maxY = (tileY + 1 + p) / z2;
 
-            // Pick the features that touch the tile FIRST. geojson-vt's clip reserves its output for
-            // the whole input, so running it straight over a coarse node allocates for every feature
-            // in the layer on every tile - which is what made serving from a coarse node cost more
-            // than the old full scan it was meant to replace.
+            // Pick the features that touch the tile FIRST: geojson-vt's clip reserves its output for the
+            // whole input, so running it straight over a coarse node allocates for every feature in the
+            // layer, on every tile.
             MBVTTileIndex::VTFeatures candidates;
             for (const auto &feature : node->features)
             {

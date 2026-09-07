@@ -212,10 +212,8 @@ namespace massif {
     }
 
     bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height) const {
-        // getDisplayHeight cannot say whether it HAS data - it returns 0 either way, and 0 is a
-        // legal height. A caller that bakes the answer into geometry needs the difference: an
-        // extrusion given a base of 0 where the ground is 215 m sits below the terrain and
-        // disappears. Same lookup, minus the guess.
+        // getDisplayHeight cannot say whether it HAS data - it returns 0 either way, and 0 is a legal
+        // height. An extrusion given a base of 0 where the ground is 215 m sinks below the terrain.
         double wrappedX = wrapInternalX(internalX);
         std::shared_ptr<ElevationTileGrid> grid = getGridForInternalPos(wrappedX, internalY, LoadMode::CACHED_ONLY);
         if (!grid) {
@@ -253,11 +251,9 @@ namespace massif {
             return std::shared_ptr<ElevationTileGrid>();
         }
 
-        // Per-thread memo of the last resolved (tile -> grid); grids are immutable and every change
-        // bumps the version. LOAD_EXACT is excluded - it must not be satisfied through the ancestor
-        // search - and the MODE is part of the key, because CACHED_ONLY accepts a coarse ancestor
-        // while ALLOW_LOAD loads the tile: sharing them makes two consumers of the same ground
-        // disagree by the LOD chord error (the shadow map drifting off its own surface).
+        // Per-thread memo of the last resolved (tile -> grid); grids are immutable and versioned.
+        // MODE is part of the key - CACHED_ONLY takes a coarse ancestor where ALLOW_LOAD loads the
+        // tile, and sharing them makes two consumers of the same ground disagree by the chord error.
         struct GridMemo {
             unsigned long long instanceId = 0;
             unsigned int version = 0;
@@ -275,11 +271,9 @@ namespace massif {
         // Look for the tile or any of its cached ancestors
         bool tileFailed = false;
         if (mode == LoadMode::LOAD_EXACT) {
-            // The caller wants THIS level, not a stand-in: a cached ancestor must not short
-            // circuit the load, or a tile that once fell back to its parent would stay on it
-            // forever - and neighbouring tiles displaced by different elevation levels tear the
-            // surface open along their shared edge. A grid cached under this tile id that covers
-            // an ancestor is the data source saying the level does not exist here, so it stands.
+            // LOAD_EXACT wants THIS level: a cached ancestor must not short-circuit the load, or
+            // neighbours displaced by different levels tear the surface open. A grid cached under
+            // this tile id is the data source saying the level does not exist here, so it stands.
             std::lock_guard<std::mutex> lock(_mutex);
             std::shared_ptr<ElevationTileGrid> grid;
             if (_gridCache.read(tile.getTileId(), grid)) {
@@ -361,10 +355,8 @@ namespace massif {
                 float maxSeen = _maxSeenElevation.load();
                 while (grid->getMaxHeight() > maxSeen && !_maxSeenElevation.compare_exchange_weak(maxSeen, grid->getMaxHeight())) { }
 
-                // Record WHICH tile changed, under the same lock as the insert, so a consumer that
-                // sees the new version sees the grid and the log entry. The DATA version moves too:
-                // a decoded tile IS new data, and standing still made every load read as scale-only
-                // (the blanket invalidation). See docs/internals/rendering/04-terrain.md, the two versions.
+                // Record WHICH tile changed under the insert's lock, and bump the data version too -
+                // a decoded tile IS new data. docs/internals/rendering/04-terrain.md, the two versions.
                 _dataVersion++;
                 unsigned int version = _version.fetch_add(1) + 1;
                 _changeLog.emplace_back(version, grid->getTile());
@@ -461,10 +453,8 @@ namespace massif {
             std::deque<PrefetchEntry>& queue = (priority >= 2 ? _prefetchQueueHigh : _prefetchQueue);
             queue.push_back(PrefetchEntry { tile, priority });
             while (queue.size() > MAX_PREFETCH_QUEUE_SIZE) {
-                // Shed the least useful entry rather than simply the oldest: the low queue holds
-                // edge neighbours (a texel of border each) beside diagonal ones (a single corner
-                // texel), and a full queue should give up the corners. Ties keep the oldest, which
-                // is the one most likely to have scrolled out of view.
+                // Shed the least useful entry, not the oldest: the low queue mixes edge neighbours
+                // with single-corner diagonals, and a full queue gives up the corners first.
                 auto victim = queue.begin();
                 for (auto it = queue.begin(); it != queue.end(); it++) {
                     if (it->priority < victim->priority) {
@@ -497,12 +487,9 @@ namespace massif {
                     return;
                 }
                 std::deque<PrefetchEntry>& queue = (_prefetchQueueHigh.empty() ? _prefetchQueue : _prefetchQueueHigh);
-                // Priority first, then NEAREST the camera, so the ground under the viewer fills in
-                // before the ground at the horizon. Distance orders within a priority and never
-                // overrules it: a tile displaced by an ancestor grid tears against its neighbours,
-                // which no amount of nearness makes up for. With no focus set it is newest first,
-                // as the queue always drained. The scan is bounded by MAX_PREFETCH_QUEUE_SIZE and
-                // runs once per tile LOAD - a fetch and a decode, beside which it does not register.
+                // Priority first, then nearest the camera. Distance orders within a priority and
+                // never overrules it: a tile displaced by an ancestor grid tears against its
+                // neighbours. With no focus set it is newest first, as the queue always drained.
                 bool haveFocus = _prefetchFocusValid.load();
                 double focusU = _prefetchFocusU.load(), focusV = _prefetchFocusV.load();
                 std::size_t index = 0;
@@ -534,14 +521,9 @@ namespace massif {
     }
 
     double ElevationManager::getDisplayScale(double internalY) const {
-        // The metres-to-internal scale only depends on the latitude, and a dense consumer (the
-        // label re-anchor, the raycast) walks points a few metres apart - but tanh() is the
-        // single most expensive thing in that loop (measured: tanh + expm1 = 21% of the render
-        // thread). Quantise the latitude to DISPLAY_SCALE_STEP and remember the last step: the
-        // step spans ~40 m, over which the scale moves by ~4e-7 relative, i.e. under two
-        // millimetres on a 3000 m summit. Quantising rather than interpolating keeps it a
-        // function of the position alone, so the same vertex always gets the same height and
-        // nothing oscillates between frames.
+        // tanh + expm1 measured 21% of the render thread here, so quantise the latitude to
+        // DISPLAY_SCALE_STEP (~40 m, ~4e-7 relative scale) and memo the last step. Quantising rather
+        // than interpolating keeps the height a function of position alone, so nothing oscillates.
         double step = std::floor(internalY / DISPLAY_SCALE_STEP + 0.5);
         struct ScaleMemo {
             double step = std::numeric_limits<double>::quiet_NaN();
@@ -662,10 +644,8 @@ namespace massif {
     }
 
     bool ElevationManager::getMinMaxDisplayHeight(const MapTile& tile, double& minZ, double& maxZ, bool exact) const {
-        // Fall back to the maximum elevation actually observed so far (starting flat) instead
-        // of a large conservative constant: a many-kilometers default bound would pull far
-        // tiles into the view frustum, causing them to fetch elevation data, which changes
-        // their bounds again - churning the visible tile set while data streams in.
+        // Fall back to the max elevation seen so far, not a large constant: a kilometres-high bound
+        // pulls far tiles into the frustum, they fetch data, their bounds change - the set churns.
         double minMeters = 0;
         double maxMeters = _maxSeenElevation.load();
         bool haveData = false;
@@ -680,12 +660,9 @@ namespace massif {
         MapPos internalMax = _projection->toInternal(bounds.getMax());
         double scale = std::max(getDisplayScale(internalMin.getY()), std::max(getDisplayScale(internalMax.getY()), getDisplayScale(internalCenter.getY())));
         double exaggeration = _exaggeration.load();
-        // The bounds normally include sea level whatever the data says, so that a tile without
-        // data (which reports nothing) still gets a usable range. A caller that is fitting a box
-        // to the terrain rather than culling against it wants the range the ground REALLY spans:
-        // a valley tile at 1000..2000 m reported as 0..2000 m doubles the height slab, and a
-        // shadow box is stretched by that slab divided by the tangent of the sun's altitude - at a
-        // low sun the difference is kilometres of wasted box, i.e. coarser texels everywhere.
+        // Bounds normally include sea level, so a tile without data still has a usable range. A
+        // caller fitting a box rather than culling wants the real span: the extra slab is divided by
+        // tan(sun altitude), so at a low sun it costs kilometres of box and coarser texels.
         if (exact && haveData) {
             minZ = minMeters * exaggeration * scale;
             maxZ = maxMeters * exaggeration * scale;
@@ -767,10 +744,8 @@ namespace massif {
 #endif
 
     MapTile ElevationManager::clampTileZoom(const MapTile& mapTile) const {
-        // Tangram's rule verbatim (RasterSource::addRasterTask): the render tile's own z/x/y,
-        // adjusted by the source's zoom bias and capped by its max zoom - nothing else.
-        // Deliberately NOT idempotent: applying it to an elevation tile again costs another level
-        // per hop, so those entry points use clampDataTileZoom. docs/internals/rendering/04-terrain.md.
+        // Tangram's rule verbatim (RasterSource::addRasterTask). Deliberately NOT idempotent -
+        // applying it twice costs another level per hop, so those callers use clampDataTileZoom.
         MapTile tile = mapTile;
         for (int size = _gridSizeHint.load(); size > DEM_TEXELS_PER_TILE_UNIT && tile.getZoom() > 0; size /= 2) {
             tile = tile.getParent();
@@ -789,14 +764,9 @@ namespace massif {
     }
 
     std::shared_ptr<ElevationTileGrid> ElevationManager::getGridForInternalPos(double internalX, double internalY, LoadMode mode) const {
-        // Dense point queries - a label re-anchor samples every vertex of every label - walk the
-        // same grid thousands of times in a row, and finding WHICH tile a point belongs to costs
-        // a projection transform, a tile id, a flip and the zoom clamp before the cache lookup
-        // (and its own memo) is even reached. Measured with labels over 3D terrain, that tile
-        // math was 70% of the render thread. A grid is immutable and every elevation change bumps
-        // the version, so the last grid whose bounds contain the point is the same answer the
-        // resolution below would produce - the raycast in intersectRay keeps its grid for exactly
-        // this reason. LOAD_EXACT is excluded: it must not be satisfied by an ancestor stand-in.
+        // A label re-anchor samples every label vertex, and the tile math before the cache lookup
+        // measured 70% of the render thread. Grids are immutable and versioned, so the last grid
+        // containing the point is still the right answer. LOAD_EXACT excluded (no ancestor stand-in).
         struct PosMemo {
             unsigned long long instanceId = 0;
             unsigned int version = 0;

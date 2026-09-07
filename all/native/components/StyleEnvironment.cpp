@@ -112,9 +112,8 @@ namespace {
             lighting.shadowCasterMargin = lightOptions->getShadowCasterMargin();
         }
         // The sun direction is derived from two properties, so it is rebuilt whenever the style
-        // overrides either of them - the other one then comes from the options. Unless the app
-        // asked to keep its own: a day/night cycle has to be able to move the sun on a style that
-        // states one, and a converted MapBox style states one per light preset.
+        // overrides either - unless the app asked to keep its own: a day/night cycle has to move the
+        // sun on a style that states one, and a converted MapBox style states one per preset.
         bool appSun = lightOptions && lightOptions->isSunOverridingStyle();
         if ((env.sunAzimuth || env.sunAltitude) && !appSun) {
             double azimuth = (env.sunAzimuth ? *env.sunAzimuth : (lightOptions ? lightOptions->getSunAzimuth() : 315.0f)) * Const::DEG_TO_RAD;
@@ -152,12 +151,9 @@ namespace {
         // GROUND is lit, and gating the walls on it too gave the extrusions a second lighting
         // model that changed shape as the terrain was toggled.
         lighting.buildingLightIntensity = lighting.sunIntensity;
-        // Their AMBIENT is their own, though, and does not follow the ground's. Ambient is the
-        // floor the directional term is added on top of, so an app that flattens the ground with
-        // ambient 1 - a normal thing to do when a hillshade layer supplies the relief - would
-        // flatten every facade with it, and a building with no side shading does not read as 3D at
-        // all. mapbox's fill-extrusion shades from its own light intensity for the same reason.
-        // A style ties them back together with 'building-ambient' when it wants that.
+        // Their AMBIENT is their own and does not follow the ground's: ambient is the floor the
+        // directional term sits on, so flattening the ground with ambient 1 - normal under a
+        // hillshade - would flatten every facade too. 'building-ambient' ties them back together.
         if (env.buildingLightIntensity) {
             lighting.buildingLightIntensity = *env.buildingLightIntensity;
         }
@@ -233,13 +229,9 @@ namespace {
             lighting.buildingLightIntensity = light.directIntensity;
         }
 
-        // mapbox's calculateGroundRadiance (3d-style/render/lights.ts) with the ground normal: what
-        // their light does to a flat, upward-facing surface. Everything a colour grade needs is in
-        // this one vec3, and it is the same number the style converter folds into a pre-lit palette
-        // - so the two can be checked against each other.
-        // Not neutralised for a pre-lit style: the grade only fires where a colour states an
-        // emissive below 1, and a style that folded its light in states none - so it selects
-        // itself, and the two modes need no second flag to tell them apart.
+        // mapbox's calculateGroundRadiance with the ground normal: what their light does to a flat,
+        // upward-facing surface, and the same number the style converter folds into a pre-lit
+        // palette. Not neutralised for a pre-lit style - the grade only fires below emissive 1.
         {
             const Color& ambientColor = lighting.ambientColor;
             const Color& sunColor = lighting.sunColor;
@@ -253,11 +245,9 @@ namespace {
             DayCycleLight::groundRadiance(light, lighting.sunDir(2), radiance);
             lighting.radiance = cglib::vec3<float>(radiance[0], radiance[1], radiance[2]);
             lighting.brightness = DayCycleLight::brightness(light, lighting.sunDir(2));
-            // A shadow only hides the DIRECT light, so what reaches the shaders is the strength
-            // times that light's share (DayCycleLight::directShare) - 1 is mapbox's shadow
-            // exactly, above it exaggerates. Under the horizon the share is 0, which also skips
-            // the caster pass entirely - see MapRenderer::applyTerrainShadows. Clamped because the
-            // shaders read it as `mix(1, lit, strength)` and a value past 1 inverts that.
+            // A shadow only hides the DIRECT light, so the shaders get the strength times that
+            // light's share - 1 is mapbox's shadow exactly, and 0 under the horizon skips the caster
+            // pass. Clamped: the shaders read `mix(1, lit, strength)`, which a value past 1 inverts.
             lighting.shadowStrength = std::min(1.0f, lighting.shadowStrength * DayCycleLight::directShare(light, lighting.sunDir(2)));
         }
         return lighting;
@@ -278,14 +268,9 @@ namespace {
             return fog;
         }
         fog.shaderSource = fogOptions->getShaderSource();
-        // The switch is ANDed rather than overridden: the style saying "fog" must not re-enable a
-        // fog the application switched off, which is what an app-side UI toggle means.
-        //
-        // It stops the HAZE, and only the haze. The atmosphere colours and the star intensity live
-        // on FogOptions because Mapbox puts them there, but they are the SKY's - an app that turns
-        // the fog off does not expect its dusk sky and its stars to go with it. So everything is
-        // resolved either way and the switch drops the fog COLOUR and the range at the end, which
-        // is what active() and every shader's uFogColor.a read.
+        // ANDed rather than overridden: the style saying "fog" must not re-enable a fog the app
+        // switched off. It stops the HAZE only - the atmosphere colours and the stars live on
+        // FogOptions but belong to the sky, so the switch drops the fog COLOUR and range at the end.
         bool enabled = fogOptions->isEnabled() && !(env.fogEnabled && !*env.fogEnabled);
         float rangeStart = fogOptions->getRangeStart();
         float rangeEnd = fogOptions->getRangeEnd();
@@ -331,11 +316,9 @@ namespace {
         fog.startDistance = rangeStart * fog.rangeScale;
         fog.distance = rangeEnd * fog.rangeScale;
 
-        // Light the fog. Haze is lit air: at noon it is the bright band the reference renderers
-        // show at the horizon, at night it is a dark one, and near sunset it takes the sun's
-        // colour. The scale is the same light the ground gets (ambient plus the sun once it is
-        // above the horizon), so fog and terrain darken together instead of the fog floating over
-        // a black map. The tint is applied in proportion to how much of that light is direct sun.
+        // Haze is lit air: bright at noon, dark at night, the sun's colour near sunset. Scaled by
+        // the same light the ground gets, so fog and terrain darken together instead of the fog
+        // floating over a black map. The tint follows how much of that light is direct sun.
         if (lighting.terrainLightingEnabled && fog.color.getA() > 0) {
             float sunUp = std::max(0.0f, std::min(1.0f, lighting.sunDir(2)));
             float direct = std::max(0.0f, lighting.sunIntensity) * sunUp;

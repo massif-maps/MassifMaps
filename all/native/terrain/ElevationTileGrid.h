@@ -148,10 +148,9 @@ namespace massif {
         static std::shared_ptr<ElevationTileGrid> DecodeBitmap(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs, int nodesPerEdge, int boxCells);
 
     private:
-        // The padded texture's texel at (gx, gy), gx in [-1, width] and gy in [-1, height], written
-        // into 'dst': this grid's own texel, a neighbour's, or a box-filtered edge value. Built
-        // once per encode because the edge filters it needs are O(width + height) to compute; both
-        // the full copy and the border patch go through it, so they cannot disagree.
+        // The padded texture's texel at (gx, gy) written into 'dst': this grid's own texel, a
+        // neighbour's, or a box-filtered edge value. Built once per encode (the edge filters are
+        // O(w + h)) and shared, so the full copy and the border patch cannot disagree.
         std::function<void(int, int, std::uint8_t*)> makeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
 
         const std::uint8_t* texel(int gx, int gy) const {
@@ -166,10 +165,9 @@ namespace massif {
             return static_cast<float>(h);
         }
 
-        // The inverse of decodeTexel, for the border texels that have to be RESAMPLED from a
-        // coarser neighbour rather than copied. Both supported encodings are positional in base
-        // 256 (terrarium 256, 1, 1/256; mapbox 25.6, 0.1 with a x256 head), so the digits come out
-        // of a plain greedy division by the coefficients, largest first.
+        // The inverse of decodeTexel, for border texels RESAMPLED from a coarser neighbour. Both
+        // encodings are positional in base 256, so the digits come out of a greedy division by the
+        // coefficients, largest first.
         void encodeHeight(float height, std::uint8_t* dst) const;
 
         float getHeight(int gx, int gy) const { return decodeTexel(texel(gx, gy)); }

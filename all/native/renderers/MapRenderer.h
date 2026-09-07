@@ -241,10 +241,10 @@ namespace massif {
 
         // postProcessing tells whether an effect is going to run this frame: only then are the
         // layers that opted out of it held back for drawOverlayLayers.
-        // Every tile layer's Map-block opinion, merged - the first layer to define a property
-        // wins. Collected ONCE per frame, before the sky draws, because the sky, the background
-        // plane, the terrain surface and the tile content must all fog the same way and the sky
-        // is drawn long before drawLayers would have gathered it.
+
+        // Every tile layer's Map-block opinion, merged, first definer wins. Collected ONCE per frame
+        // before the sky draws, because the sky, the background plane, the surface and the tile
+        // content must all fog the same way.
         StyleEnvironment collectStyleEnvironment(const ViewState& viewState) const;
 
         void drawLayers(float deltaSeconds, const ViewState& viewState, bool postProcessing);
@@ -257,16 +257,12 @@ namespace massif {
         // Is tileId a STRICT ancestor of other, i.e. does it cover its ground at a coarser level?
         static bool coversTile(const vt::TileId& tileId, const vt::TileId& other);
 
-        // The terrain cover the whole tile layer stack shares this frame: the union of what the
-        // layers report (layerTiles / collectedTiles, kept for the drape's staleness bookkeeping)
-        // normalised into ONE non-overlapping quadtree partition, the leaves. Both terrain paths
-        // build on it - the drape bakes one texture per leaf, the shared ground draws one surface
-        // per leaf - because the surfaces of two different tesselations of the same height field
-        // do not agree and fight wherever they overlap.
+        // The terrain cover the whole tile layer stack shares this frame: what the layers report,
+        // normalised into ONE non-overlapping quadtree partition. Two tesselations of the same
+        // height field fight wherever they overlap, so both terrain paths build on this one.
+
         // `extendSeedsOnly` keeps the seed to the levels the layers do NOT reach, which is what the
-        // drape wants: one leaf there is one cache texture and one bake, so it pays for the extra
-        // depth past a source's maxzoom and for nothing else. The shared ground takes the seed
-        // whole (false) - it has no texture budget and needs the full view covered.
+        // drape wants; the shared ground takes it whole - it has no texture budget.
         void collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, bool extendSeedsOnly, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom);
 
         // The terrain's own camera-driven cover, the seed both paths above are built from. It is
@@ -274,12 +270,9 @@ namespace massif {
         // floor(camera zoom) whatever zoom a data source stops at.
         std::vector<vt::TileId> collectTerrainCoverTileIds(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) const;
 
-        // Directional shadows for one terrain stack: resolves the light from the styles, fits a
-        // light box per cascade to the cover, re-renders the caster pass only when it has actually
-        // changed, and hands the map (or none) and the sun to every layer. The cover is the only
-        // difference between the drape path and the shared-ground one, so both call this.
-        // contentChanged says whether the tile content moved this frame - it rations the
-        // content-driven refreshes, which camera-driven ones are not subject to.
+        // Directional shadows for one terrain stack: resolves the light, fits a light box per
+        // cascade, re-renders the caster pass only on a real change, and hands the map and the sun
+        // to every layer. contentChanged rations the content-driven refreshes.
         void applyTerrainShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, 4>& shadowTexelMeters);
 
         // keepBound resolves the effect into the screen framebuffer's secondary color texture and
@@ -301,11 +294,8 @@ namespace massif {
         // one the pass runs (see viewChanged).
         static const float LABEL_PLACEMENT_ZOOM_THRESHOLD;
         // How far the zoom may drift before a drape tile is re-baked. The bake is otherwise
-        // triggered by CONTENT alone, so a style's zoom-dependent widths stayed frozen at whatever
-        // zoom the tile was first baked at and only changed when a new tile level brought new
-        // textures - a road stepped once per integer level instead of growing with the zoom.
-        // Same quantum as the label re-placement above: four bakes per zoom level, which the
-        // per-frame bake budget then spreads over frames.
+        // content-driven, so a style's zoom-dependent widths stayed frozen at the zoom the tile was
+        // first baked at. Same quantum as the label re-placement: four bakes per zoom level.
         static const float DRAPE_REBAKE_ZOOM_THRESHOLD;
         static const int LABEL_PLACEMENT_ZOOM_DELAY;
 
@@ -325,17 +315,14 @@ namespace massif {
         // reads them; what is kept here is the phase the switch is in.
         FlattenSwitch::State _flattenSwitchState;
         AutoFlatten::Trigger _autoFlattenTrigger;
-        // Auto-flattening reads its parallax from the elevation height range, and that range is
-        // only meaningful once the DEM has stopped arriving: a partly loaded view reports a small
-        // range, which reads as small parallax and flattens the map - and flattening stops the
-        // elevation decode, so it never recovers. These watch the data version and hold the rule
-        // off until it has been still for TERRAIN_SWITCH_WARM_TIMEOUT.
+        // Auto-flattening reads its parallax from the elevation height range, which is only
+        // meaningful once the DEM has stopped arriving. These watch the data version and hold the
+        // rule off until it has been still for TERRAIN_SWITCH_WARM_TIMEOUT.
         unsigned int _autoFlattenDataVersion = 0;
         float _autoFlattenDataQuiet = 0.0f;
-        // Auto-flattening turns 3D OFF once it stops earning its cost - it is a transition OUT of
-        // terrain, never a starting state. Until terrain has been reached once it cannot fire, or
-        // a view whose DEM has not arrived flattens itself at startup and never recovers, because
-        // flattening is what stops the elevation decode that would prove it wrong.
+        // Auto-flattening turns 3D OFF once it stops earning its cost - a transition OUT of terrain,
+        // never a starting state. Until terrain has been reached once it cannot fire, or a view whose
+        // DEM has not arrived flattens itself at startup and never recovers.
         bool _autoFlattenSeenTerrain = false;
         std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
         // Set by every camera event; the rule stays quiet while it is false. See AutoFlatten::Trigger.
@@ -364,17 +351,15 @@ namespace massif {
         std::vector<vt::TileId> _groundCoverTileIds; // last frame's shared ground cover (shadow refresh trigger)
         std::unique_ptr<TerrainDrapeCache> _terrainDrapeCache;
         std::unique_ptr<TerrainShadowMap> _terrainShadowMap; // shared cross-layer drape target
-        // What the shadow map currently holds. The caster pass is a second full draw of the
-        // terrain, and the light box is snapped to a world lattice so its matrix repeats exactly
-        // while the camera moves inside one texel step: while these match, the existing map is
-        // still the right one and the pass is skipped.
-        // Camera pose the last drape-bake pass ran against, to tell a moving frame from a
-        // still one (see the bake time budget in onDrawFrame).
+        // What the shadow map currently holds. The light box is snapped to a world lattice, so its
+        // matrix repeats while the camera moves inside one texel step: while these match, the
+        // existing map is still the right one and the caster pass is skipped.
+
+        // Camera pose the last drape-bake pass ran against, to tell a moving frame from a still one.
         cglib::mat4x4<double> _drapeBakeLastMVPMatrix = cglib::mat4x4<double>::identity();
         // The zoom the drape is currently baked for, quantised. Held while the camera MOVES and
-        // updated when it settles - which is what mapbox does: the drape does not re-render during
-        // a pinch, it re-renders once the gesture ends. Re-baking mid-gesture would spend a bake
-        // per tile per step on a picture that is about to change again.
+        // updated when it settles, as mapbox does - re-baking mid-gesture spends a bake per tile per
+        // step on a picture that is about to change again.
         std::size_t _drapeBakeZoomTerm = 0;
         std::unique_ptr<ScreenMaskBuffer> _terrainShadowMaskBuffer;
         std::unique_ptr<ScreenMaskBuffer> _groundAOMaskBuffer;

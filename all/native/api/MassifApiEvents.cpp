@@ -20,11 +20,9 @@
 namespace massif { namespace api {
 
     namespace {
-        // The listener a subscription belongs to, kept alive for as long as the subscription is.
-        // DirectorPtr, not shared_ptr: a shared_ptr holds the C++ half only, and the binding's
-        // half - the Java or Objective-C object the director upcalls into - is reached through a
-        // WEAK reference until retainDirector pins it. Every listener in all/native is held this
-        // way; the facade was the one that was not, and its handlers died at the next GC.
+        // The listener a subscription belongs to, kept alive as long as the subscription is.
+        // DirectorPtr, not shared_ptr: a shared_ptr holds the C++ half only, and the binding's half
+        // is reached weakly until retainDirector pins it - so its handlers died at the next GC.
         std::map<int, DirectorPtr<EventListener> >& listeners() {
             static std::map<int, DirectorPtr<EventListener> > registry;
             return registry;

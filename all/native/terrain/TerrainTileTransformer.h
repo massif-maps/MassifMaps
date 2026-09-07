@@ -47,15 +47,13 @@ namespace massif {
             double calculateMercatorCosine(double internalY) const;
 
             void tesselateSegment(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, float dist, float threshold, vt::VertexArray<cglib::vec2<float>>& points) const;
-            // Splits a segment only where the terrain UNDER it actually leaves the chord, until the
-            // residual sag is under the tolerance. A cut costs one elevation sample, so a line over
-            // a valley floor is not cut at all while one over a cliff is cut where the cliff is -
-            // unlike the lattice, whose cost is the tile's cell count whatever the relief.
+            // Splits a segment only where the terrain under it leaves the chord, until the residual
+            // sag is under the tolerance. A cut costs one elevation sample, so a valley floor is not
+            // cut at all - unlike the lattice, whose cost is the cell count whatever the relief.
             void tesselateSegmentBySag(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, double h0, double h1, float dist, int depth, vt::VertexArray<cglib::vec2<float>>& points) const;
-            // Splits a segment where it crosses the surface grid's cell edges and the diagonal
-            // each cell is split along, so that every resulting sub-segment lies inside ONE
-            // surface triangle. Returns false when the segment spans too many cells to be worth
-            // it (the caller then falls back to halving by threshold).
+            // Splits a segment where it crosses surface cell edges and each cell's diagonal, so
+            // every sub-segment lies inside ONE surface triangle. False when the segment spans too
+            // many cells to be worth it, and the caller falls back to halving by threshold.
             bool tesselateSegmentOnLattice(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, vt::VertexArray<cglib::vec2<float>>& points) const;
             void tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& indices) const;
 
@@ -92,11 +90,9 @@ namespace massif {
 
     private:
         static constexpr float FLAT_HEIGHT_RANGE_EPSILON = 0.001f;
-        // Regular-grid draped LINES are subdivided this fraction of a surface grid cell
-        // (< 1 = finer than the grid) so segments stop chording the cell's anti-diagonal fold
-        // and cracking under zero-slack painter-order depth. Lower = fewer cracks, more line
-        // vertices (lines are 1D, cheap). Triangles stay at one cell (their sag is bounded and
-        // subdividing area content 1/factor^2 is expensive). Decoupled from the surface grid.
+        // Regular-grid draped LINES subdivide to this fraction of a surface cell (< 1 = finer) so
+        // they stop chording the cell's anti-diagonal fold. Lower = fewer cracks, more vertices.
+        // Triangles stay at one cell: their sag is bounded and area content costs 1/factor^2.
         static constexpr double REGULAR_GRID_LINE_SUBDIVISION = 0.35;
         // A segment crossing more cells than this is split by halving instead of by lattice
         // crossings - the crossing list would cost more than it saves.

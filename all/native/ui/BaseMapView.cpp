@@ -153,15 +153,9 @@ namespace massif {
     
     void BaseMapView::moveTo(const MapPos& pos, float zoom, const float* rotation,
                              const float* tilt) {
-        // ZOOM BEFORE THE PAN when zooming in. Restricted panning clamps the focus so the VIEWPORT
-        // stays inside the pan bounds, so how hard a target is clamped depends on the zoom it is
-        // judged at: from the opening world view the whole of Mercator is on screen and any focus
-        // is dragged back to the bounds centre - the equator - and the zoom that follows does not
-        // undo it. Zooming out is the other way round, so the pan goes first and the zoom clamps
-        // afterwards, which is the wanted behaviour.
-        //
-        // ONE frame for the four: without the hold the render thread drew in between them, at the
-        // world view zoomed in but still straight down - and auto-flattened it.
+        // ZOOM BEFORE THE PAN when zooming in: restricted panning clamps the focus so the VIEWPORT
+        // stays in bounds, and from a world view any focus is dragged back to the bounds centre.
+        // Held as ONE frame, or the render thread draws the half-applied state and flattens it.
         std::unique_lock<std::recursive_mutex> hold = _mapRenderer->holdView();
         bool zoomIn = zoom > getZoom();
         if (zoomIn) {

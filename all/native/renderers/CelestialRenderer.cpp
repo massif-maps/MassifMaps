@@ -451,11 +451,9 @@ namespace massif {
                 }
             }
             if (hit) {
-                // Curves are all parked at the same distance, so the click handler - which orders
-                // by distance from the camera - would pick between two overlapping ones by list
-                // order. Reporting the hit a hair further away the wider it was missed makes the
-                // curve the touch actually aimed at win, and leaves sprites (reported at their
-                // true distance) ahead of a curve running through them.
+                // Curves are all parked at the same distance, so the click handler would pick
+                // between two overlapping ones by list order. Reporting the hit a hair further away
+                // the wider it was missed makes the curve the touch aimed at win.
                 cglib::vec3<double> hitPos = ray.origin + rayDir * (distance / bestCos);
                 results.push_back(RayIntersectedElement(std::static_pointer_cast<CelestialObject>(object), layer, hitPos, hitPos, true));
             }
@@ -490,9 +488,8 @@ namespace massif {
     )GLSL";
 
     // A sky object is at infinity like the sky behind it, so it takes the ANGULAR haze - a setting
-    // sun dims into the band rather than staying crisp over a hazed horizon. These are drawn with
-    // straight alpha, not premultiplied, so the colour goes through the premultiplied contract and
-    // comes back out.
+    // sun dims into the band rather than staying crisp. Drawn with straight alpha, so the colour
+    // goes through the premultiplied contract and comes back out.
     const std::string CelestialRenderer::CELESTIAL_FRAGMENT_SHADER_FOG = R"GLSL(
         vec4 fogCelestial(vec4 color) {
             vec4 premul = skyFog(vec4(color.rgb * color.a, color.a), normalize(fogRayVec()));

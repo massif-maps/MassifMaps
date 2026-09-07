@@ -14,9 +14,7 @@
 
 namespace massif {
 
-    // Surface cells a fill subdivides to: indices fall as 1/N^2, chord error grows as N^2, and the
-    // usable value is whatever the depth budget still clears - a measurement, not a derivation
-    // (the ladder is in docs/internals/rendering/02-tiles.md).
+    // Surface cells a fill subdivides to - measured, ladder in docs/internals/rendering/02-tiles.md.
     //   adb shell setprop debug.massif.areathreshold 4
     static constexpr float AREA_THRESHOLD_CELLS = 2.0f;
 
@@ -25,11 +23,10 @@ namespace massif {
     // (DEFAULT_LINE_CLEARANCE_METERS). Numbers in docs/internals/rendering/04-terrain.md.
     static constexpr float DEFAULT_LINE_SAG_METERS = 2.0f;
 #ifdef __ANDROID__
-    // The same for LINES - the expensive half over a city, since they are drawn as terrain geometry
-    // every frame while the fills are baked once.
+    // The same for LINES - the expensive half, drawn as terrain geometry every frame.
     //   adb shell setprop debug.massif.linethreshold 4
-    // Relief (metres in the tile) under which the LATTICE split is skipped: the cell fold it guards
-    // against is a fraction of the relief, so on a valley floor it protects against nothing.
+    // Relief (m in the tile) under which the LATTICE split is skipped: the cell fold it guards
+    // against is a fraction of the relief, so a valley floor needs none.
     //   adb shell setprop debug.massif.latticerelief 50
     static float latticeReliefThreshold() {
         static const float relief = [] {
@@ -45,10 +42,8 @@ namespace massif {
         return relief;
     }
 
-    // Maximum chord sag a draped line may keep, in METRES - the same currency as the depth
-    // clearance that lifts these lines (uDepthClearance, see 04-terrain.md), so the two agree on
-    // what "close enough to the ground" means. 0 goes back to the old lattice / threshold split,
-    // which is how the two are A/B'd:
+    // Max chord sag a draped line may keep, in METRES - the same currency as uDepthClearance
+    // (04-terrain.md). 0 goes back to the lattice/threshold split, which is how the two are A/B'd.
     //   adb shell setprop debug.massif.linesag 0
     static float lineSagToleranceMeters() {
         static const float tolerance = [] {
@@ -126,10 +121,8 @@ namespace massif {
         _localFromInternal = (1 << tileId.zoom) / _scale;
 
         if (sagToleranceMeters > 0.0f) {
-            // The tolerance is given in METRES because that is what the depth clearance lifting
-            // these lines is worth (see 04-terrain.md); heights here are tile-local, so convert
-            // once at the tile centre - the latitude factor varies by a fraction of a percent
-            // across one tile.
+            // The tolerance is in METRES to match the depth clearance (04-terrain.md); heights are
+            // tile-local, so convert once at the tile centre - the latitude factor barely moves.
             _sagToleranceLocal = calculateHeight(cglib::vec2<float>(0.5f, 0.5f), sagToleranceMeters);
             // The DEM cannot describe relief finer than its own texel, so cutting below it only
             // resamples the same interpolated slope.
@@ -169,11 +162,9 @@ namespace massif {
             for (std::size_t i = 0; i + 1 < count; i++) {
                 const cglib::vec2<float>& pos0 = points[i + 0];
                 const cglib::vec2<float>& pos1 = points[i + 1];
-                // Regular-grid mode: cut the segment exactly where it leaves a surface triangle
-                // instead of halving it until it is small enough to hide the error. Every
-                // sub-segment then lies IN a triangle of the surface, so it follows the surface
-                // exactly rather than approximately - with fewer vertices than the fraction-of-a-cell
-                // halving needed to keep the chord sag under the (zero) painter-order depth slack.
+                // Regular-grid mode: cut the segment where it LEAVES a surface triangle instead of
+                // halving until the error hides. Every sub-segment then lies in one triangle, so it
+                // follows the surface exactly, and with fewer vertices.
                 float dist = cglib::length(pos1 - pos0) * static_cast<float>(_tileScaleMeters);
                 if (_sagToleranceLocal > 0.0f) {
                     // Cut by the sag the terrain actually has, not by the tile's cell count.
@@ -189,13 +180,9 @@ namespace massif {
     }
 
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateLabelLineString(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
-        // A label line is READ, never drawn: the lattice split keeps a DRAWN segment inside one
-        // surface triangle, which buys a glyph run nothing, and neither does the finer line
-        // threshold - the profile a run follows cannot carry more detail than the surface it is
-        // laid on. Halve to the SURFACE cell instead. Every vertex dropped here is an elevation
-        // sample dropped from every terrain re-anchor, which is the most expensive thing on the
-        // render thread over 3D terrain (docs/internals/rendering/06-labels.mdx). Measured: with no line
-        // subdivision at all, 'prepare' goes 154 -> 68 ms on the north pan.
+        // A label line is READ, never drawn, so the lattice split buys a glyph run nothing - halve
+        // to the SURFACE cell instead. Every vertex dropped here is an elevation sample dropped from
+        // every re-anchor: with no line subdivision, 'prepare' goes 154 -> 68 ms on the north pan.
         if (count > 0) {
             tesselatedPoints.append(points[0]);
             for (std::size_t i = 0; i + 1 < count; i++) {
@@ -208,11 +195,9 @@ namespace massif {
     }
 
     bool TerrainTileTransformer::TerrainVertexTransformer::tesselateSegmentOnLattice(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, vt::VertexArray<cglib::vec2<float>>& points) const {
-        // The surface is a regular grid of _latticeCell cells, each split into two triangles.
-        // The shader folds a cell along fg.x + fg.y = 1 in ELEVATION-UV space; these points are
-        // in tile (u, v) space, and the surface builder emits its vertices at y = 1 - v, so the
-        // same fold reads as u + v = const here. A segment therefore stays inside one triangle
-        // as long as it crosses none of x = k*cell, y = k*cell, x + y = k*cell.
+        // The surface is a regular grid of _latticeCell cells, each split into two triangles. The
+        // shader's fold (fg.x + fg.y = 1 in elevation-UV) reads as u + v = const here, so a segment
+        // stays inside one triangle as long as it crosses no x, y or x + y = k*cell.
         const cglib::vec2<float> delta = pos1 - pos0;
         const float cell = _latticeCell;
         const float f0[3] = { pos0(0), pos0(1), pos0(0) + pos0(1) };
@@ -269,12 +254,9 @@ namespace massif {
     }
 
     double TerrainTileTransformer::TerrainVertexTransformer::calculateLocalHeight(const cglib::vec2<float>& pos) const {
-        // Tile geometry is built FLAT: the GPU draping shader replaces the z of every
-        // draped vertex with the shared elevation texture sample, so sampling heights at
-        // build time would be wasted work (this was by far the most expensive part of
-        // terrain tile decodes and surface builds). Label anchors get their heights
-        // dynamically (GLTileRenderer label elevation provider), and hit test rays are
-        // pre-intersected with the terrain by the host renderer.
+        // Tile geometry is built FLAT: the draping shader replaces the z of every draped vertex
+        // with the shared elevation sample, so sampling at build time is wasted work - it was by far
+        // the most expensive part of terrain tile decodes.
         return 0.0;
     }
 
@@ -310,14 +292,9 @@ namespace massif {
     }
 
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& indices) const {
-        // Red-green refinement with an EDGE-LOCAL split rule: an edge is split at its
-        // midpoint if and only if IT is longer than the threshold. Both triangles sharing
-        // an edge therefore always make the same decision and the tesselation contains no
-        // T-vertices. This matters because the vertices are displaced (on the GPU) by
-        // sampled terrain heights: a T-vertex displaces to its sampled height while the
-        // neighbouring triangle's unsplit edge crosses that point at the interpolated
-        // height, opening background-colored cracks all over rugged terrain (the
-        // long-standing 'white triangles when zooming out' artifact).
+        // Red-green refinement with an EDGE-LOCAL split rule: an edge is split at its midpoint iff
+        // IT is longer than the threshold, so both triangles sharing it decide alike and no T-vertex
+        // remains - a T-vertex cracks open under GPU displacement ('white triangles when zooming').
         bool split01 = dist01 > _divideThreshold;
         bool split02 = dist02 > _divideThreshold;
         bool split12 = dist12 > _divideThreshold;
@@ -325,15 +302,9 @@ namespace massif {
             indices.append(i0, i1, i2);
             return;
         }
-        // ... but only over the tile ITSELF. A source tile keeps a buffer around its data, and at
-        // overzoom that buffer is scaled with everything else: a z14 source drawn into a z19 target
-        // reaches 2.2 tile widths past the border, while the threshold is the z19 one. The polygon
-        // gate upstream is an INTERSECTS test, so one triangle touching the tile was refined across
-        // its whole extent - measured over Paris at z19, 145 m against a 2.4 m threshold, 4096
-        // triangles out of one and ~1000 such triangles in a frame, which is a 2.5 GB kill or a
-        // hang. Everything past the border is clipped per fragment anyway, so subdividing it buys
-        // nothing; the sub-triangles that still touch the tile are refined exactly as before, so
-        // the split rule stays edge-local and the surface keeps no T-vertex where it is drawn.
+        // ... but only over the tile ITSELF. At overzoom a source tile's buffer scales with the
+        // rest (z14 into z19 reaches 2.2 tile widths), and the upstream gate only INTERSECTS, so one
+        // touching triangle refined across its whole extent - 4096 triangles out of one, a 2.5 GB kill.
         cglib::bbox2<float> bounds(coords[i0]);
         bounds.add(coords[i1]);
         bounds.add(coords[i2]);
@@ -475,12 +446,9 @@ namespace massif {
             double tileScaleMeters = EARTH_CIRCUMFERENCE / (1 << tileId.zoom);
             double threshold = tileScaleMeters / _meshResolution;
 
-            // The reference surface is the renderer's shared _meshResolution grid, so subdivide to
-            // one grid cell: every sub-vertex then lattice-clamps onto it and cannot sag through.
-            // Not to the DEM texel size - the grid, not the DEM, is what the depth test compares to.
-            // Source-density (tangram) mode drops FILL subdivision only: fills are the expensive
-            // side (~meshResolution^2 triangles per tile) and a per-draw slack lifts them, while
-            // lines are 1D and must stay on the surface (contours lie exactly on it).
+            // Subdivide to one cell of the renderer's shared _meshResolution grid - the grid, not
+            // the DEM, is what the depth test compares to. Source-density mode drops FILL subdivision
+            // only: a per-draw slack lifts fills, while 1D lines must stay on the surface.
             divideThreshold = _sourceDensity ? std::numeric_limits<float>::infinity() : static_cast<float>(threshold * areaThresholdScale());
             lineDivideThreshold = _sourceDensityLines ? std::numeric_limits<float>::infinity() : static_cast<float>(threshold * lineThresholdScale());
             // The lattice split cuts lines at the cell triangle boundaries, killing the chord sag

@@ -41,14 +41,9 @@ namespace massif::vt {
         // style bytes rather than by decoding the tile again.
         void setStyleState(StyleStateRef styleState, std::uint64_t stateKey) { _styleState = std::move(styleState); _stateKey = stateKey; }
 
-        // A STYLE VARIANT is one feature drawn once but carrying both of the styles a selecting
-        // style parameter can give it. The decoder folds the comparison both ways and registers the
-        // two styles between these calls; the vertices tesselated in between are recorded with both
-        // slots and with stateKey, the hash of the field value the parameter is compared with.
-        //
-        // Exactly two styles must be registered, and only the ACTIVE one is drawn - the other is
-        // registered by running its processor over an empty feature collection, or, when that
-        // branch paints nothing at all, by reserveInvisibleLineStyle.
+        // A STYLE VARIANT is one feature drawn once but carrying both styles a selecting style parameter
+        // can give it: the decoder registers the two between these calls, and the vertices in between
+        // are recorded with both slots and with stateKey. Exactly two, and only the ACTIVE one draws.
         void beginStyleVariant(std::uint64_t stateKey);
         void reserveInvisibleLineStyle();
         void endStyleVariant(int selectedSlot, bool selected);
@@ -66,11 +61,9 @@ namespace massif::vt {
         void setCompOp(std::optional<CompOp> compOp);
         void setOpacityFunc(FloatFunction opacityFunc);
         void setClipBox(const cglib::bbox2<float>& clipBox);
-        // Height in metres at which an extrusion wall gets an extra ring. The 3D lighting is
-        // evaluated PER VERTEX, so the facade gradient is a straight line between a wall's base
-        // and its roof unless there is a vertex where the gradient's own curve knees - which is
-        // what makes 'building-vertical-gradient-height' mean anything on a wall taller than it.
-        // 0 = no split.
+        // Height in metres at which an extrusion wall gets an extra ring. The 3D lighting is per VERTEX,
+        // so the facade gradient is a straight line from base to roof unless a vertex sits where the
+        // gradient's curve knees. 0 = no split.
         void setPolygon3DGradientHeight(float height) { _polygon3DGradientHeight = height; }
         // Metres the contact shadow on the ground reaches out from a footprint. 0 = no skirt.
         void setPolygon3DGroundRadius(float radius) { _polygon3DGroundRadius = radius; }
@@ -78,16 +71,14 @@ namespace massif::vt {
         void setPolygon3DGroundStep(float step) { _polygon3DGroundStep = step; }
         // Metres of bevel between a wall and the roof, rounding the edge. 0 = a hard 90 degrees.
         void setPolygon3DEdgeRadius(float radius) { _polygon3DEdgeRadius = radius; }
-        // True blends the bevel's normal from wall to roof, so the edge reads as ROLLED. False
-        // holds it halfway across the band, making it a facet with a tone of its own - a rim
-        // tracing every roof, which is what separates one building from the next looking straight
-        // down. mapbox's fill-extrusion-rounded-roof.
+        // True blends the bevel's normal from wall to roof, so the edge reads as ROLLED. False holds it
+        // halfway across the band, making it a facet with a tone of its own - a rim tracing every roof.
+        // mapbox's fill-extrusion-rounded-roof.
         void setPolygon3DRoundedRoof(bool rounded) { _polygon3DRoundedRoof = rounded; }
         void setPolygonClipBox(const cglib::bbox2<float>& clipBox);
-        // The point each extruded footprint reads its ground at, keyed by the id the processor is
-        // called with. Every piece of one building shares an entry, so the pieces stand at one
-        // elevation instead of stepping against each other; a footprint the table does not name
-        // falls back to its own centroid. Built by buildExtrusionAnchors.
+        // The point each extruded footprint reads its ground at, keyed by the id the processor is called
+        // with. Every piece of one building shares an entry, so they stand at one elevation; a footprint
+        // the table does not name falls back to its own centroid.
         void setPolygon3DAnchors(std::shared_ptr<const std::unordered_map<long long, cglib::vec2<float>>> anchors) { _polygon3DAnchors = std::move(anchors); }
 
         void addBackground(const std::shared_ptr<TileBackground>& background);
@@ -167,20 +158,17 @@ namespace massif::vt {
         // inset ACTUALLY used in tile-local units - clamped to what the narrowest edge can give up,
         // and 0 when the ring cannot take any, in which case the extrusion keeps its hard edge.
         float insetRings(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float radius, std::vector<std::vector<cglib::vec2<float>>>& insetList) const;
-        // One footprint ring's walls, plus - when an edge radius is on - the chamfers that round
-        // both its horizontal and its vertical edges. mapbox's fill_extrusion_bucket model.
-        // 'rows' are the heights every wall column carries a vertex at, 'insetLocal' the tile-local
-        // inset of the roof ring, 'inset' the roof ring itself.
+        // One footprint ring's walls, plus the chamfers rounding its edges when an edge radius is on -
+        // mapbox's fill_extrusion_bucket model. 'rows' are the heights every wall column carries a
+        // vertex at, 'insetLocal' the tile-local inset, 'inset' the roof ring itself.
         void appendPolygon3DRing(const std::vector<cglib::vec2<float>>& points, const std::vector<cglib::vec2<float>>& inset, const std::vector<float>& rows, float insetLocal, float roofHeight, bool chamfer, std::int8_t styleIndex);
         // One stack of wall vertices at a footprint position, one per row. Returns its base index.
         std::size_t appendWallColumn(const cglib::vec2<float>& p, const cglib::vec2<float>& binormal, const std::vector<float>& rows, std::int8_t sideVertex, std::int8_t styleIndex);
         // The facade gradient at a height, packed into the attribute byte the vertex stage reads.
         std::int8_t packGradientT(float height) const;
-        // The contact shadow on the ground around one footprint ring: one quad per edge, covering
-        // that edge's bounding capsule. The fragment measures its own distance to the segment, so
-        // corners are round and the overlaps are resolved by MIN blending rather than avoided here.
-        // Accumulated apart from the walls because the builder has ONE vertex stream, keyed by
-        // _builderParameters.type, and this is a different geometry.
+        // The contact shadow on the ground around one footprint ring: one quad per edge, covering that
+        // edge's bounding capsule, with overlaps resolved by MIN blending rather than avoided here.
+        // Accumulated apart from the walls, the builder having ONE vertex stream keyed by type.
         void appendGroundSkirt(const std::vector<cglib::vec2<float>>& points, float height, bool hole, std::int8_t styleIndex);
 
         // A shaped roof on top of the walls, from the OSM roof:shape tag. Returns false when the
@@ -218,10 +206,9 @@ namespace massif::vt {
         VertexArray<cglib::vec2<float>> _binormals;
         VertexArray<float> _heights;
         VertexArray<cglib::vec4<std::int8_t>> _attribs;
-        // A SPAN/UNDERGROUND line's own two ends and feature id, stamped on every vertex it
-        // produced. The renderer resolves the ground at the feature's PORTALS - unioned across the
-        // tiles that cut it - and interpolates along the chord, so the DEM in between (the spike a
-        // DSM caught off a bridge deck included) never reaches the deck. Empty for a draped one.
+        // A SPAN/UNDERGROUND line's own two ends and feature id, stamped on every vertex it produced.
+        // The renderer resolves the ground at the PORTALS and interpolates along the chord, so the DEM
+        // in between never reaches the deck. Empty for a draped one.
         VertexArray<SpanVertexInfo> _spanInfos;
         // The current extrusion's footprint centroid, carried by every one of its vertices. The
         // renderer resolves the ground there once, on the CPU (GLTileRenderer::resolveExtrusionBases).

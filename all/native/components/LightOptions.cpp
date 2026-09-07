@@ -27,10 +27,9 @@ namespace massif {
         _shadowStrength(1.0f),
         // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters).
         _shadowMapSize(2048),
-        // THREE, against mapbox's two: our slices are theirs (cascade 0 to 1.5x the camera
-        // distance, the cutout at 4.5x), so a third page only adds a nearer, sharper one - and
-        // dropping to two made its texels 3x coarser, which washed the building shadows out at
-        // z16.5. Costs a 6144 x 2048 depth24 atlas, 50 MB.
+        // THREE, against mapbox's two: our slices are theirs, so a third page only adds a nearer,
+        // sharper one - dropping to two made its texels 3x coarser and washed out the building
+        // shadows at z16.5. Costs a 6144 x 2048 depth24 atlas, 50 MB.
         _shadowCascades(2),
         // A SCALE on mapbox's bias triple, so 1 is theirs unchanged.
         _shadowBias(1.0f),

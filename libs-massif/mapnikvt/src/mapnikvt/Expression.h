@@ -120,10 +120,9 @@ namespace massif::mvt {
             STEP,
             LINEAR,
             CUBIC,
-            // mapbox's `["interpolate", ["exponential", b], ...]`: the same key frames as LINEAR,
-            // but the fraction between two of them grows as (b^(x-x0) - 1) / (b^(x1-x0) - 1)
-            // rather than linearly. A road width written that way and read linearly is nearly
-            // three times too wide in the middle of a six-zoom span.
+            // mapbox's `["interpolate", ["exponential", b], ...]`: the same key frames as LINEAR, but the
+            // fraction between two of them grows as (b^(x-x0) - 1) / (b^(x1-x0) - 1). Read linearly, a
+            // road width is nearly three times too wide in the middle of a six-zoom span.
             EXPONENTIAL
         };
         

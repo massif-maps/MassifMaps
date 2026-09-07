@@ -145,10 +145,8 @@ namespace massif { namespace api {
                 }
             }
             // "metaData.dem_encoding": one entry of an indexed property, the same spelling a PATH
-            // uses. Context::lookup accepts it, so Spec::create accepted it at the TOP level while
-            // a nested spec - a layer's source, terrain's source - silently dropped it. That
-            // asymmetry cost a terrain its elevation decoder, which is not the kind of thing a
-            // warning in a log is enough for.
+            // uses. Context::lookup accepts it, so Spec::create took it at the TOP level while a
+            // nested spec silently dropped it - which cost a terrain its elevation decoder.
             std::size_t dot = entry ? std::string::npos : key.find('.');
             if (dot != std::string::npos) {
                 const PropertyEntry* indexedEntry = findProperty(classEntry, key.substr(0, dot).c_str());
@@ -204,9 +202,8 @@ namespace massif { namespace api {
         if (child.getType() == VariantType::VARIANT_TYPE_STRING) {
             out = context.getObject(context.findObject(kind, child.getString()), requiredClass);
             if (!out) {
-                // Said out loud: this came back as a bare RESULT_BAD_HANDLE, and every binding
-                // renders that as "see the log" over a log with nothing in it. A STRING here is
-                // an ID in the registry - a well-known name like "EPSG:4326" is a TYPE, and has
+                // Said out loud: this used to come back as a bare RESULT_BAD_HANDLE over an empty
+                // log. A STRING here is an ID in the registry - a well-known name is a TYPE, and has
                 // to be written as { "type": "EPSG:4326" } so the kind's factory builds it.
                 Log::Errorf("Spec: '%s' names no registered %s (as %s); a well-known name is a "
                             "type, not an id - write { \"type\": \"%s\" }",

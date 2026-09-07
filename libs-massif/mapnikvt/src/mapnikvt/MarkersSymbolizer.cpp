@@ -269,11 +269,9 @@ namespace massif::mvt {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 
-                    // One counter for the WHOLE feature: it makes the id of each repeat along the line
-                    // unique. Restarting it per segment (generateLinePoints returns one entry per
-                    // segment) gave the same id to one repeat in every segment, and labels sharing an
-                    // id are merged into a single one - so text-spacing placed the repeats and then
-                    // collapsed them, leaving one label per line.
+                    // One counter for the WHOLE feature, so each repeat along the line gets a unique id.
+                    // Restarting it per segment gave one repeat in every segment the same id, and labels
+                    // sharing an id are merged - so text-spacing placed the repeats then collapsed them.
                     int counter = 0;
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {

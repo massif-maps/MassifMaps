@@ -86,12 +86,9 @@ namespace massif {
             _mapRenderer.calculateCameraEvent(*cameraZoomEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_ANIMATION);
         }
 
-        // An animation that is not finished owes itself the next frame, the same way
-        // KineticEventHandler does. Without this it advanced only as far as something ELSE happened
-        // to redraw - in practice the cull pass behind viewChanged - so a move over a map with no
-        // layers yet, or one asked for before the first frame, stopped at whatever it had reached.
-        // A flight was the visible case: it sets its path up on its first frame and emits progress
-        // 0, so the camera stayed exactly where it started and the move looked like it never ran.
+        // An animation that is not finished owes itself the next frame, as KineticEventHandler does.
+        // Without this it advanced only as far as something ELSE redrew, so a move over a map with
+        // no layers yet stopped where it was - a flight never left its starting camera at all.
         if (isAnimating()) {
             _mapRenderer.requestRedraw();
         }

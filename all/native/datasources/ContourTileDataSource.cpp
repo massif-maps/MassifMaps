@@ -61,11 +61,10 @@ namespace {
         return (h00 * (1.0 - fx) + h10 * fx) * (1.0 - fy) + (h01 * (1.0 - fx) + h11 * fx) * fy;
     }
 
-    // Walks from the seed (u, v) down the gradient onto the nearest contour level, then along the
-    // contour (the tangent of the gradient) for as long as a label needs. Returns the level, or 0
-    // when the seed does not reach one - a flat tile, a zero gradient, or a walk that left the tile.
-    // Height and gradient at tile-local (u, v), whatever the heights come from: the resampled
-    // grid decoded from a DEM bitmap, or the elevation grid the terrain already holds.
+    // Walks from the seed (u, v) down the gradient onto the nearest contour level, then along it
+    // for as long as a label needs. Returns 0 when the seed reaches none.
+
+    // Height and gradient at tile-local (u, v), whatever the heights come from.
     using HeightSampler = std::function<double(double u, double v, double& gu, double& gv)>;
 
     double traceLabelStub(const HeightSampler& sampler, double interval,
@@ -179,11 +178,9 @@ namespace {
         return t;
     }
 
-    // Marching squares over a WxH height grid (row-major, row 0 = south), for EVERY level in one
-    // pass: a cell can only be crossed by the levels between its lowest and highest corner (one
-    // or two in practice), so the cost follows the number of crossings instead of grid area x
-    // level count - re-scanning the whole grid per level was the dominant cost of a contour tile
-    // (a tile spanning 40 levels scanned 96x96 cells 40 times to emit a few thousand segments).
+    // Marching squares over a WxH height grid (row 0 = south) for EVERY level in one pass: a cell
+    // can only be crossed by the levels between its lowest and highest corner, so the cost follows
+    // the crossings instead of grid area x level count.
     void marchingSquaresAllLevels(const std::vector<float>& heights, int W, int H,
                                   double interval, long long firstLevel, long long lastLevel,
                                   std::vector<std::vector<Segment>>& segmentsPerLevel) {
@@ -373,18 +370,13 @@ namespace massif {
         if (!dataSource) {
             throw NullArgumentException("Null dataSource");
         }
-        // Starting point only - see setIntervalMultiplier. Nested (10 | 50 | 100 | 500 for a 10m
-        // base) so lines meet across tiles of different zoom, and no finer than a style is likely to
-        // draw at the camera zoom where tiles of that zoom are used. Measured on a mid-range phone
-        // (contours + hillshade + 3D terrain, z10.5, tilt 45): this table against a uniform 100/50/10
-        // one costs 10.7 CPU-seconds of tile generation in the first 30 seconds instead of 16.2.
+        // Starting point only - see setIntervalMultiplier. Nested (10 | 50 | 100 | 500 for a 10 m
+        // base) so lines meet across tiles of different zoom. Against a uniform 100/50/10 table this
+        // costs 10.7 CPU-seconds of tile generation in the first 30 s instead of 16.2.
         _intervalMultipliers = { { 9, 50.0f }, { 11, 10.0f }, { 13, 5.0f }, { -1, 1.0f } };
-        // NO per-zoom grid by default, deliberately. A tile is drawn at roughly the same SCREEN size
-        // whatever its zoom, so the tracing grid is what fixes the shape on screen and must not
-        // shrink with zoom: at z9 a 48-sample grid puts contour vertices 1.6 km apart, and the far
-        // half of any tilted view - which is made of exactly those tiles - turns into long straight
-        // chords. Cost at low zoom belongs to the INTERVAL (fewer levels), which does not distort
-        // the lines it keeps. The table is here for apps that measure otherwise.
+        // NO per-zoom grid by default: a tile is drawn at roughly the same SCREEN size whatever its
+        // zoom, so the tracing grid must not shrink with zoom or the far half of a tilted view turns
+        // into long straight chords. Cost at low zoom belongs to the INTERVAL instead.
         _dataSourceListener = std::make_shared<DataSourceListener>(*this);
         _dataSource->registerOnChangeListener(_dataSourceListener);
     }
@@ -498,10 +490,9 @@ namespace massif {
     }
 
     int ContourTileDataSource::getMinZoom() const {
-        // Report the DEM's real min zoom rather than clamping up to MinVisibleZoom: if we clamped up, then
-        // when the camera is below that zoom the layer would fill the whole viewport with min-zoom tiles (an
-        // exponential tile-count blowup as you zoom out). Instead the layer requests few tiles at the camera
-        // zoom, and loadTile returns an empty tile cheaply below MinVisibleZoom (no DEM fetch, no tracing).
+        // The DEM's real min zoom, not MinVisibleZoom: clamped up, a camera below that zoom fills the
+        // viewport with min-zoom tiles (an exponential blowup). loadTile returns an empty tile cheaply
+        // below MinVisibleZoom instead - no DEM fetch, no tracing.
         return _dataSource->getMinZoom();
     }
 
@@ -713,10 +704,9 @@ namespace massif {
     }
 
     double ContourTileDataSource::getIntervalForZoom(int zoom) const {
-        // What the tile CARRIES, not what is drawn - the style filters on 'div' per camera zoom.
-        // A cost rule, and the rungs must NEST or a line stops dead at a tile border.
-        // See docs/internals/rendering/07-hillshade-contours.md; the defaults are a starting point, the app
-        // sets its own with setIntervalMultiplier.
+        // What the tile CARRIES, not what is drawn - the style filters on 'div' per camera zoom. A
+        // cost rule, and the rungs must NEST or a line stops dead at a tile border.
+        // See docs/internals/rendering/07-hillshade-contours.md.
         return _baseInterval * getIntervalMultiplier(zoom);
     }
 
@@ -762,14 +752,9 @@ namespace massif {
             }
         }
 
-        // Label stubs off the terrain's own elevation, which is how tangram generates them: their
-        // ContourTextStyleBuilder marches over the tile's elevation raster, the one the terrain has
-        // already fetched and decoded, and carries no DEM tile of its own. A stub needs a few
-        // hundred samples, not a decoded image, so with the terrain wired up this path costs
-        // neither the tile load nor the image decode - measured at 44% of a tile decode thread,
-        // 23% of it in the WebP decode alone.
-        // Traced contour GEOMETRY does not take this path: it needs the DEM at its own resolution,
-        // and the terrain's elevation level is capped to what its mesh can express.
+        // Label stubs off the terrain's own elevation, as tangram's ContourTextStyleBuilder does: a
+        // stub needs a few hundred samples, not a decoded image, so it costs neither the tile load
+        // nor the WebP decode. Traced GEOMETRY still needs the DEM at its own resolution.
         if (_labelStubs.load()) {
             std::shared_ptr<TerrainOptions> terrainOptions;
             {
@@ -841,10 +826,9 @@ namespace massif {
                 return std::shared_ptr<TileData>();
         }
 
-        // Trace on an at-most 'resolution'-per-side grid; 0 = the DEM's own, which is what a
-        // contour over 3D TERRAIN needs (a subsampled grid follows a height field the displaced
-        // ground does not have and cuts through spurs). Nodes include BOTH endpoints, so adjacent
-        // tiles share their boundary samples and meet without holes.
+        // Trace on an at-most 'resolution'-per-side grid; 0 = the DEM's own, which is what a contour
+        // over 3D TERRAIN needs - a subsampled grid cuts through spurs. Nodes include BOTH endpoints,
+        // so adjacent tiles share their boundary samples and meet without holes.
         int resolutionSetting = getResolutionForZoom(zoom); // per-zoom override, else Resolution
         int resolution = (resolutionSetting > 0 ? std::max(8, resolutionSetting) : std::max(fullW, fullH));
         int W = std::min(fullW, resolution);
@@ -853,11 +837,9 @@ namespace massif {
             return std::shared_ptr<TileData>();
         }
 
-        // Optionally fetch neighbour DEM tiles so the tile's east/north edges use the neighbours' own
-        // edge samples, making contour lines meet across tile boundaries. The DEM bitmap is stored
-        // south-to-north / west-to-east and the tile bounds use mapTile.getFlipped(). In that flipped
-        // (projection) tile scheme north = flipped.y + 1, which flips back to datasource y - 1. So the
-        // geographic east/north/north-east neighbours are datasource tiles (x+1, y) / (x, y-1) / (x+1, y-1).
+        // Optionally fetch neighbour DEM tiles so the east/north edges use the neighbours' own
+        // samples and contours meet across tile boundaries. In the flipped (projection) tile scheme
+        // north = flipped.y + 1, so the geographic neighbours are (x+1, y) / (x, y-1) / (x+1, y-1).
         bool seamless = _seamlessEdges.load();
         std::shared_ptr<Bitmap> eastBitmap, northBitmap, neBitmap;
         if (seamless) {
@@ -924,10 +906,9 @@ namespace massif {
             }
         }
 
-        // Geographic bounds of this tile (EPSG3857). Note the getFlipped(): the DEM bitmap's
-        // south edge (grid row 0) corresponds to the flipped tile's minimum-y bound, matching
-        // ElevationManager. The MBVT builder is called with the raw tile x/y (as GeoJSONVectorTileDataSource
-        // does), so the same footprint is reproduced without a double flip.
+        // Geographic bounds of this tile (EPSG3857). Note getFlipped(): the DEM bitmap's south edge
+        // (grid row 0) is the flipped tile's minimum-y bound, matching ElevationManager. The MBVT
+        // builder gets the raw tile x/y, so the same footprint comes out without a double flip.
         std::shared_ptr<Projection> projection = getProjection();
         MapBounds bounds = TileUtils::CalculateMapTileBounds(mapTile.getFlipped(), projection);
         double minX = bounds.getMin().getX(), minY = bounds.getMin().getY();
@@ -952,10 +933,8 @@ namespace massif {
         int layerIndex = tileBuilder.createLayer(layerName);
 
         // Label stubs instead of traced contours: a short polyline ON a contour per seed, which is
-        // all a label needs. Tangram's ContourTextStyleBuilder (core/src/style/contourTextStyle.cpp)
-        // generates its contour labels this way and carries no contour geometry at all - the lines
-        // are a fragment block on the terrain draw, as they are here when the hillshade layer draws
-        // them. Their algorithm, their constants.
+        // all a label needs. Tangram's ContourTextStyleBuilder generates its contour labels this way
+        // and carries no contour geometry at all. Their algorithm, their constants.
         if (_labelStubs.load()) {
             HeightSampler sampler = [&heights, W, H](double u, double v, double& gu, double& gv) {
                 return sampleHeightGrad(heights, W, H, u, v, gu, gv);
@@ -963,13 +942,9 @@ namespace massif {
             return buildLabelStubTile(mapTile, sampler, interval);
         }
 
-        // Generate one feature (a MultiLineString) per contour level. The bounds are STRICT: a level
-        // sitting exactly on the tile's minimum or maximum crosses nothing, and marching squares run
-        // on it walks cell edges instead of crossings - long straight lines with no relation to the
-        // terrain. A tile of constant height hits this every time, and there is one in most frames:
-        // before the camera settles the culler asks for tiles far outside the view, whose DEM is
-        // ocean or no-data and decodes to a flat 0 m. Those were the straight lines flashing across
-        // the map at startup, different ones each run depending on which arrived first.
+        // One feature (a MultiLineString) per contour level. The bounds are STRICT: a level sitting
+        // exactly on the tile min or max crosses nothing, and marching squares then walks cell edges
+        // instead of crossings - the straight lines that used to flash across the map at startup.
         long long firstLevel = static_cast<long long>(std::floor(minH / interval)) + 1;
         long long lastLevel = static_cast<long long>(std::ceil(maxH / interval)) - 1;
         // Safety cap: a very low-zoom tile can span kilometres of relief. Beyond this many levels the

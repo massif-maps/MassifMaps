@@ -41,20 +41,17 @@ namespace massif::mvt {
         bool allowOverlap = _allowOverlap.getValue(exprContext);
         bool allowOverlapSameFeatureId = _allowOverlapSameFeatureId.getValue(exprContext);
         bool sameFeatureIdDependent = _sameFeatureIdDependent.getValue(exprContext);
-        // 'clip' is its own property, and it means something entirely different from allow-overlap:
-        // clipped text leaves the label pipeline for the tile geometry, so it gets no culler, no
-        // text-min-distance, no run following the line and no placement - it is cut at the tile
-        // border instead. Upstream defaulted it to allow-overlap (2019, no rationale recorded),
-        // which handed the geometry path to every style that only wanted its labels to overlap.
+        // 'clip' means something entirely different from allow-overlap: clipped text leaves the label
+        // pipeline for the tile geometry, so it gets no culler, no min-distance and no placement.
+        // Upstream defaulted it to allow-overlap, handing that path to every overlapping style.
         bool clip = _clip.getValue(exprContext);
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float pixelScale = symbolizerContext.getSettings().getPixelScale();
-        // The culler measures in DEVICE pixels, so this takes the pixel scale the way emSizePixels
-        // and iconSizePixels do. dx/dy, halo-radius and wrap-width beside it take fontScale alone
-        // because they are in GLYPH units - the formatter divides them by the font size. Left
-        // unscaled, a style's separation shrank to a third of what it asked for on a hi-dpi screen.
+        // The culler measures in DEVICE pixels, so this takes the pixel scale as emSizePixels does.
+        // dx/dy, halo-radius and wrap-width take fontScale alone, being in GLYPH units - left unscaled,
+        // a style's separation shrank to a third of what it asked for on a hi-dpi screen.
         float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale * pixelScale;
         float maxDistance = _maxDistance.getValue(exprContext);
         float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
@@ -95,9 +92,8 @@ namespace massif::mvt {
         vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
         vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
         // Style pixels, like the text size beside it: the halo has to keep its width RELATIVE to the
-        // glyphs on every display, and the renderer measures it in device pixels. Left unscaled it
-        // shrank against its own text as the dpi rose (1.2 drew 1.8 px where mapbox draws 3.2 on a
-        // 2.6x screen).
+        // glyphs on every display, and the renderer measures in device pixels. Left unscaled it shrank
+        // against its own text as the dpi rose.
         vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale * pixelScale);
 
         vt::TileId tileId = exprContext.getTileId();
@@ -120,11 +116,9 @@ namespace massif::mvt {
         vt::LabelOrientation orientation = (billboardRepeat ? vt::LabelOrientation::BILLBOARD_3D : placement);
         float textSize = bitmapSize < 0 ? (repeatAlongLine ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
-        // A repeat must not stack on itself. 'spacing' is walked per TILE, over that tile's clipped
-        // copy of the line, so each tile starts its own phase and two anchors can land a few pixels
-        // apart across a tile border - one road shield drawn twice. Nothing in the decode can see
-        // that; only the culler can, and it needs a group distance to do it. Without an explicit
-        // minimum the label's own size is the floor, in the screen pixels the culler measures.
+        // A repeat must not stack on itself: 'spacing' is walked per TILE, so each tile starts its own
+        // phase and two anchors can land a few pixels apart across a border. Only the culler can see
+        // that, and it needs a group distance - the label's own size is the floor.
         if (repeatAlongLine && spacing > 0 && !_minimumDistance.isDefined()) {
             minimumDistance = sizeStatic * fontScale;
         }
@@ -271,11 +265,9 @@ namespace massif::mvt {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 
-                    // One counter for the WHOLE feature: it makes the id of each repeat along the line
-                    // unique. Restarting it per segment (generateLinePoints returns one entry per
-                    // segment) gave the same id to one repeat in every segment, and labels sharing an
-                    // id are merged into a single one - so text-spacing placed the repeats and then
-                    // collapsed them, leaving one label per line.
+                    // One counter for the WHOLE feature, so each repeat along the line gets a unique id.
+                    // Restarting it per segment gave one repeat in every segment the same id, and labels
+                    // sharing an id are merged - so text-spacing placed the repeats then collapsed them.
                     int counter = 0;
                     for (const auto& vertices : verticesList) {
                         // A run with no spacing is ONE run for the whole line, and it is the line
@@ -359,10 +351,9 @@ namespace massif::mvt {
     std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle) {
         std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> transformedPointList;
 
-        // text-spacing 0 means ONE run for the WHOLE line, which is what the label path does with
-        // it (it hands the whole vertex list over as a single label). Restarting the pen at the
-        // middle of every segment instead is why the same style drew one label per line when it
-        // was culled and one per bend when it was clipped.
+        // text-spacing 0 means ONE run for the WHOLE line, which is what the label path does with it.
+        // Restarting the pen at the middle of every segment is why the same style drew one label per
+        // line when culled and one per bend when clipped.
         float totalLength = 0;
         for (std::size_t i = 1; i < vertices.size(); i++) {
             totalLength += cglib::length(vertices[i] - vertices[i - 1]) * tileSize;
@@ -473,10 +464,9 @@ namespace massif::mvt {
             }
         }
 
-        // Rasterize the glyphs at a size that covers the label instead of magnifying one raster to
-        // every size, which is what left large text soft (tangram's s_fontRasterSizes ladder,
-        // core/src/text/fontContext.cpp). The style keeps the last word: a face named
-        // 'face?glyph_size=N' is handed back untouched.
+        // Rasterize the glyphs at a size that covers the label instead of magnifying one raster to every
+        // size, which left large text soft (tangram's s_fontRasterSizes ladder). The style keeps the last
+        // word: a face named 'face?glyph_size=N' is handed back untouched.
         const SymbolizerContext::Settings& settings = symbolizerContext.getSettings();
         float emSizePixels = _size.getStaticValue(exprContext) * settings.getFontScale() * settings.getPixelScale();
         if (std::shared_ptr<const vt::Font> sizedFont = symbolizerContext.getFontManager()->getFont(font, vt::pickGlyphRenderSize(emSizePixels))) {
@@ -516,10 +506,9 @@ namespace massif::mvt {
         float secondaryScale = _secondaryScale.getValue(exprContext);
         float secondaryGap = _secondaryDx.getValue(exprContext) * fontScale;
         float secondaryOffset = -_secondaryDy.getValue(exprContext) * fontScale;
-        // NOT scaled by fontScale, unlike the offsets above: splitLines accumulates a word's width
-        // from advances taken at the STYLE size (glyph.advance * _fontSize), so a threshold in
-        // device pixels made every label wrap fontScale times too late - on a 2.6x screen, never.
-        // Where a label wraps is a property of the style, not of the display.
+        // NOT scaled by fontScale, unlike the offsets above: splitLines accumulates a word's width from
+        // advances taken at the STYLE size, so a threshold in device pixels wraps fontScale times too
+        // late. Where a label wraps is a property of the style, not of the display.
         return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth, characterSpacing, lineSpacing, secondaryText, secondaryScale, secondaryGap, secondaryOffset);
     }
 }

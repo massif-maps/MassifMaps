@@ -173,23 +173,6 @@ function Panel({state, actions}) {
       </div>
 
       <div className={styles.panelSection}>
-        <h2>Tiles</h2>
-        <label className={styles.field}>
-          TileJSON or tile URL template
-          <input
-            type="text"
-            value={tilejson}
-            onChange={(event) => actions.setTilejson(event.target.value)}
-          />
-        </label>
-        <p className={styles.note}>
-          The default is OpenFreeMap&apos;s planet, which needs no key. A style written for a
-          different schema — MapBox Streets names <code>#road</code> where OpenMapTiles names
-          <code>#transportation</code> — draws nothing until the source matches it.
-        </p>
-      </div>
-
-      <div className={styles.panelSection}>
         <h2>Light</h2>
         <label className={styles.field}>
           Hour (UTC): <strong>{formatHour(state.hour)}</strong>
@@ -229,6 +212,23 @@ function Panel({state, actions}) {
       </div>
 
       <div className={styles.panelSection}>
+        <h2>Tiles</h2>
+        <label className={styles.field}>
+          TileJSON or tile URL template
+          <input
+            type="text"
+            value={tilejson}
+            onChange={(event) => actions.setTilejson(event.target.value)}
+          />
+        </label>
+        <p className={styles.note}>
+          The default is OpenFreeMap&apos;s planet, which needs no key. A style written for a
+          different schema — MapBox Streets names <code>#road</code> where OpenMapTiles names
+          <code>#transportation</code> — draws nothing until the source matches it.
+        </p>
+      </div>
+
+      <div className={styles.panelSection}>
         <h2>Controls</h2>
         <p className={styles.note}>
           Drag to pan, wheel to zoom, right-drag to rotate and tilt. Everything renders in your
@@ -245,6 +245,9 @@ function StylePreview() {
 
   const canvasRef = useRef(null);
   const mapRef = useRef(null);
+  // The startup effect runs before apply() is defined and must not re-run when it changes, so it
+  // reaches the latest one through a ref rather than through the dependency list.
+  const applyRef = useRef(null);
   const [status, setStatus] = useState('Starting the map…');
   const [readout, setReadout] = useState('');
   const [engine, setEngine] = useState(null);
@@ -316,6 +319,17 @@ function StylePreview() {
           map.massif.call(camera.handle, 'moveTo',
             [[start[0], start[1]], start[2], start[3], start[4]]);
         }
+        // Straight into a real style. Leaving the module's own raster fallback up made the first
+        // thing anyone saw a plain OSM basemap, which is the one thing this page is not for.
+        await applyRef.current?.({
+          mode: mapboxStyle ? MODE_MAPBOX : MODE_CARTOCSS,
+          css: params.get('css') ?? starter.css,
+          styleJson: mapboxStyle ?? '',
+          tilejson: params.get('source') ?? engineModule.DEFAULT_TILEJSON,
+        });
+        if (cancelled) return;
+        engineModule.applyHour(map, 12, {shadows: true});
+
         const tick = () => {
           if (cancelled) return;
           try {
@@ -338,26 +352,36 @@ function StylePreview() {
     return () => { cancelled = true; };
   }, [moduleUrl, serviceWorkerUrl, patch]);
 
-  const apply = useCallback(async () => {
+  /**
+   * Puts the current style on the map.
+   *
+   * `override` exists for the very first call, which happens while the state that describes the
+   * style is still on its way through React - passing the values beats hoping they landed.
+   */
+  const apply = useCallback(async (override = {}) => {
     const map = mapRef.current;
     if (!map || !engine) return;
+    const mode = override.mode ?? state.mode;
+    const css = override.css ?? state.css;
+    const styleJson = override.styleJson ?? state.styleJson;
+    const tilejson = override.tilejson ?? state.tilejson;
     patch({busy: true, error: '', notes: []});
     try {
-      const source = state.tilejson.includes('{z}')
-        ? {url: state.tilejson, maxZoom: engine.DEFAULT_MAX_ZOOM}
-        : await engine.resolveTileUrl(state.tilejson);
+      const source = tilejson.includes('{z}')
+        ? {url: tilejson, maxZoom: engine.DEFAULT_MAX_ZOOM}
+        : await engine.resolveTileUrl(tilejson);
 
       let style;
       let notes = [];
       let themes = state.themes;
-      if (state.mode === MODE_MAPBOX) {
-        const converted = await engine.convertMapboxStyle(map.module, state.styleJson,
+      if (mode === MODE_MAPBOX) {
+        const converted = await engine.convertMapboxStyle(map.module, styleJson,
           {spriteKey: state.spriteKey});
         notes = converted.notes;
         themes = converted.themes;
         style = {project: themes.includes(state.theme) ? state.theme : themes[0]};
       } else {
-        style = {css: state.css};
+        style = {css};
       }
       engine.applyStyle(map, {sourceUrl: source.url, maxZoom: source.maxZoom, style});
       // Remembered so a light-preset switch can re-open the project over the same source without
@@ -421,6 +445,8 @@ function StylePreview() {
     // The sun depends on WHERE as much as on when, so it is re-placed once the flight has landed.
     setTimeout(() => engine.applyHour(map, state.hour, {shadows: state.shadows}), 1600);
   }, [engine, state.hour, state.shadows, patch]);
+
+  useEffect(() => { applyRef.current = apply; }, [apply]);
 
   const share = useCallback(() => {
     const map = mapRef.current;

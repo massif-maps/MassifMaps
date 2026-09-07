@@ -251,23 +251,44 @@ export async function searchPlaces(query, { limit = 6, signal } = {}) {
 }
 
 /**
- * Flies to a search result: its extent when it has one, otherwise a close-in point.
+ * The zoom at which `extent` just fills the canvas, measured from the map rather than derived from
+ * a convention: read how much ground the screen covers NOW, and each halving of that span is one
+ * zoom level. So it stays right whatever ZoomOffset and TileDrawSize are set to.
+ */
+function fitZoomFor({ massif, camera }, extent, canvas, padding) {
+  const [minLon, maxLat, maxLon, minLat] = extent;
+  const inset = Math.min(padding, Math.min(canvas.width, canvas.height) / 4);
+  const left = massif.call(camera.handle, 'screenToMap', [inset, canvas.height / 2]);
+  const right = massif.call(camera.handle, 'screenToMap', [canvas.width - inset, canvas.height / 2]);
+  const top = massif.call(camera.handle, 'screenToMap', [canvas.width / 2, inset]);
+  const bottom = massif.call(camera.handle, 'screenToMap', [canvas.width / 2, canvas.height - inset]);
+  const lonNow = Math.abs(right[0] - left[0]);
+  const latNow = Math.abs(top[1] - bottom[1]);
+  const lonWanted = Math.abs(maxLon - minLon);
+  const latWanted = Math.abs(maxLat - minLat);
+  if (!(lonNow > 0) || !(latNow > 0) || !(lonWanted > 0) || !(latWanted > 0)) return null;
+  // The tighter of the two axes wins, or the extent spills off the short side.
+  const ratio = Math.min(lonNow / lonWanted, latNow / latWanted);
+  return camera.zoom + Math.log2(ratio);
+}
+
+/**
+ * Flies to a search result.
  *
- * `canvas` is needed for the extent case - fitBounds wants the screen rectangle to fit INTO, and
- * refuses a null one, so the caller has to say how big the map is.
+ * Always flyTo, never fitBounds: fitBounds moves with the pan and zoom animations, whose duration
+ * is taken literally, so a fixed one drifts across a country at the same rate it crosses a suburb.
+ * flyTo follows van Wijk's arc and, given a duration of 0, picks S/1.4 seconds for it - which is
+ * maplibre's rule and the reason a long flight feels like one. An extent only decides the zoom.
  */
 export function flyToPlace({ massif, camera }, place, canvas,
-                           { seconds = 1.5, pointZoom = 15, padding = 40 } = {}) {
+                           { seconds = 0, pointZoom = 15, padding = 40, maxZoom = 17 } = {}) {
+  let zoom = pointZoom;
   if (place.extent && canvas) {
-    // Photon's extent is [minLon, maxLat, maxLon, minLat] - not the usual corner order.
-    const [minLon, maxLat, maxLon, minLat] = place.extent;
-    const pad = Math.min(padding, Math.min(canvas.width, canvas.height) / 4);
-    const screenBounds = [[pad, pad], [canvas.width - pad, canvas.height - pad]];
-    return massif.call(camera.handle, 'fitBounds',
-      [[[minLon, minLat], [maxLon, maxLat]], screenBounds, false, false, false, seconds]);
+    const fitted = fitZoomFor({ massif, camera }, place.extent, canvas, padding);
+    if (fitted !== null) zoom = Math.min(fitted, maxZoom);
   }
   return massif.call(camera.handle, 'flyTo',
-    [[place.lon, place.lat], pointZoom, camera.rotation, camera.tilt, 0, seconds]);
+    [[place.lon, place.lat], zoom, camera.rotation, camera.tilt, 0, seconds]);
 }
 
 /** A style as JSON text, or the URL of one - a published style is a link far more often than a file. */

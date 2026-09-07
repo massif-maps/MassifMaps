@@ -103,16 +103,21 @@ export const STARTERS = [
   },
   {
     id: 'buildings',
-    label: '3D buildings',
-    description: 'Extruded buildings — tilt the map with the right mouse button to see them.',
+    label: 'Labels and 3D buildings',
+    description: 'Extruded buildings with labels over them — what the hour slider casts shadows '
+      + 'from. Right-drag to tilt and see them.',
     css: `${BASE}
 #building {
   building-fill: #d8d0c6;
   building-height: [render_height];
   building-min-height: [render_min_height];
 }
-`,
+${LABELS}`,
   },
 ];
 
-export const DEFAULT_STARTER = STARTERS[1];
+/**
+ * What the page opens on. Buildings, because the first question anyone asks a 3D map is whether it
+ * is 3D - and because shadows need something to fall off.
+ */
+export const DEFAULT_STARTER = STARTERS.find((s) => s.id === 'buildings') ?? STARTERS[0];

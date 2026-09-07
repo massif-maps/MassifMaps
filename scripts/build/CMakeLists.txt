@@ -414,6 +414,31 @@ elseif(WIN32)
   target_link_libraries(massif "msxml6.lib" "d3d11.lib" "dwrite.lib" "d2d1.lib")
 endif()
 
+if(EMSCRIPTEN)
+  # The C ABI is the web binding, and emscripten drops every symbol nothing in the wasm calls. Read
+  # the exported names out of the header rather than keeping a second list that would drift: a new
+  # mm_ function reaches JavaScript by existing.
+  file(STRINGS "${SDK_SRC_DIR}/api/MassifApiC.h" SDK_API_C_LINES REGEX "^MM_API .*mm_[a-z_]+\\(")
+  set(SDK_API_C_EXPORTS "")
+  foreach(SDK_API_C_LINE IN LISTS SDK_API_C_LINES)
+    string(REGEX MATCH "mm_[a-z_0-9]+\\(" SDK_API_C_NAME "${SDK_API_C_LINE}")
+    string(REPLACE "(" "" SDK_API_C_NAME "${SDK_API_C_NAME}")
+    if(SDK_API_C_NAME)
+      list(APPEND SDK_API_C_EXPORTS "\"_${SDK_API_C_NAME}\"")
+    endif()
+  endforeach()
+  # EXPORTED_FUNCTIONS REPLACES the defaults rather than adding to them, so _main has to be named
+  # here or the program is stripped and nothing runs. malloc/free too: a caller has to build the
+  # argument strings the ABI takes.
+  list(APPEND SDK_API_C_EXPORTS "\"_main\"" "\"_malloc\"" "\"_free\"")
+  list(REMOVE_DUPLICATES SDK_API_C_EXPORTS)
+  list(JOIN SDK_API_C_EXPORTS "," SDK_API_C_EXPORTS_JSON)
+  set(SDK_API_C_EXPORTS_FILE "${CMAKE_CURRENT_BINARY_DIR}/generated/mm_exports.json")
+  file(WRITE "${SDK_API_C_EXPORTS_FILE}" "[${SDK_API_C_EXPORTS_JSON}]")
+  list(LENGTH SDK_API_C_EXPORTS SDK_API_C_EXPORTS_COUNT)
+  message(STATUS "Web build exports ${SDK_API_C_EXPORTS_COUNT} C ABI symbols to JavaScript")
+endif()
+
 if(EMSCRIPTEN AND BUILD_WEB_DEMO)
   # The link options the web build needs, in one place. PTHREAD_POOL_SIZE covers the tile and
   # envelope pools plus the cull, label and billboard workers - a pool too small deadlocks, because
@@ -429,12 +454,23 @@ if(EMSCRIPTEN AND BUILD_WEB_DEMO)
     "-sFETCH=1"
     # stringToNewUTF8/UTF8ToString are what PlatformUtils and the demo read location through; FS is
     # how the host page pushes assets and fonts into the virtual filesystem.
-    "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS")
+    "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS,cwrap,ccall,addFunction,removeFunction,getValue,setValue,HEAPU8,HEAP32,HEAPF64"
+    "-sEXPORTED_FUNCTIONS=@${SDK_API_C_EXPORTS_FILE}"
+    # mm_on and mm_source_create_custom take a caller's function pointer, which on the web means a
+    # JavaScript one added to the table at runtime.
+    "-sALLOW_TABLE_GROWTH=1")
   # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
   # /fonts in the virtual filesystem. Drop TTFs in web/demo/fonts to give the bench labels; without
   # the directory the build simply carries no font.
   if(EXISTS "${SDK_BASE_DIR}/web/demo/fonts")
-    target_link_options(massif-demo PRIVATE "--preload-file" "${SDK_BASE_DIR}/web/demo/fonts@/fonts")
+    # SHELL: keeps the flag and its path as one argument - CMake de-duplicates a repeated
+    # --preload-file token and orphans the second path.
+    target_link_options(massif-demo PRIVATE "SHELL:--preload-file ${SDK_BASE_DIR}/web/demo/fonts@/fonts")
+  endif()
+  # Whole CartoCSS projects, one directory each - what `massif-style mapbox2css` writes. ?project=
+  # names one.
+  if(EXISTS "${SDK_BASE_DIR}/web/demo/styles")
+    target_link_options(massif-demo PRIVATE "SHELL:--preload-file ${SDK_BASE_DIR}/web/demo/styles@/styles")
   endif()
   set_target_properties(massif-demo PROPERTIES SUFFIX ".mjs")
 endif()

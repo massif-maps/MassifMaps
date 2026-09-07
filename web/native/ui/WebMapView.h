@@ -53,9 +53,11 @@ namespace massif {
         static EM_BOOL OnPointer(int eventType, const EmscriptenMouseEvent* event, void* userData);
         static EM_BOOL OnTouch(int eventType, const EmscriptenTouchEvent* event, void* userData);
         static EM_BOOL OnWheel(int eventType, const EmscriptenWheelEvent* event, void* userData);
+        static EM_BOOL OnDoubleClick(int eventType, const EmscriptenMouseEvent* event, void* userData);
         static EM_BOOL OnResize(int eventType, const EmscriptenUiEvent* event, void* userData);
 
         void syncCanvasSize();
+        void applyDragRotate(float x, float y, double pixelRatio);
 
         const std::string _canvasSelector;
         EMSCRIPTEN_WEBGL_CONTEXT_HANDLE _context = 0;
@@ -64,6 +66,10 @@ namespace massif {
         int _width = 0;
         int _height = 0;
         bool _pointerDown = false;
+        // Right button, or left with ctrl: maplibre's trigger for rotate-and-pitch.
+        bool _dragRotating = false;
+        float _lastPointerX = 0.0f;
+        float _lastPointerY = 0.0f;
     };
 
 }

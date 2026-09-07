@@ -12,6 +12,7 @@
  */
 
 #include "ui/WebMapView.h"
+#include "api/MassifInterop.h"
 #include "core/MapPos.h"
 #include "components/Layers.h"
 #include "components/Options.h"
@@ -20,6 +21,8 @@
 #include "layers/VectorTileLayer.h"
 #include "projections/Projection.h"
 #include "styles/CartoCSSStyleSet.h"
+#include "styles/CompiledStyleSet.h"
+#include "utils/DirAssetPackage.h"
 #include "utils/Log.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 
@@ -87,14 +90,31 @@ int main() {
     if (isRasterSource(source)) {
         _MapView->getLayers()->add(std::make_shared<massif::RasterTileLayer>(dataSource));
     } else {
-        auto styleSet = std::make_shared<massif::CartoCSSStyleSet>(queryParam("css", DEFAULT_CSS));
-        auto decoder = std::make_shared<massif::MBVectorTileDecoder>(styleSet);
+        std::shared_ptr<massif::MBVectorTileDecoder> decoder;
+        std::string project = queryParam("project", "");
+        if (!project.empty()) {
+            // A whole CartoCSS project (project.json + .mss), preloaded under /styles - which is
+            // what `massif-style mapbox2css` writes, so a converted MapBox style renders as-is.
+            // CompiledStyleSet wants the style's entry file at the ROOT of the package, so the
+            // package is the project directory and the style name is the file without its
+            // extension - "project" for a mapbox2css run, or "night" for one of its themes.
+            auto assets = std::make_shared<massif::DirAssetPackage>("/styles/" + project + "/");
+            auto styleSet = std::make_shared<massif::CompiledStyleSet>(assets, queryParam("style", "project"));
+            decoder = std::make_shared<massif::MBVectorTileDecoder>(styleSet);
+        } else {
+            auto styleSet = std::make_shared<massif::CartoCSSStyleSet>(queryParam("css", DEFAULT_CSS));
+            decoder = std::make_shared<massif::MBVectorTileDecoder>(styleSet);
+        }
         _MapView->getLayers()->add(std::make_shared<massif::VectorTileLayer>(dataSource, decoder));
     }
 
     massif::MapPos wgs84(queryNumber("lon", 2.3522), queryNumber("lat", 48.8566));
     _MapView->setFocusPos(_MapView->getOptions()->getBaseProjection()->fromWgs84(wgs84), 0);
     _MapView->setZoom(static_cast<float>(queryNumber("zoom", 12)), 0);
+
+    // Hand the view to the facade so the page can drive the camera through the C ABI. Without this
+    // the JavaScript binding has an ABI but nothing to point it at.
+    massif::api::MassifInterop::adopt("map", "map", _MapView);
 
     // The frame loop is requestAnimationFrame, so main() returning must not tear the runtime down.
     emscripten_exit_with_live_runtime();

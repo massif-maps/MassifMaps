@@ -18,12 +18,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, default=8088)
-parser.add_argument('--dir', default=os.path.dirname(os.path.abspath(__file__)))
+# web/, not web/demo: the page imports the binding from ../js.
+parser.add_argument('--dir', default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # GitHub Pages sends no custom headers, so this is how coi-serviceworker.js gets tested.
 parser.add_argument('--no-headers', dest='noheaders', action='store_true',
                     help='Serve without COOP/COEP, the way a static host does')
 args = parser.parse_args()
 
 os.chdir(args.dir)
-print('Serving %s on http://localhost:%d' % (args.dir, args.port))
+print('Serving %s - the map is at http://localhost:%d/demo/' % (args.dir, args.port))
 http.server.test(HandlerClass=Handler, port=args.port, bind='127.0.0.1')

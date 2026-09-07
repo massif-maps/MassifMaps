@@ -6,17 +6,45 @@
 <style>
   html, body { margin: 0; height: 100%; background: #202020; }
   #map { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #camera {
+    position: fixed; left: 8px; bottom: 8px; padding: 6px 9px;
+    font: 12px/1.5 ui-monospace, Menlo, monospace; color: #fff;
+    background: rgba(0, 0, 0, .55); border-radius: 4px; white-space: pre; pointer-events: none;
+  }
 </style>
 </head>
 <body>
 <canvas id="map"></canvas>
+<div id="camera">starting…</div>
 <!-- Classic script, not a module: it needs document.currentScript to register itself. Only does
      anything when the host serves no COOP/COEP of its own, which is the GitHub Pages case. -->
 <script src="./coi-serviceworker.js"></script>
 <script type="module">
   import Module from './massif-demo.mjs';
+  import { Massif, MassifCamera } from '../js/massif.mjs';
+
   // The canvas the GL context is created on has to be registered before the runtime starts.
-  await Module({ canvas: document.getElementById('map') });
+  const module = await Module({ canvas: document.getElementById('map') });
+
+  const massif = new Massif(module);
+  // Exposed before the camera is built, so a failure there still leaves something to poke at:
+  // massif.call(camera.handle, 'flyTo', {...})
+  Object.assign(globalThis, { massif, module, Massif, MassifCamera });
+  const camera = await MassifCamera.attach(massif);
+  globalThis.camera = camera;
+
+  const readout = document.getElementById('camera');
+  const render = () => {
+    try {
+      readout.textContent =
+        `zoom ${camera.zoom.toFixed(2)}  rotation ${camera.rotation.toFixed(1)}°  tilt ${camera.tilt.toFixed(1)}°\n` +
+        `focus ${camera.focusPos}`;
+    } catch (error) {
+      readout.textContent = String(error && error.message || error);
+    }
+    requestAnimationFrame(render);
+  };
+  render();
 </script>
 </body>
 </html>

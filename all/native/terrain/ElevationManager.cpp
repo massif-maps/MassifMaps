@@ -1,6 +1,7 @@
 #include "ElevationManager.h"
 #include "terrain/ElevationNodeField.h"
 #include "terrain/ElevationTileGrid.h"
+#include "terrain/PrefetchOrder.h"
 #include "core/BinaryData.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileData.h"
@@ -74,6 +75,9 @@ namespace massif {
         _maxSeenElevation(0.0f),
         _gridCache(DEFAULT_CACHE_CAPACITY),
         _mutex(),
+        _prefetchFocusU(0.0),
+        _prefetchFocusV(0.0),
+        _prefetchFocusValid(false),
         _prefetchStopped(false)
     {
         _dataSourceListener = std::make_shared<DataSourceListener>(*this);
@@ -454,23 +458,33 @@ namespace massif {
             if (!_prefetchTileIds.insert(tileId).second) {
                 return; // already queued
             }
-            std::deque<MapTile>& queue = (priority >= 2 ? _prefetchQueueHigh : _prefetchQueue);
-            // The queues are drained newest first, so the lowest priority requests (diagonal
-            // neighbours) go to the far end instead of the near one.
-            if (priority <= 0) {
-                queue.push_front(tile);
-            } else {
-                queue.push_back(tile);
-            }
+            std::deque<PrefetchEntry>& queue = (priority >= 2 ? _prefetchQueueHigh : _prefetchQueue);
+            queue.push_back(PrefetchEntry { tile, priority });
             while (queue.size() > MAX_PREFETCH_QUEUE_SIZE) {
-                _prefetchTileIds.erase(queue.front().getTileId());
-                queue.pop_front();
+                // Shed the least useful entry rather than simply the oldest: the low queue holds
+                // edge neighbours (a texel of border each) beside diagonal ones (a single corner
+                // texel), and a full queue should give up the corners. Ties keep the oldest, which
+                // is the one most likely to have scrolled out of view.
+                auto victim = queue.begin();
+                for (auto it = queue.begin(); it != queue.end(); it++) {
+                    if (it->priority < victim->priority) {
+                        victim = it;
+                    }
+                }
+                _prefetchTileIds.erase(victim->tile.getTileId());
+                queue.erase(victim);
             }
             while (static_cast<int>(_prefetchThreads.size()) < PREFETCH_THREADS) {
                 _prefetchThreads.emplace_back([this]() { runPrefetchWorker(); });
             }
         }
         _prefetchCondition.notify_one();
+    }
+
+    void ElevationManager::setPrefetchFocus(double internalX, double internalY) const {
+        _prefetchFocusU.store(internalX / Const::WORLD_SIZE + 0.5);
+        _prefetchFocusV.store(0.5 - internalY / Const::WORLD_SIZE); // XYZ convention: v grows south, as tile y does
+        _prefetchFocusValid.store(true);
     }
 
     void ElevationManager::runPrefetchWorker() const {
@@ -482,12 +496,32 @@ namespace massif {
                 if (_prefetchStopped) {
                     return;
                 }
-                // High priority (a tile's own elevation level) before border neighbours, and
-                // newest request first: it belongs to the current viewport, while the oldest
-                // entries may already have scrolled out of view.
-                std::deque<MapTile>& queue = (_prefetchQueueHigh.empty() ? _prefetchQueue : _prefetchQueueHigh);
-                tile = queue.back();
-                queue.pop_back();
+                std::deque<PrefetchEntry>& queue = (_prefetchQueueHigh.empty() ? _prefetchQueue : _prefetchQueueHigh);
+                // Priority first, then NEAREST the camera, so the ground under the viewer fills in
+                // before the ground at the horizon. Distance orders within a priority and never
+                // overrules it: a tile displaced by an ancestor grid tears against its neighbours,
+                // which no amount of nearness makes up for. With no focus set it is newest first,
+                // as the queue always drained. The scan is bounded by MAX_PREFETCH_QUEUE_SIZE and
+                // runs once per tile LOAD - a fetch and a decode, beside which it does not register.
+                bool haveFocus = _prefetchFocusValid.load();
+                double focusU = _prefetchFocusU.load(), focusV = _prefetchFocusV.load();
+                std::size_t index = 0;
+                int bestPriority = std::numeric_limits<int>::min();
+                double bestDistance = std::numeric_limits<double>::infinity();
+                for (std::size_t i = 0; i < queue.size(); i++) {
+                    int priority = queue[i].priority;
+                    if (priority < bestPriority) {
+                        continue;
+                    }
+                    double distance = (haveFocus ? prefetchTileDistance(queue[i].tile, focusU, focusV) : 0.0);
+                    if (priority > bestPriority || distance < bestDistance || !haveFocus) {
+                        bestPriority = priority;
+                        bestDistance = distance;
+                        index = i;
+                    }
+                }
+                tile = queue[index].tile;
+                queue.erase(queue.begin() + static_cast<std::ptrdiff_t>(index));
                 _prefetchTileIds.erase(tile.getTileId());
             }
             try {

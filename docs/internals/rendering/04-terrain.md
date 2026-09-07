@@ -54,6 +54,44 @@ an already-resolved elevation tile (`getTileGrid` on a `getDataTile` result, or 
 one) costs another level per hop, which is why the elevation-tile entry points call
 `clampDataTileZoom` instead.
 
+### The prefetch queue loads the nearest tile first
+
+DEM tiles are fetched off the render thread by `prefetchTileGrid` / `runPrefetchWorker`
+(`PREFETCH_THREADS` = 3, queue capped at `MAX_PREFETCH_QUEUE_SIZE` = 64 per level, deduplicated by
+tile id). Requests carry a priority: **2** is a tile's own elevation level, **1** an edge neighbour
+(a texel of border), **0** a diagonal one (a single corner texel). 2 has a queue of its own; a tile
+displaced by a coarser ancestor tears against neighbours that have their own level, and no amount of
+nearness makes up for it.
+
+Within a priority level the order is **nearest the camera first**. There used to be no distance term
+at all — the queue drained newest-first, on the reasoning that the newest request belongs to the
+current viewport — so near and far ground were fetched in whatever order the renderer happened to
+enqueue them, and with a tilted 3D view the ground under the viewer was routinely the last thing to
+appear. `MapRenderer::drawLayers` now calls `setPrefetchFocus(viewState.getFocusPos())` once per
+frame and the worker picks the closest queued entry.
+
+Three things about that metric, all of which have a host test in `tests/api/PrefetchOrderTest.cpp`:
+
+- **The focus is read when a tile is DEQUEUED, not when it is queued.** That is the whole reason it
+  is one piece of state on the manager rather than a rank passed per call: a fast pan re-orders the
+  64 entries already waiting, instead of draining them against the camera of some earlier frame.
+- **Distance is in tile widths at the tile's own zoom** (`prefetchTileDistance`, split into
+  `all/native/terrain/PrefetchOrder.h` so it can be tested without linking the manager). The queue
+  mixes levels, and in raw mercator units a coarse ancestor *covering* the focus loses to a fine tile
+  several tiles off to the side — its centre is up to eight tiles away. Both are the ground under the
+  camera and must rank alike.
+- **u wraps, v does not.** A view on the antimeridian queues tiles either side of it; mercator y has
+  no such seam, and wrapping it would make the arctic look near the antarctic.
+
+The focus, not the ground point under the camera: at a tilt of 60° that point sits behind the bottom
+of the screen, and the horizon tiles this is meant to hold back are far from either.
+
+The queue cap sheds the **lowest priority** entry, oldest first among equals, rather than simply the
+oldest — the corner texels are what a saturated queue should give up. Before, priority rode on the
+entry's position in the deque (`push_front` for 0, `push_back` otherwise, drained from the back); a
+nearest-first scan would have erased that distinction silently, so the priority now travels with the
+entry.
+
 ### CPU height queries
 
 `getDisplayHeight` answers with the node field (the drawn surface), `getElevationMeters` with the

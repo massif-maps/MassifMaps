@@ -19,17 +19,26 @@ python3 web/demo/serve.py            # http://localhost:8088
 Add `--website` to put the same module under `website/static/preview`, which is what the
 documentation site's [style preview](../tools/style-preview.md) page runs.
 
-Size, measured with emscripten 6.0.9 on the `lite` profile at `--configuration Release`:
+Size, measured with emscripten 6.0.9 on the `lite` profile:
 
-| Artefact | Raster only | + vector tiles, CartoCSS and labels |
+| Artefact | `Release` | `RelWithDebInfo` |
 |---|---|---|
-| `.wasm` | 2.5 MB | **3.8 MB** |
-| `.wasm` gzipped | 910 KB | **1.5 MB** |
-| `.mjs` loader | 297 KB | 151 KB |
+| `.wasm` | **4.47 MB** | 348.9 MB |
+| `.wasm` gzipped | **1.74 MB** | — |
+| `.wasm` brotli | **1.30 MB** | — |
+| `.mjs` loader | 265 KB | 429 KB |
 
-The vector column is what the style preview needs; the difference is mapnikvt, cartocss, freetype
-and harfbuzz, which the raster-only demo never referenced. A preloaded font adds its own
-`.data` file on top (306 KB for Roboto).
+**DWARF is the whole difference**: `RelWithDebInfo` is 78x the size and is a development artefact
+only - never quote it, and never deploy it. Over the wire the number that matters is the compressed
+one, and GitHub Pages serves brotli, so the module costs about **1.3 MB**.
+
+A preloaded font adds its own `.data` file on top (3.0 MB for the bench's fonts and styles; Roboto
+alone is 306 KB).
+
+`Release` already compiles with `-Oz`. Passing `-Oz` at LINK as well was tried and changed the
+output by zero bytes, so it is not set. What would actually move the number is `-flto` (the
+Android build uses it, this one does not), emscripten's closure pass on the loader, and dropping
+pthreads - and that last one is not available, since the tile pools need them.
 
 Use `--configuration RelWithDebInfo` while developing, but do not quote its size: it carries DWARF
 and the `.wasm` comes out around 340 MB.

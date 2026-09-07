@@ -10,6 +10,9 @@
 #elif defined(__ANDROID__)
 #define MASSIF_BITMAP_CANVAS_IMPL AndroidImpl
 #include "graphics/BitmapCanvasAndroidImpl.h"
+#elif defined(__EMSCRIPTEN__)
+#define MASSIF_BITMAP_CANVAS_IMPL WebImpl
+#include "graphics/BitmapCanvasWebImpl.h"
 #else
 #error "Unsupported platform"
 #endif

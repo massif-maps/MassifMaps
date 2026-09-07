@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Massif Maps - web build</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #202020; }
+  #map { display: block; width: 100vw; height: 100vh; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+<script type="module">
+  import Module from './massif-demo.mjs';
+  // The canvas the GL context is created on has to be registered before the runtime starts.
+  await Module({ canvas: document.getElementById('map') });
+</script>
+</body>
+</html>

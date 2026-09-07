@@ -19,6 +19,9 @@
 #elif defined(__ANDROID__)
 #define MASSIF_HTTP_SOCKET_IMPL AndroidImpl
 #include "network/HTTPClientAndroidImpl.h"
+#elif defined(__EMSCRIPTEN__)
+#define MASSIF_HTTP_SOCKET_IMPL EmscriptenImpl
+#include "network/HTTPClientEmscriptenImpl.h"
 #else
 #define MASSIF_HTTP_SOCKET_IMPL PionImpl
 #include "HTTPClientPionImpl.h"

@@ -15,3 +15,7 @@ boost*
 /scripts/node_modules
 /scripts/package.json
 /scripts/package-lock.json
+
+# Built by scripts/build-web.py --build-demo
+/web/demo/massif-demo.mjs
+/web/demo/massif-demo.wasm

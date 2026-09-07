@@ -117,6 +117,16 @@ if(ANDROID)
   endif()
 endif(ANDROID)
 
+if(EMSCRIPTEN)
+  # -fwasm-exceptions, not the JS-based default: the SDK throws on every missing tile, and the JS
+  # path costs a call out of wasm each time. It also selects the wasm longjmp, which is what
+  # libpng and libjpeg use. Every object and the final link must agree on it.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -fwasm-exceptions -ffunction-sections -fdata-sections")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -ftemplate-depth=1024 -fwasm-exceptions -frtti -pthread -ffunction-sections -fdata-sections")
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Oz")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Oz")
+endif(EMSCRIPTEN)
+
 # Make common libraries available to all subprojects
 include_directories("${SDK_EXTERNAL_LIBS_DIR}/boost")
 include_directories("${SDK_EXTERNAL_LIBS_DIR}/boost/libs/any/include")
@@ -132,15 +142,20 @@ if(WIN32)
   include_directories("${SDK_EXTERNAL_LIBS_DIR}/angle-uwp/include" "${SDK_EXTERNAL_LIBS_DIR}/zlib/config" "${SDK_EXTERNAL_LIBS_DIR}/zlib/zlib")
 endif(WIN32)
 
+if(EMSCRIPTEN)
+  include_directories("${SDK_EXTERNAL_LIBS_DIR}/zlib/config" "${SDK_EXTERNAL_LIBS_DIR}/zlib/zlib")
+endif(EMSCRIPTEN)
+
 # Subprojects
 set(SDK_MASSIF_SUBPROJECTS vt mapnikvt mbvtbuilder cartocss nml)
 set(SDK_EXTERNAL_SUBPROJECTS botan pugixml bidi freetype harfbuzz brotli zstd miniz libjpeg libpng libwebp tess2 pvrt rg_etc1 mlt)
 
-if(WIN32)
+if(WIN32 OR EMSCRIPTEN)
+  # Neither has a system zlib to link against, unlike Android and Apple.
   list(APPEND SDK_EXTERNAL_SUBPROJECTS "zlib")
-endif(WIN32)
+endif()
 
-if(NOT (WIN32 OR APPLE OR ANDROID))
+if(NOT (WIN32 OR APPLE OR ANDROID OR EMSCRIPTEN))
   list(APPEND SDK_EXTERNAL_SUBPROJECTS "pion")
 endif()
 
@@ -233,7 +248,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Release|RELEASE")
   endforeach()
 endif()
 
-if(WIN32 OR APPLE OR ANDROID)
+if(WIN32 OR APPLE OR ANDROID OR EMSCRIPTEN)
   list(REMOVE_ITEM SDK_SRC_FILES "${SDK_SRC_DIR}/network/HTTPClientPionImpl.cpp")
 endif()
 
@@ -282,6 +297,13 @@ elseif(WIN32)
   foreach(WINRT_SRC_FILE IN ITEMS "utils/AssetUtils.cpp" "utils/PlatformUtils.cpp" "utils/EGLContextWrapper.cpp" "components/Task.cpp")
     set_source_files_properties("${SDK_BASE_DIR}/winphone/native/${WINRT_SRC_FILE}" PROPERTIES COMPILE_OPTIONS "/ZW")
   endforeach()
+elseif(EMSCRIPTEN)
+  # No wrapper directory: the web build is carried by the facade's C ABI, not by SWIG.
+  file(GLOB SDK_WEB_SRC_FILES CONFIGURE_DEPENDS
+    "${SDK_BASE_DIR}/web/native/*/*.cpp"
+    "${SDK_BASE_DIR}/web/native/*/*.h"
+  )
+  set(SDK_SRC_FILES "${SDK_SRC_FILES}" "${SDK_WEB_SRC_FILES}")
 endif()
 
 # Group wrapper files into different groups, to reduce clutter
@@ -354,6 +376,8 @@ elseif(APPLE)
   endif(INCLUDE_OBJC)
 elseif(WIN32)
   include_directories("${SDK_BASE_DIR}/winphone/native")
+elseif(EMSCRIPTEN)
+  include_directories("${SDK_BASE_DIR}/web/native")
 endif()
 
 # Linking
@@ -388,4 +412,23 @@ elseif(APPLE)
 elseif(WIN32)
   target_link_libraries(massif "${SDK_EXTERNAL_LIBS_DIR}/angle-uwp/${SDK_WINPHONE_ARCH}/libEGL.dll.lib" "${SDK_EXTERNAL_LIBS_DIR}/angle-uwp/${SDK_WINPHONE_ARCH}/libGLESv2.dll.lib")
   target_link_libraries(massif "msxml6.lib" "d3d11.lib" "dwrite.lib" "d2d1.lib")
+endif()
+
+if(EMSCRIPTEN AND BUILD_WEB_DEMO)
+  # The link options the web build needs, in one place. PTHREAD_POOL_SIZE covers the tile and
+  # envelope pools plus the cull, label and billboard workers - a pool too small deadlocks, because
+  # pthread_create on the main browser thread cannot block waiting for a worker.
+  add_executable(massif-demo "${SDK_BASE_DIR}/web/demo/main.cpp")
+  target_link_libraries(massif-demo massif)
+  target_link_options(massif-demo PRIVATE
+    "-pthread" "-fwasm-exceptions"
+    "-sPTHREAD_POOL_SIZE=8"
+    "-sMIN_WEBGL_VERSION=2" "-sMAX_WEBGL_VERSION=2" "-sFULL_ES3"
+    "-sALLOW_MEMORY_GROWTH=1"
+    "-sMODULARIZE=1" "-sEXPORT_ES6=1"
+    "-sFETCH=1"
+    # stringToNewUTF8 is what PlatformUtils reads navigator/location through; FS is how the host
+    # page pushes assets and fonts into the virtual filesystem.
+    "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,FS")
+  set_target_properties(massif-demo PROPERTIES SUFFIX ".mjs")
 endif()

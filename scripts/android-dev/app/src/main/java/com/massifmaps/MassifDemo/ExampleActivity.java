@@ -63,6 +63,12 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     private boolean chromeHidden;
     /** The CONFIG broadcast, so a knob can be changed on the running example (see ExampleLive). */
     private ExampleLive live;
+    /**
+     * Set before the map is closed, read by the example thread. Leaving an example while it is
+     * still building closes the map under it, and every facade getter then answers on a handle
+     * that no longer resolves - a null position read as a camera killed the process.
+     */
+    private volatile boolean closed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -171,6 +177,10 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                     Log.e(TAG, "example '" + entry.id() + "' failed", e);
                     toast("Failed: " + e.getMessage());
                 }
+                // Left while it was building: the map is gone, and everything below reads it.
+                if (closed) {
+                    return;
+                }
                 applyCameraOverrides();
                 logCamera();
                 ui.post(new Runnable() {
@@ -186,6 +196,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
 
     @Override
     protected void onDestroy() {
+        closed = true;
         ui.removeCallbacksAndMessages(null);
         if (live != null) {
             unregisterReceiver(live);
@@ -220,6 +231,9 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
             return;
         }
         Position focus = map.camera().position();
+        if (focus == null) {
+            return;
+        }
         double lon = number(extras, "lon", focus.lng);
         double lat = number(extras, "lat", focus.lat);
         float zoom = (float) number(extras, "zoom", map.camera().zoom());
@@ -259,6 +273,10 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
      */
     private void logCamera() {
         Position at = map.camera().position();
+        // Null once the map is closed - a map-moved event can still land from the render thread.
+        if (at == null) {
+            return;
+        }
         Log.i(TAG, String.format("camera lon=%.5f lat=%.5f zoom=%.2f rotation=%.0f tilt=%.0f",
                                  at.lng, at.lat, map.camera().zoom(),
                                  map.camera().rotation(), map.camera().tilt()));

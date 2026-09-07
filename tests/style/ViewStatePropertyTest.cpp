@@ -57,6 +57,12 @@ namespace {
         return viewState;
     }
 
+    vt::ViewState lit(float brightness) {
+        vt::ViewState viewState = view(17.0f, 0.0f);
+        viewState.lightBrightness = brightness;
+        return viewState;
+    }
+
     // What VectorTileLayer::getStyleEnvironment does with one: build the function against the
     // (feature-less) context once, then evaluate it against this frame's view state.
     float evaluate(const mvt::FloatFunctionProperty& prop, const vt::ViewState& viewState) {
@@ -127,5 +133,25 @@ void testViewStateProperty() {
 
         mvt::FloatFunctionProperty unset(1.0f);
         TEST_CHECK(!unset.isDefined(), "a property the style never mentions stays undefined - the app keeps its value");
+    }
+
+    // 5. The SCENE LIGHT, which is the same mechanism pointed at view::brightness: Mapbox Standard
+    //    writes background-emissive-strength as `linear([view::brightness], (0.25, 0), (0.3, 0.25))`
+    //    on the Map block, so the largest surface on the map is unlit at night and a quarter emissive
+    //    by day. The trap is the DEFAULT: a ViewState built without the frame's brightness reads 1,
+    //    which is the daylight end of every one of these ramps - the whole ground then stayed light
+    //    grey at midnight while the symbolizers around it, which do get the live value, went dark.
+    //    Anything evaluating a Map property (TileRenderer::evaluateFloatFunc / evaluateColorFunc)
+    //    has to pass the resolved brightness in.
+    {
+        mvt::FloatFunctionProperty backgroundEmissive = property(ramp(variable("view::brightness"), { 0.25, 0.0, 0.3, 0.25 }));
+
+        TEST_CHECK(near(evaluate(backgroundEmissive, lit(0.0136f)), 0.0f), "mapbox's night brightness leaves the ground fully lit by the scene");
+        TEST_CHECK(near(evaluate(backgroundEmissive, lit(0.026f)), 0.0f), "and its dusk one too - both sit below the ramp");
+        TEST_CHECK(near(evaluate(backgroundEmissive, lit(0.478f)), 0.25f), "its day brightness is past the ramp: a quarter emissive");
+        TEST_CHECK(near(evaluate(backgroundEmissive, lit(0.275f)), 0.125f), "and half way up the ramp it is half way between");
+
+        TEST_CHECK(near(evaluate(backgroundEmissive, view(17.0f, 0.0f)), 0.25f),
+            "a ViewState with no brightness set reads 1 - the DAYLIGHT end, which is why it has to be passed in");
     }
 }

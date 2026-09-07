@@ -30,3 +30,18 @@ the same two ids drops straight in.
 
 Each also needs the tiles it was written against — `mapbox-standard` reads mapbox-streets-v8 source
 layers and nothing else can feed it, `maptiler-streets` reads OpenMapTiles. See the example.
+
+## An elevation mode is a LINE or POLYGON property
+
+`mapbox-standard/style.mss` carries hand-added `line-elevation-mode` / `polygon-elevation-mode`
+annotations on top of what the converter wrote — the converter emits neither, so a regeneration
+loses them and they have to be put back.
+
+Put them only on a rule that actually draws a line or a polygon. `MarkersSymbolizer`,
+`TextSymbolizer` and `ShieldSymbolizer` bind no elevation mode, and `vt` carries one on
+`LineStyle` / `PolygonStyle` / `Polygon3DStyle` only — so on a markers-only rule the property does
+nothing useful and one thing harmful: **any** `line-*` property makes CartoCSS instantiate a
+LineSymbolizer, and one with no `line-color` draws mapnik's default, black at 1 px. On the twelve
+one-way arrow rules that put a black hairline down the middle of every bridge and tunnel road,
+`(8, 8, 10)` across the deck of the Petit-Pont at z19.55. An arrow on a deck needs a marker
+elevation mode that does not exist yet; until it does the arrows drape.

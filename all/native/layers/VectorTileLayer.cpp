@@ -619,28 +619,53 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
-        Color color = TileRenderer::evaluateColorFunc(mapSettings->backgroundColor.getFunction(getExpressionContext()), viewState);
+        // Resolved FIRST: the emissive below is a ramp over view::brightness in every converted
+        // Mapbox style, and reading it without the scene light pinned it to the daylight end at
+        // every hour - the ground then stayed light grey through the night while the symbolizers
+        // around it, which do get the live brightness, went dark.
+        std::shared_ptr<Options> options = getOptions();
+        StyleEnvironment env;
+        getStyleEnvironment(viewState, env);
+        ResolvedLighting lighting = resolveLighting(options ? options->getLightOptions() : std::shared_ptr<LightOptions>(), env);
+
+        Color color = TileRenderer::evaluateColorFunc(mapSettings->backgroundColor.getFunction(getExpressionContext()), viewState, lighting.brightness);
         // The background is a Map setting, so it misses the grade every symbolizer colour gets at
         // draw time - and it is the largest surface on the map. Lit here by the same rule: at an
         // emissive of 1, which is the default and what a pre-lit style leaves it at, this is a
         // no-op.
-        float emissive = TileRenderer::evaluateFloatFunc(mapSettings->backgroundEmissive.getFunction(getExpressionContext()), viewState);
-        if (emissive < 1.0f) {
-            if (std::shared_ptr<Options> options = getOptions()) {
-                StyleEnvironment env;
-                getStyleEnvironment(viewState, env);
-                ResolvedLighting lighting = resolveLighting(options->getLightOptions(), env);
-                auto lit = [&](unsigned char c, int i) {
-                    float value = c / 255.0f * (emissive + (1.0f - emissive) * lighting.radiance(i));
-                    return static_cast<unsigned char>(std::max(0.0f, std::min(1.0f, value)) * 255.0f + 0.5f);
-                };
-                color = Color(lit(color.getR(), 0), lit(color.getG(), 1), lit(color.getB(), 2), color.getA());
-            }
+        float emissive = TileRenderer::evaluateFloatFunc(mapSettings->backgroundEmissive.getFunction(getExpressionContext()), viewState, lighting.brightness);
+        if (emissive < 1.0f && options) {
+            auto lit = [&](unsigned char c, int i) {
+                float value = c / 255.0f * (emissive + (1.0f - emissive) * lighting.radiance(i));
+                return static_cast<unsigned char>(std::max(0.0f, std::min(1.0f, value)) * 255.0f + 0.5f);
+            };
+            color = Color(lit(color.getR(), 0), lit(color.getG(), 1), lit(color.getB(), 2), color.getA());
         }
         return color;
     }
 
+    /**
+     * Read TWICE, because a Map property may ramp over view::brightness and the brightness itself
+     * is derived from the lights this very pass reads. The first read settles the lights (at the
+     * default brightness, which is the daylight end of every such ramp), the second re-reads
+     * everything at the brightness they imply.
+     *
+     * background-emissive-strength is the one that shows: Mapbox Standard writes it as
+     * `linear([view::brightness], (0.25, 0), (0.3, 0.25))`, and one read left the map's largest
+     * surface a quarter emissive at every hour - a light grey ground under a midnight sky, with
+     * every symbolizer over it correctly dark.
+     */
     bool VectorTileLayer::getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const {
+        StyleEnvironment lights;
+        if (!readStyleEnvironment(viewState, 1.0f, lights)) {
+            return false;
+        }
+        std::shared_ptr<Options> options = getOptions();
+        ResolvedLighting lighting = resolveLighting(options ? options->getLightOptions() : std::shared_ptr<LightOptions>(), lights);
+        return readStyleEnvironment(viewState, lighting.brightness, env);
+    }
+
+    bool VectorTileLayer::readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
@@ -652,18 +677,18 @@ namespace massif {
         // never mentions, and that one keeps coming from the application's own options.
         auto readFloat = [&](const mvt::FloatFunctionProperty& property, std::optional<float>& value) {
             if (property.isDefined()) {
-                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState);
+                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness);
             }
         };
         // A flag written as a number, like building-rounded-roof beside it.
         auto readBool = [&](const mvt::FloatFunctionProperty& property, std::optional<bool>& value) {
             if (property.isDefined()) {
-                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState) != 0.0f;
+                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness) != 0.0f;
             }
         };
         auto readColor = [&](const mvt::ColorFunctionProperty& property, std::optional<Color>& value) {
             if (property.isDefined()) {
-                value = TileRenderer::evaluateColorFunc(property.getFunction(context), viewState);
+                value = TileRenderer::evaluateColorFunc(property.getFunction(context), viewState, brightness);
             }
         };
         readFloat(mapSettings->sunAzimuth, env.sunAzimuth);
@@ -691,7 +716,7 @@ namespace massif {
         readFloat(mapSettings->shadowSoftness, env.shadowSoftness);
         readFloat(mapSettings->shadowDistance, env.shadowDistance);
         if (mapSettings->fogEnabled.isDefined()) {
-            env.fogEnabled = TileRenderer::evaluateFloatFunc(mapSettings->fogEnabled.getFunction(context), viewState) != 0.0f;
+            env.fogEnabled = TileRenderer::evaluateFloatFunc(mapSettings->fogEnabled.getFunction(context), viewState, brightness) != 0.0f;
         }
         readColor(mapSettings->fogColor, env.fogColor);
         readFloat(mapSettings->fogRangeStart, env.fogRangeStart);
@@ -709,11 +734,11 @@ namespace massif {
         readFloat(mapSettings->skyAtmosphereLuminance, env.skyAtmosphereLuminance);
         readFloat(mapSettings->terrainMaxVisibleDistance, env.terrainMaxVisibleDistance);
         if (mapSettings->terrainLighting.isDefined()) {
-            env.terrainLightingEnabled = TileRenderer::evaluateFloatFunc(mapSettings->terrainLighting.getFunction(context), viewState) != 0.0f;
+            env.terrainLightingEnabled = TileRenderer::evaluateFloatFunc(mapSettings->terrainLighting.getFunction(context), viewState, brightness) != 0.0f;
         }
         auto readInt = [&](const mvt::FloatFunctionProperty& property, std::optional<int>& value) {
             if (property.isDefined()) {
-                value = static_cast<int>(TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState) + 0.5f);
+                value = static_cast<int>(TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness) + 0.5f);
             }
         };
         readInt(mapSettings->shadowMapSize, env.shadowMapSize);

@@ -1795,6 +1795,22 @@ function stopZoomOf(value: Json, pattern: number[]): number | null {
 }
 
 /**
+ * One stop of a zoom ramp as a number: the value itself, or the FALLBACK branch of a data-driven
+ * one. Standard's cycleway width is `interpolate(zoom, 12, match(type, piste, 0.5, 0), 18, match(…,
+ * 4, 2), 22, match(…, 40, 20))`, and a stop that was not a plain number sank the whole ramp - the
+ * dash then fell back to the mean of every literal in it, 13.3 px against the 1.3 gl-js draws at the
+ * zoom the pattern starts. The fallback is the branch nearly every feature takes; a piste is the
+ * exception, and one pattern cannot serve both.
+ */
+function stopNumber(value: Json): number | null {
+    if (typeof value === 'number') return value;
+    if (!Array.isArray(value)) return null;
+    if (value[0] === 'literal') return stopNumber(value[1] as Json);
+    if (value[0] === 'match' || value[0] === 'case') return stopNumber(value[value.length - 1] as Json);
+    return null;
+}
+
+/**
  * A zoom ramp read at ONE zoom, or null when the shape is not one this can evaluate.
  *
  * The mean of a ramp's stops is no use for a dash: Standard's steps run `12, 0, 18, 6, 22, 80`, so
@@ -1810,7 +1826,7 @@ function rampAt(expr: Json | undefined, zoom: number): number | null {
             if (typeof expr[i] !== 'number' || (expr[i] as number) > zoom) break;
             value = expr[i + 1] as Json;
         }
-        return typeof value === 'number' ? value : null;
+        return stopNumber(value);
     }
     if (expr[0] !== 'interpolate') return null;
     const kind = expr[1] as Json;
@@ -1818,8 +1834,9 @@ function rampAt(expr: Json | undefined, zoom: number): number | null {
         ? kind[1] as number : 1;
     const stops: Array<[number, number]> = [];
     for (let i = 3; i + 1 < expr.length; i += 2) {
-        if (typeof expr[i] === 'number' && typeof expr[i + 1] === 'number') {
-            stops.push([expr[i] as number, expr[i + 1] as number]);
+        const value = stopNumber(expr[i + 1] as Json);
+        if (typeof expr[i] === 'number' && value !== null) {
+            stops.push([expr[i] as number, value]);
         }
     }
     if (!stops.length) return null;

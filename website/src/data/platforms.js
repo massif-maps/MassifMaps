@@ -63,7 +63,7 @@ export const Platforms = [
     distribution: 'Not published yet',
     minVersion: 'WebAssembly + WebGL 2, cross-origin isolated',
     docs: '/docs/maintenance/web-build',
-    note: 'Builds under emscripten and renders raster tiles in a browser. Threading is solved with pthreads, which is why the page has to be cross-origin isolated. Still missing: the JavaScript binding, the persistent cache, and Text/BalloonPopup elements.',
+    note: 'Builds under emscripten and renders raster and CartoCSS-styled vector tiles in a browser. Threading is solved with pthreads, which is why the page has to be cross-origin isolated. Still missing: the JavaScript binding, the persistent cache, labels and Text/BalloonPopup elements.',
   },
   {
     id: 'flutter',

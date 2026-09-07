@@ -427,8 +427,8 @@ if(EMSCRIPTEN AND BUILD_WEB_DEMO)
     "-sALLOW_MEMORY_GROWTH=1"
     "-sMODULARIZE=1" "-sEXPORT_ES6=1"
     "-sFETCH=1"
-    # stringToNewUTF8 is what PlatformUtils reads navigator/location through; FS is how the host
-    # page pushes assets and fonts into the virtual filesystem.
-    "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,FS")
+    # stringToNewUTF8/UTF8ToString are what PlatformUtils and the demo read location through; FS is
+    # how the host page pushes assets and fonts into the virtual filesystem.
+    "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS")
   set_target_properties(massif-demo PROPERTIES SUFFIX ".mjs")
 endif()

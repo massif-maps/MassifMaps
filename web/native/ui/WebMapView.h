@@ -55,9 +55,12 @@ namespace massif {
         static EM_BOOL OnWheel(int eventType, const EmscriptenWheelEvent* event, void* userData);
         static EM_BOOL OnDoubleClick(int eventType, const EmscriptenMouseEvent* event, void* userData);
         static EM_BOOL OnResize(int eventType, const EmscriptenUiEvent* event, void* userData);
+        static EM_BOOL OnBlur(int eventType, const EmscriptenFocusEvent* event, void* userData);
 
         void syncCanvasSize();
         void applyDragRotate(float x, float y, double pixelRatio);
+        void canvasPos(const EmscriptenMouseEvent* event, double pixelRatio, float& x, float& y) const;
+        void cancelDrag();
 
         const std::string _canvasSelector;
         EMSCRIPTEN_WEBGL_CONTEXT_HANDLE _context = 0;

@@ -114,9 +114,17 @@ namespace massif {
 
         setRedrawRequestListener(std::make_shared<RedrawListener>(this));
 
+        // Down on the canvas, but move and up on the DOCUMENT - maplibre's own arrangement, and for
+        // its reason (handler_manager.ts): there is no pointer capture to rely on, so a release
+        // outside the canvas only ever reaches a document-level listener. Bound to the canvas, a
+        // drag that ended off it never saw its mouseup, so the map stayed in the drag and every
+        // later hover panned it.
         emscripten_set_mousedown_callback(_canvasSelector.c_str(), this, EM_FALSE, OnPointer);
-        emscripten_set_mousemove_callback(_canvasSelector.c_str(), this, EM_FALSE, OnPointer);
-        emscripten_set_mouseup_callback(_canvasSelector.c_str(), this, EM_FALSE, OnPointer);
+        emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, this, EM_TRUE, OnPointer);
+        emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, this, EM_FALSE, OnPointer);
+        // And the window losing focus ends it too: a release outside the PAGE reaches nothing at
+        // all, so without this a drag out of the browser came back still held down.
+        emscripten_set_blur_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, EM_FALSE, OnBlur);
         emscripten_set_touchstart_callback(_canvasSelector.c_str(), this, EM_FALSE, OnTouch);
         emscripten_set_touchmove_callback(_canvasSelector.c_str(), this, EM_FALSE, OnTouch);
         emscripten_set_touchend_callback(_canvasSelector.c_str(), this, EM_FALSE, OnTouch);
@@ -205,11 +213,48 @@ namespace massif {
         _lastPointerY = y;
     }
 
+    /**
+     * A mouse event in CANVAS pixels.
+     *
+     * targetX/targetY are relative to whatever the listener was bound to, and move and up are bound
+     * to the document - so they are measured from the page, not from the map. clientX/clientY minus
+     * the canvas rect is the same thing maplibre's DOM.mousePos computes, rect read per event
+     * because the panel beside the map resizes and the page scrolls.
+     */
+    void WebMapView::canvasPos(const EmscriptenMouseEvent* event, double pixelRatio, float& x, float& y) const {
+        double left = EM_ASM_DOUBLE({
+            var canvas = document.querySelector(UTF8ToString($0));
+            return canvas ? canvas.getBoundingClientRect().left : 0;
+        }, _canvasSelector.c_str());
+        double top = EM_ASM_DOUBLE({
+            var canvas = document.querySelector(UTF8ToString($0));
+            return canvas ? canvas.getBoundingClientRect().top : 0;
+        }, _canvasSelector.c_str());
+        x = static_cast<float>((event->clientX - left) * pixelRatio);
+        y = static_cast<float>((event->clientY - top) * pixelRatio);
+    }
+
+    /** Ends whatever drag is running, wherever the pointer got to. */
+    void WebMapView::cancelDrag() {
+        _dragRotating = false;
+        if (_pointerDown) {
+            _pointerDown = false;
+            // The SDK still owes itself the up: without it the click handler keeps waiting for one
+            // and the next press reads as the second half of a drag.
+            onInputEvent(INPUT_EVENT_POINTER1_UP, _lastPointerX, _lastPointerY, NO_COORDINATE, NO_COORDINATE);
+        }
+    }
+
+    EM_BOOL WebMapView::OnBlur(int, const EmscriptenFocusEvent*, void* userData) {
+        static_cast<WebMapView*>(userData)->cancelDrag();
+        return EM_FALSE;
+    }
+
     EM_BOOL WebMapView::OnPointer(int eventType, const EmscriptenMouseEvent* event, void* userData) {
         WebMapView* view = static_cast<WebMapView*>(userData);
         double pixelRatio = emscripten_get_device_pixel_ratio();
-        float x = static_cast<float>(event->targetX * pixelRatio);
-        float y = static_cast<float>(event->targetY * pixelRatio);
+        float x = 0.0f, y = 0.0f;
+        view->canvasPos(event, pixelRatio, x, y);
         const int RIGHT_BUTTON = 2;
 
         switch (eventType) {
@@ -224,6 +269,8 @@ namespace massif {
             }
             break;
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
+            // Only while a drag is running: this listener is on the document, so it also sees the
+            // pointer crossing the page around the map, and a hover must move nothing.
             if (view->_dragRotating) {
                 view->applyDragRotate(x, y, pixelRatio);
             } else if (view->_pointerDown) {
@@ -233,9 +280,12 @@ namespace massif {
             }
             break;
         case EMSCRIPTEN_EVENT_MOUSEUP:
+            if (!view->_dragRotating && !view->_pointerDown) {
+                return EM_FALSE; // a release that belongs to the page, not to the map
+            }
             if (view->_dragRotating) {
                 view->_dragRotating = false;
-            } else if (view->_pointerDown) {
+            } else {
                 view->_pointerDown = false;
                 view->onInputEvent(INPUT_EVENT_POINTER1_UP, x, y, NO_COORDINATE, NO_COORDINATE);
             }

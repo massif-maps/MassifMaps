@@ -843,32 +843,27 @@ too early", south end). Each span vertex now carries its UNCLAMPED chord paramet
 owner's composite for the drape tile holding the render tile, handed over per frame with the
 sub-rect it is drawn through (`MapRenderer` → `TileLayer::setGroundDrapeTextures`, next to the span
 drapes; the vt renderer's own `_drapeTextures` are not in play when the SDK composites the stack,
-which is why a first cut that read them drew the overhang bare) - the crosswalk and the quay road appear on the deck's overhang, which sits at ground
+which is why a first cut that read them drew the overhang bare). Only where the roof LIES on the
+ground - within 1.5 m of it (`vSpanAbove`, `uSpanGroundTolerance`): an outline reaching over the
+bank wore the water it hung above - the crosswalk and the quay road appear on the deck's overhang, which sits at ground
 level there. A bed fill is simply discarded past the portals: it has no drape to wear and the ground
 under it is the surface.
 
-**A ring's ends are squared outward before tessellation.** The skew cuts both ways: at
-Petit-Pont's north end the east corner ran 9 m past the road's portal and the WEST corner stopped
-5 m short of it, so the road ran bare on the ground for those metres before the approach began -
-the "drape ends too soon" break. `TileLayerBuilder::subdivideSpanRing` first squares the ring
-(`SpanGeometry::squareEnds`): every vertex within 12 m of the ring's extreme chainage along its
-longest edge - a side, the road's direction - is moved along that edge to the extreme, so both
-corners reach as far as the farther one did, and the roof past the portal wears the ground. Moving
-the packed vertices at resolve time instead (tried first) left wall fins wherever a later resolve
-came with another chord.
+**The ring's ends are what the data says.** The skew cuts both ways: at Petit-Pont's north end
+the east corner runs 9 m past the road's portal and the west corner stops 5 m short of it, so the
+road runs bare on the ground for those metres before the approach begins. Two answers were tried
+and both removed: pulling short vertices out to the portal line at resolve time left wall fins
+wherever a later resolve came with another chord, and squaring each end outward to its farthest
+corner at build time turned an abutment or a bastion corner into a background-coloured slab the
+size of the deck, onto the quay (Pont au Change, Pont d'Arcole). The bare metres stay.
 
-**The end band follows the ground up.** The two sides of an abutment are not at one height - the
-quay slopes to the water - and a deck level across its width at the portal's height showed a wedge
-of ground through one corner and a gap under the other (Martin, Petit-Pont south end). A real
-abutment retains the ground, so over its last `SpanGeometry::END_BAND_METRES` (12 m, at most a
-quarter of the span) a fill or a deck rises to the ground under each vertex wherever that is higher
-than the chord (`endBandWeight`: 1 at and past the portal, 0 a band in), and never sinks - the wall
-hanging under it covers the low side as far as it reaches (the demo's deck is now
-`building-min-height: -1.5; building-height: -0.1`, a 1.4 m slab 0.1 m under the road, so a bank
-dropping more than that under a corner shows under it). The builder splits a span ring's edges to
-`SUBDIVISION_METRES` (4 m, at most 40 edges along the span) so the band has vertices to bend at and
-the centreline stays on the road chord; the live road line sinks into the raised roof on the high
-side, where the roof's drape shows it. Both host-tested.
+**A deck is flat, whatever the ground does at its abutment.** The two sides of an abutment
+are not at one height - the quay slopes to the water - so a level deck shows a wedge of ground
+through one corner and a gap under the other. A first answer bent the deck's last 12 m up to the
+ground under each vertex; on Pont d'Arcole the lifted end vertices tilted the long roof triangles
+and the road on the roof zigzagged the whole length of the deck. Martin's rule: a bridge is always
+a full flat deck. The wedge and the gap remain, and the answer if one is wanted is on the
+ground's side (grade the terrain to the deck), not the deck's.
 
 **A piece drawn from a retained tile keeps its last bases.** A render tile held on screen while its
 replacement loads is not in the cull's tile set, so its pieces have no union that cull; failing them

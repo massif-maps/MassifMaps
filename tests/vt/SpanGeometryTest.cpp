@@ -61,30 +61,6 @@ void testSpanGeometry() {
     TEST_CHECK(near(SpanGeometry::chordParamRaw(at(0, 2500), south, north), 2500.0 / 2460.0), "...and past the north one above 1");
     TEST_CHECK(near(SpanGeometry::chordParam(at(0, 2500), south, north), 1.0), "while the clamped one stops at the portal");
 
-    // The end band: a deck follows the ground up over its last metres so the abutment's two
-    // sides both meet it, and is level again inside.
-    double band = SpanGeometry::endBandFraction(40.0);
-    TEST_CHECK(near(band, 0.25), "on a 40 m deck the band is capped at a quarter of the span");
-    TEST_CHECK(near(SpanGeometry::endBandFraction(2460.0), 12.0 / 2460.0), "on the viaduct it is 12 m");
-    TEST_CHECK(near(SpanGeometry::endBandWeight(-0.1, band), 1.0), "past the portal the ground wins outright");
-    TEST_CHECK(near(SpanGeometry::endBandWeight(0.125, band), 0.5), "halfway through the band, half");
-    TEST_CHECK(near(SpanGeometry::endBandWeight(0.5, band), 0.0), "mid-span the chord alone");
-    TEST_CHECK(near(SpanGeometry::endBandWeight(1.0, band), 1.0), "and the far portal like the near one");
-    {
-        // A 40 x 20 m deck with a skewed north end: east corner at 45, west at 35.
-        std::vector<cglib::vec2<float>> skewed = { cglib::vec2<float>(-10, 0), cglib::vec2<float>(10, 0), cglib::vec2<float>(10, 45), cglib::vec2<float>(-10, 35) };
-        std::vector<cglib::vec2<float>> squared = SpanGeometry::squareEnds(skewed, 12.0f);
-        TEST_CHECK(std::abs(squared[3](1) - 45.0f) < 1.0e-3f && std::abs(squared[3](0) + 10.0f) < 1.0e-3f, "the short corner is pushed out to the far corner's chainage, sideways untouched");
-        TEST_CHECK(std::abs(squared[2](1) - 45.0f) < 1.0e-3f, "the far corner stays");
-        TEST_CHECK(std::abs(squared[0](1)) < 1.0e-3f && std::abs(squared[1](1)) < 1.0e-3f, "and a square end is left alone");
-    }
-    {
-        std::vector<cglib::vec2<float>> square = { cglib::vec2<float>(0, 0), cglib::vec2<float>(10, 0), cglib::vec2<float>(10, 10), cglib::vec2<float>(0, 10) };
-        std::vector<cglib::vec2<float>> split = SpanGeometry::subdivideRing(square, 4.0f);
-        TEST_CHECK(split.size() == 12, "a 10 m square at 4 m edges gets two extra vertices per side");
-        TEST_CHECK(std::abs(split[1](0) - 10.0f / 3.0f) < 1.0e-5f && split[1](1) == 0.0f, "...evenly spaced");
-        TEST_CHECK(SpanGeometry::subdivideRing(square, 20.0f).size() == 4, "and one already fine enough is left alone");
-    }
     TEST_CHECK(!SpanGeometry::isOnChord(at(0, 2600), south, north),
                "a point beyond the abutment is not on the chord");
 

@@ -4,6 +4,10 @@ import { test } from 'node:test';
 
 import { convert } from '../dist/mapbox2css/index.js';
 import { readsFeature } from '../dist/mapbox2css/split.js';
+import { useMemorySpriteHost } from './sprite-host.js';
+
+useMemorySpriteHost();
+
 
 /** These tests assert on the translated literals, so they read the style before the palette
   * pass moves them out - see variables.test.js for the hoisting itself. */

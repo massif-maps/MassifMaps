@@ -1,8 +1,21 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { PNG } from 'pngjs';
-
+import { type RgbaImage, type SpriteHost, createImage } from './host.js';
 import type { Json, MapboxStyle } from './types.js';
+
+/*
+ * Everything below reads bytes, decodes PNGs and writes files through the host - so this module
+ * imports no `node:` builtin and no pngjs, and the whole converter bundles for a browser. The CLI
+ * installs nodeSpriteHost; the website's style preview installs one over fetch and a canvas.
+ */
+let host: SpriteHost | null = null;
+
+export function setSpriteHost(spriteHost: SpriteHost): void {
+    host = spriteHost;
+}
+
+function requireHost(): SpriteHost {
+    if (!host) throw new Error('No sprite host installed - call setSpriteHost() first');
+    return host;
+}
 
 export interface SpriteEntry {
     x: number;
@@ -15,7 +28,7 @@ export interface SpriteEntry {
 
 interface SpriteSheet {
     index: Record<string, SpriteEntry>;
-    image: PNG;
+    image: RgbaImage;
 }
 
 /** id -> sheet. The unprefixed sheet is 'default', which is what a bare icon-image refers to. */
@@ -90,13 +103,6 @@ function resolveSpriteUrls(style: MapboxStyle): Map<string, string> {
     return out;
 }
 
-async function fetchBuffer(url: string): Promise<Buffer> {
-    if (!/^https?:/.test(url)) return readFileSync(url);
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText} for ${url}`);
-    return Buffer.from(await response.arrayBuffer());
-}
-
 /** Appends the style's own query string (MapTiler carries its key there) to the sprite URLs. */
 function withQuery(base: string, suffix: string): string {
     const q = base.indexOf('?');
@@ -105,6 +111,7 @@ function withQuery(base: string, suffix: string): string {
 
 export async function loadSprites(style: MapboxStyle, keySuffix: string): Promise<SpriteSet> {
     const sheets: SpriteSet = new Map();
+    const spriteHost = requireHost();
     for (const [id, base] of resolveSpriteUrls(style)) {
         // The DENSEST sheet the provider serves, tried in order. A sprite is upscaled by the
         // display's pixel ratio before it reaches the screen - about 2.6x on the device this was
@@ -120,12 +127,13 @@ export async function loadSprites(style: MapboxStyle, keySuffix: string): Promis
         // `sprite.json?access_token=pk...@2x`, which asks for the 1x sheet with a corrupt token,
         // fails, and falls back to 1x without a word. Every sprite in a keyed style was blurry.
         let index: Record<string, SpriteEntry> | undefined;
-        let image: PNG | undefined;
+        let image: RgbaImage | undefined;
         for (const variant of ['@4x', '@3x', '@2x', '']) {
             const url = base + variant + keySuffix;
             try {
-                index = JSON.parse((await fetchBuffer(withQuery(url, '.json'))).toString('utf8'));
-                image = PNG.sync.read(await fetchBuffer(withQuery(url, '.png')));
+                const json = await spriteHost.fetchBytes(withQuery(url, '.json'));
+                index = JSON.parse(new TextDecoder().decode(json));
+                image = await spriteHost.decodePng(await spriteHost.fetchBytes(withQuery(url, '.png')));
                 break;
             } catch {
                 index = undefined;
@@ -205,7 +213,7 @@ export function extractIcon(
     // The DISTANCE FIELD is carried through the resample and only turned into pixels afterwards.
     // A field is a smooth signal and scales cleanly; flattening first and scaling the result
     // resamples an already-antialiased edge, which is what made a shrunk icon look soft.
-    const icon = new PNG({ width: entry.width, height: entry.height });
+    const icon = createImage(entry.width, entry.height);
     for (let y = 0; y < entry.height; y++) {
         for (let x = 0; x < entry.width; x++) {
             const src = ((entry.y + y) * sheet.image.width + (entry.x + x)) * 4;
@@ -246,15 +254,14 @@ export function extractIcon(
         }
     }
 
-    const iconsDir = join(outDir, 'icons');
-    mkdirSync(iconsDir, { recursive: true });
     // Tint and scale are baked in, so one sprite drawn two ways is two files.
     const suffix = [
         tint ? tint.map((c) => c.toString(16).padStart(2, '0')).join('') : '',
         scale === 1 ? '' : `x${Math.round(scale * 100)}`,
     ].filter(Boolean).join('-');
     const file = `${safeFileName(writeAs ?? name)}${suffix ? `-${suffix}` : ''}.png`;
-    writeFileSync(join(iconsDir, file), PNG.sync.write(out, ICON_PNG));
+    const spriteHost = requireHost();
+    spriteHost.writeIcon(outDir, `icons/${file}`, spriteHost.encodePng(out, ICON_PNG));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
     return {
@@ -275,17 +282,18 @@ const RING_DEPTH = 3;
 const GLYPH_DIR = 'icons-glyph';
 
 /**
- * How the icons are encoded. Both are LOSSLESS - the pixels the SDK reads are identical - and
- * together they halve the sprite, which is most of what a converted style weighs (3.9 MB of PNG
- * for Mapbox Standard's 595 icons, 2.0 MB after).
+ * How the icons are encoded. Greyscale is LOSSLESS here - the pixels the SDK reads are identical -
+ * and it halves the sprite, which is most of what a converted style weighs (3.9 MB of PNG for
+ * Mapbox Standard's 595 icons, 2.0 MB after).
  *
  * A distance FIELD carries its value in one channel: buildField writes r=g=b and a fully opaque
- * alpha, so three of the four bytes per pixel are a copy and a constant. `colorType: 0` writes the
- * red channel alone, which a decoder expands right back to r=g=b=v, a=255.
+ * alpha, so three of the four bytes per pixel are a copy and a constant. One channel is written
+ * instead, and a decoder expands it right back to r=g=b=v, a=255. A host that cannot encode
+ * greyscale writes RGBA and is only bigger.
  */
-const FIELD_PNG = { colorType: 0, deflateLevel: 9, filterType: -1 } as const;
-/** A colour icon needs all four channels; only the deflate is worth tightening. */
-const ICON_PNG = { deflateLevel: 9, filterType: -1 } as const;
+const FIELD_PNG = { greyscale: true } as const;
+/** A colour icon needs all four channels. */
+const ICON_PNG = {} as const;
 
 type RGB = readonly [number, number, number];
 
@@ -302,8 +310,8 @@ function colourDistance(a: RGB, b: RGB): number {
  * allowed to decide on its own either: a stroke thinner than a texel never reaches 1.0 anywhere and
  * thresholding it at 0.5 erased it outright - a bicycle's spokes came out as a handful of dots.
  */
-function buildField(width: number, height: number, cell: (x: number, y: number) => number): PNG {
-    const field = new PNG({ width, height });
+function buildField(width: number, height: number, cell: (x: number, y: number) => number): RgbaImage {
+    const field = createImage(width, height);
     const ins = new Float64Array(width * height);
     const outs = new Float64Array(width * height);
     for (let y = 0; y < height; y++) {
@@ -548,10 +556,9 @@ export function extractIconPlate(
     // plate needs no padding and its border lands on the ring the crop just removed.
     const field = buildField(discW, discH, (x, y) => coverage(x0 + x, y0 + y));
 
-    const iconsDir = join(outDir, GLYPH_DIR);
-    mkdirSync(iconsDir, { recursive: true });
     const file = `${safeFileName(writeAs ?? name)}.png`;
-    writeFileSync(join(iconsDir, file), PNG.sync.write(field, FIELD_PNG));
+    const spriteHost = requireHost();
+    spriteHost.writeIcon(outDir, `${GLYPH_DIR}/${file}`, spriteHost.encodePng(field, FIELD_PNG));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
     return {
@@ -603,10 +610,9 @@ export function extractIconSilhouette(
     const w = x1 - x0 + 1;
     const h = y1 - y0 + 1;
     const field = buildField(w, h, (x, y) => alpha(x0 + x, y0 + y));
-    const iconsDir = join(outDir, GLYPH_DIR);
-    mkdirSync(iconsDir, { recursive: true });
     const file = `${safeFileName(writeAs ?? iconName)}.png`;
-    writeFileSync(join(iconsDir, file), PNG.sync.write(field, FIELD_PNG));
+    const spriteHost = requireHost();
+    spriteHost.writeIcon(outDir, `${GLYPH_DIR}/${file}`, spriteHost.encodePng(field, FIELD_PNG));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
     return { file: `${GLYPH_DIR}/${file}`, width: w / ratio, height: h / ratio, sdf: true, pixelRatio: ratio, padding: 0 };
@@ -656,11 +662,11 @@ export function extractAllIconPlates(
  */
 const SDF_PADDING = 6;
 
-function padField(source: PNG, pixelRatio: number): PNG {
+function padField(source: RgbaImage, pixelRatio: number): RgbaImage {
     const p = Math.round(SDF_PADDING * pixelRatio);
     const width = source.width + 2 * p;
     const height = source.height + 2 * p;
-    const out = new PNG({ width, height });
+    const out = createImage(width, height);
 
     // The distance is re-derived from the INK by the same exact Euclidean transform MapBox's own
     // tiny-sdf uses (Felzenszwalb & Huttenlocher). Two reasons it cannot just be read back:
@@ -717,10 +723,10 @@ function padField(source: PNG, pixelRatio: number): PNG {
 }
 
 /** Bilinear resample. Sprites are tens of pixels, so the simplest correct thing is fast enough. */
-function resample(source: PNG, scale: number): PNG {
+function resample(source: RgbaImage, scale: number): RgbaImage {
     const width = Math.max(1, Math.round(source.width * scale));
     const height = Math.max(1, Math.round(source.height * scale));
-    const out = new PNG({ width, height });
+    const out = createImage(width, height);
 
     for (let y = 0; y < height; y++) {
         const sy = Math.min(source.height - 1, (y + 0.5) / scale - 0.5);

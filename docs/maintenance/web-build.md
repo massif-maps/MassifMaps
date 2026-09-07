@@ -157,6 +157,22 @@ because it now sees the pointer crossing the whole page. And coordinates have to
 `clientX/clientY` minus the canvas rect, not from `targetX/targetY` - those are relative to
 whatever the listener was bound to, which is no longer the map.
 
+### A flight and a gesture fighting over the camera
+
+`TouchHandler` cancelled the pan, rotation, tilt and zoom animations whenever the user touched the
+map, but **not a flight** - `stopFlight` was called from nowhere except the facade method. So a
+`flyTo` still in the air kept interpolating along its own path while the drag moved the camera too,
+and the map flickered between the two: the flight's position, which near the start is still the
+place you left, and the place you had just dragged to. Every platform, not only the web.
+
+The fix is one more line at each of the eleven places the other four are stopped.
+
+While there: use `flyTo`, not `fitBounds`, to travel. `fitBounds` moves through the pan and zoom
+animations, whose duration is taken literally, so a fixed one drifts across a country at the same
+rate it crosses a suburb. `flyTo` follows van Wijk's arc and, given a duration of **0**, picks
+`S / 1.4` seconds itself - maplibre's rule, already implemented in `AnimationHandler` and easy to
+override by accident. Paris to Grenoble comes out at 4.7 s.
+
 ### Range requests, and why PMTiles failed on the web
 
 A PMTiles archive is read by HTTP range, and `HTTPClient` checked the `Content-Range` of every 206

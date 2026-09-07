@@ -298,6 +298,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopRotation();
             _mapRenderer->getAnimationHandler().stopTilt();
             _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
             
             updateGestureAnchorHeight(screenPos, viewState);
 
@@ -389,6 +390,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopRotation();
             _mapRenderer->getAnimationHandler().stopTilt();
             _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
 
             panBetween(_prevScreenPos1, screenPos, viewState);
         }
@@ -488,6 +490,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopRotation();
             _mapRenderer->getAnimationHandler().stopTilt();
             _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
 
             float dpi = _options->getDPI();
             float dx = screenPos.getX() - _prevScreenPos1.getX();
@@ -532,6 +535,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopRotation();
             _mapRenderer->getAnimationHandler().stopTilt();
             _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
             
             // No ground hit required: this zoom is a vertical drag about the FOCUS, and gating it
             // on one killed the gesture wherever the fingers' rays miss - a low camera over
@@ -642,6 +646,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopRotation();
             _mapRenderer->getAnimationHandler().stopTilt();
             _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
             
             float scale = INCHES_TO_TILT_DELTA / _options->getDPI();
             if (_options->isTiltGestureReversed()) {
@@ -667,6 +672,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopRotation();
             _mapRenderer->getAnimationHandler().stopTilt();
             _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
 
             // First person movement: the two fingers are the movement keys. Dragging them up walks
             // forward, down walks back, sideways strafes - the camera keeps its height, its heading
@@ -726,6 +732,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopRotation();
             _mapRenderer->getAnimationHandler().stopTilt();
             _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
 
             // The scale and the angle are what the FINGERS did, taken from the SCREEN - which is
             // where a pinch and a two-finger turn happen, and how tangram takes them (inputHandler
@@ -809,6 +816,7 @@ namespace massif {
         _mapRenderer->getAnimationHandler().stopRotation();
         _mapRenderer->getAnimationHandler().stopTilt();
         _mapRenderer->getAnimationHandler().stopZoom();
+        _mapRenderer->getAnimationHandler().stopFlight();
         
         ClickInfo clickInfo(ClickType::CLICK_TYPE_SINGLE, static_cast<float>(duration.count()) / 1000.0f);
         handleClick(clickInfo, screenPos);
@@ -823,6 +831,7 @@ namespace massif {
         _mapRenderer->getAnimationHandler().stopRotation();
         _mapRenderer->getAnimationHandler().stopTilt();
         _mapRenderer->getAnimationHandler().stopZoom();
+        _mapRenderer->getAnimationHandler().stopFlight();
 
         auto longClickDuration = std::chrono::milliseconds(static_cast<int>(_options->getLongClickDuration() * 1000.0f));
         if (_options->isClickTypeDetection() && duration >= longClickDuration) {
@@ -844,6 +853,7 @@ namespace massif {
         _mapRenderer->getAnimationHandler().stopRotation();
         _mapRenderer->getAnimationHandler().stopTilt();
         _mapRenderer->getAnimationHandler().stopZoom();
+        _mapRenderer->getAnimationHandler().stopFlight();
 
         if (_options->isZoomGestures()) {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
@@ -868,6 +878,7 @@ namespace massif {
         _mapRenderer->getAnimationHandler().stopRotation();
         _mapRenderer->getAnimationHandler().stopTilt();
         _mapRenderer->getAnimationHandler().stopZoom();
+        _mapRenderer->getAnimationHandler().stopFlight();
 
         if (_options->isZoomGestures()) {
             CameraZoomEvent cameraZoomTargetEvent;

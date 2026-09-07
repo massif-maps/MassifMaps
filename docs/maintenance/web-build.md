@@ -157,6 +157,20 @@ because it now sees the pointer crossing the whole page. And coordinates have to
 `clientX/clientY` minus the canvas rect, not from `targetX/targetY` - those are relative to
 whatever the listener was bound to, which is no longer the map.
 
+### Labels shredded by buildings from zoom 12
+
+Not a glyph bug, though it looks like one: the text is drawn and then PAINTED OVER, so the letters
+come out with pieces missing. `VectorTileLayer` defaults labels to `RENDER_ORDER_LAYER` and
+buildings to `RENDER_ORDER_LAST`, and those two together put every extrusion on top of the text.
+It starts at zoom 12 because that is where OpenMapTiles begins serving `building`.
+
+Setting the labels to `LAST` is **not** enough on its own - `TileRenderer::onDrawFrame3D` runs the
+2D label pass BEFORE the building pass, so the only labels that land above an extrusion are the
+billboards. The pair that works is buildings on `LAYER` (back inline with their own layer) and
+labels on `LAST`, which is what the preview sets on the layer it builds.
+
+Worth knowing for any style with both, on any platform - the defaults are the SDK's, not the web's.
+
 ### Two double-click zooms
 
 The host listened for the browser's `dblclick` and zoomed. So did the SDK, from the pointer stream

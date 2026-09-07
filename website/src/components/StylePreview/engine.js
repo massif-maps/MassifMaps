@@ -157,6 +157,13 @@ export function applyStyle({ module, massif, layers }, { sourceUrl, maxZoom, sty
     source: { type: 'http', minZoom: 0, maxZoom, url: sourceUrl },
     style: 'preview',
   });
+  // Draw order. The SDK defaults labels to LAYER and buildings to LAST, and those two together
+  // put every extrusion on top of the text: from zoom 12, where OpenMapTiles starts serving
+  // buildings, a street name came out shredded by the footprints over it. Setting labels LAST is
+  // not enough on its own - TileRenderer draws the 2D label pass BEFORE the building pass - so the
+  // buildings go back inline with their layer and the labels are what comes last.
+  massif.set(layer, 'buildingRenderOrder', 'VECTOR_TILE_RENDER_ORDER_LAYER');
+  massif.set(layer, 'labelRenderOrder', 'VECTOR_TILE_RENDER_ORDER_LAST');
   massif.call(layers, 'clear', []);
   massif.call(layers, 'add', [layer]);
   return layer;

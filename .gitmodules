@@ -1,7 +1,3 @@
-[submodule "libs-massif"]
-	path = libs-massif
-	url = https://github.com/massif-maps/massif-maps-libs
-	branch = develop
 [submodule "libs-external"]
 	path = libs-external
 	url = https://github.com/massif-maps/massif-external-libs

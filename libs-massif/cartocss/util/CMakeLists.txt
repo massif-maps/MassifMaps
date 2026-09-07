@@ -1,0 +1,130 @@
+cmake_minimum_required(VERSION 3.5)
+project(cssutils)
+# C++20: mapnikvt's MLT decoder needs std::span / bit_cast / popcount, like the SDK build.
+set (CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
+if(POLICY CMP0025)
+  cmake_policy(SET CMP0025 NEW)
+endif()
+
+option(EXCLUDE_GL "Exclude GL rendering code" ON)
+option(SINGLE_LIBRARY "Compile as single library" OFF)
+# vt and mapnikvt as archives rather than object libraries, so the linker keeps only what these
+# tools reach. Only the SDK build needs the object form ($<TARGET_OBJECTS:>).
+option(STATIC_LIBRARIES "Build the massif libraries as static archives" ON)
+
+# These are host tools, so size beats speed - and the size here is boost.spirit and vt template
+# code, all of which mapnikvt and vt hand over as OBJECT libraries, i.e. every object lands in the
+# binary whether or not it is reached. Unoptimised that is ~86 MB; -Os plus per-function sections,
+# dead-stripping and thin LTO brings css2xml to ~2 MB.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE MinSizeRel CACHE STRING "" FORCE)
+endif()
+# emcc reports itself as Clang but takes neither host linker dialect: -Wl,-dead_strip is Apple's,
+# and wasm-ld has no -s. It strips and dead-codes on its own, so -Oz is the whole knob here.
+if(EMSCRIPTEN)
+  add_compile_options(-Oz)
+  add_link_options(-Oz)
+elseif(NOT MSVC)
+  add_compile_options(-ffunction-sections -fdata-sections)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-flto=thin)
+    add_link_options(-flto=thin)
+  endif()
+  if(APPLE)
+    add_link_options(-Wl,-dead_strip -Wl,-x)
+  else()
+    add_link_options(-Wl,--gc-sections -Wl,-s)
+  endif()
+endif()
+
+# find_package(Boost)
+
+if(WIN32)
+  add_definitions("-DNOMINMAX -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -DGL_GLEXT_PROTOTYPES")
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} /wd4244")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /EHs /GR /bigobj")
+endif()
+
+set(BASE_DIR "${PROJECT_SOURCE_DIR}/../..")
+if(EXISTS "${PROJECT_SOURCE_DIR}/../../../mobile-external-libs")
+  set(LIBS_DIR "${PROJECT_SOURCE_DIR}/../../../mobile-external-libs")
+elseif(EXISTS "${PROJECT_SOURCE_DIR}/../../../libs-external")
+  set(LIBS_DIR "${PROJECT_SOURCE_DIR}/../../../libs-external")
+else()
+  message(SEND_ERROR "mobile-external-libs dependency is missing")
+endif()
+
+include_directories(
+  "${BASE_DIR}/cartocss/src"
+  "${BASE_DIR}/mapnikvt/src"
+  "${BASE_DIR}/vt/src"
+  "${LIBS_DIR}/cglib"
+  "${LIBS_DIR}/stdext"
+  "${LIBS_DIR}/picojson"
+  "${LIBS_DIR}/pbf"
+  "${LIBS_DIR}/boost"
+  "${LIBS_DIR}/zlib/config"
+  "${LIBS_DIR}/zlib/zlib"
+  "${LIBS_DIR}/bidi"
+  "${LIBS_DIR}/tess2/include"
+  "${LIBS_DIR}/freetype/freetype/include"
+  "${LIBS_DIR}/harfbuzz/harfbuzz/src"
+  "${LIBS_DIR}/pugixml/pugixml/src"
+  "${LIBS_DIR}/rapidjson/include"
+  "${LIBS_DIR}/utf8/source"
+  # "${Boost_INCLUDE_DIRS}"
+)
+
+# link_directories(
+#   "${Boost_LIBRARY_DIRS}"
+# )
+
+add_subdirectory("${BASE_DIR}/vt" vt)
+add_subdirectory("${BASE_DIR}/mapnikvt" mapnikvt)
+add_subdirectory("${BASE_DIR}/cartocss" cartocss)
+add_subdirectory("${LIBS_DIR}/bidi" bidi)
+add_subdirectory("${LIBS_DIR}/freetype" freetype)
+add_subdirectory("${LIBS_DIR}/harfbuzz" harfbuzz)
+add_subdirectory("${LIBS_DIR}/brotli" brotli)
+add_subdirectory("${LIBS_DIR}/miniz" miniz)
+add_subdirectory("${LIBS_DIR}/mlt" mlt)
+add_subdirectory("${LIBS_DIR}/pugixml" pugixml)
+add_subdirectory("${LIBS_DIR}/tess2" tess2)
+add_subdirectory("${LIBS_DIR}/zlib" zlib)
+
+set(TOOL_LIBRARIES cartocss mapnikvt vt pugixml tess2 brotli miniz mlt zlib freetype harfbuzz bidi)
+
+# The tool the npm package (@massif-maps/style-tools) wraps: one binary, one wasm module.
+add_executable(massif-style massif-style.cpp css2xml.cpp)
+target_link_libraries(massif-style ${TOOL_LIBRARIES})
+
+add_executable(css2xml css2xml_main.cpp css2xml.cpp)
+target_link_libraries(css2xml ${TOOL_LIBRARIES})
+
+add_executable(mvt2xml mvt2xml.cpp)
+target_link_libraries(mvt2xml ${TOOL_LIBRARIES})
+
+if(EMSCRIPTEN)
+  # NODERAWFS gives the C++ the real filesystem, so AssetLoader's fopen and pugixml's save_file
+  # work unchanged - at the price of a Node-only module, with no browser build.
+  target_link_options(massif-style PRIVATE
+    -sNODERAWFS=1
+    -sEXIT_RUNTIME=1
+    -sALLOW_MEMORY_GROWTH=1
+    # The same 8 MB a native build gets. Emscripten's default is 64 KB, and the CartoCSS compiler
+    # recurses with the size of the stylesheet, so a real style overflowed it: MapTiler streets-v4
+    # died at ~68 KB of .mss (~138 rules) with "memory access out of bounds", while every native
+    # build compiled it. ALLOW_MEMORY_GROWTH does not help - it grows the HEAP, and the stack is a
+    # fixed region. STACK_OVERFLOW_CHECK turns that message into one that names the cause; it is a
+    # canary test at the guard page, which a developer tool can afford.
+    -sSTACK_SIZE=8MB
+    -sSTACK_OVERFLOW_CHECK=1
+    -sMODULARIZE=1
+    -sEXPORT_ES6=1
+    -sINVOKE_RUN=0
+    -sEXPORTED_RUNTIME_METHODS=callMain)
+  set_target_properties(massif-style PROPERTIES SUFFIX ".mjs")
+endif()

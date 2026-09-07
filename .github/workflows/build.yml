@@ -636,10 +636,15 @@ jobs:
           cd mobile-sdk-android-aar
           mv -f ../dist/android/jitpack.yml ./
           git add jitpack.yml
-          git commit -m "Automated update jitpack.yml for version ${{ github.event.inputs.version }} and profile $PROFILES_CSV"
+          # a patch release can generate a byte-identical jitpack.yml; the tag still has to be cut
+          git commit -m "Automated update jitpack.yml for version ${{ github.event.inputs.version }} and profile $PROFILES_CSV" || true
           git push origin main
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ github.event.inputs.version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ github.event.inputs.version }} is already on origin, leaving it."
+          else
+            git tag ${{ github.event.inputs.version }}
+            git push origin ${{ github.event.inputs.version }}
+          fi
       
       - name: Download ios checksum artifacts
         uses: actions/download-artifact@v4
@@ -737,8 +742,12 @@ jobs:
           git add Package.swift
           git commit -m "Automated update Package.swift from workflow for new release" || true
           git push origin main
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ github.event.inputs.version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ github.event.inputs.version }} is already on origin, leaving it."
+          else
+            git tag ${{ github.event.inputs.version }}
+            git push origin ${{ github.event.inputs.version }}
+          fi
 
   update-release:
     runs-on: ubuntu-latest

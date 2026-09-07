@@ -19,6 +19,7 @@ void testExtrusionAnchor();
 void testExtrusionEmissive();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
+void testSpanResolver();
 
 int main() {
     testPlateBitmap();
@@ -34,6 +35,7 @@ int main() {
     testExtrusionEmissive();
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
+    testSpanResolver();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -13,45 +13,35 @@ still owns the DEM, the surfaces and the drape it builds on.
 
 ## Where the code lives, and how modular it is
 
-| Piece | File | Lines touching spans | Owner |
-|---|---|---|---|
-| Pure geometry: portals, chord parameter, meet/merge rules, borrow rule | `vt/SpanGeometry.h` | all (367) | libs-massif, host-tested |
-| Deck light on the roof | `vt/SpanDrapeLight.h` | all | libs-massif, host-tested |
-| Span records, chord slot per vertex | `vt/TileGeometry.h`, `vt/TileLayerBuilder.*` | ~100 | libs-massif |
-| Unions, chord cache, resolve, label chords, span drape, the opt-in gate | `vt/GLTileRenderer.*` | ~460 of 9600 | libs-massif |
-| Shaders: chord height, roof drape, overhang rule | `vt/GLTileRendererShaders.h` | ~100 | libs-massif |
-| Style properties `*-elevation-mode` | `mapnikvt` symbolizers | ~12 | libs-massif |
-| Span drape bake loop, ground drape hand-over | `renderers/MapRenderer.cpp` | ~50 | SDK |
-| Reference tile fetches for stranded pieces | `layers/VectorTileLayer.cpp`, `layers/TileLayer.cpp` | ~60 | SDK |
-| Chord height reads (DEM fallback) | `renderers/utils/ElevationTextureCache.cpp` | ~10 | SDK |
-| The option | `components/TerrainOptions.*`, `renderers/TileRenderer.cpp` | ~30 | SDK, SWIG, facade |
+| Piece | File | Owner |
+|---|---|---|
+| Pure geometry: portals, chord parameter, meet/merge rules, borrow rule | `vt/SpanGeometry.h` | libs-massif, host-tested |
+| The state machine: unions per cull, chord cache, portal reads, per-vertex bases, label chords, unresolved ends, the on/off switch | `vt/SpanResolver.h/.cpp` | libs-massif, host-tested with a fake elevation provider |
+| Deck light on the roof | `vt/SpanDrapeLight.h` | libs-massif, host-tested |
+| Span records, chord slot per vertex | `vt/TileGeometry.h`, `vt/TileLayerBuilder.*` | libs-massif |
+| The GL side: span drape bake and sampling, `SPAN` shader flags, "an unresolved deck is not drawn", the ground drape on the overhang | `vt/GLTileRenderer.*`, `vt/GLTileRendererShaders.h` | libs-massif |
+| Style properties `*-elevation-mode` | `mapnikvt` symbolizers | libs-massif |
+| Span drape bake loop, ground drape hand-over | `renderers/MapRenderer.cpp` | SDK |
+| Reference tile fetches for stranded pieces | `layers/VectorTileLayer.cpp`, `layers/TileLayer.cpp` | SDK |
+| Chord height reads (DEM fallback) | `renderers/utils/ElevationTextureCache.cpp` | SDK |
+| The option | `components/TerrainOptions.*`, `renderers/TileRenderer.cpp` | SDK, SWIG, facade |
 
-The geometry rules are a module: header-only, no renderer state, every rule pinned by
-`tests/vt/SpanGeometryTest.cpp`. The rest is not. The union build, the chord cache, the per-frame
-resolve and the label chords are members of `GLTileRenderer`, a 8300-line class, and the feature
-reaches into the SDK at four places (bake loop, drape hand-over, reference fetches, DEM fallback).
-The opt-in switch makes all of it inert - off, every entry point returns before touching a piece,
-so a map that never enables bridges pays the empty-records test and nothing else - but inert is
-not separate.
+`SpanResolver` is the module. `GLTileRenderer` owns one and calls it at three moments - the cull
+(`build`: the tiles, the reference tiles, the visible tile ids, the elevation version), the frame
+(`resolve`, one geometry at a time) and label anchoring (`chords`) - and reads back the ends it
+could not chord and whether a label needs re-anchoring. The resolver has no GL, no lock (the
+renderer's mutex guards every call, as it did when this was renderer state) and no view: the
+elevation provider and the metres-to-internal scale are handed in, the tile matrix is a pure
+function of the tile id. That is what lets `tests/vt/SpanResolverTest.cpp` drive it with a fake
+provider: build a span line through the real `TileLayerBuilder`, hand the resolver a ground that
+answers by position, and read the bases back.
 
-What "as a module as possible" would look like, and what it costs:
+What stays outside it is GL or SDK plumbing: the span drape (four functions, a bake into a
+texture the owner allocates), the shader flags, the draw-time rule for an unresolved deck, the
+bake loop and the reference tile cache. Each is a ten-line hook that calls into the layer.
 
-1. **`vt/SpanResolver` (new class, ~600 lines moved).** Owns `_spanUnions`, `_spanChordCache`,
-   `_spanChords`, `buildSpanUnions`, `rememberChord`, `sampleChordHeights`, `resolveSpanBases`,
-   `rebuildSpanChords` and `collectUnresolvedSpanEnds`. The renderer hands it the visible tiles,
-   the elevation provider, the tile matrices and the version counters, and asks it three things:
-   resolve this geometry, the deck height at this point, the ends you could not chord. The
-   renderer keeps the draw-time gates (skip an unresolved deck, the `SPAN` flags) and the span
-   drape, which is GL. Mechanical, one commit, no behaviour change; unit-testable with a fake
-   provider, which nothing above `SpanGeometry` is today.
-2. **The span drape as its own bake unit** (`bakeSpanDrapeTile`, `collectSpanDrapeTiles`,
-   `resolveSpanDrape`, the ground drape hand-over): ~150 lines, could sit beside the resolver as
-   `SpanDrape`. Less pressing - it is already contained in four functions.
-3. **SDK side**: the reference tile cache in `VectorTileLayer` and the bake loop in `MapRenderer`
-   stay where they are; both are ten-line hooks that call into the layer. Nothing to extract.
-
-The first is the one worth doing before the feature grows again, and before anyone else has to
-read `GLTileRenderer.cpp` to find it.
+Before the extraction (2026-09-07) all of the state machine was ~460 lines of `GLTileRenderer`
+members; the opt-in switch made it inert when off but not separate.
 
 ## What the reader needs from the terrain page
 
@@ -433,5 +423,3 @@ Ordered by what a user sees first. None is measured beyond what its entry says.
    `line-elevation-mode`, so a regenerated style loses the annotations.
 7. **The chord runs long on the viaduct** (3440 m against a 2460 m deck): the chain reaches into
    the structure past the northern abutment. Not visible at the cameras tested.
-8. **Not modular** - see the top of this page. The resolver extraction is the next structural
-   step.

@@ -1,0 +1,234 @@
+#include "NormalMapBuilder.h"
+
+#include <cmath>
+#include <algorithm>
+
+#include <boost/math/constants/constants.hpp>
+
+namespace massif::vt {
+    NormalMapBuilder::NormalMapBuilder(const std::array<float, 4>& rgbaHeightScale, std::uint8_t alpha, bool encodeElevation, const std::array<float, 4>& elevationCoeffs) : _rgbaHeightScale(rgbaHeightScale), _elevationCoeffs(elevationCoeffs), _alpha(alpha), _encodeElevation(encodeElevation) {
+    }
+
+    float NormalMapBuilder::unpackElevationMeters(std::uint32_t color) const {
+        union {
+            std::uint32_t u32;
+            std::uint8_t u8[sizeof(std::uint32_t)];
+        } packedColor;
+        packedColor.u32 = color;
+        // Absolute elevation in meters: c0*R + c1*G + c2*B + c3 (DEM tiles are opaque, so the alpha
+        // dependent offset term reduces to the constant c3).
+        return _elevationCoeffs[0] * packedColor.u8[0] + _elevationCoeffs[1] * packedColor.u8[1] + _elevationCoeffs[2] * packedColor.u8[2] + _elevationCoeffs[3];
+    }
+
+    std::shared_ptr<const Bitmap> NormalMapBuilder::buildNormalMapFromHeightMap(const massif::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const {
+        return buildNormalMapFromHeightMap(tileId, tileId, bitmap);
+    }
+
+    std::shared_ptr<const Bitmap> NormalMapBuilder::buildNormalMapFromHeightMap2(const TileId& subTileId, const TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const {
+        if (!bitmap) {
+            return bitmap;
+        }
+
+        int width = bitmap->width;
+        int height = bitmap->height;
+
+        auto getInterpolatedHeight = [&](int x, int y) {
+            int x0 = x, x1 = x;
+            int y0 = y, y1 = y;
+            if (x < 0) {
+                x0 = 0;
+                x1 = 1;
+            }
+            if (x >= width) {
+                x0 = width - 1;
+                x1 = width - 2;
+            }
+            if (y < 0) {
+                y0 = 0;
+                y1 = 1;
+            }
+            if (y >= height) {
+                y0 = height - 1;
+                y1 = height - 2;
+            }
+
+            if (x0 == x1 && y0 == y1) {
+                return unpackHeight(bitmap->data[(y0 * width) + x0]);
+            }
+            return 2 * unpackHeight(bitmap->data[(y0 * width) + x0]) - unpackHeight(bitmap->data[(y1 * width) + x1]);
+        };
+
+        std::vector<std::uint32_t> data(width * height, 0);
+        if (width >= 2 && height >= 2) {
+            int delta = subTileId.zoom - tileId.zoom;
+            int x0 = (subTileId.x - (tileId.x << delta)) * (width >> delta);
+            int y0 = ((1 << delta) - 1 - subTileId.y + (tileId.y << delta)) * (height >> delta);
+            int subWidth = (width >> delta) + 1;
+            int subHeight = (height >> delta) + 1;
+
+            std::vector<cglib::vec3<float>> buffer(subWidth * subHeight, cglib::vec3<float>(0.0f, 0.0f, 0.0f));
+
+            float heights[3][3];
+            for (int y = 0; y < subHeight; y++) {
+                double y1 = boost::math::constants::pi<double>() * ((tileId.y + (height - y0 - y - 0.5) / height) / (1 << tileId.zoom) - 0.5);
+                double rz = std::tanh(y1);
+                double ss = std::sqrt(std::max(0.0, 1.0 - rz * rz));
+
+                for (int dy = 0; dy < 3; dy++) {
+                    heights[dy][1] = getInterpolatedHeight(x0 - 1, y0 + y + dy - 1);
+                    heights[dy][2] = getInterpolatedHeight(x0 - 0, y0 + y + dy - 1);
+                }
+                for (int x = 0; x < subWidth; x++) {
+                    for (int dy = 0; dy < 3; dy++) {
+                        heights[dy][0] = heights[dy][1];
+                        heights[dy][1] = heights[dy][2];
+                        heights[dy][2] = getInterpolatedHeight(x0 + x + 1, y0 + y + dy - 1);
+                    }
+
+                    float dx = (heights[0][2] + 2 * heights[1][2] + heights[2][2]) - (heights[0][0] + 2 * heights[1][0] + heights[2][0]);
+                    float dy = (heights[2][0] + 2 * heights[2][1] + heights[2][2]) - (heights[0][0] + 2 * heights[0][1] + heights[0][2]);
+                    float dz = 8.0f * static_cast<float>(ss);
+
+                    buffer[y * subWidth + x] = cglib::vec3<float>(dx, dy, dz);
+                }
+            }
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    cglib::vec3<float> normal(0.0f, 0.0f, 0.0f);
+                    if (delta == 0) {
+                        normal = buffer[y * subWidth + x];
+                    } else {
+                        int sx = x >> delta;
+                        int sy = y >> delta;
+                        float wx = (x - (sx << delta) + 0.5f) / (1 << delta);
+                        float wy = (y - (sy << delta) + 0.5f) / (1 << delta);
+                        for (int dy = 0; dy < 2; dy++) {
+                            wy = 1.0f - wy;
+                            for (int dx = 0; dx < 2; dx++) {
+                                wx = 1.0f - wx;
+                                if (sx + dx < subWidth && sy + dy < subHeight) {
+                                    normal += buffer[(sy + dy) * subWidth + sx + dx] * wx * wy;
+                                }
+                            }
+                        }
+                    }
+
+                    data[y * width + x] = packNormal(normal, 0.0f); // elevation encoding unsupported in the sub-tile path
+                }
+            }
+        }
+        return std::make_shared<Bitmap>(width, height, std::move(data));
+    }
+    std::shared_ptr<const Bitmap> NormalMapBuilder::buildNormalMapFromHeightMap(const TileId& subTileId, const TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const {
+        if (!bitmap) {
+            return bitmap;
+        }
+
+        int width = bitmap->width;
+        int height = bitmap->height;
+
+        auto getInterpolatedHeight = [&](int x, int y) {
+            int x0 = x, x1 = x;
+            int y0 = y, y1 = y;
+            if (x < 0) {
+                x0 = 0;
+                x1 = 1;
+            }
+            if (x >= width) {
+                x0 = width - 1;
+                x1 = width - 2;
+            }
+            if (y < 0) {
+                y0 = 0;
+                y1 = 1;
+            }
+            if (y >= height) {
+                y0 = height - 1;
+                y1 = height - 2;
+            }
+
+            if (x0 == x1 && y0 == y1) {
+                return unpackHeight(bitmap->data[(y0 * width) + x0]);
+            }
+            return 2 * unpackHeight(bitmap->data[(y0 * width) + x0]) - unpackHeight(bitmap->data[(y1 * width) + x1]);
+        };
+
+        std::vector<std::uint32_t> data(width * height, 0);
+        if (width >= 2 && height >= 2) {
+            float heights[3][3];
+            for (int y = 0; y < height; y++) {
+                double y1 = boost::math::constants::pi<double>() * ((tileId.y + (height - y - 0.5) / height) / (1 << tileId.zoom) - 0.5);
+                // Web Mercator: sin(lat) = tanh(2 * y1), so ss = cos(lat). This is the Mercator
+                // scale correction MapLibre applies in the shader as 'scaleFactor'; here it is
+                // baked into the normal (dz), so the shader does not need a latitude range.
+                double rz = std::tanh(2.0 * y1);
+                double ss = std::sqrt(std::max(0.0, 1.0 - rz * rz));
+
+                for (int dy = 0; dy < 3; dy++) {
+                    heights[dy][1] = getInterpolatedHeight( - 1,   y + dy - 1);
+                    heights[dy][2] = getInterpolatedHeight( 0,   y + dy - 1);
+                }
+                for (int x = 0; x < width; x++) {
+                    for (int dy = 0; dy < 3; dy++) {
+                        heights[dy][0] = heights[dy][1];
+                        heights[dy][1] = heights[dy][2];
+                        heights[dy][2] = getInterpolatedHeight( x + 1, y + dy - 1);
+                    }
+
+                    float dx = (heights[0][2] + 2 * heights[1][2] + heights[2][2]) - (heights[0][0] + 2 * heights[1][0] + heights[2][0]);
+                    float dy = (heights[2][0] + 2 * heights[2][1] + heights[2][2]) - (heights[0][0] + 2 * heights[0][1] + heights[0][2]);
+                    float dz = 8.0f * static_cast<float>(ss);
+
+                    // heights[1][1] is the slope-scaled height, not meters; decode absolute meters
+                    // directly from the raw DEM pixel for elevation encoding.
+                    float elevMeters = _encodeElevation ? unpackElevationMeters(bitmap->data[static_cast<std::size_t>(y) * width + x]) : 0.0f;
+                    data[y * width + x] = packNormal(cglib::vec3<float>(dx, dy, dz), elevMeters);
+                }
+            }
+        }
+        return std::make_shared<Bitmap>(width, height, std::move(data));
+    }
+
+    float NormalMapBuilder::unpackHeight(std::uint32_t color) const {
+        union {
+            std::uint32_t u32;
+            std::uint8_t u8[sizeof(std::uint32_t)];
+        } packedColor;
+        packedColor.u32 = color;
+        float height = packedColor.u8[0] * _rgbaHeightScale[0];
+        height += packedColor.u8[1] * _rgbaHeightScale[1];
+        height += packedColor.u8[2] * _rgbaHeightScale[2];
+        height += packedColor.u8[3] * _rgbaHeightScale[3];
+        return height;
+    }
+
+    std::uint32_t NormalMapBuilder::packNormal(cglib::vec3<float> normal, float heightMeters) const {
+        union {
+            std::uint32_t u32;
+            std::uint8_t u8[sizeof(std::uint32_t)];
+        } packedNormal;
+        // Round instead of truncating: the components only have 8 bits, and truncating maps a flat
+        // normal to 127 rather than 127.5, a fixed -0.004 bias on every x and y that shows up as a
+        // systematic aspect shift on gentle terrain.
+        auto packComponent = [](float value) {
+            float scaled = (value + 1.0f) * 127.5f + 0.5f;
+            return static_cast<std::uint8_t>(scaled < 0.0f ? 0.0f : (scaled > 255.0f ? 255.0f : scaled));
+        };
+        normal = cglib::unit(normal);
+        packedNormal.u8[0] = packComponent(normal(0));
+        packedNormal.u8[1] = packComponent(normal(1));
+        if (_encodeElevation) {
+            // R,G = normal.xy (z is reconstructed in the shader); B,A = 16-bit elevation.
+            // Contrast is passed to the shader as a uniform instead of the alpha channel.
+            float q = (heightMeters - ELEVATION_OFFSET) / ELEVATION_SCALE;
+            int elev16 = static_cast<int>(q < 0.0f ? 0.0f : (q > 65535.0f ? 65535.0f : q + 0.5f));
+            packedNormal.u8[2] = static_cast<std::uint8_t>((elev16 >> 8) & 0xff);
+            packedNormal.u8[3] = static_cast<std::uint8_t>(elev16 & 0xff);
+        } else {
+            packedNormal.u8[2] = packComponent(normal(2));
+            packedNormal.u8[3] = _alpha;
+        }
+        return packedNormal.u32;
+    }
+}

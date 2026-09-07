@@ -1,0 +1,366 @@
+/*
+ * Copyright (c) 2016 CartoDB. All rights reserved.
+ * Copying and using this code is allowed only according
+ * to license terms, as given in https://cartodb.com/terms/
+ */
+
+#ifndef _MASSIF_VT_STYLES_H_
+#define _MASSIF_VT_STYLES_H_
+
+#include "Color.h"
+#include "Transform.h"
+#include "Bitmap.h"
+#include "Font.h"
+#include "ViewState.h"
+#include "StrokeMap.h"
+#include "GlyphMap.h"
+#include "TextFormatter.h"
+#include "UnaryFunction.h"
+
+#include <optional>
+#include <vector>
+
+#include <cglib/vec.h>
+#include <cglib/mat.h>
+
+namespace massif::vt {
+    using FloatFunction = UnaryFunction<float, ViewState>;
+    using ColorFunction = UnaryFunction<Color, ViewState>;
+
+    enum class CompOp {
+        SRC, SRC_OVER, SRC_IN, SRC_ATOP, 
+        DST, DST_OVER, DST_IN, DST_ATOP,
+        ZERO, PLUS, MINUS, MULTIPLY, SCREEN,
+        DARKEN, LIGHTEN
+    };
+    
+    // CALLOUT is a point label lifted away from its anchor in SCREEN space and joined back to it
+    // by a leader line: the culler moves it until it is free instead of hiding it, so a dense set
+    // of point features (summits in a panorama) is read as a stack of named lines rather than as
+    // whichever few labels happened to win.
+    // LINE_BILLBOARD_REPEAT never reaches a label style: the symbolizers repeat it along the line
+    // like the other line placements and then hand vt a BILLBOARD_3D, which is the whole point of it.
+    enum class LabelOrientation {
+        BILLBOARD_2D, BILLBOARD_3D, LINE_BILLBOARD_3D, LINE_BILLBOARD_REPEAT, POINT, LINE, CALLOUT
+    };
+
+    // Which side of its anchor a label's text is laid out on. A style may name SEVERAL of them, in
+    // preference order, and the culler then takes the first one that is free (see
+    // LabelCuller::placeAnchoredLabel) - the icon of a shield stays put and only its text moves.
+    // Same set and same order as tangram's LabelProperty::Anchor.
+    enum class LabelAnchor {
+        CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
+    };
+
+    // Which way the text is moved for an anchor, in x and y of the label's own (screen aligned)
+    // frame. y is UP, like the glyph offsets.
+    inline cglib::vec2<float> labelAnchorDirection(LabelAnchor anchor) {
+        switch (anchor) {
+        case LabelAnchor::TOP:          return cglib::vec2<float>( 0,  1);
+        case LabelAnchor::BOTTOM:       return cglib::vec2<float>( 0, -1);
+        case LabelAnchor::LEFT:         return cglib::vec2<float>(-1,  0);
+        case LabelAnchor::RIGHT:        return cglib::vec2<float>( 1,  0);
+        case LabelAnchor::TOP_LEFT:     return cglib::vec2<float>(-1,  1);
+        case LabelAnchor::TOP_RIGHT:    return cglib::vec2<float>( 1,  1);
+        case LabelAnchor::BOTTOM_LEFT:  return cglib::vec2<float>(-1, -1);
+        case LabelAnchor::BOTTOM_RIGHT: return cglib::vec2<float>( 1, -1);
+        default:                        return cglib::vec2<float>( 0,  0);
+        }
+    }
+
+    // How the LINES of a wrapped label are justified inside its text block. AUTO follows the side
+    // the culler put the text on (see LabelAnchor): flush against the icon on either side, which is
+    // what makes a two-line name sit the same distance from the icon as a one-line one. CENTER is
+    // what every label did before the property existed.
+    enum class LabelLineAlign {
+        CENTER, LEFT, RIGHT, AUTO
+    };
+
+    enum class RasterFilterMode {
+        NONE, NEAREST, BILINEAR, BICUBIC
+    };
+
+    enum class LineJoinMode {
+        NONE, BEVEL, MITER, ROUND
+    };
+
+    /**
+     * What the terrain does to a line.
+     *
+     * DRAPE is every line that lies ON the ground: it follows the surface, and may be baked into
+     * the drape texture. The other two are structures that do NOT follow it, and take their height
+     * from their own two ends instead - a bridge is a chord over whatever the ground does in
+     * between, a tunnel the same chord under it. Both are kept out of the drape bake by
+     * construction: a baked pixel IS the ground.
+     *
+     * Per SYMBOLIZER, not per layer, because bridge-ness is a feature attribute - a converted
+     * MapBox style filters [structure] and one `road` layer carries both. Selecting by vt layer
+     * name (TerrainOptions::NoDrapeLayerFilter) cannot reach the shields and labels riding on a
+     * bridge, which is what left them sunk into the ground.
+     */
+    enum class LineElevationMode {
+        DRAPE, SPAN, UNDERGROUND
+    };
+
+    enum class LineCapMode {
+        NONE, SQUARE, ROUND
+    };
+
+    // A filled plate behind a label's text, or behind its icon: a rounded rectangle sized to what
+    // it sits behind, plus a border drawn as a second, larger plate behind the fill. Everything is
+    // in screen pixels. A plate with no colour and no border draws nothing, which is the default.
+    struct LabelPlateStyle final {
+        Color color;
+        float radius = 0.0f;
+        cglib::vec2<float> padding = cglib::vec2<float>(0, 0);
+        Color borderColor;
+        float borderWidth = 0.0f;
+
+        bool hasFill() const { return color.value() != 0; }
+        bool hasBorder() const { return borderColor.value() != 0 && borderWidth > 0.0f; }
+        bool enabled() const { return hasFill() || hasBorder(); }
+
+        bool operator == (const LabelPlateStyle& other) const {
+            return color == other.color && radius == other.radius && padding == other.padding && borderColor == other.borderColor && borderWidth == other.borderWidth;
+        }
+        bool operator != (const LabelPlateStyle& other) const { return !(*this == other); }
+    };
+
+    struct PointStyle final {
+        CompOp compOp;
+        ColorFunction colorFunc;
+        FloatFunction sizeFunc;
+        std::shared_ptr<const BitmapImage> image;
+        std::optional<Transform> transform;
+
+        explicit PointStyle(CompOp compOp, ColorFunction colorFunc, FloatFunction sizeFunc, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform) : compOp(compOp), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), image(std::move(image)), transform(transform) { }
+    };
+
+    struct TextStyle final {
+        CompOp compOp;
+        ColorFunction colorFunc;
+        FloatFunction sizeFunc;
+        ColorFunction haloColorFunc;
+        FloatFunction haloRadiusFunc;
+        float angle;
+        float backgroundScale;
+        cglib::vec2<float> backgroundOffset;
+        std::shared_ptr<const BitmapImage> backgroundImage;
+        bool backgroundSdf = false; // see TextLabelStyle
+
+        explicit TextStyle(CompOp compOp, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage) : compOp(compOp), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)) { }
+    };
+
+    struct LineStyle final {
+        CompOp compOp;
+        LineJoinMode joinMode;
+        LineCapMode capMode;
+        ColorFunction colorFunc;
+        // How much of the colour is EMITTED rather than lit - see PolygonStyle. 1 = as authored.
+        FloatFunction emissiveFunc;
+        FloatFunction widthFunc;
+        FloatFunction offsetFunc;
+        // mapbox's `line-gap-width`: the width of a GAP down the middle that is not drawn, so one
+        // rule draws the two strips of a road casing. The quad is extruded to the outer edge and
+        // the fragment shader cuts the middle out, which costs no extra geometry - see lineFsh.
+        FloatFunction gapWidthFunc;
+        // mapbox's `line-blur`: widens the antialias ramp on BOTH edges, in pixels, so a line
+        // fades out instead of ending. 0 leaves the plain one-pixel ramp - see lineFsh.
+        FloatFunction blurFunc;
+        // maplibre's `line-border-*`: a casing, in pixels on EACH side, drawn from the same buffer
+        // one draw earlier - so one rule replaces the casing/fill pair. See renderTileGeometry.
+        ColorFunction borderColorFunc;
+        FloatFunction borderWidthFunc;
+        float splitDotLimit;
+        float miterDotLimit;
+        std::shared_ptr<const BitmapPattern> strokePattern;
+        std::optional<Transform> transform;
+        // An arrow head at the last vertex, in multiples of the line width - a route's maneuver
+        // arrow, a one-way marker. Both must be positive for the head to be drawn. The line stops
+        // where the head starts, and the head is extruded like the line itself, so it keeps its
+        // screen size and a casing rule of the same shape produces an even border round the whole
+        // arrow. 0 (the default) leaves the line's own cap alone.
+        float endArrowWidth;
+        float endArrowLength;
+        // Draw the head and NOT the line, so a style can paint the head over the shaft instead of
+        // under it: shaft rules first, head rules after. Where the head overlaps its own shaft -
+        // a U-turn, a hairpin, anything tight enough at the zoom being looked at - the head keeps
+        // its outline, which is what tells it apart from the line it sits on.
+        bool endArrowOnly;
+        // A custom head outline, in the same multiples of the line width as the two sizes above:
+        // x runs along the line, y across it. Null means the built-in triangle. The contour is a
+        // SKELETON - what is drawn is half a line width larger all round, so a casing rule using
+        // the same path lands (casing - fill) / 2 outside the fill, as it does along the shaft.
+        std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape;
+
+        // See LineElevationMode. DRAPE is what every style did before this existed.
+        LineElevationMode elevationMode;
+
+        bool hasEndArrow() const { return (endArrowWidth > 0 && endArrowLength > 0) || (endArrowShape && endArrowShape->size() >= 3); }
+
+        explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, FloatFunction offsetFunc, float splitDotLimit, float miterDotLimit, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform, float endArrowWidth = 0, float endArrowLength = 0, bool endArrowOnly = false, std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape = std::shared_ptr<const std::vector<cglib::vec2<float>>>(), FloatFunction gapWidthFunc = FloatFunction(0), FloatFunction blurFunc = FloatFunction(0), FloatFunction emissiveFunc = FloatFunction(1.0f), ColorFunction borderColorFunc = ColorFunction(), FloatFunction borderWidthFunc = FloatFunction(0), LineElevationMode elevationMode = LineElevationMode::DRAPE) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), emissiveFunc(std::move(emissiveFunc)), widthFunc(std::move(widthFunc)), offsetFunc(std::move(offsetFunc)), gapWidthFunc(std::move(gapWidthFunc)), blurFunc(std::move(blurFunc)), borderColorFunc(std::move(borderColorFunc)), borderWidthFunc(std::move(borderWidthFunc)), splitDotLimit(splitDotLimit), miterDotLimit(miterDotLimit), strokePattern(std::move(strokePattern)), transform(transform), endArrowWidth(endArrowWidth), endArrowLength(endArrowLength), endArrowOnly(endArrowOnly), endArrowShape(std::move(endArrowShape)), elevationMode(elevationMode) { }
+    };
+
+    struct PolygonStyle final {
+        CompOp compOp;
+        ColorFunction colorFunc;
+        // How much of the colour is EMITTED rather than lit by the scene - mapbox's
+        // *-emissive-strength. 1 draws it exactly as authored, which is what every style did before
+        // this existed, so it is the default and adding the term changes nothing on its own.
+        FloatFunction emissiveFunc;
+        std::shared_ptr<const BitmapPattern> pattern;
+        std::optional<Transform> transform;
+        // A bridge BED is a polygon, and it has to leave the ground with the deck it belongs to.
+        LineElevationMode elevationMode;
+
+        explicit PolygonStyle(CompOp compOp, ColorFunction colorFunc, std::shared_ptr<const BitmapPattern> pattern, const std::optional<Transform>& transform, FloatFunction emissiveFunc = FloatFunction(1.0f), LineElevationMode elevationMode = LineElevationMode::DRAPE) : compOp(compOp), colorFunc(std::move(colorFunc)), emissiveFunc(std::move(emissiveFunc)), pattern(std::move(pattern)), transform(transform), elevationMode(elevationMode) { }
+    };
+
+    // How an extrusion is capped. FLAT is one polygon at the top, as every extrusion has always
+    // been; the rest raise a roof on it from the OSM roof:shape tag.
+    enum class RoofShape {
+        FLAT, PYRAMIDAL, GABLED
+    };
+
+    struct Polygon3DStyle final {
+        ColorFunction colorFunc;
+        std::optional<Transform> transform;
+        RoofShape roofShape = RoofShape::FLAT;
+        float roofHeight = 0.0f; // metres above the wall top; 0 leaves the roof flat whatever the shape
+        // See LineElevationMode. A building stands on the ground (DRAPE); a bridge DECK stands on
+        // its own chord, so min-height/height are measured from that instead.
+        LineElevationMode elevationMode = LineElevationMode::DRAPE;
+        // building-emissive-strength for THIS rule. Unset, the extrusion takes the Map block's
+        // building-emissive - which is what every style did before this existed, so an unset value
+        // is not "0", it is "whatever the map says". A rule needs its own only where the extrusion
+        // stands in for something that is not a building: a bridge DECK replaces the flat road
+        // casing 2D styles draw, and that casing carries its own emissive, so lighting the deck at
+        // full strength beside it leaves a bright road on a black slab once the sun is low.
+        std::optional<FloatFunction> emissiveFunc;
+
+        explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform) : colorFunc(std::move(colorFunc)), transform(transform) { }
+        explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform, RoofShape roofShape, float roofHeight, LineElevationMode elevationMode = LineElevationMode::DRAPE, std::optional<FloatFunction> emissiveFunc = std::optional<FloatFunction>()) : colorFunc(std::move(colorFunc)), transform(transform), roofShape(roofShape), roofHeight(roofHeight), elevationMode(elevationMode), emissiveFunc(std::move(emissiveFunc)) { }
+    };
+
+    struct PointLabelStyle final {
+        LabelOrientation orientation;
+        ColorFunction colorFunc;
+        FloatFunction sizeFunc;
+        bool autoflip;
+        std::shared_ptr<const BitmapImage> image;
+        std::optional<Transform> transform;
+        float maxDistance; // meters from the camera beyond which the label is not placed; 0 = no limit
+        // What this label keeps while its anchor is hidden by 3D content (mapbox's
+        // text-occlusion-opacity). Unset = the layer's own default stands.
+        std::optional<float> occlusionOpacity;
+        // The image is a SIGNED DISTANCE FIELD in its red channel, not a picture: it is then drawn
+        // by the same shader path as a glyph, so it stays sharp at any size and can take a halo.
+        // mapbox carries this per sprite entry ("sdf": true); a bare image file cannot, so the
+        // style has to say it.
+        bool sdfMode = false;
+        ColorFunction haloColorFunc; // sdfMode only - a bitmap has no field to grow a halo from
+        FloatFunction haloRadiusFunc;
+        // Added to the placement priority by the culler, once per label and per pass - see
+        // TextLabelStyle::rankFunc.
+        FloatFunction rankFunc = FloatFunction(0.0f);
+        // How much of the label's colour is EMITTED rather than lit by the scene - mapbox's
+        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's
+        // default and what every style did before this existed. Set after construction, like
+        // occlusionOpacity.
+        FloatFunction emissiveFunc = FloatFunction(1.0f);
+        // The HALO's own emissive, when it differs from the label's. Unset, the halo takes the
+        // label's - which is what keeps the two moving together. Set low against a high text
+        // emissive it goes dark as the light drops, which is how a bright name stays readable over
+        // a dark map: light ink, black outline.
+        std::optional<FloatFunction> haloEmissiveFunc;
+
+        explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f, bool sdfMode = false, ColorFunction haloColorFunc = ColorFunction(), FloatFunction haloRadiusFunc = FloatFunction()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance), sdfMode(sdfMode), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)) { }
+    };
+
+    struct TextLabelStyle final {
+        LabelOrientation orientation;
+        ColorFunction colorFunc;
+        FloatFunction sizeFunc;
+        ColorFunction haloColorFunc;
+        FloatFunction haloRadiusFunc;
+        bool autoflip;
+        float angle;
+        float backgroundScale;
+        cglib::vec2<float> backgroundOffset;
+        std::shared_ptr<const BitmapImage> backgroundImage;
+        // The background image is a distance field, not pixels: it goes down the same glyph path a
+        // font does, so it stays crisp at any size and takes iconColorFunc as its colour. Set
+        // separately from the constructor, which already takes more arguments than it should.
+        bool backgroundSdf = false;
+        float maxDistance; // meters from the camera beyond which the label is not placed; 0 = no limit
+        // What this label keeps while its anchor is hidden by 3D content (mapbox's
+        // text-occlusion-opacity). Unset = the layer's own default stands.
+        std::optional<float> occlusionOpacity;
+        // The second run of text may have its own colour (unset = the label's own fill).
+        std::optional<ColorFunction> secondaryColorFunc;
+        // Added to the label's placement priority by the culler, once per pass and per label, so
+        // the expression behind it can read view::distance. Ranking, not appearance: it decides
+        // which of two colliding labels keeps the slot.
+        FloatFunction rankFunc;
+        // CALLOUT orientation only, all in screen pixels except the anchor:
+        float calloutScreenAnchor; // where the label band sits, as a fraction of the screen height from the top; < 0 stacks it from its own anchor instead
+        float calloutOffset;       // minimum distance the label is lifted above its anchor
+        float calloutStep;         // how much further the next stacking row is; NEGATIVE stacks downwards, which is what a band pinned to the top of the screen needs
+        int calloutMaxRows;        // how many rows may be tried before the label is hidden
+        int calloutPersistPasses;  // placement passes a callout that is already on screen may fail before it is hidden
+        float calloutLineWidth;    // leader line width, 0 draws no line
+        // Points OF THE LABEL BOX, in normalized box coordinates: (-1,-1) is the bottom left
+        // corner of the text (plate included), (0,0) its centre, (1,1) the top right. Rotation
+        // applies to them like it does to the glyphs, so on a tilted name the bottom left corner
+        // is the start of the first letter. Unset keeps the text laid out around its own anchor.
+        std::optional<cglib::vec2<float>> calloutLineAnchor; // the point held over the anchor, where the leader line ends
+        std::optional<cglib::vec2<float>> calloutBandAnchor; // the point put on the band line (unset = the bottom of the box)
+        // Plates behind the label, sized to what they sit behind. Any orientation, not just
+        // CALLOUT - a classic map label reads over busy ground with one too. Alpha 0 draws nothing.
+        LabelLineAlign textLineAlign = LabelLineAlign::CENTER;
+        LabelPlateStyle textPlate; // behind the text (the glyphs after the first line break)
+        LabelPlateStyle iconPlate; // behind the icon run, which stays on the anchor
+        // Sides the text may be laid out on, in preference order (empty = one fixed layout, which
+        // is what every style without the property gets). The icon does not move; the text is
+        // placed against the icon's edge on the chosen side, and dx/dy are MIRRORED with it, so an
+        // offset that pushes the text away from the icon on one side does so on all of them.
+        std::vector<LabelAnchor> anchors;
+        // A last resort of drawing the icon alone when no side is free, rather than dropping the
+        // whole label (mapbox 'text-optional'). Needs an icon to be of any use.
+        bool textOptional;
+        // Glyphs drawn BEFORE the text and not moved by the anchor: the shield bitmap is one of
+        // them (added by the tile builder), and so is a font icon - a run shaped from an icon face,
+        // which shares the label font's atlas through the font fallback chain.
+        std::vector<Font::Glyph> iconGlyphs;
+        // Own colour for the icon run; unset leaves it the label's fill.
+        std::optional<ColorFunction> iconColorFunc;
+        // The icon run's OWN halo - mapbox's icon-halo-*. Set after construction, like
+        // occlusionOpacity: the constructor's signature is long enough. Unset draws no icon halo;
+        // the text's halo is never borrowed for it, because an icon's distance field carries only
+        // a few texels outside the ink and a text-sized halo runs straight past them.
+        std::optional<ColorFunction> iconHaloColorFunc;
+        std::optional<FloatFunction> iconHaloRadiusFunc;
+        // The icon's own size ramp, and the value it was BAKED at. mapbox animates icon-size
+        // independently of text-size, so the draw re-scales by the ratio of the two.
+        std::optional<FloatFunction> iconScaleFunc;
+        float iconRefScale = 0.0f;
+        // mapbox's icon-opacity, live: the icon PLATE is the icon's background, so it fades with
+        // the glyph on it. Baked at decode instead, a POI whose icon a zoom step hides kept its
+        // disc until the tile was decoded again.
+        std::optional<FloatFunction> iconOpacityFunc;
+        // How much of the label's colour is EMITTED rather than lit by the scene - mapbox's
+        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's
+        // default and what every style did before this existed. Set after construction, like
+        // occlusionOpacity.
+        FloatFunction emissiveFunc = FloatFunction(1.0f);
+        // The HALO's own emissive, when it differs from the label's. Unset, the halo takes the
+        // label's - which is what keeps the two moving together. Set low against a high text
+        // emissive it goes dark as the light drops, which is how a bright name stays readable over
+        // a dark map: light ink, black outline.
+        std::optional<FloatFunction> haloEmissiveFunc;
+
+        explicit TextLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage, float maxDistance = 0.0f, const std::optional<ColorFunction>& secondaryColorFunc = std::optional<ColorFunction>(), FloatFunction rankFunc = FloatFunction(0.0f), float calloutScreenAnchor = -1.0f, float calloutOffset = 0.0f, float calloutStep = 0.0f, int calloutMaxRows = 8, int calloutPersistPasses = 0, float calloutLineWidth = 1.0f, const std::optional<cglib::vec2<float>>& calloutLineAnchor = std::optional<cglib::vec2<float>>(), const std::optional<cglib::vec2<float>>& calloutBandAnchor = std::optional<cglib::vec2<float>>(), const LabelPlateStyle& textPlate = LabelPlateStyle(), const LabelPlateStyle& iconPlate = LabelPlateStyle(), LabelLineAlign textLineAlign = LabelLineAlign::CENTER, std::vector<LabelAnchor> anchors = std::vector<LabelAnchor>(), bool textOptional = false, std::vector<Font::Glyph> iconGlyphs = std::vector<Font::Glyph>(), const std::optional<ColorFunction>& iconColorFunc = std::optional<ColorFunction>()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)), maxDistance(maxDistance), secondaryColorFunc(secondaryColorFunc), rankFunc(std::move(rankFunc)), calloutScreenAnchor(calloutScreenAnchor), calloutOffset(calloutOffset), calloutStep(calloutStep), calloutMaxRows(calloutMaxRows), calloutPersistPasses(calloutPersistPasses), calloutLineWidth(calloutLineWidth), calloutLineAnchor(calloutLineAnchor), calloutBandAnchor(calloutBandAnchor), textPlate(textPlate), iconPlate(iconPlate), textLineAlign(textLineAlign), anchors(std::move(anchors)), textOptional(textOptional), iconGlyphs(std::move(iconGlyphs)), iconColorFunc(iconColorFunc) { }
+    };
+}
+
+#endif

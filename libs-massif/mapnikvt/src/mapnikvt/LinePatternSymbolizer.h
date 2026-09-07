@@ -1,0 +1,43 @@
+/*
+ * Copyright (c) 2016 CartoDB. All rights reserved.
+ * Copying and using this code is allowed only according
+ * to license terms, as given in https://cartodb.com/terms/
+ */
+
+#ifndef _MASSIF_MAPNIKVT_LINEPATTERNSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_LINEPATTERNSYMBOLIZER_H_
+
+#include "GeometrySymbolizer.h"
+#include "FunctionBuilder.h"
+
+namespace massif::mvt {
+    class LinePatternSymbolizer : public GeometrySymbolizer {
+    public:
+        explicit LinePatternSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
+            bindProperty("file", &_file);
+            bindProperty("fill", &_fill);
+            bindProperty("opacity", &_opacity);
+            bindProperty("offset", &_offset);
+            bindProperty("emissive-strength", &_emissive);
+        }
+
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
+        
+    protected:
+        static constexpr float PATTERN_SCALE = 0.75f;
+        static constexpr float PATTERN_DOT_LIMIT = 0.2f;
+
+        StringProperty _file;
+        ColorFunctionProperty _fill = ColorFunctionProperty("#ffffff");
+        FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
+        FloatFunctionProperty _offset = FloatFunctionProperty(0.0f);
+        // mapbox's line-emissive-strength: 1 draws the pattern's tint as authored, 0 hands it to
+        // the light.
+        FloatFunctionProperty _emissive = FloatFunctionProperty(1.0f);
+
+        FloatFunctionBuilder _widthFuncBuilder;
+        ColorFunctionBuilder _fillFuncBuilder;
+    };
+}
+
+#endif

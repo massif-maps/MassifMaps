@@ -19,6 +19,10 @@ module.exports = function stylePreviewPlugin() {
       return {
         devServer: {
           headers: {
+            // The wasm under static/preview is rebuilt far more often than the site, and its URL
+            // never changes - so the browser happily serves yesterday's renderer against today's
+            // page, which reads as "my change did nothing". Cost nothing but an afternoon once.
+            'Cache-Control': 'no-store',
             'Cross-Origin-Opener-Policy': 'same-origin',
             // `credentialless`, matching what static/coi-serviceworker.js sets in production: a
             // tile server does not send Cross-Origin-Resource-Policy, and require-corp would

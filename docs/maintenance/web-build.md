@@ -109,23 +109,40 @@ start panning until the pointer had travelled 0.2 inch, which is about 32 CSS pi
 drag feel stuck. `Options.clickMovingTolerance` names that threshold in dp - still 32 by default, so
 Android and iOS are unchanged - and the web host sets 3, which is maplibre's `clickTolerance`.
 
-### Zoom is one level off maplibre's, and TileDrawSize cannot fix it alone
+### Zoom: `Options.ZoomOffset`, and the three places a convention hides
 
-Measured at zoom 13 on a 2x display: massif draws **12.5726 m per CSS pixel** where maplibre's zoom
-13 is 6.2864. Massif's zoom 13 is maplibre's zoom **12**, exactly (ratio 2.0000) - massif's world at
-zoom 0 is `tileDrawSize` = 256 CSS pixels where maplibre's is 512.
+The SDK calibrates zoom the way a 256-pixel slippy map does; maplibre and mapbox-gl calibrate on a
+512-pixel tile, so the same NUMBER is one level closer there. Measured at zoom 13 in Paris on a 2x
+display, before: massif **12.5729 m per CSS pixel** against maplibre's 6.2864 - a ratio of exactly
+2.0000. The web host now sets `Options.ZoomOffset = 1` and the same measurement gives **6.2864,
+ratio 1.00000**. Every other platform keeps the SDK's own convention; the option defaults to 0.
 
-`setTileDrawSize(512)` does buy exact parity - re-measured at **0.99998** - but it is the same knob
-that decides how big a tile is DRAWN, so every label, line width and halo doubles with it. Tried
-and reverted; the screenshots are unambiguous. `MBVectorTileDecoder`'s pixel scale is not a way out
-either: it sets the resolution a glyph is rasterised at, not its size on screen, so lowering it just
-makes the same oversized text blurry.
+**It is a renumbering and nothing else.** Offset 1 at zoom 13 is offset 0 at zoom 14 - the same
+camera, the same tiles, the same picture, a different number. That was checked by screenshotting
+both and comparing: identical down to the street labels, with only the readout differing.
 
-Aligning the two properly means decoupling the zoom-to-distance mapping in `ViewState` from
-`TileDrawSize` - a zoom offset - which is an SDK change, not a web default.
+Getting there needed three things to move together, and each of the first two was tried alone and
+was wrong in a way that looks like the answer:
 
-Method: pan a known number of CSS pixels and read `focusPos` before the release. **Before** - kinetic
-pan keeps gliding after mouseup and inflated the first measurement by 1.26x.
+| | |
+|---|---|
+| **The camera** | `ViewState::calculateZoom0Distance`. Alone, it renumbers the camera and leaves the tiles behind, so the same tile is drawn twice as large - every label and line with it. |
+| **The tile level** | `TileLayer`'s `targetTileZoom` cap. It is this cap, not the screen-area rule, that ties a tile level to the zoom number. **Scaling the area rule instead is a trap**: it fetches a level COARSER and draws it bigger, which doubles labels just the same. |
+| **The renderer** | `ViewState::getRenderZoom`, handed to `vt::ViewState`. vt sizes everything by `2^(zoom - tileZoom)`, so it has to be told the zoom the tiles were picked for. Miss this and labels are still double, with everything else already right. |
+
+The arithmetic is `all/native/graphics/ZoomConvention.h`, header-only and covered by
+`tests/api/ZoomConventionTest.cpp` - which asserts the traps above rather than only the happy path.
+
+Two things the offset deliberately does not do. A **raster** source's 256-pixel tiles are drawn at
+512 points and blur, exactly as they would in maplibre without `tileSize: 256`; set `TileDrawSize`
+to compensate. And a **style's zoom stops** do not move: they are evaluated at the TILE zoom
+(`mapnikvt/TileReader.cpp`), which the offset leaves alone, so a converted MapBox style is no more
+and no less aligned than before.
+
+Method: `screenToMap` at two points a known number of DEVICE pixels apart (the centre of the
+drawing buffer maps exactly to `focusPos`, which is how the convention was confirmed), divided by
+`devicePixelRatio`. Do not pan and read `focusPos` - kinetic pan keeps gliding after mouseup and
+inflated the first measurement by 1.26x.
 
 ### Range requests, and why PMTiles failed on the web
 
@@ -302,6 +319,11 @@ accented glyphs all render — that part is observed, not inferred.
 ## The style preview on the documentation site
 
 `/preview` on the site is this module with a React page around it. Two things are worth knowing.
+
+**A rebuilt wasm needs a no-store dev server.** Its URL never changes, so a browser will happily
+run yesterday's renderer against today's page - which reads exactly like "my change did nothing".
+`website/plugins/style-preview` sends `Cache-Control: no-store` for that reason. Cost an afternoon
+once: an A/B that appeared to disprove a fix was measuring the cached build.
 
 **Where the wasm comes from.** It is a build artefact and is not tracked. `.github/workflows/web-preview.yml`
 builds it whenever `all/native`, `libs-massif`, `web/` or the build scripts change on `master`, and

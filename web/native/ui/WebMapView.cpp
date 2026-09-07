@@ -50,6 +50,12 @@ namespace massif {
         // The SDK's default is 16, chosen for a phone. Tiles are cheap to keep on a desktop GPU and
         // a tilted web map is expected to draw into the distance.
         const float WEB_DRAW_DISTANCE = 96.0f;
+
+        // maplibre and mapbox-gl calibrate zoom on a 512-pixel tile where the SDK uses 256, so the
+        // same zoom NUMBER is one level closer there. On the web that difference is visible: a
+        // link, a style's zoom stops and every piece of advice about web maps assume their
+        // convention. Every other platform keeps the SDK's own - see Options::setZoomOffset.
+        const float WEB_ZOOM_OFFSET = 1.0f;
     }
 
     class WebMapView::RedrawListener : public RedrawRequestListener {
@@ -165,6 +171,8 @@ namespace massif {
         // A desktop GPU is not a phone: 16 keeps buildings and terrain to a near band when the map
         // is tilted, which is a mobile battery decision. Mapbox and maplibre draw to the horizon.
         getOptions()->setDrawDistance(WEB_DRAW_DISTANCE);
+        // Zoom 14 here means what zoom 14 means in maplibre.
+        getOptions()->setZoomOffset(WEB_ZOOM_OFFSET);
         int pixelWidth = static_cast<int>(width * pixelRatio);
         int pixelHeight = static_cast<int>(height * pixelRatio);
         if (pixelWidth <= 0 || pixelHeight <= 0 || (pixelWidth == _width && pixelHeight == _height)) {

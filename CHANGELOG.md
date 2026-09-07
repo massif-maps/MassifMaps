@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [v6.0.2] - 2026-09-07
+### New Features
+- [`9cf7e31`](https://github.com/massif-maps/MassifMaps/commit/9cf7e313567bb80b507bfe5e2646a6ebde4b38c9) - **datasources**: accept setMetaDataElement("dem_encoding") alongside setEncoding *(commit by [@farfromrefug](https://github.com/farfromrefug))*
+
+
 ## [v6.0.0] - 2026-08-16
 
 The first release under the project's own name. The **CARTO Mobile SDK is now Massif Maps**: every
@@ -1675,3 +1680,4 @@ Release notes for next releases can be found from [Releases section](https://git
 [v5.0.0-rc.12]: https://github.com/Akylas/mobile-sdk/compare/v5.0.0-rc.11...v5.0.0-rc.12
 [v5.0.0-rc.13]: https://github.com/Akylas/mobile-sdk/compare/v5.0.0-rc.12...v5.0.0-rc.13
 [v6.0.0]: https://github.com/massif-maps/MassifMaps/compare/v5.2.3...v6.0.0
+[v6.0.2]: https://github.com/massif-maps/MassifMaps/compare/archive/gdal-in-sdk...v6.0.2

@@ -213,6 +213,8 @@ add_executable(api_tests
   DrapeStandInTest.cpp
   # Same: DrapeTuning.h is the bake resolution arithmetic and nothing else.
   DrapeTuningTest.cpp
+  # Same: ZoomConvention.h is what a zoom number means - camera distance and nominal tile.
+  ZoomConventionTest.cpp
   # Same: ShadowCasterRing.h is the caster ring's zoom bound and nothing else.
   ShadowCasterRingTest.cpp
   # Same: TesselationBounds.h is the extent the surface refinement covers and nothing else.

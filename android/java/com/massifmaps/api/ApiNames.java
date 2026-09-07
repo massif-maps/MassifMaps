@@ -970,6 +970,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> ZOOM_GESTURES = MassifObject.key("zoomGestures");
     /** Gets the current zoom level bias for this layer. */
     public static final MassifObject.Key<Double> ZOOM_LEVEL_BIAS = MassifObject.key("zoomLevelBias");
+    /** Returns how many zoom levels the camera is offset from the tile-size convention. */
+    public static final MassifObject.Key<Double> ZOOM_OFFSET = MassifObject.key("zoomOffset");
     /** Returns the zoom range constraint. */
     public static final MassifObject.Key<String> ZOOM_RANGE = MassifObject.key("zoomRange");
 

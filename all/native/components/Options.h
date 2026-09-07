@@ -307,6 +307,30 @@ namespace massif {
         void setTileDrawSize(int tileDrawSize);
 
         /**
+         * Returns how many zoom levels the camera is offset from the tile-size convention.
+         * @return The zoom offset in levels. The default is 0.
+         */
+        float getZoomOffset() const;
+        /**
+         * Sets how many zoom levels the camera is offset from the tile-size convention.
+         *
+         * The SDK calibrates zoom the way a 256-pixel slippy map does: at zoom z a tile covers
+         * getTileDrawSize() screen points. maplibre and mapbox-gl calibrate it on a 512-pixel
+         * tile, so the same zoom NUMBER puts their camera one level closer - a link shared
+         * between the two shows a different scale, and a converted style is judged at the wrong
+         * distance. An offset of 1 adopts their convention.
+         *
+         * It moves the camera and the level of detail together, so at a given zoom the same tile
+         * is fetched and simply drawn twice as large. Label and line sizes are NOT affected -
+         * they stay absolute screen sizes, which is why this is not just a bigger TileDrawSize.
+         *
+         * Changing it changes what getZoom() reports for a view, so a stored camera, a flyTo and
+         * a visibleZoomRange all move with it. The default is 0, this SDK's own convention.
+         * @param offset The new zoom offset in levels. The default is 0.
+         */
+        void setZoomOffset(float offset);
+
+        /**
          * Returns the factor on the screen size a tile may cover before it is refined.
          * @return The tile LOD factor. The default is 0.5; 1 is exactly tangram's rule.
          */
@@ -836,6 +860,7 @@ namespace massif {
         float _doubleClickMaxDuration;
     
         int _tileDrawSize;
+        float _zoomOffset;
         float _tileLODFactor;
         float _tileLODForeshorteningLimit;
     

@@ -490,6 +490,7 @@ MassifProperty const MassifPropertyZoom0Distance = @"zoom0Distance";
 MassifProperty const MassifPropertyZoomAction = @"zoomAction";
 MassifProperty const MassifPropertyZoomGestures = @"zoomGestures";
 MassifProperty const MassifPropertyZoomLevelBias = @"zoomLevelBias";
+MassifProperty const MassifPropertyZoomOffset = @"zoomOffset";
 MassifProperty const MassifPropertyZoomRange = @"zoomRange";
 MassifMethod const MassifMethodAdd = @"add";
 MassifMethod const MassifMethodAddFallbackFont = @"addFallbackFont";

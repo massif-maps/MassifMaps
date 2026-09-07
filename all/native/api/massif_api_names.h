@@ -496,8 +496,9 @@ typedef enum {
     MASSIF_PROP_ZOOM_ACTION = 485,
     MASSIF_PROP_ZOOM_GESTURES = 486,
     MASSIF_PROP_ZOOM_LEVEL_BIAS = 487,
-    MASSIF_PROP_ZOOM_RANGE = 488,
-    MASSIF_PROPERTY_TOTAL = 489
+    MASSIF_PROP_ZOOM_OFFSET = 488,
+    MASSIF_PROP_ZOOM_RANGE = 489,
+    MASSIF_PROPERTY_TOTAL = 490
 } massif_property;
 
 /* The string a property id stands for, or NULL when the id is out of range. */

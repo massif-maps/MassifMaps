@@ -4277,6 +4277,8 @@ export interface PropertyTypes {
     "userInput": boolean;
     /** Returns the state of zoom gestures. */
     "zoomGestures": boolean;
+    /** Returns how many zoom levels the camera is offset from the tile-size convention. */
+    "zoomOffset": number;
     /** Returns the zoom range constraint. */
     "zoomRange": [number, number];
   };

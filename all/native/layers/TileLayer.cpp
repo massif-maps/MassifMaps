@@ -807,8 +807,14 @@ namespace massif {
 
         _lodMaxTileArea = 0;
         _lodMinCosTheta = 0;
+        _lodZoomOffset = 0;
         if (auto options = getOptions()) {
             const ViewState& viewState = cullState->getViewState();
+            // TileDrawSize alone - the zoom OFFSET is deliberately not in here. The LOD rule is a
+            // screen-area one, so leaving it be means an offset picks the same tile at the same
+            // drawn size and only renumbers the zoom. Scaling it with the camera instead made the
+            // map fetch a level coarser and draw it twice as large, which doubles every label and
+            // line: measured, see docs/maintenance/web-build.md.
             double tileSizePixels = options->getTileDrawSize() * viewState.getDPI() / Const::UNSCALED_DPI;
             // Options::TileLODFactor scales it: 1 is their rule verbatim, larger keeps tiles
             // coarser (fewer tiles, fewer labels, less detail), smaller refines further.
@@ -820,6 +826,7 @@ namespace massif {
             // and only the second term is bounded here (docs/internals/rendering/02-tiles.md).
             float limit = options->getTileLODForeshorteningLimit();
             _lodMinCosTheta = limit > 0 ? std::pow(2.0, -2.0 * limit) : 0.0;
+            _lodZoomOffset = options->getZoomOffset();
         }
 
         // Recursively calculate visible tiles
@@ -940,7 +947,13 @@ namespace massif {
             subDivide = true;
         }
         int maxTargetZoom = getMaxZoom() + (_terrainOverzoomTargets ? getMaxOverzoomLevel() : 0);
-        int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(viewState.getZoom() + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
+        // The zoom OFFSET belongs here and not in the area rule above: this cap is what ties a
+        // tile level to the zoom NUMBER, so it is the other half of the convention. Without it the
+        // camera moves a level closer and the tiles stay put, which draws the same tile twice as
+        // large - every label and line with it. Measured: docs/maintenance/web-build.md.
+        double targetZoom = viewState.getZoom() + _lodZoomOffset
+            + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS;
+        int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(targetZoom));
         targetTileZoom = std::min(targetTileZoom, _terrainMaxTileZoom);
         if (getMinZoom() > tile.getZoom()) {
             subDivide = true;

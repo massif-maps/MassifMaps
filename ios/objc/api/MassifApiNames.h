@@ -970,6 +970,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomAction;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomGestures;
 /** Gets the current zoom level bias for this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomLevelBias;
+/** Returns how many zoom levels the camera is offset from the tile-size convention. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomOffset;
 /** Returns the zoom range constraint. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomRange;
 

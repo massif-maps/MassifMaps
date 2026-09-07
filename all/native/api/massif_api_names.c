@@ -491,6 +491,7 @@ static const char* const kNames[] = {
     "zoomAction",
     "zoomGestures",
     "zoomLevelBias",
+    "zoomOffset",
     "zoomRange",
 };
 

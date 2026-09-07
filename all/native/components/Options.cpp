@@ -28,6 +28,7 @@ namespace massif {
         _longClickDuration(DEFAULT_LONG_CLICK_DURATION),
         _doubleClickMaxDuration(DEFAULT_DOUBLE_CLICK_MAX_DURATION),
         _tileDrawSize(256),
+        _zoomOffset(0.0f),
         // 0.5, not tangram's 1.0: half a nominal tile of screen area before the next zoom level is
         // used. This is the value every bench and every example screenshot in this repo was made
         // with - see scripts/android-dev/.../demo/DemoConfig.java, which is where the tuning was
@@ -278,6 +279,22 @@ namespace massif {
             _tileDrawSize = tileDrawSize;
         }
         notifyOptionChanged("TileDrawSize");
+    }
+
+    float Options::getZoomOffset() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _zoomOffset;
+    }
+
+    void Options::setZoomOffset(float offset) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_zoomOffset == offset) {
+                return;
+            }
+            _zoomOffset = offset;
+        }
+        notifyOptionChanged("ZoomOffset");
     }
 
     float Options::getTileLODFactor() const {

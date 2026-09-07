@@ -5713,6 +5713,15 @@
           "doc": "Returns the state of zoom gestures."
         },
         {
+          "name": "zoomOffset",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how many zoom levels the camera is offset from the tile-size convention."
+        },
+        {
           "name": "zoomRange",
           "type": "STRUCT",
           "readOnly": false,

@@ -144,6 +144,18 @@ namespace massif {
         float getRotation() const;
 
         /**
+         * The zoom the RENDERER works in, which is the reported zoom plus Options::ZoomOffset.
+         *
+         * The vector tile renderer sizes everything by `2^(zoom - tileZoom)`, so it has to be given
+         * the zoom the tiles were chosen for. Without that a zoom offset renumbers the camera and
+         * leaves the renderer believing the map is a level further out, which draws the same tile
+         * twice as large - every label and line with it. Reported zoom is what an app sees; this is
+         * what vt sees, and the two differ by the offset alone.
+         * @return The renderer's zoom level.
+         */
+        float getRenderZoom() const;
+
+        /**
          * Returns the number 2 lifted to the power of the zoom level: pow(2, zoom level).
          * @return pow(2, zoom level).
          */
@@ -465,6 +477,13 @@ namespace massif {
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible) const;
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible, float& skyHorizonNDC) const;
         float calculateMinZoom(const Options& options) const;
+
+        /**
+         * The camera-to-focus distance at zoom 0, which is what the whole zoom scale hangs off.
+         * One function because it is computed in two places, and a zoom convention that holds in
+         * only one of them is worse than none.
+         */
+        double calculateZoom0Distance(double tanHalfFOVY) const;
         MapPos calculateMapBoundsCenter(const Options& options, const MapBounds& mapBounds) const;
    
         cglib::mat4x4<double> calculatePerspMat(float halfFOVY, float near, float far, const Options& options) const;
@@ -514,6 +533,7 @@ namespace massif {
         double _cosHalfFOVXY;
     
         int _tileDrawSize;
+        float _zoomOffset;
         
         float _dpToPX;
         float _dpi;

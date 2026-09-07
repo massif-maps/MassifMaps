@@ -91,7 +91,14 @@ const importAtRuntime = new Function('url', 'return import(url)');
 /** Boots the module on a canvas and returns the handles the page drives. */
 export async function startMap(canvas, moduleUrl) {
   const { default: factory } = await importAtRuntime(moduleUrl);
-  const module = await factory({ canvas });
+  // locateFile explicitly, rather than letting emscripten guess. Its fallback resolves the .wasm
+  // and the preloaded .data against the DOCUMENT, and the page sits at a different depth in the two
+  // places it runs: /preview/ on the dev server, /preview.html once built. The built one then
+  // asked for /massif-demo.data, one directory too high - a 404 that only ever appeared in
+  // production.
+  const baseUrl = new URL(moduleUrl, globalThis.location.href);
+  const directory = baseUrl.href.slice(0, baseUrl.href.lastIndexOf('/') + 1);
+  const module = await factory({ canvas, locateFile: (path) => directory + path });
   const massif = new Massif(module);
   const camera = await MassifCamera.attach(massif);
   const layers = massif.find('layers', 'map');
@@ -153,6 +160,114 @@ export function applyStyle({ module, massif, layers }, { sourceUrl, maxZoom, sty
   massif.call(layers, 'clear', []);
   massif.call(layers, 'add', [layer]);
   return layer;
+}
+
+/*
+ * The sun, and the light preset that goes with an hour.
+ *
+ * The hour drives the SDK's own solar model (LightOptions.setSunPositionFromTime), not a copy of it
+ * in JavaScript: that is the model the shadows and the sky were tuned against. It needs the place
+ * as well as the time, because the sun's path over a day depends on where you are standing - so it
+ * is re-applied when the map is moved, not only when the slider is.
+ */
+const SUN_DATE = { year: 2026, month: 6, day: 21 };
+
+/** Where each of a converted style's light presets takes over, in hours. */
+const PRESET_HOURS = [
+  { name: 'night', until: 5 },
+  { name: 'dawn', until: 8 },
+  { name: 'day', until: 17 },
+  { name: 'dusk', until: 20 },
+  { name: 'night', until: 24 },
+];
+
+/** The preset a converted style should be shown in at this hour, of the ones it actually has. */
+export function presetForHour(hour, available) {
+  if (!available || available.length === 0) return null;
+  const wanted = PRESET_HOURS.find((band) => hour < band.until)?.name ?? 'day';
+  return available.includes(wanted) ? wanted : null;
+}
+
+/** Puts the sun where it would be at `hour` over the map's centre, and turns shadows on. */
+export function applyHour({ massif, camera }, hour, { shadows = true } = {}) {
+  const options = massif.find('options', 'map');
+  // A handle, not a value: the sun is set by calling a METHOD on the light options, and only a
+  // handle can be called. mm_get_object reaches the existing sub-object rather than rebuilding it,
+  // so whatever a style put there is kept.
+  let light = massif.getObject(options, 'lightOptions');
+  if (!light) {
+    // A map with no light options yet, which is the default. An object property takes a HANDLE,
+    // not a value and not a spec - mm_set_object, not mm_set_string.
+    if (!massif.find('options', 'preview-light')) {
+      massif.create('options', 'preview-light', { type: 'light' });
+    }
+    massif.setObject(options, 'lightOptions', massif.find('options', 'preview-light'));
+    light = massif.getObject(options, 'lightOptions');
+  }
+  if (!light) return false;
+
+  const [lon, lat] = camera.focusPos;
+  const whole = Math.floor(hour);
+  const minutes = Math.round((hour - whole) * 60);
+  massif.call(light, 'setSunPositionFromTime',
+    [SUN_DATE.year, SUN_DATE.month, SUN_DATE.day, whole, minutes, lat, lon]);
+  // Otherwise a style that states its own sun wins and the slider appears to do nothing.
+  massif.set(light, 'sunOverridingStyle', true);
+  massif.set(light, 'shadowStrength', shadows ? 1 : 0);
+  return true;
+}
+
+/**
+ * Place search, through Komoot's public Photon (photon.komoot.io) - OSM data, no key, CORS open.
+ *
+ * Only the typed query goes out, and only when the user asks for it. What comes back is DATA:
+ * names are rendered as text and coordinates are used as coordinates, and nothing in a result is
+ * ever treated as markup or as an instruction.
+ */
+const PHOTON_URL = 'https://photon.komoot.io/api';
+
+export async function searchPlaces(query, { limit = 6, signal } = {}) {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const url = `${PHOTON_URL}?q=${encodeURIComponent(trimmed)}&limit=${limit}`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText} from Photon`);
+  const document = await response.json();
+  return (document.features ?? []).flatMap((feature) => {
+    const [lon, lat] = feature.geometry?.coordinates ?? [];
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return [];
+    const p = feature.properties ?? {};
+    // Photon has no single display string, so it is assembled from the parts that exist.
+    const where = [p.city, p.state, p.country].filter(Boolean).join(', ');
+    return [{
+      name: String(p.name ?? p.street ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`),
+      detail: [p.osm_value, where].filter(Boolean).join(' · '),
+      lon,
+      lat,
+      // Photon returns an extent for anything with an area, which is a better landing than a point.
+      extent: Array.isArray(p.extent) && p.extent.length === 4 ? p.extent : null,
+    }];
+  });
+}
+
+/**
+ * Flies to a search result: its extent when it has one, otherwise a close-in point.
+ *
+ * `canvas` is needed for the extent case - fitBounds wants the screen rectangle to fit INTO, and
+ * refuses a null one, so the caller has to say how big the map is.
+ */
+export function flyToPlace({ massif, camera }, place, canvas,
+                           { seconds = 1.5, pointZoom = 15, padding = 40 } = {}) {
+  if (place.extent && canvas) {
+    // Photon's extent is [minLon, maxLat, maxLon, minLat] - not the usual corner order.
+    const [minLon, maxLat, maxLon, minLat] = place.extent;
+    const pad = Math.min(padding, Math.min(canvas.width, canvas.height) / 4);
+    const screenBounds = [[pad, pad], [canvas.width - pad, canvas.height - pad]];
+    return massif.call(camera.handle, 'fitBounds',
+      [[[minLon, minLat], [maxLon, maxLat]], screenBounds, false, false, false, seconds]);
+  }
+  return massif.call(camera.handle, 'flyTo',
+    [[place.lon, place.lat], pointZoom, camera.rotation, camera.tilt, 0, seconds]);
 }
 
 /** A style as JSON text, or the URL of one - a published style is a link far more often than a file. */

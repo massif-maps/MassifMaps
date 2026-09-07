@@ -43,6 +43,8 @@ export class Massif {
       getBool: cwrap('mm_get_bool', 'number', ['number', 'number', 'string', 'number']),
       getDouble: cwrap('mm_get_double', 'number', ['number', 'number', 'string', 'number']),
       getString: cwrap('mm_get_string', 'number', ['number', 'number', 'string', 'string', 'number', 'number', 'number']),
+      setObject: cwrap('mm_set_object', 'number', ['number', 'number', 'string', 'number']),
+      getObject: cwrap('mm_get_object', 'number', ['number', 'number', 'string']),
       call: cwrap('mm_call', 'number', ['number', 'number', 'string', 'string', 'number']),
       destroyHandle: cwrap('mm_destroy_handle', 'number', ['number', 'number']),
       on: cwrap('mm_on', 'number', ['number', 'number', 'string', 'number', 'number', 'number']),
@@ -142,6 +144,26 @@ export class Massif {
       this.#check(this.#fn.getBool(this.#ctx, handle, path, out), `get ${path}`);
       return this.#module.getValue(out, 'i32') !== 0;
     });
+  }
+
+  /**
+   * Writes an object PROPERTY - `setObject(mapOptions, 'lightOptions', light)`.
+   *
+   * Its own call because a handle is neither a value nor a spec: `set` would send it as a number
+   * and the ABI refuses that with MM_UNSUPPORTED_TYPE.
+   */
+  setObject(handle, path, value) {
+    this.#check(this.#fn.setObject(this.#ctx, handle, path, value), `set ${path}`);
+  }
+
+  /**
+   * The handle of an object PROPERTY - `getObject(mapOptions, 'lightOptions')`.
+   *
+   * Reading a sub-object as a value would flatten it; a handle is what lets its own methods be
+   * called. Returns 0 when nothing is set there.
+   */
+  getObject(handle, path) {
+    return this.#fn.getObject(this.#ctx, handle, path);
   }
 
   getString(handle, path, projection = '') {

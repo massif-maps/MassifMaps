@@ -144,6 +144,19 @@ drawing buffer maps exactly to `focusPos`, which is how the convention was confi
 `devicePixelRatio`. Do not pan and read `focusPos` - kinetic pan keeps gliding after mouseup and
 inflated the first measurement by 1.26x.
 
+### A drag that ends off the canvas
+
+Mouse `down` is bound to the canvas, but `move` and `up` go to the **document**, and `blur` to the
+window - maplibre's own arrangement, for the reason its `handler_manager.ts` gives: there is no
+pointer capture to lean on, so a release outside the canvas only ever reaches a document-level
+listener. Bound to the canvas, a drag that ended anywhere else never saw its mouseup, the map
+stayed in the drag, and every later hover panned it.
+
+Two things follow. The move handler must ignore everything unless a drag is actually running,
+because it now sees the pointer crossing the whole page. And coordinates have to come from
+`clientX/clientY` minus the canvas rect, not from `targetX/targetY` - those are relative to
+whatever the listener was bound to, which is no longer the map.
+
 ### Range requests, and why PMTiles failed on the web
 
 A PMTiles archive is read by HTTP range, and `HTTPClient` checked the `Content-Range` of every 206
@@ -319,6 +332,12 @@ accented glyphs all render — that part is observed, not inferred.
 ## The style preview on the documentation site
 
 `/preview` on the site is this module with a React page around it. Two things are worth knowing.
+
+**locateFile has to be explicit.** Emscripten's fallback resolves the `.wasm` and the preloaded
+`.data` against the DOCUMENT, and the page sits at a different depth in the two places it runs:
+`/preview/` on the dev server, `/preview.html` once built. The built one asked for
+`/massif-demo.data`, one directory too high - a 404 that appeared only in production, which is
+exactly the kind that reaches a user first.
 
 **A rebuilt wasm needs a no-store dev server.** Its URL never changes, so a browser will happily
 run yesterday's renderer against today's page - which reads exactly like "my change did nothing".

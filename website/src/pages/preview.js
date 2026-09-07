@@ -17,8 +17,67 @@ import styles from './preview.module.css';
  * workflow do it; without it the page says so rather than hanging.
  */
 
+/** 13.25 -> "13:15". */
+function formatHour(hour) {
+  const whole = Math.floor(hour) % 24;
+  const minutes = Math.round((hour - Math.floor(hour)) * 60);
+  return `${String(whole).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 const MODE_CARTOCSS = 'cartocss';
 const MODE_MAPBOX = 'mapbox';
+
+/**
+ * Place search over the map. Photon (photon.komoot.io) is OSM data with no key and an open CORS
+ * policy; only the typed query is sent, and only when the form is submitted.
+ */
+function SearchBox({state, actions}) {
+  return (
+    <div className={styles.search}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          // From the form, not from state: submitting in the same tick as the last keystroke runs
+          // a handler that still closes over the previous render's query, and the search then
+          // quietly looked for the wrong thing - or for nothing at all.
+          actions.search(event.currentTarget.elements.q.value);
+        }}>
+        <input
+          type="search"
+          name="q"
+          value={state.query}
+          placeholder="Search a place…"
+          aria-label="Search a place"
+          onChange={(event) => actions.setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            // Not only the form's submit: implicit submission is what a browser is SUPPOSED to do
+            // with Enter in a single-field form, and not every one does.
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              actions.search(event.currentTarget.value);
+            }
+          }}
+        />
+        <button type="submit" disabled={state.searching}>
+          {state.searching ? '…' : 'Go'}
+        </button>
+      </form>
+      {state.searchError && <p className={styles.searchError}>{state.searchError}</p>}
+      {state.results.length > 0 && (
+        <ul className={styles.results}>
+          {state.results.map((place, index) => (
+            <li key={`${place.lon},${place.lat},${index}`}>
+              <button type="button" onClick={() => actions.goTo(place)}>
+                <strong>{place.name}</strong>
+                {place.detail && <span>{place.detail}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function Panel({state, actions}) {
   const {
@@ -131,6 +190,45 @@ function Panel({state, actions}) {
       </div>
 
       <div className={styles.panelSection}>
+        <h2>Light</h2>
+        <label className={styles.field}>
+          Hour (UTC): <strong>{formatHour(state.hour)}</strong>
+          <input
+            type="range"
+            min="0"
+            max="24"
+            step="0.25"
+            value={state.hour}
+            onChange={(event) => actions.setHour(Number(event.target.value))}
+          />
+        </label>
+        <label className={styles.checkbox}>
+          <input
+            type="checkbox"
+            checked={state.shadows}
+            onChange={(event) => actions.setShadows(event.target.checked)}
+          />
+          Shadows
+        </label>
+        <label className={styles.checkbox}>
+          <input
+            type="checkbox"
+            checked={state.autoPreset}
+            disabled={state.themes.length < 2}
+            onChange={(event) => actions.setAutoPreset(event.target.checked)}
+          />
+          Follow the style&apos;s light preset
+        </label>
+        <p className={styles.note}>
+          The hour drives the SDK&apos;s own solar model at the map centre, so the sun moves the way
+          it would there on 21 June — pan a long way and nudge the slider to re-place it.
+          {state.themes.length > 1
+            ? ' A converted style carries presets, and the checkbox switches between them.'
+            : ' A converted MapBox style adds dawn/day/dusk/night presets here.'}
+        </p>
+      </div>
+
+      <div className={styles.panelSection}>
         <h2>Controls</h2>
         <p className={styles.note}>
           Drag to pan, wheel to zoom, right-drag to rotate and tilt. Everything renders in your
@@ -164,6 +262,13 @@ function StylePreview() {
     busy: false,
     notes: [],
     error: '',
+    hour: 12,
+    shadows: true,
+    autoPreset: true,
+    query: '',
+    results: [],
+    searching: false,
+    searchError: '',
   });
   const patch = useCallback((next) => setState((prev) => ({...prev, ...next})), []);
 
@@ -255,11 +360,67 @@ function StylePreview() {
         style = {css: state.css};
       }
       engine.applyStyle(map, {sourceUrl: source.url, maxZoom: source.maxZoom, style});
+      // Remembered so a light-preset switch can re-open the project over the same source without
+      // resolving the TileJSON or converting the style again.
+      map.sourceUrl = source.url;
+      map.sourceMaxZoom = source.maxZoom;
       patch({busy: false, notes, themes, theme: style.project ?? '', error: ''});
     } catch (error) {
       patch({busy: false, error: String(error?.message ?? error)});
     }
   }, [engine, state, patch]);
+
+  /**
+   * Moves the sun, and with it the style's light preset when the style has any.
+   *
+   * Switching preset re-opens the SAME converted project under another of its .json entry points,
+   * so it costs a re-decode and no conversion - the files are already in the module's filesystem.
+   */
+  const applyLight = useCallback((next) => {
+    const map = mapRef.current;
+    if (!map || !engine) return;
+    const hour = next.hour ?? state.hour;
+    const shadows = next.shadows ?? state.shadows;
+    const autoPreset = next.autoPreset ?? state.autoPreset;
+    engine.applyHour(map, hour, {shadows});
+
+    const themes = state.themes;
+    if (!autoPreset || themes.length < 2 || state.mode !== MODE_MAPBOX) return;
+    const wanted = engine.presetForHour(hour, themes);
+    if (wanted && wanted !== state.theme) {
+      engine.applyStyle(map, {
+        sourceUrl: map.sourceUrl,
+        maxZoom: map.sourceMaxZoom,
+        style: {project: wanted},
+      });
+      patch({theme: wanted});
+    }
+  }, [engine, state, patch]);
+
+  const search = useCallback(async (query) => {
+    const wanted = (query ?? state.query).trim();
+    if (!engine || !wanted) return;
+    patch({query: wanted, searching: true, searchError: '', results: []});
+    try {
+      const results = await engine.searchPlaces(wanted);
+      patch({
+        searching: false,
+        results,
+        searchError: results.length === 0 ? 'Nothing found.' : '',
+      });
+    } catch (error) {
+      patch({searching: false, searchError: String(error?.message ?? error)});
+    }
+  }, [engine, state.query, patch]);
+
+  const goTo = useCallback((place) => {
+    const map = mapRef.current;
+    if (!map || !engine) return;
+    engine.flyToPlace(map, place, canvasRef.current);
+    patch({results: [], query: place.name});
+    // The sun depends on WHERE as much as on when, so it is re-placed once the flight has landed.
+    setTimeout(() => engine.applyHour(map, state.hour, {shadows: state.shadows}), 1600);
+  }, [engine, state.hour, state.shadows, patch]);
 
   const share = useCallback(() => {
     const map = mapRef.current;
@@ -303,6 +464,12 @@ function StylePreview() {
       if (starter) patch({starter: id, css: starter.css});
     },
     pickTheme: (theme) => patch({theme}),
+    setHour: (hour) => { patch({hour}); applyLight({hour}); },
+    setShadows: (shadows) => { patch({shadows}); applyLight({shadows}); },
+    setAutoPreset: (autoPreset) => { patch({autoPreset}); applyLight({autoPreset}); },
+    setQuery: (query) => patch({query}),
+    search,
+    goTo,
     apply,
     share,
   };
@@ -315,6 +482,7 @@ function StylePreview() {
           <div className={styles.status}><p>{status}</p></div>
         ) : (
           <>
+            <SearchBox state={state} actions={actions} />
             <div className={styles.viewButtons}>
               {/* Tilt is 90 looking straight down here, the opposite of MapBox's pitch. */}
               <button type="button" onClick={() => flyTo(45)}>3D</button>

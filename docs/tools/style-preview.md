@@ -23,6 +23,8 @@ Everything runs in your browser. No style, tile key or sprite sheet is uploaded 
 | **MapBox style JSON** | Paste one and press Apply. It is translated by `mapbox2css` in the page — sprite sheet, icons, light presets and all — then rendered. |
 | **Tiles** | Any TileJSON URL or `{z}/{x}/{y}` template. The default is [OpenFreeMap](https://openfreemap.org)'s planet, which needs no key. |
 | **Camera** | Drag to pan, wheel to zoom, right-drag to rotate and tilt. **Copy link** puts the style and the camera in the URL. |
+| **Search** | Any place name, through [Photon](https://photon.komoot.io) — OSM data, no key. A result with an extent is fitted to it, a point is flown to. Only the query you type is sent. |
+| **Light** | An hour slider drives the SDK's own solar model at the map centre, so shadows fall where they would there on 21 June. A converted MapBox style also carries dawn/day/dusk/night presets, and the page can follow them from the hour. |
 
 ## Two things that make a style draw nothing
 
@@ -35,6 +37,15 @@ against it draws an empty map, and neither the style nor the source is wrong.
 converted MapBox style names DIN Pro — keeps its labels only because the converted project is given
 a fallback font; a hand-written CartoCSS naming a face that is not there loses those labels
 silently. Name `Roboto` and they come back.
+
+## Judging shadows
+
+The hour is UTC and the date is fixed at 21 June, so the sun runs its longest arc. It is placed for
+the **map centre** — the sun over Reykjavik in June barely sets, and the slider shows that — which
+also means the sun is re-placed when you search somewhere new, not when you pan by hand. Nudge the
+slider after a long pan.
+
+Shadows need something to cast them: a style with `building-height`, or 3D terrain.
 
 ## What it is not
 

@@ -50,7 +50,7 @@ jobs:
           fetch-depth: 1
       - name: fetch externals
         run: |
-          git submodule update --init --remote --recursive
+          git submodule update --init --recursive
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -86,7 +86,7 @@ jobs:
           fetch-depth: 1
       - name: fetch externals
         run: |
-          git submodule update --init --remote --recursive
+          git submodule update --init --recursive
       - name: Install tooling (jazzy + swig deps)
         run: |
           gem install jazzy --no-document

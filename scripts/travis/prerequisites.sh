@@ -3,7 +3,7 @@ set -e
 rvm get head
 
 echo '---- Updating submodules ----'
-git submodule update --init --remote --recursive
+git submodule update --init --recursive
 
 echo '---- Downloading and setting up boost ----'
 curl -o boost_1_77_0.zip -L https://sourceforge.net/projects/boost/files/boost/1.77.0/boost_1_77_0.zip/download

@@ -293,7 +293,7 @@ jobs:
 
       - name: fetch externals
         run: |
-          git submodule update --init --remote --recursive
+          git submodule update --init --recursive
 
       - name: Prepare Boost
         uses: ./.github/actions/prepare-boost
@@ -520,7 +520,7 @@ jobs:
 
       - name: fetch externals
         run: |
-          git submodule update --init --remote --recursive
+          git submodule update --init --recursive
 
       - name: Prepare Boost
         uses: ./.github/actions/prepare-boost

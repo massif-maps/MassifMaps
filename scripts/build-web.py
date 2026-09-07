@@ -52,7 +52,10 @@ def buildWebLib(args):
   if not (makedirs(distDir) and copyfile('%s/libmassif.a' % buildDir, '%s/libmassif.a' % distDir)):
     return False
   if args.builddemo:
-    for name in ['massif-demo.mjs', 'massif-demo.wasm']:
+    for name in ['massif-demo.mjs', 'massif-demo.wasm', 'massif-demo.data']:
+      # .data exists only when web/demo/fonts was there to preload.
+      if not os.path.exists('%s/%s' % (buildDir, name)):
+        continue
       if not copyfile('%s/%s' % (buildDir, name), '%s/%s' % (baseDir + '/web/demo', name)):
         return False
   return True

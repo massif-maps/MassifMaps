@@ -16,8 +16,20 @@ python3 scripts/build-web.py --profile lite --configuration RelWithDebInfo --bui
 python3 web/demo/serve.py            # http://localhost:8088
 ```
 
-Measured on the first green build (emscripten 6.0.9, `lite`, `RelWithDebInfo` library linked at
-`-O2`): **2.5 MB** of `.wasm`, **910 KB** gzipped, plus a **297 KB** loader.
+Size, measured with emscripten 6.0.9 on the `lite` profile at `--configuration Release`:
+
+| Artefact | Raster only | + vector tiles, CartoCSS and labels |
+|---|---|---|
+| `.wasm` | 2.5 MB | **3.8 MB** |
+| `.wasm` gzipped | 910 KB | **1.5 MB** |
+| `.mjs` loader | 297 KB | 151 KB |
+
+The vector column is what the style preview needs; the difference is mapnikvt, cartocss, freetype
+and harfbuzz, which the raster-only demo never referenced. A preloaded font adds its own
+`.data` file on top (306 KB for Roboto).
+
+Use `--configuration RelWithDebInfo` while developing, but do not quote its size: it carries DWARF
+and the `.wasm` comes out around 340 MB.
 
 ## The bench
 
@@ -36,6 +48,15 @@ the query string, so a camera and a style are a link.
 
 The style is passed in rather than fetched because `main()` runs on the browser's main thread,
 where a synchronous fetch is illegal. The JavaScript binding is what will replace it.
+
+### Fonts
+
+A style that names a font it does not ship falls through to `SystemFontUtils`, which on the web
+means `/fonts/<name>.ttf` in the virtual filesystem. Drop TTFs into **`web/demo/fonts/`** and the
+link preloads the directory as `/fonts` — `Roboto.ttf` there is what
+`text-face-name: 'Roboto'` resolves to. The directory is gitignored: fonts are a licensing
+question, so the bench asks for one rather than shipping one. Without it the build carries no font
+and a style with a text rule draws no labels.
 
 ## The platform layer
 
@@ -101,11 +122,8 @@ key and value.
   `bindings/typescript/massif.d.ts` already describes that surface.
 - **3D terrain, shadows and the sky** are untested here. They compile, but the MRT and
   depth-texture paths have never been run against a WebGL 2 driver.
-- **Labels** are untested: the styles run so far carry no text rule, and the glyph atlas path has
-  therefore never been exercised. Fonts would have to be pushed into `/fonts` first.
-
-Raster tiles, and MVT decoded through mapnikvt and styled by CartoCSS, both render — that part is
-observed, not inferred.
+Raster tiles, MVT decoded through mapnikvt and styled by CartoCSS, and labels with halos and
+accented glyphs all render — that part is observed, not inferred.
 
 ## What emcc found that no other build did
 

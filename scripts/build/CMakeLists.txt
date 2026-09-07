@@ -430,5 +430,11 @@ if(EMSCRIPTEN AND BUILD_WEB_DEMO)
     # stringToNewUTF8/UTF8ToString are what PlatformUtils and the demo read location through; FS is
     # how the host page pushes assets and fonts into the virtual filesystem.
     "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS")
+  # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
+  # /fonts in the virtual filesystem. Drop TTFs in web/demo/fonts to give the bench labels; without
+  # the directory the build simply carries no font.
+  if(EXISTS "${SDK_BASE_DIR}/web/demo/fonts")
+    target_link_options(massif-demo PRIVATE "--preload-file" "${SDK_BASE_DIR}/web/demo/fonts@/fonts")
+  endif()
   set_target_properties(massif-demo PROPERTIES SUFFIX ".mjs")
 endif()

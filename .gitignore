@@ -19,3 +19,7 @@ boost*
 # Built by scripts/build-web.py --build-demo
 /web/demo/massif-demo.mjs
 /web/demo/massif-demo.wasm
+
+# Fonts for the bench are dropped in by hand, not shipped
+/web/demo/fonts/
+/web/demo/massif-demo.data

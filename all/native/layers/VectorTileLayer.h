@@ -100,9 +100,10 @@ namespace massif {
          * Returns the current display order of the buildings.
          * @return The display order of the buildings. Default is VECTOR_TILE_RENDER_ORDER_LAST.
          *
-         * Note that LAST puts the extrusions over the LABELS as well, since TileRenderer draws the
-         * 2D label pass before the building pass - so a style with both wants the buildings on
-         * LAYER and the labels on LAST, not the other way round.
+         * LAST draws the extrusions after the flat labels as well, so a label that has to clear a
+         * building is a BILLBOARD one - `text-placement: billboard` or `billboard-line-repeat` -
+         * which is the pass that runs after the buildings. That is the mechanism; moving this
+         * order is not.
          */
         VectorTileRenderOrder::VectorTileRenderOrder getBuildingRenderOrder() const;
         /**

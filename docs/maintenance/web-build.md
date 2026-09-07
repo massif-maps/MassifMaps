@@ -160,16 +160,16 @@ whatever the listener was bound to, which is no longer the map.
 ### Labels shredded by buildings from zoom 12
 
 Not a glyph bug, though it looks like one: the text is drawn and then PAINTED OVER, so the letters
-come out with pieces missing. `VectorTileLayer` defaults labels to `RENDER_ORDER_LAYER` and
-buildings to `RENDER_ORDER_LAST`, and those two together put every extrusion on top of the text.
-It starts at zoom 12 because that is where OpenMapTiles begins serving `building`.
+come out with pieces missing. It starts at zoom 12 because that is where OpenMapTiles begins
+serving `building`.
 
-Setting the labels to `LAST` is **not** enough on its own - `TileRenderer::onDrawFrame3D` runs the
-2D label pass BEFORE the building pass, so the only labels that land above an extrusion are the
-billboards. The pair that works is buildings on `LAYER` (back inline with their own layer) and
-labels on `LAST`, which is what the preview sets on the layer it builds.
+Buildings default to `RENDER_ORDER_LAST` and are drawn after the flat label pass, by design. The
+answer is not to move that order but to make the labels **billboards** - `text-placement: billboard`
+for a point, `billboard-line-repeat` along a line - because the billboard pass is the one that runs
+after the buildings (`TileRenderer::onDrawFrame3D`). The starters do that.
 
-Worth knowing for any style with both, on any platform - the defaults are the SDK's, not the web's.
+Nothing web-specific here; it is how the renderer is meant to be used, and the same style would
+behave the same way on a phone.
 
 ### Two double-click zooms
 

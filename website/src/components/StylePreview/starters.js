@@ -43,7 +43,9 @@ const LABELS = `
   text-fill: #5b5348;
   text-halo-fill: #ffffffcc;
   text-halo-radius: 1.2;
-  text-placement: line;
+  /* billboard-line-repeat, not line: a flat label is drawn before the buildings and ends up
+     under them. Billboards are the pass that comes after. */
+  text-placement: billboard-line-repeat;
 }
 
 #place {
@@ -53,6 +55,7 @@ const LABELS = `
   text-halo-fill: #ffffffcc;
   text-halo-radius: 1.5;
   text-size: 12;
+  text-placement: billboard;
   [class='city'] { text-size: 16; }
   [class='town'] { text-size: 13; }
 }

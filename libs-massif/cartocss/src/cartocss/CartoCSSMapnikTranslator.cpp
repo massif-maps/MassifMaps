@@ -285,10 +285,6 @@ namespace massif::css {
                     throw TranslatorException("Expecting constant scalar keys for interpolation function");
                 }
                 auto mapnikValueExpr = buildExpression((*listExpr)->getExpressions()[1]);
-//                auto valueVal = std::get_if<mvt::Value>(&mapnikValueExpr);
-//                if (!valueVal) {
-//                    throw TranslatorException("Expecting constant scalar values for interpolation function");
-//                }
                 mapnikKeyFrames.push_back(mapnikKeyExpr);
                 mapnikKeyFrames.push_back(mapnikValueExpr);
             }

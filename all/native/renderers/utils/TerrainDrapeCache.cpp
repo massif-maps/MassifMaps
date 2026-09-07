@@ -82,10 +82,9 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             return;
         }
         _stackSignature = signature;
-        // The textures are kept: a stale picture of the same ground is a better thing to show for
-        // the two or three frames the re-bake takes than the flat fill dropping them would leave.
-        // They just stop being trusted - re-baked with the blank-tile budget, and never copied
-        // into another tile.
+        // The textures are kept: a stale picture of the same ground beats the flat fill for the two
+        // or three frames a re-bake takes. They just stop being trusted - re-baked with the
+        // blank-tile budget, and never copied into another tile.
         for (auto it = _entries.begin(); it != _entries.end(); it++) {
             it->second.stale = it->second.baked || it->second.seeded;
             // A seed is a copy of other tiles' pictures, so a seed made from the old stack is old
@@ -140,18 +139,13 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _resolution, _resolution, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // Mipmapped, because a drape texture is almost always MINIFIED: the bake resolution is
-        // sized for the widest a tile can ever get on screen (see TileRenderer::
-        // resolveDrapeResolution), so an ordinary tile samples a texture several times larger than
-        // its footprint. With GL_LINEAR that is four texels from an incoherent footprint per
-        // fragment - a texture cache miss per fragment, and minification aliasing on top.
+        // Mipmapped, because a drape texture is almost always MINIFIED: the bake resolution is sized
+        // for the widest a tile can ever get on screen, so an ordinary tile samples a texture several
+        // times larger than its footprint - a cache miss per fragment, and aliasing on top.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, isMipmapEnabled() ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-        // ANISOTROPIC, because the drape is looked at along the ground. At tilt the sampler's two
-        // axes are wildly different and mip selection follows the WORST of them, so everything
-        // baked into the drape smears along the view direction - by an amount that changes with
-        // the camera's rotation. It is why a contact shadow stops matching its footprint, and it
-        // blurs draped roads and labels in exactly the same way. Only with mipmaps: it selects
-        // between levels, so there is nothing to select from without them.
+        // ANISOTROPIC, because the drape is looked at along the ground: at tilt the sampler's axes
+        // differ wildly and mip selection follows the WORST of them, so everything baked in smears
+        // along the view direction. Only with mipmaps - it selects between levels.
         if (isMipmapEnabled() && GLContext::TEXTURE_FILTER_ANISOTROPIC) {
             GLint deviceMaxAnisotropy = 0;
             glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &deviceMaxAnisotropy);
@@ -177,17 +171,13 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         }
         entry.used = true;
         entry.lastUsedFrame = _frameCounter;
-        // A changed fingerprint means the layers covering this tile changed - a style layer
-        // finished loading, or a proxy was replaced by its native tile - so the texture is stale.
-        // Stale means baked from a stack that no longer exists. The fingerprint does not always
-        // catch that: dropping a layer leaves the remaining layers' content - and their hashes -
-        // unchanged for tiles the dropped layer had nothing in.
+        // A changed fingerprint means the layers covering this tile changed. Stale means baked from
+        // a stack that no longer exists, which the fingerprint misses: dropping a layer leaves the
+        // remaining hashes unchanged for tiles the dropped layer had nothing in.
         needsBake = !entry.baked || entry.stale || entry.fingerprint != fingerprint;
-        // A seeded texture is not a bake, but it does show this tile's ground - sampling it is
-        // right, and it is the difference between a stand-in and a flat fill.
-        // A bake with no layer in it is not a picture: the tile's own content had not arrived and
-        // the finer proxies covering it are left out of the bake, so drawing that texture puts the
-        // flat clear colour over ground the cached finer generation still shows.
+        // A seeded texture is not a bake, but it does show this tile's ground - the difference
+        // between a stand-in and a flat fill. A bake with NO layer in it is not a picture: drawing
+        // it puts the clear colour over ground the cached finer generation still shows.
         hasContent = DrapeStandIn::hasPicture(entry.baked, entry.seeded, entry.layerMask);
         return entry.texture;
     }
@@ -236,10 +226,9 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
 
     unsigned int TerrainDrapeCache::findBaked(const vt::TileId& tileId, int stack) {
         auto it = _entries.find(Key { tileId, stack });
-        // A stale entry must never be a source: seeding or standing in with it copies the previous
-        // stack's picture into tiles that never had it, and a seed carries no fingerprint, so the
-        // old content then survives every check that would have replaced it.
-        // Nor an empty bake (DrapeStandIn::hasPicture): it would stand in with the clear colour.
+        // A stale entry must never be a source: it copies the previous stack's picture into tiles
+        // that never had it, and a seed carries no fingerprint, so the old content survives every
+        // check that would have replaced it. Nor an empty bake - it stands in with the clear colour.
         if (it == _entries.end() || !DrapeStandIn::hasPicture(it->second.baked, false, it->second.layerMask) || it->second.stale) {
             return 0;
         }
@@ -342,11 +331,9 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         std::size_t maxCount = maxEntries();
         std::size_t colourBytes = static_cast<std::size_t>(_resolution) * _resolution * 4;
         std::size_t maxBytes = (isBudgetEnabled() ? std::max(_maxBytes, MIN_ENTRIES * colourBytes) : MAX_ENTRIES * colourBytes);
-        // COLOUR entries only. A coverage mask (#175) is a quarter of a drape in bytes and one
-        // more entry in the map, so counting them here made a style with one mask cut halve the
-        // tiles the cache could hold - measured as 56 entries against a cap of 24 on a 28-leaf
-        // cover, evicting the whole previous generation every frame of a zoom, which is what the
-        // stand-in then had nothing to read (docs/internals/rendering/04-terrain.md).
+        // COLOUR entries only: a coverage mask (#175) is a quarter of a drape in bytes, so counting
+        // them halved the tiles the cache could hold - 56 entries against a cap of 24 on a 28-leaf
+        // cover, evicting the whole previous generation every frame of a zoom.
         std::size_t colourEntries = 0;
         for (auto it = _entries.begin(); it != _entries.end(); it++) {
             colourEntries += (it->first.stack == 0 ? 1 : 0);

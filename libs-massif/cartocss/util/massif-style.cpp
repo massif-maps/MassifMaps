@@ -4,10 +4,9 @@
 #include <string>
 #include <vector>
 
-// One binary for every style conversion that has to agree with the decoder, so the npm wrapper
-// (@massif-maps/style-tools) ships a single wasm module rather than one per tool.
-// mvt2xml is deliberately NOT here: it needs compiled Boost.Serialization, and its path handling
-// only compiles where std::filesystem::path::value_type is wchar_t.
+// One binary for every style conversion that has to agree with the decoder, so @massif-maps/style-tools
+// ships a single wasm module. mvt2xml is deliberately NOT here: it needs compiled Boost.Serialization
+// and a std::filesystem::path::value_type of wchar_t.
 
 namespace {
     int usage() {

@@ -234,10 +234,9 @@ namespace massif::mvt {
         if (_discrete) {
             return evaluateDiscrete(t, context);
         }
-        // Past the last key the curve HOLDS, and likewise before the first one - mapbox's
-        // `interpolate`, and the only reading that makes sense of a zoom ramp: cglib extrapolates,
-        // so Standard's POI minimum-distance (16, 6) -> (17, 4) went NEGATIVE by z19 and the
-        // culler stopped thinning anything.
+        // Past the last key the curve HOLDS, and likewise before the first - mapbox's `interpolate`, and
+        // the only reading that makes sense of a zoom ramp. cglib extrapolates, so a (16, 6) -> (17, 4)
+        // minimum-distance went NEGATIVE by z19 and the culler stopped thinning anything.
         if (_keyRange) {
             t = std::min(std::max(t, _keyRange->first), _keyRange->second);
         }

@@ -66,50 +66,41 @@ namespace massif::vt {
         bool isActive() const { return _active; }
         void setActive(bool active) { _active = active; }
 
-        // Which of the style's sides the text is laid out on (see TileLabel::Variant). Owned by
-        // LabelCuller, the only place that knows what else is on screen; carried over by
-        // snapPlacement, or a label rebuilt on a tile-set change would take the first side again
-        // and the name would hop from one side of its icon to the other while the map pans.
+        // Which of the style's sides the text is laid out on. Owned by LabelCuller, the only place that
+        // knows what else is on screen; carried over by snapPlacement, or a label rebuilt on a tile-set
+        // change takes the first side again and the name hops around its icon while the map pans.
         std::size_t getVariantCount() const { return _variants.size(); }
         int getVariantIndex() const { return _variantIndex; }
         void setVariantIndex(int index);
         bool drawsText() const { return _variants.empty() || _variants[_variantIndex].drawText; }
 
-        // CALLOUT orientation: how far the label is lifted from its anchor, in SCREEN PIXELS along
-        // the camera up axis. Owned by LabelCuller, which is the only place that knows what else is
-        // on screen; the envelope and the vertex data both read it, so the leader line always ends
-        // where the glyphs actually are.
+        // CALLOUT orientation: how far the label is lifted from its anchor, in SCREEN PIXELS along the
+        // camera up axis. Owned by LabelCuller; the envelope and the vertex data both read it, so the
+        // leader line always ends where the glyphs actually are.
         float getCalloutOffset() const { return _calloutOffset; }
         void setCalloutOffset(float offset) { _calloutOffset = offset; }
 
-        // The screen line the culler put this callout on, and where its anchor was when it did.
-        // The anchor MOVES between placement passes - elevation tiles stream in and re-anchor the
-        // label on the GL thread, a tilt slides it up or down the screen - and a lift measured
-        // against the old anchor takes the label off the row. Keeping the anchor's screen position
-        // lets the draw path correct for exactly that, so the label stays on its line.
+        // The screen line the culler put this callout on, and where its anchor was when it did. The
+        // anchor MOVES between passes - elevation streams in, a tilt slides it - and a lift measured
+        // against the old one takes the label off the row, which the draw path corrects for.
         void setCalloutPlacement(float offset, float anchorScreenY) { _calloutOffset = offset; _calloutAnchorScreenY = anchorScreenY; _calloutAnchored = true; }
         float calculateAnchorScreenY(const ViewState& viewState) const;
 
-        // Placement passes this callout has failed in a row while it was on screen. The style may
-        // allow a few (TileLabel::Style::calloutPersistPasses): a panning map rebuilds its label
-        // set constantly, and a name that loses its row for one pass and takes it again on the
-        // next reads as a flicker.
+        // Placement passes this callout has failed in a row while it was on screen. The style may allow
+        // a few: a panning map rebuilds its label set constantly, and a name that loses its row for one
+        // pass and takes it again on the next reads as a flicker.
         int getCalloutFailures() const { return _calloutFailures; }
         void setCalloutFailures(int failures) { _calloutFailures = failures; }
 
-        // Identifies the set of tile geometries this label was built from, so that a rebuild
-        // can tell whether anything about its source actually changed (see
-        // GLTileRenderer::buildLabelMaps). Order-independent: the merge order follows the
-        // visible tile order, which is not stable.
+        // Identifies the set of tile geometries this label was built from, so a rebuild can tell whether
+        // anything about its source changed. Order-independent: the merge order follows the visible tile
+        // order, which is not stable.
         void setGeometrySignature(long long hash, int count) { _geometryHash = hash; _geometryCount = count; }
         bool hasGeometrySignature(long long hash, int count) const { return _geometryCount == count && _geometryHash == hash && count > 0; }
 
-        // Terrain re-anchoring state (see updateElevation). Anchored once when built, re-anchored
-        // only when the elevation under one of its tiles changes - it costs one sample per line
-        // vertex, and ~750 000 samples a frame before this. An already-anchored label that is
-        // neither placed nor on screen DEFERS (its heights are one LOD step out at worst) and
-        // reports itself dirty when the culler gives it a placement; one never anchored does not,
-        // since its geometry is flat and placing it at sea level under a mountain is what pops.
+        // Terrain re-anchoring state: anchored once when built, re-anchored only when the elevation
+        // under one of its tiles changes - it costs one sample per line vertex. An already-anchored
+        // label that is neither placed nor on screen DEFERS; one never anchored does not.
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
         bool hasGeometryOverTile(const TileId& tileId) const;
@@ -131,10 +122,9 @@ namespace massif::vt {
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
         bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
-        // The envelope of EVERY side the text may be laid out on, in one call. The placement, the
-        // scale and the label's screen axes are the same for all of them - only the glyph box moves
-        // - so the culler, which tries the sides in order, pays for one placement instead of one
-        // per side. Falls back to the single current envelope for a label with no variants.
+        // The envelope of EVERY side the text may be laid out on, in one call: the placement, the scale
+        // and the screen axes are the same for all of them, so the culler pays for one placement rather
+        // than one per side. Falls back to the single envelope for a label with no variants.
         bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes) const;
         bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex, iconHaloStyleIndex); }
         bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1) const;
@@ -163,10 +153,9 @@ namespace massif::vt {
         static constexpr float MAX_LINE_RUN_ANGLE_SPREAD_KEEP = 1.57f; // the same, for a run that is already laid out (hysteresis)
         static constexpr int LINE_LAYOUT_FAILURE_GRACE = 4; // layouts a run that is already on screen may fail before it is dropped
         static constexpr float MIN_LINE_GLYPH_SPAN = 0.5f; // shortest span a glyph takes its direction from, in glyph units
-        // Tangram's hairpin test (CurvedLabel::updateScreenTransform): two segments within a short
-        // window whose directions sum to less than this chord point back at each other - an inner
-        // angle under ~120 degrees - and the glyphs pile up on each other there. Their window is 20
-        // screen pixels; in glyph units (1 unit = the font size) that is a little over one glyph.
+        // Tangram's hairpin test: two segments within a short window whose directions sum to less than
+        // this chord point back at each other - an inner angle under ~120 degrees - and the glyphs pile
+        // up. Their window of 20 screen pixels is a little over one glyph unit here.
         static constexpr float LINE_HAIRPIN_CHORD = 1.7f;
         static constexpr float LINE_DIRECTION_WINDOW = 1.5f; // glyph units
         static constexpr float LINE_REVERSE_HYSTERESIS = 0.02f; // fraction of the run length
@@ -276,12 +265,9 @@ namespace massif::vt {
             }
         };
         
-        // A point OF THE LABEL BOX from a normalized anchor - (-1,-1) the bottom left corner of the
-        // text (the plate's padding included), (0,0) the centre, (1,1) the top right - in drawn
-        // offset units, rotated with the glyphs. Both the leader line's end and the row the culler
-        // aligns the label on are one of these, so a rotated name can hang from its first letter.
-        // 'glyphScale' is glyph units per SCREEN PIXEL (1 / the label size): what the plates add
-        // around the text is a pixel amount, and the box it grows is in glyph units.
+        // A point OF THE LABEL BOX from a normalized anchor - (-1,-1) bottom left, (0,0) centre, (1,1)
+        // top right - in drawn offset units, rotated with the glyphs. 'glyphScale' is glyph units per
+        // SCREEN PIXEL, since the plates add a pixel amount around a box in glyph units.
         cglib::vec2<float> calculateBoxPoint(const cglib::vec2<float>& anchor, float scale, float glyphScale) const;
         // Whether the surface the label is anchored on is seen steeply enough for the label to be
         // worth drawing. Always true for a CALLOUT, which is a screen object (see the definition).
@@ -304,10 +290,9 @@ namespace massif::vt {
         float calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const;
         void setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const;
         void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
-        // Appends the plates behind the text and behind the icon - each one three quads, so the
-        // corners keep their radius at any text width, and each one drawn with its own style index
-        // (its own colour) before the glyphs. A border is one more plate behind the fill, grown by
-        // the border width.
+        // Appends the plates behind the text and behind the icon - three quads each, so the corners keep
+        // their radius at any text width, each with its own style index. A border is one more plate
+        // behind the fill, grown by the border width.
         void appendLabelPlates(float size, float scale, const std::shared_ptr<const Placement>& placement, const LabelPlateIndices& plates, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // One plate: the 3-sliced rounded rectangle around 'box', grown by 'grow' glyph units.
         void appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
@@ -317,10 +302,9 @@ namespace massif::vt {
         // rather than cached with the text: its length is the culler's offset, which changes with
         // everything else on screen.
         void buildCalloutLineVertexData(float calloutLift, float pixelScale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
-        // Why a line layout did not produce a drawable run. The two are held differently: a run
-        // that does not FIT is a transient of this camera and a run already on screen rides a few
-        // of them out, while an UNREADABLE one - glyphs turning so far they pile up on the inside
-        // of a corner - is a property of the line's shape at this scale and must never be drawn.
+        // Why a line layout did not produce a drawable run. A run that does not FIT is a transient of
+        // this camera and one already on screen rides a few out; an UNREADABLE one is a property of the
+        // line's shape at this scale and must never be drawn.
         enum class LineLayout { PLACED, NO_ROOM, UNREADABLE };
 
         void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const;
@@ -332,10 +316,9 @@ namespace massif::vt {
         // Which glyphs of the run a box covers: the icon prefix, the text after the first line
         // break, or both.
         enum class Part { ALL, ICON, TEXT };
-        // The one pen walk over the glyph run, shared by the box and the quads so the two can not
-        // drift apart: 'fn(glyph, pen, isText)' is called for every glyph that is drawn. The icon
-        // glyphs come before the first line break, the text after it starts at 'shift' (plus its
-        // line's justification), and !drawText stops at the break.
+        // The one pen walk over the glyph run, shared by the box and the quads so the two cannot drift
+        // apart: 'fn(glyph, pen, isText)' runs for every glyph drawn. Icon glyphs come before the first
+        // line break, text after it starts at 'shift', and !drawText stops at the break.
         template <typename Func>
         void walkGlyphs(const cglib::vec2<float>& shift, bool drawText, float lineAlign, Func fn) const {
             cglib::vec2<float> pen(0, 0);
@@ -439,13 +422,9 @@ namespace massif::vt {
 
         mutable bool _cachedValid = false;
         mutable float _cachedScale = 0;
-        // The view-projection the cached run was laid out for. The run follows the line as the
-        // camera PROJECTS it (see buildLineVertexData), so the whole matrix is the key - a
-        // camera that only moved leaves the axes and the scale alone while the perspective
-        // compression along the line changes, and the glyphs then walk a road the camera no
-        // longer sees that way. Tangram rebuilds its screen transform every frame for the same
-        // reason (LabelManager::updateLabelSet -> CurvedLabel::updateScreenTransform); this
-        // keeps the frame-to-frame reuse only for a camera that has not moved at all.
+        // The view-projection the cached run was laid out for: the run follows the line as the camera
+        // PROJECTS it, so the whole matrix is the key - a camera that only moved leaves the axes alone
+        // while the compression along the line changes. Reuse is kept only for a still camera.
         mutable cglib::mat4x4<double> _cachedMVPMatrix = cglib::mat4x4<double>::zero();
         // A flat run is keyed on the camera axes instead: it is laid out on the ground, so only a
         // rotation changes it - through which way the word has to read (see buildLineVertexData).

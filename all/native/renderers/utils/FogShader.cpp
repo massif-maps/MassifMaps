@@ -22,16 +22,13 @@ namespace massif {
             uniform highp mat3 uFogRay;       // view ray basis, see FogShader::rayBasis
         )GLSL";
 
-        // Mapbox's model. The distance ramp is theirs verbatim in shape (an exponential decay,
-        // cubed to soften the onset); the horizon term is the piece that matters - the GROUND takes
-        // it too, so a ridge at +5 degrees is fogged exactly as much as the sky just above it and
-        // the two meet without a seam. Below the horizon dir.z is negative and the term is 1, which
-        // is plain distance fog.
+        // Mapbox's model: their distance ramp verbatim in shape, plus the horizon term, which the
+        // GROUND takes too - so a ridge at +5 degrees is fogged as much as the sky above it and the
+        // two meet without a seam. Below the horizon the term is 1, i.e. plain distance fog.
         const std::string HELPERS = R"GLSL(
-            // The unnormalised world-space, z-up ray through this fragment. uFogRay is scaled so
-            // its projection on the view axis is 1, so length(rayVec) / gl_FragCoord.w is the TRUE
-            // distance from the camera - which the depth alone is not, being short by up to the
-            // half-diagonal of the frustum at the screen corners.
+            // The unnormalised world-space, z-up ray through this fragment. uFogRay is scaled so its
+            // projection on the view axis is 1, making length(rayVec) / gl_FragCoord.w the TRUE
+            // distance - which depth alone is not, short by the frustum half-diagonal at the corners.
             highp vec3 fogRayVec() {
                 return uFogRay * vec3(gl_FragCoord.x, gl_FragCoord.y, 1.0);
             }
@@ -104,10 +101,9 @@ namespace massif {
             }
         )GLSL";
 
-        // The uniforms and the helpers are always the SDK's: they are the model itself, and three
-        // renderers would otherwise each carry their own copy of the same two lines. What a custom
-        // source replaces is every BLEND - applyFog, skyFog and fogLabelFade - which is where the
-        // appearance actually lives. A custom source is free to ignore the helpers entirely.
+        // The uniforms and the helpers are always the SDK's - they are the model itself. What a
+        // custom source replaces is every BLEND (applyFog, skyFog, fogLabelFade), which is where the
+        // appearance lives; it is free to ignore the helpers entirely.
         std::string buildBlock(const std::string& customSource) {
             return UNIFORMS + HELPERS + (customSource.empty() ? BUILTIN : customSource) + WRAPPER;
         }

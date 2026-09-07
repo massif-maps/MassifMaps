@@ -82,10 +82,9 @@ namespace massif {
         }
         
         if (options.getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
-            // First person: the camera does not move at all, whatever the tilt does. The view is
-            // rotated about it instead (ViewState::calculateLookatMat), which is what a mouse look
-            // is - and what an orientation-driven camera needs, so that setTilt from a sensor
-            // behaves exactly like the drag.
+            // First person: the camera does not move at all, the view rotates about it
+            // (ViewState::calculateLookatMat). An orientation-driven camera needs this too, so
+            // setTilt from a sensor behaves exactly like the drag.
             viewState.setViewTilt(tilt);
             viewState.cameraChanged();
             if (_keepRotation) {
@@ -96,10 +95,9 @@ namespace massif {
             return;
         }
 
-        // Only the part of the tilt at or above the horizon moves the camera. A negative tilt is a
-        // look UP from wherever the camera already is - ViewState::calculateLookatMat pitches the
-        // view about the camera for it - and rotating the camera on under the ground instead is
-        // what flips the view over.
+        // Only the part of the tilt at or above the horizon moves the camera: a negative tilt is a
+        // look UP from where the camera already is, and rotating it on under the ground instead
+        // flips the view over.
         float groundTilt = std::max(tilt, 0.0f);
         cglib::mat4x4<double> tiltTransform = cglib::rotate4_matrix(axis, (groundTilt - viewState.getCameraTilt()) * Const::DEG_TO_RAD);
         cameraPos = focusPos + cglib::transform_vector(cameraPos - focusPos, tiltTransform);

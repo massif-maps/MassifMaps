@@ -309,10 +309,9 @@ namespace massif {
 
         cache::timed_lru_cache<long long, TileInfo> _visibleCache;
         cache::timed_lru_cache<long long, TileInfo> _preloadingCache;
-        // The span reference tiles (TileLayer::collectSpanReferenceTiles), apart from the LRU
-        // caches: coarse city tiles a few MB each, they evicted one another from the preloading
-        // cache, and every refetch re-culled - an endless loop with the deck flipping between
-        // two chords. Pruned to the tiles currently named, never aged out.
+        // The span reference tiles, apart from the LRU caches: coarse city tiles of a few MB each,
+        // they evicted one another from the preloading cache and every refetch re-culled. Pruned to
+        // the tiles currently named, never aged out.
         std::map<long long, TileInfo> _spanReferenceCache;
     };
     

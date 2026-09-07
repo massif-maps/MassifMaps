@@ -84,10 +84,9 @@ namespace massif {
             // Use specified target instead of focus position, if specified
             targetPos = projectionSurface->calculatePosition(_targetPos);
         } else if (options.getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
-            // First person: the view turns about the CAMERA. Turning about the focus point on the
-            // ground would swing the camera around a circle of the focus distance, which is not
-            // what turning your head does - and an orientation-driven camera calls setMapRotation,
-            // so it has to behave exactly like the drag.
+            // First person: the view turns about the CAMERA. About the focus it would swing around
+            // a circle of the focus distance, which is not what turning your head does - and an
+            // orientation-driven camera calls setMapRotation, so it must match the drag.
             targetPos = cameraPos;
         }
         

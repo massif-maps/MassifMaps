@@ -127,10 +127,9 @@ namespace massif {
         }
 
         vt::LabelCuller culler(Const::WORLD_SIZE);
-        // Internal units per metre at the view's own latitude, so that a label style's
-        // max-distance (metres) can be compared against world-space distances. Mercator stretches
-        // by 1/cos(latitude), and at 45 degrees that is a factor of 1.4 - too much to ignore in a
-        // number the style author writes in metres.
+        // Internal units per metre at the view's own latitude, so a label style's max-distance in
+        // metres compares against world-space distances. Mercator stretches by 1/cos(latitude),
+        // which at 45 degrees is a factor of 1.4.
         {
             double latitude = viewState.getFocusPos()(1) * Const::PI * 2.0 / Const::WORLD_SIZE;
             double coshLatitude = std::cosh(latitude);

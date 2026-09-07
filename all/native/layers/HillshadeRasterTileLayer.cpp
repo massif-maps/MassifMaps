@@ -302,23 +302,17 @@ namespace massif
         if (!_terrainPaintEnabled.load() || isTerrainPaintDisabledByProperty()) {
             return false;
         }
-        // Contours no longer disqualify the paint: it grew a contour kind of its own, the same
-        // screen-width block the normal-map path uses, computed from the shared DEM in
-        // terrainPaintFsh. Asking for contours used to drop the layer back to its own DEM tile set
-        // - fetch, decode, normal map, upload and ~5x the render tiles - to draw what the terrain
-        // already had on the GPU.
+        // Contours no longer disqualify the paint: it grew a contour kind of its own, computed from
+        // the shared DEM in terrainPaintFsh. Asking for them used to drop the layer back to its own
+        // DEM tile set to draw what the terrain already had on the GPU.
         auto options = getOptions();
         if (!options) {
             return false;
         }
         std::shared_ptr<TerrainOptions> terrainOptions = options->getTerrainOptions();
         // 3D terrain is the whole requirement: the paint shades the elevation texture the terrain
-        // has already bound. WITH draped fills it takes its place in the shared bake; WITHOUT them
-        // it draws itself as the terrain surface, on the shared ground cover, at its own place in
-        // the layer order (GLTileRenderer::renderTerrainPaintSurfaces). Requiring the drape here is
-        // what made turning the drape off cost 10 fps: the layer fell back to its own DEM tile set
-        // - fetch, decode, normal map, upload, and ~5x the render tiles - to draw what the terrain
-        // already had on the GPU.
+        // has already bound. With draped fills it joins the shared bake; without them it draws itself
+        // as the terrain surface. Requiring the drape here made turning it off cost 10 fps.
         if (!terrainOptions || !terrainOptions->isActive()) {
             return false;
         }
@@ -432,11 +426,9 @@ namespace massif
     }
 
     bool HillshadeRasterTileLayer::prepareTerrainDrapeFrame(float deltaSeconds, const ViewState& viewState) {
-        // The shared drape bakes BEFORE any layer draws, so the paint's parameters have to be on
-        // the renderer by now - otherwise the first bake of every tile uses the previous frame's
-        // values and, being cached, keeps them. The map rotation is one of those parameters when
-        // the illumination follows the map: 2 degree steps, so a rotation gesture re-bakes a
-        // bounded number of times instead of once per frame.
+        // The shared drape bakes BEFORE any layer draws, so the paint's parameters must be on the
+        // renderer by now or every tile's first bake keeps the previous frame's values. The map
+        // rotation is one of them, in 2 degree steps so a gesture re-bakes a bounded number of times.
         _paintRotationStep.store(static_cast<int>(std::floor(viewState.getRotation() / 2.0f)));
         applyRendererSettings();
         return CustomRasterTileLayer::prepareTerrainDrapeFrame(deltaSeconds, viewState);
@@ -490,11 +482,9 @@ namespace massif
                 float exaggeration = zoom < 2 ? 0.2f : zoom < 5 ? 0.3f : 0.35f;
                 scale = heightScale * 160 * getHeightScale() * static_cast<float>(bitmap->getHeight() * std::pow(2.0, zoom * (1 - exaggeration)) / 40075016.6855785);
             } else if (_exagerateHeightScaleEnabled && zoom < 15.0) {
-                // MapLibre hillshade_prepare.fragment.glsl, verbatim: relief is the true slope from
-                // zoom 15 up (15 being the max zoom of Mapbox terrain-RGB, where this constant comes
-                // from) and boosted below it, because otherwise it is barely noticeable at low zoom.
-                // Unlike the legacy formula it does not flatten as the camera zooms in, which is what
-                // keeps the detail on a high-resolution (z15+) DEM.
+                // MapLibre hillshade_prepare.fragment.glsl verbatim: the true slope from zoom 15 up
+                // (Mapbox terrain-RGB's max zoom), boosted below it. Unlike the legacy formula it does
+                // not flatten as the camera zooms in, which keeps the detail on a z15+ DEM.
                 float exaggerationFactor = zoom < 2.0 ? 0.4f : zoom < 4.5 ? 0.35f : 0.3f;
                 scale *= static_cast<float>(std::pow(2.0, (15.0 - zoom) * exaggerationFactor));
             }

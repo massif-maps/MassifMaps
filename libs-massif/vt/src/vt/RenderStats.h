@@ -109,10 +109,9 @@ namespace massif::vt {
         // Label::calculateVertexData, split by what it spends the time on.
         static inline std::atomic<long long> labelPlacementNs{0};
         static inline std::atomic<long long> labelLineBuildNs{0};
-        // Line-label runs laid out from scratch. The layout is keyed on the view-projection
-        // (Label::updateLineVertexData), so this is one per visible line label per frame while
-        // the camera moves, plus one per culler pass - the price of a run that follows the line
-        // as the CURRENT camera projects it.
+        // Line-label runs laid out from scratch. The layout is keyed on the view-projection, so this is
+        // one per visible line label per frame while the camera moves, plus one per culler pass - the
+        // price of a run that follows the line as the CURRENT camera projects it.
         static inline std::atomic<long long> lineLayoutBuilds{0};
         static inline std::atomic<long long> labelTransformNs{0}; // world transform of the glyph quads (what a GPU billboard would remove)
         static inline std::atomic<long long> labelAttribNs{0};    // normals / uvs / attribs / indices plumbing into the batch arrays
@@ -151,10 +150,9 @@ namespace massif::vt {
         static inline std::atomic<long long> drapeBakeNs{0};
         static inline std::atomic<long long> geometrySkips{0};   // renderTileGeometry calls that set up and then bailed out (invisible)
 
-        // Elevation texture pipeline (the SDK's ElevationTextureCache, which feeds the terrain
-        // texture provider). Extra DEM detail multiplies the tiles by four a level, and these say
-        // which end of the pipeline pays for it: the encode worker, the per-frame upload budget,
-        // or simply having more distinct textures to bind.
+        // Elevation texture pipeline (the SDK's ElevationTextureCache). Extra DEM detail multiplies the
+        // tiles by four a level, and these say which end pays for it: the encode worker, the per-frame
+        // upload budget, or simply more distinct textures to bind.
         static inline std::atomic<long long> demEncodes{0};      // full padded-texture encodes on the worker
         static inline std::atomic<long long> demBorderPatches{0}; // border-ring-only encodes
         static inline std::atomic<long long> demEncodeNs{0};     // worker time in both
@@ -192,10 +190,9 @@ namespace massif::vt {
         // Culling
         static inline std::atomic<long long> cullerPasses{0};
         static inline std::atomic<long long> cullerVisibilityFlips{0}; // labels that appeared or disappeared
-        // Wall time inside LabelCuller::process, summed over the layers of a pass. A label whose
-        // style allows several sides is placed by retrying them (placeAnchoredLabel), so this is
-        // where that costs anything - it runs on the placement worker, never on the GL thread, and
-        // no frame section shows it.
+        // Wall time inside LabelCuller::process, summed over the layers of a pass - where retrying a
+        // label's several sides costs anything. It runs on the placement worker, never on the GL thread,
+        // so no frame section shows it.
         static inline std::atomic<long long> cullerNs{0};
     };
 }

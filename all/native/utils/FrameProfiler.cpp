@@ -30,11 +30,9 @@ namespace massif {
             bool pending;
         };
 
-        // A section longer than this did not happen. The Adreno driver answers a query it could
-        // not time with 0xFFFFFFFF (and the 64-bit path with an untouched 0x5555... buffer) while
-        // still reporting it available - a tiler resolves the frame at its own flush points, not
-        // at ours. Such a section is dropped ON ITS OWN, per frame: dropping the whole frame
-        // instead threw away every frame in which one section happened to land on a flush.
+        // A section longer than this did not happen: the Adreno driver answers a query it could not
+        // time with 0xFFFFFFFF while still reporting it available. Dropped ON ITS OWN - dropping the
+        // whole frame threw away every frame in which one section landed on a flush.
         const double MAX_PLAUSIBLE_MS = 500.0;
 
         PFNGLGENQUERIESEXTPROC GenQueriesEXT = NULL;

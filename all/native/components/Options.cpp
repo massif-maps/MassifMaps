@@ -28,9 +28,8 @@ namespace massif {
         _doubleClickMaxDuration(DEFAULT_DOUBLE_CLICK_MAX_DURATION),
         _tileDrawSize(256),
         // 0.5, not tangram's 1.0: half a nominal tile of screen area before the next zoom level is
-        // used. This is the value every bench and every example screenshot in this repo was made
-        // with - see scripts/android-dev/.../demo/DemoConfig.java, which is where the tuning was
-        // done, and docs/internals/rendering/02-tiles-lod.md.
+        // used. Every bench and example screenshot in this repo was made with it.
+        // docs/internals/rendering/02-tiles-lod.md.
         _tileLODFactor(0.5f),
         _tileLODForeshorteningLimit(0.0f),
         _dpi(160.0f),

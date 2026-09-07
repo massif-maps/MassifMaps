@@ -57,10 +57,9 @@ namespace massif {
         _textOcclusionOpacity(1.0f),
         _viewDistanceFactor(1.0f),
         _viewDistance(0.0f),
-        // 3, not the demo's 8: 8 only pays for itself next to the demo's fixed 170 km view, where
-        // what it coarsens is the far horizon. On the default view distance it coarsens tiles that
-        // are still large on screen, and the result is a blurred band with a hard tile edge down
-        // the middle of the view.
+        // 3, not the demo's 8: 8 only pays for itself next to the demo's fixed 170 km view. On the
+        // default view distance it coarsens tiles that are still large on screen, leaving a blurred
+        // band with a hard tile edge down the middle.
         _drapeCacheSize(0),
         _drapeWorkingSet(0),
         _maxTileZoomCoarsening(3),
@@ -109,10 +108,9 @@ namespace massif {
     void TerrainOptions::setFlattened(bool flattened) {
         bool wasManual = _flattenManual.exchange(false); // asking for a state hands the ratio back
         if (_flattened.exchange(flattened) != flattened || wasManual) {
-            // Before the renderer's switch has ever run, this IS the state: an app that starts in 2D
-            // sets it before its layers exist and must not decode a single tile for 3D first, nor
-            // animate down from a 3D it never showed. From the first frame on the switch owns both,
-            // and moves the decode only while the map is flat.
+            // Before the renderer's switch has ever run, this IS the state: an app starting in 2D
+            // sets it before its layers exist and must not decode a tile for 3D first. From the first
+            // frame on the switch owns both, and moves the decode only while the map is flat.
             if (!_flattenSwitchStarted.load()) {
                 writeFlattenRatio(flattened ? 1.0f : 0.0f);
                 if (_flattenMode.load() == TerrainFlattenMode::TERRAIN_FLATTEN_MODE_FULL) {

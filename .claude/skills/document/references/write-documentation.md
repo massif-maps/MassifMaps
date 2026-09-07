@@ -24,6 +24,14 @@ The default is **no comment**. Write one only when the code cannot carry the inf
 
 Never write: what the next line does, a restated function name, a changelog entry, a TODO with no owner, or a comment that will drift out of date the moment the code moves.
 
+**Hard limit: 3 lines. One is the norm.** Reaching for a fourth line means the content is not a
+comment — it is a `docs/internals/` paragraph, and the code keeps only the one-line pointer to the
+constraint. This holds for `//`, `/* */` and doc comments, and for comments you merely edit around:
+a long one you pass through gets shortened, never preserved.
+
+What always goes to `docs/`, never in the code: how the number was measured (camera, device, build),
+what was tried and failed, a comparison with mapbox/maplibre/tangram, a mechanism walkthrough.
+
 Match the surrounding density: `all/native/` and `libs-massif/vt/` are sparsely commented. A block of prose in a hot render path is noise; one sharp sentence above the constant is the norm.
 
 ## Public API — SWIG `.i` doc comments

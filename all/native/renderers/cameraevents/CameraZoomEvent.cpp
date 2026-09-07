@@ -92,18 +92,16 @@ namespace massif {
         cglib::vec3<double> targetPos = focusPos;
         if (_useTarget) {
             // The pivot moves the map ALONG the surface only, like tangram's View::translate: the
-            // full 3D offset drags the focus down by the terrain height under the finger on every
-            // zoom out, and dist(camera, focus) is what the zoom is calibrated on.
-            // See docs/internals/rendering/04-terrain.md, "The zoom pivot sank the focus".
+            // full 3D offset drags the focus down by the terrain height under the finger, and
+            // dist(camera, focus) is what the zoom is calibrated on. 04-terrain.md.
             MapPos targetMapPos = _targetPos;
             targetMapPos.setZ(projectionSurface->calculateMapPos(focusPos).getZ());
             targetPos = projectionSurface->calculatePosition(targetMapPos);
         }
     
         // Bound the REQUESTED zoom here, the one point every zoom path funnels through - correcting
-        // the camera afterwards makes the two fight. The bound only STOPS a zoom in: driving a zoom
-        // out from here scales about the PIVOT and throws the map sideways. Getting back onto the
-        // shell is MapRenderer's per-frame correction, which zooms about the focus.
+        // the camera afterwards makes the two fight. It only STOPS a zoom in: driving a zoom out
+        // from here scales about the PIVOT and throws the map sideways.
         MapRange zoomRange = options.getZoomRange();
         float maxZoom = std::min(zoomRange.getMax(), std::max(viewState.getTerrainMaxZoom(), viewState.getZoom()));
         float zoom = GeneralUtils::Clamp(viewState.getZoom() + _zoomDelta, viewState.getMinZoom(), maxZoom);

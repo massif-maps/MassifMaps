@@ -121,11 +121,9 @@ namespace massif {
             return std::get_if<std::shared_ptr<const mvt::ValueObject>>(&value) || std::get_if<std::shared_ptr<const mvt::ValueArray>>(&value);
         }
 
-        // Compiled maps, shared between decoders. Parsing and compiling a style is 0.5-0.7 s for a
-        // 23-layer project, and an app that switches between two styles of one asset package - day
-        // and night - or builds several layers from the same style, pays it every time otherwise.
-        // A compiled map is read-only, and the values a decoder sets live in its own parameter
-        // store, so sharing one is safe.
+        // Compiled maps, shared between decoders: compiling a style is 0.5-0.7 s for a 23-layer
+        // project, paid again by every layer built from it. A compiled map is read-only and a
+        // decoder's own values live in its parameter store, so sharing one is safe.
         struct MapCacheKey {
             const AssetPackage* assetPackage = nullptr;
             std::string styleAssetName;
@@ -948,11 +946,9 @@ namespace massif {
 
                 for (const std::string& assetName : assetPackage->getAssetNames()) {
                     if (assetName.size() > fontPrefix.size() && assetName.substr(0, fontPrefix.size()) == fontPrefix) {
-                        // Deferred: reading a font's name means decompressing it, and a style
-                        // packs far more fonts than it uses - the bundled one carries 15 and asks
-                        // for 4. The hint is the file name, which is what a font is normally
-                        // called; a style whose files say otherwise still resolves, by the sweep
-                        // in FontManager, and only pays for it then.
+                        // Deferred: reading a font's name means decompressing it, and a style packs
+                        // far more fonts than it uses. The hint is the file name; a style whose files
+                        // say otherwise still resolves through FontManager's sweep, and pays then.
                         std::string hintName = FileUtils::GetFileName(assetName);
                         std::size_t extPos = hintName.rfind('.');
                         if (extPos != std::string::npos) {

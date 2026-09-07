@@ -484,11 +484,9 @@ namespace massif { namespace api {
     }
 
     bool Context::emit(Handle handle, const std::string& event, Handle payload) {
-        // Two phases. The handler list cannot be walked unlocked, and the handlers cannot run
-        // under the lock - they are app code, and one that calls back would deadlock. So the
-        // matching subscriptions are collected under the lock, then each is resolved again just
-        // before it is called: a handler removed earlier in this same pass is skipped, and a
-        // recycled slot fails the generation check rather than being called by mistake.
+        // Two phases: the handler list cannot be walked unlocked, and the handlers - app code - must
+        // not run under the lock. Each subscription is resolved again just before it is called, so a
+        // handler removed earlier in this pass is skipped and a recycled slot fails its generation.
         std::vector<Subscription> subscriptions;
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -673,10 +671,9 @@ namespace massif { namespace api {
             Log::Errorf("Context::call: %s.%s rejected its arguments: %s",
                         cppClass ? cppClass : "?", name.c_str(), argsJson.c_str());
         }
-        // A result is expressed in whatever the object that produced it is: a search's features are
-        // in its data source's projection. Carrying it over is what makes the result's positions
-        // convertible without the caller knowing where they came from. Only for a method addressed
-        // directly - an intermediate reached by a path has no handle to read a projection from.
+        // A result is expressed in whatever produced it - a search's features are in its data
+        // source's projection - and carrying that over is what makes the positions convertible.
+        // Only for a directly addressed method: an intermediate reached by a path has no handle.
         if (called == RESULT_OK && result.type == PT_OBJECT && path.empty()) {
             Handle produced = static_cast<Handle>(result.intValue);
             if (!getObjectProjection(produced)) {
@@ -1076,13 +1073,9 @@ namespace massif { namespace api {
         if (!indexKey.empty()) {
             return readBagEntry(*entry, target, indexKey, value);
         }
-        // UNLOCKED, as the setter is: a getter takes the object's own lock - the camera's is the
-        // renderer's - and the render thread takes that lock first and only then reaches this
-        // context, through a map-moved listener that reads the camera back. Holding this mutex
-        // across the getter deadlocked the map at startup whenever the two crossed.
-        //
-        // Guarded like every other call into the SDK: an accessor is free to validate, and an
-        // exception crossing a binding boundary kills the process.
+        // UNLOCKED, as the setter is: a getter takes the object's own lock, and the render thread
+        // takes that one first before reaching this context through a map-moved listener. Guarded,
+        // because an exception crossing a binding boundary kills the process.
         try {
             entry->getter(target.obj.get(), value);
         } catch (const std::exception& ex) {
@@ -1136,10 +1129,9 @@ namespace massif { namespace api {
             if (!entry->setter && !(entry->indexed && entry->indexed->setter)) {
                 return RESULT_UNSUPPORTED_TYPE;
             }
-            // An enum written as its constant name. JSON has no enums, so a spec, a URL query and
-            // a scripting binding all send text - and asLong ran it through strtoll, which yields
-            // 0: a real value for nearly every enum here, applied without a word. A name nothing
-            // goes by is left alone, so a numeric string still parses.
+            // An enum written as its constant name: JSON has no enums, so specs, URL queries and
+            // bindings all send text, and asLong would strtoll it to 0 - a real value for nearly
+            // every enum here. An unrecognised name is left alone, so a numeric string still parses.
             if (entry->type == PT_ENUM && value.type == PT_STRING) {
                 long long constant = 0;
                 if (enumValueOf(value.stringValue.c_str(), constant)) {
@@ -1194,19 +1186,9 @@ namespace massif { namespace api {
             }
             return first;
         }
-        // UNLOCKED, for the same reason call() is: the setter notifies its listeners
-        // SYNCHRONOUSLY, and that notification reaches back into this context. Options::
-        // setTerrainOptions -> notifyOptionChanged -> MapRenderer::viewChanged ->
-        // MapEventBridge::onMapMoved -> Context::emit, on this thread, on a mutex that is not
-        // recursive. Holding it across the call deadlocked every binding that had subscribed to
-        // a map event and then wrote an option.
-        //
-        // Safe to keep using: target holds a shared_ptr, and entry points into the static table.
-        //
-        // The generated thunk calls the class' own setter, so the option-changed notification and
-        // therefore the redraw granularity are exactly those of a direct call - INCLUDING its
-        // validation. Options::setZoomRange and friends throw on a value they will not take, and
-        // an exception crossing into Java or Objective-C kills the process.
+        // UNLOCKED, for the same reason call() is: the setter notifies SYNCHRONOUSLY and the
+        // notification reaches back into this context on a non-recursive mutex. Safe to keep using
+        // target and entry; guarded, because the thunk validates and can throw across a binding.
         try {
             entry->setter(target.obj.get(), *effective);
         } catch (const std::exception& ex) {
@@ -1304,11 +1286,9 @@ namespace massif { namespace api {
                 assigned.cppClass = slot->cppClass;
             }
         }
-        // UNLOCKED - see setProperty. This is the call the deadlock was actually found on:
-        // setTerrainOptions notifies, the notification reaches MapEventBridge::onMapMoved, and
-        // emit() re-locks the same mutex on the same thread.
-        //
-        // Options::setBaseProjection throws on null, and it is not the only setter that validates.
+        // UNLOCKED - see setProperty. This is the call the deadlock was found on: setTerrainOptions
+        // notifies, the notification reaches onMapMoved, and emit() re-locks the same mutex on the
+        // same thread. Guarded, because setBaseProjection and others validate and throw.
         try {
             entry->objectSetter(target.obj.get(), assigned);
         } catch (const std::exception& ex) {

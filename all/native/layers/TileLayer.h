@@ -427,15 +427,13 @@ class ProjectionSurface;
          * layer order, and then draws the terrain surface once. Internal methods.
          */
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);
-        // What this layer contributes to the drape stack's identity. The layer's own address by
-        // default - a new layer object means new content - plus, for layers whose bake does not
-        // come from their tiles (a terrain paint), whatever their appearance depends on: they
-        // have no per-tile fingerprint through which a change could be noticed.
+        // What this layer contributes to the drape stack's identity: its own address by default,
+        // plus - for a layer whose bake does not come from its tiles - whatever its appearance
+        // depends on, since it has no per-tile fingerprint to be noticed through.
         virtual std::size_t drapeStackSignature() const;
         // Whether this layer's drape contribution is not made of tiles: a terrain paint bakes into
-        // EVERY tile of the shared drape and reports none of them. The owner needs both facts - a
-        // stack of nothing but such layers has to be given the terrain's own cover, and every tile
-        // of that cover must expect this layer's content or a tile baked without it looks finished.
+        // EVERY tile of the shared drape and reports none. A stack of only such layers needs the
+        // terrain's own cover, and every tile of it must expect this layer's content.
         virtual bool paintsEveryDrapeTile() const { return false; }
         // The terrain cover a paint layer draws itself on when nothing bakes it. Ignored by
         // layers that are not paints.
@@ -449,8 +447,7 @@ class ProjectionSurface;
         void setTerrainGroundTiles(const std::vector<vt::TileId>& tileIds, const std::vector<int>& proxyDepths);
         // Where this layer's style layers start in the stack's depth ordering. Tangram has ONE
         // ordered style list; our stack is several renderers, so the owner numbers them in draw
-        // order - without it a composite's children all claim ordinal 0 and the base map's fills
-        // are pulled in front of the hillshade above them.
+        // order - or a composite's children all claim ordinal 0.
         void setTerrainLayerOrdinalBase(int base);
         int getStyleLayerCount() const;
         int renderTerrainGround(const Color& color);

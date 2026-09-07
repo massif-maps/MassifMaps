@@ -102,11 +102,9 @@ namespace massif {
     }
 
     float ViewState::getTerrainMaxZoom() const {
-        // Zooming scales the camera-to-FOCUS vector (clampZoom below rebuilds the camera position
-        // exactly that way), so what shrinks as 1/2^zoom is the camera's height above the focus,
-        // not its height above z=0; the focus sits on the ground, hundreds or thousands of metres
-        // up. CameraClearance::maxZoom solves on that vector, and answers infinity for a camera
-        // that no zoom can raise (at or below the focus height).
+        // Zooming scales the camera-to-FOCUS vector, so what shrinks as 1/2^zoom is the camera's
+        // height above the focus, not above z=0. CameraClearance::maxZoom solves on that vector and
+        // answers infinity for a camera no zoom can raise.
         if (!_terrainCameraBound || !(_zoom0Distance > 0)) {
             return std::numeric_limits<float>::infinity();
         }
@@ -415,10 +413,9 @@ namespace massif {
 
         mapPos.setX(GeneralUtils::Clamp(mapPos.getX(), mapBounds.getMin().getX(), mapBounds.getMax().getX()));
         mapPos.setY(GeneralUtils::Clamp(mapPos.getY(), mapBounds.getMin().getY(), mapBounds.getMax().getY()));
-        // The pan bounds are a GROUND rectangle: they clamp x and y. The focus keeps its height,
-        // so an application can lift the viewpoint off the map plane (setFocusPos with a z) - a
-        // panorama seen from higher up than the ground under it. Zeroing it here pulled the focus,
-        // and with it the camera, back down on every frame.
+        // The pan bounds are a GROUND rectangle: they clamp x and y only. The focus keeps its
+        // height, so an app can lift the viewpoint off the map plane - zeroing it here pulled the
+        // focus, and with it the camera, back down on every frame.
         mapPos.setZ(oldMapPos.getZ());
 
         if (seamlessPanning && renderProjectionMode == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
@@ -750,11 +747,9 @@ namespace massif {
         far  = near;
         skyVisible = false;
         bool groundVisible = false;
-        // ... and where the sky starts on screen. The bisection below already walks each column
-        // from the ground up to the first ray that reaches no ground at all, which IS the horizon;
-        // the lowest such sample over the columns is where the sky can first appear. The sky quad
-        // is clipped to it instead of covering the screen (SkyRenderer), the way tangram's sky
-        // mesh is (core/src/util/skyManager.cpp).
+        // ... and where the sky starts on screen: the bisection below walks each column up to the
+        // first ray that reaches no ground, which IS the horizon. The sky quad is clipped to the
+        // lowest such sample instead of covering the screen, the way tangram's sky mesh is.
         skyHorizonNDC = 1.0f;
         for (double xx : { -1, 0, 1 }) {
             for (double yy : { -1, 0, 1 }) {
@@ -803,14 +798,9 @@ namespace massif {
         // the nearest visible ground it reaches centimetres against a slope, and that far/near ratio
         // is the mechanism behind every see-through. docs/internals/rendering/04-terrain.md.
         double viewDistance = calculateViewDistance(options);
-        // Tangram's near is a fiftieth of the camera's distance to what it looks at, and their
-        // camera is held a distance away from the TERRAIN (view.cpp: the depth at the screen
-        // centre against minCameraDist). Ours is held a clearance above the terrain UNDER it, so at
-        // a low tilt the focus is kilometres away while the ground is a couple of hundred metres
-        // below - a fiftieth of the focus distance then parks the near plane in front of the ground
-        // at the bottom of the screen and cuts it away. Take the smaller of the two distances: over
-        // flat ground with the focus close they are the same, and it is only the close-to-terrain
-        // case that spends depth precision.
+        // Tangram's near is a fiftieth of the distance to what the camera looks at, but their camera
+        // is held off the TERRAIN while ours is held above the ground UNDER it - at a low tilt that
+        // parks the near plane in front of the bottom of the screen. Take the smaller of the two.
         double cameraDistance = calculateCameraDistance();
         if (_terrainCameraZ != 0 && _cameraPos(2) > _terrainCameraZ) {
             cameraDistance = std::min(cameraDistance, _cameraPos(2) - _terrainCameraZ);
@@ -827,11 +817,9 @@ namespace massif {
                 absoluteViewDistance = absolute > 0 && absolute >= viewDistance;
             }
             if (absoluteViewDistance || viewDistanceFactor > 1.0f) {
-                // The app has asked for MORE ground than tangram's rule gives. The far plane has
-                // to follow, or the extra tiles the walk fetches are drawn and then clipped - which
-                // is what "raising the view distance does nothing" was. It costs depth precision:
-                // the whole depth model is calibrated on the far/near ratio (see below), so this is
-                // an explicit trade, not the default.
+                // The app asked for MORE ground than tangram's rule gives, so the far plane has to
+                // follow or the extra tiles are fetched, drawn and clipped. It costs depth precision,
+                // which the whole depth model is calibrated on - an explicit trade, not the default.
                 far = std::max(far, static_cast<float>(viewDistance));
             } else {
                 far = std::min(far, std::max(static_cast<float>(viewDistance), terrainNear * 2.0f));
@@ -841,20 +829,15 @@ namespace massif {
             near = std::max(near, std::min(terrainNear, far * 0.5f));
         }
         if (_cameraTilt != _tilt) {
-            // The view is pitched away from the camera geometry - looking above the horizon, or a
-            // first person camera. The loop above takes the near plane from where the sampled rays
-            // MEET THE GROUND, and as the view pitches up those hits walk off into the distance:
-            // the near plane follows them out and starts clipping everything close to the camera,
-            // worse the higher the view goes. What is close to the camera does not move when the
-            // view turns, so cap the near plane with the rule that does not depend on the view
-            // direction at all - tangram's `near = m_pos.z / 50`.
+            // Looking above the horizon, the loop's ground hits walk off into the distance and the
+            // near plane follows them out, clipping everything close to the camera. What is close
+            // does not move when the view turns, so cap with tangram's `near = m_pos.z / 50`.
             near = std::min(near, terrainNear);
         }
         if (!groundVisible) {
-            // Nothing but sky: no ray met the ground, so the loop above left far == near and the
-            // depth range would collapse onto the near plane, taking everything drawn INTO the sky
-            // (celestial objects park just inside the far plane) with it. Give it the distance the
-            // ground would have been drawn to.
+            // Nothing but sky: no ray met the ground, so the loop left far == near and the depth
+            // range would collapse onto the near plane, taking the celestial objects parked just
+            // inside far with it. Give it the distance the ground would have been drawn to.
             near = std::max(near, terrainNear);
             far = std::max(static_cast<float>(viewDistance > 0 ? viewDistance : maxDist), near * 2.0f);
         }
@@ -869,9 +852,8 @@ namespace massif {
 
     double ViewState::calculateViewDistance(const Options& options) const {
         // Tangram's rule verbatim (view.cpp): 2*m_pos.z / cos(pitch + fovy/2), capped at 127 tile
-        // widths (MAX_LOD 6). The cosine alone goes to infinity near the horizon, so the tile-count
-        // cap is what bounds a near-horizontal view. The factor scales it: 1 is their rule, 0 falls
-        // back to the ground-derived view distance.
+        // widths. The cosine goes to infinity near the horizon, so the cap is what bounds a
+        // near-horizontal view. The factor scales it: 1 is their rule, 0 the ground-derived one.
         float factor = 1.0f;
         double absoluteDistance = 0;
         if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
@@ -881,13 +863,9 @@ namespace massif {
         if (!(factor > 0.0f)) {
             return absoluteDistance;
         }
-        // Tangram's m_pos.z is the camera's height above the ground PLANE, which for their camera
-        // is also the zoom-derived distance to the focus. With 3D terrain and a free camera the two
-        // part company: a viewpoint standing on a 2600 m summit is high above the ground while its
-        // zoom says it is close to it, and the zoom-derived quantity alone then draws the ground
-        // out to a few kilometres - the closer to the terrain, the less of the panorama. Take the
-        // larger of the two, so the rule follows whichever reason there is to see far. (The NEAR
-        // plane keeps the zoom-derived distance on purpose - see calculateCameraDistance.)
+        // Tangram's m_pos.z is both the height above the ground plane and the zoom-derived distance
+        // to the focus; with 3D terrain the two part company, and on a 2600 m summit the zoom-derived
+        // one alone draws a few kilometres of panorama. Take the larger of the two.
         double cameraDistance = std::max(calculateCameraDistance(), _cameraPos(2));
 
         // Tilt is measured from the horizontal here and pitch from the vertical there, so the
@@ -994,12 +972,9 @@ namespace massif {
         if (viewPitch == 0) {
             return cglib::lookat4_matrix(_cameraPos, _focusPos, _upVec);
         }
-        // Above the horizon the camera stays exactly where the tilt geometry left it and only the
-        // view direction pitches up. Carrying on rotating the camera about the focus - which is
-        // what tilting does between 90 and 0 degrees - puts the camera under the ground, and the
-        // view comes back upside down because the up vector is derived from a focus point on the
-        // ground. Rotating the view about the CAMERA has neither problem, and it keeps
-        // dist(camera, focus), so zoom, culling and the near/far budget are untouched.
+        // Above the horizon the camera stays where the tilt geometry left it and only the view
+        // direction pitches up: rotating about the focus instead would put the camera under the
+        // ground. About the CAMERA it keeps dist(camera, focus), so zoom and culling are untouched.
         cglib::vec3<double> viewVec = _focusPos - _cameraPos;
         cglib::vec3<double> axis = cglib::vector_product(viewVec, _upVec);
         if (cglib::length(axis) == 0) {

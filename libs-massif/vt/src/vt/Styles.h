@@ -34,20 +34,16 @@ namespace massif::vt {
         DARKEN, LIGHTEN
     };
     
-    // CALLOUT is a point label lifted away from its anchor in SCREEN space and joined back to it
-    // by a leader line: the culler moves it until it is free instead of hiding it, so a dense set
-    // of point features (summits in a panorama) is read as a stack of named lines rather than as
-    // whichever few labels happened to win.
-    // LINE_BILLBOARD_REPEAT never reaches a label style: the symbolizers repeat it along the line
-    // like the other line placements and then hand vt a BILLBOARD_3D, which is the whole point of it.
+    // CALLOUT is a point label lifted away from its anchor in SCREEN space and joined back by a leader
+    // line: the culler moves it until it is free instead of hiding it, so a dense set of summits reads
+    // as a stack of named lines. LINE_BILLBOARD_REPEAT never reaches a label style.
     enum class LabelOrientation {
         BILLBOARD_2D, BILLBOARD_3D, LINE_BILLBOARD_3D, LINE_BILLBOARD_REPEAT, POINT, LINE, CALLOUT
     };
 
-    // Which side of its anchor a label's text is laid out on. A style may name SEVERAL of them, in
-    // preference order, and the culler then takes the first one that is free (see
-    // LabelCuller::placeAnchoredLabel) - the icon of a shield stays put and only its text moves.
-    // Same set and same order as tangram's LabelProperty::Anchor.
+    // Which side of its anchor a label's text is laid out on. A style may name SEVERAL, in preference
+    // order, and the culler takes the first free one - the icon stays put and only the text moves.
+    // Same set and order as tangram's LabelProperty::Anchor.
     enum class LabelAnchor {
         CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
     };
@@ -68,10 +64,9 @@ namespace massif::vt {
         }
     }
 
-    // How the LINES of a wrapped label are justified inside its text block. AUTO follows the side
-    // the culler put the text on (see LabelAnchor): flush against the icon on either side, which is
-    // what makes a two-line name sit the same distance from the icon as a one-line one. CENTER is
-    // what every label did before the property existed.
+    // How the LINES of a wrapped label are justified inside its text block. AUTO follows the side the
+    // culler put the text on, flush against the icon either way, so a two-line name sits the same
+    // distance from it as a one-line one. CENTER is what every label did before.
     enum class LabelLineAlign {
         CENTER, LEFT, RIGHT, AUTO
     };
@@ -175,22 +170,18 @@ namespace massif::vt {
         float miterDotLimit;
         std::shared_ptr<const BitmapPattern> strokePattern;
         std::optional<Transform> transform;
-        // An arrow head at the last vertex, in multiples of the line width - a route's maneuver
-        // arrow, a one-way marker. Both must be positive for the head to be drawn. The line stops
-        // where the head starts, and the head is extruded like the line itself, so it keeps its
-        // screen size and a casing rule of the same shape produces an even border round the whole
-        // arrow. 0 (the default) leaves the line's own cap alone.
+        // An arrow head at the last vertex, in multiples of the line width; both must be positive for
+        // it to be drawn. The line stops where the head starts, and the head is extruded like the line,
+        // so it keeps its screen size. 0 (the default) leaves the line's own cap alone.
         float endArrowWidth;
         float endArrowLength;
-        // Draw the head and NOT the line, so a style can paint the head over the shaft instead of
-        // under it: shaft rules first, head rules after. Where the head overlaps its own shaft -
-        // a U-turn, a hairpin, anything tight enough at the zoom being looked at - the head keeps
-        // its outline, which is what tells it apart from the line it sits on.
+        // Draw the head and NOT the line, so a style can paint the head over the shaft: shaft rules
+        // first, head rules after. Where the head overlaps its own shaft it keeps its outline, which is
+        // what tells it apart from the line it sits on.
         bool endArrowOnly;
-        // A custom head outline, in the same multiples of the line width as the two sizes above:
-        // x runs along the line, y across it. Null means the built-in triangle. The contour is a
-        // SKELETON - what is drawn is half a line width larger all round, so a casing rule using
-        // the same path lands (casing - fill) / 2 outside the fill, as it does along the shaft.
+        // A custom head outline, in the same multiples of the line width as the sizes above: x along
+        // the line, y across it; null means the built-in triangle. The contour is a SKELETON - what is
+        // drawn is half a line width larger all round, as a casing is along the shaft.
         std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape;
 
         // See LineElevationMode. DRAPE is what every style did before this existed.
@@ -230,12 +221,9 @@ namespace massif::vt {
         // See LineElevationMode. A building stands on the ground (DRAPE); a bridge DECK stands on
         // its own chord, so min-height/height are measured from that instead.
         LineElevationMode elevationMode = LineElevationMode::DRAPE;
-        // building-emissive-strength for THIS rule. Unset, the extrusion takes the Map block's
-        // building-emissive - which is what every style did before this existed, so an unset value
-        // is not "0", it is "whatever the map says". A rule needs its own only where the extrusion
-        // stands in for something that is not a building: a bridge DECK replaces the flat road
-        // casing 2D styles draw, and that casing carries its own emissive, so lighting the deck at
-        // full strength beside it leaves a bright road on a black slab once the sun is low.
+        // building-emissive-strength for THIS rule. Unset means "whatever the map says", not 0. A rule
+        // needs its own only where the extrusion stands in for something that is not a building - a
+        // bridge DECK replaces a flat road casing, which carries an emissive of its own.
         std::optional<FloatFunction> emissiveFunc;
 
         explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform) : colorFunc(std::move(colorFunc)), transform(transform) { }
@@ -253,10 +241,9 @@ namespace massif::vt {
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Unset = the layer's own default stands.
         std::optional<float> occlusionOpacity;
-        // The image is a SIGNED DISTANCE FIELD in its red channel, not a picture: it is then drawn
-        // by the same shader path as a glyph, so it stays sharp at any size and can take a halo.
-        // mapbox carries this per sprite entry ("sdf": true); a bare image file cannot, so the
-        // style has to say it.
+        // The image is a SIGNED DISTANCE FIELD in its red channel, not a picture, so it draws through
+        // the glyph shader path: sharp at any size and able to take a halo. mapbox carries this per
+        // sprite entry; a bare image file cannot, so the style has to say it.
         bool sdfMode = false;
         ColorFunction haloColorFunc; // sdfMode only - a bitmap has no field to grow a halo from
         FloatFunction haloRadiusFunc;
@@ -264,14 +251,12 @@ namespace massif::vt {
         // TextLabelStyle::rankFunc.
         FloatFunction rankFunc = FloatFunction(0.0f);
         // How much of the label's colour is EMITTED rather than lit by the scene - mapbox's
-        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's
-        // default and what every style did before this existed. Set after construction, like
-        // occlusionOpacity.
+        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's default.
+        // Set after construction, like occlusionOpacity.
         FloatFunction emissiveFunc = FloatFunction(1.0f);
-        // The HALO's own emissive, when it differs from the label's. Unset, the halo takes the
-        // label's - which is what keeps the two moving together. Set low against a high text
-        // emissive it goes dark as the light drops, which is how a bright name stays readable over
-        // a dark map: light ink, black outline.
+        // The HALO's own emissive, when it differs from the label's; unset it takes the label's, which
+        // keeps the two moving together. Set low against a high text emissive it goes dark as the light
+        // drops - light ink, black outline.
         std::optional<FloatFunction> haloEmissiveFunc;
 
         explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f, bool sdfMode = false, ColorFunction haloColorFunc = ColorFunction(), FloatFunction haloRadiusFunc = FloatFunction()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance), sdfMode(sdfMode), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)) { }
@@ -309,10 +294,9 @@ namespace massif::vt {
         int calloutMaxRows;        // how many rows may be tried before the label is hidden
         int calloutPersistPasses;  // placement passes a callout that is already on screen may fail before it is hidden
         float calloutLineWidth;    // leader line width, 0 draws no line
-        // Points OF THE LABEL BOX, in normalized box coordinates: (-1,-1) is the bottom left
-        // corner of the text (plate included), (0,0) its centre, (1,1) the top right. Rotation
-        // applies to them like it does to the glyphs, so on a tilted name the bottom left corner
-        // is the start of the first letter. Unset keeps the text laid out around its own anchor.
+        // Points OF THE LABEL BOX, in normalized box coordinates: (-1,-1) the bottom left corner of the
+        // text, (0,0) its centre, (1,1) the top right. Rotation applies to them as to the glyphs. Unset
+        // keeps the text laid out around its own anchor.
         std::optional<cglib::vec2<float>> calloutLineAnchor; // the point held over the anchor, where the leader line ends
         std::optional<cglib::vec2<float>> calloutBandAnchor; // the point put on the band line (unset = the bottom of the box)
         // Plates behind the label, sized to what they sit behind. Any orientation, not just
@@ -320,10 +304,9 @@ namespace massif::vt {
         LabelLineAlign textLineAlign = LabelLineAlign::CENTER;
         LabelPlateStyle textPlate; // behind the text (the glyphs after the first line break)
         LabelPlateStyle iconPlate; // behind the icon run, which stays on the anchor
-        // Sides the text may be laid out on, in preference order (empty = one fixed layout, which
-        // is what every style without the property gets). The icon does not move; the text is
-        // placed against the icon's edge on the chosen side, and dx/dy are MIRRORED with it, so an
-        // offset that pushes the text away from the icon on one side does so on all of them.
+        // Sides the text may be laid out on, in preference order (empty = one fixed layout). The icon
+        // does not move; the text is placed against its edge on the chosen side, and dx/dy are MIRRORED
+        // with it, so an offset pushing the text away from the icon does so on every side.
         std::vector<LabelAnchor> anchors;
         // A last resort of drawing the icon alone when no side is free, rather than dropping the
         // whole label (mapbox 'text-optional'). Needs an icon to be of any use.
@@ -334,10 +317,9 @@ namespace massif::vt {
         std::vector<Font::Glyph> iconGlyphs;
         // Own colour for the icon run; unset leaves it the label's fill.
         std::optional<ColorFunction> iconColorFunc;
-        // The icon run's OWN halo - mapbox's icon-halo-*. Set after construction, like
-        // occlusionOpacity: the constructor's signature is long enough. Unset draws no icon halo;
-        // the text's halo is never borrowed for it, because an icon's distance field carries only
-        // a few texels outside the ink and a text-sized halo runs straight past them.
+        // The icon run's OWN halo - mapbox's icon-halo-*. Unset draws no icon halo, and the text's is
+        // never borrowed: an icon's distance field carries only a few texels outside the ink, which a
+        // text-sized halo runs straight past.
         std::optional<ColorFunction> iconHaloColorFunc;
         std::optional<FloatFunction> iconHaloRadiusFunc;
         // The icon's own size ramp, and the value it was BAKED at. mapbox animates icon-size
@@ -349,14 +331,12 @@ namespace massif::vt {
         // disc until the tile was decoded again.
         std::optional<FloatFunction> iconOpacityFunc;
         // How much of the label's colour is EMITTED rather than lit by the scene - mapbox's
-        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's
-        // default and what every style did before this existed. Set after construction, like
-        // occlusionOpacity.
+        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's default.
+        // Set after construction, like occlusionOpacity.
         FloatFunction emissiveFunc = FloatFunction(1.0f);
-        // The HALO's own emissive, when it differs from the label's. Unset, the halo takes the
-        // label's - which is what keeps the two moving together. Set low against a high text
-        // emissive it goes dark as the light drops, which is how a bright name stays readable over
-        // a dark map: light ink, black outline.
+        // The HALO's own emissive, when it differs from the label's; unset it takes the label's, which
+        // keeps the two moving together. Set low against a high text emissive it goes dark as the light
+        // drops - light ink, black outline.
         std::optional<FloatFunction> haloEmissiveFunc;
 
         explicit TextLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage, float maxDistance = 0.0f, const std::optional<ColorFunction>& secondaryColorFunc = std::optional<ColorFunction>(), FloatFunction rankFunc = FloatFunction(0.0f), float calloutScreenAnchor = -1.0f, float calloutOffset = 0.0f, float calloutStep = 0.0f, int calloutMaxRows = 8, int calloutPersistPasses = 0, float calloutLineWidth = 1.0f, const std::optional<cglib::vec2<float>>& calloutLineAnchor = std::optional<cglib::vec2<float>>(), const std::optional<cglib::vec2<float>>& calloutBandAnchor = std::optional<cglib::vec2<float>>(), const LabelPlateStyle& textPlate = LabelPlateStyle(), const LabelPlateStyle& iconPlate = LabelPlateStyle(), LabelLineAlign textLineAlign = LabelLineAlign::CENTER, std::vector<LabelAnchor> anchors = std::vector<LabelAnchor>(), bool textOptional = false, std::vector<Font::Glyph> iconGlyphs = std::vector<Font::Glyph>(), const std::optional<ColorFunction>& iconColorFunc = std::optional<ColorFunction>()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)), maxDistance(maxDistance), secondaryColorFunc(secondaryColorFunc), rankFunc(std::move(rankFunc)), calloutScreenAnchor(calloutScreenAnchor), calloutOffset(calloutOffset), calloutStep(calloutStep), calloutMaxRows(calloutMaxRows), calloutPersistPasses(calloutPersistPasses), calloutLineWidth(calloutLineWidth), calloutLineAnchor(calloutLineAnchor), calloutBandAnchor(calloutBandAnchor), textPlate(textPlate), iconPlate(iconPlate), textLineAlign(textLineAlign), anchors(std::move(anchors)), textOptional(textOptional), iconGlyphs(std::move(iconGlyphs)), iconColorFunc(iconColorFunc) { }

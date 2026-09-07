@@ -112,11 +112,9 @@ namespace massif {
         float sunIntensity = 1.0f;
         float ambientIntensity = 0.35f;
         Color ambientColor = Color(255, 255, 255, 255);
-        // What the 3D extrusions light with: mapbox's fill-extrusion model, summed in linear space
-        // (TileRenderer::LIGHTING_SHADER_3D). Both default to their 0.5, which sums to exactly 1
-        // in full sun - a facade the light reaches keeps its own colour, whatever the hour.
-        // The ambient is the walls' own, so flattening the ground does not flatten every facade
-        // with it (see resolveLighting).
+        // What the 3D extrusions light with: mapbox's fill-extrusion model, summed in linear space.
+        // Both default to their 0.5, which sums to exactly 1 in full sun. The ambient is the walls'
+        // own, so flattening the ground does not flatten every facade with it.
         float buildingLightIntensity = 0.5f;
         float buildingAmbient = 0.5f;
         // How dark the foot of a wall goes, as a fraction of its colour. Off by default: mapbox has

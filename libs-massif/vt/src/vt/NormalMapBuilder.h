@@ -29,10 +29,9 @@ namespace massif::vt {
         std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const massif::vt::TileId& subTileId, const massif::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
         std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap2(const massif::vt::TileId& subTileId, const massif::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
 
-        // Fixed-point elevation packing used when encodeElevation is set: the B (high) and A (low)
-        // channels hold a 16-bit height, meters = elev16 * ELEVATION_SCALE + ELEVATION_OFFSET.
-        // Range -1100..15283 m at 0.25 m (matches the terrain elevation grid quantization). The
-        // shader that samples the normal map decodes with these same constants.
+        // Fixed-point elevation packing used when encodeElevation is set: B (high) and A (low) hold a
+        // 16-bit height, metres = elev16 * ELEVATION_SCALE + ELEVATION_OFFSET, spanning -1100..15283 m
+        // at 0.25 m. The shader that samples the normal map decodes with these same constants.
         static constexpr float ELEVATION_OFFSET = -1100.0f;
         static constexpr float ELEVATION_SCALE = 0.25f;
 

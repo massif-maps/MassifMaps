@@ -39,12 +39,9 @@ namespace {
 #endif
     }
 
-    // Attribute setup that tolerates an attribute the linker dropped. glGetAttribLocation returns
-    // -1 for those, and unlike a uniform location of -1 (legal, ignored) a vertex attribute index
-    // of -1 is GL_INVALID_VALUE - which on a translated GL shows up as
-    // "GL error 0x501 condition [indx >= CODEC_MAX_VERTEX_ATTRIBUTES]" and leaves the draw's
-    // attribute state half configured. The shadow caster programs are exactly this case: their
-    // fragment shader only writes depth, so uv/normal/attribs are optimised out of the program.
+    // Attribute setup that tolerates an attribute the linker dropped: glGetAttribLocation returns
+    // -1 for those, and unlike a uniform location of -1 a vertex attribute index of -1 is
+    // GL_INVALID_VALUE. The depth-only shadow caster programs are exactly this case.
     void enableVertexAttrib(GLint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* offset) {
         if (index < 0) {
             return;
@@ -74,12 +71,9 @@ namespace {
 }
 
 namespace massif::vt {
-    // SHADOW_CUTOUT_DISTANCE_FACTOR is in the header - the fade range is derived from it too. A
-    // METRIC radius cannot hold at two zooms: the budget it replaced was 10 m x mapSize, i.e.
-    // ~10 km at every camera, which ended a mountain's shadow one screen away at z12.
-    // The cascade ladder steps by this between pages, anchored on the cutout, so two cascades split
-    // at cutout/3 - mapbox's cascadeSplitDist = cameraToCenterDistance * 1.5 against a cutout of
-    // 4.5x, exactly.
+    // SHADOW_CUTOUT_DISTANCE_FACTOR is in the header; the fade range derives from it too - a METRIC
+    // radius cannot hold at two zooms. The cascade ladder steps by this between pages, anchored on
+    // the cutout, so two cascades split at cutout/3 - mapbox's 1.5x against a 4.5x cutout, exactly.
     static constexpr double SHADOW_CASCADE_STEP = 3.0;
     // mapbox's noShadowCutoff (src/render/draw_fill_extrusion.ts, terrain branch): the opacity
     // below which a FADING extrusion stops casting rather than casting at full strength.
@@ -357,11 +351,8 @@ namespace massif::vt {
             return false;
         }
         // ANY tile with an elevation texture will do - the metres-to-internal factor is a property
-        // of the projection, not of the tile. Asking only tileIds.front() made the whole shadow
-        // pass fail whenever that one tile happened to have no decoded DEM yet: the provider is
-        // CACHED_ONLY, so a far tile that has not been decoded returns nothing, and the result was
-        // every shadow on screen disappearing at once. The more the view is tilted the more distant
-        // tiles are in the cover, so the more often it happened.
+        // of the projection, not of the tile. Asking only tileIds.front() made the whole shadow pass
+        // fail whenever that tile had no decoded DEM yet, since the provider is CACHED_ONLY.
         double metersToInternal = 0;
         for (const TileId& tileId : tileIds) {
             const std::pair<bool, TerrainTexture>& resolved = resolveTerrainTexture(tileId);
@@ -387,22 +378,14 @@ namespace massif::vt {
             maxZ = maxHeight;
         }
         // The box for this cascade is the MINIMUM BOUNDING SPHERE of its slice of the view frustum,
-        // which is mapbox's model verbatim (3d-style/render/shadow_renderer.ts createLightMatrix,
-        // "rotation invariant shadow volume"). Its radius is a function of the slice distances and
-        // the field of view ALONE - not of the pitch, the bearing or the sun azimuth - so one texel
-        // is the same size at every camera. That is the whole point, and it is why mapbox's shadows
-        // look identical at a low tilt and straight down where a ground-footprint fit does not: a
-        // wedge of visible ground stretches towards the horizon as the view flattens, and its extent
-        // in LIGHT space also swings with the sun, so the texel size followed both.
+        // mapbox's model verbatim (shadow_renderer.ts createLightMatrix). Its radius depends on the
+        // slice distances and the fov ALONE, so one texel is the same size at every camera.
         double sphereRadius = 0;
         cglib::vec3<double> sphereCenter(0, 0, 0);
         {
-            // The cutout is a distance from the CAMERA, in multiples of the camera-to-focus
-            // distance. That distance follows the zoom alone, so the same factor holds from a city
-            // to a massif.
-            // The camera-to-focus distance is passed IN, not read from _viewState: that field is
-            // filled by TileRenderer::onDrawFrame, which runs after the shadow pass, so the fit
-            // would be reading the previous frame's value or none at all.
+            // The cutout is a distance from the CAMERA in multiples of the camera-to-focus distance,
+            // which follows the zoom alone. Passed IN, not read from _viewState: that field is filled
+            // by TileRenderer::onDrawFrame, which runs after the shadow pass.
             double cutout = (cameraDistance > 0 ? (distanceFactor > 0 ? distanceFactor : SHADOW_CUTOUT_DISTANCE_FACTOR) * cameraDistance : 0);
             if (!(cutout > 0)) {
                 texelMeters = -4; // no camera-to-focus distance: nothing to fit a slice to
@@ -449,10 +432,9 @@ namespace massif::vt {
             }
         }
 
-        // Narrow the height slab to the ground THIS cascade covers. The slab is what the light
-        // box has to span along its vertical axis - at a low sun the whole scene's relief, three
-        // kilometres of it here, sets the box size no matter how small the near cascade's ground
-        // footprint is, and every cascade then ends up with the same coarse texels.
+        // Narrow the height slab to the ground THIS cascade covers: at a low sun the whole scene's
+        // relief sets the box size however small the near cascade's footprint is, and every cascade
+        // ends up with the same coarse texels.
         double casterMinZ = minZ, casterMaxZ = maxZ; // the slab the CASTERS live in, before it is
                                                      // narrowed to this cascade's own ground
         if (tileHeights.size() == tileIds.size()) {
@@ -484,13 +466,8 @@ namespace massif::vt {
                 }
             }
             // Never narrower than a fraction of the whole slab: a tile whose elevation has not
-            // loaded reports an empty range, and collapsing the box onto that would put it at a
-            // height the terrain is not at. The floor is ENFORCED by widening the local range,
-            // not by refusing to narrow at all: refusing meant a near cascade sitting in a valley
-            // kept the whole mountain range's slab, and since a low sun stretches the box by that
-            // slab divided by tan(altitude), that one condition set the texel size for every
-            // cascade. Ground that still falls outside a narrowed box is not lost - the cascades
-            // are nested, so it is shadowed by the next one out.
+            // loaded reports an empty range. ENFORCED by widening the local range rather than by
+            // refusing to narrow - a near cascade in a valley would keep the whole massif's slab.
             double minThickness = (casterMaxZ - casterMinZ) * 0.02;
             if (!localFirst) {
                 double slack = 0.5 * std::max(0.0, minThickness - (localMaxZ - localMinZ));
@@ -502,14 +479,9 @@ namespace massif::vt {
                 }
             }
         }
-        // Things STAND on the terrain. The slab so far is the DEM's, and 3D extrusions reach well
-        // above it: a building whose roof is above maxZ lands in front of the light box's near
-        // plane, so it is clipped out of the caster pass (it throws no shadow) and, as a receiver,
-        // its own fragments fall outside every cascade page and come out unshadowed. Both symptoms
-        // read as "shadows stopped applying to buildings". The headroom that used to hide this was
-        // a PERCENTAGE of the relief - fine over a 2 km massif, nothing over flat ground - so it is
-        // metric here. The lateral fit needs it too, not just the depth range: at a low sun a
-        // receiver's light-space position is displaced sideways by its own height.
+        // Things STAND on the terrain and the slab so far is the DEM's: a roof above maxZ is clipped
+        // out of the caster pass and, as a receiver, falls outside every cascade page. Metric
+        // headroom, not a percentage of the relief, which is nothing over flat ground.
         {
             double standingHeadroom = 200.0 * metersToInternal;
             maxZ += standingHeadroom;
@@ -522,39 +494,27 @@ namespace massif::vt {
             return false; // sun at or below the horizon: nothing is meaningfully lit
         }
         cglib::vec3<double> up = std::abs(dir(2)) > 0.99 ? cglib::vec3<double>(0, 1, 0) : cglib::vec3<double>(0, 0, 1);
-        // The light view is a pure ROTATION about the world origin, not a look-at aimed at the
-        // current box centre. A view anchored on the box would move with the camera, and the whole
-        // light-space grid would slide under the terrain every frame - shadow edges then crawl and
-        // shimmer during a pan, and no two frames share a matrix, so the caster pass can never be
-        // reused. Anchored to the world, the texel lattice below is absolute.
+        // The light view is a pure ROTATION about the world origin, not a look-at on the box centre:
+        // anchored on the box it moves with the camera, the light-space grid slides under the terrain
+        // and no two frames share a matrix. Anchored to the world, the texel lattice is absolute.
         cglib::mat4x4<double> lightView = cglib::lookat4_matrix(dir, cglib::vec3<double>(0, 0, 0), up);
 
-        // SIDES are the bounding sphere, DEPTH comes from the ground that CASTS: a sphere projects
-        // to the same square from every direction, which is what makes the texel size independent
-        // of the pitch, the bearing and the sun azimuth. Fitting the sides to the casters as well
-        // would let every margin tile coarsen every texel.
+        // SIDES are the bounding sphere, DEPTH comes from the ground that CASTS: a sphere projects to
+        // the same square from every direction, which is what keeps the texel size independent of
+        // pitch, bearing and sun azimuth.
         cglib::vec4<double> lightCenter = cglib::transform(cglib::vec4<double>(sphereCenter(0), sphereCenter(1), sphereCenter(2), 1.0), lightView);
         double l = lightCenter(0) - sphereRadius, r = lightCenter(0) + sphereRadius;
         double b = lightCenter(1) - sphereRadius, t = lightCenter(1) + sphereRadius;
         // DEPTH is bounded by the SAME bounding sphere the sides are, plus the room a caster needs
-        // to stand above it - mapbox's lightMatrixNearZ / lightMatrixFarZ, whose far plane is the
-        // sphere radius plus verticalRange / shadowDirection.z.
-        //
-        // Seeded from the drawn tile RECTANGLE instead, and then widened again by every caster
-        // tile's own box, the range became the whole cover projected along a low sun: measured at
-        // 3.0e7 m over Paris. A 24-bit map quantises that to ~1.8 m per step, so a building and the
-        // ground under it stored the same depth and no bias could separate them - which is what the
-        // serrated spikes and the acne that survived every bias value actually were.
+        // above it - mapbox's lightMatrixNearZ / lightMatrixFarZ. Seeded from the drawn rectangle
+        // instead, the range reached 3.0e7 m over Paris, which 24 bits cannot separate.
         double casterHeadroom = (casterMaxZ - casterMinZ) / std::max(0.05, dir(2));
         double centerDepth = -lightCenter(2);
         double n = centerDepth - sphereRadius - casterHeadroom;
         double f = centerDepth + sphereRadius + casterHeadroom;
-        // Snap the box to a world-anchored lattice of whole shadow texels, and quantise its size so
-        // the texel size itself only changes in steps. Fitted exactly, the box breathes with every
-        // camera movement: the same piece of ground falls in a different texel each frame, so every
-        // shadow edge crawls and the interior of a large shadow flickers. Snapped, the matrix is
-        // bit-identical while the camera moves inside one step - which both stabilises the image and
-        // lets the caller skip the caster pass entirely.
+        // Snap the box to a world-anchored lattice of whole shadow texels and quantise its size, or
+        // it breathes with every camera movement and every shadow edge crawls. Snapped, the matrix is
+        // bit-identical while the camera moves inside one step, so the caster pass can be skipped.
         auto snapAxis = [mapSize](double& lo, double& hi, bool depthAxis) {
             double size = hi - lo;
             if (!(mapSize > 0) || !(size > 0)) {
@@ -575,9 +535,8 @@ namespace massif::vt {
             hi = lo + quantSize;
         };
         // The SIDES are snapped before the casters are culled against them, so the cull can use the
-        // final box and a one-texel margin. Culling against the unsnapped box needed a slop of 20%
-        // of its width to cover the growth, which on the outer cascade is kilometres of ground and
-        // dozens of tiles drawn into a page they cannot reach.
+        // final box and a one-texel margin. Against the unsnapped box it needed 20% of its width,
+        // which on the outer cascade is dozens of tiles drawn into a page they cannot reach.
         snapAxis(l, r, false);
         snapAxis(b, t, false);
         double marginX = (r - l) / std::max(1, mapSize), marginY = (t - b) / std::max(1, mapSize);
@@ -587,10 +546,9 @@ namespace massif::vt {
             for (int corner = 0; corner < 8; corner++) {
                 cglib::vec4<double> local(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0);
                 cglib::vec4<double> world = cglib::transform(local, tileMatrix);
-                // The CASTER slab, not this cascade's narrowed one: a mountain outside the
-                // cascade's own ground still casts into it, and measuring it against a slab it
-                // does not reach leaves the box's near plane in front of it - the caster is then
-                // clipped away and its shadow is missing over the whole cascade.
+                // The CASTER slab, not this cascade's narrowed one: a mountain outside the cascade's
+                // own ground still casts into it, and a slab it does not reach leaves the near plane
+                // in front of it - the caster is clipped and its shadow missing.
                 world(2) = (corner & 4 ? casterMaxZ : casterMinZ);
                 cglib::vec4<double> p = cglib::transform(world, lightView);
                 if (corner == 0) {
@@ -601,13 +559,9 @@ namespace massif::vt {
                     tileN = std::min(tileN, -p(2)); tileF = std::max(tileF, -p(2));
                 }
             }
-            // Light-space xy is constant along a light ray, so a tile whose xy does not overlap
-            // the box cannot cast into it however tall it is - the tile's own box is taken over the
-            // CASTER slab, so the throw of a distant mountain is already in it. Skipping the rest
-            // keeps the depth range - and with it the resolution of the normalised bias - tied to
-            // what really casts, and it is also the list of tiles the caster pass has to draw for
-            // this cascade: a near cascade covers a fraction of the tiles, and drawing the rest
-            // into it is pure cost.
+            // Light-space xy is constant along a light ray, so a tile whose xy misses the box cannot
+            // cast into it however tall it is. This is also the tile list the caster pass draws for
+            // this cascade - a near cascade covers a fraction of them, and the rest is pure cost.
             if (tileR < l - marginX || tileL > r + marginX || tileT < b - marginY || tileB > t + marginY) {
                 continue;
             }
@@ -615,10 +569,9 @@ namespace massif::vt {
         }
         snapAxis(n, f, true);
         lightViewProj = cglib::ortho4_matrix(l, r, b, t, n, f) * lightView;
-        // The depth the box spans, in metres. The shader's bias is a fraction of the normalised
-        // depth, so a bias that is constant there grows in WORLD terms as the box grows - which is
-        // why a shadow drifted away from its own building as the view zoomed out or the caster
-        // margin widened the box. The caller divides its metric bias by this to cancel that.
+        // The depth the box spans, in metres. The shader's bias is a fraction of the NORMALISED
+        // depth, so a constant one grows in world terms as the box does - the caller divides its
+        // metric bias by this to cancel that.
         depthRangeMeters = (f - n) / metersToInternal;
         // The ground one shadow texel covers, in metres: the number that decides whether a shadow
         // edge reads as an edge or as a staircase. Reported so the caller can log it instead of
@@ -628,11 +581,9 @@ namespace massif::vt {
     }
 
     bool GLTileRenderer::extrusionCastsShadow(const RenderTileLayer& renderLayer) const {
-        // mapbox's rule verbatim: on terrain, a layer whose extrusion opacity is below the cutoff
-        // AND is a zoom-dependent expression does not cast, so a building ramping to nothing over
-        // zoom does not keep a full-strength shadow while it disappears. A CONSTANT translucent
-        // opacity still casts, which is what the null function() test - our ZoomDependentExpression
-        // check, see UnaryFunction - keeps.
+        // mapbox's rule verbatim: on terrain, a layer whose extrusion opacity is below the cutoff AND
+        // zoom-dependent does not cast, so a building ramping to nothing keeps no shadow. A CONSTANT
+        // translucent opacity still casts, which is what the null function() test keeps.
         const FloatFunction& opacityFunc = renderLayer.layer->getOpacityFunc();
         if (opacityFunc.function() && opacityFunc(_viewState) < SHADOW_NO_CAST_OPACITY_CUTOFF) {
             return false;
@@ -729,24 +680,18 @@ namespace massif::vt {
             }
         }
 
-        // 3D extrusions cast too: buildings on the terrain, and on each other. They are the one
-        // kind of tile content that is real 3D rather than a skin on the ground, so they are
-        // exactly what the drape cannot represent and what a shadow map is for.
-        // Cast from both faces: culling the front faces stored the far side of the building
-        // and detached its shadow from its own footprint. The acne that motivated it is
-        // handled by the slope-scaled caster offset, which the tightened light frustum made
-        // effective again.
+        // 3D extrusions cast too - the one kind of tile content the drape cannot represent. From
+        // BOTH faces: culling the front ones stored the far side of the building and detached its
+        // shadow from its footprint; the acne is handled by the slope-scaled caster offset.
         _shadowCasterViewProj = &lightViewProj;
         _shadowCasterSun = true;
         forEachVisibleExtrusion(&tileIds, [this, &draws](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
             if (!extrusionCastsShadow(renderLayer)) {
                 return true;
             }
-            // Same rule as the on-screen draw (renderGeometry3D), and the caster runs FIRST in the
-            // frame: a span deck whose base has not resolved is not drawn, so it must not cast
-            // either. Cast with the sentinel still in it, its resolved and unresolved vertices
-            // fan a wall from the deck down to the ground, and that wall's shadow lands on the
-            // roofs and the water beside the bridge until the base resolves - the dark flash.
+            // Same rule as the on-screen draw, and the caster runs FIRST: a span deck whose base has
+            // not resolved is not drawn, so it must not cast either. With the sentinel still in it,
+            // its vertices fan a wall to the ground whose shadow is the dark flash by the bridge.
             bool baseResolved = resolveExtrusionBases(renderLayer.sourceTileId, renderLayer.targetTileId, geometry);
             if (!geometry->getSpanRecords().empty() && !baseResolved) {
                 return true;
@@ -763,10 +708,8 @@ namespace massif::vt {
     float GLTileRenderer::shadowCasterFadeSignature(const std::vector<TileId>* coveredBy) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
-        // A number that moves exactly as fast as the caster SET does: a tile's blend is how far it
-        // has arrived, so this tracks extrusions appearing and leaving. The owner refreshes the
-        // shadow map when it has moved far enough to see, instead of every frame of every fade
-        // (a full caster pass each time) or never (the shadow of a building that is not there).
+        // A number that moves exactly as fast as the caster SET does, so the owner can refresh the
+        // shadow map once it has moved far enough to see rather than on every frame of every fade.
         // The caster's HEIGHT no longer follows the blend - see buildingHeightScale.
         float signature = 0.0f;
         int count = 0;
@@ -781,22 +724,9 @@ namespace massif::vt {
             count++;
             return false; // one contribution per layer, not per geometry batch
         });
-        // The MEAN, not the sum: twenty tiles fading in together move a sum twenty times as fast
-        // as one does, and the map would be redrawn on every frame of exactly the moment this is
-        // meant to protect. A single tile fading alone moves the mean by less than the step and
-        // rides on the age cap instead.
-        //
-        // Times the caster's own height scale: a style that ramps its extrusions to nothing over
-        // zoom (Standard, 0 at z15) changes the caster geometry without touching a single tile
-        // blend, so the map was never refreshed and the buildings' shadows stayed on an empty map
-        // after they had gone.
-        // The COUNT as well as the mean, and this is the load-bearing half: extrusions arrive with
-        // their blend already at 1 unless the style asked to fade them in (buildingFadeOnAppear is
-        // off by default), so the mean sits at 1.0 while the caster set grows from nothing to a
-        // city. The map was then never refreshed for the one event it most needs - the buildings
-        // appearing - and it kept casting from ground-only pages until something else moved.
-        // A count change steps the signature by a whole unit, far past SHADOW_MAP_FADE_STEP, while
-        // a fade still only moves the mean fraction it always did.
+        // The MEAN, not the sum: twenty tiles fading in together would move a sum twenty times as
+        // fast. Times the caster's height scale, since a style can ramp extrusions to nothing without
+        // touching a blend - and the COUNT, because extrusions usually arrive at blend 1 already.
         return count > 0 ? _buildingHeightScale * (static_cast<float>(count) + signature / count) : 0.0f;
     }
 
@@ -833,9 +763,8 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         // NO zoom fade, unlike the screen-space pass: a bake is cached and only redone when the
-        // tile's CONTENT changes, so anything the camera moves must stay out of it. Faded, the
-        // tiles baked while a launch animation was still below the fade's own zoom kept no shadow
-        // at all - for as long as they stayed cached, which is until a zoom rebuilds them.
+        // tile's CONTENT changes, so anything the camera moves must stay out of it - faded, a tile
+        // baked below the fade's own zoom kept no shadow for as long as it lived.
         return hasGroundAOTiles(1.0f);
     }
 
@@ -868,16 +797,14 @@ namespace massif::vt {
             return 0;
         }
 
-        // MIN, into a mask cleared to white. Where two capsules meet - a corner, a building and its
-        // building:part, two neighbours - the pixel takes the darkest of them rather than their
-        // product. Resolving it here is the whole reason the pass exists: multiplied straight into
-        // the frame, every one of those overlaps compounds towards black.
+        // MIN, into a mask cleared to white: where two capsules meet the pixel takes the darkest
+        // rather than their product. That is the whole reason the pass exists - multiplied straight
+        // into the frame, every overlap compounds towards black.
         glDisable(GL_CULL_FACE); // a capsule quad's winding follows its edge; both sides count
 
-        // Seed the mask's own depth with the terrain cover, as the 3D overlay does. Without it the
-        // capsule of a building hidden behind a ridge still reached the mask, and the screen
-        // multiply then laid that shadow on the slope IN FRONT of it - a second copy of the
-        // building's contact shadow, sliding against the ground as the camera pans.
+        // Seed the mask's own depth with the terrain cover, as the 3D overlay does: without it a
+        // building hidden behind a ridge still reached the mask, and the multiply laid its shadow on
+        // the slope IN FRONT of it, sliding against the ground as the camera pans.
         bool terrainOccluders = _terrainMode && static_cast<bool>(_terrainTextureProvider);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
@@ -1059,13 +986,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::updateTerrainSkirts() {
-        // Tile border skirts are DISABLED: their walls (textured with stretched tile
-        // edge/background pixels) rasterize over neighbouring tile content wherever a
-        // displaced tile edge leans off-nadir, showing as stable background-colored
-        // patches that grow with the tile size (the skirt drop) when zooming out.
-        // Same-level tile borders are seam-free via the shared elevation texture
-        // borders instead, and residual cross-LOD cracks are far less objectionable
-        // than the skirt walls (tangram has no skirts either).
+        // Tile border skirts are DISABLED: their walls rasterize over neighbouring tile content
+        // wherever a displaced edge leans off-nadir, as background-coloured patches growing with the
+        // tile size. Same-level borders are seam-free through the shared elevation texture instead.
         bool skirts = false;
         if (skirts != _terrainSkirtsEnabled) {
             _terrainSkirtsEnabled = skirts;
@@ -1122,10 +1045,9 @@ namespace massif::vt {
         _clickHandlerLayerFilter = filter;
     }
 
-    // Device pixels per line-width unit: line widths are in unscaled-DPI units, so on a dense
-    // screen one unit is worth more than one pixel and the antialias ramp - one unit wide - blurs
-    // a thin line. The host knows the real pixel size of the viewport; vt only has the normalized
-    // resolution. 1 = the old behaviour.
+    // Device pixels per line-width unit: widths are in unscaled-DPI units, so on a dense screen one
+    // unit is worth more than a pixel and the one-unit antialias ramp blurs a thin line. The host
+    // knows the viewport's real pixel size; vt only has the normalized resolution.
     void GLTileRenderer::setLineAntialiasScale(float scale) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1249,12 +1171,9 @@ namespace massif::vt {
         }
         }
 
-        // Anchoring the new labels onto the terrain used to wait for the next frame, on the
-        // render thread: a tile set that brought 300 labels was a 50-75 ms frame at ~233 us
-        // each. Sampled here on the cull thread with the lock RELEASED - the frame keeps
-        // drawing the labels at their old height meanwhile - and written back under it. A
-        // sample reads the geometry's x,y only, which nothing changes after a label is built;
-        // the z it writes belongs to this thread and the frame's own re-anchor, both locked.
+        // Anchoring new labels onto the terrain used to wait for the next frame, on the render
+        // thread: 300 labels was a 50-75 ms frame. Sampled here on the cull thread with the lock
+        // RELEASED - a sample reads only x,y, which nothing changes after a label is built.
         if (!dirtyLabels.empty()) {
             std::vector<std::vector<double>> heights(dirtyLabels.size());
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
@@ -1272,19 +1191,16 @@ namespace massif::vt {
     }
 
     const std::set<TileId>& GLTileRenderer::terrainSurfaceTileIds() const {
-        // The surfaces are drawn from the cover the owner hands in whenever there is one: under a
-        // cross-layer drape the shared surface is drawn for the drape cover (normalised leaves,
-        // not any single layer's tiles), and a paint draws itself on the terrain's own cover -
-        // it has no tiles of its own at all.
+        // The surfaces are drawn from the cover the owner hands in whenever there is one: a drape
+        // uses its normalised leaves rather than any single layer's tiles, and a paint has no tiles
+        // of its own at all.
         return (_terrainCoverTileIds.empty() ? _visibleTileIds : _terrainCoverTileIds);
     }
 
     void GLTileRenderer::buildTerrainEdgeCoarsening() {
-        // Per visible tile: how much coarser the neighbour on each edge is. The shared grid
-        // surface is drawn for every tile, so a coarser neighbour interpolates the DEM between
-        // its own (2^k times wider) lattice nodes; the fine tile must chord across the same
-        // nodes on that edge or the shared edge cracks open. The lattices only line up when
-        // the resolution is a multiple of the level difference, which caps k.
+        // Per visible tile: how much coarser the neighbour on each edge is. A coarser neighbour
+        // interpolates the DEM between its own 2^k times wider lattice nodes, so the fine tile must
+        // chord across the same nodes or the shared edge cracks open. That multiple caps k.
         _terrainEdgeCoarseningMap.clear();
         if (!(_terrainEdgeStitching && _terrainRegularGrid)) {
             return;
@@ -1388,10 +1304,9 @@ namespace massif::vt {
     void GLTileRenderer::invalidateTileSurfaces(const std::vector<TileId>& tileIds) {
         std::lock_guard<std::mutex> lock(_mutex);
 
-        // Targeted version of resetTileSurfaces: only the surfaces built over one of the
-        // given (elevation) tiles are dropped. A full reset re-tesselates and re-uploads
-        // every visible tile surface, which during the initial elevation stream means the
-        // whole screen is rebuilt again and again while nothing on it actually changed.
+        // Targeted version of resetTileSurfaces: only the surfaces over one of the given elevation
+        // tiles are dropped. A full reset re-tesselates every visible surface, which during the
+        // initial elevation stream rebuilds the whole screen again and again.
         if (tileIds.empty()) {
             return;
         }
@@ -1501,20 +1416,17 @@ namespace massif::vt {
         }
         VT_STAT_SPLIT(prepTileBlendNs, prepClock);
         
-        // Re-anchor labels onto the terrain - here only for the elevation tiles that landed since
-        // the last frame. A NEW label is anchored where the tile set is built (setVisibleTiles,
-        // on the cull thread): built flat when its tile decodes, it used to wait for this frame,
-        // and a tile-set change that brought 300 labels was a 50-75 ms frame at ~233 us each.
+        // Re-anchor labels onto the terrain, here only for the elevation tiles that landed since the
+        // last frame. A NEW label is anchored on the cull thread in setVisibleTiles - doing it here
+        // made a tile set of 300 labels a 50-75 ms frame.
         if (_labelElevationProvider) {
             refresh = anchorDirtyLabels() || refresh;
             VT_STAT_SPLIT(prepElevUpdateNs, prepClock);
         }
 
-        // Only the extrusions standing over an elevation tile that just landed. A building's
-        // centroid is inside its own tile, so matching the geometry's SOURCE tile against the
-        // changed one is exact - and it is what keeps a DEM tile arriving from re-resolving every
-        // base on screen. Spans are excluded: a chord samples its portals, which are routinely
-        // outside the tile, so they follow the global version instead.
+        // Only the extrusions standing over an elevation tile that just landed: a building's
+        // centroid is inside its own tile, so matching the geometry's SOURCE tile is exact. Spans
+        // are excluded - a chord samples portals that are routinely outside the tile.
         if (!_pendingExtrusionBaseTiles.empty()) {
             if (_renderTiles) {
                 for (const RenderTile& renderTile : *_renderTiles) {
@@ -1548,11 +1460,9 @@ namespace massif::vt {
             _pendingExtrusionBaseTiles.clear();
         }
 
-        // Only the extrusions standing over an elevation tile that just landed. A building's
-        // centroid is inside its own tile, so matching the geometry's SOURCE tile against the
-        // changed one is exact - and it is what keeps a DEM tile arriving from re-resolving every
-        // base on screen. Spans are excluded: a chord samples its portals, which are routinely
-        // outside the tile, so they follow the global version instead.
+        // Only the extrusions standing over an elevation tile that just landed: a building's
+        // centroid is inside its own tile, so matching the geometry's SOURCE tile is exact. Spans
+        // are excluded - a chord samples portals that are routinely outside the tile.
 
         // Update labels
         _visiblePassLabels = _passLabels;
@@ -1599,19 +1509,15 @@ namespace massif::vt {
             }
 
 
-            // Update GL state. In terrain mode 2D geometry is displaced onto the terrain
-            // surface and depth-tested (with a small bias towards the viewer) against the
-            // terrain depth pre-pass that the host renderer performs before the tile layers.
-            // Nothing in the 2D pass writes depth, so painter's order is preserved and
-            // co-planar surfaces from different layers can not z-fight.
+            // In terrain mode 2D geometry is displaced onto the terrain surface and depth-tested
+            // against the host's depth pre-pass. Nothing in the 2D pass WRITES depth, so painter's
+            // order is preserved and coplanar surfaces from different layers cannot z-fight.
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
-            // In terrain mode draped 2D content is depth-tested against the depth-write
-            // surfaces so that terrain ridges occlude content behind them. The mesh
-            // deviations between the surface and geometry meshes are covered by the
-            // two-component depth bias (see setupTerrainUniforms), which stays valid at
-            // all tilts and zooms - no tilt gating needed.
+            // Draped 2D content is depth-tested against the depth-writing surfaces so terrain ridges
+            // occlude what is behind them. The surface-vs-geometry mesh deviation is covered by the
+            // two-component depth bias, which holds at every tilt and zoom.
             if (_terrainMode) {
                 glEnable(GL_DEPTH_TEST);
             } else {
@@ -1630,11 +1536,9 @@ namespace massif::vt {
                 glCullFace(GL_BACK);
             }
 
-            // Terrain reference surface pre-pass: this tile layer's own depth domain (clear, draw
-            // the displaced surfaces at TRUE depth, content writes on top). Skipped under a shared
-            // ground or cross-layer drape - the glClear(DEPTH) would throw away the shared surface
-            // that exists to remove exactly this per-layer domain. Content composited onto that
-            // ground is coincident with it, so it passes at EQUAL depth.
+            // Terrain reference surface pre-pass: this layer's own depth domain. Skipped under a
+            // shared ground or cross-layer drape, where the glClear(DEPTH) would throw away the very
+            // surface that removes the per-layer domain; content on it then passes at EQUAL depth.
             bool leEqualDepth = _terrainMode && (_terrainDrapeFills || _terrainSharedGround);
             if (leEqualDepth) {
                 glDepthFunc(GL_LEQUAL);
@@ -1677,10 +1581,9 @@ namespace massif::vt {
                 // back-pushed pre-pass surface). Fills then hug the terrain exactly.
                 if (_terrainDrapeFills) {
                     renderDrapeTextures(*_visibleRenderTiles);
-                    // The drape surface IS the terrain grid surface (lattice-exact). Draw it at
-                    // TRUE depth and let it WRITE depth: it becomes the real occluder, so a near
-                    // ridge blocks the whole far slope (raster/contours/elements) behind it. A
-                    // pushed-back / non-writing surface is what let far slopes show through.
+                    // The drape surface IS the terrain grid surface, so draw it at TRUE depth and let
+                    // it WRITE: it becomes the real occluder and a near ridge blocks the far slope
+                    // behind it. A pushed-back surface is what let far slopes show through.
                     glEnable(GL_DEPTH_TEST);
                     glDepthMask(GL_TRUE);
                     glDisable(GL_STENCIL_TEST);
@@ -1703,10 +1606,9 @@ namespace massif::vt {
                 glEnable(GL_DEPTH_TEST);
                 glDepthMask(GL_TRUE);
                 glDisable(GL_STENCIL_TEST);
-                // Facing-coded: FRONT faces magenta, BACK faces cyan. A 'see-through'
-                // spot later showing cyan means literal back faces are visible
-                // (winding/mesh problem); magenta means the far slope's front faces
-                // painted there (occlusion failure).
+                // Facing-coded: FRONT faces magenta, BACK faces cyan. Cyan in a 'see-through' spot
+                // means literal back faces are visible (winding/mesh); magenta means the far slope's
+                // front faces painted there (occlusion failure).
                 glEnable(GL_CULL_FACE);
                 glCullFace(GL_BACK); // front faces remain
                 Color frontColor(1.0f, 0.0f, 1.0f, 1.0f); // magenta
@@ -1733,10 +1635,9 @@ namespace massif::vt {
                 }
             }
 
-            // 2D geometry pass: lattice-clamped content is coincident with the true-depth ground,
-            // so GL_LEQUAL and no forward bias - zero pull means zero ridge leak. No stencil masks
-            // here; content writing depth plus a pushed-back proxy is what replaces them
-            // (docs/rendering/05-depth-model.md).
+            // 2D geometry pass: lattice-clamped content is coincident with the true-depth ground, so
+            // GL_LEQUAL and no forward bias - zero pull means zero ridge leak. No stencil masks; a
+            // depth-writing content plus a pushed-back proxy replaces them.
             renderGeometry2D(*_visibleRenderTiles, stencilBits);
             if (leEqualDepth) {
                 glDepthFunc(GL_LESS);
@@ -2083,12 +1984,9 @@ namespace massif::vt {
                 findLabelIntersections(label, rays, buffer, resultsLocal);
                 
                 for (const GeometryIntersectionInfo& result : resultsLocal) {
-                    // "Is the label facing us" - the anchor's ground normal against the ray. A
-                    // CALLOUT is exempt: it is drawn where it is not anchored, its quad is
-                    // spanned on the camera axes so it always faces the viewer, and a label
-                    // lifted into the SKY is hit by an upward ray - which this test rejects.
-                    // That was "peak names below the horizon are clickable, the ones over the
-                    // sky are not".
+                    // "Is the label facing us" - the anchor's ground normal against the ray. A CALLOUT
+                    // is exempt: its quad is spanned on the camera axes and always faces the viewer,
+                    // and one lifted into the SKY is hit by an upward ray this test would reject.
                     if (label->getStyle()->orientation != LabelOrientation::CALLOUT && cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(rays[result.rayIndex].direction)) >= 0) {
                         continue;
                     }
@@ -2103,12 +2001,9 @@ namespace massif::vt {
 
     bool GLTileRenderer::isTileVisible(const TileId& tileId) const {
         cglib::bbox3<double> bbox = _transformer->calculateTileBBox(tileId);
-        // The box is the tile's GROUND, and an extrusion stands out of it: a building is still on
-        // screen for a long time after the ground it stands on has left the frustum, and dropping
-        // the tile there takes the building with it. That is what buildings "disappearing all over
-        // the place" during a zoom was - measured with a probe over the drawn extrusion set, five
-        // of six losses were this test. maplibre grows the culling elevation for the same reason
-        // (covering_tiles.ts, getElevationForTileCulling / ASSUMED_MAX_FEATURE_HEIGHT_METERS).
+        // The box is the tile's GROUND and an extrusion stands out of it: a building is on screen
+        // long after its ground has left the frustum, and dropping the tile takes it along - five of
+        // six extrusion losses in a zoom. maplibre grows the culling elevation for the same reason.
         double headroom = tileCullingHeadroom();
         if (headroom > 0) {
             // Every axis, not only z: the surface is planar here but need not be, and the cost of
@@ -2120,10 +2015,9 @@ namespace massif::vt {
     }
 
     double GLTileRenderer::tileCullingHeadroom() const {
-        // maplibre's rule, ported: nothing while the camera looks down, growing to the assumed
-        // maximum feature height as the frustum's bottom edge comes within
-        // TILE_CULLING_HORIZON_ONSET_DEGREES of the horizon. At tilt 45 with the SDK's own fov of
-        // 70 the bottom edge is 9.25 degrees up, which is 38% of the way in.
+        // maplibre's rule, ported: nothing while the camera looks down, growing to the assumed max
+        // feature height as the frustum's bottom edge comes within TILE_CULLING_HORIZON_ONSET_DEGREES
+        // of the horizon.
         if (!(_metersToInternal > 0)) {
             return 0; // no projection scale stated: fall back to the ground box, as before
         }
@@ -2150,12 +2044,9 @@ namespace massif::vt {
     }
 
     unsigned int GLTileRenderer::fogFlag() const {
-        // The drape bake must never fog: it is flat content baked into a texture that is then
-        // painted on the terrain surface and fogged there, once. Anything fogged here is BURNT IN
-        // and survives the fog being turned off, because the drape texture is cached. It used to
-        // fall out of the arithmetic - an orthographic pass has gl_FragCoord.w = 1, a whole world
-        // in internal units, which no metric range ever reached - but a camera-relative range does
-        // reach it at high zoom, so the bake now says so itself.
+        // The drape bake must never fog: it is flat content baked into a texture that is fogged once
+        // on the terrain surface. Anything fogged here is BURNT IN and survives the fog being turned
+        // off, because the texture is cached. It used to fall out of the arithmetic; it no longer does.
         if (_drapeMVPOverride) {
             return 0;
         }
@@ -2190,11 +2081,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::warmTerrainRasterShader() {
-        // The lit raster program is only ever ASKED for at an integer zoom out - the one moment a
-        // raster draws outside the drape (see renderTileBitmap) - so building it lazily put a full
-        // compile and link of the largest colormap variant (DEM taps, PCF, cascades) inside that
-        // gesture. Build it on an ordinary frame instead. The flag set is re-derived every frame
-        // and only a change rebuilds, so a shadow or cascade config change warms itself too.
+        // The lit raster program is only ASKED for at an integer zoom out, so building it lazily put
+        // a full compile and link of the largest variant inside that gesture. Built on an ordinary
+        // frame instead; the flag set is re-derived each frame, so a config change warms itself.
         if (!_terrainMode || !_terrainTextureProvider || !_terrainLighting.enabled) {
             return;
         }
@@ -2225,30 +2114,24 @@ namespace massif::vt {
 
     void GLTileRenderer::setupShadowFadeRangeUniform(const ShaderProgram& shaderProgram) const {
         // Zeroed for the orthographic drape bake, for the reason fogFlag() gives: there
-        // gl_FragCoord.w is 1 - a whole world in internal units - so a view-depth fade would put
-        // every baked fragment past the end of the range and BURN a shadowless bake into the
-        // cached drape texture.
+        // gl_FragCoord.w is 1, so a view-depth fade puts every baked fragment past the end of the
+        // range and BURNS a shadowless bake into the cached texture.
         cglib::vec2<float> fadeRange = _drapeMVPOverride ? cglib::vec2<float>(0.0f, 0.0f) : _terrainShadowFadeRange;
         glUniform2f(shaderProgram.uniforms[U_SHADOWFADERANGE], fadeRange(0), fadeRange(1));
     }
 
     cglib::vec4<float> GLTileRenderer::calculateShadowNormalOffsets(const cglib::mat4x4<double>& tileFrame) const {
-        // The normal offset is a number of shadow-map TEXELS, and the shader adds it to a
-        // tile-local position. One texel is (box width / mapSize) in world units, and the box width
-        // is read straight off the light matrix: its ortho part scales x by 2/(r-l), and the view
-        // part is a pure rotation, so the first row's LENGTH is that scale. Reading it back here
-        // instead of threading it through the caller keeps the two in step by construction.
+        // The normal offset is a number of shadow-map TEXELS added to a tile-local position. One
+        // texel is box width / mapSize, and the box width is the first matrix row's LENGTH - the
+        // ortho part scales x by 2/(r-l) and the view part is a pure rotation.
         cglib::vec4<float> offsets(0.0f, 0.0f, 0.0f, 0.0f);
         double tileScale = cglib::length(cglib::vec3<double>(tileFrame(0, 0), tileFrame(0, 1), tileFrame(0, 2)));
         if (!(tileScale > 0) || !(_terrainShadowNormalOffset > 0) || _terrainShadowMapSize <= 0) {
             return offsets;
         }
-        // EACH cascade gets its OWN texel, which is mapbox's model (shadow_renderer setupShadows:
-        // offset0 from cascade 0's radius, offset1 from the last one's). Clamped to the near
-        // cascade's instead, an outer page whose texel is metres of ground was offset by a
-        // near-page texel of centimetres - far too little to lift a wall off its own depth - so
-        // every building that fell out of the near pages wore a grey patch of its own acne. That is
-        // why one cascade was clean and three were not: with one page there is no other to clamp to.
+        // EACH cascade gets its OWN texel, as mapbox does. Clamped to the near cascade's instead, an
+        // outer page whose texel is metres of ground was offset by centimetres - far too little to
+        // lift a wall off its own depth, so every building outside the near pages wore acne.
         for (int i = 0; i < _terrainShadowCascades; i++) {
             const cglib::mat4x4<double>& m = _terrainShadowViewProjs[i];
             double boxScale = cglib::length(cglib::vec3<double>(m(0, 0), m(0, 1), m(0, 2)));
@@ -2279,10 +2162,9 @@ namespace massif::vt {
         glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
         glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
         glActiveTexture(GL_TEXTURE0);
-        // A tile whose elevation has not arrived is drawn FLAT, at zero. In the mountains that is a
-        // kilometre below everything around it, so the surrounding terrain shadows every texel of it
-        // and it reads as a solid dark block the exact shape of the tile. It has no relief to shadow
-        // anyway, so it takes no shadow until its heights are there.
+        // A tile whose elevation has not arrived is drawn FLAT, at zero - in the mountains a
+        // kilometre below its neighbours, so they shadow every texel of it and it reads as a dark
+        // block the shape of the tile. It takes no shadow until its heights are there.
         glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), hasElevation ? _terrainShadowStrength : 0.0f, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
         glUniform3f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBias(0), _terrainShadowBias(1), _terrainShadowBias(2));
         glUniform4f(shaderProgram.uniforms[U_SHADOWDEPTHSCALE], _terrainShadowDepthScales[0], _terrainShadowDepthScales[1], _terrainShadowDepthScales[2], _terrainShadowDepthScales[3]);
@@ -2321,12 +2203,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::useProgram(const ShaderProgram& shaderProgram) {
-        // glUseProgram is one of the most expensive state changes on a tiler, and the draw
-        // loop is style-layer-major: every tile of a layer draws with the same program, so
-        // the call is redundant for all but the first. Measured per-draw setup (everything
-        // before glDrawElements) is 24-31 us against 10-12 us for the draw itself, at
-        // 250-560 draws a frame. The tracked value is reset whenever another renderer can
-        // have bound a program of its own (see resetProgramState).
+        // glUseProgram is one of the most expensive state changes on a tiler, and the draw loop is
+        // style-layer-major, so the call is redundant for all but a layer's first tile. Reset
+        // whenever another renderer can have bound a program of its own (resetProgramState).
         if (_lastUsedProgram != shaderProgram.program) {
             _lastUsedProgram = shaderProgram.program;
             glUseProgram(shaderProgram.program);
@@ -2587,12 +2466,9 @@ namespace massif::vt {
                 }
             }
             else {
-                // An inactive layer that a still-fading ACTIVE layer covers is the only thing
-                // painting that area until the replacement is opaque, so it HOLDS instead of
-                // fading. Fading both at once leaves coverage at blend + (1-blend)^2, which is
-                // below 1 for the whole transition - on a raster or hillshade layer that reads as
-                // a blink at every zoom step. The active branch above erases it once the
-                // replacement reaches 1, so nothing here has to fade it out.
+                // An inactive layer under a still-fading ACTIVE one is the only thing painting that
+                // area, so it HOLDS instead of fading: fading both leaves coverage at
+                // blend + (1-blend)^2, a blink at every zoom step. The active branch erases it.
                 bool replaced = false;
                 auto it2 = it;
                 for (it2++; it2 != renderTile.renderLayers.end() && it2->first == it->first; it2++) {
@@ -2601,17 +2477,9 @@ namespace massif::vt {
                         break;
                     }
                 }
-                // Nothing active covers this ground YET. Fading here is what leaves a hole: the
-                // tile that will take over is still being fetched, this layer is the only thing
-                // painting that ground, and it dies in the ten frames a fetch does not fit into.
-                // Measured on emulator-5556 (day-cycle-light, z17-19 pinch): sixteen pieces of
-                // ground at once left covered by a render tile whose layers had all been erased -
-                // `geom 0 extr 0 | tile layers 19 extr 2` - which is buildings vanishing mid-zoom.
-                // So HOLD while the tile is on screen, exactly as the covered case above does.
-                // A tile that leaves the view still goes in ONE step (delta is 1 when not visible),
-                // and a layer the style really dropped is erased by the active branch as soon as
-                // its replacement is opaque - which is why holding cannot strand content: the
-                // moment the tile has an active layer of its own, this one is fading again.
+                // Nothing active covers this ground YET, so fading leaves a hole: the tile taking over
+                // is still being fetched and this layer dies in the ten frames a fetch does not fit
+                // into. HOLD while the tile is on screen; a tile that leaves still goes in ONE step.
                 bool anyActive = false;
                 for (auto it2 = renderTile.renderLayers.begin(); it2 != renderTile.renderLayers.end(); it2++) {
                     anyActive = anyActive || it2->second.active;
@@ -2641,12 +2509,9 @@ namespace massif::vt {
     void GLTileRenderer::buildLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
         VT_STAT_INC(labelMapRebuilds);
 
-        // Pass 1: work out which tile geometries each label is built from, WITHOUT building
-        // anything. A label is identified by the set of (tile object, local id) pairs
-        // contributing to it; the tile object rather than the tile id, because the same tile
-        // id can be re-served by a different (re-decoded) tile whose geometry differs.
-        // Summing the per-contribution hashes makes the signature independent of the order
-        // the tiles are visited in, which follows the visible tile order and is not stable.
+        // Pass 1: which tile geometries each label is built from, WITHOUT building anything. Keyed
+        // on the tile OBJECT, not its id - the same id can be re-served by a re-decoded tile. The
+        // per-contribution hashes are summed, so the signature does not depend on visit order.
         std::map<int, std::unordered_map<long long, std::pair<long long, int>>> newLayerSignatureMap;
         for (const std::shared_ptr<const Tile>& tile : labelTiles) {
             for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
@@ -2696,10 +2561,9 @@ namespace massif::vt {
                         continue;
                     }
 
-                    // Reuse the existing label object when every contribution to it is
-                    // unchanged. Rebuilding it transforms the same geometry again, drops its
-                    // cached vertex data and forces a re-snap of its anchor - which is what
-                    // makes the visible label set churn while tiles stream in.
+                    // Reuse the existing label object when every contribution to it is unchanged:
+                    // rebuilding transforms the same geometry again, drops its cached vertex data and
+                    // re-snaps its anchor, which is what churns the label set while tiles stream in.
                     const std::pair<long long, int>& signature = signatureMap.at(globalId);
                     auto oldLabelIt = oldLabelMap.find(globalId);
                     if (oldLabelIt != oldLabelMap.end() && oldLabelIt->second->hasGeometrySignature(signature.first, signature.second)) {
@@ -2753,10 +2617,9 @@ namespace massif::vt {
             for (auto newLabelIt = newLabelMap.begin(); newLabelIt != newLabelMap.end(); newLabelIt++) {
                 const std::shared_ptr<Label>& newLabel = newLabelIt->second;
                 std::shared_ptr<Label>& label = labelMap[newLabelIt->first];
-                // A reused object IS the previous label: its placement, visibility and
-                // opacity are already the current ones. Note this can not be decided by
-                // comparing against the map entry - the release pass above erases entries
-                // whose label has faded out, and a reused label may be one of them.
+                // A reused object IS the previous label: its placement, visibility and opacity are
+                // already current. It cannot be decided from the map entry - the release pass erases
+                // entries whose label has faded out, and a reused label may be one of them.
                 if (reusedLabelIds.count(newLabelIt->first) > 0) {
                     // nothing to carry over
                 }
@@ -2774,10 +2637,9 @@ namespace massif::vt {
             }
         }
 
-        // Build the final label lists: ONE list per pass, in draw order. The order is the style's
-        // (priority, then layer, then id) and nothing else - grouping by glyph atlas first made the
-        // order of two labels in different atlases a pointer hash, so a label small enough to be
-        // rastered at another size than the icon it sits on could be drawn under it.
+        // Build the final label lists: ONE list per pass, in draw order - the style's (priority,
+        // layer, id) and nothing else. Grouping by glyph atlas first made the order of two labels in
+        // different atlases a pointer hash.
         std::vector<std::shared_ptr<Label>> labels;
         labels.reserve(_labels.size() + 64);
         std::array<std::shared_ptr<PassLabels>, 2> passLabels;
@@ -2800,11 +2662,9 @@ namespace massif::vt {
             }
         }
         for (int pass = 0; pass < 2; pass++) {
-            // DRAW order, so the list runs bottom to top: what is drawn last is on top. The
-            // culler's order is the opposite - it places the most important label FIRST, to claim
-            // its slot (LabelCuller::process) - and this list used to copy it, which put the LEAST
-            // important of an overlapping pair on top. A road name covering the town name it
-            // crosses was that, and the layerIndex tie-break right below already ran this way.
+            // DRAW order, so the list runs bottom to top. The culler's order is the opposite - it
+            // places the most important label FIRST to claim its slot - and copying it put the LEAST
+            // important of an overlapping pair on top, a road name over the town name it crosses.
             std::stable_sort(passLabels[pass]->begin(), passLabels[pass]->end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
                 if (label1->getPriority() != label2->getPriority()) {
                     return label1->getPriority() < label2->getPriority();
@@ -2981,11 +2841,9 @@ namespace massif::vt {
             }
         }
 
-        // Tangram's proxy depth, their formula (tileManager.cpp, setProxyDepth):
-        //     max(maxVisS - tileId.s, 1) while the tile stands in, 0 once it is live.
-        // How many levels COARSER the drawn tile is than the deepest level on screen - not a flat
-        // one. A tile standing in two levels up is a different height field twice over, and the
-        // push has to say so; a flat 1 pushes it exactly as far as a tile that is one level off.
+        // Tangram's proxy depth, their formula (tileManager.cpp setProxyDepth): how many levels
+        // COARSER the drawn tile is than the deepest on screen, not a flat 1 - a tile standing in
+        // two levels up is a different height field twice over, and the push has to say so.
         auto proxyDepth = [maxVisibleZoom](const RenderTileLayer* renderLayer) -> float {
             if (renderLayer->active) {
                 return 0.0f;
@@ -2994,11 +2852,8 @@ namespace massif::vt {
         };
 
         // Stencil tile masks clip a tile's content to its footprint. In a TERRAIN frame a mask is a
-        // full displaced grid per tile per reset - two thirds of the surface geometry, 19.5 -> 23.5
-        // fps without them - so they are dropped there; in 2D a mask is a quad and costs nothing.
-        // A comp-op layer is the exception in both: its overlay buffer has no depth to clip it.
-        // Whether the MASKS run is separate from whether the buffer HAS a stencil - the single-blend
-        // pass below needs one spare bit and no masks.
+        // full displaced grid per tile (19.5 -> 23.5 fps without them), so they are dropped there; in
+        // 2D it is a quad. A comp-op layer is the exception - its overlay has no depth to clip it.
         GLint maskStencilBits = (_terrainSharedGround ? 0 : stencilBits);
         if (maskStencilBits > 0 && _tileMasks < 0 && _terrainMode) {
             bool anyCompOp = false;
@@ -3042,16 +2897,13 @@ namespace massif::vt {
             glEnable(GL_STENCIL_TEST);
         }
         
-        // In terrain mode, draw the tiles of each style layer NEAR-TO-FAR: content
-        // writes depth (tangram-style), so near tiles occlude far tiles by real
-        // geometry, and translucent content of a far tile can not blend under
-        // already-drawn near content.
+        // In terrain mode, draw the tiles of each style layer NEAR-TO-FAR: content writes depth, so
+        // near tiles occlude far ones by real geometry and a far tile's translucent content cannot
+        // blend under near content already drawn.
         if (_terrainMode && _terrainTextureProvider) {
-            // One distance per tile, not one per comparison. On the terrain transformer
-            // calculateTileBBox samples the elevation manager for the tile's min/max height and
-            // transforms the box in double precision, so calling it from the comparator made the
-            // sort the single most expensive thing on the render thread (measured on the
-            // Crosscall, north pan: 21% of it, with calculateTileBBox at 22% inclusive).
+            // One distance per tile, not one per comparison: on the terrain transformer
+            // calculateTileBBox samples the elevation manager and transforms the box in double
+            // precision, so calling it from the comparator was 21% of the render thread.
             std::map<TileId, double> tileDistances;
             auto tileDistance = [this, &tileDistances](const TileId& tileId) -> double {
                 auto it = tileDistances.find(tileId);
@@ -3084,10 +2936,8 @@ namespace massif::vt {
         bool resetStencil = true;
         std::optional<CompOp> currentCompOp;
         // Tangram's style-layer order as a small dense index (docs/rendering/05-depth-model.md).
-        // Numbered over every style layer this renderer has EVER drawn, not the ones on screen:
-        // their `order` is a scene property fixed before a tile loads, and a rank over what happens
-        // to be present renumbers the stack as tiles come and go (measured 7 -> 5 -> 7 between
-        // frames), so content pops in and out from under the layer above it.
+        // Numbered over every style layer this renderer has EVER drawn, not the ones on screen: a
+        // rank over what happens to be present renumbers the stack as tiles come and go.
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             _terrainStyleLayerIndices.insert(it->first);
         }
@@ -3141,9 +2991,8 @@ namespace massif::vt {
                 std::vector<std::pair<TileId, GLint>> orderedTileMasks(tileStencilMap.begin(), tileStencilMap.end());
                 if (_terrainMode) {
                     // Displaced tiles overlap on screen, so the mask order decides who owns a pixel:
-                    // retained blend-out tiles first (they must never steal from live ones), then
-                    // zoom ascending (parent and child have identical footprints during an LOD
-                    // transition and the child must win), then camera distance descending.
+                    // retained blend-out tiles first, then zoom ascending (a child must beat its
+                    // parent during an LOD transition), then camera distance descending.
                     std::vector<std::tuple<int, int, double, std::size_t>> tileMaskOrder(orderedTileMasks.size());
                     for (std::size_t i = 0; i < orderedTileMasks.size(); i++) {
                         cglib::vec3<double> center = _transformer->calculateTileBBox(orderedTileMasks[i].first).center();
@@ -3193,9 +3042,8 @@ namespace massif::vt {
                 // CPU fallback: tesselations differ per layer, so slope-scaled polygon offsets.
                 bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
                 // Under a shared ground NOTHING but the ground pass writes depth: backgrounds and
-                // rasters are drawn on the cover tiles, coincident with it, so a write would only
-                // repeat what is there - and the proxy pushback below would put them BEHIND it and
-                // make every retained tile's raster disappear.
+                // rasters draw on the cover tiles, coincident with it, so a write only repeats what
+                // is there - and the proxy pushback would put them behind it.
                 bool contentDepthWrite = _terrainMode && !layer->getCompOp() && (terrainVTF || _terrainDepthWrite);
                 if (_terrainMode) {
                     if (contentDepthWrite) {
@@ -3210,22 +3058,17 @@ namespace massif::vt {
                         _terrainDrawLayerOffset = proxyDepth(renderLayer) - layerOrdinal;
                     } else if (terrainVTF) {
                         // Backgrounds/bitmaps ARE the terrain occluders and draw at TRUE depth: they
-                        // render the SAME meshes the pre-pass drew, so any pushback here is rejected
-                        // by GL_LESS once the two depths quantize together - every raster vanishing
-                        // along a hard horizontal line a few km out. Clearance comes from the
-                        // pre-pass pushback instead. Proxy tiles are pushed back one delta.
+                        // render the SAME meshes as the pre-pass, so a pushback here is rejected by
+                        // GL_LESS once the depths quantize together. Proxy tiles go back one delta.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         _terrainDrawDepthBias = _terrainDepthBias - proxyBias;
                         _terrainDrawDepthClipUnits = 0.0f;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         if (_terrainDepthWrite && !layer->getCompOp()) {
-                            // Push the WRITTEN depth slightly back by a small constant only. A
-                            // slope-scaled factor here leaks along tall steep mountain faces (the
-                            // projected face spans a few pixels with an enormous per-pixel depth
-                            // gradient, so the whole strip gets pushed far back and geometry behind
-                            // the ridge shows through). Geometry-below-surface dips are instead
-                            // prevented exactly by the surface-fan height clamp in the transformer.
+                            // A small CONSTANT push only: a slope-scaled factor leaks along tall steep
+                            // faces, where a few pixels carry an enormous depth gradient and the whole
+                            // strip is pushed far enough back to show what is behind the ridge.
                             glPolygonOffset(0.0f, 2.0f);
                         } else {
                             glPolygonOffset(-1.0f, -2.0f);
@@ -3237,12 +3080,9 @@ namespace massif::vt {
                 // displaced geometry. Overzoomed/proxy layers are draped too (through the
                 // sub-rect bake), so this no longer requires sourceTileId == targetTileId.
                 bool drapedTile = isTileDraped(renderLayer->targetTileId);
-                // Ground-shaped content - the style's tile background and rasters - is a second
-                // tesselation of the same height field as the ground, and two tesselations do not
-                // agree: under a shared ground it is drawn on the COVER tiles instead of on the
-                // layer's own, so it is coincident with the ground to the bit. A layer coarser
-                // than the cover therefore draws once per leaf, with the source uv sub-rect the
-                // overzoom path already computes for a coarse source over a fine target.
+                // Ground-shaped content is a second tesselation of the same height field, and two
+                // tesselations do not agree - so under a shared ground it draws on the COVER tiles,
+                // coincident to the bit. A coarser layer then draws once per leaf, with a uv sub-rect.
                 const std::vector<TileId>& groundTiles = collectGroundLeaves(renderLayer->targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
                     // Draped native backgrounds are baked into the surface texture already.
@@ -3255,9 +3095,8 @@ namespace massif::vt {
                         currentCompOp = backgroundCompOp;
                     }
                     // Under a shared ground the ground pass owns the ground colour, so a patternless
-                    // background is skipped - it was ~84 grid draws a frame (3 layers, 28 tiles) for
-                    // pixels already painted. Tangram has no per-tile background mesh at all. A
-                    // PATTERN is real content and still draws.
+                    // background is skipped - ~84 grid draws a frame for pixels already painted, and
+                    // tangram has no per-tile background mesh at all. A PATTERN still draws.
                     if (_terrainSharedGround && !background->getPattern() && !_terrainTileBackgrounds) {
                         continue;
                     }
@@ -3285,40 +3124,31 @@ namespace massif::vt {
                 }
 
                 if (_terrainMode) {
-                    // Geometry does NOT write depth: it stacks by painter's order over
-                    // the backgrounds (coplanar same-displacement content needs no
-                    // per-layer bias), so road casings/fills from different style layers
-                    // can not z-fight each other, and vector elements drawn after the
-                    // tile layers stay in front of all tile content.
+                    // Geometry does NOT write depth: it stacks by painter's order over the
+                    // backgrounds, so style layers cannot z-fight each other and vector elements
+                    // drawn after the tile layers stay in front of all tile content.
                     if (contentDepthWrite && !_terrainSharedGround) {
                         glDepthMask(GL_FALSE);
                     }
                     if (_terrainSharedGround) {
-                        // Geometry writes too (tangram writes for opaque AND translucent) and carries
-                        // its layer's ordinal. That term separates COPLANAR style layers, one step
-                        // each - not a budget to spread over the stack. An un-subdivided fill needs
-                        // more than one step and there is no room for it here (half a step leaves
-                        // slivers at z14, two steps hides the ground paint): still open, and not to
-                        // be paid out of this term.
+                        // Geometry writes too, as tangram does, and carries its layer's ordinal. That
+                        // term separates COPLANAR style layers one step each - not a budget to spread
+                        // over the stack; an un-subdivided fill needs more, which is still open.
                         _terrainDrawDepthBias = _terrainDepthBias;
                         _terrainDrawDepthClipUnits = 0.0f;
                         _terrainDrawLayerOffset = proxyDepth(renderLayer) - layerOrdinal;
                     } else if (terrainVTF) {
                         // Geometry draws at its REAL depth: the clearance comes from pushing the
-                        // SURFACE back, so nothing is ever pulled forward and nothing leaks over a
-                        // ridge. (The adaptive fallback keeps the old distance-growing slack, which
-                        // is the only depth range far content can leak through.)
+                        // SURFACE back, so nothing is pulled forward and nothing leaks over a ridge.
+                        // The adaptive fallback keeps the old distance-growing slack.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         // Painter-order: lattice-clamped content is coincident with the true-depth
-                        // occluder surface and is drawn with GL_LEQUAL, so it needs ZERO forward
-                        // bias - it passes at equal depth and is occluded (fails) behind a ridge.
-                        // Any forward clip bias here leaks over ridges at range (the contour
-                        // see-through), so keep it at zero in painter-order.
+                        // occluder surface and drawn with GL_LEQUAL, so it needs ZERO forward bias.
+                        // Any forward clip bias leaks over ridges at range (the contour see-through).
                         _terrainDrawDepthBias = (_terrainRegularGrid ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
-                        // Lattice clamp (regular-grid mode) makes draped geometry follow the
-                        // reference grid surface within the tiny in-cell bilinear-vs-triangle
-                        // twist, so the distance-growing slack collapses to a small margin;
-                        // adaptive meshes keep the full calibrated slack.
+                        // Lattice clamp (regular-grid mode) makes draped geometry follow the reference
+                        // surface to within the in-cell bilinear-vs-triangle twist, so the slack
+                        // collapses to a small margin; adaptive meshes keep the calibrated one.
                         _terrainDrawDepthClipUnits = _terrainRegularGrid ? 0.0f : 12.0f;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
@@ -3337,10 +3167,9 @@ namespace massif::vt {
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
-                    // BEFORE the drape test, which now asks whether the chord resolved: a span that
-                    // is draped never reaches the draw below, so resolving there left it draped for
-                    // good - it could not lift because it was baked, and it was baked because it
-                    // had not lifted.
+                    // BEFORE the drape test, which asks whether the chord resolved: a draped span
+                    // never reaches the draw below, so resolving there left it draped for good - baked
+                    // because it had not lifted, unable to lift because it was baked.
                     bool span = !geometry->getSpanRecords().empty();
                     if (span) {
                         _spanResolver.resolve(renderLayer->sourceTileId, geometry, _extrusionBaseVersion.load(std::memory_order_relaxed));
@@ -3358,29 +3187,17 @@ namespace massif::vt {
                             setCompOp(geometryCompOp);
                             currentCompOp = geometryCompOp;
                         }
-                        // Undraped LINES and POINTS are DECALS: both are flat quads over a curved
-                        // surface, so unlike a fill neither is coincident with it and at zero bias
-                        // the sagging half of every quad is cut away over relief. A polygon offset
-                        // scales with the primitive's own depth slope, which is what the sag scales
-                        // with. A point quad chords MORE than a line's cross-section, not less - a
-                        // glyph of clipped text is tens of metres wide - and it was left out: whole
-                        // letters disappeared over 3D terrain, only where the ground is draped
-                        // (a draped tile draws its surface at TRUE depth and writes it).
-                        // A span takes its height from its own two ends, so it is NOT a decal on
-                        // the ground and must not be pulled towards it. (Resolved above, before the
-                        // drape test that now reads the result.)
+                        // Undraped LINES and POINTS are DECALS: flat quads over a curved surface, so at
+                        // zero bias the sagging half of every quad is cut away. A polygon offset scales
+                        // with the depth slope, as the sag does. A span is NOT a decal.
                         bool decal = terrainVTF && !span && (geometry->getType() == TileGeometry::Type::LINE || geometry->getType() == TileGeometry::Type::POINT);
                         if (decal) {
                             glEnable(GL_POLYGON_OFFSET_FILL);
                             glPolygonOffset(-2.0f, -8.0f);
                         }
-                        // A line is a chain of quads: between two vertices it chords over the
-                        // relief the ground follows, so under a depth-writing ground it is cut into
-                        // fragments wherever it sags. The clearance is a fixed number of METRES -
-                        // the sag does not care how far away the line is - which neither the
-                        // ordinal pull (clip-constant, worth distance/near) nor a depth bias
-                        // (ndc-constant, worth distance^2/near) can express without leaking through
-                        // ridges at range.
+                        // A line is a chain of quads chording over the relief, so under a depth-writing
+                        // ground it is cut into fragments wherever it sags. The clearance is in METRES,
+                        // which neither the ordinal pull nor a depth bias can express without leaking.
                         if (decal) {
                             _terrainDrawClearance = _terrainLineClearance;
                         }
@@ -3452,12 +3269,9 @@ namespace massif::vt {
             }
         }
 
-        // The extrusions take part in the SAME dense style-layer numbering as the 2D content
-        // (see renderGeometry2D). Left out of it they drew at ordinal 0 - the ground's own level -
-        // while every 2D layer is pulled forward by its ordinal, so every road and every clipped
-        // text run won the depth test against buildings shorter than that pull. Registered here
-        // for the same reason the 2D pass registers its own: over every layer ever drawn, not the
-        // ones on screen.
+        // The extrusions take part in the SAME dense style-layer numbering as the 2D content. Left
+        // out they drew at ordinal 0 while every 2D layer is pulled forward by its own, so roads and
+        // clipped text won the depth test against buildings shorter than that pull.
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             _terrainStyleLayerIndices.insert(it->first);
         }
@@ -3486,12 +3300,9 @@ namespace massif::vt {
             int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
             Pass3DState pass = begin3DPass(renderLayers, renderTiles, allowInline);
 
-            // Render tile layers for this layer. Translucent extrusions go through twice: first
-            // depth only, then colour with the depth pulled one unit towards the camera, so of all
-            // the fragments a pixel receives exactly one blends - the nearest, and the first drawn
-            // among equals. That is mapbox's depth prepass plus stencilModeFor3D (each pixel once),
-            // without the stencil, which the 2D pass owns here: two coincident party walls no
-            // longer fight, and a building no longer shows its inner walls through its front.
+            // Translucent extrusions go through twice - depth only, then colour with the depth pulled
+            // one unit forward - so exactly one fragment per pixel blends. mapbox's depth prepass plus
+            // stencilModeFor3D without the stencil, which the 2D pass owns here.
             auto drawTileLayers = [&](bool depthOnly) {
             for (const RenderTileLayer* renderLayer : renderLayers) {
                 // Only under the shared ground, which is where the ordinal model applies at all;
@@ -3507,16 +3318,9 @@ namespace massif::vt {
                         // Always drawn: an extrusion whose ground has not resolved yet keeps the
                         // sentinel and the shader falls back to the ground under each vertex.
                         bool baseResolved = resolveExtrusionBases(renderLayer->sourceTileId, renderLayer->targetTileId, geometry);
-                        // ...but that fallback is only safe for a BUILDING, whose base is the ground
-                        // it stands on anyway. A span deck's base is its chord, hundreds of metres
-                        // up: mixing resolved and sentinel vertices stretches a wall between the two
-                        // and the deck fans out across the valley. Wait for the whole piece instead.
-                        //
-                        // And a deck is a 3D THING ON TERRAIN: with the map flat, or before the DEM
-                        // has arrived, there is no chord for it to stand on and a bridge drawn as a
-                        // box over a flat map is simply wrong. Both cases are one test - no terrain,
-                        // or a base that has not resolved - and both mean "not yet", not "draw it
-                        // somewhere plausible".
+                        // ...but that fallback is only safe for a BUILDING, whose base is the ground it
+                        // stands on. A deck's base is its chord, and mixing sentinel vertices fans it
+                        // across the valley. "Not yet", rather than "draw it somewhere plausible".
                         if (!geometry->getSpanRecords().empty() && (!_terrainMode || !baseResolved)) {
                             continue;
                         }
@@ -3555,17 +3359,13 @@ namespace massif::vt {
         }
         state.layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
 
-        // The 3D overlay buys comp-op compositing and 'flatten then blend once' for a fading
-        // layer; neither applies to the normal opaque case, which it costs a full-screen clear,
-        // a terrain surface pre-pass and a composite every frame. Tangram has no overlay at all.
-        // Inline only when the extrusions are the frame's last tile content (buildingOrder 1) -
-        // they write depth and would otherwise occlude the 2D content drawn after them.
+        // The 3D overlay buys comp-op compositing and 'flatten then blend once' for a fading layer,
+        // and costs the opaque case a full-screen clear, a pre-pass and a composite every frame.
+        // Inline only when the extrusions are the frame's last tile content - they write depth.
         state.useOverlay = !allowInline || static_cast<bool>(layer->getCompOp()) || state.geometryOpacity < 1.0f - 1.0f / 255.0f;
-        // A LAYER opacity below 1 takes the overlay above: opaque in its own buffer, composited
-        // once. A translucent fill colour does not - it is per feature, evaluated into the colour
-        // table - and blended straight into the scene it showed every wall through every other
-        // wall, and two coincident party walls fought for the pixel. Mark it, so the draw below
-        // can resolve the nearest surface first.
+        // A LAYER opacity below 1 takes the overlay above: opaque in its own buffer, composited once.
+        // A translucent fill COLOUR does not - it is per feature - and blended straight into the scene
+        // it shows every wall through every other. Mark it, so the draw resolves the nearest first.
         if (!state.useOverlay) {
             for (const RenderTileLayer* renderLayer : renderLayers) {
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
@@ -3589,10 +3389,9 @@ namespace massif::vt {
             glGetIntegerv(GL_FRAMEBUFFER_BINDING, &state.previousFBO);
 
             if (_overlayBuffer3D.fbo == 0) {
-                // Packed depth-stencil, which is the only way to get a 24-bit depth buffer
-                // here: 16 bits over a terrain-sized near-far range quantises to several metres
-                // at a couple of kilometres, enough to eat the bottom of every extrusion once
-                // the terrain surface is an occluder in this buffer. The stencil half is unused.
+                // Packed depth-stencil, the only way to a 24-bit depth buffer here: 16 bits over a
+                // terrain-sized range quantises to metres at a couple of kilometres, enough to eat the
+                // bottom of every extrusion. The stencil half is unused.
                 createFrameBuffer(_overlayBuffer3D, true, true, true);
             }
 
@@ -3601,10 +3400,9 @@ namespace massif::vt {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
 
-        // Seed the OVERLAY's own depth buffer with the terrain surfaces: it is composited back
-        // as a flat quad with depth testing off, so without this a building behind a ridge
-        // paints straight over it. Skipped inline (the main framebuffer already holds that
-        // cover) and skipped for a comp-op layer with no extrusions - this is a full surface draw.
+        // Seed the OVERLAY's own depth buffer with the terrain surfaces: it composites back as a flat
+        // quad with depth testing off, so without this a building behind a ridge paints over it.
+        // Skipped inline and for a comp-op layer with no extrusions - it is a full surface draw.
         state.terrainOccluders = _terrainMode && static_cast<bool>(_terrainTextureProvider) &&
             std::any_of(renderLayers.begin(), renderLayers.end(), [](const RenderTileLayer* renderLayer) {
                 const std::vector<std::shared_ptr<TileGeometry>>& geometries = renderLayer->layer->getGeometries();
@@ -3639,11 +3437,9 @@ namespace massif::vt {
                 glEnable(GL_CULL_FACE);
                 glCullFace(GL_BACK);
             }
-            // Extrusion clearance, two errors: the base ring samples elevation at arbitrary xy
-            // while the mesh interpolates over cells (clip slack), and a wall standing ON the
-            // surface is only separable to the depth buffer's resolution, which grows as
-            // distance^2/near (constant-NDC) - without it the buffer eats most of a 40 m
-            // building from a couple of km out. Uniform, so building-vs-building is unaffected.
+            // Extrusion clearance, two errors: the base ring samples elevation at arbitrary xy while
+            // the mesh interpolates over cells, and a wall on the surface is only separable to the
+            // depth resolution, which grows as distance^2/near. Uniform, so building-vs-building holds.
             _terrainDrawDepthBias = _terrainDepthBias + TERRAIN_EXTRUSION_DEPTH_DELTAS * TERRAIN_LAYER_DEPTH_DELTA;
             _terrainDrawDepthClipUnits = (_terrainRegularGrid ? 2.0f : 12.0f);
         }
@@ -3654,12 +3450,9 @@ namespace massif::vt {
             glEnable(GL_DEPTH_TEST);
             glDepthFunc(GL_LESS);
             glDepthMask(GL_TRUE);
-            // A fading tile's extrusions are PREMULTIPLIED by their blend - colour and alpha
-            // both - and the overlay path resolved that in its composite. Drawn inline there is
-            // no composite, so they have to blend here or a half-faded building is written to
-            // the framebuffer as near-black: the dark flash at the start of a fade in and the
-            // end of a fade out. It also makes the degenerate first frames invisible rather
-            // than a black footprint, since an extrusion fades in by GROWING from zero height.
+            // A fading tile's extrusions are PREMULTIPLIED by their blend, which the overlay path
+            // resolved in its composite. Drawn inline there is none, so they have to blend here or a
+            // half-faded building is written as near-black - the dark flash at each end of a fade.
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
@@ -3740,9 +3533,8 @@ namespace massif::vt {
             const std::shared_ptr<const Bitmap>& labelBitmap = labelPattern->bitmap;
             if (lastLabelStyle != labelStyle) {
                 // The scene light, as far as the label's emissive lets it through. mapbox lights a
-                // label like any other surface, but defaults text and icon to 1 - a no-op here -
-                // which is what keeps a name legible over a night map. One factor for every colour
-                // the style carries, evaluated once per label STYLE.
+                // label like any other surface but defaults text and icon to 1, a no-op here, which
+                // keeps a name legible over a night map. Evaluated once per label STYLE.
                 float labelEmissive = evaluateFloatFunc(labelStyle->emissiveFunc);
                 auto lit = [this, labelEmissive](const cglib::vec4<float>& rgba) {
                     if (labelEmissive >= 1.0f) {
@@ -3795,12 +3587,9 @@ namespace massif::vt {
                 float iconHaloRadius = labelStyle->iconHaloRadiusFunc ? std::min(evaluateFloatFunc(*labelStyle->iconHaloRadiusFunc), MAX_ICON_HALO_PIXELS) : 0.0f;
                 bool hasIconHalo = iconHaloRadius > 0.0f && labelStyle->iconHaloColorFunc;
                 cglib::vec4<float> iconHaloColor = hasIconHalo ? litHalo(cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconHaloColorFunc).rgba())) : color;
-                // The em size the ICON RUN is drawn at, which is not the text's: the run keeps a
-                // fixed pixel size of its own (Label::calculateVertexData scales it by
-                // iconRefSize/size, then by its own ramp). The width table is what labelVsh divides
-                // uSDFRamp by, so an icon sharing the text's slot got the text's antialias ramp -
-                // 20 px of icon smoothed as if it were 13 px of text, which fattened every thin
-                // stroke until it closed: a fork lost the gaps between its tines.
+                // The em size the ICON RUN is drawn at, which is not the text's - the run keeps a
+                // fixed pixel size of its own. labelVsh divides uSDFRamp by it, so an icon sharing
+                // the text's slot got the text's antialias ramp and every thin stroke closed.
                 float iconSize = labelStyle->iconRefSize > 0.0f ? labelStyle->iconRefSize : size;
                 if (labelStyle->iconScaleFunc && labelStyle->iconRefScale > 0.0f) {
                     iconSize *= evaluateFloatFunc(*labelStyle->iconScaleFunc) / labelStyle->iconRefScale;
@@ -3863,10 +3652,9 @@ namespace massif::vt {
                     // as styleIndex + 1, so a REUSED pair has to be consecutive as well.
                     bool border = plate.drawsBorder();
                     int slots = (border ? 2 : 1);
-                    // The icon's plate is its background, so icon-opacity fades it with the glyph
-                    // on it - LIVE, because that opacity is a zoom ramp: baked at decode, a POI
-                    // whose icon a zoom step hides kept its disc until the tile was decoded again,
-                    // which is the coloured square that flashed while zooming.
+                    // The icon's plate is its background, so icon-opacity fades it with the glyph on
+                    // it - LIVE, because that opacity is a zoom ramp: baked at decode, a POI whose icon
+                    // a zoom hides kept its disc, the coloured square that flashed while zooming.
                     float plateOpacity = (i == 1 && labelStyle->iconOpacityFunc ? evaluateFloatFunc(*labelStyle->iconOpacityFunc) : 1.0f);
                     cglib::vec4<float> fillColor = lit(cglib::vec4<float>(plate.style.color.rgba())) * plateOpacity;
                     cglib::vec4<float> borderColor = lit(cglib::vec4<float>(plate.style.borderColor.rgba())) * plateOpacity;
@@ -4048,10 +3836,9 @@ namespace massif::vt {
     }
 
     const std::pair<bool, GLTileRenderer::TerrainTexture>& GLTileRenderer::resolveTerrainTexture(const TileId& tileId) const {
-        // Memoised for the frame: setupTerrainUniforms runs per DRAW and the answer cannot
-        // change within a frame. The provider call doubles as the LRU touch in the SDK's
-        // elevation texture cache, but that cache only needs the entry marked used ONCE in the
-        // current frame to protect it from eviction, which one call per tile still does.
+        // Memoised for the frame: setupTerrainUniforms runs per DRAW and the answer cannot change
+        // within one. The provider call doubles as the elevation cache's LRU touch, which only needs
+        // the entry marked used ONCE a frame to survive eviction.
         auto it = _terrainTextureCache.find(tileId);
         if (it != _terrainTextureCache.end()) {
             return it->second;
@@ -4062,58 +3849,39 @@ namespace massif::vt {
     }
 
     bool GLTileRenderer::setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface) {
-        // GPU draping: bind the tile's elevation texture and the transforms taking vertex xy (in
-        // vertexFrameMatrix's frame) to elevation uv and to the mercator latitude argument.
-        // The clip-constant slack grows linearly with distance in eye units, matching how the
-        // surface-vs-geometry interpolation error grows with the mesh cell. NEGATIVE units push the
-        // draw AWAY: the surface pre-pass takes the slack so content keeps its REAL depth.
+        // GPU draping: bind the tile's elevation texture and the transforms taking vertex xy to
+        // elevation uv and to the mercator latitude. The clip-constant slack grows linearly with
+        // eye distance, as the surface-vs-geometry error does; NEGATIVE units push the draw AWAY.
         float clipUnits = _terrainDrawDepthClipUnits;
         double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
         double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
-        // The interpolation error is curvature limited and QUADRATIC in the cell size: a linear
-        // slack calibrated at low zoom overshoots several-fold at high zoom, and the excess is
-        // exactly the depth range that ignores occlusion. Anchored at zoom 11 tiles, and scaled by
-        // the mesh resolution (doubling it allows a 4x tighter slack).
+        // The interpolation error is curvature limited and QUADRATIC in the cell size, so a linear
+        // slack calibrated at low zoom overshoots several-fold at high zoom - and the excess is the
+        // depth range that ignores occlusion. Anchored at zoom 11 tiles.
         double slackScale = tileSize * std::min(4.0, tileSize / TERRAIN_DEPTH_CLIP_REF_TILE_SIZE) * _terrainSlackScale;
-        // The clip slack magnitude is the same proven, twist-clearing value in both models;
-        // the sign / which draw carries it differs (see the loop). The painter-order per-layer
-        // delta uniforms are unused - painter-order is expressed purely as a surface back-push.
-        // Tangram's depth_shift rides on top of the geometric slack and is deliberately NOT scaled
-        // by the tile size: it is a fixed clip-space pull whose NDC effect dies off as 1/w.
-        // In the shared-ground (tangram) model the shift rides in the PER-LAYER term below, not in
-        // the slack: adding it here as well would apply it twice.
+        // The clip slack magnitude is the same in both models; only the sign and which draw carries
+        // it differ. In the shared-ground model tangram's depth_shift rides in the PER-LAYER term
+        // below rather than in the slack - adding it here as well would apply it twice.
         double contentShift = (gridSurface || _terrainSharedGround ? 0.0 : _terrainContentDepthShift * projScaleZ);
         glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * slackScale * projScaleZ + contentShift));
-        // Tangram's per-layer term, (proxy - layer) * (2^-19 * w + depth_shift). It is what lets
-        // content WRITE depth without style layers z-fighting each other, and what makes a live
-        // tile beat the proxy it replaces - which is the job the stencil tile masks were doing.
-        // Zero for the surface itself, which is the bottom of the stack.
-        // Surfaces take it too: a terrain paint IS a surface and still has to sit at its own place
-        // in the stack's depth order, or the fills of the layer under it are pulled in front of it.
-        // The ground pass sets the offset to 0 itself, which is where the stack starts.
+        // Tangram's per-layer term, (proxy - layer) * (2^-19 * w + depth_shift): it lets content
+        // WRITE depth without style layers z-fighting, and makes a live tile beat its proxy.
+        // Surfaces take it too - a terrain paint IS a surface and sits at its own place in the stack.
         glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], _terrainDrawLayerOffset);
-        // depth_shift, tangram's, verbatim from res/scenes/terrain-3d.yaml:
-        //     depth_shift = -0.02*u_proj[2][3];
-        // glm::perspective puts -1 in [2][3], so it is a FLAT 0.02 - not scaled by the projection
-        // at all. Their comment says what it is for: "use larger depth delta near camera to prevent
-        // terrain from covering geometry", which is exactly what un-subdivided content needs, since
-        // it chords across the terrain between its own vertices. Constant CLIP, so it is large near
-        // the camera - where the chord error is - and dies as 1/w at range, where a forward pull
-        // would leak over a ridge.
+        // depth_shift, tangram's verbatim from terrain-3d.yaml: -0.02*u_proj[2][3], i.e. a FLAT 0.02.
+        // Constant CLIP, so it is large near the camera - where an un-subdivided fill's chord error
+        // is - and dies as 1/w at range, where a forward pull would leak over a ridge.
         double depthShift = (_terrainSharedGround ? _terrainContentDepthShift : 0.0);
         glUniform1f(shaderProgram.uniforms[U_DEPTHSHIFT], static_cast<float>(depthShift));
 
-        // Metre-constant clearance (see applyDepthBias). proj[2][3] is -2*far*near/(far-near), the
-        // term that turns an eye distance into ndc, so multiplying the clearance in world units by
-        // it gives the clip offset that the shader divides by w. Set per draw and zero for
-        // everything that does not chord over the ground - the surfaces, the backgrounds and the
-        // rasters ARE the ground.
+        // Metre-constant clearance (see applyDepthBias): proj[2][3] turns an eye distance into ndc,
+        // so the clearance in world units times it is the clip offset the shader divides by w. Zero
+        // for everything that does not chord over the ground - surfaces, backgrounds and rasters.
         glUniform1f(shaderProgram.uniforms[U_DEPTHCLEARANCE], static_cast<float>(_terrainDrawClearance * _viewState.projectionMatrix(2, 3)));
 
         // Cross-LOD edge stitching bends the edge shared with a COARSER neighbour onto that
-        // neighbour's chords. Draped CONTENT takes it too - a road crossing the seam must land on
-        // the same stitched edge as the ground it lies on, or its halves meet at different heights
-        // (invisible from straight down, a step as soon as the camera tilts).
+        // neighbour's chords. Draped CONTENT takes it too - a road crossing the seam must land on the
+        // same stitched edge, or its halves meet at different heights as soon as the camera tilts.
         cglib::vec4<float> edgeCoarsening(1, 1, 1, 1);
         if (!_terrainEdgeCoarseningMap.empty()) {
             auto edgeIt = _terrainEdgeCoarseningMap.find(tileId);
@@ -4122,10 +3890,9 @@ namespace massif::vt {
             }
         }
         glUniform4f(shaderProgram.uniforms[U_TERRAINEDGECOARSENING], edgeCoarsening(0), edgeCoarsening(1), edgeCoarsening(2), edgeCoarsening(3));
-        // Vertex frame units -> TARGET tile units, for the edge test above and the fragment tile
-        // clip. The OFFSET is what makes it hold for a STAND-IN: with the scale alone the source
-        // ancestor's unit square lands in [0, 2^dz] and the clip keeps only the one quadrant inside
-        // [0, 1], blanking every layer served by a stand-in for a second after each zoom step.
+        // Vertex frame units -> TARGET tile units, for the edge test above and the fragment clip. The
+        // OFFSET is what makes it hold for a STAND-IN: with the scale alone the ancestor's unit square
+        // lands in [0, 2^dz] and the clip keeps only one quadrant of it.
         const cglib::mat4x4<double> targetTileMatrix = _transformer->calculateTileMatrix(tileId, 1.0f);
         double unitScaleX = 1.0, unitScaleY = 1.0, unitOffsetX = 0.0, unitOffsetY = 0.0;
         if (targetTileMatrix(0, 0) != 0 && targetTileMatrix(1, 1) != 0) {
@@ -4198,12 +3965,9 @@ namespace massif::vt {
         float texelSizeX = static_cast<float>(std::max(1, terrainTexture.textureSize(0)));
         float texelSizeY = static_cast<float>(std::max(1, terrainTexture.textureSize(1)));
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], texelSizeX, texelSizeY, 1.0f / texelSizeX, 1.0f / texelSizeY);
-        // Lattice clamp: draped geometry snaps its height to the same regular grid the surface is
-        // built from. The cell size is a property of the tile+texture, identical for the surface and
-        // every draped layer whatever their frame, in NODE-uv units; 0 in adaptive mode.
-        // THE SURFACE DOES NOT NEED IT - its vertices ARE the nodes, so the clamp returns the same
-        // height for 16 texture fetches a vertex instead of one. Except on a stitched edge, where
-        // the clamp is what bends the outermost cell onto the coarse neighbour's chords.
+        // Lattice clamp: draped geometry snaps its height to the regular grid the surface is built
+        // from, in NODE-uv units (0 in adaptive mode). THE SURFACE DOES NOT NEED IT - its vertices
+        // ARE the nodes - except on a stitched edge, where it bends onto the coarse neighbour.
         bool latticeNodes = gridSurface && edgeCoarsening == cglib::vec4<float>(1, 1, 1, 1);
         if (_terrainRegularGrid && _terrainRegularGridResolution > 0 && _terrainDemTaps >= 16 && !latticeNodes) {
             double worldTileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
@@ -4227,11 +3991,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::setupTerrainLightingUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix) {
-        // The slope scale converts a height difference in metres into world units per unit of
-        // elevation-uv, so the fragment shader's central difference reproduces the slope of the
-        // surface that the vertex stage actually displaced (exaggeration included, because it is
-        // baked into metersToInternal). The mercator 1/cos(latitude) stretch is applied per
-        // fragment through vElevCosh.
+        // The slope scale turns a height difference in metres into world units per unit of
+        // elevation-uv, so the fragment shader's central difference reproduces the slope the vertex
+        // stage displaced. The mercator stretch is applied per fragment through vElevCosh.
         const std::pair<bool, TerrainTexture>& resolved = resolveTerrainTexture(tileId);
         bool valid = resolved.first;
         const TerrainTexture& terrainTexture = resolved.second;
@@ -4262,11 +4024,9 @@ namespace massif::vt {
         if (geometry->isBaseResolved() && geometry->getBaseElevationVersion() == version) {
             return true;
         }
-        // Nothing to resolve against yet: leave the sentinel in place and try again next frame.
-        // The elevation is asked of the TARGET tile because that is what the draw itself binds
-        // from - under overzoom the source tile is a coarser ancestor with no elevation entry.
-        // NOT a reason to skip the draw: the shader falls back to the per-vertex ground, which is
-        // wrong on a slope but visible, where a base of 0 would bury the building at sea level.
+        // Nothing to resolve against yet: leave the sentinel and retry next frame. Asked of the
+        // TARGET tile, which is what the draw binds from. NOT a reason to skip the draw - the shader
+        // falls back to the per-vertex ground, wrong on a slope but visible.
         const std::pair<bool, TerrainTexture>& terrain = resolveTerrainTexture(targetTileId);
         if (!terrain.first) {
             return false;
@@ -4283,16 +4043,9 @@ namespace massif::vt {
         cglib::mat3x3<double> tileMatrix = calculateTileMatrix2D(sourceTileId, 1.0f);
         std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(sourceTileId);
         std::size_t vertexCount = vertexGeometry.size() / params.vertexSize;
-        // The vertices of one footprint are contiguous and carry the same anchor, so a run of one
-        // anchor IS a footprint. Two passes: the anchors first, one cheap query each, and nothing
-        // is written unless every anchor answered - then the floors, one query per rising vertex
-        // position, once. Interleaved, a geometry with one anchor still waiting for its DEM redid
-        // every floor query on every frame, and the render thread held its mutex for seconds.
-        //
-        // A run is a stretch of vertices sharing an anchor; the PIECES of one building share the
-        // anchor too (buildExtrusionAnchors) and need not be contiguous, so the floor below is
-        // accumulated per anchor rather than per run - a floor per run would step a building whose
-        // parts got separated in the vertex order.
+        // Two passes: the anchors first, one cheap query each, and nothing is written unless every
+        // one answered - then the floors. Interleaved, a geometry with one anchor still waiting redid
+        // every floor query each frame. Accumulated per ANCHOR, since a building's parts share one.
         struct Anchor {
             cglib::vec2<float> pos;
             double base = 0;
@@ -4318,13 +4071,9 @@ namespace massif::vt {
                     break;
                 }
             }
-            // The anchor is the footprint's centroid. The ground is the SMOOTHED field (provider
-            // flag): a building's base ignores the metre-scale bumps a lidar DEM has, so the
-            // pieces of one building - parts, tile halves, zoom copies - agree to centimetres
-            // without seeing each other. A footprint whose DEM has not decoded yet keeps the
-            // sentinel and is retried next frame: writing the provider's 0 instead is what buried
-            // every building, a base of 0 where the ground is 215 m puts the prism under the
-            // terrain.
+            // The anchor is the footprint's centroid, over the SMOOTHED field so the pieces of one
+            // building agree to centimetres without seeing each other. A footprint whose DEM has not
+            // decoded keeps the sentinel - writing the provider's 0 buries the prism.
             auto anchorIt = anchorIndices.find(std::make_pair(u, v));
             if (anchorIt == anchorIndices.end()) {
                 Anchor anchor;
@@ -4339,16 +4088,9 @@ namespace massif::vt {
             runs.push_back(Run { i, j, anchorIt->second });
             i = j;
         }
-        // mapbox's floor (fill_extrusion.vertex.glsl: max(c_ele + height, ele + base + 2)): a
-        // building keeps at least 2 m above the drawn ground under it, so a part whose smoothed
-        // anchor sits under its own lidar street is still a building and not a hole, and nothing on
-        // a hillside is buried uphill - which is what mapbox's flatElevation lift was for; the lift
-        // is not kept, its span corners lie off the footprint and one on the Tuileries terrace
-        // lifted a wing 5 m. Theirs is per VERTEX; ours is per building, over the ground its own
-        // rising vertices stand on and against its TALLEST of them. Per vertex, a low part's roof
-        // followed the 0.84 m lidar down every bump it covers - the roof has to stay one plane, and
-        // one plane per building is the whole point of the anchor. The ground is asked through the
-        // provider, not the tile's texture, so a vertex past the tile edge gets its real ground.
+        // mapbox's floor (fill_extrusion.vertex.glsl): a building keeps at least 2 m above the drawn
+        // ground, so a part whose smoothed anchor sits under its own street is not a hole. Theirs is
+        // per VERTEX; ours is per BUILDING, or a low roof follows the lidar down every bump.
         if (params.heightOffset >= 0 && params.coordOffset >= 0 && params.coordScale > 0) {
             for (const Run& run : runs) {
                 Anchor& anchor = anchors[run.anchorIndex];
@@ -4400,11 +4142,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::markPendingLabelsDirty() {
-        // Label geometry is built flat when its tile is decoded, so a newly built label is
-        // always dirty; an existing one only when the elevation under one of its tiles changed.
-        // Doing it for every label whenever any elevation tile decodes (or whenever the visible
-        // tile set changes, which rebuilds the label list) resamples the whole screen several
-        // times a second while panning.
+        // Label geometry is built flat when its tile decodes, so a new label is always dirty and an
+        // existing one only when the elevation under one of its tiles changed. Doing every label on
+        // every elevation arrival resamples the whole screen several times a second while panning.
         if (!_pendingLabelElevationAll && _pendingLabelElevationTiles.empty()) {
             return;
         }
@@ -4447,12 +4187,9 @@ namespace massif::vt {
     }
 
     bool GLTileRenderer::anchorDirtyLabels() {
-        // Under the lock, in the frame: for the elevation tiles that landed since the last one,
-        // a few labels. Re-anchoring costs one elevation sample per label vertex (~233 us a
-        // label) and has to run to completion: a label left dirty is drawn, and culled, at the
-        // height it had before the elevation arrived - which reads as labels popping in at the
-        // wrong place and then settling. The bulk - every label a new tile set brings - is
-        // sampled off the lock in setVisibleTiles.
+        // Under the lock, in the frame: a few labels for the elevation tiles that just landed.
+        // Re-anchoring is ~233 us a label and has to run to completion, or a dirty label is drawn and
+        // culled at its old height. The bulk is sampled off the lock in setVisibleTiles.
         VT_STAT_CLOCK(anchorClock);
         markPendingLabelsDirty();
         VT_STAT_SPLIT(prepElevDirtyNs, anchorClock);
@@ -4573,10 +4310,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::renderTileSurfaceFill(const TileId& tileId, const Color& color, bool lit) {
-        // The displaced tile surface as a solid color (or depth-only when transparent).
-        // Drawn UNDER the style content with the per-draw depth bias applied - the
-        // terrain pre-pass renders it pushed slightly back so content passes over it
-        // at its real depth.
+        // The displaced tile surface as a solid colour, or depth-only when transparent. Drawn UNDER
+        // the style content with the per-draw depth bias: the pre-pass pushes it slightly back so
+        // content passes over it at its real depth.
         bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
         for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
@@ -4584,10 +4320,9 @@ namespace massif::vt {
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
             unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0);
-            // The shared ground is the lit terrain surface - the same role the drape surface has
-            // when there is a drape - so it takes the sun and the shadow map exactly as that does.
-            // The depth pre-passes and the 3D overlay seeding ask for the plain fill: they are
-            // colour-masked or invisible, and lighting them is pure shader cost.
+            // The shared ground is the lit terrain surface, the same role the drape surface has, so it
+            // takes the sun and the shadow map the same way. The depth pre-passes ask for the plain
+            // fill - they are colour-masked, and lighting them is pure shader cost.
             bool litSurface = lit && terrainFlag != 0 && _terrainLighting.enabled;
             bool shadowedSurface = litSurface && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
             unsigned int lightFlags = (litSurface ? TERRAIN_LIGHT_FLAG : 0) | (shadowedSurface ? surfaceShadowFlags() : 0);
@@ -4717,10 +4452,9 @@ namespace massif::vt {
             }
         }
         if (leaves.empty()) {
-            // No leaf of its own: either there is no shared ground at all, or the cover is COARSER
-            // here (the split hit its cap). The tile then draws on its own surface, one tesselation
-            // finer than the ground it stands on - it hugs the same height field, so it stays
-            // within the content slack.
+            // No leaf of its own: either there is no shared ground, or the cover is COARSER here. The
+            // tile then draws on its own surface, one tesselation finer than the ground it stands on -
+            // the same height field, so it stays within the content slack.
             leaves.push_back(targetTileId);
         }
         return _groundLeafCache.emplace(targetTileId, std::move(leaves)).first->second;
@@ -4735,10 +4469,9 @@ namespace massif::vt {
             return 0;
         }
 
-        // The ground is the frame's only depth-writing terrain geometry, at its TRUE depth: it
-        // blocks the far slope of a ridge exactly, and everything drawn after it tests against it
-        // with GL_LEQUAL and no forward pull. Pushing it back instead is what opened the
-        // see-through band of rounds 45-56 - do not.
+        // The ground is the frame's only depth-writing terrain geometry, at its TRUE depth: it blocks
+        // the far slope of a ridge exactly, and everything after it tests with GL_LEQUAL and no
+        // forward pull. Pushing it back instead opens a see-through band - do not.
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glDepthMask(GL_TRUE);
@@ -4752,9 +4485,8 @@ namespace massif::vt {
         _terrainGroundColor = color;
 
         // With the paint AS the ground there is one draw per tile, not two: the paint carries this
-        // colour as its base and shades it, which is tangram's terrain raster. The fill is then
-        // only needed where the paint cannot draw - a tile whose elevation has not arrived, which
-        // the paint skips - or the ground would have a hole showing the flat background plane.
+        // colour as its base and shades it, as tangram's terrain raster does. The fill is then only
+        // needed where the paint cannot draw, or the ground has a hole.
         bool paintIsGround = _terrainPaintOnGround && _terrainPaint.enabled && _lightingShaderNormalMap && !_lightingShaderNormalMap->perVertex && _terrainRegularGrid && _terrainTextureProvider;
 
         int surfaceDraws = 0;
@@ -4765,10 +4497,9 @@ namespace massif::vt {
                     continue; // the paint draws this tile, base colour included
                 }
             }
-            // The bottom of the stack (offset 0) unless this tile is standing in on a coarser
-            // level, in which case it is pushed back hard - tangram's `proxy *= 48` for the terrain
-            // raster. A stand-in is a DIFFERENT height field: where it rises above the level it
-            // replaces it pokes through the content drawn on that level.
+            // The bottom of the stack (offset 0) unless this tile stands in on a coarser level, where
+            // it is pushed back hard - tangram's `proxy *= 48`. A stand-in is a DIFFERENT height
+            // field, and where it rises above the level it replaces it pokes through its content.
             _terrainDrawLayerOffset = _terrainGroundProxyDepths[i] * TERRAIN_RASTER_PROXY_SCALE;
             renderTileSurfaceFill(_terrainGroundTiles[i], color, true); // lit and shadowed: this IS the terrain surface
             surfaceDraws++;
@@ -4791,11 +4522,9 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (_terrainPaint.enabled) {
-            // A paint renderer holds no tiles: it cannot extend the cover (it paints whatever the
-            // other layers put in it) and it has nothing per-tile to fingerprint. Reporting the
-            // previous frame's cover instead makes every tile that has just entered it look
-            // incomplete, and the owner bakes it a second time. Its appearance is watched through
-            // the drape STACK signature (TileLayer::drapeStackSignature) instead.
+            // A paint renderer holds no tiles: it cannot extend the cover and has nothing per-tile to
+            // fingerprint, and reporting the previous frame's cover makes every new tile look
+            // incomplete. Its appearance is watched through the drape STACK signature instead.
             return;
         }
         if (!_visibleRenderTiles) {
@@ -4805,23 +4534,17 @@ namespace massif::vt {
             if (!renderTile.visible) {
                 continue;
             }
-            // EVERY visible tile is reported, including ones whose content has not loaded yet.
-            // Taking over the surface means the per-layer pre-pass no longer draws one, so a tile
-            // omitted here gets no terrain surface at all and the global terrain background shows
-            // through it - which is what the pre-pass used to cover unconditionally. Its drape
-            // texture is simply empty until content arrives.
-            // Combined, so a target tile covered by several render tiles of this renderer gets a
-            // fingerprint reflecting all of them.
+            // EVERY visible tile is reported, loaded or not: taking over the surface means the
+            // per-layer pre-pass draws none, so a tile omitted here gets no terrain surface at all.
+            // Combined, so a target covered by several render tiles reflects all of them.
             std::size_t& fingerprint = drapeTiles[renderTile.targetTileId];
             std::size_t contribution = calculateDrapeFingerprint(renderTile);
             if (contribution == 0) {
                 continue; // reported for the cover, but nothing here to bake: the entry stays 0
             }
-            // Mixing in a zero contribution would still leave a non-zero fingerprint, and the owner
-            // reads a non-zero fingerprint as "this layer HAS something for that tile". It then
-            // waits for a bake that can never deliver it, keeps the tile marked incomplete and goes
-            // on drawing the previous, finer generation's textures over it - a patch of stale map
-            // that survives a zoom out for as long as those textures stay cached.
+            // Mixing in a zero contribution still leaves a non-zero fingerprint, which the owner reads
+            // as "this layer HAS something for that tile" - it then waits for a bake that can never
+            // come and keeps drawing the previous generation over it.
             fingerprint ^= contribution + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
         }
     }
@@ -4911,10 +4634,9 @@ namespace massif::vt {
         if (_terrainPaint.enabled) {
             return 0; // a paint shades the ground; a deck is not the ground
         }
-        // Only the deck's own bounds go into the texture (see collectSpanDrapeTiles), so the
-        // texels it does get are spent on the deck: a deck stands above the ground and is that
-        // much closer to the camera, so its drape is magnified past what the ground's is, and a
-        // tile-wide bake of a narrow deck wasted most of the texture on empty tile.
+        // Only the deck's own bounds go into the texture, so its texels are spent on the deck: it
+        // stands above the ground and is that much closer to the camera, so its drape is magnified
+        // more, and a tile-wide bake of a narrow deck wasted most of the texture.
         cglib::mat4x4<float> clipZoom = cglib::mat4x4<float>::identity();
         auto boundsIt = _spanDrapeBounds.find(targetTileId);
         if (boundsIt != _spanDrapeBounds.end()) {
@@ -4929,11 +4651,9 @@ namespace massif::vt {
         if (_terrainPaint.enabled || !_visibleRenderTiles || !_spanResolver.isEnabled()) {
             return;
         }
-        // ONLY the tiles that actually carry a bridge or a tunnel. A map with no span anywhere
-        // returns nothing here, so it pays for no texture, no bake and no cache entry.
-        // With each tile, the drape-uv bounds of what its spans cover, from the pieces' two ends
-        // (a deck ring's are its farthest pair) with a margin for the deck's width and a line's
-        // stroke: 4% of the tile, never under ~25 m. The bake covers the bounds alone.
+        // ONLY the tiles that carry a bridge or a tunnel, with the drape-uv bounds of what their
+        // spans cover - the pieces' two ends plus a margin for the deck's width and a line's stroke,
+        // 4% of the tile and never under ~25 m. The bake covers the bounds alone.
         std::set<TileId> keep;
         for (const RenderTile& renderTile : *_visibleRenderTiles) {
             if (!renderTile.visible) {
@@ -4950,8 +4670,7 @@ namespace massif::vt {
                 }
                 // The bake holds the DRAPED spans (the road), but the bounds must hold the DECK that
                 // samples it, which is an extrusion and never draped. Bounded by the road alone, a
-                // deck wider than the road's margin sampled the texture's clamped edge over its
-                // outer lanes - the edge texels smeared down the deck as dark streaks and a line.
+                // wider deck sampled the texture's clamped edge and smeared it down its outer lanes.
                 bool draped = hasSpanContent(renderLayer);
                 anyDraped = anyDraped || draped;
                 cglib::mat3x3<double> sourceMatrix = calculateTileMatrix2D(renderLayer.sourceTileId, 1.0f);
@@ -5038,12 +4757,9 @@ namespace massif::vt {
         cglib::mat4x4<float> drapeOrtho;
         _drapeMVPOverride = &drapeOrtho;
 
-        // The bake owns its GL state. It runs from the owner (MapRenderer) BEFORE any layer's
-        // own render pass, so nothing has established the state the per-layer drape path used to
-        // inherit. Culling in particular must be OFF: the bake matrix maps tile-local xy straight
-        // to clip space with no y flip, while the on-screen matrix goes through a projection that
-        // does flip y - so every triangle bakes with the opposite winding and back-face culling
-        // silently discards the whole tile's fills.
+        // The bake owns its GL state: it runs BEFORE any layer's render pass, so nothing has set up
+        // what the per-layer path used to inherit. Culling above all - the bake matrix has no y flip,
+        // so every triangle bakes with the opposite winding and culling discards the tile's fills.
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_FALSE);
@@ -5052,12 +4768,9 @@ namespace massif::vt {
         glEnable(GL_BLEND);
         setCompOp(CompOp::SRC_OVER);
 
-        // Take render tiles that COVER this terrain tile - a coarser layer contributes through its
-        // ancestor - baked COARSEST FIRST, proxies before active tiles at the same zoom, or a
-        // parent's background paints over a child's content. _visibleRenderTiles is in no such order.
-        // COVERS strictly: a FINER tile baked into its sub-rect is minified with no mipmap, and a
-        // zoom out (which holds a whole finer generation) turns the drape into white aliasing noise.
-        // Those tiles are the generation being replaced and fade out in the 3D pass instead.
+        // Render tiles that COVER this terrain tile, baked COARSEST FIRST and proxies before active
+        // ones, or a parent's background paints over a child's content. COVERS strictly: a FINER tile
+        // baked into a sub-rect is minified with no mipmap, which is white aliasing noise.
         std::vector<const RenderTile*> coveringTiles;
         for (const RenderTile& renderTile : *_visibleRenderTiles) {
             if (renderTile.visible && tileCovers(renderTile.targetTileId, targetTileId)) {
@@ -5080,18 +4793,15 @@ namespace massif::vt {
                 if (renderLayer.layer->getLayerIndex() < fromStyleLayerIdx) {
                     continue;
                 }
-                // A render layer can be finer than the render tile that holds it (retained
-                // children blending out). Such a layer may sit entirely OUTSIDE this terrain tile
-                // - baking it anyway painted a neighbouring tile's content over this one - and
-                // even when it is inside, it belongs to the generation being replaced, not to
-                // this tile. Same rule as above: it has to COVER the terrain tile.
+                // A render layer can be finer than the render tile holding it (retained children
+                // blending out), and may sit entirely OUTSIDE this terrain tile - baking it painted a
+                // neighbour's content over this one. Same rule as above: it has to COVER the tile.
                 if (!tileCovers(renderLayer.targetTileId, targetTileId)) {
                     continue;
                 }
-                // Backgrounds/rasters draw their own target tile's surface mesh (their uv logic
-                // resolves source-vs-target overzoom); geometry is in source tile coordinates.
-                // Either may be coarser OR finer than the terrain tile, hence the sub-rect in
-                // each case.
+                // Backgrounds/rasters draw their own target tile's surface mesh, geometry is in source
+                // tile coordinates, and either may be coarser OR finer than the terrain tile - hence
+                // the sub-rect in each case.
                 float geometryOpacity = calculateDrapeOpacity(renderLayer);
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.targetTileId, targetTileId);
                 if (clipZoom) {
@@ -5110,13 +4820,9 @@ namespace massif::vt {
                     drapeOrtho = *clipZoom * drapeOrtho;
                 }
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    // A span leaves the GROUND's bake once it has a chord (isDrapeableGeometry)
-                    // because a baked pixel IS the ground. The deck's own drape is the exact
-                    // complement: the span content and nothing else, so the road lands on the deck
-                    // carrying it and not on the valley floor beside it. Taken here whether or not
-                    // the chord resolved - the extrusion lifts on its own ring's chord, which
-                    // resolves before a road line's does, and gated on resolution the deck came up
-                    // bare, a slab of structure colour with no road on it.
+                    // A span leaves the GROUND's bake once it has a chord, because a baked pixel IS
+                    // the ground; the deck's own drape is the complement. Taken here whether or not
+                    // the chord resolved - gated on that, the deck came up bare, with no road on it.
                     bool span = !geometry->getSpanRecords().empty();
                     bool wanted = spanOnly ? span : isDrapeableGeometry(geometry);
                     if (wanted && isLayerDraped(renderLayer.layer)) {
@@ -5155,11 +4861,9 @@ namespace massif::vt {
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
                     drapeable = drapeable || isDrapeableGeometry(geometry);
                 }
-                // A layer whose geometry is ALL spans - a bridge bed layer - still occupies its
-                // place in the stack. Dropping it shifts every later layer's coverage-mask index,
-                // which masked the whole road network away. Narrowed to spans on purpose: a layer
-                // of points or of 3D buildings is not drapeable either, and has been left out of
-                // this list forever, so widening it would change every existing style.
+                // A layer whose geometry is ALL spans still occupies its place in the stack: dropping
+                // it shifts every later layer's coverage-mask index. Narrowed to spans on purpose -
+                // points and 3D buildings have been left out of this list forever.
                 if (drapeable || renderLayer.layer->hasSpanGeometry()) {
                     drapedByLayer[renderLayer.layer->getLayerIndex()] = draped && drapeable;
                 }
@@ -5226,20 +4930,16 @@ namespace massif::vt {
         if (!_visibleRenderTiles) {
             return 0;
         }
-        // The shadow CASTER path, pointed at the camera instead of the sun: the extrusions as they
-        // are drawn on screen - same shader, same terrain anchoring - with their window depth
-        // packed into the colour channels. A depth-texture target would say the same thing more
-        // directly, but sampling one from a vertex shader is not something every driver here does,
-        // and this path is already proven on all of them.
+        // The shadow CASTER path pointed at the camera instead of the sun: the extrusions as drawn on
+        // screen, with their window depth packed into the colour channels. A depth-texture target
+        // would be more direct, but sampling one from a vertex shader is not portable here.
         int drawn = 0;
         cglib::mat4x4<double> cameraViewProj = _viewState.projectionMatrix * _viewState.cameraMatrix;
         _shadowCasterViewProj = &cameraViewProj;
         forEachVisibleExtrusion(nullptr, [this, &drawn](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
-            // A SPAN extrusion is the surface its own symbols stand on: a bridge deck carries the
-            // road's one-way arrows and its name, and those anchor on the chord a few centimetres
-            // above the deck's roof. Written here, the deck's depth meets theirs within the fade
-            // ramp and the bridge hides everything on it - they flicker in as the camera moves and
-            // go again. A building has no symbols on its roof, so only the deck needs the exception.
+            // A SPAN extrusion is the surface its own symbols stand on: a deck's arrows and name
+            // anchor on the chord a few centimetres above its roof, so writing its depth here hides
+            // them within the fade ramp. A building has no symbols on its roof.
             if (!geometry->getSpanRecords().empty()) {
                 return true;
             }
@@ -5262,10 +4962,9 @@ namespace massif::vt {
         if (!_visibleRenderTiles || !(_groundAOIntensity > 0.0f)) {
             return 0;
         }
-        // STATE-NEUTRAL on purpose: this runs inside the drape bake, which has already established
-        // its own (culling off above all - the bake matrix does not flip y, so a stray glEnable
-        // there empties every tile baked afterwards). The caller owns blend, cull, depth and the
-        // framebuffer; this only picks the frame and the pass.
+        // STATE-NEUTRAL on purpose: this runs inside the drape bake, which has already established its
+        // own - culling above all, since the bake matrix does not flip y. The caller owns blend, cull,
+        // depth and the framebuffer; this only picks the frame and the pass.
         int baked = 0;
         cglib::mat4x4<float> drapeOrtho;
         const cglib::mat4x4<float>* previousOverride = _drapeMVPOverride;
@@ -5285,10 +4984,9 @@ namespace massif::vt {
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
                     if (geometry->getType() == TileGeometry::Type::POLYGON3DGROUND) {
-                        // Blend 1, like every other bake: the tile's fade-in is a per-frame value
-                        // and this picture is cached. A tile baked in the frame its extrusions
-                        // arrived - which is exactly when the shadow first has anything to bake -
-                        // froze the shadow at the fade's starting strength, i.e. at nothing.
+                        // Blend 1, like every other bake: the tile's fade-in is a per-frame value and
+                        // this picture is cached. Baked in the frame its extrusions arrived - exactly
+                        // when the shadow first has anything - it froze at the fade's start, nothing.
                         renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, geometry);
                         baked++;
                     }
@@ -5342,9 +5040,8 @@ namespace massif::vt {
             return -2;
         }
         // Stand-in for a tile whose drape texture is not baked yet: the SAME surface mesh, in the
-        // terrain background colour. Drawing it matters more than its colour does - the surface is
-        // the terrain's only depth writer, and a tile skipped here leaves a depth hole that vector
-        // elements and billboards behind the terrain immediately show through.
+        // terrain background colour. Drawing it matters more than its colour - the surface is the
+        // terrain's only depth writer, and a skipped tile leaves a depth hole.
         _terrainDrawDepthBias = 0.0f;
         _terrainDrawDepthClipUnits = 0.0f;
         renderTileSurfaceFill(targetTileId, color);
@@ -5499,13 +5196,9 @@ namespace massif::vt {
     }
 
     int GLTileRenderer::renderTerrainPaintSurfaces(bool asGround) {
-        // No drape to bake into: draw the paint as the terrain surface itself, one draw per tile
-        // over the shared grid VBO - which is what tangram does (the hillshade is a raster style
-        // drawn on the tile's terrain mesh). The tiles come from the owner, because a paint has no
-        // tile set of its own.
-        // Under a shared ground the paint is one of the layers composited onto it, so it draws the
-        // cover the ground was drawn from - the same tiles, the same lattice, coincident to the
-        // bit - and leaves the depth alone. On its own it IS the surface, and writes depth.
+        // No drape to bake into: draw the paint as the terrain surface itself, one draw per tile over
+        // the shared grid VBO, as tangram does. Under a shared ground it is one of the layers
+        // composited onto that ground and leaves depth alone; on its own it IS the surface.
         const std::vector<TileId>& paintTiles = (_terrainSharedGround ? _terrainGroundTiles : _terrainPaintTiles);
         if (!_lightingShaderNormalMap || _lightingShaderNormalMap->perVertex || paintTiles.empty()) {
             return 0;
@@ -5522,13 +5215,9 @@ namespace massif::vt {
         glDisable(GL_STENCIL_TEST);
         glEnable(GL_BLEND);
         setCompOp(CompOp::SRC_OVER);
-        // Under a shared ground the paint draws the SAME grid, displaced by the same DEM, as the
-        // ground pass already drew - but from a different program, so the two clip z values differ
-        // in the last float bits and GL_LEQUAL drops a scatter of fragments, showing the bare
-        // ground colour through the shading as white speckles. One delta of clearance (the value
-        // backgrounds carry over the surface they share) is all it takes.
-        // As the ground there is no second copy of the surface to clear, so no delta is needed -
-        // and none is wanted, since the delta exists to lift the paint off a fill it no longer has.
+        // Under a shared ground the paint draws the SAME grid as the ground pass, but from a
+        // different program, so the clip z values differ in the last bits and GL_LEQUAL drops a
+        // scatter of fragments. One delta of clearance fixes it; as the ground, none is wanted.
         _terrainDrawDepthBias = _terrainDepthBias + (_terrainSharedGround && !asGround ? TERRAIN_LAYER_DEPTH_DELTA : 0.0f);
         _terrainDrawDepthClipUnits = 0.0f;
         // At this layer's place in the stack's depth order, like any other content of it - or at
@@ -5541,10 +5230,9 @@ namespace massif::vt {
         // the shadows invisible wherever the paint is opaque.
         bool litSurface = _terrainSharedGround && _terrainLighting.enabled;
         bool shadowedSurface = litSurface && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
-        // DERIVATIVES unconditionally: the contour block's fwidth() needs it, and the paint has no
-        // way to know whether the layer asked for contours (the interval arrives as a uniform, set
-        // by the shared normal-map setup func). The NORMALMAP path does the same for the same
-        // reason - harmless when contours are off, since the branch is not taken.
+        // DERIVATIVES unconditionally: the contour block's fwidth() needs it and the paint cannot know
+        // whether the layer asked for contours, since the interval arrives as a uniform. Harmless when
+        // they are off, since the branch is not taken.
         unsigned int lightFlags = (litSurface ? TERRAIN_LIGHT_FLAG : 0) | (shadowedSurface ? surfaceShadowFlags() : DERIVATIVES_FLAG) | (asGround ? GROUND_BASE_FLAG : 0);
 
         int draws = 0;
@@ -5601,10 +5289,9 @@ namespace massif::vt {
             }
         }
         glDepthMask(GL_FALSE);
-        // Leaving the surface VBOs bound corrupts every later draw that feeds a CLIENT-SIDE array:
-        // a bound GL_ARRAY_BUFFER turns the pointer into an offset into it. The sky is exactly
-        // that (SkyRenderer draws its quad from a static array), and its quad flew off screen -
-        // the terrain rendered while the sky went black.
+        // Leaving the surface VBOs bound corrupts every later draw that feeds a CLIENT-SIDE array: a
+        // bound GL_ARRAY_BUFFER turns the pointer into an offset into it. The sky draws its quad from
+        // a static array, and its quad flew off screen while the terrain rendered fine.
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         checkGLError();
@@ -5619,10 +5306,9 @@ namespace massif::vt {
     }
 
     float GLTileRenderer::calculateTerrainPaintReliefBoost(float metersPerTexel) const {
-        // Verbatim from the normal-map path, so a layer switched to paint mode keeps its relief.
-        // The zoom that goes in is the SAMPLING density's, not the grid's tile id: a 512-texel grid
-        // at z11 is worth a z12 tile of 256 texels, and keying off the grid's own zoom boosts the
-        // relief ~1.5x too far. 156543.03 is the zoom-0 m/texel for 256-texel tiles.
+        // Verbatim from the normal-map path, so a layer switched to paint mode keeps its relief. The
+        // zoom is the SAMPLING density's, not the grid's tile id: a 512-texel grid at z11 is worth a
+        // z12 tile of 256, and the grid's own zoom boosts the relief ~1.5x too far.
         if (!(metersPerTexel > 0.0f)) {
             return 1.0f;
         }
@@ -5650,22 +5336,16 @@ namespace massif::vt {
     }
 
     bool GLTileRenderer::isDrapeableGeometry(const std::shared_ptr<TileGeometry>& geometry) const {
-        // A span is a structure that does NOT lie on the ground, and a baked pixel IS the ground -
-        // so it leaves the bake, whatever the layer filter says. But only ONCE IT HAS A CHORD: an
-        // unresolved span keeps the sentinel and the vertex shaders leave it on the terrain, so
-        // taken out of the bake it is live geometry exactly coplanar with the surface the bake is
-        // painted on. The two meshes tesselate differently, so their interpolated depth disagrees
-        // by float noise per fragment - a bridge apron over a river dissolves into the water it is
-        // fighting. Draped it looks like the flat map, which is what the ground it sits on is.
+        // A span does NOT lie on the ground and a baked pixel IS the ground, so it leaves the bake -
+        // but only ONCE IT HAS A CHORD. An unresolved span keeps the sentinel and stays on the
+        // terrain, where live geometry coplanar with the baked surface dissolves into float noise.
         if (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() && geometry->isBaseResolved()) {
             return false;
         }
         TileGeometry::Type type = geometry->getType();
-        // The maplibre drapeable set: backgrounds, fills, lines and rasters go into the texture;
-        // 3D extrusions and point symbols stay live in the scene (they are not surface-conformal,
-        // so flattening them into the terrain skin would be wrong, not just imprecise).
-        // Lines are opt-out (setTerrainDrapeFills includeLines): the bake resolves them at the
-        // drape texture's resolution, so a slope that magnifies the texture also blurs them.
+        // The maplibre drapeable set: backgrounds, fills, lines and rasters bake; 3D extrusions and
+        // point symbols stay live, being not surface-conformal. Lines are opt-out - the bake resolves
+        // them at the texture's resolution, so a slope that magnifies it also blurs them.
         if (type == TileGeometry::Type::LINE) {
             return _terrainDrapeLines;
         }
@@ -5680,13 +5360,8 @@ namespace massif::vt {
             return _drapeTilesThisFrame.count(targetTileId) > 0;
         }
         // "Draped" = the drape and this tile describe the same ground, whichever is coarser. The
-        // drape cover is routinely COARSER than the render tiles, which is also why fills cannot be
-        // decoded at source density under draping - see TileLayer::calculateDrawData.
-        //
-        // The FINER direction is the outgoing generation of a zoom out. It used to be left undraped
-        // so it kept drawing itself while it blended away, on the grounds that nothing else covered
-        // that ground - but a drape tile that CONTAINS it does cover it, and the direct draw then
-        // paints the previous zoom's raster over the new one for the length of the fade.
+        // FINER direction is the outgoing generation of a zoom out: a drape tile that CONTAINS it
+        // covers it, and drawing it directly paints the previous zoom over the new one.
         for (const TileId& drapeTileId : _externalDrapeTiles) {
             if (tileCovers(targetTileId, drapeTileId) || tileCovers(drapeTileId, targetTileId)) {
                 return true;
@@ -5704,10 +5379,9 @@ namespace massif::vt {
     }
 
     cglib::mat4x4<float> GLTileRenderer::calculateDrapeMVPMatrix(const TileId& sourceTileId, const TileId& targetTileId) const {
-        // Orthographic bake frame: the part of the SOURCE tile covering the target onto the target
-        // texture's full [-1,1] clip square. source != target is the point - proxy content is what
-        // is on screen during a pan, and left undraped it samples a coarser lattice than the surface
-        // it sits on and sinks in. Tile-local vertex y runs NORTHWARD, so the y sub-rect is mirrored.
+        // Orthographic bake frame: the part of the SOURCE tile covering the target, onto the target
+        // texture's full [-1,1] square. source != target is the point - undraped proxy content samples
+        // a coarser lattice than its surface and sinks in. Tile-local y runs NORTHWARD, so y mirrors.
         int deltaZoom = targetTileId.zoom - sourceTileId.zoom;
         float n = 1.0f;
         float fx = 0.0f, gy = 0.0f;
@@ -5718,12 +5392,8 @@ namespace massif::vt {
             gy = static_cast<float>(span - 1 - (targetTileId.y - (sourceTileId.y << deltaZoom)));
         } else if (deltaZoom < 0) {
             // Source FINER than the drape tile: it covers only a SUB-RECT of the texture, so the
-            // sub-rect transform runs the other way. This is the zoom-out case - a render tile
-            // retains the finer tiles it replaces until they blend out, and those render layers
-            // keep their own finer target/source tile id (initializeRenderTile), so a coarse
-            // render tile really does carry z+1/z+2 content. Left unhandled (n = 1) that content
-            // was stretched over the WHOLE drape tile: a quarter of the map painted at 2x scale
-            // in the wrong place, for the few frames the finer layer survives.
+            // transform runs the other way. This is the zoom-out case - a coarse render tile really
+            // carries z+1/z+2 content, and unhandled it stretched over the WHOLE drape tile.
             int span = 1 << (-deltaZoom);
             n = 1.0f / span;
             fx = -static_cast<float>(sourceTileId.x - (targetTileId.x << (-deltaZoom))) / span;
@@ -5737,34 +5407,26 @@ namespace massif::vt {
     }
 
     std::size_t GLTileRenderer::calculateDrapeFingerprint(const RenderTile& renderTile) const {
-        // Identifies exactly what would be baked. When it changes - a style layer finishes
-        // loading, a proxy is replaced by its native tile - the cached texture is stale and must
-        // be re-baked, which the original bake-once cache had no way to notice.
-        // ZERO MEANS NOTHING TO BAKE, and callers rely on that: a tile with no drapeable content
-        // must be distinguishable from one that has some. Hence the explicit flag rather than
-        // "hash != 0" - the hash of real content can in principle land on zero.
+        // Identifies exactly what would be baked, so a change - a style layer loading, a proxy
+        // replaced - marks the cached texture stale. ZERO MEANS NOTHING TO BAKE, which callers rely
+        // on: hence the explicit flag, since the hash of real content can itself land on zero.
         std::size_t hash = 0;
         bool anyContent = false;
         auto combine = [&hash](std::size_t value) {
             hash ^= value + 0x9e3779b9 + (hash << 6) + (hash >> 2);
         };
         // The scene light is baked in with the colours, so moving the sun makes every cached drape
-        // stale - without this, changing the hour on a running map moved the buildings, which are
-        // lit by a per-frame uniform, and left the ground exactly as it was. QUANTISED to 64 steps
-        // per channel so a day cycle re-bakes a few dozen times over its whole range rather than
-        // once per frame.
+        // stale - otherwise changing the hour moved the buildings and left the ground as it was.
+        // QUANTISED to 64 steps per channel, so a day cycle re-bakes a few dozen times in all.
         for (int i = 0; i < 3; i++) {
             combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * 64.0f) * (i + 1));
         }
         combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * 64.0f) * 4);
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
             const RenderTileLayer& renderLayer = it->second;
-            // The contact shadows count too: they are baked INTO the drape, but the extrusions
-            // that carry them are not drapeable content, so a layer holding only buildings used to
-            // contribute nothing here. Its tiles then decoded without ever changing the
-            // fingerprint, no re-bake was asked for, and whichever drape textures had been baked
-            // before the buildings arrived kept no shadow at all - for as long as they stayed
-            // cached. That is the AO missing from a tile here and there with no pattern to it.
+            // The contact shadows count too: they are baked INTO the drape, but the extrusions that
+            // carry them are not drapeable, so a buildings-only layer contributed nothing here - and
+            // a texture baked before the buildings arrived kept no shadow for as long as it lived.
             if (!hasDrapeableContent(renderLayer) && !hasGroundAOContent(renderLayer)) {
                 continue;
             }
@@ -5773,21 +5435,17 @@ namespace massif::vt {
             combine(static_cast<std::size_t>(renderLayer.sourceTileId.zoom) * 2654435761u
                   ^ static_cast<std::size_t>(renderLayer.sourceTileId.x) * 40503u
                   ^ static_cast<std::size_t>(renderLayer.sourceTileId.y));
-            // Identify the layer by what it IS, never by where it lives. A raw pointer says
-            // nothing once the object behind it is freed: while zooming, tiles turn over fast
-            // and a new TileLayer lands on a dead one's address often enough that the
-            // fingerprint matches a texture baked for the PREVIOUS zoom level. The tile then
-            // keeps the stale bake, and alternates with correctly re-baked neighbours - which
-            // is seen as polygons flashing between the old and the new zoom.
+            // Identify the layer by what it IS, never by where it lives: a new TileLayer lands on a
+            // freed one's address often enough that the fingerprint matches a texture baked for the
+            // PREVIOUS zoom, which shows as polygons flashing between the old and the new.
             combine(std::hash<std::string>()(renderLayer.layer->getLayerName()));
             combine(static_cast<std::size_t>(renderLayer.layer->getLayerIndex()));
             combine(renderLayer.layer->getGeometries().size() * 2654435761u
                   ^ renderLayer.layer->getBitmaps().size() * 40503u
                   ^ renderLayer.layer->getBackgrounds().size());
-            // A span moves in and out of the bake as its chord resolves (isDrapeableGeometry), and
-            // that is invisible to everything above: the layer, the tile and the geometry count are
-            // all unchanged. Without this the tile keeps the bake it had, so a bridge that lifts
-            // stays painted flat on the ground under itself.
+            // A span moves in and out of the bake as its chord resolves, which is invisible to
+            // everything above - layer, tile and geometry count are unchanged. Without this a bridge
+            // that lifts stays painted flat on the ground under itself.
             std::size_t resolvedSpans = 0;
             for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
                 if (!geometry->getSpanRecords().empty()) {
@@ -5803,10 +5461,9 @@ namespace massif::vt {
     }
 
     float GLTileRenderer::calculateDrapeOpacity(const RenderTileLayer& renderLayer) const {
-        // The style's own layer opacity, which the on-screen path passes as element opacity when
-        // the layer has no comp-op (see renderTileLayers). The bake used to hardcode 1.0 and drew
-        // every draped layer fully opaque. A comp-op layer needs the overlay buffer the bake has
-        // no equivalent of, so it keeps its current full-opacity behaviour.
+        // The style's own layer opacity, which the on-screen path passes as element opacity when the
+        // layer has no comp-op. A comp-op layer needs the overlay buffer the bake has no equivalent
+        // of, so it keeps its full-opacity behaviour.
         if (!renderLayer.layer || renderLayer.layer->getCompOp()) {
             return 1.0f;
         }
@@ -5841,19 +5498,15 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::renderDrapeTextures(const std::vector<RenderTile>& renderTiles) {
-        // Maplibre-style drape: bake each tile's fills/backgrounds FLAT into an offscreen texture
-        // the surface then samples as its colour, so fills follow the terrain exactly. Baked ONCE
-        // per target tile and reused, dropped when it leaves the view; new bakes are capped per
-        // frame so a fast zoom's burst is spread out. A tile counts as draped only once its texture
-        // exists - until then its content renders as normal geometry, so there is no gap.
+        // Maplibre-style drape: bake each tile's fills FLAT into an offscreen texture the surface
+        // samples as its colour. Baked ONCE per target tile, capped per frame so a fast zoom's burst
+        // spreads out; until a texture exists the tile's content renders as normal geometry.
         if (_externalDrapeTarget) {
             return; // the owner drives baking across all layers (cross-layer stacks)
         }
-        // An integer zoom change invalidates the whole visible set at once. With a small budget
-        // most tiles then spend several frames showing a texture baked from an overzoomed parent -
-        // magnified content that pops when the native bake lands, because the bake is deliberately
-        // unblended (full opacity, so the cached texture is stable). Bake enough per frame that
-        // the window is one or two frames rather than four or five.
+        // An integer zoom change invalidates the whole visible set at once, and with a small budget
+        // most tiles then show a magnified parent bake for several frames. Bake enough per frame
+        // that the window is one or two rather than four or five.
         static const std::size_t DRAPE_BAKE_BUDGET_PER_FRAME = 24;
         // Textures orphaned by a resolution change: deleted here, on the GL thread.
         for (GLuint texture : _drapeStaleTextures) {
@@ -5933,11 +5586,9 @@ namespace massif::vt {
             glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT);
 
-            // Bake backgrounds, rasters and fills/lines in layer order at FULL opacity, so the
-            // cached texture is stable regardless of the fade-in blend of the moment. Layers
-            // whose source tile is an ancestor of the target are baked through a sub-rect
-            // transform, so proxy content drapes correctly instead of falling back to the
-            // displaced-geometry path. Points, 3D extrusions and labels stay live on top.
+            // Bake backgrounds, rasters and fills/lines in layer order at FULL opacity, so the cached
+            // texture does not depend on the fade blend of the moment. A layer whose source is an
+            // ancestor bakes through a sub-rect transform. Points, extrusions and labels stay live.
             for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
                 const RenderTileLayer& renderLayer = it->second;
                 if (!hasDrapeableContent(renderLayer)) {
@@ -6098,12 +5749,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::renderTileBorder(const TileId& tileId, const TileId& sourceTileId) {
-        // Debug view: the outline of the tile as it is actually drawn - displaced by the terrain,
-        // so the line lies ON the ground and a tile whose footprint overlaps its neighbour's is
-        // visible as such. The colour comes from the tile's own zoom, so a layer drawing a coarser
-        // tile set than the one under it stands out, and the brightness alternates with the tile
-        // parity so two tiles of the same zoom never share an edge colour. Drawn without depth,
-        // because the point is to see where the tiles ARE, including the ones being occluded.
+        // Debug view: the tile outline as it is actually drawn, displaced by the terrain. The colour
+        // comes from the tile's own zoom and the brightness alternates with its parity, so no two
+        // neighbours share an edge colour. Drawn without depth - occluded tiles matter too.
         if (_tileBorderVBO == 0) {
             std::vector<float> border;
             border.reserve((TILE_BORDER_SEGMENTS * 4 + 1) * 3);
@@ -6268,9 +5916,8 @@ namespace massif::vt {
             return;
         }
 
-        // In the drape bake the raster is rendered FLAT into the tile's texture: the same grid
-        // surface mesh, but with terrain displacement off and the orthographic bake matrix, so
-        // the [0,1] tile-local mesh maps onto the texture. The uv matrix below already resolves
+        // In the drape bake the raster is rendered FLAT into the tile's texture: the same grid surface
+        // mesh with displacement off and the orthographic bake matrix. The uv matrix below resolves
         // source-vs-target overzoom, so the bake frame is the plain target-tile square.
         bool flatDrape = (_drapeMVPOverride != nullptr);
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
@@ -6282,11 +5929,9 @@ namespace massif::vt {
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
             unsigned int terrainFlag = flatDrape ? 0 : (terrainVTF ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0));
-            // A raster drawn HERE covers the same ground the drape surface does, so it takes the
-            // same sun and shadow. It is not draped when it is finer than the drape cover - the
-            // outgoing generation of a zoom out - and drawing that unlit next to the lit surface
-            // below is the flash at every integer zoom out. Never in the bake: the drape texture is
-            // lit once, by the surface that samples it. NORMALMAP has its own lighting model.
+            // A raster drawn HERE covers the same ground the drape surface does, so it takes the same
+            // sun and shadow - drawn unlit beside the lit surface it is the flash at every integer
+            // zoom out. Never in the bake, which is lit once by the surface that samples it.
             bool litBitmap = !flatDrape && !_terrainShadowMaskPass && terrainVTF && _terrainLighting.enabled && bitmap->getType() == TileBitmap::Type::COLORMAP;
             bool shadowedBitmap = litBitmap && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
             unsigned int lightFlags = (litBitmap ? TERRAIN_LIGHT_FLAG : 0) | (shadowedBitmap ? surfaceShadowFlags() : 0);
@@ -6410,15 +6055,13 @@ namespace massif::vt {
         // displacement, NO depth bias, and a tile-local orthographic MVP (set by the caller).
         bool flatDrape = (_drapeMVPOverride != nullptr);
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider && !flatDrape;
-        // Every piece of tile content drawn in the 3D scene receives shadows. That used to mean
-        // the 3D extrusions alone, because everything 2D was baked into the drape texture and was
-        // shadowed by the surface it was painted on; with only the FILLS draped, the lines and
-        // points are in the scene and stayed lit while the slope under them went dark.
+        // Every piece of tile content drawn in the 3D scene receives shadows. It used to mean the
+        // extrusions alone, since everything 2D was baked into the drape; with only the FILLS draped,
+        // lines and points are in the scene and stayed lit while the slope under them went dark.
         bool shadowReceiver = terrainVTF && !_shadowCasterViewProj && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
-        // ...and takes the sun the same way. Whatever reaches this call in the 3D scene is content
-        // the drape did NOT bake - a no-drape layer (contours), or everything when the drape is
-        // off - so it is the only pass that can light it, and without this it kept its full style
-        // colour beside a ground that is lit and shadowed. Extrusions light by their own model.
+        // ...and takes the sun the same way. Whatever reaches this call is content the drape did NOT
+        // bake, so it is the only pass that can light it - without this it kept its full style colour
+        // beside a lit, shadowed ground. Extrusions light by their own model.
         bool terrainLit = terrainVTF && !_shadowCasterViewProj && _terrainLighting.enabled && geometry->getType() != TileGeometry::Type::POLYGON3D;
         unsigned int lightFlag = terrainLit ? GEOMETRY_LIGHT_FLAG : 0;
         unsigned int terrainFlag = flatDrape ? 0 : ((_terrainMode ? TERRAIN_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
@@ -6449,13 +6092,9 @@ namespace massif::vt {
                 shaderProgramPtr = &buildShaderProgram("polygon3dshadow", polygon3DVsh, polygon3DShadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
                 break;
             }
-            // TERRAIN_FLAG (depth bias) too: in terrain mode the extrusions are depth-tested
-            // against a terrain surface pre-pass (renderGeometry3D seeds the 3D overlay's
-            // depth buffer with it), so they need the same base-clearance slack as draped
-            // 2D geometry - otherwise the lower walls are clipped by the ground on slopes.
-            // SHADOW_SINGLE_TAP: an extrusion cannot use the terrain's screen-space mask - that holds
-            // the ground's shadow, not its own - so it is the one receiver still running the kernel
-            // per fragment, over a wall that is shadowed or lit almost in one piece.
+            // TERRAIN_FLAG too: extrusions are depth-tested against the terrain surface pre-pass, so
+            // they need the same base-clearance slack as draped 2D geometry. SHADOW_SINGLE_TAP because
+            // an extrusion cannot use the terrain's screen-space mask, which holds the ground's shadow.
             {
                 GLuint spanDrapeTexture = 0;
                 cglib::vec4<float> spanDrapeTransform(0, 0, 1, 1);
@@ -6483,10 +6122,9 @@ namespace massif::vt {
         // Standard goes 0 at z15 to full at z15.3 - then owns the whole appearance, instead of
         // fading a second time on a timer whenever a tile arrives.
         float colorBlend = (geometry->getType() == TileGeometry::Type::POLYGON3D && !_buildingFadeOnAppear ? 1.0f : blend);
-        // The scene light, applied where the colour is already evaluated once per frame and
-        // cached - so this costs one multiply per DISTINCT colour, not per feature. mapbox's
-        // `mix(apply_lighting_ground(color), color, emissive_strength)`: at emissive 1, which is
-        // the default and what every style did before this existed, it is exactly a no-op.
+        // The scene light, applied where the colour is already evaluated once per frame and cached,
+        // so it costs one multiply per DISTINCT colour. mapbox's mix(apply_lighting_ground(color),
+        // color, emissive_strength): at emissive 1, the default, exactly a no-op.
         auto evaluateStyleColor = [&](const ColorFunction& colorFunc, int i) {
             Color color = Color::fromColorOpacity(evaluateColorFunc(colorFunc) * colorBlend, opacity);
             float emissive = evaluateFloatFunc(styleParams.emissiveFuncs[i]);
@@ -6532,12 +6170,9 @@ namespace massif::vt {
             }
 
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - sourceTileId.zoom));
-            // The antialias ramp of text drawn as geometry, in the texture values the field is
-            // encoded in - the same rule the label batch uses (see renderLabelBatch), against this
-            // path's own 'size', which already carries the tile scale. The old form was written for
-            // the single 27-texel raster and a spread of 4: the raster ladder and the wider spread
-            // left it measuring a ramp up to six screen pixels, which is the glyph dissolving into
-            // its halo.
+            // The antialias ramp of text drawn as geometry, in the texture values the field is encoded
+            // in - the same rule renderLabelBatch uses, against this path's own 'size'. The old form
+            // assumed one raster size and measured a ramp up to six screen pixels wide.
             glUniform1f(shaderProgram.uniforms[U_SDFSCALE], 2.0f * GLYPH_SDF_UNIT * static_cast<float>(styleParams.glyphRenderSize - GLYPH_RENDER_SPREAD) / _fullResolution);
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             if (styleOffsetting) {
@@ -6570,11 +6205,9 @@ namespace massif::vt {
                     widths[i] = gapWidths[i] > 0.0f ? gapWidths[i] + width : width * 0.5f;
                 }
                 if (styleBorder) {
-                    // maplibre's `line-border-width`: pixels on EACH side, outside the line. The
-                    // gap shrinks by the same amount so a casing keeps its border on both edges.
-                    // CLAMPED, not abs: a style computing the border from two width ramps goes
-                    // negative wherever the casing's ramp has not started yet, and a negative
-                    // border means no border - mirrored it would draw one the road never has.
+                    // maplibre's `line-border-width`: pixels on EACH side, outside the line, and the
+                    // gap shrinks by the same amount so a casing keeps both edges. CLAMPED, not abs -
+                    // a border computed from two width ramps goes negative, and negative means none.
                     float borderHalf = 0.5f * _fullResolution * std::max(0.0f, evaluateFloatFunc(styleParams.borderWidthFuncs[i])) * geometry->getGeometryScale() / tileSize;
                     borderWidths[i] = (borderHalf > 0.0f && widths[i] > 0.0f ? widths[i] + borderHalf : 0.0f);
                     borderGapWidths[i] = std::max(0.0f, gapWidths[i] - borderHalf);
@@ -6593,10 +6226,9 @@ namespace massif::vt {
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - sourceTileId.zoom)));
             glUniform1f(shaderProgram.uniforms[U_ANTIALIASSCALE], _lineAntialiasScale);
             if (terrainVTF) {
-                // Screen-space line extrusion over terrain (see lineVsh): the aspect converts an
-                // NDC x offset into the same units as y, and one line-width unit is 1/halfResolution
-                // of the NDC height - the very scale uBinormalScale is built from, so a line ends
-                // up exactly as wide as it is on the flat map.
+                // Screen-space line extrusion over terrain (see lineVsh): the aspect converts an NDC x
+                // offset into y's units, and one line-width unit is 1/halfResolution of the NDC height
+                // - the scale uBinormalScale is built from, so a line is as wide as on the flat map.
                 glUniform2f(shaderProgram.uniforms[U_SCREENSCALE], std::max(0.0001f, _viewState.aspect), 1.0f / std::max(1.0f, _halfResolution));
                 // How many line widths a vertex is extruded by: the binormal ships packed as int16
                 // against a per-geometry scale, so only this undoes it - 1 for a plain vertex,
@@ -6722,9 +6354,8 @@ namespace massif::vt {
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D && _lightingShader3D) {
             _lightingShader3D->setupFunc(shaderProgram.program, _viewState);
             // ...which uploaded the MAP's building-emissive. A rule that states its own replaces it
-            // here, for this draw alone - and one that does not writes the map's value back, since
-            // the program is shared and the previous draw may have overridden it. Written
-            // unconditionally so the two cases cannot drift apart.
+            // for this draw alone, and one that does not writes the map's value back - the program is
+            // shared. Written unconditionally so the two cases cannot drift apart.
             if (shaderProgram.uniforms[U_EMISSIVE] >= 0) {
                 float emissive = (styleParams.polygon3DEmissiveFunc ? evaluateFloatFunc(*styleParams.polygon3DEmissiveFunc) : _buildingEmissive);
                 glUniform1f(shaderProgram.uniforms[U_EMISSIVE], emissive);
@@ -6788,10 +6419,9 @@ namespace massif::vt {
             glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
         }
         if (mode.terrainVTF) {
-            // The elevation TEXTURE is the TARGET tile's - that is the surface this content stands
-            // on - while the vertex FRAME is the SOURCE tile's, since the vertices are source-local.
-            // They were swapped: content then sat at a different DEM level than the ground beneath
-            // it and slid during a pan until source and target became the same tile.
+            // The elevation TEXTURE is the TARGET tile's - the surface this content stands on - while
+            // the vertex FRAME is the SOURCE tile's, the vertices being source-local. Swapped, content
+            // sat at a different DEM level than its ground and slid during a pan.
             setupTerrainUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
         }
         if (mode.shadowReceiver) {
@@ -6822,10 +6452,9 @@ namespace massif::vt {
             glUniform4f(shaderProgram.uniforms[U_DRAPEMASKUVTRANSFORM], _drapeMaskUVTransform(0), _drapeMaskUVTransform(1), _drapeMaskUVTransform(2), _drapeMaskUVTransform(3));
         }
         if (mode.shadowReceiver || mode.terrainLit) {
-            // Undraped 2D content takes its N.L from the TERRAIN, not from its own (meaningless)
-            // normal - see terrainNdl in commonFsh - so both the shadow and the sun need the slope
-            // scale and the sun direction. The uniforms this sets that a program does not declare
-            // resolve to -1, where glUniform is a no-op.
+            // Undraped 2D content takes its N.L from the TERRAIN, not its own meaningless normal (see
+            // terrainNdl in commonFsh), so both the shadow and the sun need the slope scale and the
+            // sun direction. Uniforms a program does not declare resolve to -1, a no-op.
             setupTerrainLightingUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
         }
 
@@ -6977,12 +6606,9 @@ namespace massif::vt {
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
-        // The antialias ramp has to be one screen pixel wide, and it is expressed in the texture
-        // values the field is encoded in. One em is (glyphRenderSize - GLYPH_RENDER_SPREAD) glyph
-        // texels and is drawn over 'size * scale * _fullResolution / 2' screen pixels (vt's
-        // resolution is twice what one tile covers), so a screen pixel is that ratio of texels -
-        // GLYPH_SDF_UNIT turns texels into texture values. The batch has one scale for the whole
-        // label; the DERIVATIVES path in labelFsh measures it per fragment instead.
+        // The antialias ramp has to be one screen pixel wide, expressed in the texture values the
+        // field is encoded in: one em is (glyphRenderSize - GLYPH_RENDER_SPREAD) texels over
+        // 'size * scale * _fullResolution / 2' screen pixels, and GLYPH_SDF_UNIT converts.
         float glyphEmTexels = static_cast<float>(labelBatchParams.glyphRenderSize - GLYPH_RENDER_SPREAD);
         glUniform1f(shaderProgram.uniforms[U_SDFRAMP], 2.0f * GLYPH_SDF_UNIT * glyphEmTexels / (labelBatchParams.scale * _fullResolution));
         // Camera axes for the shader-side billboarding (see labelVsh); the label matrix is
@@ -7119,34 +6745,25 @@ namespace massif::vt {
     }
 
     const GLTileRenderer::CompiledGeometry* GLTileRenderer::buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry) {
-        // The style parameter that picks a feature out may have changed since this geometry was
-        // built: repointing its features at their other style slot is a byte rewrite here, not a
-        // tile decode. Done before the buffers are looked at, so a geometry compiled for the first
-        // time uploads the repointed data straight away.
+        // The style parameter that picks a feature out may have changed since this geometry was built,
+        // and repointing its features at their other style slot is a byte rewrite, not a tile decode.
+        // Done before the buffers are looked at, so a first compile uploads the repointed data.
         tileGeometry->applyStyleState();
 
         auto it = _compiledTileGeometryMap.find(tileGeometry.get());
         if (it != _compiledTileGeometryMap.end() && it->second.owner.expired()) {
-            // The geometry this entry was built for is gone and the allocator handed its
-            // address to a NEW geometry: the raw pointer matches but the VBOs do not. Two
-            // live objects can never share an address, so a live owner is proof the entry
-            // belongs to this geometry - an expired one is proof it does not. Without this
-            // the renderer draws the previous tile's buffers, which shows up as roads and
-            // labels flashing while tiles turn over during a zoom.
+            // The geometry this entry was built for is gone and its address was handed to a NEW one:
+            // the raw pointer matches but the VBOs do not. Two live objects cannot share an address,
+            // so a live owner proves the entry belongs to this geometry and an expired one proves not.
             VT_STAT_INC(geomCompileStale);
             deleteCompiledGeometry(it->second.geometry);
             _compiledTileGeometryMap.erase(it);
             it = _compiledTileGeometryMap.end();
         }
         if (it == _compiledTileGeometryMap.end()) {
-            // Nothing left to upload. releaseVertexArrays() frees the CPU copy once a geometry is
-            // in a VBO, which assumes ONE renderer per geometry - and a renderer is rebuilt from
-            // scratch whenever the tile transformer changes (TileRenderer::setTileTransformer, i.e.
-            // every terrain toggle), while the tiles themselves are handed straight to it. Uploading
-            // the empty arrays gave a buffer with NO data store and a draw of 65535 indices into it:
-            // undefined on a device, a null dereference inside the emulator's GL encoder. The tiles
-            // are re-decoded for the new transformer anyway, so skipping is a frame or two of
-            // missing geometry rather than a crash.
+            // Nothing left to upload: releaseVertexArrays() frees the CPU copy once a geometry is in a
+            // VBO, which assumes ONE renderer per geometry - and a terrain toggle rebuilds the renderer
+            // while keeping the tiles. Uploading empty arrays gives a buffer with no data store.
             if (tileGeometry->getIndicesCount() > 0 && tileGeometry->getIndices().empty()) {
                 return nullptr;
             }
@@ -7358,15 +6975,9 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::createShaderProgram(ShaderProgram& shaderProgram, const std::string& vsh, const std::string& fsh, const std::set<std::string>& defs, const std::map<std::string, int>& uniformMap, const std::map<std::string, int>& attribMap) {
-        // GLSL ES 3.00 from ONE set of shader sources: the differences are a handful of renamed
-        // keywords. The 1.00 path below is the per-program fallback, kept one release as a canary.
-        //
-        // The fragment shaders here write `glFragColor`, a plain rename. That rename is NOT
-        // required - `#define gl_FragColor ...` compiles and is applied, measured through ANGLE's
-        // translator (docs/internals/rendering/16-graphics-api-migration.md); ESSL reserves the GL_
-        // prefix for MACRO names, and gl_FragColor is a built-in variable ESSL 3.00 does not
-        // declare. all/native's Shader.cpp takes tangram's #define form so that application GLSL
-        // needs no migration. The rename is harmless, so it stays.
+        // GLSL ES 3.00 from ONE set of shader sources - the differences are a handful of renamed
+        // keywords, and the 1.00 path below is the per-program fallback. The `glFragColor` rename is
+        // not required (all/native uses tangram's #define form) but harmless, so it stays.
         bool essl3 = defs.count("ESSL3") > 0;
         auto compileShader = [&defs, essl3](GLenum type, const std::string& sh) -> GLuint {
             std::string shaderSourceStr = essl3 ? "#version 300 es\n" : "#version 100\n";

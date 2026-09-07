@@ -393,12 +393,9 @@ namespace massif::css {
         map->setParameters(parameters);
         map->setStyleParameters(styleParameters);
 
-        // What each entry of the project's `layers` draws. An entry may name ONE attachment -
-        // `road::pedestrian_polygon` - so a source layer can be drawn at several DEPTHS, which one
-        // entry per layer cannot express: a style that draws a pedestrian area under its parks and
-        // its road casings over them needs the same source layer in two places, and pinning it to
-        // one put the pedestrian slab over the park. A bare entry keeps every attachment no other
-        // entry claims, so a project that splits nothing behaves exactly as before.
+        // What each entry of the project's `layers` draws. An entry may name ONE attachment, so a source
+        // layer can be drawn at several DEPTHS - a pedestrian area under the parks and its road casings
+        // over them. A bare entry keeps every attachment no other entry claims.
         std::map<std::string, std::set<std::string>> claimedAttachments;
         for (const std::string& entry : layerNames) {
             std::size_t sep = entry.find("::");

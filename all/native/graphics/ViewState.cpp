@@ -110,7 +110,7 @@ namespace massif {
         if (!_terrainCameraBound || !(_zoom0Distance > 0)) {
             return std::numeric_limits<float>::infinity();
         }
-        return CameraClearance::maxZoom(_zoom, _focusPos(2), _cameraPos(2), getOrbitDistance(_zoom), _terrainCameraZ,
+        return CameraClearance::maxZoom(_zoom, _focusPos(2), _cameraPos(2), _terrainCameraZ,
                                         getOrbitDistance(_zoomRange.getMax()), _terrainClearanceFloor);
     }
 

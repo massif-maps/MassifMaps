@@ -10,6 +10,9 @@
 </head>
 <body>
 <canvas id="map"></canvas>
+<!-- Classic script, not a module: it needs document.currentScript to register itself. Only does
+     anything when the host serves no COOP/COEP of its own, which is the GitHub Pages case. -->
+<script src="./coi-serviceworker.js"></script>
 <script type="module">
   import Module from './massif-demo.mjs';
   // The canvas the GL context is created on has to be registered before the runtime starts.

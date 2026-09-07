@@ -95,6 +95,28 @@ Two rules follow from that split, and both cost a debugging session to find:
   all: the first frame draws, the flag stays set, and the map is frozen with tiles arriving behind
   it.
 
+### Isolation on GitHub Pages
+
+The docs site is on GitHub Pages, which serves no custom headers at all — so the threaded module
+cannot start there. `emscripten` fails with
+`SharedArrayBuffer transfer requires self.crossOriginIsolated` before a single tile is fetched.
+
+`web/demo/coi-serviceworker.js` is the way around it: registered from the page, it re-serves every
+response with the two headers and reloads once, which is what makes a static host isolated. COEP is
+**`credentialless`**, not `require-corp` — a tile server sends no
+`Cross-Origin-Resource-Policy`, and `require-corp` would block every tile.
+
+**Unverified.** The mechanism is the standard one, but the embedded browser used to build this
+refuses to register any service worker, so the shim has never actually run. Check it in a real
+browser before relying on it:
+
+```sh
+python3 web/demo/serve.py --no-headers     # serve the way GitHub Pages does
+```
+
+The page should reload itself once and then render; `crossOriginIsolated` in the console tells you
+which side of the fence you are on.
+
 `PTHREAD_POOL_SIZE=8` covers the pools plus the three workers. The pool is pre-warmed because
 `pthread_create` on the main browser thread cannot block waiting for a worker to spawn.
 

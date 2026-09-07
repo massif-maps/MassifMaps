@@ -10,14 +10,18 @@ import os
 
 class Handler(http.server.SimpleHTTPRequestHandler):
   def end_headers(self):
-    self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
-    self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
+    if not args.noheaders:
+      self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+      self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
     self.send_header('Cache-Control', 'no-store')
     super().end_headers()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, default=8088)
 parser.add_argument('--dir', default=os.path.dirname(os.path.abspath(__file__)))
+# GitHub Pages sends no custom headers, so this is how coi-serviceworker.js gets tested.
+parser.add_argument('--no-headers', dest='noheaders', action='store_true',
+                    help='Serve without COOP/COEP, the way a static host does')
 args = parser.parse_args()
 
 os.chdir(args.dir)

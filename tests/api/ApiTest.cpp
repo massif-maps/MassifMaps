@@ -75,6 +75,7 @@ void testDrapeTuning();
 void testShadowCasterRing();
 void testTerrainTesselation();
 void testFlattenSwitch();
+void testPrefetchOrder();
 
 namespace {
 
@@ -440,6 +441,7 @@ int main() {
     testShadowCasterRing();
     testTerrainTesselation();
     testFlattenSwitch();
+    testPrefetchOrder();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

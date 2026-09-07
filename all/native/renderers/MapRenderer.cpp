@@ -2507,6 +2507,12 @@ namespace massif {
                     // inside a frame, so the tiles that land after the last one are never
                     // applied: the map sits on a half-displaced mesh until the next gesture.
                     if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                        // Where the prefetch queue measures "near" from, refreshed before anything
+                        // in this frame queues a tile. The focus, not the ground under the camera:
+                        // at a tilt of 60 that point sits behind the bottom of the screen, and the
+                        // horizon tiles this is meant to hold back are far from either.
+                        const cglib::vec3<double>& focusPos = viewState.getFocusPos();
+                        elevationManager->setPrefetchFocus(focusPos(0), focusPos(1));
                         if (_redrawElevationManager.lock() != elevationManager) {
                             std::weak_ptr<MapRenderer> mapRendererWeak = shared_from_this();
                             elevationManager->setDataChangedListener([mapRendererWeak]() {

@@ -16,6 +16,9 @@ python3 scripts/build-web.py --profile lite --configuration RelWithDebInfo --bui
 python3 web/demo/serve.py            # http://localhost:8088
 ```
 
+Add `--website` to put the same module under `website/static/preview`, which is what the
+documentation site's [style preview](../tools/style-preview.md) page runs.
+
 Size, measured with emscripten 6.0.9 on the `lite` profile at `--configuration Release`:
 
 | Artefact | Raster only | + vector tiles, CartoCSS and labels |
@@ -291,17 +294,48 @@ Three things it has to get right, and each was a bug first:
   once and produces an empty bitmap.
 - **The `lite` profile only** so far: no sqlite, so no persistent tile cache, no offline packages,
   no routing or geocoding.
-- **The layer is still built in C++.** `web/demo/main.cpp` reads the source and style from the
-  query string; creating a layer from JavaScript works through `massif.create(...)` but the demo
-  does not do it yet.
-- **3D terrain, shadows and the sky** are untested here. They compile, but the MRT and
+- **3D terrain, shadows and the sky** are barely tested here. They compile, but the MRT and
   depth-texture paths have never been run against a WebGL 2 driver.
 Raster tiles, MVT decoded through mapnikvt and styled by CartoCSS, and labels with halos and
 accented glyphs all render — that part is observed, not inferred.
 
+## The style preview on the documentation site
+
+`/preview` on the site is this module with a React page around it. Two things are worth knowing.
+
+**Where the wasm comes from.** It is a build artefact and is not tracked. `.github/workflows/web-preview.yml`
+builds it whenever `all/native`, `libs-massif`, `web/` or the build scripts change on `master`, and
+uploads it as the `web-preview` artefact; `docs.yml` downloads the newest successful one into
+`website/static/preview` before building the site. That download is best-effort — without it the
+page says the module is missing and the rest of the site deploys unaffected. It is a separate
+workflow because docs.yml also runs on every documentation push and nightly for the roadmap page,
+and an hour of emscripten per typo is not a trade worth making.
+
+**The page adds no C++.** It runs the same `web/demo` module and drives it entirely through the
+facade's C ABI: clear the layer list, build a `layer` from a spec, add it. The one thing that had
+to reach the facade for it is `addFallbackFont` on the `style` kind — a decoder built from a spec
+had no way to be given font bytes, so every converted MapBox style, which all name DIN Pro, lost
+its labels. `web/demo/main.cpp` also adopts its `Layers` now, which is what makes the map
+replaceable at all.
+
+MapBox style JSON is translated in the page, by `mapbox2css` — the CLI's own TypeScript, which runs
+in a browser unchanged apart from sprites. `sprite.ts` used to reach straight for `node:fs` and
+pngjs; it goes through a `SpriteHost` now, and the browser one fetches the sheets and uses the
+exact PNG codec in `png.ts`. That codec exists because the obvious route — `createImageBitmap` into
+a 2D canvas — stores premultiplied colour, so reading it back changes every partly transparent
+texel. On an SDF sheet, whose alpha channel is a distance field and not opacity, that is not a
+rounding error but a mangled icon.
+
 ## What emcc found that no other build did
 
-Nothing new this time — the two latent portability bugs (`stdext`'s `unistring`, harfbuzz's
+`stdext`'s `utf8_filesystem::fseek64`, `ftell64` and `ftruncate64` had a branch for Windows,
+Android and Apple and **no `#else`** — so on emscripten the functions had no body at all. That is
+undefined behaviour, and at `-O2` LLVM folded it backwards through the caller: `URLFileLoader`
+reported that it could not open the file without ever calling `fopen`, so every `file://` read on
+the web failed identically whether the file existed or not. The fix is a generic POSIX branch
+(`fseeko`/`ftello`/`ftruncate`), which is what Apple was already using.
+
+Beyond that, the two latent portability bugs (`stdext`'s `unistring`, harfbuzz's
 `-Wunused`) were already fixed for
 [the style tools' wasm build](../contributing/style-tools.md#the-wasm-build), which is what proved
 `vt`, `mapnikvt`, `cartocss`, freetype and harfbuzz compile under emcc in the first place. What was

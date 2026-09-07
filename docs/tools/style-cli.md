@@ -6,6 +6,9 @@ sidebar_position: 1
 
 # The style CLI
 
+To see a conversion rather than read it, the [style preview](style-preview.md) runs this same
+converter in the browser and renders the result with the SDK.
+
 ```bash
 npx @massif-maps/style-tools mapbox2css style.json out/ --validate
 ```

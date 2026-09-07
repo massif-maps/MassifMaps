@@ -63,6 +63,8 @@ const config = {
     './plugins/roadmap-issues',
     // /changelog renders the repo's CHANGELOG.md.
     './plugins/changelog-content',
+    // /preview runs the SDK itself in wasm; this only gives the dev server COOP/COEP.
+    './plugins/style-preview',
     [
       '@easyops-cn/docusaurus-search-local',
       /** @type {import('@easyops-cn/docusaurus-search-local').PluginOptions} */
@@ -103,6 +105,7 @@ const config = {
             label: 'Tools',
             position: 'left',
             items: [
+              {to: '/preview', label: 'Style preview'},
               {to: '/docs/tools/style-cli', label: 'Style CLI'},
               {to: '/docs/api/', label: 'Surface API'},
               {to: '/docs/api/reference/', label: 'API reference'},
@@ -153,6 +156,7 @@ const config = {
           {
             title: 'Tools & API',
             items: [
+              {label: 'Style preview', to: '/preview'},
               {label: 'Style CLI', to: '/docs/tools/style-cli'},
               {label: 'Surface API', to: '/docs/api/'},
               {label: 'API reference', to: '/docs/api/reference/'},

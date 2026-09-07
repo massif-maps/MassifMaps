@@ -529,6 +529,7 @@ MassifMethod const MassifMethodSetLayerGeoJSON = @"setLayerGeoJSON";
 MassifMethod const MassifMethodSetMetaDataElement = @"setMetaDataElement";
 MassifMethod const MassifMethodSetStyleParameter = @"setStyleParameter";
 MassifMethod const MassifMethodSetStyleParameters = @"setStyleParameters";
+MassifMethod const MassifMethodSetSunPositionFromTime = @"setSunPositionFromTime";
 MassifMethod const MassifMethodStartDownloadArea = @"startDownloadArea";
 MassifMethod const MassifMethodStopAllDownloads = @"stopAllDownloads";
 MassifMethod const MassifMethodStopFlight = @"stopFlight";

@@ -21,6 +21,10 @@
 
 // Sun direction and colour, which the terrain and 3D buildings shade from. Default-constructed, then every value is an ordinary property.
 !spec(massif::LightOptions, options, light)
+// The sun where it really is at a moment and a place. A binding that only had sunAltitude and
+// sunAzimuth had to carry its own solar model; this is the SDK's, the one shadows and sky were
+// tuned against. Pass the map centre as latitude/longitude - the sun's path depends on it.
+!method(massif::LightOptions, setSunPositionFromTime, arg(year, int), arg(month, int), arg(day, int), arg(hour, int), arg(minute, int), arg(latitude, float), arg(longitude, float), returns(void))
 
 %attribute(massif::LightOptions, float, SunAzimuth, getSunAzimuth, setSunAzimuth)
 %attribute(massif::LightOptions, float, SunAltitude, getSunAltitude, setSunAltitude)

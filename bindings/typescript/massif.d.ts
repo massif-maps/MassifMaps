@@ -7983,6 +7983,7 @@ export interface MethodTypes {
     set: (index: number, layer: Handle) => void;
   };
   "massif::LightOptions": {
+    setSunPositionFromTime: (year: number, month: number, day: number, hour: number, minute: number, latitude: number, longitude: number) => void;
   };
   "massif::LightStop": {
   };

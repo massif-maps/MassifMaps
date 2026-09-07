@@ -17,6 +17,7 @@
 #include "core/MapTile.h"
 #include "core/Variant.h"
 #include "components/Layers.h"
+#include "components/LightOptions.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
 #include "datasources/MultiTileDataSource.h"
@@ -202,6 +203,29 @@ namespace massif { namespace api {
             }
             result = PropertyValue::ofString(
                 static_cast<MBVectorTileDecoder*>(obj)->getStyleParameter(name));
+            return RESULT_OK;
+        }
+
+        /**
+         * setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude) - the sun
+         * where it really is at a moment and a place.
+         *
+         * A binding could set sunAltitude and sunAzimuth itself, but only by carrying its own solar
+         * model; the SDK already has one, and it is the one the shadows and the sky were tuned
+         * against. Latitude and longitude matter because the sun's path over the day depends on
+         * where you are standing - pass the map centre.
+         */
+        Result setSunPositionFromTime(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long year = 0, month = 0, day = 0, hour = 0, minute = 0;
+            double latitude = 0, longitude = 0;
+            if (!args.getLong(0, year) || !args.getLong(1, month) || !args.getLong(2, day) ||
+                !args.getLong(3, hour) || !args.getLong(4, minute) ||
+                !args.getDouble(5, latitude) || !args.getDouble(6, longitude)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<LightOptions*>(obj)->setSunPositionFromTime(
+                static_cast<int>(year), static_cast<int>(month), static_cast<int>(day),
+                static_cast<int>(hour), static_cast<int>(minute), latitude, longitude);
             return RESULT_OK;
         }
 
@@ -548,6 +572,7 @@ namespace massif { namespace api {
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameters", &setStyleParameters);
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
         registerMethod("massif::MBVectorTileDecoder", "addFallbackFont", &addFallbackFont);
+        registerMethod("massif::LightOptions", "setSunPositionFromTime", &setSunPositionFromTime);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);
         registerMethod("massif::Layers", "add", &addLayer);

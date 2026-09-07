@@ -3767,7 +3767,44 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::LightOptions",
+          "name": "setSunPositionFromTime",
+          "args": [
+            {
+              "name": "year",
+              "type": "int"
+            },
+            {
+              "name": "month",
+              "type": "int"
+            },
+            {
+              "name": "day",
+              "type": "int"
+            },
+            {
+              "name": "hour",
+              "type": "int"
+            },
+            {
+              "name": "minute",
+              "type": "int"
+            },
+            {
+              "name": "latitude",
+              "type": "float"
+            },
+            {
+              "name": "longitude",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::LightStop": {

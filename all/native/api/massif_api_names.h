@@ -541,6 +541,7 @@ const char* massif_property_name(massif_property property);
 #define MASSIF_METHOD_SET_META_DATA_ELEMENT "setMetaDataElement"
 #define MASSIF_METHOD_SET_STYLE_PARAMETER "setStyleParameter"
 #define MASSIF_METHOD_SET_STYLE_PARAMETERS "setStyleParameters"
+#define MASSIF_METHOD_SET_SUN_POSITION_FROM_TIME "setSunPositionFromTime"
 #define MASSIF_METHOD_START_DOWNLOAD_AREA "startDownloadArea"
 #define MASSIF_METHOD_STOP_ALL_DOWNLOADS "stopAllDownloads"
 #define MASSIF_METHOD_STOP_FLIGHT "stopFlight"

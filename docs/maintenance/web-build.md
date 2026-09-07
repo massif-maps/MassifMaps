@@ -43,6 +43,8 @@ the query string, so a camera and a style are a link.
 | `css` | URL-encoded CartoCSS, used when the source is vector |
 | `project` | A CartoCSS project directory under `web/demo/styles`, preloaded like the fonts |
 | `style` | Which entry file of that project to use, without its extension. Default `project` |
+| `terrain` | A DEM tile URL or `.pmtiles` archive; turns on 3D terrain |
+| `terrainMaxZoom` | Deepest level of that DEM. Default 12, which is Mapterhorn's |
 
 `project` is how a converted MapBox style is previewed:
 
@@ -122,11 +124,25 @@ Aligning the two properly means decoupling the zoom-to-distance mapping in `View
 Method: pan a known number of CSS pixels and read `focusPos` before the release. **Before** - kinetic
 pan keeps gliding after mouseup and inflated the first measurement by 1.26x.
 
+### Range requests, and why PMTiles failed on the web
+
+A PMTiles archive is read by HTTP range, and `HTTPClient` checked the `Content-Range` of every 206
+against the offset it asked for. **A browser hides `Content-Range` from the page** unless the server
+sends `Access-Control-Expose-Headers`, and tile hosts generally do not - so the header read as
+absent, the offset compared as 0, and every range request was rejected with
+`Content range mismatch: 0/127`. The check now applies only when the header is actually readable:
+the range was honoured either way, and refusing it makes every PMTiles archive unreadable in a
+browser.
+
+Mapterhorn's planet archive (`https://download.mapterhorn.com/planet.pmtiles`) is 705 GB of
+Terrarium-coded WebP, z0-12, and serves `access-control-allow-origin: *` - only the ranges actually
+read are fetched.
+
 ### Draw distance
 
 `Options.drawDistance` defaults to 16, which is a phone's battery talking: tilt the map and
-buildings and terrain stop at a near band. The web host sets **48**, because a desktop GPU can
-afford what mapbox and maplibre draw.
+buildings and terrain stop at a near band. The web host sets **96**, because a desktop GPU can
+afford what mapbox and maplibre draw - from Chamonix at tilt 35 that reaches Lausanne.
 
 ### DPI
 

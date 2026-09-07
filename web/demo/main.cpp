@@ -26,6 +26,8 @@
 #include "core/BinaryData.h"
 #include "utils/Log.h"
 #include "vectortiles/MBVectorTileDecoder.h"
+#include "components/TerrainOptions.h"
+#include "rastertiles/TerrariumElevationDataDecoder.h"
 
 #include <cstdlib>
 #include <memory>
@@ -123,6 +125,18 @@ int main() {
             }
         }
         _MapView->getLayers()->add(std::make_shared<massif::VectorTileLayer>(dataSource, decoder));
+    }
+
+    // ?terrain=<DEM url> turns on real 3D terrain. Mapterhorn's planet archive is Terrarium-coded
+    // WebP in PMTiles, z0-12, and the SDK reads a .pmtiles URL by range - so a 705 GB archive costs
+    // only the tiles actually looked at.
+    std::string terrain = queryParam("terrain", "");
+    if (!terrain.empty()) {
+        auto elevationSource = std::make_shared<massif::HTTPTileDataSource>(0, static_cast<int>(queryNumber("terrainMaxZoom", 12)), terrain);
+        auto terrainOptions = std::make_shared<massif::TerrainOptions>(elevationSource,
+            std::make_shared<massif::TerrariumElevationDataDecoder>());
+        terrainOptions->setEnabled(true);
+        _MapView->getOptions()->setTerrainOptions(terrainOptions);
     }
 
     massif::MapPos wgs84(queryNumber("lon", 2.3522), queryNumber("lat", 48.8566));

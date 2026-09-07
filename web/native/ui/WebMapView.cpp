@@ -49,7 +49,7 @@ namespace massif {
 
         // The SDK's default is 16, chosen for a phone. Tiles are cheap to keep on a desktop GPU and
         // a tilted web map is expected to draw into the distance.
-        const float WEB_DRAW_DISTANCE = 48.0f;
+        const float WEB_DRAW_DISTANCE = 96.0f;
     }
 
     class WebMapView::RedrawListener : public RedrawRequestListener {

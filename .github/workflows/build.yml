@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-       required: false
-       description: 'version number'
+       required: true
+       description: 'version number, e.g. 6.0.2'
       publish:
         description: "Should we publish on Github?"
         default: true
@@ -95,12 +95,17 @@ jobs:
 
       - uses: actions/github-script@v9
         id: get_version_or_prompt
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         with:
           result-encoding: string
           script: |
-            if ("${{ github.event.inputs.version }}".length) {
-             return "${{ github.event.inputs.version }}".replace(/^v/, '');
+            const version = (process.env.INPUT_VERSION || '').trim().replace(/^v/, '')
+            if (!/^\d+\.\d+\.\d+/.test(version)) {
+              core.setFailed(`Publishing needs a "version" input like 6.0.2, got "${version}".`)
+              return ''
             }
+            return version
 
       - uses: actions/checkout@v7
         with:
@@ -109,6 +114,10 @@ jobs:
       - name: Create and push release tag
         run: |
           TAG="v${{ steps.get_version_or_prompt.outputs.result }}"
+          case "${TAG}" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::Refusing to create the malformed tag ${TAG}."; exit 1 ;;
+          esac
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null 2>&1; then

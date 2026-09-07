@@ -166,6 +166,9 @@ int main() {
     massif::api::MassifInterop::adopt("map", "map", _MapView);
     // Options too, so the page can try a setting without a rebuild.
     massif::api::MassifInterop::adopt("options", "map", _MapView->getOptions());
+    // And the layer list, which is what makes the whole map replaceable from JavaScript: the style
+    // preview clears this and adds a layer it built from a spec of its own.
+    massif::api::MassifInterop::adopt("layers", "map", _MapView->getLayers());
 
     // The frame loop is requestAnimationFrame, so main() returning must not tear the runtime down.
     emscripten_exit_with_live_runtime();

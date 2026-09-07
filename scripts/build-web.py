@@ -52,11 +52,18 @@ def buildWebLib(args):
   if not (makedirs(distDir) and copyfile('%s/libmassif.a' % buildDir, '%s/libmassif.a' % distDir)):
     return False
   if args.builddemo:
+    # website/static/preview is where the Docusaurus /preview page loads the module from, and is
+    # gitignored: the binary is a build artefact, downloaded by the docs workflow.
+    if args.website and not makedirs('%s/website/static/preview' % baseDir):
+      return False
     for name in ['massif-demo.mjs', 'massif-demo.wasm', 'massif-demo.data']:
       # .data exists only when web/demo/fonts was there to preload.
       if not os.path.exists('%s/%s' % (buildDir, name)):
         continue
       if not copyfile('%s/%s' % (buildDir, name), '%s/%s' % (baseDir + '/web/demo', name)):
+        return False
+      if args.website and not copyfile('%s/%s' % (buildDir, name),
+                                       '%s/website/static/preview/%s' % (baseDir, name)):
         return False
   return True
 
@@ -73,6 +80,7 @@ parser.add_argument('--configuration', dest='configuration', default='Release', 
 parser.add_argument('--build-number', dest='buildnumber', default='', help='Build sequence number, goes to version str')
 parser.add_argument('--build-version', dest='buildversion', default='%s-devel' % SDK_VERSION, help='Build version, goes to distributions')
 parser.add_argument('--build-demo', dest='builddemo', default=False, action='store_true', help='Also link web/demo into web/demo/massif-demo.mjs')
+parser.add_argument('--website', dest='website', default=False, action='store_true', help='Also copy the demo module into website/static/preview for the /preview page')
 args = parser.parse_args()
 args.defines += ';' + getProfile(args.profile).get('defines', '')
 args.cmakeoptions += ';' + getProfile(args.profile).get('cmake-options', '')

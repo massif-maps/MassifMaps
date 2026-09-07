@@ -17,6 +17,9 @@ Dry run by default; `--apply` executes.
 ./scripts/flatten-submodules.sh --phase massif --apply
 ```
 
+**Status:** `libs-massif` is flattened (2026-08-23). `libs-external` is still a submodule and can
+stay one — see [Known gaps](#known-gaps).
+
 Do `libs-massif` first: it is the bigger win and has no nested submodules of its own.
 
 ## Why
@@ -123,17 +126,21 @@ is acceptable for trees we only ever bump.
   with the directory.
 - **Branches.** 17 remote branches in `libs-external`, 20+ in `libs-massif` are not migrated.
   Merge or re-apply them by hand; do the flattening in a window where they are drained.
-- **Prose and CI**, which still describe the old layout:
+- **Prose**, which still describes the old layout:
 
 | File | What changes |
 |---|---|
-| `BUILDING.md` (~22-35) | drop the `cd libs-external` step; keep the `mlt` sparse-checkout |
-| `.github/workflows/build.yml` (242, 469) | the fetch steps init only the remaining third-party forks |
-| `CLAUDE.md` | repository layout table, "Submodule gotcha" paragraph |
-| `.claude/CLAUDE.md` | "Repos — one fork, two submodules, three PR targets" |
+| `CLAUDE.md` | repository layout table, the repos/PR-targets table, "Library documentation" |
+| `BUILDING.md` | external phase only — drop the `cd libs-external` step, keep the `mlt` sparse-checkout |
 
-`scripts/build/CMakeLists.txt:18` needs **no** change: it resolves
-`SDK_EXTERNAL_LIBS_DIR` by path, and the path does not move.
+**No CI or build edit is needed**, because nothing outside the prose treats these trees as *repos*
+— only as paths, and the paths do not move:
+
+- `scripts/build/CMakeLists.txt:18` resolves `SDK_EXTERNAL_LIBS_DIR` by path
+- `.github/workflows/build.yml` fetches with `git submodule update --init --recursive`, which
+  initializes whatever is still a submodule, and reaches the flattened tree by path
+  (`cd libs-massif/cartocss/util`)
+- `BUILDING.md:139` is a path too
 
 ## Every other checkout
 

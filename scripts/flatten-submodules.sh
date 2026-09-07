@@ -266,13 +266,14 @@ fi
 
 say "done — follow-up, NOT done by this script"
 cat <<'EOF'
-   Prose and CI still describe the old layout. Update in the same PR:
+   Prose still describes the old layout. Update in the same PR:
 
-     BUILDING.md:22-35            drop the `cd libs-external` step, keep the mlt sparse-checkout
-     .github/workflows/build.yml  the submodule fetch steps now init only the third-party forks
-     CLAUDE.md                    repository layout table + "Submodule gotcha" paragraph
-     .claude/CLAUDE.md            "Repos — one fork, two submodules, three PR targets"
-     docs/maintenance/index.md    already lists flatten-submodules.md
+     CLAUDE.md                    layout table, the repos table, "Library documentation"
+     BUILDING.md                  only for the external phase — drop the `cd libs-external` step
+
+   No CI edit is needed: build.yml fetches with `git submodule update --init --recursive`,
+   which just initializes whatever is still a submodule, and it refers to the flattened
+   trees by path (`cd libs-massif/cartocss/util`), which does not move.
 
    Then, for every other checkout:
 

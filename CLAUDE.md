@@ -15,7 +15,7 @@ below — read the page, do not re-derive it.
 | `all/modules/` | SWIG interface files (`*.i`) — public API surface, mirrors `all/native` |
 | `all/native/api/` | The **facade API** — ids, handles, JSON specs, events; [design](docs/internals/api-facade.md) |
 | `tests/` | Host-native ctest suite — `cd tests && ./run.sh` |
-| `libs-massif/` | **submodule**: `vt` (GL vector-tile renderer), `mapnikvt`, `cartocss`, `geocoding`, `sgre`/`osrm`, `nml` |
+| `libs-massif/` | **in-tree**: `vt` (GL vector-tile renderer), `mapnikvt`, `cartocss`, `geocoding`, `sgre`/`osrm`, `nml` |
 | `libs-external/` | **submodule**: third-party deps. `boost` is expected as a symlink here (see BUILDING.md) |
 | `android/`, `ios/`, `dotnet/`, `winphone/` | Platform glue |
 | `scripts/` | Build scripts; `scripts/android-dev` is the demo/bench |
@@ -116,7 +116,7 @@ A gallery example is ONE id on Android, iOS **and** NativeScript, plus two gener
 [add-example](.claude/skills/add-example/SKILL.md) skill; details in
 [docs/contributing/examples.md](docs/contributing/examples.md).
 
-## Repos — one fork, three nested repos, four PR targets
+## Repos — one fork, two nested repos, three PR targets
 
 Every repo here is a fork of an **archived** CartoDB original, so **`gh` always needs `--repo`**.
 
@@ -124,14 +124,18 @@ Every repo here is a fork of an **archived** CartoDB original, so **`gh` always 
 | --- | --- | --- | --- |
 | main SDK | `.` | `master` | `massif-maps/MassifMaps` |
 | NativeScript plugin + demo | `integrations/nativescript/` | `master` | its own remote |
-| massif libs (`vt`, `mapnikvt`, `cartocss`, `sgre`, `geocoding`, `nml`) | `libs-massif/` | `develop` | `massif-maps/massif-maps-libs` |
 | external libs | `libs-external/` | `develop` | `massif-maps/massif-external-libs` |
+
+`libs-massif/` is **no longer a repo** — `vt`, `mapnikvt`, `cartocss`, `sgre`, `geocoding` and `nml`
+are ordinary files here, so a renderer change is one branch, one commit, one PR. The fork stays
+online for its unmerged branches only; nothing new lands there.
+See [flatten-submodules.md](docs/maintenance/flatten-submodules.md).
 
 - **Work in a submodule is branch + commit + PR in that submodule too** — never a stray commit on
   `develop`, never a pointer bump referencing an unpushed commit. Submodule PR first, main-repo PR
   (carrying the pointer bump) second, cross-linked; the submodule PR merges first.
-- `libs-massif` / `libs-external` are routinely left on a **detached HEAD**: check
-  `git -C libs-massif status -sb` before and after committing.
+- `libs-external` is routinely left on a **detached HEAD**: check
+  `git -C libs-external status -sb` before and after committing.
 - **CI builds the recorded pointer**, so the pointer must be a commit `develop` reaches — a
   PR-branch SHA is unfetchable, and a branch cut from an old tag rebuilds that tag's libs, not
   today's. This is why the submodule PR merges first and the bump points at the merged commit.
@@ -154,7 +158,7 @@ Every repo here is a fork of an **archived** CartoDB original, so **`gh` always 
 
 PRs are squash-merged and the changelog quotes the title verbatim. Title by what an SDK USER gets,
 never by the mechanics — this bites hardest on a submodule pointer bump, where the diff is one line:
-not `chore: bump libs-massif` but `fix(vt): lay a line label flat on the map again, as 5.x did`.
+not `chore: bump libs-external` but `fix(vt): lay a line label flat on the map again, as 5.x did`.
 One user-visible outcome per title, imperative, readable without the diff. Scope by subsystem
 (`vt`, `labels`, `terrain`, `renderers`, `datasources`), not by repo. Use `!` whenever a style, an
 option default or an `all/modules/*.i` signature changes.
@@ -175,7 +179,7 @@ that reformats untouched lines is a bad diff.
 
 ## Library documentation
 
-`libs-massif/` and `libs-external/` are checked out and authoritative — read the source (cglib, vt,
+`libs-massif/` is in-tree and `libs-external/` is checked out; both are authoritative — read the source (cglib, vt,
 freetype, harfbuzz, protobuf, valhalla) instead of guessing at an API. Use Context7 only for
 genuinely external libraries with published docs.
 

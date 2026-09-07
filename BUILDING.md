@@ -16,7 +16,7 @@ We assume command-line versions of **git**, **unzip** and **curl** are already i
 Use `git submodule` to resolve source-level dependencies:
 
 ```
-git submodule update --init --remote --recursive
+git submodule update --init --recursive
 ```
 
 Only `cpp/` is used out of `libs-external/mlt/mlt` (maplibre-tile-spec); its `test/` fixtures are

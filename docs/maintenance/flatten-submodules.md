@@ -35,9 +35,10 @@ dependency. Every change to it cost a second branch, a second PR with a merge or
 pointer-bump commit whose title the changelog generator then quotes verbatim (v6.0.0's release
 notes had to be rewritten by hand for exactly this).
 
-The pin that submodules buy was not being collected either: CI fetches with
+The pin that submodules buy went uncollected for a long time: CI fetched with
 `git submodule update --init --remote --recursive`, and `--remote` takes the tip of the tracked
-branch, ignoring the recorded SHA.
+branch, ignoring the recorded SHA. That is fixed — the fetch steps are pinned now — but it means
+the pointers only started being honoured recently.
 
 `libs-external` is mostly **massif-written build glue** — per-directory `CMakeLists.txt` plus the
 header-only vendored trees (`cglib`, `stdext`, `picojson`, `pbf`, `tinyformat`, `utf8`, `tess2`,
@@ -98,7 +99,7 @@ is acceptable for trees we only ever bump.
 | File | What changes |
 |---|---|
 | `BUILDING.md` (~22-35) | drop the `cd libs-external` step; keep the `mlt` sparse-checkout |
-| `.github/workflows/build.yml` (242, 469) | `--remote` no longer moves the flattened trees |
+| `.github/workflows/build.yml` (242, 469) | the fetch steps init only the remaining third-party forks |
 | `CLAUDE.md` | repository layout table, "Submodule gotcha" paragraph |
 | `.claude/CLAUDE.md` | "Repos — one fork, two submodules, three PR targets" |
 

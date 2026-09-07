@@ -131,8 +131,7 @@ graft_history() {
 
 $url is a single-consumer fork of an archived CartoDB repo: no releases, no CI,
 no other consumer, and no upstream left to merge from. Keeping it a submodule cost
-a second branch, a second PR and a pointer bump per change, and the pointer was not
-even honoured — CI fetches with --remote.
+a second branch, a second PR and a pointer bump per change.
 
 History is grafted, not rewritten: no SHA in this repo changes.
 
@@ -231,7 +230,7 @@ cat <<'EOF'
    Prose and CI still describe the old layout. Update in the same PR:
 
      BUILDING.md:22-35            drop the `cd libs-external` step, keep the mlt sparse-checkout
-     .github/workflows/build.yml  --remote no longer moves the flattened trees (242, 469)
+     .github/workflows/build.yml  the submodule fetch steps now init only the third-party forks
      CLAUDE.md                    repository layout table + "Submodule gotcha" paragraph
      .claude/CLAUDE.md            "Repos — one fork, two submodules, three PR targets"
      docs/maintenance/index.md    already lists flatten-submodules.md

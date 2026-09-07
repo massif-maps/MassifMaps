@@ -132,6 +132,9 @@ Every repo here is a fork of an **archived** CartoDB original, so **`gh` always 
   (carrying the pointer bump) second, cross-linked; the submodule PR merges first.
 - `libs-massif` / `libs-external` are routinely left on a **detached HEAD**: check
   `git -C libs-massif status -sb` before and after committing.
+- **CI builds the recorded pointer**, so the pointer must be a commit `develop` reaches — a
+  PR-branch SHA is unfetchable, and a branch cut from an old tag rebuilds that tag's libs, not
+  today's. This is why the submodule PR merges first and the bump points at the merged commit.
 - `libs-external` has unrelated dirty nested pointers (`brotli/brotli`, `date/date`) — never stage them.
 - `upstream` remotes point at the archived CartoDB repos: read-only, never push or pull there.
 

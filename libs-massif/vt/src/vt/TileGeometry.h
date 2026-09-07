@@ -127,12 +127,16 @@ namespace massif::vt {
             // the ground under this vertex" - the pre-CPU behaviour, so a building whose elevation
             // never resolves is drawn slightly wrong rather than not at all.
             int baseOffset;
+            // Span fills and decks only: where the vertex sits along its chord, unclamped
+            // (SpanGeometry::chordParamRaw), resolved with the base. The shader discards the
+            // deck past its portals. 0.5 until resolved, so an unresolved deck is left whole.
+            int chordOffset;
             float coordScale;
             float texCoordScale;
             float binormalScale;
             float heightScale;
 
-            VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), baseOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
+            VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), baseOffset(-1), chordOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
         };
 
         explicit TileGeometry(Type type, float geomScale, const StyleParameters& styleParameters, const VertexGeometryLayoutParameters& vertexGeometryLayoutParameters, VertexArray<std::uint8_t> vertexGeometry, VertexArray<std::uint16_t> indices, std::vector<std::pair<std::size_t, long long>> ids, std::vector<std::pair<std::size_t, std::uint16_t>> geoPosIndexes) : _type(type), _geomScale(geomScale), _styleParameters(styleParameters), _vertexGeometryLayoutParameters(vertexGeometryLayoutParameters), _indicesCount(static_cast<unsigned int>(indices.size())), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)), _ids(std::move(ids)), _geoPosIndexes(std::move(geoPosIndexes)), _geoPosIndexesCount(static_cast<unsigned int>(indices.size())) { }
@@ -204,20 +208,12 @@ namespace massif::vt {
          * what a vertex-shader sample could not guarantee across a tile border.
          */
         bool setVertexBase(std::size_t vertexIndex, float base) {
-            if (_vertexGeometryLayoutParameters.baseOffset < 0 || _vertexGeometry.empty()) {
-                return false;
-            }
-            std::size_t vertexSize = _vertexGeometryLayoutParameters.vertexSize;
-            std::size_t first = vertexIndex * vertexSize + _vertexGeometryLayoutParameters.baseOffset;
-            float current;
-            std::memcpy(&current, &_vertexGeometry[first], sizeof(float));
-            if (current == base) {
-                return false;
-            }
-            std::memcpy(&_vertexGeometry[first], &base, sizeof(float));
-            std::size_t last = first + sizeof(float);
-            _dirtyVertexBytes = (_dirtyVertexBytes ? std::make_pair(std::min(_dirtyVertexBytes->first, first), std::max(_dirtyVertexBytes->second, last)) : std::make_pair(first, last));
-            return true;
+            return patchVertexFloat(_vertexGeometryLayoutParameters.baseOffset, vertexIndex, base);
+        }
+
+        /** The vertex's unclamped chord parameter (see VertexGeometryLayoutParameters::chordOffset). */
+        bool setVertexChord(std::size_t vertexIndex, float chordParam) {
+            return patchVertexFloat(_vertexGeometryLayoutParameters.chordOffset, vertexIndex, chordParam);
         }
 
         /** Whether the bases have been resolved at least once - an extrusion is not drawn before. */
@@ -230,7 +226,24 @@ namespace massif::vt {
 
         /** The span pieces of this tile, empty for anything that is not a SPAN/UNDERGROUND line. */
         const std::vector<SpanRecord>& getSpanRecords() const { return _spanRecords; }
-        void setSpanRecords(std::vector<SpanRecord> spanRecords) { _spanRecords = std::move(spanRecords); }
+        void setSpanRecords(std::vector<SpanRecord> spanRecords) {
+            _spanRecords = std::move(spanRecords);
+            _spanRecordChords.assign(_spanRecords.size(), SpanChordRef());
+        }
+        /**
+         * The chord (portals, world coordinates) each span record last resolved on. A piece drawn
+         * from a tile the cull no longer holds - retained while its replacement loads - has no
+         * union that cull; with the chord it stood on remembered it keeps reading that chord's
+         * heights, so it follows an exaggeration ramp like every other piece instead of freezing.
+         */
+        struct SpanChordRef {
+            cglib::vec2<double> portal0, portal1;
+            bool valid = false;
+        };
+        const SpanChordRef& getSpanRecordChord(std::size_t index) const { return _spanRecordChords[index]; }
+        void setSpanRecordChord(std::size_t index, const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
+            _spanRecordChords[index] = SpanChordRef { portal0, portal1, true };
+        }
 
         /** The cross-tile span union version the chords were resolved against - a neighbouring
          *  tile arriving completes a bridge and must redo them.
@@ -276,6 +289,21 @@ namespace massif::vt {
         }
 
     private:
+        bool patchVertexFloat(int offset, std::size_t vertexIndex, float value) {
+            if (offset < 0 || _vertexGeometry.empty()) {
+                return false;
+            }
+            std::size_t first = vertexIndex * _vertexGeometryLayoutParameters.vertexSize + offset;
+            float current;
+            std::memcpy(&current, &_vertexGeometry[first], sizeof(float));
+            if (current == value) {
+                return false;
+            }
+            std::memcpy(&_vertexGeometry[first], &value, sizeof(float));
+            std::size_t last = first + sizeof(float);
+            _dirtyVertexBytes = (_dirtyVertexBytes ? std::make_pair(std::min(_dirtyVertexBytes->first, first), std::max(_dirtyVertexBytes->second, last)) : std::make_pair(first, last));
+            return true;
+        }
         const Type _type;
         const float _geomScale;
         const StyleParameters _styleParameters;
@@ -290,7 +318,8 @@ namespace massif::vt {
         bool _baseResolved = false;          // extrusions: the CPU ground pass has run at least once
         unsigned int _baseElevationVersion = 0; // ...against this elevation data version
         unsigned int _baseSpanVersion = 0;   // ...and this cross-tile span union version
-        std::vector<SpanRecord> _spanRecords; // span lines: one entry per feature piece in this tile
+        std::vector<SpanRecord> _spanRecords; // span lines: one entry per feature piece
+        std::vector<SpanChordRef> _spanRecordChords; // ...and the chord each last resolved on in this tile
 
         VertexArray<std::uint8_t> _vertexGeometry;
         VertexArray<std::uint16_t> _indices;

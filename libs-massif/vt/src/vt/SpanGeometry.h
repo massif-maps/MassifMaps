@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,21 @@ namespace massif::vt {
         static constexpr double MIN_PARALLEL = 0.9;
         /** How much of its own pieces a chord must reach across to count as the whole structure. */
         static constexpr double MIN_CHORD_SPAN = 0.95;
+        /**
+         * How far off the OTHER piece's line a cut end may sit and still continue it, in normalized
+         * world units (25 m). The meet radius scales with the tile - 245 m at z14 - and on its own
+         * it chained every bridge crossing the same tile edge into one group: neighbouring Seine
+         * bridges are parallel and closer than that. A continuation lies on the same line; a
+         * neighbour does not, however near its cut end is.
+         */
+        static constexpr double MEET_LATERAL_TOLERANCE = 25.0 / 40075017.0;
+        /**
+         * cos of the angle a deck polygon's chord may make with the road it adopts (~45 degrees).
+         * A ring's chord is corner to corner, so on a short wide deck it runs diagonally - at
+         * Petit-Pont 31 degrees off the road, past MIN_PARALLEL - while a road crossing under the
+         * bridge is at 90 and still out.
+         */
+        static constexpr double ADOPT_MIN_PARALLEL = 0.7;
 
         /**
          * Whether an end is the FEATURE's own or just where the tile cut it. Tested against the
@@ -46,14 +62,24 @@ namespace massif::vt {
                 && p(1) > margin && p(1) < 1.0f - margin;
         }
 
-        /** Where a point falls along the chord, clamped to it: 0 at one portal, 1 at the other. */
-        static double chordParam(const cglib::vec2<double>& pos, const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
+        /**
+         * Where a point falls along the chord, UNCLAMPED: 0 at one portal, 1 at the other, and
+         * outside that past either. A deck ring's skewed end reaches past its road's portal on
+         * one side, and the roof there covered the crosswalk on the quay (Petit-Pont, north end,
+         * 2026-09-06); the shader cuts the deck at the portals by this.
+         */
+        static double chordParamRaw(const cglib::vec2<double>& pos, const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
             cglib::vec2<double> chord = portal1 - portal0;
             double length2 = cglib::dot_product(chord, chord);
             if (length2 <= 0) {
                 return 0;
             }
-            return std::max(0.0, std::min(1.0, cglib::dot_product(pos - portal0, chord) / length2));
+            return cglib::dot_product(pos - portal0, chord) / length2;
+        }
+
+        /** The same, clamped to the chord - the height past a portal is the portal's. */
+        static double chordParam(const cglib::vec2<double>& pos, const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
+            return std::max(0.0, std::min(1.0, chordParamRaw(pos, portal0, portal1)));
         }
 
         /** The deck height at that point - the whole purpose: straight, whatever the DEM does. */
@@ -115,6 +141,48 @@ namespace massif::vt {
             return std::make_pair(p0, farthestFrom(p0));
         }
 
+        /** How much of a ring's length, from either end, counts as that end (two passes). */
+        static constexpr float END_FRACTION_COARSE = 0.35f;
+        static constexpr float END_FRACTION = 0.15f;
+
+        /**
+         * The CENTRES of a ring's two ends: the mean of the vertices within END_FRACTION of each
+         * end along the ring's long axis. A deck's chord between its farthest CORNERS runs
+         * diagonally and ends over the bank beside the road, where the drawn surface is pulled
+         * down by the water (Petit-Pont: 1.3 m under the road's own end); the end centres sit on
+         * the road the deck carries. Two passes, since the first axis is the diagonal itself and
+         * on a short wide deck the far corner of the same end projects past the fraction.
+         */
+        static std::pair<cglib::vec2<float>, cglib::vec2<float>> endCentres(const std::vector<cglib::vec2<float>>& ring) {
+            std::pair<cglib::vec2<float>, cglib::vec2<float>> ends = farthestPair(ring);
+            for (float fraction : { END_FRACTION_COARSE, END_FRACTION }) {
+                cglib::vec2<float> axis = ends.second - ends.first;
+                float length2 = cglib::dot_product(axis, axis);
+                if (length2 <= 0) {
+                    return ends;
+                }
+                cglib::vec2<float> sum0(0, 0), sum1(0, 0);
+                int count0 = 0, count1 = 0;
+                for (const cglib::vec2<float>& v : ring) {
+                    float t = cglib::dot_product(v - ends.first, axis) / length2;
+                    if (t <= fraction) {
+                        sum0 = sum0 + v;
+                        count0++;
+                    } else if (t >= 1.0f - fraction) {
+                        sum1 = sum1 + v;
+                        count1++;
+                    }
+                }
+                if (count0 > 0) {
+                    ends.first = sum0 * (1.0f / count0);
+                }
+                if (count1 > 0) {
+                    ends.second = sum1 * (1.0f / count1);
+                }
+            }
+            return ends;
+        }
+
         /**
          * Whether a chord actually spans the pieces it was collected from. Two portals found on the
          * SAME abutment - one structure's end seen in two neighbouring tiles - give a chord of a few
@@ -135,6 +203,35 @@ namespace massif::vt {
             return isOnChord(p0, portal0, portal1) && isOnChord(p1, portal0, portal1);
         }
 
+        /**
+         * How much of a chord runs ALONG another, as a fraction of the shorter one, or 0 when they
+         * are not the same road: parallel within ADOPT_MIN_PARALLEL, the first's midpoint within the
+         * other's allowance of its line, and the two overlapping along it by at least half the
+         * shorter. A deck polygon on a road that the tiler split into pieces overlaps each piece
+         * partly and has its midpoint on none of them in particular.
+         */
+        static double chordOverlap(const cglib::vec2<double>& a0, const cglib::vec2<double>& a1, const cglib::vec2<double>& b0, const cglib::vec2<double>& b1) {
+            cglib::vec2<double> da = a1 - a0, db = b1 - b0;
+            double lengthA2 = cglib::dot_product(da, da), lengthB2 = cglib::dot_product(db, db);
+            if (lengthA2 <= 0 || lengthB2 <= 0) {
+                return 0;
+            }
+            if (std::abs(cglib::dot_product(da, db)) < ADOPT_MIN_PARALLEL * std::sqrt(lengthA2 * lengthB2)) {
+                return 0;
+            }
+            cglib::vec2<double> mid = (a0 + a1) * 0.5;
+            double tm = cglib::dot_product(mid - b0, db) / lengthB2;
+            double allowance = matchAllowance(std::sqrt(lengthB2));
+            if (cglib::norm(mid - (b0 + db * tm)) > allowance * allowance) {
+                return 0;
+            }
+            double t0 = cglib::dot_product(a0 - b0, db) / lengthB2;
+            double t1 = cglib::dot_product(a1 - b0, db) / lengthB2;
+            double overlap = (std::min(std::max(t0, t1), 1.0) - std::max(std::min(t0, t1), 0.0)) * std::sqrt(lengthB2);
+            double shorter = std::sqrt(std::min(lengthA2, lengthB2));
+            return overlap >= 0.5 * shorter ? overlap / shorter : 0;
+        }
+
         /** Whether a point is one of the chord's two portals, within the match allowance. */
         static bool isChordEnd(const cglib::vec2<double>& pos, const cglib::vec2<double>& portal0, const cglib::vec2<double>& portal1) {
             double allowance = matchAllowance(cglib::length(portal1 - portal0));
@@ -151,18 +248,21 @@ namespace massif::vt {
          * uncut in a coarser copy; the deck's portal is often within the allowance too - and only
          * a piece cut at both ends falls back to the longest, the whole structure's.
          */
-        template <typename It>
-        static It borrowChord(const cglib::vec2<double>& e0, bool portal0, const cglib::vec2<double>& e1, bool portal1, It begin, It end) {
+        template <typename It, typename Get>
+        static It borrowChord(const cglib::vec2<double>& e0, bool portal0, const cglib::vec2<double>& e1, bool portal1, It begin, It end, Get get) {
             cglib::vec2<double> middle = (e0 + e1) * 0.5;
             It best = end;
             bool bestOwn = false;
             double bestLength2 = 0;
             for (It it = begin; it != end; it++) {
-                if (!isOnChord(middle, it->portal0, it->portal1)) {
+                const auto& chord = get(it);
+                // ...or overlapping it by half its length: a deck cut by a 75 m tile at z19 has
+                // its midpoint past the end of the road chord it stands on (Pont au Double).
+                if (!isOnChord(middle, chord.portal0, chord.portal1) && chordOverlap(e0, e1, chord.portal0, chord.portal1) <= 0) {
                     continue;
                 }
-                bool own = (portal0 && isChordEnd(e0, it->portal0, it->portal1)) || (portal1 && isChordEnd(e1, it->portal0, it->portal1));
-                double length2 = cglib::norm(it->portal1 - it->portal0);
+                bool own = (portal0 && isChordEnd(e0, chord.portal0, chord.portal1)) || (portal1 && isChordEnd(e1, chord.portal0, chord.portal1));
+                double length2 = cglib::norm(chord.portal1 - chord.portal0);
                 bool better = own ? (length2 < bestLength2) : (length2 > bestLength2);
                 if (best == end || (own && !bestOwn) || (own == bestOwn && better)) {
                     best = it;
@@ -171,6 +271,12 @@ namespace massif::vt {
                 }
             }
             return best;
+        }
+
+        /** The same over a plain range of chords, `*it` being the chord. */
+        template <typename It>
+        static It borrowChord(const cglib::vec2<double>& e0, bool portal0, const cglib::vec2<double>& e1, bool portal1, It begin, It end) {
+            return borrowChord(e0, portal0, e1, portal1, begin, end, [](It it) -> const auto& { return *it; });
         }
 
         /**
@@ -191,8 +297,17 @@ namespace massif::vt {
             if (std::abs(parallel) < MIN_PARALLEL) {
                 return false;
             }
-            return (!aPortal0 && ((!bPortal0 && cglib::norm(a0 - b0) < tolerance2) || (!bPortal1 && cglib::norm(a0 - b1) < tolerance2)))
-                || (!aPortal1 && ((!bPortal0 && cglib::norm(a1 - b0) < tolerance2) || (!bPortal1 && cglib::norm(a1 - b1) < tolerance2)));
+            // Squared distance of a point from the infinite line through the other piece.
+            auto offLine2 = [](const cglib::vec2<double>& p, const cglib::vec2<double>& l0, const cglib::vec2<double>& dl, double length2) {
+                double t = cglib::dot_product(p - l0, dl) / length2;
+                return cglib::norm(p - (l0 + dl * t));
+            };
+            constexpr double lateral2 = MEET_LATERAL_TOLERANCE * MEET_LATERAL_TOLERANCE;
+            auto endsMeet = [&](const cglib::vec2<double>& a, const cglib::vec2<double>& b) {
+                return cglib::norm(a - b) < tolerance2 && offLine2(a, b0, db, lengthB2) <= lateral2 && offLine2(b, a0, da, lengthA2) <= lateral2;
+            };
+            return (!aPortal0 && ((!bPortal0 && endsMeet(a0, b0)) || (!bPortal1 && endsMeet(a0, b1))))
+                || (!aPortal1 && ((!bPortal0 && endsMeet(a1, b0)) || (!bPortal1 && endsMeet(a1, b1))));
         }
 
         /** How far past a cut end the point that names the next tile is placed, as a fraction of the tile. */

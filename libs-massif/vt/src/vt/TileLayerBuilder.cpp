@@ -425,7 +425,7 @@ namespace massif::vt {
             std::size_t i0 = _coords.size();
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
-            if (style.elevationMode != LineElevationMode::DRAPE && !vertices.empty()) {
+            if (style.elevationMode == LineElevationMode::SPAN && !vertices.empty()) {
                 // The tiler splits a way where structure/brunnel changes, so a bridge feature's
                 // first and last vertex ARE its portals - no inference from the DEM needed.
                 //
@@ -518,7 +518,7 @@ namespace massif::vt {
         return [type, style, transform, styleIndex, this](long long id, const VerticesList& verticesList) {
             std::size_t i0 = _coords.size();
             tesselatePolygon(verticesList, static_cast<std::int8_t>(styleIndex), style);
-            if (style.elevationMode != LineElevationMode::DRAPE && !verticesList.empty() && !verticesList.front().empty()) {
+            if (style.elevationMode == LineElevationMode::SPAN && !verticesList.empty() && !verticesList.front().empty()) {
                 _spanInfos.fill(spanInfoForRing(verticesList.front(), id), _coords.size() - _spanInfos.size());
             }
             _ids.fill(id, _indices.size() - _ids.size());
@@ -535,7 +535,7 @@ namespace massif::vt {
     }
 
     TileLayerBuilder::SpanVertexInfo TileLayerBuilder::spanInfoForRing(const Vertices& ring, long long id, float baseOffset) {
-        auto ends = SpanGeometry::farthestPair(ring);
+        auto ends = SpanGeometry::endCentres(ring);
         const Vertex& p0 = ends.first;
         const Vertex& p1 = ends.second;
         SpanVertexInfo info;
@@ -582,7 +582,7 @@ namespace massif::vt {
         }
 
         return [style, transform, invTransTransform, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
-            bool span = style.elevationMode != LineElevationMode::DRAPE && !verticesList.empty() && !verticesList.front().empty();
+            bool span = style.elevationMode == LineElevationMode::SPAN && !verticesList.empty() && !verticesList.front().empty();
             // A deck HANGS under the road it carries, so its min-height is negative - and a negative
             // vertex height cannot be drawn: polygon3DVsh takes the resolved base only where the
             // height is positive, so a negative one leaves the vertex on the terrain. Move the whole
@@ -1268,6 +1268,12 @@ namespace massif::vt {
             vertexGeomLayoutParams.vertexSize += sizeof(float);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
         }
+        // A span fill or deck: its place along the chord, for the cut at the portals. A line's
+        // ends ARE its portals, so it has nothing past them.
+        if (!spanInfos.empty() && type != TileGeometry::Type::LINE) {
+            vertexGeomLayoutParams.chordOffset = vertexGeomLayoutParams.vertexSize;
+            vertexGeomLayoutParams.vertexSize += sizeof(float);
+        }
 
         vertexGeomLayoutParams.coordScale = coordScale;
         vertexGeomLayoutParams.binormalScale = binormalScale;
@@ -1298,6 +1304,10 @@ namespace massif::vt {
             if (vertexGeomLayoutParams.baseOffset >= 0) {
                 float unresolved = TileGeometry::UNRESOLVED_BASE;
                 std::memcpy(baseCompressedPtr + vertexGeomLayoutParams.baseOffset, &unresolved, sizeof(float));
+            }
+            if (vertexGeomLayoutParams.chordOffset >= 0) {
+                float onChord = 0.5f;
+                std::memcpy(baseCompressedPtr + vertexGeomLayoutParams.chordOffset, &onChord, sizeof(float));
             }
 
             if (!texCoords.empty()) {

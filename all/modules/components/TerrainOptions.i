@@ -51,6 +51,7 @@
 %attribute(massif::TerrainOptions, bool, TileEdgeStitchingEnabled, isTileEdgeStitchingEnabled, setTileEdgeStitchingEnabled)
 %attribute(massif::TerrainOptions, bool, DrapeFillsEnabled, isDrapeFillsEnabled, setDrapeFillsEnabled)
 %attribute(massif::TerrainOptions, bool, DrapeLinesEnabled, isDrapeLinesEnabled, setDrapeLinesEnabled)
+%attribute(massif::TerrainOptions, bool, Bridges3DEnabled, isBridges3DEnabled, setBridges3DEnabled)
 %attribute(massif::TerrainOptions, int, DrapeResolution, getDrapeResolution, setDrapeResolution)
 %attributestring(massif::TerrainOptions, std::string, NoDrapeLayerFilter, getNoDrapeLayerFilter, setNoDrapeLayerFilter)
 %attribute(massif::TerrainOptions, int, MinZoom, getMinZoom, setMinZoom)

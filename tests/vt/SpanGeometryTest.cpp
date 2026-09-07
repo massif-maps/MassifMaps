@@ -55,6 +55,12 @@ void testSpanGeometry() {
     TEST_CHECK(near(SpanGeometry::chordParam(south, south, north), 0.0), "a point at the south portal is at t=0");
     TEST_CHECK(near(SpanGeometry::chordParam(north, south, north), 1.0), "one at the north portal is at t=1");
     TEST_CHECK(near(SpanGeometry::chordParam(at(0, 1230), south, north), 0.5), "one at mid-span is halfway");
+    // The unclamped parameter is what cuts a deck ring at the portals: its skewed end reaches
+    // past the road's portal on one side (Petit-Pont, 9 m on the north-east corner).
+    TEST_CHECK(near(SpanGeometry::chordParamRaw(at(0, -50), south, north), -50.0 / 2460.0), "past the south portal the raw parameter is negative");
+    TEST_CHECK(near(SpanGeometry::chordParamRaw(at(0, 2500), south, north), 2500.0 / 2460.0), "...and past the north one above 1");
+    TEST_CHECK(near(SpanGeometry::chordParam(at(0, 2500), south, north), 1.0), "while the clamped one stops at the portal");
+
     TEST_CHECK(!SpanGeometry::isOnChord(at(0, 2600), south, north),
                "a point beyond the abutment is not on the chord");
 
@@ -85,6 +91,15 @@ void testSpanGeometry() {
                "a gap too wide is a piece missing, not a join");
     TEST_CHECK(!SpanGeometry::piecesMeet(a0, a1, true, true, b0, b1, true, true, tolerance2),
                "a real portal ends the run, so it never continues into another piece");
+    // Near is not enough: a NEIGHBOURING bridge crossing the same tile edge is parallel and, at
+    // z14, well inside a 245 m radius - so the Seine's bridges chained into one group and no chord
+    // could span it. A continuation lies on the same line; a neighbour is off it by its spacing.
+    TEST_CHECK(!SpanGeometry::piecesMeet(a0, a1, true, false, at(60, 985), at(60, 2000), false, true, tolerance2),
+               "a parallel bridge 60 m away is a neighbour, not a continuation");
+    TEST_CHECK(SpanGeometry::piecesMeet(a0, a1, true, false, at(4, 985), at(60, 2000), false, true, tolerance2),
+               "...while a piece that bends away past the cut still continues it");
+    TEST_CHECK(!SpanGeometry::piecesMeet(a0, a1, true, false, at(30, 985), at(30, 2000), false, true, tolerance2),
+               "...and one 30 m to the side is already the next structure");
 
     // A chord must reach across the pieces it was collected from. At z15 the viaduct's two
     // northern tiles each hold a copy of the SAME abutment, so the group collected two portals
@@ -99,6 +114,25 @@ void testSpanGeometry() {
                "...and the buffer overlap reaching past it by a fraction still does");
     TEST_CHECK(!SpanGeometry::chordSpansGroup(span2(1230), span2(2460)),
                "half a deck is a missing portal, not a chord");
+
+    // A deck polygon takes the chord of the road it carries: its own corners overhang the bank,
+    // where the drawn surface is pulled down by the water beside it (Petit-Pont: 1.3 m under the
+    // road's own ends). The tiler splits the road at every junction, so the deck overlaps each
+    // piece partly and its midpoint is on none of them in particular.
+    TEST_CHECK(SpanGeometry::chordOverlap(at(2, -8), at(-2, 68), at(0, 0), at(0, 40)) > 0,
+               "a deck overlapping a road piece by more than half the piece is on it");
+    TEST_CHECK(SpanGeometry::chordOverlap(at(2, -8), at(-2, 68), at(0, 30), at(0, 70)) > 0,
+               "...and the second piece of the same road too");
+    TEST_CHECK(SpanGeometry::chordOverlap(at(2, -8), at(-2, 68), at(0, 60), at(0, 100)) == 0,
+               "but a piece it barely reaches is the approach, not the deck's road");
+    // A ring's chord is CORNER to corner: on a short wide deck it runs diagonally, 31 degrees off
+    // the road at Petit-Pont, and the deck stayed on its own corners under the road.
+    TEST_CHECK(SpanGeometry::chordOverlap(at(-30, -8), at(30, 68), at(0, 0), at(0, 40)) > 0,
+               "a wide deck's diagonal chord still adopts the road along it");
+    TEST_CHECK(SpanGeometry::chordOverlap(at(-40, 30), at(40, 30), at(0, 0), at(0, 60)) == 0,
+               "while a road crossing under the bridge is not its road");
+    TEST_CHECK(SpanGeometry::chordOverlap(at(2, -8), at(-2, 68), at(40, 0), at(40, 40)) == 0,
+               "and a parallel road 40 m away is another street");
 
     // A bed polygon and an extruded deck both need the ring's two ENDS, and a ring has none: the
     // span is its longest axis. Getting this wrong puts the chord across the deck's WIDTH, which
@@ -122,6 +156,22 @@ void testSpanGeometry() {
     }
     TEST_CHECK(SpanGeometry::farthestPair(std::vector<cglib::vec2<float>>()).first == cglib::vec2<float>(0, 0),
                "an empty ring has no span, and must not read off the end of it");
+
+    // The deck's portals are the CENTRES of its ends, on the road it carries - not its farthest
+    // corners, which on a short wide deck run diagonally and end over the bank beside the road,
+    // where the drawn surface is pulled down by the water (Petit-Pont: 1.3 m under the road).
+    {
+        std::vector<cglib::vec2<float>> deck = { cglib::vec2<float>(0, 0), cglib::vec2<float>(20, 0), cglib::vec2<float>(20, 30), cglib::vec2<float>(0, 30) };
+        auto ends = SpanGeometry::endCentres(deck);
+        TEST_CHECK(std::abs(ends.first(0) - 10) < 0.01f && std::abs(ends.first(1) - 0) < 0.01f,
+                   "a 30 x 20 deck's first portal is the middle of its south edge");
+        TEST_CHECK(std::abs(ends.second(0) - 10) < 0.01f && std::abs(ends.second(1) - 30) < 0.01f,
+                   "...and its second the middle of its north edge, whatever the corners");
+        std::vector<cglib::vec2<float>> narrow = { cglib::vec2<float>(0, 0), cglib::vec2<float>(4, 0), cglib::vec2<float>(4, 50), cglib::vec2<float>(4, 100), cglib::vec2<float>(0, 100), cglib::vec2<float>(0, 50) };
+        ends = SpanGeometry::endCentres(narrow);
+        TEST_CHECK(std::abs(ends.first(1) - 0) < 0.01f && std::abs(ends.second(1) - 100) < 0.01f && std::abs(ends.first(0) - 2) < 0.01f,
+                   "a side vertex halfway along a long deck belongs to neither end");
+    }
 
     // A crossing structure must not be absorbed: the D41 passes under the viaduct near its foot.
     TEST_CHECK(!SpanGeometry::piecesMeet(a0, a1, true, false, at(-500, 990), at(500, 990), false, false, tolerance2),

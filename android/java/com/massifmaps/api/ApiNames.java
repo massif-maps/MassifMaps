@@ -131,6 +131,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> BOUNDS = MassifObject.key("bounds");
     /** Returns the state of the 'break lines' flag. */
     public static final MassifObject.Key<Boolean> BREAK_LINES = MassifObject.key("breakLines");
+    /** Returns whether bridges and tunnels stand on their own chord (3D bridges). */
+    public static final MassifObject.Key<Boolean> BRIDGES3_DENABLED = MassifObject.key("bridges3DEnabled");
     /** Returns the current display order of the buildings. */
     public static final MassifObject.Key<String> BUILDING_RENDER_ORDER = MassifObject.key("buildingRenderOrder");
     /** Returns the clicked button. */
@@ -147,7 +149,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> CAMERA_CHANGED = MassifObject.key("cameraChanged");
     /** Returns the duration of the camera terrain-following correction animation. */
     public static final MassifObject.Key<Double> CAMERA_CLAMP_DURATION = MassifObject.key("cameraClampDuration");
-    /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+    /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     public static final MassifObject.Key<Double> CAMERA_CLEARANCE = MassifObject.key("cameraClearance");
     /** Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
     public static final MassifObject.Key<String> CAMERA_POS = MassifObject.key("cameraPos");
@@ -263,12 +265,16 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> DOUBLE_CLICK_DETECTION = MassifObject.key("doubleClickDetection");
     /** Returns the double click max duration in seconds. */
     public static final MassifObject.Key<Double> DOUBLE_CLICK_MAX_DURATION = MassifObject.key("doubleClickMaxDuration");
+    /** Returns the drape cache budget in megabytes. */
+    public static final MassifObject.Key<Long> DRAPE_CACHE_SIZE = MassifObject.key("drapeCacheSize");
     /** Returns whether polygon fills are draped as a render-to-texture surface. */
     public static final MassifObject.Key<Boolean> DRAPE_FILLS_ENABLED = MassifObject.key("drapeFillsEnabled");
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     public static final MassifObject.Key<Boolean> DRAPE_LINES_ENABLED = MassifObject.key("drapeLinesEnabled");
     /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
     public static final MassifObject.Key<Long> DRAPE_RESOLUTION = MassifObject.key("drapeResolution");
+    /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
+    public static final MassifObject.Key<Long> DRAPE_WORKING_SET = MassifObject.key("drapeWorkingSet");
     /** Returns the draw distance value. */
     public static final MassifObject.Key<Double> DRAW_DISTANCE = MassifObject.key("drawDistance");
     /** Returns the click duration in seconds. */
@@ -709,7 +715,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> SERVER_PACKAGES = MassifObject.key("serverPackages");
     /** Returns the custom fragment shader source. */
     public static final MassifObject.Key<String> SHADER_SOURCE = MassifObject.key("shaderSource");
-    /** Returns the shadow depth bias. */
+    /** Returns the shadow depth bias scale. */
     public static final MassifObject.Key<Double> SHADOW_BIAS = MassifObject.key("shadowBias");
     /** Returns the number of shadow cascades. */
     public static final MassifObject.Key<Long> SHADOW_CASCADES = MassifObject.key("shadowCascades");

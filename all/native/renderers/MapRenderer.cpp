@@ -3695,6 +3695,19 @@ namespace massif {
                             filledSurfaces++;
                         }
                     }
+                    // The same textures, for a bridge deck's roof past its road's portals: that
+                    // part of the deck is ground and wears the ground's drape (polygon3DFsh).
+                    {
+                        std::map<vt::TileId, TileLayer::GroundDrapeRef> groundDrapes;
+                        for (auto it = drapedTiles.begin(); it != drapedTiles.end(); it++) {
+                            if (it->texture != 0) {
+                                groundDrapes[it->tileId] = TileLayer::GroundDrapeRef { it->texture, it->uvOffsetX, it->uvOffsetY, it->uvScale };
+                            }
+                        }
+                        for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                            drapeLayers[i]->setGroundDrapeTextures(groundDrapes);
+                        }
+                    }
                     glEnable(GL_CULL_FACE);
                     glDepthFunc(GL_LESS);
                     glDepthMask(GL_FALSE);

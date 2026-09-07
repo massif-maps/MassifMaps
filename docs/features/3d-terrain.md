@@ -146,6 +146,7 @@ resamples through metres instead of copying texels, so the seam is continuous.
 | `MeshResolution` | `32` | Grid cells per tile edge, clamped `2..256`. Limited by DEM resolution. |
 | `DrapeFillsEnabled` | `true` | Render-to-texture fill/background draping. |
 | `DrapeLinesEnabled` | `true` | Drape tile lines too (softer, zero-cost hug). |
+| `Bridges3DEnabled` | `false` | Lift `span` features onto the chord between their portals and draw span decks as extrusions. Off, they drape like the ground and none of the span machinery runs. |
 | `DrapeResolution` | `0` | Drape texture size; `0` = derived from the tile size. |
 | `NoDrapeLayerFilter` | — | Layer-name pattern kept out of the drape (sharp geometry). |
 | `SeamlessTileEdgesEnabled` | `true` | Backfill the 1-texel DEM border from the neighbour level — removes the ridge at tile borders. |

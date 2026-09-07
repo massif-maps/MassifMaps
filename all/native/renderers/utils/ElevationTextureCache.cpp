@@ -615,6 +615,17 @@ namespace massif {
                 height = meters * displayScale;
                 return true;
             }
+            // Only a DRAWN tile has a texture, and a bridge's far portal is routinely in a tile
+            // that is not: the same grid from the manager's LRU is the same height field, and
+            // when neither has it the tile is asked for, or the portal off screen never resolved.
+            std::shared_ptr<ElevationTileGrid> grid = _elevationManager->getDataTileGrid(dataTile, ElevationManager::LoadMode::CACHED_ONLY);
+            if (grid && grid->getTile() == dataTile) {
+                height = grid->sampleNodeHeight(internalX, internalY) * displayScale;
+                return true;
+            }
+            if (dataTile.getZoom() == dataZoom) {
+                _elevationManager->prefetchTileGrid(dataTile, 2);
+            }
             if (tileId.zoom <= 0) {
                 return false;
             }

@@ -41,6 +41,7 @@ namespace massif {
         _tileEdgeStitchingEnabled(true),
         _drapeFillsEnabled(true),
         _drapeLinesEnabled(true),
+        _bridges3DEnabled(false),
         _drapeResolution(0),
         _minZoom(5),
         _maxTileZoomOffset(100),
@@ -319,6 +320,16 @@ namespace massif {
     void TerrainOptions::setDrapeLinesEnabled(bool enabled) {
         if (_drapeLinesEnabled.exchange(enabled) != enabled) {
             notifyOptionChanged("DrapeLinesEnabled");
+        }
+    }
+
+    bool TerrainOptions::isBridges3DEnabled() const {
+        return _bridges3DEnabled.load();
+    }
+
+    void TerrainOptions::setBridges3DEnabled(bool enabled) {
+        if (_bridges3DEnabled.exchange(enabled) != enabled) {
+            notifyOptionChanged("Bridges3DEnabled");
         }
     }
 

@@ -132,6 +132,7 @@ namespace massif {
         void collectUnresolvedSpanEnds(std::vector<std::pair<int, cglib::vec2<double>>>& ends) const;
         int bakeSpanDrapeTile(const vt::TileId& tileId);
         void setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures);
+        void setGroundDrapeTextures(const std::map<vt::TileId, vt::GLTileRenderer::GroundDrape>& drapes);
         // This layer's style layers with drapeable content, in draw order, each flagged draped or
         // live. The owner concatenates them across layers to place a live layer in the whole stack
         // (see GLTileRenderer::collectDrapeStackOrder).

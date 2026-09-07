@@ -131,6 +131,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyBottom;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBounds;
 /** Returns the state of the 'break lines' flag. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBreakLines;
+/** Returns whether bridges and tunnels stand on their own chord (3D bridges). */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyBridges3DEnabled;
 /** Returns the current display order of the buildings. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBuildingRenderOrder;
 /** Returns the clicked button. */
@@ -147,7 +149,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyCacheOnlyMode;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraChanged;
 /** Returns the duration of the camera terrain-following correction animation. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClampDuration;
-/** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+/** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClearance;
 /** Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraPos;
@@ -263,12 +265,16 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyDouble;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDoubleClickDetection;
 /** Returns the double click max duration in seconds. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDoubleClickMaxDuration;
+/** Returns the drape cache budget in megabytes. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeCacheSize;
 /** Returns whether polygon fills are draped as a render-to-texture surface. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeFillsEnabled;
 /** Returns whether vt tile lines are also draped (in addition to fills). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeLinesEnabled;
 /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeResolution;
+/** Returns how many drape tiles the automatic resolution assumes are cached at once. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeWorkingSet;
 /** Returns the draw distance value. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDrawDistance;
 /** Returns the click duration in seconds. */
@@ -709,7 +715,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyServerPackageListMetaInfo;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyServerPackages;
 /** Returns the custom fragment shader source. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShaderSource;
-/** Returns the shadow depth bias. */
+/** Returns the shadow depth bias scale. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowBias;
 /** Returns the number of shadow cascades. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowCascades;

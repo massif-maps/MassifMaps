@@ -461,6 +461,12 @@ class ProjectionSurface;
         void collectSpanDrapeTiles(std::map<vt::TileId, std::size_t>& spanTiles) const;
         int bakeSpanDrapeTile(const vt::TileId& tileId);
         void setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures);
+        /** A drape tile's composite ground texture and the sub-rect it is drawn through (see MapRenderer). */
+        struct GroundDrapeRef {
+            unsigned int texture = 0;
+            float uvOffsetX = 0.0f, uvOffsetY = 0.0f, uvScale = 1.0f;
+        };
+        void setGroundDrapeTextures(const std::map<vt::TileId, GroundDrapeRef>& drapes);
         // The ordered draped/live style layers of this layer, for the cross-layer cut (#175).
         void collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const;
         int bakeDrapeCoverage(const vt::TileId& tileId, int fromStyleLayerIdx);

@@ -23,6 +23,7 @@
 #include "styles/CartoCSSStyleSet.h"
 #include "styles/CompiledStyleSet.h"
 #include "utils/DirAssetPackage.h"
+#include "core/BinaryData.h"
 #include "utils/Log.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 
@@ -113,6 +114,14 @@ int main() {
             auto styleSet = std::make_shared<massif::CartoCSSStyleSet>(queryParam("css", DEFAULT_CSS));
             decoder = std::make_shared<massif::MBVectorTileDecoder>(styleSet);
         }
+        // Every font in /fonts becomes a fallback, so a style that names one the build does not
+        // carry - "DIN Pro Medium" in Mapbox Standard - still draws its labels.
+        auto fonts = std::make_shared<massif::DirAssetPackage>("/fonts/");
+        for (const std::string& name : fonts->getAssetNames()) {
+            if (std::shared_ptr<massif::BinaryData> data = fonts->loadAsset(name)) {
+                decoder->addFallbackFont(data);
+            }
+        }
         _MapView->getLayers()->add(std::make_shared<massif::VectorTileLayer>(dataSource, decoder));
     }
 
@@ -123,6 +132,8 @@ int main() {
     // Hand the view to the facade so the page can drive the camera through the C ABI. Without this
     // the JavaScript binding has an ABI but nothing to point it at.
     massif::api::MassifInterop::adopt("map", "map", _MapView);
+    // Options too, so the page can try a setting without a rebuild.
+    massif::api::MassifInterop::adopt("options", "map", _MapView->getOptions());
 
     // The frame loop is requestAnimationFrame, so main() returning must not tear the runtime down.
     emscripten_exit_with_live_runtime();

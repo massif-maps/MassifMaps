@@ -52,10 +52,17 @@ node tools/style-cli/dist/cli.js mapbox2css standard.json web/demo/styles/mapbox
   --source-schema mapbox
 ```
 
+Pass **`--sprite-key`** or there are no POI icons at all: Mapbox serves the sprite sheet from the
+style's own URL, which needs the token, and without it the converter says
+`Sprite not loaded ... icons will be dropped` and carries on.
+
 Mapbox Standard's 150 layers convert and render. `CompiledStyleSet` wants the entry file at the
 **root** of its package, so the package is the project directory and the style name is the file
 without its extension - `project`, or `night` for one of the themes the converter also writes.
-Labels do not draw unless the fonts that style names are in `/fonts`.
+
+Its labels name fonts nobody has (`DIN Pro Medium`), and `MBVectorTileDecoder` asks for a font by
+name STRICTLY so that a font list can fall through to its next entry. The bench therefore registers
+every TTF in `/fonts` with `addFallbackFont`, which is what makes the labels appear at all.
 
 ```
 ?zoom=14&source=<url-encoded MVT template>&css=<url-encoded CartoCSS>
@@ -97,19 +104,29 @@ start panning until the pointer had travelled 0.2 inch, which is about 32 CSS pi
 drag feel stuck. `Options.clickMovingTolerance` names that threshold in dp - still 32 by default, so
 Android and iOS are unchanged - and the web host sets 3, which is maplibre's `clickTolerance`.
 
-### Zoom is one level off maplibre's
+### Zoom is one level off maplibre's, and TileDrawSize cannot fix it alone
 
-Measured at zoom 13 on a 2x display: massif draws **12.5726 m per CSS pixel**, and maplibre's zoom
+Measured at zoom 13 on a 2x display: massif draws **12.5726 m per CSS pixel** where maplibre's zoom
 13 is 6.2864. Massif's zoom 13 is maplibre's zoom **12**, exactly (ratio 2.0000) - massif's world at
 zoom 0 is `tileDrawSize` = 256 CSS pixels where maplibre's is 512.
 
-So the same zoom number is not the same scale, and a raster source read at massif's zoom is one
-level shallower than the one maplibre would fetch for the same view - upscaled, hence blurrier.
-Aligning the two would change what a zoom number means to every web caller, so it has not been
-done; `Options.tileDrawSize` is the knob if it should be.
+`setTileDrawSize(512)` does buy exact parity - re-measured at **0.99998** - but it is the same knob
+that decides how big a tile is DRAWN, so every label, line width and halo doubles with it. Tried
+and reverted; the screenshots are unambiguous. `MBVectorTileDecoder`'s pixel scale is not a way out
+either: it sets the resolution a glyph is rasterised at, not its size on screen, so lowering it just
+makes the same oversized text blurry.
+
+Aligning the two properly means decoupling the zoom-to-distance mapping in `ViewState` from
+`TileDrawSize` - a zoom offset - which is an SDK change, not a web default.
 
 Method: pan a known number of CSS pixels and read `focusPos` before the release. **Before** - kinetic
 pan keeps gliding after mouseup and inflated the first measurement by 1.26x.
+
+### Draw distance
+
+`Options.drawDistance` defaults to 16, which is a phone's battery talking: tilt the map and
+buildings and terrain stop at a near band. The web host sets **48**, because a desktop GPU can
+afford what mapbox and maplibre draw.
 
 ### DPI
 

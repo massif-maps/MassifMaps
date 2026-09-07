@@ -46,6 +46,10 @@ namespace massif {
 
         // maplibre's clickTolerance, in dp - which on the web is a CSS pixel.
         const float MOUSE_CLICK_MOVING_TOLERANCE = 3.0f;
+
+        // The SDK's default is 16, chosen for a phone. Tiles are cheap to keep on a desktop GPU and
+        // a tilted web map is expected to draw into the distance.
+        const float WEB_DRAW_DISTANCE = 48.0f;
     }
 
     class WebMapView::RedrawListener : public RedrawRequestListener {
@@ -158,6 +162,9 @@ namespace massif {
         // A mouse is not a finger: the SDK's 32 dp default made a drag feel stuck for its first
         // half-centimetre. 3 is maplibre's clickTolerance.
         getOptions()->setClickMovingTolerance(MOUSE_CLICK_MOVING_TOLERANCE);
+        // A desktop GPU is not a phone: 16 keeps buildings and terrain to a near band when the map
+        // is tilted, which is a mobile battery decision. Mapbox and maplibre draw to the horizon.
+        getOptions()->setDrawDistance(WEB_DRAW_DISTANCE);
         int pixelWidth = static_cast<int>(width * pixelRatio);
         int pixelHeight = static_cast<int>(height * pixelRatio);
         if (pixelWidth <= 0 || pixelHeight <= 0 || (pixelWidth == _width && pixelHeight == _height)) {

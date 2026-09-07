@@ -952,7 +952,22 @@ real cap on the zoom, not the sea-level reference: the camera-to-focus distance 
 under the camera on a 600 m hill ate the rest down to z18. `TerrainOptions::CameraClearance` is
 now an optional **floor** in metres under that rule, default 0. What the rule inherits from
 mapbox: on very high ground the sea-level share is a cap of its own — 3842 m at Aiguille du Midi
-needs a 256 m orbit straight down, about z19. It is a
+needs a 256 m orbit straight down, about z19.
+
+**One divergence from mapbox, deliberate: the shell is a fraction of the camera's OWN altitude.**
+mapbox builds its sea-level distance from `_centerAltitude + cameraToCenterDistance`
+(`_updateSeaLevelZoom`) — the ORBIT, which is the camera's altitude only at pitch 0. Read at a low
+tilt that shell grows as 1/sin(tilt): at tilt 20 it is 2.9× the camera's real altitude, and a
+`moveTo` to tilt 15 at Chamonix (lon 6.87, lat 45.92, z14) landed at 19.6 with the camera clear of
+the ground — the map rode up and down with the terrain on every pan. We pass `cameraPos(2)`
+instead, so the shell is tilt-honest and only tightens where mapbox calibrated it, straight down.
+Because the shell then MOVES with the camera, the lift is a fixed point
+(`CameraClearance::targetHeight`, camera height above the focus = `max(terrainZ / (1 - 1/16),
+terrainZ + floor) - focusZ`) and not `terrainZ + minHeight`: rising raises the clearance it has to
+clear, and a lift that ignores that under-shoots every frame. Both the lift and the zoom bound read
+the same shell, so they cannot disagree.
+
+It is a
 **bound on the zoom** (`ViewState::getTerrainMaxZoom`, clamped in `CameraZoomEvent::calculate`),
 solved on the camera-to-focus vector so it lands exactly on the shell, plus a per-frame
 correction in `MapRenderer` for the paths that lower the camera without zooming — panning into

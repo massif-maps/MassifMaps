@@ -2616,7 +2616,8 @@ namespace massif {
                         bool panned = _pannedSinceClearance.exchange(false);
                         double focusZ = viewState.getFocusPos()(2);
                         double orbit = viewState.getOrbitDistance(viewState.getZoom());
-                        double minHeight = CameraClearance::minHeight(focusZ, orbit, viewState.getOrbitDistance(_options->getZoomRange().getMax()), clearanceFloor);
+                        double maxZoomOrbit = viewState.getOrbitDistance(_options->getZoomRange().getMax());
+                        double minHeight = CameraClearance::minHeight(cameraPos(2), maxZoomOrbit, clearanceFloor);
                         double cameraHeight = cameraPos(2) - terrainZ;
                         double deadBand = 0.005 * minHeight;
                         if (orbit > 0 && cameraHeight < minHeight - deadBand && (panned || cameraHeight < 0)) {
@@ -2625,14 +2626,14 @@ namespace massif {
                             // top the rest comes from zooming out, about the focus.
                             MapRange tiltRange = _options->getTiltRange();
                             double maxTiltSin = std::sin(tiltRange.getMax() * Const::DEG_TO_RAD);
-                            double targetHeight = terrainZ + minHeight - focusZ;
+                            double targetHeight = CameraClearance::targetHeight(focusZ, terrainZ, maxZoomOrbit, clearanceFloor);
                             float tilt = viewState.getTilt();
                             if (targetHeight <= orbit * maxTiltSin) {
                                 tilt = static_cast<float>(std::asin(std::max(0.0, targetHeight / orbit)) * Const::RAD_TO_DEG);
                             } else {
                                 tilt = tiltRange.getMax();
-                                float maxZoom = CameraClearance::maxZoom(viewState.getZoom(), focusZ, focusZ + orbit * maxTiltSin, orbit, terrainZ,
-                                                                         viewState.getOrbitDistance(_options->getZoomRange().getMax()), clearanceFloor);
+                                float maxZoom = CameraClearance::maxZoom(viewState.getZoom(), focusZ, focusZ + orbit * maxTiltSin, terrainZ,
+                                                                         maxZoomOrbit, clearanceFloor);
                                 float zoom = std::max(maxZoom, _options->getZoomRange().getMin());
                                 if (zoom < viewState.getZoom() - 1.0e-4f) {
                                     CameraZoomEvent zoomEvent;

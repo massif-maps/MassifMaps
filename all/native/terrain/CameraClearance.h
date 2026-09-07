@@ -18,6 +18,11 @@ namespace massif {
      * mapbox's model (transform._minimumHeightOverTerrain / _constrainCamera): the clearance is a
      * FRACTION of the camera's distance to sea level, not a fixed height, so it never blocks a
      * zoom-in on its own. Free of the renderer on purpose, so it is testable on the host.
+     *
+     * ONE divergence from mapbox, deliberate: mapbox builds its sea-level distance from
+     * _centerAltitude + cameraToCenterDistance, the ORBIT, which is the camera's altitude only at
+     * pitch 0. We use the camera's real altitude, so the shell does not grow by 1/sin(tilt) as the
+     * view lies down and lift a camera that is plainly clear of the ground.
      * See docs/internals/rendering/04-terrain.md.
      */
     struct CameraClearance {
@@ -26,16 +31,28 @@ namespace massif {
 
         /**
          * The minimum camera height above the ground under it. All values are internal units.
-         * @param focusZ The ground height at the focus (mapbox _centerAltitude).
-         * @param orbit The camera-to-focus distance, what the zoom is calibrated on.
+         * @param cameraZ The camera height above sea level.
          * @param maxZoomOrbit The orbit at the maximum zoom; the clearance never shrinks below its share.
          * @param floorZ An app's explicit minimum (TerrainOptions::CameraClearance), 0 for none.
          */
-        static double minHeight(double focusZ, double orbit, double maxZoomOrbit, double floorZ) {
-            // mapbox: mercatorZ(min(seaLevelZoom, maxZoom) + 4), seaLevelZoom being the zoom whose
-            // orbit is focusZ + orbit.
-            double seaLevelOrbit = std::max(0.0, std::max(focusZ + orbit, maxZoomOrbit));
-            return std::max(seaLevelOrbit * FRACTION, floorZ);
+        static double minHeight(double cameraZ, double maxZoomOrbit, double floorZ) {
+            return std::max(std::max(0.0, std::max(cameraZ, maxZoomOrbit)) * FRACTION, floorZ);
+        }
+
+        /**
+         * The camera height ABOVE THE FOCUS that lands it on the shell. The shell moves with the
+         * camera, so the lift is a fixed point, not terrainZ + minHeight: rising raises the
+         * clearance it has to clear, and a lift that ignores that under-shoots every frame.
+         * @param focusZ The ground height at the focus.
+         * @param terrainZ The ground height under the camera.
+         * @param maxZoomOrbit The orbit at the maximum zoom.
+         * @param floorZ An app's explicit minimum clearance, 0 for none.
+         */
+        static double targetHeight(double focusZ, double terrainZ, double maxZoomOrbit, double floorZ) {
+            // focusZ + h - terrainZ >= max(FRACTION * (focusZ + h), c), two lower bounds on h; both
+            // gain with h (FRACTION < 1), so the answer is the larger.
+            double c = std::max(std::max(0.0, maxZoomOrbit) * FRACTION, floorZ);
+            return std::max(terrainZ / (1 - FRACTION), terrainZ + c) - focusZ;
         }
 
         /**
@@ -45,15 +62,14 @@ namespace massif {
          * @param zoom The current zoom.
          * @param focusZ The ground height at the focus.
          * @param cameraZ The camera height, at the current zoom.
-         * @param orbit The camera-to-focus distance, at the current zoom.
          * @param terrainZ The ground height under the camera, taken as constant over the zoom.
          * @param maxZoomOrbit The orbit at the maximum zoom.
          * @param floorZ An app's explicit minimum clearance, 0 for none.
          */
-        static float maxZoom(float zoom, double focusZ, double cameraZ, double orbit, double terrainZ, double maxZoomOrbit, double floorZ) {
+        static float maxZoom(float zoom, double focusZ, double cameraZ, double terrainZ, double maxZoomOrbit, double floorZ) {
             // A zoom scales the camera-to-focus vector by s, so the camera height is
             // focusZ + s * hz and its clearance above terrainZ must reach
-            // max(FRACTION * (focusZ + s * orbit), c): two linear constraints on s, each a lower
+            // max(FRACTION * (focusZ + s * hz), c): two linear constraints on s, each a lower
             // bound when its slope is positive, and no bound at all when it is not.
             double hz = cameraZ - focusZ;
             double c = std::max(std::max(0.0, maxZoomOrbit) * FRACTION, floorZ);
@@ -63,7 +79,7 @@ namespace massif {
                     sMin = std::max(sMin, rhs / slope);
                 }
             };
-            bound(hz - orbit * FRACTION, terrainZ - focusZ + focusZ * FRACTION);
+            bound(hz * (1 - FRACTION), terrainZ - focusZ + focusZ * FRACTION);
             bound(hz, terrainZ - focusZ + c);
             if (!(sMin > 0)) {
                 return std::numeric_limits<float>::infinity();

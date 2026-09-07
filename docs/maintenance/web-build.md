@@ -35,10 +35,27 @@ one, and GitHub Pages serves brotli, so the module costs about **1.3 MB**.
 A preloaded font adds its own `.data` file on top (3.0 MB for the bench's fonts and styles; Roboto
 alone is 306 KB).
 
-`Release` already compiles with `-Oz`. Passing `-Oz` at LINK as well was tried and changed the
-output by zero bytes, so it is not set. What would actually move the number is `-flto` (the
-Android build uses it, this one does not), emscripten's closure pass on the loader, and dropping
-pthreads - and that last one is not available, since the tile pools need them.
+### What has been tried on size, and what it cost
+
+`Release` compiles with `-Oz`. Two things that look like free wins are not, both measured on the
+same tree:
+
+| | `.wasm` | gzipped | brotli |
+|---|---|---|---|
+| `-Oz`, as shipped | **4 687 926** | **1 823 110** | **1 367 486** |
+| `+ -flto=thin` | 4 800 168 | 1 845 541 | 1 385 803 |
+| `+ -flto` (full) | 4 978 620 | 1 877 009 | 1 408 265 |
+
+**LTO makes it bigger** - 2.4% thin, 6.2% full, and still bigger after compression. Cross-module
+inlining wins back less than it spends, which is the usual way `-Oz` and LTO disagree: `-Oz` is
+already refusing the inlines LTO then goes and takes. The Android build uses `-flto=thin` and is a
+different trade; do not copy it here without measuring.
+
+Passing `-Oz` at LINK as well changed the output by **zero bytes** - emcc already runs wasm-opt
+from the compile flags recorded in the objects - so it is not set either.
+
+What is left is emscripten's closure pass on the loader (265 KB, so worth little) and dropping
+pthreads, which is not available: the tile pools need them.
 
 Use `--configuration RelWithDebInfo` while developing, but do not quote its size: it carries DWARF
 and the `.wasm` comes out around 340 MB.

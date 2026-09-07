@@ -771,7 +771,8 @@ jobs:
       - name: Commit CHANGELOG.md
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          branch: master
+          # the branch the release was dispatched from - master, or a release/x.y.z patch branch
+          branch: ${{ github.ref_name }}
           commit_message: 'docs: update CHANGELOG.md for v${{ github.event.inputs.version }} [skip ci]'
           file_pattern: CHANGELOG.md
 

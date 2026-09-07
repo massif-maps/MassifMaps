@@ -3874,6 +3874,8 @@ export interface PropertyTypes {
     readonly "baseProjection.name": string;
     /** Returns the clear color used by the renderer before drawing anything else. By default, this is white. It should be set to (0, 0, 0, 0) if transparent MapView is needed. */
     "clearColor": number;
+    /** Returns how far a pointer may travel before a press stops counting as a click. */
+    "clickMovingTolerance": number;
     /** Returns the click type detection state. */
     "clickTypeDetection": boolean;
     /** Returns the state of the tile border debug overlay. */
@@ -8005,6 +8007,7 @@ export interface MethodTypes {
     setMetaDataElement: (key: string, value: Json) => void;
   };
   "massif::MBVectorTileDecoder": {
+    addFallbackFont: (font: Handle) => void;
     getStyleParameter: (name: string) => string;
     setStyleParameter: (name: string, value: string) => boolean;
     setStyleParameters: (params: Json) => void;

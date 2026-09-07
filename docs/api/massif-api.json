@@ -4199,6 +4199,18 @@
       "methods": [
         {
           "cppClass": "massif::MBVectorTileDecoder",
+          "name": "addFallbackFont",
+          "args": [
+            {
+              "name": "font",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MBVectorTileDecoder",
           "name": "getStyleParameter",
           "args": [
             {
@@ -5321,6 +5333,15 @@
           "position": false,
           "cppType": "massif::Color",
           "doc": "Returns the clear color used by the renderer before drawing anything else. By default, this is white. It should be set to (0, 0, 0, 0) if transparent MapView is needed."
+        },
+        {
+          "name": "clickMovingTolerance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how far a pointer may travel before a press stops counting as a click."
         },
         {
           "name": "clickTypeDetection",

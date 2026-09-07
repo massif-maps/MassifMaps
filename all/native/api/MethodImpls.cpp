@@ -12,6 +12,7 @@
 #include "api/RoutingMethods.h"
 #include "api/Methods.h"
 #include "api/StructCodec.h"
+#include "core/BinaryData.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
 #include "core/Variant.h"
@@ -168,6 +169,29 @@ namespace massif { namespace api {
                 return RESULT_BAD_SPEC;
             }
             static_cast<MBVectorTileDecoder*>(obj)->setJSONStyleParameters(params.toString());
+            return RESULT_OK;
+        }
+
+        /**
+         * addFallbackFont(dataHandle) - a font for the glyphs the style names but the build has no
+         * face for.
+         *
+         * The one part of setting a style up that a spec could not express: the decoder takes the
+         * font BYTES, and the facade's way of naming bytes is a `data` handle. Without it a binding
+         * that builds its decoder from a spec loses every label of a style that names a font it
+         * does not carry - which is every converted MapBox style, since they all name DIN Pro.
+         */
+        Result addFallbackFont(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto font = std::static_pointer_cast<BinaryData>(
+                context.getObject(handle, "massif::BinaryData"));
+            if (!font) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<MBVectorTileDecoder*>(obj)->addFallbackFont(font);
             return RESULT_OK;
         }
 
@@ -523,6 +547,7 @@ namespace massif { namespace api {
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameter", &setStyleParameter);
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameters", &setStyleParameters);
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
+        registerMethod("massif::MBVectorTileDecoder", "addFallbackFont", &addFallbackFont);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);
         registerMethod("massif::Layers", "add", &addLayer);

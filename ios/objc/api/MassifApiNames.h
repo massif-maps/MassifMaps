@@ -173,6 +173,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyClearColor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickHandlerLayerFilter;
 /** Returns the click info. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickInfo;
+/** Returns how far a pointer may travel before a press stops counting as a click. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyClickMovingTolerance;
 /** Returns the click position. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickPos;
 /** Returns the click radius of the curve. */
@@ -975,6 +977,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomRange;
 typedef NSString *MassifMethod NS_TYPED_ENUM;
 
 FOUNDATION_EXPORT MassifMethod const MassifMethodAdd;
+FOUNDATION_EXPORT MassifMethod const MassifMethodAddFallbackFont;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddLocale;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateAddresses;

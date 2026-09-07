@@ -87,6 +87,7 @@ static const char* const kNames[] = {
     "clearColor",
     "clickHandlerLayerFilter",
     "clickInfo",
+    "clickMovingTolerance",
     "clickPos",
     "clickRadius",
     "clickSize",

@@ -173,6 +173,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> CLICK_HANDLER_LAYER_FILTER = MassifObject.key("clickHandlerLayerFilter");
     /** Returns the click info. */
     public static final MassifObject.Key<String> CLICK_INFO = MassifObject.key("clickInfo");
+    /** Returns how far a pointer may travel before a press stops counting as a click. */
+    public static final MassifObject.Key<Double> CLICK_MOVING_TOLERANCE = MassifObject.key("clickMovingTolerance");
     /** Returns the click position. */
     public static final MassifObject.Key<String> CLICK_POS = MassifObject.key("clickPos");
     /** Returns the click radius of the curve. */
@@ -974,6 +976,7 @@ public final class ApiNames {
     // --- methods ---------------------------------------------------------
 
     public static final String METHOD_ADD = "add";
+    public static final String METHOD_ADD_FALLBACK_FONT = "addFallbackFont";
     public static final String METHOD_ADD_FEATURE = "addFeature";
     public static final String METHOD_ADD_LOCALE = "addLocale";
     public static final String METHOD_CALCULATE_ADDRESSES = "calculateAddresses";

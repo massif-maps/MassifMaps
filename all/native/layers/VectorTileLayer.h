@@ -191,6 +191,8 @@ namespace massif {
         virtual void clearTiles(bool preloadingTiles);
         virtual void invalidateTiles(bool preloadingTiles);
 
+        virtual void onTargetTileZoomChanged();
+
         virtual std::shared_ptr<VectorTileDecoder::TileMap> getTileMap(long long tileId) const;
         virtual std::shared_ptr<vt::Tile> getPoleTile(int y) const;
 
@@ -249,9 +251,12 @@ namespace massif {
         class FetchTask : public TileLayer::FetchTaskBase {
         public:
             FetchTask(const std::shared_ptr<VectorTileLayer>& layer, long long tileId, const MapTile& tile, bool preloadingTile);
-            
+
         protected:
             virtual bool loadTile(const std::shared_ptr<TileLayer>& tileLayer);
+
+        private:
+            int _styleTileZoom; // snapshot: the cull that queued the task decides what the style sees
         };
         
         class TileInfo {

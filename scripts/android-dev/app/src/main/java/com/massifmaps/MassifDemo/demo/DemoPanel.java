@@ -1123,8 +1123,8 @@ public final class DemoPanel {
         });
         // The GRAZING half of the same test. Unbounded it swings with the camera, so under a tilt
         // one side of the horizon keeps its detail and the other loses a level; 0 = no limit.
-        slider(context, "tile LOD grazing limit (levels, 0=none)", 0, 4, DemoConfig.TILE_LOD_GRAZING, true, new FloatSetting() {
-            public void set(float value) { DemoConfig.TILE_LOD_GRAZING = value; demo.mapView.getOptions().setTileLODForeshorteningLimit(value); }
+        slider(context, "tile LOD zoom levels on screen", 4, 16, DemoConfig.TILE_LOD_LEVELS_ON_SCREEN, true, new FloatSetting() {
+            public void set(float value) { DemoConfig.TILE_LOD_LEVELS_ON_SCREEN = value; demo.mapView.getOptions().setTileLODMaxZoomLevelsOnScreen(value); }
         });
         // Which zoom the vector tiles are FETCHED at, against the view's. -1 is what a style
         // written for MapBox's 512 px tiles wants; it also shifts every `[zoom >= N]` rule a level

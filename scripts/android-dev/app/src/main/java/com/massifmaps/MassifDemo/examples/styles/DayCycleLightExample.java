@@ -146,12 +146,10 @@ public class DayCycleLightExample extends MapExample {
         // slider gets it anywhere else.
         hour = host.option("hour", START_HOUR);
 
-        // How far a TILTED far field may coarsen. The LOD area test drops a tile a level for
-        // distance and again for the grazing angle it is seen at; unbounded, the second term makes
-        // the horizon band jump between levels as the camera turns, so one side of the screen keeps
-        // its buildings and the other loses them. This caps the grazing half alone - distance still
-        // coarsens freely, which is what keeps the far field cheap.
-        map.options().set("tileLODForeshorteningLimit", 1.0);
+        // Keep a TILTED far field uniform. The LOD area test drops a tile a level for distance and
+        // again for the grazing angle; a low levels-on-screen decays the second term more slowly,
+        // so the horizon band stops jumping between levels as the camera turns.
+        map.options().set("tileLODMaxZoomLevelsOnScreen", 6.0);
 
         buildLayer(map);
 

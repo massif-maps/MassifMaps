@@ -36,7 +36,9 @@ namespace massif::mvt {
     public:
         virtual ~TileReader() = default;
 
-        virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId) const;
+        // styleZoom is the zoom the RULES are matched at, which is the tile's own zoom unless the
+        // tile stands in for a finer one the camera asked for (see TileStyleZoom.h).
+        virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId, int styleZoom) const;
 
     protected:
         explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger);

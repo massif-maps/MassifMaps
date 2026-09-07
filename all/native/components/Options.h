@@ -128,6 +128,31 @@ namespace massif {
         };
     }
 
+    namespace TileLODProfile {
+        /**
+         * A named set of the tile LOD numbers, so a platform picks a density with one call rather
+         * than by tuning four knobs that multiply.
+         */
+        enum TileLODProfile {
+            /**
+             * The reference density: TileLODFactor 1, which is tangram's rule, mapbox's and
+             * maplibre's alike - a tile is refined while it covers more than a 2x2 block of nominal
+             * tiles. Fewest tiles, and what every reference renderer ships.
+             */
+            TILE_LOD_PROFILE_REFERENCE,
+            /**
+             * Half a level finer than the reference, with a shorter style zoom lift. Meant for a
+             * phone: visibly sharper than the reference at roughly twice its tile count.
+             */
+            TILE_LOD_PROFILE_MOBILE,
+            /**
+             * A full level finer than the reference (TileLODFactor 0.5, the historical default),
+             * about 4x its tile count. Meant for a desktop or a web page on a real GPU.
+             */
+            TILE_LOD_PROFILE_DESKTOP
+        };
+    }
+
     namespace PivotMode {
         /**
          *  Possible pivot modes.
@@ -312,24 +337,70 @@ namespace massif {
         void setTileLODFactor(float factor);
 
         /**
-         * Returns how many zoom levels a tile may lose to foreshortening.
-         * @return The limit in zoom levels, or 0 when there is no limit. The default is 0.
+         * Returns how many distinct zoom levels a tilted view may spread over.
+         * @return The zoom levels on screen. The default is 9.314, maplibre's.
          */
-        float getTileLODForeshorteningLimit() const;
+        float getTileLODMaxZoomLevelsOnScreen() const;
         /**
-         * Sets how many zoom levels a tile may be coarsened by the grazing angle alone.
-         * The LOD rule (see setTileLODFactor) compares a tile's projected screen AREA, which falls
-         * both with the distance and with the cosine of the angle the view ray makes with the
-         * ground. The second term is what keeps a mountain 10 km out coarse while ground at the same
-         * distance under a steeper angle is refined: at a low tilt every tile in the frame sits at
-         * 79-89 degrees of incidence and loses 1.2 to 3 levels to it.
-         * This bounds that second term only, so the distance term is untouched and genuinely far
-         * ground stays coarse. Lower values refine more of the tilted view and cost tiles roughly
-         * 2x per level; 0 leaves the area rule as tangram wrote it.
-         * @param levels The limit in zoom levels, or 0 for no limit. The default is 0.
+         * Sets how many distinct zoom levels the frame may spread over when the horizon is at the
+         * top of the screen - maplibre's maxZoomLevelsOnScreen (setSourceTileLodParams).
+         * It sets how fast the level decays toward the horizon: HIGHER spreads more levels over the
+         * frame, so the far field coarsens faster and costs fewer tiles; LOWER keeps far ground
+         * finer and costs more. maplibre's 9.314 is our screen-area rule exactly, so it is the
+         * default and changing nothing changes nothing.
+         * This supersedes the old TileLODForeshorteningLimit, which bounded the same term from the
+         * other side with a number that had no reference behind it.
+         * @param levels The zoom levels on screen. The default is 9.314.
          */
-        void setTileLODForeshorteningLimit(float levels);
-    
+        void setTileLODMaxZoomLevelsOnScreen(float levels);
+
+        /**
+         * Returns how many times more tiles a tilted view may load than a top-down one.
+         * @return The ratio. The default is 3, maplibre's.
+         */
+        float getTileLODTileCountRatio() const;
+        /**
+         * Sets the cap on how many more tiles a tilted view may load than a top-down one -
+         * maplibre's tileCountMaxMinRatio. When the cap would be exceeded the level is lowered
+         * uniformly across the frame until it fits.
+         * NOTE this binds only when TileLODMaxZoomLevelsOnScreen asks for a gentler far field than
+         * the default: at the default the pitched view never counts as asking for more tiles than a
+         * flat one, so the cap is inert. It bounds the cost of refining the horizon, it does not
+         * rescue a view that is slow for another reason.
+         * @param ratio The ratio. The default is 3.
+         */
+        void setTileLODTileCountRatio(float ratio);
+
+        /**
+         * Applies a named set of the tile LOD numbers - TileLODFactor,
+         * TileLODMaxZoomLevelsOnScreen, TileLODTileCountRatio and TileStyleZoomLift at once.
+         * They multiply into the tile count, so tuning them separately is how a map ends up four
+         * times more expensive than any reference renderer without anyone deciding to. Set a
+         * profile for the platform, then override one number if a specific map needs it.
+         * @param profile The profile to apply.
+         */
+        void setTileLODProfile(TileLODProfile::TileLODProfile profile);
+
+        /**
+         * Returns how many zoom levels above its own a coarsened tile may be styled at.
+         * @return The lift in zoom levels. The default is 2.
+         */
+        int getTileStyleZoomLift() const;
+        /**
+         * Sets how many zoom levels above its own zoom a coarsened tile matches its style rules at.
+         * The LOD rule (see setTileLODFactor) hands back a tile coarser than the camera asked for,
+         * and a CartoCSS [zoom] filter gates on the TILE, so a converted MapBox style's
+         * `minzoom` - a VIEW-zoom gate in the original - stops matching the moment the tile
+         * coarsens: one level, and the far half of a tilted view loses every building along a
+         * straight tile edge.
+         * This lifts the zoom the rules are matched at, without changing which tiles are drawn. It
+         * is bounded because a far tile styled at the camera's zoom emits the whole near-field
+         * content - every label, every arrow - over ground tens of times wider. 2 covers the first
+         * two coarsening steps, where the visible edge is; 0 restores the tile's own zoom.
+         * @param levels The lift in zoom levels. The default is 2.
+         */
+        void setTileStyleZoomLift(int levels);
+
         /**
          * Returns the dots per inch value.
          * @return The dots per inch value.
@@ -821,7 +892,11 @@ namespace massif {
     
         int _tileDrawSize;
         float _tileLODFactor;
-        float _tileLODForeshorteningLimit;
+        float _tileLODMaxZoomLevelsOnScreen;
+        float _tileLODTileCountRatio;
+        int _tileStyleZoomLift;
+
+        static const int MAX_TILE_STYLE_ZOOM_LIFT;
     
         float _dpi;
     

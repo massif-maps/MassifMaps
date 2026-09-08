@@ -1,0 +1,9 @@
+{
+  "comment": "Boxes are in the SVG's own pixels; the sprite build scales them per pixel ratio.",
+  "icons": {
+    "shield-us-interstate": { "stretchX": [[9, 15]], "content": [4, 7.4, 20, 17.4] },
+    "shield-us-highway":    { "stretchX": [[10, 14]], "content": [5, 5.6, 19, 15.8] },
+    "shield-us-state":      { "stretchX": [[8, 16]], "content": [3.6, 3.6, 20.4, 16.4] },
+    "shield-default":       { "stretchX": [[7, 17]], "content": [3.2, 4.8, 20.8, 15.2] }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "shield-default": {
+    "x": 0,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        14,
+        34
+      ]
+    ],
+    "content": [
+      6.4,
+      9.6,
+      41.6,
+      30.4
+    ]
+  },
+  "shield-us-highway": {
+    "x": 50,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        20,
+        28
+      ]
+    ],
+    "content": [
+      10,
+      11.2,
+      38,
+      31.6
+    ]
+  },
+  "shield-us-interstate": {
+    "x": 100,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        18,
+        30
+      ]
+    ],
+    "content": [
+      8,
+      14.8,
+      40,
+      34.8
+    ]
+  },
+  "shield-us-state": {
+    "x": 150,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        16,
+        32
+      ]
+    ],
+    "content": [
+      7.2,
+      7.2,
+      40.8,
+      32.8
+    ]
+  }
+}

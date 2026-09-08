@@ -145,19 +145,14 @@ namespace massif {
         struct MeshCacheEntry;
 
         static constexpr int BUFFER_DOWNSCALE = 2;    // packed depth texture runs at half resolution
-        // The occlusion read-back is a glReadPixels, i.e. a full pipeline stall: measured on an
-        // Adreno 610 at 55-62 ms (peaks 134 ms) on top of the ~20 ms depth render. Running that
-        // every 60 ms while the camera moves costs more than the whole rest of the frame, so
-        // while it moves the data is only refreshed at a coarse interval and the exact refresh
-        // is done once the camera settles - the occlusion depth is allowed to lag a gesture,
-        // which is invisible (billboards fade), but a stalled frame is not.
+        // The occlusion read-back is a glReadPixels, a full pipeline stall - 55-62 ms on an Adreno
+        // 610 on top of the ~20 ms depth render. While the camera moves the data is refreshed at a
+        // coarse interval only: a lagging occlusion depth is invisible, a stalled frame is not.
         static constexpr int DEPTH_READBACK_THROTTLE = 60;        // minimum interval (ms) between read-backs
         static constexpr int DEPTH_READBACK_MOVING_INTERVAL = 500; // ...while the camera keeps moving
-        // The asynchronous path has no stall to pay for, but its second GL context still shares
-        // the GPU with the render context, and on an Adreno 610 that contention is what the
-        // interval buys back: measured at mesh 64 with occlusion on, 100 ms costs 13.3 fps
-        // (prelude 18-22 ms), 250 ms 14.3 fps (prelude 8-10), 500 ms 14.9 fps (prelude 3-7) -
-        // against 13.7 fps (prelude 12-14) for the synchronous read-back at the same cadence.
+        // The asynchronous path has no stall to pay for, but its second GL context still shares the
+        // GPU with the render one, and that contention is what this interval buys back: on an Adreno
+        // 610, 100 ms costs 13.3 fps against 14.9 at 500 ms.
         static constexpr int DEPTH_SUBMIT_MOVING_INTERVAL = 500;   // minimum interval (ms) between worker jobs while moving
         static constexpr int MIN_MESH_GRID_SIZE = 4;  // grid cells per tile edge, lower bound
         static constexpr int MAX_MESH_GRID_SIZE = 96; // grid cells per tile edge, upper bound
@@ -174,10 +169,9 @@ namespace massif {
         static const std::string TERRAIN_SURFACE_FRAGMENT_SHADER_PREFIX;
         static const std::string TERRAIN_SURFACE_FRAGMENT_SHADER_MAIN;
 
-        // meshResolutionCap > 0 caps the per-tile mesh grid below what TerrainOptions asks
-        // for. The occlusion depth texture is a half-resolution approximation sampled at
-        // single points, so it does not need the full render mesh - and that mesh is CPU
-        // built and drawn from client memory, which is the expensive part of the pass.
+        // meshResolutionCap > 0 caps the per-tile mesh grid below what TerrainOptions asks for: the
+        // occlusion depth texture is a half-resolution approximation sampled at single points, and
+        // the full mesh is CPU built and drawn from client memory, the expensive part of the pass.
         bool renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn = std::function<void(const MapTile&)>(), int meshResolutionCap = 0, bool surfaceAttribs = false);
         // Compiles (and caches) the surface program for the current TerrainOptions shader source.
         // A source that failed once is not retried until it changes.

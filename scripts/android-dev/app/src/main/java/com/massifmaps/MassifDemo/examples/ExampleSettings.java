@@ -104,7 +104,7 @@ public final class ExampleSettings {
         // away; the second bounds what the GRAZING angle alone may take, which is what stops a
         // tilted horizon swapping detail from side to side as the camera turns. 0 = no limit.
         { Kind.SLIDER, Group.OPTIONS, "tileLODFactor",              "tile LOD factor",   0f, 4f },
-        { Kind.SLIDER, Group.OPTIONS, "tileLODForeshorteningLimit", "LOD grazing limit", 0f, 4f },
+        { Kind.SLIDER, Group.OPTIONS, "tileLODMaxZoomLevelsOnScreen", "LOD zoom levels on screen", 4f, 16f },
         { Kind.INT,    Group.OPTIONS, "tileDrawSize",               "tile draw size",  128f, 512f },
         { Kind.TOGGLE, Group.OPTIONS, "debugTileBorders",           "tile borders" },
     };

@@ -122,20 +122,15 @@ namespace massif {
     private:
         class BorderBitmap; // a Bitmap whose border strips can be rewritten in place
 
-        // Grids are identified by their TILE, not by the pointer they happen to live behind: the
-        // elevation cache is an LRU, so the same DEM tile can be decoded into a new object at any
-        // time. Comparing pointers made that re-decode look like new data and re-encoded (or, since
-        // border patching, re-patched) a texture whose content had not changed at all.
+        // Grids are identified by their TILE, not by the pointer they live behind: the elevation
+        // cache is an LRU, so the same DEM tile is re-decoded into a new object at any time and
+        // comparing pointers made that look like new data.
         using GridKey = long long; // grid tile id, or -1 for a missing neighbour
         static GridKey gridKey(const std::shared_ptr<ElevationTileGrid>& grid);
 
-        // How good the border on one side is, and the ONLY reason to touch a texture that is
-        // already up: 0 = this grid's own duplicated edge texels, 1 = a coarser ancestor sampled
-        // geographically, 2 = the exact same-level neighbour. DEM data never changes, so a border
-        // is only ever worth redoing when a side can be filled BETTER than it was. Comparing the
-        // neighbour set instead re-patched whenever a neighbour was merely evicted from the grid
-        // LRU - during a pan that was ~70 patches a second, and a patch is four glTexSubImage2D
-        // calls into a live texture, measured at ~1 ms each on the render thread.
+        // How good the border on one side is, and the ONLY reason to touch a texture already up:
+        // 0 = own duplicated edge texels, 1 = a coarser ancestor, 2 = the exact same-level neighbour.
+        // Comparing the neighbour set instead re-patched on every eviction - ~70 patches a second.
         using BorderQuality = std::array<int, 8>;
         static constexpr BorderQuality NO_BORDERS = { { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
@@ -143,12 +138,9 @@ namespace massif {
             std::shared_ptr<ElevationTileGrid> grid;
             GridKey gridKeyValue = -1;
             BorderQuality borderQuality = NO_BORDERS;
-            // The grids each side's border was taken from, kept so that a later patch can REUSE
-            // them: the elevation grid LRU drops and re-decodes tiles all the time, and rebuilding
-            // the ring from whatever happens to be cached right now would let a side that already
-            // had its exact neighbour fall back to an ancestor - and then improve again, which is
-            // an endless patch loop. Holding them makes the quality per side monotone, so the ring
-            // converges and stops.
+            // The grids each side's border came from, kept so a later patch can REUSE them: the LRU
+            // drops and re-decodes constantly, and rebuilding the ring from whatever is cached lets
+            // a side fall back and improve again for ever. Holding them keeps the quality monotone.
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             std::shared_ptr<BorderBitmap> bitmap; // what the texture is rebuilt from after a context loss
             std::shared_ptr<Texture> texture;
@@ -167,10 +159,9 @@ namespace massif {
             BorderQuality borderQuality = NO_BORDERS;
             bool bordersOnly = false; // the entry already has this grid's texture; only its ring changed
         };
-        // The BITMAP, not the encoded bytes: building it copies the whole padded texture
-        // (514x514 RGBA, a megabyte, byte by byte in Bitmap::loadFromUncompressedBytes) and that
-        // copy has no reason to be on the render thread - measured on the Crosscall, north pan,
-        // it was 20% of it, with another 11% freeing the encode buffer there.
+        // The BITMAP, not the encoded bytes: building it copies the whole padded texture byte by
+        // byte, and that copy has no reason to be on the render thread - measured at 20% of it on
+        // the north pan, with another 11% freeing the encode buffer.
         struct EncodedTexture {
             long long gridTileId = -1;
             GridKey gridKeyValue = -1;
@@ -181,10 +172,8 @@ namespace massif {
             std::shared_ptr<BorderBitmap> nodeBitmap;
         };
 
-        // A neighbour arriving changes ONLY the 2-texel ring of the texture (the border itself,
-        // and this grid's outermost row/column where a coarser neighbour box-filters it). During a
-        // pan that is the common case by far, and re-encoding a megabyte for it is most of what
-        // this pipeline costs. The ring is encoded on the worker and patched into the existing
+        // A neighbour arriving changes ONLY the 2-texel ring of the texture, which during a pan is
+        // the common case by far. The ring is encoded on the worker and patched into the existing
         // texture and its bitmap - same result, ~1.5% of the texels.
         struct BorderPatch {
             long long gridTileId = -1;
@@ -200,10 +189,9 @@ namespace massif {
         // what decides whether extra DEM detail is affordable - each level beyond the mesh cap
         // needs four times the textures.
         static constexpr std::size_t MAX_CACHED_TEXTURES = 128;
-        // Uploads per frame, and the time they may take. A tile with no texture yet renders FLAT,
-        // so a budget that is too tight is visible as terrain that stays flat while it catches up;
-        // one that is too loose brings back the stall this pipeline exists to remove. Time-bounded
-        // with a floor of one upload, so progress is guaranteed however slow the device is.
+        // Uploads per frame, and the time they may take. Too tight shows as terrain staying flat,
+        // too loose brings back the stall this pipeline removes. Time-bounded with a floor of one
+        // upload, so progress is guaranteed however slow the device is.
         static constexpr int MAX_UPLOADS_PER_FRAME = 8;
         static constexpr double MAX_UPLOAD_MS_PER_FRAME = 6.0;
         static constexpr std::size_t MAX_ENCODE_QUEUE = 32;

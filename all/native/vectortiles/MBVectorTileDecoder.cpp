@@ -121,11 +121,9 @@ namespace massif {
             return std::get_if<std::shared_ptr<const mvt::ValueObject>>(&value) || std::get_if<std::shared_ptr<const mvt::ValueArray>>(&value);
         }
 
-        // Compiled maps, shared between decoders. Parsing and compiling a style is 0.5-0.7 s for a
-        // 23-layer project, and an app that switches between two styles of one asset package - day
-        // and night - or builds several layers from the same style, pays it every time otherwise.
-        // A compiled map is read-only, and the values a decoder sets live in its own parameter
-        // store, so sharing one is safe.
+        // Compiled maps, shared between decoders: compiling a style is 0.5-0.7 s for a 23-layer
+        // project, paid again by every layer built from it. A compiled map is read-only and a
+        // decoder's own values live in its parameter store, so sharing one is safe.
         struct MapCacheKey {
             const AssetPackage* assetPackage = nullptr;
             std::string styleAssetName;
@@ -777,7 +775,7 @@ namespace massif {
         return std::make_shared<VectorTileFeatureCollection>(tileFeatures);
     }
 
-    std::shared_ptr<MBVectorTileDecoder::TileMap> MBVectorTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData) const {
+    std::shared_ptr<MBVectorTileDecoder::TileMap> MBVectorTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData) const {
         if (!tileData) {
             Log::Warn("MBVectorTileDecoder::decodeTile: Null tile data");
             return std::shared_ptr<TileMap>();
@@ -803,7 +801,7 @@ namespace massif {
             mvt::LayerTileReader reader(map, tileTransformer, *symbolizerContext, *decoder, _logger);
             reader.setLayerNameOverride(layerNameOverride);
 
-            if (std::shared_ptr<vt::Tile> tile = reader.readTile(targetTile)) {
+            if (std::shared_ptr<vt::Tile> tile = reader.readTile(targetTile, styleZoom)) {
                 auto tileMap = std::make_shared<TileMap>();
                 (*tileMap)[0] = tile;
                 return tileMap;
@@ -948,11 +946,9 @@ namespace massif {
 
                 for (const std::string& assetName : assetPackage->getAssetNames()) {
                     if (assetName.size() > fontPrefix.size() && assetName.substr(0, fontPrefix.size()) == fontPrefix) {
-                        // Deferred: reading a font's name means decompressing it, and a style
-                        // packs far more fonts than it uses - the bundled one carries 15 and asks
-                        // for 4. The hint is the file name, which is what a font is normally
-                        // called; a style whose files say otherwise still resolves, by the sweep
-                        // in FontManager, and only pays for it then.
+                        // Deferred: reading a font's name means decompressing it, and a style packs
+                        // far more fonts than it uses. The hint is the file name; a style whose files
+                        // say otherwise still resolves through FontManager's sweep, and pays then.
                         std::string hintName = FileUtils::GetFileName(assetName);
                         std::size_t extPos = hintName.rfind('.');
                         if (extPos != std::string::npos) {

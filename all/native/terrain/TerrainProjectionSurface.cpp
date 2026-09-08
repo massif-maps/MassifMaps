@@ -25,13 +25,9 @@ namespace massif {
     }
 
     cglib::vec3<double> TerrainProjectionSurface::calculatePosition(const MapPos& mapPos) const {
-        // Cached-only: element positioning may run on the UI thread and must never block on IO.
-        // When the elevation tile arrives later, the elevation version changes and the element
-        // draw data is rebuilt (MapRenderer refreshes vector layers on elevation version changes).
-        // The small lift keeps draped element geometry (whose vertices sample the height
-        // field more densely than the terrain surface meshes) clear of the terrain depth
-        // in concave areas. The lift is a fraction of the elevation data texel size, i.e.
-        // within the resolution of the data itself.
+        // Cached-only: element positioning may run on the UI thread and must never block on IO;
+        // MapRenderer rebuilds the draw data when the elevation version changes. The small lift
+        // keeps densely sampled draped geometry clear of the terrain depth in concave areas.
         double terrainZ = _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY(), ElevationManager::LoadMode::CACHED_ONLY);
         return cglib::vec3<double>(mapPos.getX(), mapPos.getY(), mapPos.getZ() + terrainZ + _heightLift);
     }

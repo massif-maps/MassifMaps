@@ -100,10 +100,8 @@ namespace massif {
          * Returns the current display order of the buildings.
          * @return The display order of the buildings. Default is VECTOR_TILE_RENDER_ORDER_LAST.
          *
-         * LAST draws the extrusions after the flat labels as well, so a label that has to clear a
-         * building is a BILLBOARD one - `text-placement: billboard` or `billboard-line-repeat` -
-         * which is the pass that runs after the buildings. That is the mechanism; moving this
-         * order is not.
+         * LAST draws over the flat labels too, so a label that must clear a building is a BILLBOARD
+         * one - that pass runs after the buildings, and moving this order is not the mechanism.
          */
         VectorTileRenderOrder::VectorTileRenderOrder getBuildingRenderOrder() const;
         /**
@@ -196,6 +194,8 @@ namespace massif {
         virtual void clearTiles(bool preloadingTiles);
         virtual void invalidateTiles(bool preloadingTiles);
 
+        virtual void onTargetTileZoomChanged();
+
         virtual std::shared_ptr<VectorTileDecoder::TileMap> getTileMap(long long tileId) const;
         virtual std::shared_ptr<vt::Tile> getPoleTile(int y) const;
 
@@ -254,9 +254,12 @@ namespace massif {
         class FetchTask : public TileLayer::FetchTaskBase {
         public:
             FetchTask(const std::shared_ptr<VectorTileLayer>& layer, long long tileId, const MapTile& tile, bool preloadingTile);
-            
+
         protected:
             virtual bool loadTile(const std::shared_ptr<TileLayer>& tileLayer);
+
+        private:
+            int _styleTileZoom; // snapshot: the cull that queued the task decides what the style sees
         };
         
         class TileInfo {
@@ -314,10 +317,9 @@ namespace massif {
 
         cache::timed_lru_cache<long long, TileInfo> _visibleCache;
         cache::timed_lru_cache<long long, TileInfo> _preloadingCache;
-        // The span reference tiles (TileLayer::collectSpanReferenceTiles), apart from the LRU
-        // caches: coarse city tiles a few MB each, they evicted one another from the preloading
-        // cache, and every refetch re-culled - an endless loop with the deck flipping between
-        // two chords. Pruned to the tiles currently named, never aged out.
+        // The span reference tiles, apart from the LRU caches: coarse city tiles of a few MB each,
+        // they evicted one another from the preloading cache and every refetch re-culled. Pruned to
+        // the tiles currently named, never aged out.
         std::map<long long, TileInfo> _spanReferenceCache;
     };
     

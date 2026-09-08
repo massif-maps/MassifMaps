@@ -7,6 +7,7 @@
 #include "graphics/utils/BackgroundBitmapGenerator.h"
 #include "graphics/utils/SkyBitmapGenerator.h"
 #include "datasources/TileDataSource.h"
+#include "layers/TileStyleZoom.h"
 #include "layers/VectorTileEventListener.h"
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
@@ -77,10 +78,9 @@ namespace massif {
 
         setCullDelay(DEFAULT_CULL_DELAY);
 
-        // A source that declares its format is authoritative, so take it over the per-tile
-        // detection. 'encoding' is read first because MapLibre's own tilesets keep format at 'pbf'
-        // and put the MLT-ness there. Only when the decoder is still on AUTO: an explicit
-        // setTileFormat is the app's decision and stands.
+        // A source that declares its format is authoritative, so it beats the per-tile detection.
+        // 'encoding' is read first: MapLibre's own tilesets keep format at 'pbf' and put the
+        // MLT-ness there. Only on AUTO - an explicit setTileFormat is the app's decision.
         if (auto mbDecoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(decoder)) {
             if (mbDecoder->getTileFormat() == TileFormat::TILE_FORMAT_AUTO && dataSource) {
                 // getMetaDataElement, not getContainerMetaData: an app can declare the format on
@@ -311,6 +311,14 @@ namespace massif {
         } else {
             _visibleCache.invalidate_all(std::chrono::steady_clock::now());
         }
+    }
+
+    void VectorTileLayer::onTargetTileZoomChanged() {
+        // Every decoded tile matched its rules at the previous target zoom. Invalidate rather than
+        // clear the visible ones: they stay on screen, correct for the zoom they came from, while
+        // they decode again.
+        invalidateTiles(false);
+        clearTiles(true);
     }
 
     std::shared_ptr<VectorTileDecoder::TileMap> VectorTileLayer::getTileMap(long long tileId) const {
@@ -620,9 +628,8 @@ namespace massif {
 
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
         // Resolved FIRST: the emissive below is a ramp over view::brightness in every converted
-        // Mapbox style, and reading it without the scene light pinned it to the daylight end at
-        // every hour - the ground then stayed light grey through the night while the symbolizers
-        // around it, which do get the live brightness, went dark.
+        // Mapbox style, and reading it without the scene light pins it to the daylight end - the
+        // ground stayed light grey through the night while the symbolizers around it went dark.
         std::shared_ptr<Options> options = getOptions();
         StyleEnvironment env;
         getStyleEnvironment(viewState, env);
@@ -630,9 +637,8 @@ namespace massif {
 
         Color color = TileRenderer::evaluateColorFunc(mapSettings->backgroundColor.getFunction(getExpressionContext()), viewState, lighting.brightness);
         // The background is a Map setting, so it misses the grade every symbolizer colour gets at
-        // draw time - and it is the largest surface on the map. Lit here by the same rule: at an
-        // emissive of 1, which is the default and what a pre-lit style leaves it at, this is a
-        // no-op.
+        // draw time - and it is the largest surface on the map. Lit here by the same rule; at
+        // emissive 1, the default, this is a no-op.
         float emissive = TileRenderer::evaluateFloatFunc(mapSettings->backgroundEmissive.getFunction(getExpressionContext()), viewState, lighting.brightness);
         if (emissive < 1.0f && options) {
             auto lit = [&](unsigned char c, int i) {
@@ -832,7 +838,8 @@ namespace massif {
     }
     
     VectorTileLayer::FetchTask::FetchTask(const std::shared_ptr<VectorTileLayer>& layer, long long tileId, const MapTile& tile, bool preloadingTile) :
-        FetchTaskBase(layer, tileId, tile, preloadingTile)
+        FetchTaskBase(layer, tileId, tile, preloadingTile),
+        _styleTileZoom(calculateStyleTileZoom(tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift()))
     {
     }
     
@@ -867,7 +874,7 @@ namespace massif {
             std::shared_ptr<vt::TileTransformer> tileTransformer = layer->getTileTransformer();
             std::shared_ptr<VectorTileDecoder::TileMap> tileMap;
             if (std::shared_ptr<BinaryData> data = tileData->getData()) {
-                tileMap = layer->_tileDecoder->decodeTile(vtDataSourceTile, vtTile, tileTransformer, data);
+                tileMap = layer->_tileDecoder->decodeTile(vtDataSourceTile, vtTile, _styleTileZoom, tileTransformer, data);
                 if (!tileMap && !data->empty()) {
                     Log::Error("VectorTileLayer::FetchTask: Failed to decode tile");
                 }

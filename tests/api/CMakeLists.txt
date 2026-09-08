@@ -225,6 +225,14 @@ add_executable(api_tests
   ElevationNodeFieldTest.cpp
   # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.
   DayCycleLightTest.cpp
+  # Same: PrefetchOrder.h is the DEM prefetch queue's distance metric and nothing else. It was
+  # split out of ElevationManager precisely so it could be reached from here - the manager itself
+  # needs the data source and the grid cache.
+  PrefetchOrderTest.cpp
+  # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
+  TileStyleZoomTest.cpp
+  # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.
+  TileLODRuleTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

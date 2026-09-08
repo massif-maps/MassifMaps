@@ -36,7 +36,9 @@ namespace massif::mvt {
     public:
         virtual ~TileReader() = default;
 
-        virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId) const;
+        // styleZoom is the zoom the RULES are matched at, which is the tile's own zoom unless the
+        // tile stands in for a finer one the camera asked for (see TileStyleZoom.h).
+        virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId, int styleZoom) const;
 
     protected:
         explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger);
@@ -54,10 +56,9 @@ namespace massif::mvt {
 
         virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const = 0;
 
-        // The extrusion anchor pass needs the layer's features UNCLIPPED - the parts of a building
-        // this tile does not draw still decide where the ones it draws read their ground. A source
-        // that cannot hand those over answers with nothing and every footprint keeps its own
-        // centroid, which is the behaviour before the pass existed.
+        // The extrusion anchor pass needs the layer's features UNCLIPPED: the parts of a building this
+        // tile does not draw still decide where the ones it draws read their ground. A source that
+        // cannot hand those over answers with nothing, and every footprint keeps its own centroid.
         virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createUnclippedFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const { return std::shared_ptr<FeatureDecoder::FeatureIterator>(); }
 
         // The box this tile's data was cut at, in feature coordinates; the unit square unless the

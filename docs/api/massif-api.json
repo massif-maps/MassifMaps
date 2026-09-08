@@ -5696,13 +5696,31 @@
           "doc": "Returns the factor on the screen size a tile may cover before it is refined."
         },
         {
-          "name": "tileLODForeshorteningLimit",
+          "name": "tileLODMaxZoomLevelsOnScreen",
           "type": "FLOAT",
           "readOnly": false,
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns how many zoom levels a tile may lose to foreshortening."
+          "doc": "Returns how many distinct zoom levels a tilted view may spread over."
+        },
+        {
+          "name": "tileLODTileCountRatio",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how many times more tiles a tilted view may load than a top-down one."
+        },
+        {
+          "name": "tileStyleZoomLift",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many zoom levels above its own a coarsened tile may be styled at."
         },
         {
           "name": "tileThreadPoolSize",
@@ -14182,6 +14200,23 @@
         "name": "TILE_FORMAT_MLT",
         "value": 2,
         "doc": "MapLibre Tile, the columnar format. Smaller tiles and faster decoding, but the whole tile is decoded at once - MVT decodes only the layers and attributes the style asks for."
+      }
+    ],
+    "massif::TileLODProfile::TileLODProfile": [
+      {
+        "name": "TILE_LOD_PROFILE_REFERENCE",
+        "value": 0,
+        "doc": "The reference density: TileLODFactor 1, which is tangram's rule, mapbox's and maplibre's alike - a tile is refined while it covers more than a 2x2 block of nominal tiles. Fewest tiles, and what every reference renderer ships."
+      },
+      {
+        "name": "TILE_LOD_PROFILE_MOBILE",
+        "value": 1,
+        "doc": "Half a level finer than the reference, with a shorter style zoom lift. Meant for a phone: visibly sharper than the reference at roughly twice its tile count."
+      },
+      {
+        "name": "TILE_LOD_PROFILE_DESKTOP",
+        "value": 2,
+        "doc": "A full level finer than the reference (TileLODFactor 0.5, the historical default), about 4x its tile count. Meant for a desktop or a web page on a real GPU."
       }
     ],
     "massif::TileSubstitutionPolicy::TileSubstitutionPolicy": [

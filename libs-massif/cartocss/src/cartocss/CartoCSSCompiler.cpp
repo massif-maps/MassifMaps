@@ -90,9 +90,8 @@ namespace massif::css {
                 predicateResults.push_back(boost::indeterminate(result) ? PREDICATE_INDETERMINATE : (result ? PREDICATE_TRUE : PREDICATE_FALSE));
             }
 
-            // The optimized property lists are a pure function of these results, so identical
-            // results at the next zoom mean identical lists and identical attachments. Most zooms
-            // of a layer land on a range that was already built - comparing 80 bytes here replaces
+            // The optimized property lists are a pure function of these results, so identical results at
+            // the next zoom mean identical lists and attachments. Comparing 80 bytes here replaces
             // rebuilding and deep-comparing every property of the layer.
             if (zoom > minZoom && predicateResults == prevPredicateResults) {
                 continue;

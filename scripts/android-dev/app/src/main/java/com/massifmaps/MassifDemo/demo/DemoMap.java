@@ -9,6 +9,7 @@ import com.massifmaps.components.LightOptions;
 import com.massifmaps.components.Options;
 import com.massifmaps.components.SkyOptions;
 import com.massifmaps.components.SkyQuality;
+import com.massifmaps.components.TileLODProfile;
 import com.massifmaps.components.SkyType;
 import com.massifmaps.components.FogOptions;
 import com.massifmaps.components.TerrainFlattenMode;
@@ -176,7 +177,7 @@ public class DemoMap {
         // Options first: layers created afterwards pick up the terrain/light state immediately.
         mapView.getOptions().setTileThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
         mapView.getOptions().setEnvelopeThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
-        mapView.getOptions().setTileLODFactor(DemoConfig.TILE_LOD_FACTOR);
+        applyTileLODConfig();
         applyDebugConfig();
         applyTerrainOptions();
         applyLightOptions();
@@ -1480,10 +1481,25 @@ public class DemoMap {
     // OPTIONS: TERRAIN / LIGHT / SKY
     // =============================================================================================
 
+    /** The tile LOD numbers: a named profile if one was asked for, then the individual knobs. */
+    public void applyTileLODConfig() {
+        if ("reference".equals(DemoConfig.TILE_LOD_PROFILE)) {
+            mapView.getOptions().setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_REFERENCE);
+        } else if ("mobile".equals(DemoConfig.TILE_LOD_PROFILE)) {
+            mapView.getOptions().setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_MOBILE);
+        } else if ("desktop".equals(DemoConfig.TILE_LOD_PROFILE)) {
+            mapView.getOptions().setTileLODProfile(TileLODProfile.TILE_LOD_PROFILE_DESKTOP);
+        } else {
+            mapView.getOptions().setTileLODFactor(DemoConfig.TILE_LOD_FACTOR);
+            mapView.getOptions().setTileStyleZoomLift(DemoConfig.TILE_STYLE_ZOOM_LIFT);
+        }
+        mapView.getOptions().setTileLODMaxZoomLevelsOnScreen(DemoConfig.TILE_LOD_LEVELS_ON_SCREEN);
+        mapView.getOptions().setTileLODTileCountRatio(DemoConfig.TILE_LOD_COUNT_RATIO);
+    }
+
     /** Creates the TerrainOptions on first call, then pushes every terrain value onto it. */
     public void applyTerrainOptions() {
-        mapView.getOptions().setTileLODFactor(DemoConfig.TILE_LOD_FACTOR);
-        mapView.getOptions().setTileLODForeshorteningLimit(DemoConfig.TILE_LOD_GRAZING);
+        applyTileLODConfig();
         if (terrainOptions == null) {
             terrainOptions = new TerrainOptions(demSource());
             mapView.getOptions().setTerrainOptions(terrainOptions);

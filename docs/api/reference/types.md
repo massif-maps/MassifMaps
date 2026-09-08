@@ -770,7 +770,9 @@ Inherited from `StyleBuilder`:
 | `terrainOptions` <br/>*or* `terrain` | object `std::shared_ptr<massif::TerrainOptions>` | read/write | Returns the terrain options. May be null if no terrain is configured. |
 | `tileDrawSize` | integer | read/write | Returns the tile size used for drawing map tiles. |
 | `tileLODFactor` | number | read/write | Returns the factor on the screen size a tile may cover before it is refined. |
-| `tileLODForeshorteningLimit` | number | read/write | Returns how many zoom levels a tile may lose to foreshortening. |
+| `tileLODMaxZoomLevelsOnScreen` | number | read/write | Returns how many distinct zoom levels a tilted view may spread over. |
+| `tileLODTileCountRatio` | number | read/write | Returns how many times more tiles a tilted view may load than a top-down one. |
+| `tileStyleZoomLift` | integer | read/write | Returns how many zoom levels above its own a coarsened tile may be styled at. |
 | `tileThreadPoolSize` | integer | read/write | Returns the number of threads used by the tile task pool. |
 | `tiltGestureReversed` | boolean | read/write | Returns true if tilting gesture direction is reversed (and same as with Google Maps). |
 | `tiltRange` | struct `massif::MapRange` | read/write | Returns the tilt range constraint. |
@@ -1251,16 +1253,3 @@ Inherited from `FeatureCollection`:
 | `width` | integer | read-only | Returns the width of the map screen. |
 | `zoom` | number | read-only | Returns the camera zoom level. |
 | `zoom0Distance` | number | read-only | Returns the distance between the focus and the camera position, when the zoom level is set to 0. This parameter depends on the screen size, DPI, tile draw size and field of view settings. |
-
-## `WKBGeometryWriter`
-
-| Property | Type | Access | Description |
-|---|---|---|---|
-| `bigEndian` | boolean | read/write | Returns the endianness of output format. |
-| `z` | boolean | read/write | Returns the state of Z coordinate serialization. |
-
-## `WKTGeometryWriter`
-
-| Property | Type | Access | Description |
-|---|---|---|---|
-| `z` | boolean | read/write | Returns the state of Z coordinate serialization. |

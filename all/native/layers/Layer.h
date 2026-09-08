@@ -215,16 +215,14 @@ namespace massif {
         virtual bool onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) = 0;
         virtual bool onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState);
 
-        // Appends every tile layer that participates in terrain draping, in draw order. A plain
-        // tile layer appends itself; a layer that owns child layers (CompositeVectorTileLayer)
-        // must append them too, or their content is neither baked into the drape texture nor told
-        // that the ground is draped - it then paints itself a second time as displaced geometry.
+        // Appends every tile layer that participates in terrain draping, in draw order. A layer that
+        // owns children must append them too, or their content is neither baked into the drape nor
+        // told the ground is draped - and paints itself a second time as displaced geometry.
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);
 
-        // Appends every vector tile layer whose labels must take part in label placement, in draw
-        // order. A layer that owns child layers (CompositeVectorTileLayer) must append them too:
-        // the label culler only sees what is collected here, and a label of an uncollected layer
-        // is never placed, so it never becomes visible.
+        // Appends every vector tile layer whose labels take part in label placement, in draw order.
+        // A layer that owns children must append them too: the culler only sees what is collected
+        // here, and a label that is never placed never becomes visible.
         virtual void collectLabelLayers(std::vector<std::shared_ptr<VectorTileLayer> >& labelLayers);
 
         virtual std::shared_ptr<Bitmap> getBackgroundBitmap(const ViewState& viewState) const;
@@ -233,9 +231,8 @@ namespace massif {
         // plane is behind the terrain, so the drape bake has to start from this colour instead.
         virtual Color getBackgroundColor(const ViewState& viewState) const;
         // Sun, shadow, fog and terrain-distance values this layer's STYLE provides, evaluated for
-        // this view state (they may be zoom-dependent like any other style property). Returns
-        // false when the layer has no style opinion at all. What the style leaves unset stays
-        // with the application's LightOptions/TerrainOptions.
+        // this view state. False when the layer has no style opinion at all; what the style leaves
+        // unset stays with the application's LightOptions/TerrainOptions.
         virtual bool getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const;
         virtual std::shared_ptr<Bitmap> getSkyBitmap(const ViewState& viewState) const;
         

@@ -1,7 +1,6 @@
-// Host bench for CartoCSSCompiler::compileLayer: loads a style project the same way
-// CartoCSSMapLoader does (extends chain, styles list, constants) and times the compile
-// per layer. Builds on the host, so a compiler change can be timed and - with CSSBENCH_DUMP -
-// checked for an identical result without a device round trip.
+// Host bench for CartoCSSCompiler::compileLayer: loads a style project as CartoCSSMapLoader does and
+// times the compile per layer, so a compiler change can be timed and - with CSSBENCH_DUMP - checked for
+// an identical result without a device round trip.
 //
 //   R=<mobile-sdk checkout>
 //   clang++ -O2 -w -std=c++17 -o cssbench $R/libs-carto/cartocss/test/CompileBench.cpp \

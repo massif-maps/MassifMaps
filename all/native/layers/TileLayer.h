@@ -427,15 +427,13 @@ class ProjectionSurface;
          * layer order, and then draws the terrain surface once. Internal methods.
          */
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);
-        // What this layer contributes to the drape stack's identity. The layer's own address by
-        // default - a new layer object means new content - plus, for layers whose bake does not
-        // come from their tiles (a terrain paint), whatever their appearance depends on: they
-        // have no per-tile fingerprint through which a change could be noticed.
+        // What this layer contributes to the drape stack's identity: its own address by default,
+        // plus - for a layer whose bake does not come from its tiles - whatever its appearance
+        // depends on, since it has no per-tile fingerprint to be noticed through.
         virtual std::size_t drapeStackSignature() const;
         // Whether this layer's drape contribution is not made of tiles: a terrain paint bakes into
-        // EVERY tile of the shared drape and reports none of them. The owner needs both facts - a
-        // stack of nothing but such layers has to be given the terrain's own cover, and every tile
-        // of that cover must expect this layer's content or a tile baked without it looks finished.
+        // EVERY tile of the shared drape and reports none. A stack of only such layers needs the
+        // terrain's own cover, and every tile of it must expect this layer's content.
         virtual bool paintsEveryDrapeTile() const { return false; }
         // The terrain cover a paint layer draws itself on when nothing bakes it. Ignored by
         // layers that are not paints.
@@ -449,8 +447,7 @@ class ProjectionSurface;
         void setTerrainGroundTiles(const std::vector<vt::TileId>& tileIds, const std::vector<int>& proxyDepths);
         // Where this layer's style layers start in the stack's depth ordering. Tangram has ONE
         // ordered style list; our stack is several renderers, so the owner numbers them in draw
-        // order - without it a composite's children all claim ordinal 0 and the base map's fills
-        // are pulled in front of the hillshade above them.
+        // order - or a composite's children all claim ordinal 0.
         void setTerrainLayerOrdinalBase(int base);
         int getStyleLayerCount() const;
         int renderTerrainGround(const Color& color);
@@ -491,6 +488,15 @@ class ProjectionSurface;
         void setTerrainSunLighting(const ResolvedLighting& lighting);
 
     protected:
+
+        // The tile zoom the last cull asked for, and how far above its own zoom a coarsened tile may
+        // be styled - together they give a fetched tile its style zoom (TileStyleZoom.h).
+        int getTargetTileZoom() const { return _targetTileZoom; }
+        int getTileStyleZoomLift() const { return _tileStyleZoomLift; }
+
+        // Nothing to do for a layer whose tiles decode the same however the camera is placed - only
+        // a styled tile carries the target zoom into its content.
+        virtual void onTargetTileZoomChanged() { }
 
         const DirectorPtr<TileDataSource> _dataSource;
         std::shared_ptr<DataSourceListener> _dataSourceListener;
@@ -563,11 +569,13 @@ class ProjectionSurface;
         int _maxStandInLevel;
         int _maxUnderzoomLevel;
 
+        int _targetTileZoom = -1; // the tile zoom the camera asks for, before the LOD coarsens anything
+        int _tileStyleZoomLift = 0; // last Options tile style zoom lift a cull ran with
         int _terrainMaxTileZoom = 1000;
         int _terrainMinTileZoom = 0; // terrain mode: the coarsest tile zoom the LOD rule may pick
         double _maxVisibleDistance = 0; // internal units; 0 = as far as the camera can see
         double _lodMaxTileArea = 0; // screen pixels squared; the tangram LOD threshold, 0 = no area test
-        double _lodMinCosTheta = 0; // cos of the most grazing incidence the LOD charges for, 0 = no limit
+        double _lodCosThetaExponent = 0; // maplibre's p - 1: extra power on cos(incidence), 0 = the plain area rule
         double _lodZoomOffset = 0; // Options::ZoomOffset, cached per cull: the tile level a zoom targets
         double _lodElevation = 0; // world z the LOD projects a tile at when the DEM has no data for it (the terrain under the focus)
         std::shared_ptr<ElevationManager> _lodElevationManager; // held for one cull pass, per-tile terrain height for the LOD

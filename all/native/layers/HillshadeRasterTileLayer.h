@@ -350,10 +350,9 @@ namespace massif {
         // Hash of everything the paint's appearance depends on - including what only the lighting
         // shader sees - so cached drape textures are re-baked when any of it changes.
         std::size_t calculatePaintFingerprint() const;
-        // Map rotation at the last prepared frame, quantised. The paint is BAKED, so when the
-        // illumination follows the map the bake has to be redone as the map turns; the normal map
-        // path only had to change a uniform. Quantised so that a slow rotation does not re-bake
-        // every frame for a light direction nobody can tell apart.
+        // Map rotation at the last prepared frame, quantised. The paint is BAKED, so an illumination
+        // that follows the map has to re-bake as the map turns - quantised, or a slow rotation
+        // re-bakes every frame for a light direction nobody can tell apart.
         std::atomic<int> _paintRotationStep;
 
         // Elevation is packed into the normal map when contours are on or when explicitly requested

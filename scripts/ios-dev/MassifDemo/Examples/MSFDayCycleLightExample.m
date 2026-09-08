@@ -142,7 +142,7 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
     // How far a TILTED far field may coarsen: unbounded, the grazing term makes the horizon band
     // jump between levels as the camera turns, so one side keeps its buildings and the other does
     // not. This caps the grazing half alone; distance still coarsens freely.
-    [map.options set:@"tileLODForeshorteningLimit" value:@1.0];
+    [map.options set:@"tileLODMaxZoomLevelsOnScreen" value:@6.0];
 
     [self buildLayer:map];
 

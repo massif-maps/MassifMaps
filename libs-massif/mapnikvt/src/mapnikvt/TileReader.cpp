@@ -31,10 +31,10 @@ namespace massif::mvt {
     {
     }
 
-    std::shared_ptr<vt::Tile> TileReader::readTile(const vt::TileId& tileId) const {
+    std::shared_ptr<vt::Tile> TileReader::readTile(const vt::TileId& tileId, int styleZoom) const {
         ExpressionContext exprContext;
         exprContext.setTileId(tileId);
-        exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
+        exprContext.setAdjustedZoom(styleZoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
         exprContext.setStyleParameterStore(_symbolizerContext.getSettings().getStyleParameterStore());
         exprContext.setRender3D(_transformer && _transformer->isElevationBased());
 
@@ -161,12 +161,9 @@ namespace massif::mvt {
         const std::set<std::string>* symbolizerFieldsPtr = symbolizerFields.count(std::string()) == 0 ? &symbolizerFields : nullptr;
         const std::set<std::string>* styleFieldsPtr = styleFields.count(std::string()) == 0 ? &styleFields : nullptr;
 
-        // One anchor per BUILDING, before anything is drawn: the pieces of one building have to
-        // read the ground at the same place or they stand at different heights, and the pieces this
-        // tile does not draw are part of deciding where that place is. Skipped unless the layer
-        // actually extrudes.
-        // Nothing to share on a flat map: with one ground elevation everywhere every anchor answers
-        // the same, and the pass is pure decode cost.
+        // One anchor per BUILDING, before anything is drawn: the pieces of one building have to read the
+        // ground at the same place, and the pieces this tile does not draw help decide where that is.
+        // Skipped unless the layer extrudes, and on a flat map, where every anchor answers the same.
         bool extrudes = _transformer && _transformer->isElevationBased();
         if (extrudes) {
             extrudes = false;

@@ -207,12 +207,9 @@ namespace massif::vt {
             i2 = i1;
         }
 
-        // GPU terrain skirts: extrude the tile borders downwards to cover cracks between
-        // neighbouring tiles that sample different elevation texture levels. The skirt
-        // bottom z is a sentinel encoding (SKIRT_SENTINEL - drop) that the terrain vertex
-        // shader decodes into 'terrain height at this position minus drop'; without the
-        // terrain shader these vertices would be garbage, so skirts are only built when
-        // enabled by the renderer (GPU draping mode).
+        // GPU terrain skirts: extrude the tile borders downwards to cover cracks between neighbours
+        // sampling different elevation levels. The skirt bottom z is a sentinel the terrain vertex
+        // shader decodes, so skirts are only built when the renderer enables them.
         if (_terrainSkirts) {
             float drop = SKIRT_DEPTH * static_cast<float>(matrix(0, 0));
 
@@ -424,10 +421,9 @@ namespace massif::vt {
         VertexArray<cglib::vec3<float>> binormals;
         VertexArray<std::size_t> indices;
 
-        // Flat planar geometry (matches DefaultVertexTransformer): the height is applied on
-        // the GPU from the elevation texture, so the mesh z is 0 and the normal/binormal are
-        // the constant flat-tile frame (calculatePoint(u,v) = (u, 1-v, 0),
-        // calculateNormal = (0, 0, 1), calculateVector((0,1)) = (0, -1, 0)).
+        // Flat planar geometry (matches DefaultVertexTransformer): the height is applied on the GPU from
+        // the elevation texture, so the mesh z is 0 and the normal/binormal are the constant flat-tile
+        // frame.
         float invRes = 1.0f / static_cast<float>(res);
         for (int j = 0; j <= res; j++) {
             float v = j * invRes;

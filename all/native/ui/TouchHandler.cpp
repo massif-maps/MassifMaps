@@ -416,20 +416,15 @@ namespace massif {
 
         double panScale = _panScale.load();
         if (_options->getPanningSpeedMode() != PanningSpeedMode::PANNING_SPEED_MODE_MAP && panScale > 0) {
-            // The pan travels the SCREEN delta at the scale the gesture started with. Grabbing
-            // the world exactly - the other mode - re-derives that scale from wherever the
-            // finger is now, so a drag that starts near the camera and travels up the screen
-            // speeds up as it goes, which is not something the hand asked for.
+            // The pan travels the SCREEN delta at the scale the gesture started with. Grabbing the
+            // world exactly re-derives that scale from where the finger is now, so a drag up the
+            // screen speeds up as it goes.
             cglib::vec3<double> focusPos = viewState.getFocusPos();
             MapPos focusMapPos = projectionSurface->calculateMapPos(focusPos);
             cglib::vec3<double> normal = projectionSurface->calculateNormal(focusMapPos);
-            // NOT '== 0': looking straight down, this cross product is meant to collapse and
-            // hand over to the up vector - but a tilt REACHED BY GESTURE is vertical only to
-            // within rounding, so it comes out at ~1e-16 instead of 0, the hand-over is missed,
-            // and unit() then turns pure floating point noise into a unit vector pointing
-            // anywhere. That is a pan that goes sideways when the finger goes up. Setting the
-            // tilt to 90 outright happens to build the camera exactly vertical, which is why
-            // only the gesture shows it.
+            // NOT '== 0': looking straight down this cross product should collapse and hand over to
+            // the up vector, but a tilt reached BY GESTURE is vertical only to within rounding, so
+            // it comes out at ~1e-16 and unit() turns the noise into a vector pointing anywhere.
             cglib::vec3<double> right = cglib::vector_product(viewState.calculateViewDir(), normal);
             if (cglib::length(right) < VIEW_AXIS_EPSILON) {
                 right = cglib::vector_product(viewState.getUpVec(), normal); // straight up or down
@@ -462,9 +457,8 @@ namespace massif {
 
         if (viewState.getTilt() < PAN_CLAMP_MAX_TILT) {
             // Tangram's guard (inputHandler.cpp getTranslation): near the horizon the two rays run
-            // almost parallel to the ground and their hit points fly apart, so a finger travel of a
-            // few pixels comes out as kilometres. Cap the travel at what those pixels are worth at
-            // the map scale - the pan stops grabbing exactly, which is the point.
+            // almost parallel to the ground and their hits fly apart, so a few pixels come out as
+            // kilometres. Cap the travel at what those pixels are worth at the map scale.
             cglib::vec3<double> pos0 = projectionSurface->calculatePosition(currentPos);
             cglib::vec3<double> pos1 = projectionSurface->calculatePosition(prevPos);
             double travel = projectionSurface->calculateDistance(pos0, pos1);
@@ -496,14 +490,9 @@ namespace massif {
             float dx = screenPos.getX() - _prevScreenPos1.getX();
             float dy = screenPos.getY() - _prevScreenPos1.getY();
 
-            // Sideways turns the heading. Dragging left turns the view right, the way dragging the
-            // world does, so the gesture reads the same as panning does outside free roam.
-            //
-            // The turn is about the CAMERA, not about the focus point on the ground: turning your
-            // head does not move you. Rotating about the focus - what a map rotation does - swings
-            // the camera around a circle of the focus distance, and at a low tilt that walks it
-            // straight through the terrain. In first person the rotation event pivots there by
-            // itself (the whole camera model does); in LOOK mode it is asked for explicitly.
+            // Sideways turns the heading, left-drag turning the view right as dragging the world
+            // does. About the CAMERA, not the focus: rotating about the focus swings the camera
+            // around a circle of the focus distance, which at a low tilt walks it through terrain.
             if (dx != 0) {
                 std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
                 CameraRotationEvent cameraEvent;
@@ -674,10 +663,9 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
 
-            // First person movement: the two fingers are the movement keys. Dragging them up walks
-            // forward, down walks back, sideways strafes - the camera keeps its height, its heading
-            // and its zoom, and nothing is anchored to a point on the ground, so this works just as
-            // well with the view aimed at the sky, where a map pan has no ground to hold on to.
+            // First person movement: the two fingers are the movement keys, and the camera keeps its
+            // height, heading and zoom. Nothing is anchored to the ground, so it works with the view
+            // aimed at the sky, where a map pan has nothing to hold on to.
             float dx = (screenPos1.getX() + screenPos2.getX()) * 0.5f - (_prevScreenPos1.getX() + _prevScreenPos2.getX()) * 0.5f;
             float dy = (screenPos1.getY() + screenPos2.getY()) * 0.5f - (_prevScreenPos1.getY() + _prevScreenPos2.getY()) * 0.5f;
             _prevScreenPos1 = screenPos1;
@@ -734,14 +722,9 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
 
-            // The scale and the angle are what the FINGERS did, taken from the SCREEN - which is
-            // where a pinch and a two-finger turn happen, and how tangram takes them (inputHandler
-            // handlePinchGesture/handleRotateGesture, fed by the platform's gesture detector).
-            // Deriving them from where the two rays meet the ground instead - what this did - hands
-            // a grazing ray straight to the camera: a low camera over terrain puts one finger's hit
-            // kilometres away, so a pinch of a few pixels comes out as a wild zoom or spin, and
-            // where the ray missed the ground altogether the whole gesture was dropped and the map
-            // could not be zoomed at all.
+            // The scale and the angle are what the FINGERS did, taken from the SCREEN, as tangram
+            // takes them. Deriving them from where the rays meet the ground hands a grazing ray to
+            // the camera: one hit kilometres away turns a few pixels into a wild zoom or spin.
             cglib::vec2<float> currentVec(screenPos2.getX() - screenPos1.getX(), screenPos2.getY() - screenPos1.getY());
             cglib::vec2<float> prevVec(_prevScreenPos2.getX() - _prevScreenPos1.getX(), _prevScreenPos2.getY() - _prevScreenPos1.getY());
             double currentDist = cglib::length(currentVec);
@@ -907,9 +890,8 @@ namespace massif {
             return false;
         }
         // The plane the gesture is actually anchored to (mapScreenPosition uses the same one).
-        // Testing the SEA LEVEL plane instead reported a touch as valid, or as past the far plane,
-        // for a surface no gesture ever uses - in the mountains the two are hundreds of metres and,
-        // at a low tilt, kilometres of ray apart.
+        // Testing the SEA LEVEL plane instead answers for a surface no gesture uses - in the
+        // mountains the two are hundreds of metres, and at a low tilt kilometres of ray, apart.
         cglib::vec3<double> pos = viewState.screenToWorld(cglib::vec2<float>(screenPos.getX(), screenPos.getY()), _gestureAnchorHeight.load());
         if (std::isnan(cglib::norm(pos))) {
             return false;

@@ -220,9 +220,8 @@ namespace massif {
     
     void BackgroundRenderer::setupFogUniforms(const ResolvedFog& fog, const ViewState& viewState, bool skyBand) {
         // The fog comes from the owner, resolved once for the frame from FogOptions AND the style,
-        // so this plane matches the tile content and the sky. It does NOT depend on the terrain:
-        // the plane is what fills the view past the loaded tiles at any tilt, so gating it on 3D
-        // terrain left a plain 2D map fogging its content and not its background.
+        // so this plane matches the tile content and the sky. NOT gated on terrain: the plane fills
+        // the view past the loaded tiles at any tilt, in 2D as much as in 3D.
         FogShader::setUniforms(_shader->getProgId(), fog.active() ? fog : ResolvedFog(), viewState);
         // The legacy sky band is at the horizon, not ground at an enormous distance, so it takes
         // the angular term alone - the same one the shader sky takes.
@@ -535,10 +534,9 @@ namespace massif {
             if (color.a == 0.0) {
                 discard;
             }
-            // The plane is what fills the view past the loaded tiles and past the terrain view
-            // distance, so it has to fade into the fog as well - otherwise the ground ends on a
-            // hard band of background colour instead of reaching the sky. The sky band is at the
-            // horizon rather than at a distance, so it takes the angular term alone.
+            // The plane fills the view past the loaded tiles, so it has to fade into the fog too or
+            // the ground ends on a hard band of background colour. The sky band is at the horizon
+            // rather than at a distance, so it takes the angular term alone.
             if (u_skyBand > 0.5) {
                 highp vec3 rayVec = uFogRay * vec3(gl_FragCoord.x, gl_FragCoord.y, 1.0);
                 gl_FragColor = skyFog(color, normalize(rayVec));

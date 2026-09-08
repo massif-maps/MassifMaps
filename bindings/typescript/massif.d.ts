@@ -592,6 +592,15 @@ export type TileFormatTileFormat =
   | "TILE_FORMAT_MLT"
   ;
 
+export type TileLODProfileTileLODProfile =
+  /** The reference density: TileLODFactor 1, which is tangram's rule, mapbox's and maplibre's alike - a tile is refined while it covers more than a 2x2 block of nominal tiles. Fewest tiles, and what every reference renderer ships. */
+  | "TILE_LOD_PROFILE_REFERENCE"
+  /** Half a level finer than the reference, with a shorter style zoom lift. Meant for a phone: visibly sharper than the reference at roughly twice its tile count. */
+  | "TILE_LOD_PROFILE_MOBILE"
+  /** A full level finer than the reference (TileLODFactor 0.5, the historical default), about 4x its tile count. Meant for a desktop or a web page on a real GPU. */
+  | "TILE_LOD_PROFILE_DESKTOP"
+  ;
+
 export type TileSubstitutionPolicyTileSubstitutionPolicy =
   /** Consider all cached/loaded tiles. */
   | "TILE_SUBSTITUTION_POLICY_ALL"
@@ -4265,8 +4274,12 @@ export interface PropertyTypes {
     "tileDrawSize": number;
     /** Returns the factor on the screen size a tile may cover before it is refined. */
     "tileLODFactor": number;
-    /** Returns how many zoom levels a tile may lose to foreshortening. */
-    "tileLODForeshorteningLimit": number;
+    /** Returns how many distinct zoom levels a tilted view may spread over. */
+    "tileLODMaxZoomLevelsOnScreen": number;
+    /** Returns how many times more tiles a tilted view may load than a top-down one. */
+    "tileLODTileCountRatio": number;
+    /** Returns how many zoom levels above its own a coarsened tile may be styled at. */
+    "tileStyleZoomLift": number;
     /** Returns the number of threads used by the tile task pool. */
     "tileThreadPoolSize": number;
     /** Returns true if tilting gesture direction is reversed (and same as with Google Maps). */

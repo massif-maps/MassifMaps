@@ -27,13 +27,9 @@ namespace {
     // every angle, but their line shader has no antialias ramp: here five near-degenerate slivers
     // each carry their own ramp, and the ramps cut a hairline seam across the line.
     static const float ROUND_JOIN_DOT_LIMIT = 0.985f;
-    // Half-widths the INNER corner of a bevel/round join may reach. It is the true miter point,
-    // 1 / cos(turn / 2), which runs away at a near-reversal and needles out past any segment
-    // shorter than it - the spike roundabouts and slip roads grew at z11-12. stroke-miterlimit
-    // cannot bound it (it only picks which branch runs), and no build-time value can either: the
-    // miter is in half-widths, a SCREEN quantity, while the segment it must fit in is in tile
-    // units. 1 - no miter, the two quads simply meeting - is the only value that holds at every
-    // zoom, and measured on device it costs no extra blending on a translucent line.
+    // Half-widths the INNER corner of a bevel/round join may reach. The true miter point runs away at
+    // a near-reversal and needles out past any shorter segment, and no build-time value can bound it -
+    // the miter is a SCREEN quantity while the segment is in tile units. 1 holds at every zoom.
     static const float INNER_MITER_LIMIT = 1.0f;
 
     // The pen walk Label::buildPointVertexData does. 'textPart' selects which half of the run is
@@ -67,13 +63,9 @@ namespace {
         return (dir(0) < 0 ? -base : base);
     }
 
-    // One text layout per side the style allows (see TextLabelStyle::anchors). The glyph run is the
-    // same every time, only its pen origin moves, so a side costs one vec2.
-    //
-    // Along the side's own axis the text is placed against the icon's edge, and dx/dy are re-applied
-    // as a gap - pushed AWAY from the icon on either side. Across it the text is centred on the
-    // anchor: a name above the icon has to be centred over it, and the formatter's own alignment is
-    // derived from the sign of dx, which means nothing once dx is a gap.
+    // One text layout per side the style allows. The glyph run is the same every time, only its pen
+    // origin moves. Along the side's axis the text sits against the icon's edge with dx/dy as a gap;
+    // across it the text is centred on the anchor, since the formatter's alignment follows dx's sign.
     static std::vector<massif::vt::TileLabel::Variant> buildLabelVariants(const std::vector<massif::vt::LabelAnchor>& anchors, massif::vt::LabelLineAlign lineAlign, bool textOptional, bool hasIcon, const std::vector<massif::vt::Font::Glyph>& glyphs, const cglib::vec2<float>& iconExtent, const cglib::vec2<float>& styleOffset) {
         std::vector<massif::vt::TileLabel::Variant> variants;
         // 'text-optional' is a layout list on its own: no side to try, but still the icon alone as
@@ -426,16 +418,9 @@ namespace massif::vt {
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
             if (style.elevationMode == LineElevationMode::SPAN && !vertices.empty()) {
-                // The tiler splits a way where structure/brunnel changes, so a bridge feature's
-                // first and last vertex ARE its portals - no inference from the DEM needed.
-                //
-                // UNLESS the tile cut them: an end outside the TILE is the clip, not a portal. Not
-                // the clip box - that is the tile plus OUR 1/8 buffer, while the source clips at
-                // its own (mapbox: 1/64), so every cut end lands well inside it and would read as
-                // a portal. The Millau deck arrives as three tile-cut pieces, and calling their
-                // cuts portals drew each fragment as its own chord: two 30% ramps and a middle.
-                // The same point is inside the NEIGHBOURING tile's copy, which is where its portal
-                // is seen - the renderer joins the pieces back together.
+                // The tiler splits a way where structure/brunnel changes, so a bridge feature's first
+                // and last vertex ARE its portals - unless the TILE cut them. Tested against the tile,
+                // not the clip box: the source clips at its own buffer, well inside ours.
                 const Vertex& p0 = vertices.front();
                 const Vertex& p1 = vertices.back();
                 SpanVertexInfo info;
@@ -583,14 +568,9 @@ namespace massif::vt {
 
         return [style, transform, invTransTransform, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
             bool span = style.elevationMode == LineElevationMode::SPAN && !verticesList.empty() && !verticesList.front().empty();
-            // A deck HANGS under the road it carries, so its min-height is negative - and a negative
-            // vertex height cannot be drawn: polygon3DVsh takes the resolved base only where the
-            // height is positive, so a negative one leaves the vertex on the terrain. Move the whole
-            // prism by shifting its BASE instead, and hand the tesselator a positive thickness.
-            // In METRES: the base it shifts is resolved in internal z units by resolveSpanBases,
-            // which converts there. Handing it tile units (calculateHeight) made the -7 m offset a
-            // rounding error against a chord in internal units, so the prism stood ON the chord and
-            // its thickness rose above the road instead of hanging under it.
+            // A deck HANGS under the road it carries, so its min-height is negative - and polygon3DVsh
+            // takes the resolved base only where the height is positive. Shift the whole prism by its
+            // BASE instead, in METRES, since resolveSpanBases converts to internal z units there.
             float spanBaseOffset = 0.0f;
             if (span) {
                 spanBaseOffset = minHeight;
@@ -733,21 +713,17 @@ namespace massif::vt {
         if (needsNewLabelStyle) {
             std::optional<GlyphMap::Glyph> calloutLineGlyph;
             if (style.orientation == LabelOrientation::CALLOUT && style.calloutLineWidth > 0) {
-                // The leader line is drawn as one more glyph quad, so it needs an opaque cell in
-                // the same atlas the text comes from - the quad is sized at draw time (the length
-                // is the culler's, and it changes every frame), so only the cell is loaded here.
-                // One shared instance: the glyph map dedupes by bitmap POINTER, so a new one per
-                // style would add a cell to the atlas every time a style is rebuilt.
+                // The leader line is drawn as one more glyph quad, so it needs an opaque cell in the
+                // text's atlas; the quad itself is sized at draw time. ONE shared instance - the glyph
+                // map dedupes by bitmap POINTER, so a new one per style would grow the atlas.
                 static const std::shared_ptr<const Bitmap> whiteBitmap = std::make_shared<Bitmap>(4, 4, std::vector<std::uint32_t>(16, 0xffffffffU));
                 if (const GlyphMap::Glyph* lineGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(whiteBitmap, GlyphMap::GlyphMode::BITMAP))) {
                     calloutLineGlyph = *lineGlyph;
                 }
             }
-            // A plate is nine-sliced from one atlas cell: the corner cells keep the radius, the edges
-            // stretch along one axis and the centre fills. The bitmaps are cached by
-            // (radius, border) in texels (the glyph map dedupes by POINTER), so a style that
-            // rebuilds does not grow the atlas. The cell spans the plate's OUTER shape - border
-            // included - and carries the fill's own shape in its r channel.
+            // A plate is nine-sliced from one atlas cell: corners keep the radius, edges stretch along
+            // one axis, the centre fills. Cached by (radius, border) in texels, so a rebuilt style does
+            // not grow the atlas. The cell spans the OUTER shape and carries the fill in its r channel.
             auto resolvePlate = [&font](const LabelPlateStyle& plateStyle) {
                 TileLabel::Style::Plate plate;
                 plate.style = plateStyle;
@@ -876,10 +852,9 @@ namespace massif::vt {
         styleParameters.colorFuncs[0] = ColorFunction(Color(1.0f, 1.0f, 1.0f, 1.0f));
 
         VertexArray<std::uint16_t> geoPosIndexes;
-        // The scales are what the vertices are QUANTISED to on the way into int16, so they have to
-        // be measured from the data exactly as the main path does. Passing 1 collapsed every skirt
-        // vertex onto integer tile coordinates - one triangle per block instead of a contact
-        // shadow, multiplied into the ground as a black wedge.
+        // The scales are what the vertices are QUANTISED to on the way into int16, so they have to be
+        // measured from the data exactly as the main path does. Passing 1 collapsed every skirt vertex
+        // onto integer tile coordinates - one triangle per block instead of a contact shadow.
         float coordScale = calculateScale(coords, _groundIndices);
         float binormalScale = calculateScale(_groundBinormals, _groundIndices);
         float texCoordScale = calculateScale(_groundTexCoords, _groundIndices);
@@ -887,8 +862,7 @@ namespace massif::vt {
 
         // ...and the index buffer is UNSIGNED SHORT, so the same split and remap the main path does.
         // Without it a dense tile runs past 65535 skirt vertices, the indices wrap, and triangles
-        // stitch unrelated vertices into slivers hundreds of metres long - dark bands raking across
-        // the map wherever buildings are packed tightly.
+        // stitch unrelated vertices into slivers hundreds of metres long.
         for (std::size_t offset = 0; offset < _groundIndices.size(); ) {
             std::size_t count = std::min(std::size_t(65535), _groundIndices.size() - offset);
 
@@ -1132,12 +1106,9 @@ namespace massif::vt {
         // For an extrusion the texcoord slot carries the footprint centroid, and the vertex stage
         // hands it straight to applyTerrain - which expects raw coord units. Same scale, then.
         if (_builderParameters.type == TileGeometry::Type::POLYGON3D && _polygon3DAnchorExtent > 0.0f) {
-            // The anchor shares the coord scale (the shader converts either with one uniform), but
-            // it can lie far outside the coords the scale was fitted to: under deep overzoom the
-            // centroid of a palace is several tiles away from the piece this tile draws, and at
-            // the coords' scale it overflowed the int16 and wrapped - a base read at a garbage
-            // position, different in every tile, which is what broke buildings apart when zooming
-            // in close. Fit the scale to the anchors as well; a coord loses nothing it can show.
+            // The anchor shares the coord scale but can lie far outside the coords it was fitted to:
+            // under deep overzoom a palace's centroid is several tiles from the piece this tile draws,
+            // and it overflowed the int16. Fit the scale to the anchors too.
             coordScale = std::min(coordScale, std::pow(2.0f, std::floor(std::log(32767.0f / (_polygon3DAnchorExtent + 1.0f)) / std::log(2.0f))));
         }
         float texCoordScale = (_builderParameters.type == TileGeometry::Type::POLYGON3D ? coordScale : calculateScale(texCoords, _indices));
@@ -1446,15 +1417,9 @@ namespace massif::vt {
         if (style.pattern) {
             du_dx = _tileSize / style.pattern->widthScale;
             dv_dy = _tileSize / style.pattern->heightScale;
-            // The tile's own phase, so the pattern runs on across a tile border. Wrapped at ONE
-            // PERIOD, which is bitmap->width * widthScale in these texcoord units: the fragment
-            // stage samples uPattern at texCoord / (texCoordScale * widthScale), and texCoordScale
-            // - only the int16 packing scale - cancels. Wrapping at the BITMAP WIDTH instead left a
-            // fraction of a period at every border, and MapTiler's construction hatch spans 18.2
-            // periods per tile, so a fifth of one was dropped each time. Accumulated in DOUBLE: a
-            // z21 tile index reaches 2^21 and a float step loses the remainder well before that.
-            // Only visible at high overzoom, where a tile is a few hundred pixels and those borders
-            // fall all over a single polygon.
+            // The tile's own phase, so the pattern runs on across a tile border. Wrapped at ONE PERIOD
+            // (bitmap->width * widthScale here), not at the bitmap width, which left a fraction of a
+            // period at every border. Accumulated in DOUBLE: a float loses the remainder by z21.
             double uPeriod = static_cast<double>(style.pattern->bitmap->width) * style.pattern->widthScale;
             double vPeriod = static_cast<double>(style.pattern->bitmap->height) * style.pattern->heightScale;
             u0 = static_cast<float>(std::fmod((_tileId.x + 0.5) * static_cast<double>(du_dx), uPeriod));
@@ -1497,11 +1462,9 @@ namespace massif::vt {
             if (points.size() < 3) {
                 return 0.0f;
             }
-            // Which way is IN comes from the ring's traversal alone: the caller orients the rings
-            // against each other first (see tesselatePolygon3D), so the edge normal already points
-            // out of the MATERIAL - out of the footprint on the outer ring, into the void on a
-            // hole. Taking each ring's own winding instead inset a hole toward its own centre,
-            // which is the wrong way round and left the band around it inverted.
+            // Which way is IN comes from the ring's traversal alone: the caller orients the rings against
+            // each other, so the edge normal already points out of the MATERIAL. Each ring's own winding
+            // instead inset a hole toward its own centre, inverting the band around it.
             for (std::size_t i = 0; i < points.size(); i++) {
                 std::size_t prev = (i + points.size() - 1) % points.size();
                 std::size_t next = (i + 1) % points.size();
@@ -1525,23 +1488,9 @@ namespace massif::vt {
                     return 0.0f; // the two edges double back on each other
                 }
                 bisector = bisector * (1.0f / bisectorLen);
-                // A DIVERGENCE FROM MAPBOX, deliberately. Theirs is
-                // `edgeRadius * Math.min(4, 1 / cosHalfAngle)` with no edge-length term
-                // (fill_extrusion_bucket, the top-ring loop), and everything else here matches them:
-                // same miter cap, same metres, and the tile-unit radius agrees to five figures on
-                // the same tile. We fold anyway. On a real Mapbox footprint an edge of 1.4 extent
-                // units meets an inset of 4.1, so BOTH its ends are pulled past each other, the roof
-                // ring turns inside out and chamfer vertices land outside the building - a wedge at
-                // the corner. Rounding the ring as mapbox does cannot absorb it: the overshoot is
-                // 1.2 extent units and rounding moves a point by at most 0.5.
-                //
-                // So this bound is ours. A third of the shorter adjacent edge is not invented
-                // either - it is what extrusionCornerCutback already imposes on the WALL at the same
-                // corner, so the roof ring now obeys the rule its own walls do. A third rather than
-                // a half leaves the band width rather than collapsing it to a point.
-                //
-                // UNRESOLVED: why mapbox does not show this with the same formula on the same data.
-                // See tests/vt/ExtrusionBevelTest.cpp for the two footprints this is measured on.
+                // A deliberate divergence from mapbox, which has no edge-length term: a 1.4-unit edge
+                // meeting a 4.1 inset crosses at both ends and turns the roof ring inside out. A third of
+                // the shorter adjacent edge is what the WALL cutback already imposes.
                 float maxInset = std::min(lenPrev, lenNext) / 3.0f;
                 insetList[ring][i] = points[i] - bisector * std::min(radius * std::min(4.0f, 1.0f / cosHalfAngle), maxInset);
                 any = true;
@@ -1576,19 +1525,14 @@ namespace massif::vt {
         }
         float invRadius = 1.0f / radius;
 
-        // Which side of an edge the building stands on, so the fragment can hold the band at full
-        // strength there instead of letting it fall off under the walls. The left normal below
-        // points into a counter-clockwise ring - and OUT of a hole ring, where the material is the
-        // side the ring does not enclose. The caller orients the rings against each other (see
-        // tesselatePolygon3D) precisely because the tile data does not: a courtyard wound like its
-        // outer ring came out filled solid.
+        // Which side of an edge the building stands on, so the fragment holds the band at full strength
+        // there instead of letting it fall off under the walls. The caller orients the rings against
+        // each other because the tile data does not - a courtyard wound like its parent filled solid.
         float inwardSign = (extrusionRingArea2(points) > 0.0f ? 1.0f : -1.0f) * (hole ? -1.0f : 1.0f);
 
-        // One quad per edge, covering that edge's bounding CAPSULE: the fragment measures its own
-        // distance to the segment, so the caps round every corner and join one edge's shadow to the
-        // next without any outline, offset or union here. Overlaps - between edges, between a
-        // building and its parts, between neighbours - are resolved by MIN blending in the mask
-        // pass, which is what stops them compounding towards black.
+        // One quad per edge, covering that edge's bounding CAPSULE: the fragment measures its distance
+        // to the segment, so the caps round every corner and join one edge's shadow to the next with no
+        // union here. Overlaps are resolved by MIN blending in the mask pass.
         for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
             cglib::vec2<float> delta = points[i] - points[j];
             float len = cglib::length(delta);
@@ -1600,10 +1544,9 @@ namespace massif::vt {
             cglib::vec2<float> offset = normal * radius;
             float segLen = len * invRadius;
 
-            // Split ALONG the wall, at the terrain lattice's own step. The quad's four corners land
-            // on the surface but its interior interpolates linearly between them, so one quad over
-            // a 50 m wall cuts into a slope at one end and floats at the other. Across the wall the
-            // span is only 2 * radius, so that direction needs no split.
+            // Split ALONG the wall, at the terrain lattice's step: the quad's corners land on the surface
+            // but its interior interpolates linearly, so one quad over a 50 m wall cuts into a slope at
+            // one end and floats at the other. Across the wall the span is only 2 * radius.
             float span = len + 2.0f * radius;
             float step = (_polygon3DGroundStep > 0.0f ? _transformer->calculateHeight(points[0], _polygon3DGroundStep) : GROUND_SKIRT_STEP);
             int steps = std::max(1, std::min(128, static_cast<int>(std::ceil(span / std::max(1.0e-6f, step)))));
@@ -1656,10 +1599,9 @@ namespace massif::vt {
         }
         centroid = centroid * (1.0f / (3.0f * area));
 
-        // The apex line. A pyramid collapses it to the centroid; a gable stretches it along the
-        // footprint's longest axis, which is the ridge an OSM 'gabled' roof means without carrying
-        // a direction. Taken from the longest EDGE rather than a full oriented bounding box: a
-        // building long enough to read as gabled has its ridge parallel to its longest wall.
+        // The apex line: a pyramid collapses it to the centroid, a gable stretches it along the
+        // footprint's longest axis. Taken from the longest EDGE rather than an oriented bounding box -
+        // a building long enough to read as gabled has its ridge parallel to its longest wall.
         cglib::vec2<float> ridge(0, 0);
         if (shape == RoofShape::GABLED) {
             float longest = 0.0f;
@@ -1728,9 +1670,8 @@ namespace massif::vt {
     }
 
     std::int8_t TileLayerBuilder::packGradientT(float height) const {
-        // The facade gradient, evaluated HERE rather than in the shader: this height and the reach
-        // are both style values in the same units, while the shader's height carries a packing and
-        // a tile scale (see uAbsHeightScale) that no constant in metres can be compared against.
+        // The facade gradient, evaluated HERE rather than in the shader: this height and the reach are
+        // both style values in one unit, while the shader's height carries a packing and a tile scale.
         // Absolute, so every part of a building shares one ramp instead of restarting per wall.
         float t = _polygon3DGradientHeight > 0.0f ? height / _polygon3DGradientHeight : 1.0f;
         return static_cast<std::int8_t>(std::max(0, std::min(127, static_cast<int>(std::lround(t * 127.0f)))));
@@ -1748,11 +1689,9 @@ namespace massif::vt {
         return base;
     }
 
-    // mapbox's fill_extrusion_bucket chamfer, ported whole. Each wall backs off from its corners by
-    // edgeRadius * tan(halfAngle) and the wedge that opens is filled from the SAME columns, so the
-    // two walls' normals meet across the fill: that interpolation is what rolls the vertical edge,
-    // at the cost of triangles and no extra vertex. Cutting the walls back WITHOUT filling the
-    // wedge is what notches a building's base, which is why the two halves cannot be split up.
+    // mapbox's fill_extrusion_bucket chamfer, ported whole: each wall backs off from its corners and the
+    // wedge that opens is filled from the SAME columns, so the two walls' normals meet across the fill.
+    // Cutting the walls back WITHOUT filling the wedge notches a building's base.
     void TileLayerBuilder::appendPolygon3DRing(const std::vector<cglib::vec2<float>>& points, const std::vector<cglib::vec2<float>>& inset, const std::vector<float>& rows, float insetLocal, float roofHeight, bool chamfer, std::int8_t styleIndex) {
         std::size_t n = points.size();
         if (n < 3 || rows.size() < 2) {
@@ -1791,9 +1730,8 @@ namespace massif::vt {
         std::size_t topRow = rows.size() - 1;
         std::vector<float> capRow(1, rows.back()), roofRow(1, roofHeight);
         // 127 at the wall's normal, 0 at the roof's: the vertex stage blends the two and that
-        // interpolation IS the rounding. Held at 64 across the whole band instead, the roof chamfer
-        // becomes a flat facet - one tone belonging to neither wall nor roof, which reads as a rim
-        // around every roof and is what makes shapes separable looking straight down.
+        // interpolation IS the rounding. Held at 64 across the band the chamfer becomes a flat facet -
+        // a rim around every roof, which is what makes shapes separable looking straight down.
         std::int8_t capSide = _polygon3DRoundedRoof ? static_cast<std::int8_t>(127) : static_cast<std::int8_t>(64);
         std::int8_t roofSide = _polygon3DRoundedRoof ? static_cast<std::int8_t>(0) : static_cast<std::int8_t>(64);
 
@@ -1876,22 +1814,17 @@ namespace massif::vt {
             while (points.size() > 1 && points.back() == points.front()) {
                 points.pop_back();
             }
-            // Oriented ONCE, here: the outer ring counter-clockwise, every hole the other way.
-            // Nothing downstream looks at winding again - a wall's outward normal, a quad's
-            // winding and the roof inset all follow the traversal direction. A courtyard wound
-            // like its parent had its walls facing inward, so they were culled and the building
-            // was see-through from inside, and its roof ring was inset the wrong way, which
-            // inverted the bevel band around the hole.
+            // Oriented ONCE, here: the outer ring counter-clockwise, every hole the other way. Nothing
+            // downstream looks at winding again - normals, quad winding and the roof inset all follow the
+            // traversal direction, so a courtyard wound like its parent faced its walls inward.
             if (extrusionRingNeedsReverse(points, !pointsList.empty())) {
                 std::reverse(points.begin(), points.end());
             }
             pointsList.push_back(std::move(points));
         }
         // The anchor every vertex of this extrusion is elevated at: the mean of the OUTER ring, as
-        // maplibre's fill-extrusion does. A building is a rigid prism standing at one elevation -
-        // sampling the terrain per vertex instead shears the roof down the slope. The anchor pass
-        // overrides it where this footprint is one piece of a bigger building, so the pieces do not
-        // step against each other (see setPolygon3DAnchors).
+        // maplibre does. Sampling the terrain per vertex instead shears the roof down the slope. The
+        // anchor pass overrides it where this footprint is one piece of a bigger building.
         _polygon3DCentroid = cglib::vec2<float>(0, 0);
         if (_polygon3DAnchor || (!pointsList.empty() && !pointsList[0].empty())) {
             cglib::vec2<float> centroid(0, 0);
@@ -1911,11 +1844,9 @@ namespace massif::vt {
             _polygon3DCentroid = cglib::vec2<float>(anchor(0), anchor(1));
             _polygon3DAnchorExtent = std::max(_polygon3DAnchorExtent, std::max(std::abs(anchor(0)), std::abs(anchor(1))));
         }
-        // Edge radius: the wall stops short of the roof and a bevel band bridges the two, with the
-        // roof ring inset by the same amount. What makes it read as ROUNDED is that the band's
-        // normals interpolate from the wall's to the roof's - one quad per edge, not a fillet.
-        // Skipped for a building too short to give up the height, or one whose footprint has an
-        // edge too short to inset without folding the ring through itself.
+        // Edge radius: the wall stops short of the roof and a bevel band bridges the two, the roof ring
+        // inset by the same amount. It reads as ROUNDED because the band's normals interpolate between
+        // the two - one quad per edge, not a fillet. Skipped for a building too short to give it up.
         float edgeRadius = 0.0f;
         float insetLocal = 0.0f;
         float wallTop = maxHeight;
@@ -1945,10 +1876,9 @@ namespace massif::vt {
         bool drawRoof = _polygon3DRoofs.insert(roofKey(pointsList, maxHeight)).second;
 
         if (minHeight != maxHeight) {
-            // The heights every wall column carries a vertex at. The extra row where the gradient
-            // knees is what makes 'building-vertical-gradient-height' mean anything on a tall wall,
-            // the lighting being per vertex (see setPolygon3DGradientHeight); the knee is a style
-            // value, so the same rows serve every edge of the footprint.
+            // The heights every wall column carries a vertex at. The extra row where the gradient knees
+            // is what makes 'building-vertical-gradient-height' mean anything on a tall wall, the
+            // lighting being per vertex; the knee is a style value, so the rows serve every edge.
             std::vector<float> rows;
             rows.push_back(minHeight);
             if (_polygon3DGradientHeight > minHeight && _polygon3DGradientHeight < wallTop) {
@@ -1964,14 +1894,9 @@ namespace massif::vt {
             return true;
         }
 
-        // The contact shadow, on the GROUND - not at minHeight. A building:part starting at 20 m
-        // would otherwise cast its shadow 20 m up, floating beside the one its parent casts at 0.
-        // Only for a footprint that is actually EXTRUDED and STANDS ON THE GROUND: a flat one was
-        // casting a full ring onto open ground with nothing above it, and a building:part starting
-        // at 20 m - a bridge deck, a tunnel roof - does not touch the ground it was shadowing.
-        // ...and only for an extrusion that stands on the GROUND at all. A SPAN one hangs from its
-        // own chord - a bridge deck, metres above the valley - so a contact shadow under it is a
-        // halo on ground it never touches, sliding about as the camera moves.
+        // The contact shadow, on the GROUND - not at minHeight, or a building:part starting at 20 m
+        // casts its shadow 20 m up. Only for a footprint that is actually EXTRUDED and stands on the
+        // ground: a SPAN hangs from its own chord, so its shadow would be a halo it never touches.
         if (style.elevationMode == LineElevationMode::DRAPE && minHeight <= 0.0f && maxHeight > minHeight) {
             for (std::size_t ring = 0; ring < pointsList.size(); ring++) {
                 appendGroundSkirt(pointsList[ring], 0.0f, ring > 0, styleIndex);
@@ -2001,13 +1926,9 @@ namespace massif::vt {
             bounds.add(_coords[i1 + offset]);
             bounds.add(_coords[i2 + offset]);
             if (_polygonClipBox.inside(bounds)) {
-                // NOT through the transformer's subdivision, unlike a draped 2D polygon: the
-                // walls below are already emitted as one quad per footprint edge, so subdividing
-                // the roof only buys a roof that follows the terrain more closely than the walls
-                // that hold it up - which is not what a roof does. Tangram tesselates its
-                // extrusions the same way (Builders::buildPolygon, no refinement), and the
-                // triangles saved are pure vertex work: measured on an Adreno 610, a 4x coarser
-                // subdivision threshold was already worth 0.5 ms of the extrusion pass.
+                // NOT through the transformer's subdivision, unlike a draped 2D polygon: subdividing the
+                // roof only buys one that follows the terrain more closely than the walls holding it up.
+                // Tangram tesselates its extrusions the same way, and the triangles saved are vertex work.
                 _indices.append(i0 + offset, i2 + offset, i1 + offset);
             }
         }
@@ -2037,11 +1958,9 @@ namespace massif::vt {
 
         bool cycle = points[0] == points[points.size() - 1];
 
-        // 'arrow only' emits the head and nothing else, so a style can paint it OVER the shaft:
-        // the shaft rules draw first, the head rules after, and where the head overlaps its own
-        // line - a U-turn, a hairpin - the head keeps the outline that tells it apart from the
-        // line it sits on. Drawn from the last segment that has a direction; the head hangs on the
-        // last vertex itself, with no pull-back, because there is no line here to pull back.
+        // 'arrow only' emits the head and nothing else, so a style can paint it OVER the shaft and the
+        // head keeps its own outline where it overlaps its line. Drawn from the last segment with a
+        // direction, hung on the last vertex with no pull-back - there is no line here to pull back.
         if (style.endArrowOnly) {
             if (cycle || !style.hasEndArrow()) {
                 return false;
@@ -2147,14 +2066,9 @@ namespace massif::vt {
                     _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
                 }
                 else {
-                    // Split line segments, INNER corners collapsed onto the centre line. Two full
-                    // width quads meeting at p0 overlap in a lens on the inside of the turn, and
-                    // every pixel of that lens is blended twice - which is what makes a line with
-                    // line-opacity go dark at each sharp turn, and a hairpin the worst case of all.
-                    // Collapsing both inner corners to p0 (mapbox's inner join) leaves the quads
-                    // touching instead of overlapping; one triangle closes the outer gap the plain
-                    // split used to leave. The notch this leaves on the inside is only ever cut
-                    // where the line reverses onto itself, which is where the line covers it.
+                    // Split line segments, INNER corners collapsed onto the centre line: two full-width
+                    // quads meeting at p0 overlap in a lens that blends twice, which darkens a
+                    // line-opacity line at every sharp turn. Collapsing them leaves the quads touching.
                     bool innerSecond = cglib::dot_product(prevTangent, binormal) < 0;
                     cglib::vec2<float> centre(0, 0);
                     cglib::vec2<float> outerTexCoord(u0, innerSecond ? v0 : v1);
@@ -2179,12 +2093,9 @@ namespace massif::vt {
                     // The cross-section that ENDS the incoming quad.
                     appendCrossSection(prevBinormal);
 
-                    // Winding mirrors with the turn side - back faces are culled for 2D geometry.
-                    // A round join must stay round HERE too: this branch takes over from the bevel
-                    // branch below at 90 degrees, and closing a hairpin with the single triangle
-                    // cuts its outer corner flat - the join reads as square, which is what a
-                    // simplified route shows at the zooms where simplification leaves a turn
-                    // sharper than a right angle.
+                    // Winding mirrors with the turn side - back faces are culled for 2D geometry. A round
+                    // join must stay round HERE too: this branch takes over from the bevel one at 90
+                    // degrees, and a single triangle cuts a hairpin's outer corner flat.
                     std::size_t hubIndex = i0 + (innerSecond ? 1 : 0);
                     std::size_t lastRimIndex = i0 + (innerSecond ? 0 : 1);
                     std::size_t fanTriangles = (style.joinMode == LineJoinMode::ROUND ? ROUND_JOIN_TRIANGLES : 1);
@@ -2216,10 +2127,9 @@ namespace massif::vt {
                         }
                     }
 
-                    // The cross-section that STARTS the outgoing quad - last, so the next iteration
-                    // finds it where it expects, as the bevel branch below already does. Emitted
-                    // before the fan, the quad was built off two of the fan's rim vertices and the
-                    // segment after the join lost its inner half.
+                    // The cross-section that STARTS the outgoing quad - last, so the next iteration finds
+                    // it where it expects. Emitted before the fan, the quad was built off two of the fan's
+                    // rim vertices and the segment after the join lost its inner half.
                     std::size_t i1 = _coords.size();
                     appendCrossSection(binormal);
                     _indices.append(hubIndex, lastRimIndex, i1 + (innerSecond ? 0 : 1));
@@ -2247,12 +2157,9 @@ namespace massif::vt {
                     _binormals.append(-lerpedScaledBinormal, prevBinormal);
                 }
 
-                // Round join: a fan across the outer corner. Tangram's addFan, same triangle count,
-                // but hubbed on the CENTRE LINE rather than on the miter point: the miter point sits
-                // at a full half-width, where the antialias ramp is already down to zero alpha, so a
-                // hub there drew five triangles meeting at a transparent vertex - a hairline gap at
-                // every join. The inner half of the corner needs no fan anyway, both quads reach the
-                // miter point across it.
+                // Round join: a fan across the outer corner, tangram's addFan but hubbed on the CENTRE
+                // LINE rather than the miter point - which sits at a full half-width, where the antialias
+                // ramp is already at zero alpha, so a hub there left a hairline gap at every join.
                 std::size_t innerIndex = i0 + (innerSecond ? 1 : 0);
                 std::size_t outerIndexA = i0 + (innerSecond ? 0 : 1);
                 std::size_t fanTriangles = (style.joinMode == LineJoinMode::ROUND && dot < ROUND_JOIN_DOT_LIMIT ? ROUND_JOIN_TRIANGLES : 1);
@@ -2359,11 +2266,9 @@ namespace massif::vt {
                 _indices.append(i0 - 1, i0 + 0, i0 + 1);
             }
 
-            // An arrow head replaces the cap and pulls the line's last vertices back by its own
-            // length, so the line stops where the head starts instead of poking out of it. The
-            // pull-back rides the binormal attribute - the shader multiplies it by the line width,
-            // so it is the same screen-space offset the extrusion uses, which the tile coordinates
-            // here can not express (the head's size is in pixels, not in metres).
+            // An arrow head replaces the cap and pulls the line's last vertices back by its own length,
+            // so the line stops where the head starts. The pull-back rides the binormal attribute, which
+            // the shader scales by the line width - the head's size is in pixels, not metres.
             bool endArrow = !cycle && style.hasEndArrow();
             cglib::vec2<float> setback = endArrow ? tangent * lineEndArrowInradius(style) : cglib::vec2<float>(0, 0);
 
@@ -2392,21 +2297,17 @@ namespace massif::vt {
         return halfBase * length / (halfBase + std::sqrt(halfBase * halfBase + length * length));
     }
 
-    // A CUSTOM head outline, offset outward by one unit - half a line width - with miter joins.
-    // For the built-in triangle this is the same thing as growing it about its incenter, which is
-    // why both look identical; on any other contour the homothety would stop keeping the edges an
-    // equal distance apart and only the per-edge offset stays right. The miter is left unclamped:
-    // clamping bevels the tip, and a maneuver arrow is read by its point. A concave contour can
-    // self-intersect here - that is the known limit of offsetting a polygon this cheaply.
+    // A CUSTOM head outline, offset outward by half a line width with miter joins - a homothety only
+    // keeps the edges equidistant on the built-in triangle. The miter is left unclamped, since clamping
+    // bevels the tip. A concave contour can self-intersect: the known limit of offsetting this cheaply.
     std::vector<cglib::vec2<float>> TileLayerBuilder::lineEndArrowShapeOutline(const LineStyle& style) {
         const std::vector<cglib::vec2<float>>& shape = *style.endArrowShape;
         std::size_t n = shape.size();
         std::vector<cglib::vec2<float>> skeleton;
         skeleton.reserve(n);
-        // MEASURED, not assumed: the line's own edge sits TWO binormal units from its centre, so a
-        // unit is a quarter of the line width. A path coordinate is documented as one line width,
-        // hence the four, and the outward offset below is two units - half a line width, the same
-        // distance a casing rule puts between its edge and the fill's.
+        // MEASURED, not assumed: the line's own edge sits TWO binormal units from its centre, so a unit
+        // is a quarter of the line width. A path coordinate is documented as one line width, hence the
+        // four, and the outward offset below is two units.
         constexpr float UNITS_PER_LINE_WIDTH = 4.0f;
         constexpr float OFFSET_UNITS = UNITS_PER_LINE_WIDTH * 0.5f;
         for (const cglib::vec2<float>& vertex : shape) {
@@ -2456,28 +2357,22 @@ namespace massif::vt {
 
         float halfBase = style.endArrowWidth;
         float length = 2.0f * style.endArrowLength;
-        // The head hangs on its INCENTER, not on its tip or its base. Every offset here is a
-        // multiple of the line width, so a casing rule draws the same triangle a few units bigger
-        // about the same incenter - and a homothety about the incenter moves every edge by the
-        // SAME distance. Anchoring the tip instead pins the two triangles together at the point:
-        // the border is then zero at the tip and widest at the base, which reads as a wedge.
+        // The head hangs on its INCENTER, not its tip or base: a homothety about the incenter moves
+        // every edge by the SAME distance, so a casing rule draws the same triangle a few units bigger.
+        // Anchoring the tip pins the two triangles at the point and the border reads as a wedge.
         float inradius = lineEndArrowInradius(style);
         cglib::vec2<float> base = -tangent * inradius;
         cglib::vec2<float> tip = tangent * (length - inradius);
 
-        // The head is solid: its corners carry a zero antialias distance, so the fragment shader
-        // keeps them opaque. The distance field a line uses describes a band one width wide, not a
-        // triangle - stretched over this one it faded the silhouette near the barbs while leaving
-        // the tip hard.
+        // The head is solid: its corners carry a zero antialias distance, so the fragment shader keeps
+        // them opaque. A line's distance field describes a band one width wide, not a triangle, and
+        // stretched over this one it faded the silhouette near the barbs.
         const cglib::vec4<std::int8_t> attrib(styleIndex, 0, 0, 0);
         std::size_t i0 = _coords.size();
 
-        // A head drawn on its own has a SLOT cut out of its base, one line width wide - the width
-        // of the very line this rule draws elsewhere. It is what lets a style put the head OVER the
-        // shaft and still read as one polygon: the slot leaves the shaft it docks on untouched, so
-        // no bar of head colour crosses the line, while everything outside the slot - the shoulders
-        // beside the shaft, the barbs, the tip - paints over it and keeps the arrow's silhouette
-        // where the head lies on its own line, a U-turn seen from far enough away.
+        // A head drawn on its own has a SLOT cut out of its base, one line width wide, which is what
+        // lets a style put the head OVER the shaft and still read as one polygon: the slot leaves the
+        // shaft untouched while the shoulders, barbs and tip paint over it.
         if (style.endArrowOnly && halfBase > 1.0f) {
             cglib::vec2<float> slot = binormal;
             _coords.append(p0, p0, p0);
@@ -2609,13 +2504,9 @@ namespace massif::vt {
             return false;
         }
 
-        // The head minus its docking slot, as three convex clips rather than a polygon subtraction:
-        // what is in front of the base, plus each shoulder beside the shaft. Their union is the head
-        // with a slot one line width wide - the shaft it docks on stays untouched, so no bar of head
-        // colour crosses the line, and everything else still paints over it.
-        // No docking slot here, unlike the built-in triangle: a slot is a notch where the shaft
-        // enters the head, and a custom contour is placed AHEAD of the line end rather than
-        // straddling it - cutting one through the middle of an icon only gashes it.
+        // No docking slot here, unlike the built-in triangle: a slot is a notch where the shaft enters
+        // the head, and a custom contour is placed AHEAD of the line end rather than straddling it -
+        // cutting one through the middle of an icon only gashes it.
         std::vector<std::vector<cglib::vec2<float>>> pieces { outline };
 
         const cglib::vec4<std::int8_t> attrib(styleIndex, 0, 0, 0);

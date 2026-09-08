@@ -62,10 +62,9 @@ namespace massif::vt {
 
     std::recursive_mutex FontManagerLibrary::_mutex;
 
-    // The weight and slant a font NAME asks for. Android ships one Roboto-Regular.ttf and reaches
-    // its bold and italic through variable-font axes (see /system/etc/fonts.xml), so a face matched
-    // by family alone still has to be told which instance of itself to be - otherwise every style
-    // asking for 'Roboto Medium' or 'Roboto Italic' drew the regular upright face.
+    // The weight and slant a font NAME asks for. Android ships one Roboto-Regular.ttf and reaches its
+    // bold and italic through variable-font axes, so a face matched by family alone still has to be told
+    // which instance of itself to be.
     struct FontStyle {
         int weight = 0;   // 0 = the face's own default
         int width = 0;
@@ -340,11 +339,9 @@ namespace massif::vt {
                     FT_Outline_Embolden(&face->glyph->outline, strength);
                 }
             }
-            // Rasterize coverage first, then let FreeType's 'bsdf' module build the field from
-            // that bitmap - the same thing tangram does (fontContext.cpp rasterizes, then
-            // sdfBuildDistanceFieldNoAlloc). FreeType's outline SDF ('sdf' module, which is what
-            // rendering straight to FT_RENDER_MODE_SDF uses) gets the sign wrong where a stem
-            // meets a shoulder, so the middle of a stroke reads as outside the glyph.
+            // Rasterize coverage first, then let FreeType's 'bsdf' module build the field from that
+            // bitmap, as tangram does. FreeType's outline SDF gets the sign wrong where a stem meets a
+            // shoulder, so the middle of a stroke reads as outside the glyph.
             error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
             if (error != 0 && error != FT_Err_Cannot_Render_Glyph) {
                 return 0;
@@ -358,10 +355,9 @@ namespace massif::vt {
             int height = face->glyph->bitmap.rows;
             float xOffset = std::ceil(-face->glyph->metrics.horiBearingX / 64.0f);
             float yOffset = std::ceil((face->glyph->metrics.height - face->glyph->metrics.horiBearingY) / 64.0f);
-            // FreeType writes +-GLYPH_RENDER_SPREAD texels over +-127; the renderer's convention is
-            // 128 / BITMAP_SDF_SCALE per texel (BitmapCanvas). Converting between the two is this
-            // ratio - and it has to be exactly this, or the field stops short of 0 at the edge of
-            // the bitmap and every halo turns into a box (see GLYPH_RENDER_SPREAD).
+            // FreeType writes +-GLYPH_RENDER_SPREAD texels over +-127, while the renderer's convention is
+            // 128 / BITMAP_SDF_SCALE per texel. It has to be exactly this ratio, or the field stops short
+            // of 0 at the edge of the bitmap and every halo turns into a box.
             float distScale = (128.0f / BITMAP_SDF_SCALE) * (GLYPH_RENDER_SPREAD / 127.0f);
             const unsigned char* distBuffer = face->glyph->bitmap.buffer;
             if (!distBuffer) {
@@ -552,11 +548,9 @@ namespace massif::vt {
                 }
             }
 
-            // Already decoded, then a pending font whose hint says it is this one, then the
-            // external loader, and only as a last resort every pending font. The sweep is what
-            // decoding all of them up front used to do, and it is the expensive part - resolving
-            // the fallback font ('Arial', which no style package carries) would trigger it on
-            // every context build if it came before the external loader.
+            // Already decoded, then a pending font whose hint says it is this one, then the external
+            // loader, and only as a last resort every pending font. That sweep is the expensive part -
+            // resolving the fallback font would trigger it on every context build.
             auto fontDataIt = _fontDataMap.find(fontName);
             if (fontDataIt == _fontDataMap.end()) {
                 fontDataIt = loadHintedFontData(fontName);

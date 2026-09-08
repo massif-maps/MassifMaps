@@ -35,13 +35,9 @@ namespace massif::vt {
 
         std::vector<std::shared_ptr<TileSurface>> buildTileSurface(const TileId& tileId) const;
 
-        // Builds a single shared unit-grid surface (tile-local [0,1] coordinates, flat
-        // planar geometry) with a fixed resolution x resolution subdivision. Unlike
-        // buildTileSurface this carries no per-tile world placement: it is drawn for every
-        // tile with the tile's own MVP + terrain uniforms (exactly like draped geometry),
-        // so the mesh can be built ONCE and reused across all tiles - no per-tile
-        // tesselation, no per-tile VBO (tangram's shared raster grid model). Terrain is
-        // planar only, so the flat transformer's constant normal/binormal are baked in.
+        // Builds a single shared unit-grid surface in tile-local [0,1] coordinates. Unlike
+        // buildTileSurface it carries no per-tile world placement - it is drawn with each tile's own MVP
+        // and terrain uniforms - so the mesh is built ONCE and reused, as tangram's raster grid is.
         std::shared_ptr<TileSurface> buildRegularGridSurface(int resolution) const;
 
     private:

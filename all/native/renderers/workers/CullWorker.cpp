@@ -109,11 +109,9 @@ namespace massif {
                 // Get view state
                 const ViewState& viewState = mapRenderer->getViewState();
                 if (viewState.getWidth() <= 0 || viewState.getHeight() <= 0) {
-                    // Put the request back rather than drop it. iOS runs onSurfaceCreated and
-                    // onSurfaceChanged inside drawRect:, so a cull asked for before the first frame
-                    // arrives here with no size yet - and losing it loses it for good, because the
-                    // tile set is only recalculated when the MVP changes (TileLayer::loadData). The
-                    // layer then stays empty on a still camera until the user pans.
+                    // Put the request back rather than drop it: iOS runs onSurfaceCreated inside
+                    // drawRect:, so a cull asked for before the first frame arrives with no size yet
+                    // - and the tile set is only recalculated when the MVP changes.
                     std::lock_guard<std::mutex> lock(_mutex);
                     std::chrono::steady_clock::time_point retryTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(SURFACE_WAIT_RETRY_DELAY);
                     for (const std::shared_ptr<Layer>& layer : layers) {

@@ -107,23 +107,17 @@ namespace massif {
         static int resolveDrapeResolution(int setting, const ViewState& viewState, const std::shared_ptr<Options>& options, std::size_t budgetMegabytes = 0, int workingSet = 0);
         // Metres a draped line is drawn in front of the ground (see GLTileRenderer::setTerrainLineClearance).
         static float terrainLineClearanceMeters();
-        // Style layers kept out of the drape bake and drawn live instead: the application's
-        // TerrainOptions::NoDrapeLayerFilter, overridden by debug.massif.nodrapelayers ("none" to
-        // drape everything). Compiled once per distinct pattern. See
-        // GLTileRenderer::setNoDrapeLayerFilter.
+        // Style layers kept out of the drape bake and drawn live: TerrainOptions::NoDrapeLayerFilter,
+        // overridden by debug.massif.nodrapelayers ("none" to drape everything). Compiled once per
+        // distinct pattern. See GLTileRenderer::setNoDrapeLayerFilter.
         static std::optional<std::regex> noDrapeLayerFilter(const std::string& optionFilter);
         static constexpr float DEFAULT_LINE_CLEARANCE_METERS = 25.0f;
         // The drape cache clamps to the same range (TerrainDrapeCache::setResolution).
         static constexpr int MIN_DRAPE_RESOLUTION = 128;
         static constexpr int MAX_DRAPE_RESOLUTION = 2048;
         // Tiles the automatic resolution assumes are cached at once: the live cover plus what a pan
-        // is about to need back. The resolution is lowered until that many fit the cache budget.
-        // 64, the DEFAULT for TerrainOptions::DrapeWorkingSet: a real cover was measured at 15-34
-        // leaves and the cache has to hold the generation a stand-in reads from as well, so a
-        // working set at the size of one cover (24) evicts that generation every frame of a zoom -
-        // the ground blinking in the flat background colour. It costs the drape sharpness gap
-        // against mapbox, who bake the same tile at 1024; an app that wants that raises
-        // DrapeCacheSize to pay for it.
+        // needs back. A real cover is 15-34 leaves and the cache must also hold the generation a
+        // stand-in reads from, or the ground blinks in the background colour on every zoom frame.
         static constexpr std::size_t DRAPE_WORKING_SET = 64;
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
@@ -158,21 +152,19 @@ namespace massif {
         int renderLabelOcclusionDepth();
         int renderGroundAOMask();
         int bakeGroundAOMask(const vt::TileId& tileId);
-        // Pushed by the owner BEFORE the shared terrain surface is drawn. onDrawFrame sets the same
-        // state, but it runs after that draw, so the surface would light itself with the PREVIOUS
-        // frame's sun - invisible while the map redrew continuously, and a change that appears not
-        // to apply at all once it goes idle.
+        // Pushed by the owner BEFORE the shared terrain surface is drawn: onDrawFrame sets the same
+        // state but runs after that draw, so the surface would light itself with the PREVIOUS
+        // frame's sun.
         void setTerrainSunLighting(const ResolvedLighting& lighting);
         // The vt-side lighting struct for a resolved sun. One place, so the pre-surface push above
         // and onDrawFrame cannot light the same frame differently.
         static vt::GLTileRenderer::TerrainLighting buildTerrainLighting(const ResolvedLighting& lighting);
         // A light colour in LINEAR space, scaled by its intensity - the form the 3D lighting sums in.
         static cglib::vec3<float> linearColor(const Color& color, float intensity);
-        // Turns this renderer into a terrain paint baker: it shades the shared terrain elevation
-        // texture into the drape texture, at its own place in the layer order, instead of holding
-        // a tile set of its own. The fingerprint must cover every value the paint's appearance
-        // depends on, including the lighting shader's own uniforms, or already-baked drape
-        // textures survive a parameter change.
+        // Turns this renderer into a terrain paint baker: it shades the shared elevation texture
+        // into the drape at its own place in the layer order. The fingerprint must cover every value
+        // the paint's appearance depends on, or an already-baked drape survives a parameter change.
+
         // The terrain tiles a paint draws itself on when there is no drape to bake into.
         void setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds);
         void setTerrainPaint(bool enabled, bool fullDetail, float heightScale, bool exaggerateHeightScale, bool legacyHeightScale, float contrast, float opacity, std::size_t fingerprint);
@@ -194,10 +186,9 @@ namespace massif {
         // this renderer. What the style leaves unset comes from LightOptions/TerrainOptions.
         void setStyleEnvironment(const StyleEnvironment& env);
 
-        // `brightness` is what the function reads as view::brightness. It has to be passed in:
-        // a ViewState built here defaults to 1, so a Map setting ramped over the scene light -
-        // background-emissive-strength, which every converted Mapbox style carries - resolved at
-        // full daylight whatever the hour, and the map's largest surface never went dark.
+        // `brightness` is what the function reads as view::brightness, and it has to be passed in:
+        // a ViewState built here defaults to 1, so a Map setting ramped over the scene light
+        // resolved at full daylight whatever the hour.
         static Color evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness = 1.0f);
         static float evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness = 1.0f);
 
@@ -218,14 +209,12 @@ namespace massif {
         static float getTerrainContentDepthShift();
         // tangram res/scenes/terrain-3d.yaml: depth_shift = -0.02*u_proj[2][3], and [2][3] is -1.
         static constexpr float TERRAIN_TANGRAM_DEPTH_SHIFT = 0.02f;
-        // It is a per-step separation between coplanar style layers, not a budget to spread over
-        // the stack: scaling it by the ordinal span was this fork's, and ten times their pull is
-        // what let far content over a near ridge (see the shift's use in onDrawFrame).
-        // Elevation levels the shading texture resolves BEYOND the standard rule
-        // (ElevationManager::clampTileZoom, which is tangram's: the tile's own zoom, adjusted by
-        // the elevation source's zoom bias). 0 means the shading and the geometry read the SAME
-        // elevation tile, which is tangram's arrangement - one raster per tile serves both - and
-        // is also why it costs nothing: there is no second set of grids and textures.
+        // A per-step separation between coplanar style layers, not a budget to spread over the
+        // stack: scaling it by the ordinal span let far content over a near ridge.
+
+        // Elevation levels the shading texture resolves BEYOND ElevationManager::clampTileZoom.
+        // 0 means shading and geometry read the SAME elevation tile - tangram's arrangement, and
+        // why it costs nothing: there is no second set of grids and textures.
         static constexpr int DEFAULT_PAINT_DETAIL_LEVELS = 0;
         static int terrainPaintDetailLevels();
         // Measurement switch for tangram's arrangement: the paint drawn AS the ground rather than
@@ -241,11 +230,9 @@ namespace massif {
         // debug.massif.inline3d 0 sends the 3D extrusions back through the per-layer 3D overlay
         // instead of drawing them inline in the main framebuffer. Read once (Android only).
         static bool isInline3DEnabled();
-        // Is `pass` (0 = the layer's own, 1 = the last one) where the BILLBOARD labels belong?
-        // A billboard stands out of the map and has to follow the extrusions, which default to the
-        // last pass while the labels default to their layer's - drawn at the label order alone,
-        // every billboard of a layer was painted over by that layer's own buildings.
-        // Flat labels keep the label order: they lie on the ground and a building over one is right.
+        // Is `pass` (0 = the layer's own, 1 = the last) where the BILLBOARD labels belong? A
+        // billboard stands out of the map and must follow the extrusions, or a layer's own buildings
+        // paint over it. Flat labels keep the label order - they lie on the ground.
         bool drawsBillboardLabelsHere(int pass) const { return std::max(_labelOrder, _buildingOrder) == pass; }
         void updateLabelOcclusionTest(const std::shared_ptr<vt::GLTileRenderer>& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
 

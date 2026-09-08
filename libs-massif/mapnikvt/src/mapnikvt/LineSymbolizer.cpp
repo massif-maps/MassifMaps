@@ -61,14 +61,9 @@ namespace massif::mvt {
             if (strokeLinejoin == vt::LineJoinMode::BEVEL) {
                 miterDotLimit = 1.0f;
             } else {
-                // 'miterlimit' is the RATIO miter-length / line-width at which a join falls back to
-                // a bevel (SVG, mapnik, tangram's PolyLineBuilder::miterLimit); the line width does
-                // not enter it. It used to - min(width / limit, 1) taken as the sine of the half
-                // angle - which made the cut depend on the static width in two wrong directions: a
-                // thin line kept mitering into a 5x-long needle at a hairpin, and a line wider than
-                // the limit never mitered at all.
-                // It picks the BRANCH only; the inner corner every branch places is bounded by
-                // vt's INNER_MITER_LIMIT instead - see TileLayerBuilder.
+                // 'miterlimit' is the RATIO miter-length / line-width at which a join falls back to a
+                // bevel (SVG, mapnik, tangram); the line width does not enter it. It picks the BRANCH
+                // only - the inner corner is bounded by vt's INNER_MITER_LIMIT.
                 // ratio = 1 / cos(turn / 2) = 1 / sqrt((1 + dot) / 2)  =>  dot = 2 / ratio^2 - 1.
                 float strokeMiterLimit = std::max(_strokeMiterLimit.getStaticValue(exprContext), 1.0f);
                 miterDotLimit = 2.0f / (strokeMiterLimit * strokeMiterLimit) - 1.0f;
@@ -136,10 +131,9 @@ namespace massif::mvt {
         };
     }
 
-    // The head is painted by offsetting the contour outward by half the line width. Where a
-    // contour turns back on itself that offset folds over and the border blows out into blobs, so
-    // only a CONVEX head is supported - removing those loops is a polygon-offsetting algorithm of
-    // its own, and every navigation arrow head in the wild is convex.
+    // The head is painted by offsetting the contour outward by half the line width, and where a contour
+    // turns back on itself that offset folds over into blobs - so only a CONVEX head is supported.
+    // Removing those loops is a polygon-offsetting algorithm of its own.
     bool LineSymbolizer::isConvexArrowPath(const std::vector<cglib::vec2<float>>& points) {
         std::size_t n = points.size();
         int sign = 0;
@@ -161,10 +155,9 @@ namespace massif::mvt {
         return true;
     }
 
-    // Enough of the SVG path grammar for an icon: M/L/H/V/C/S and Z, absolute or relative, with
-    // curves flattened to a polyline. Not a general SVG reader - it takes the 'd' attribute, which
-    // is what an icon set actually hands over, and keeps the head a POLYGON, since the tesselator
-    // extrudes points and knows nothing of curves.
+    // Enough of the SVG path grammar for an icon: M/L/H/V/C/S and Z, absolute or relative, curves
+    // flattened to a polyline. Not a general SVG reader - it takes the 'd' attribute and keeps the head
+    // a POLYGON, since the tesselator extrudes points and knows nothing of curves.
     std::shared_ptr<const std::vector<cglib::vec2<float>>> LineSymbolizer::parseArrowPath(const std::string& path, float boxLength, float boxWidth, float scale, float rotation) {
         constexpr int CURVE_SEGMENTS = 8;
         std::vector<cglib::vec2<float>> points;
@@ -302,15 +295,9 @@ namespace massif::mvt {
             return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
         }
 
-        // Fit the contour into the arrow box (length along the line by width across it, both in
-        // line widths) so an icon-set path works whatever its viewBox, keeping the ASPECT RATIO -
-        // scaling the axes independently stops it being the shape the author drew. SVG's y grows
-        // downwards and the tile's across the line, hence the flip.
-        // CENTRED on the last vertex: offsets are in the rule's own line width, so placing it by
-        // the back edge slides the casing half of (casing - fill) behind the fill instead of
-        // wrapping it. Not slotted like the built-in triangle - a notch through the middle of an
-        // icon that is not an arrow leaves the gashes it was meant to avoid, and the head is drawn
-        // after the shaft anyway.
+        // Fit the contour into the arrow box, keeping the ASPECT RATIO - scaling the axes independently
+        // stops it being the shape the author drew. SVG's y grows downwards, hence the flip. CENTRED on
+        // the last vertex, and not slotted like the built-in triangle.
         cglib::vec2<float> minPos = cleaned[0], maxPos = cleaned[0];
         for (const cglib::vec2<float>& point : cleaned) {
             minPos = cglib::vec2<float>(std::min(minPos(0), point(0)), std::min(minPos(1), point(1)));

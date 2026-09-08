@@ -33,10 +33,9 @@ namespace massif {
 #ifdef __APPLE__
     enum LogType { LOG_TYPE_FATAL, LOG_TYPE_ERROR, LOG_TYPE_WARNING, LOG_TYPE_INFO, LOG_TYPE_DEBUG };
 
-    // asl_log, which this used, has been inert since iOS 10: it never reached the unified log, so
-    // every Log:: call on iOS went nowhere and 'log stream' showed nothing. os_log at the default
-    // level, so the message survives to 'log stream' without needing --level info; %{public}s
-    // because os_log redacts a plain %s as <private>.
+    // asl_log has been inert since iOS 10, so every Log:: call on iOS went nowhere. os_log at the
+    // default level, so 'log stream' shows it without --level info; %{public}s because os_log
+    // redacts a plain %s as <private>.
     static void OutputLog(LogType logType, const std::string& tag, const char* text) {
 #if TARGET_OS_IPHONE
         static os_log_t logHandle = os_log_create("com.massifmaps.sdk", "sdk");

@@ -865,12 +865,16 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyTileFormat;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileId;
 /** Returns the factor on the screen size a tile may cover before it is refined. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODFactor;
-/** Returns how many zoom levels a tile may lose to foreshortening. */
-FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODForeshorteningLimit;
+/** Returns how many distinct zoom levels a tilted view may spread over. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODMaxZoomLevelsOnScreen;
+/** Returns how many times more tiles a tilted view may load than a top-down one. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLODTileCountRatio;
 /** Returns the tile load listener. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLoadListener;
 /** Returns the encoded tile mask of the package. This is available for map packages but not for routing packages. This should not be displayed to the user. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileMask;
+/** Returns how many zoom levels above its own a coarsened tile may be styled at. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTileStyleZoomLift;
 /** Returns the current tile substitution policy. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileSubstitutionPolicy;
 /** Returns the number of threads used by the tile task pool. */

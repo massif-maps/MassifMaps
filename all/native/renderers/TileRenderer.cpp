@@ -241,23 +241,16 @@ namespace massif {
         }
         _framePrepared = true;
         _framePrepareResult = false;
-        // The cross-layer drape draws the terrain surface from MapRenderer, BEFORE onDrawFrame
-        // sets the view state. Without this the surface is drawn with the previous frame's camera
-        // while everything else uses the current one, so the ground lags the buildings by exactly
-        // one frame during a pan and snaps into place when the motion stops.
-        // Resolved BEFORE the view state below, which carries the brightness a style's
-        // view::brightness reads. Same reason as the contact shadows: the drape bake asks whether
-        // they are active before onDrawFrame has resolved any lighting, so on the first frame at a
-        // camera they baked with intensity 0 - and a cached drape is never re-baked for a uniform
-        // change, so they stayed missing until a zoom rebuilt the tiles.
+        // Resolved BEFORE the view state below, for the same reason as the contact shadows: the
+        // drape bake runs before onDrawFrame has resolved any lighting, and a cached drape is never
+        // re-baked for a uniform change - so what it baked with stayed until a zoom rebuilt it.
         if (auto options = _options.lock()) {
             ResolvedLighting lighting = resolveLighting(options->getLightOptions(), _styleEnvironment);
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
-            // Same reason as the contact shadows above: the DRAPE BAKE evaluates every colour, and
-            // it runs here - before onDrawFrame has resolved any lighting. Set only there, a live
-            // colour was baked against the previous frame's light, and a cached drape is never
-            // re-baked for it, so the ground simply never followed the sun.
+            // Same reason as the contact shadows above: the DRAPE BAKE evaluates every colour and
+            // runs before onDrawFrame resolves any lighting, and a cached drape is never re-baked
+            // for it - so the ground never followed the sun.
             _resolvedRadiance = lighting.radiance;
             _resolvedBrightness = lighting.brightness;
             _backgroundEmissive = lighting.backgroundEmissive;
@@ -269,10 +262,9 @@ namespace massif {
             // the layer passes, to decide whether to render the occluder buffer at all.
             _textOcclusionOpacity.store(resolveTextOcclusionOpacity(options->getTerrainOptions(), _styleEnvironment));
         }
-        // The cross-layer drape draws the terrain surface from MapRenderer, BEFORE onDrawFrame
-        // sets the view state. Without this the surface is drawn with the previous frame's camera
-        // while everything else uses the current one, so the ground lags the buildings by exactly
-        // one frame during a pan and snaps into place when the motion stops.
+        // The cross-layer drape draws the terrain surface from MapRenderer, BEFORE onDrawFrame sets
+        // the view state - so without this the ground lags the buildings by exactly one frame during
+        // a pan and snaps into place when the motion stops.
         cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         prepareViewState.planarProjection = isPlanarProjectionMode();
@@ -313,25 +305,13 @@ namespace massif {
         if (setting > 0) {
             return setting;
         }
-        // From the SCREEN, not from a constant. The tile LOD refines a tile until it covers at most
-        // a 2x2 block of nominal tiles (TileLayer::calculateVisibleTiles, tangram's rule), so
-        // 2 * tileDrawSize * pixelScale is the widest any tile ever gets on screen. Baking that
-        // many texels is one texel per screen pixel at the LOD's own bound: below it the fill edges
-        // stair-step as the camera zooms past the tile's own zoom (the magnified drape texel), and
-        // above it the extra texels can never be resolved. Rounded UP to a power of two, since the
-        // cache holds one texture size and pools them.
+        // From the SCREEN, not a constant: the tile LOD refines until a tile covers at most a 2x2
+        // block, so 2 * tileDrawSize * pixelScale is the widest it ever gets - one texel per screen
+        // pixel at that bound. Rounded UP to a power of two, since the cache pools one size.
         double tileDrawSize = (options ? options->getTileDrawSize() : 256);
-        // ... and then what MEMORY allows, which is the binding constraint: a drape texture at
-        // 1024 x 1024 x RGBA is 4 MB PER TILE, and an unbounded cache of those thrashes - measured
-        // on the north pan, the drape section is 13.4 ms at 1024 and 5.2 ms at 512.
-        //
-        // That measurement came with the conclusion "a difference the screen cannot show once the
-        // texture is mipmapped", and that conclusion was WRONG: it was never compared against
-        // mapbox, which bakes the same tile at 1024. Going the other way and pinning it to 1024
-        // was worse: the cache then holds 24 tiles against a cover of 15-34, so it evicts the
-        // generation a stand-in reads from on every frame of a zoom and the ground blinks in the
-        // flat background colour. Both are the same trade, and both ends of it are now the app's
-        // (TerrainOptions::DrapeCacheSize / DrapeWorkingSet).
+        // ... and then what MEMORY allows, the binding constraint: a 1024 RGBA drape is 4 MB PER
+        // TILE and an unbounded cache thrashes, while pinning 1024 evicts the generation stand-ins
+        // read from. Both ends are the app's (TerrainOptions::DrapeCacheSize / DrapeWorkingSet).
         std::size_t budget = (budgetMegabytes > 0 ? budgetMegabytes * 1024 * 1024 : TerrainDrapeCache::MAX_BYTES);
         std::size_t budgetBytes = (TerrainDrapeCache::isBudgetEnabled() ? budget : 0);
         std::size_t tiles = (workingSet > 0 ? static_cast<std::size_t>(workingSet) : DRAPE_WORKING_SET);
@@ -621,11 +601,9 @@ namespace massif {
     vt::GLTileRenderer::TerrainLighting TileRenderer::buildTerrainLighting(const ResolvedLighting& lighting) {
         vt::GLTileRenderer::TerrainLighting terrainLighting;
         terrainLighting.enabled = true;
-        // A style whose 2D colours already carry the light is lit NEUTRALLY rather than not at all.
-        // The ground's shadow multiply lives INSIDE the terrain shading block (applyTerrainShading),
-        // so switching that block off takes the shadow with it - the caster pass keeps running and
-        // nothing receives. White ambient at full weight makes the lit term exactly 1, which leaves
-        // the authored colour alone and lets the shadow through.
+        // A style whose 2D colours already carry the light is lit NEUTRALLY, not not-at-all: the
+        // shadow multiply lives inside the terrain shading block, so switching that off takes the
+        // shadow with it. White ambient at full weight leaves the authored colour alone.
         if (lighting.colorsPrelit) {
             terrainLighting.sunDir = lighting.sunDir;
             terrainLighting.sunColor = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
@@ -690,11 +668,8 @@ namespace massif {
     }
 
     // Measurement switches, all off by default:
-    //   debug.massif.groundpaint 1  paint drawn AS the ground (tangram) - one draw per tile cheaper,
-    //                              but the shading goes under every ground-shaped fill
-    //   debug.massif.demtaps 4      elevation fetches per terrain vertex (16 lattice clamp / 4
-    //                              manual bilinear / 1 hardware-filtered, tangram's) - first
-    //                              suspect whenever the frame sits in the swap wait
+    //   debug.massif.groundpaint 1  paint drawn AS the ground (tangram): one draw per tile cheaper
+    //   debug.massif.demtaps 4      elevation fetches per terrain vertex (16 / 4 / 1, tangram's)
     //   debug.massif.tilebg 1       per-layer per-tile background meshes tangram does not have
 #ifdef __ANDROID__
     bool TileRenderer::isTerrainTileBackgroundsForced() {
@@ -710,12 +685,9 @@ namespace massif {
     }
 #endif
 
-    // The stencil tile masks that clip each tile's content to its own screen footprint, forced on
-    // (1) or off (0) instead of the renderer's own rule - which drops them in a terrain frame,
-    // where a mask is a full displaced grid per tile, and keeps them in 2D, where it is a
-    // two-triangle quad. Tangram has no stencil anywhere. What they protect against is a retained
-    // (proxy) tile painting through the gaps of the tile that replaced it, so the A/B to run is
-    // the zoom transitions, not only the frame rate.
+    // The stencil tile masks that clip each tile's content to its own footprint, forced on (1) or
+    // off (0) instead of the renderer's own rule. They stop a retained proxy tile painting through
+    // the gaps of its replacement, so the A/B to run is the zoom transitions, not the frame rate.
     //   adb shell setprop debug.massif.tilemasks 1
 #ifdef __ANDROID__
     int TileRenderer::tileMasksMode() {
@@ -818,10 +790,8 @@ namespace massif {
         tileRenderer->setLabelBlendingSpeed(_labelBlendingSpeed);
         tileRenderer->setRendererLayerFilter(_rendererLayerFilter);
 
-        // Terrain state: enable depth-based terrain rendering and rebuild tile surfaces
-        // when the elevation data changes (new DEM tiles, exaggeration change). The rebuild
-        // is debounced: during the initial load a new elevation tile may arrive almost every
-        // frame and rebuilding all surfaces each time would kill interactivity.
+        // Terrain state: rebuild tile surfaces when the elevation data changes. Debounced, because
+        // during the initial load a new elevation tile can arrive almost every frame.
         bool terrainMode = false;
         float terrainDepthBias = 0.0f;
         std::shared_ptr<TerrainOptions> activeTerrainOptions;
@@ -830,19 +800,15 @@ namespace massif {
                 if (auto terrainOptions = options->getTerrainOptions()) {
                     if (terrainOptions->isActive()) {
                         terrainMode = true;
-                        // Tile geometry lies exactly on the terrain surfaces (same transformer and
-                        // tesselation), so it only needs a small equality slack - the slope-scaled
-                        // polygon offset in the vt renderer provides the distance-stable pull
-                        // towards the viewer. A large constant clip-space bias would translate to
-                        // hundreds of meters of depth tolerance at far distances (see-through ridges).
+                        // Tile geometry lies exactly on the terrain surfaces, so it needs only a small
+                        // equality slack - the vt renderer's slope-scaled polygon offset does the pull.
+                        // A large clip-space bias is hundreds of metres of tolerance far away.
                         terrainDepthBias = terrainOptions->getDepthBias() * 0.1f;
                         activeTerrainOptions = terrainOptions;
                         const std::shared_ptr<ElevationManager>& elevationManager = terrainOptions->getElevationManager();
-                        // A CPU base is sampled from the TEXTURE cache, which fills a few frames
-                        // after the grid loads - so the manager's version alone leaves a base
-                        // resolved against an ancestor and never revisited. Scoped to the tiles
-                        // that actually landed: buildings outnumber bridges, and re-resolving all
-                        // of them on every DEM arrival is what made this expensive.
+                        // A CPU base is sampled from the TEXTURE cache, which fills a few frames after
+                        // the grid, so the manager's version alone leaves a base on an ancestor. Scoped
+                        // to the tiles that landed - re-resolving every building on each DEM arrival cost.
                         if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
                             std::vector<MapTile> contentChanges = elevationTextureCache->drainContentChanges();
                             if (!contentChanges.empty()) {
@@ -857,18 +823,16 @@ namespace massif {
                         unsigned int elevationVersion = elevationManager->getVersion();
                         if (elevationVersion != _elevationVersion) {
                             auto now = std::chrono::steady_clock::now();
-                            // Drop only the surfaces over the tiles that changed; the global reset
-                            // is the fallback for whole-data-set changes and change-log overflow.
-                            // A scale-only change (an exaggeration ramp) leaves the DATA version
-                            // alone - the surfaces displace on the GPU, only label anchors go stale.
+                            // Drop only the surfaces over the tiles that changed; the global reset is
+                            // the fallback for whole-data-set changes and change-log overflow. A
+                            // scale-only change leaves the DATA version alone - the GPU displaces.
                             unsigned int elevationDataVersion = elevationManager->getDataVersion();
                             bool scaleOnly = (_elevationDataVersion != 0 && elevationDataVersion == _elevationDataVersion);
                             _elevationDataVersion = elevationDataVersion;
 
                             // An extrusion's base is a CPU getDisplayHeight, so it goes stale on a
-                            // scale change as well as on new data - the exaggeration is IN that
-                            // height. Not narrowed to the changed tiles: re-resolving a base that
-                            // did not move uploads nothing (TileGeometry::setVertexBase).
+                            // scale change too - the exaggeration is IN that height. Not narrowed to
+                            // the changed tiles: re-resolving a base that did not move uploads nothing.
                             tileRenderer->invalidateExtrusionBases();
 
                             std::vector<MapTile> changedTiles;
@@ -883,10 +847,9 @@ namespace massif {
                                     changedTileIds.emplace_back(changedTile.getZoom(), changedTile.getX(), changedTile.getY());
                                 }
                                 tileRenderer->invalidateTileSurfaces(changedTileIds);
-                                // Labels are anchored onto the terrain the same way, and at one
-                                // elevation sample per label vertex a blanket re-anchor of the
-                                // visible label set costs several hundred milliseconds - the
-                                // same targeted list keeps it to the labels actually affected.
+                                // Labels are anchored the same way, and at one elevation sample per
+                                // label vertex a blanket re-anchor costs several hundred milliseconds
+                                // - the targeted list keeps it to the labels actually affected.
                                 tileRenderer->invalidateLabelElevation(changedTileIds);
                             } else if (!_lastSurfaceResetTime || now - *_lastSurfaceResetTime > std::chrono::milliseconds(SURFACE_RESET_DELAY)) {
                                 _elevationVersion = elevationVersion;
@@ -895,11 +858,9 @@ namespace massif {
                                 tileRenderer->invalidateLabelElevation();
                             } else if (auto mapRenderer = _mapRenderer.lock()) {
                                 mapRenderer->requestRedraw(); // apply the pending rebuild on a later frame
-                                // This path asks for a frame without drawing anything new. It is
-                                // meant to be a handful of frames while a rebuild is debounced; if
-                                // the elevation version never settles it is an endless render loop
-                                // instead, so say so rather than leaving it to be inferred from the
-                                // battery.
+                                // This path asks for a frame without drawing anything new - a handful
+                                // of them while a rebuild is debounced. If the elevation version never
+                                // settles it is an endless render loop, so say so.
                                 static int pendingRebuildFrames = 0;
                                 if ((++pendingRebuildFrames % 300) == 0) {
                                     Log::Infof("TileRenderer: %d frames spent waiting on an elevation rebuild, version %u", pendingRebuildFrames, elevationVersion);
@@ -910,10 +871,9 @@ namespace massif {
                 }
             }
         }
-        // GPU terrain draping: provide elevation textures so that draped geometry is
-        // displaced in the vertex shader - every layer samples the same textures, so all
-        // layers agree on heights exactly. Requires vertex texture fetch support;
-        // without it the CPU displacement path with polygon offsets stays active.
+        // GPU terrain draping: every layer samples the same elevation textures, so all layers agree
+        // on heights exactly. Requires vertex texture fetch; without it the CPU displacement path
+        // with polygon offsets stays active.
         vt::GLTileRenderer::TerrainTextureProvider terrainTextureProvider;
         if (terrainMode && activeTerrainOptions) {
             if (_maxVertexTextureUnits < 0) {
@@ -950,13 +910,9 @@ namespace massif {
                     terrainTextureProvider = [elevationTextureCache](const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
                         return elevationTextureCache->getTexture(tileId, terrainTexture);
                     };
-                    // Every terrain tile layer works in its own depth domain (the vt
-                    // renderer clears the depth buffer and renders its reference surface
-                    // pre-pass before its content, which then WRITES its real depth -
-                    // tangram-style). Cross-layer stacking is pure painter's order, so no
-                    // per-layer depth stride is needed - and any constant-NDC stride
-                    // would shift the final depth domain away from what vector elements
-                    // depth-test against after the tile layers.
+                    // Every terrain tile layer works in its own depth domain, and cross-layer
+                    // stacking is pure painter's order, so no per-layer stride is needed - a
+                    // constant-NDC one would shift what vector elements depth-test against.
                     terrainDepthBias = 0.0f;
                 }
             }
@@ -979,19 +935,9 @@ namespace massif {
                 tileRenderer->setLabelAnchorOnCull(!(__system_property_get("debug.massif.labelanchor", property) > 0 && property[0] == '0'));
             }
 #endif
-            // An extrusion BAKES its ground into its vertices, so unlike a label it cannot accept
-            // "0 means no data": a base of 0 where the ground is 215 m sinks the whole prism under
-            // the terrain. This one reports whether a grid answered.
-            // From the TEXTURE cache, not the grid LRU: the two are independent, so a grid is
-            // routinely evicted while the texture built from it keeps rendering, and a CACHED_ONLY
-            // query then answers "no data" for ground that is plainly on screen (measured at the
-            // Millau camera: 0 hits in 3900). tangram samples the raster the tile draws with for
-            // exactly this reason - one representation, so a CPU query cannot disagree with it.
-            //
-            // vt works in NORMALIZED map coordinates (-0.5..0.5); the SDK's internal space is
-            // Const::WORLD_SIZE wide. Handing the normalized pair straight over put every query in
-            // the corner of the world, where it sampled ocean and answered 0 m - which is what a
-            // bridge deck at sea level was made of.
+            // An extrusion BAKES its ground into its vertices, so it cannot accept "0 means no
+            // data", and it reads the TEXTURE cache rather than the grid LRU - a grid is routinely
+            // evicted while its texture keeps rendering. vt hands over normalized coordinates.
             if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
                 tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, bool smooth, double& height) {
                     return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, smooth, height);
@@ -1007,10 +953,8 @@ namespace massif {
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());
-        // The geometry-vs-surface chord error shrinks quadratically with the mesh
-        // resolution (both the tile surfaces and the draped geometry tesselate to
-        // tileMeters/meshResolution cells), so the depth slack can shrink with it.
-        // The default resolution 32 maps to factor 1 (the calibrated slack).
+        // The geometry-vs-surface chord error shrinks quadratically with the mesh resolution, so
+        // the depth slack shrinks with it. The default resolution 32 maps to factor 1.
         float terrainSlackScale = 1.0f;
         if (terrainMode && activeTerrainOptions) {
             float resolutionRatio = 32.0f / std::max(32, activeTerrainOptions->getMeshResolution());
@@ -1025,31 +969,24 @@ namespace massif {
         // Maplibre-style RTT draping. It requires the shared regular grid: the drape UV is the
         // grid's tile-local [0,1] vertex position, which only the regular grid provides.
         bool drapeFills = regularGrid && activeTerrainOptions->isDrapeFillsEnabled();
-        // Tangram's content depth shift (res/scenes/terrain-3d.yaml, a flat 0.02), verbatim and
-        // unscaled: it separates COPLANAR STYLE LAYERS, one step each - it is not a budget to spend,
-        // and scaling it up is what let far content over a near ridge. An un-subdivided fill gets
-        // its clearance from the geometry-sized slack instead. docs/internals/rendering/05-depth-model.md.
+        // Tangram's content depth shift (terrain-3d.yaml, a flat 0.02), verbatim and unscaled: it
+        // separates COPLANAR STYLE LAYERS one step each, and is not a budget to spend - scaling it
+        // up let far content over a near ridge. docs/internals/rendering/05-depth-model.md.
         //   adb shell setprop debug.massif.depthshift <value>   (measurement override)
         float contentDepthShift = getTerrainContentDepthShift();
         if (_terrainGroundActive && contentDepthShift == 0.0f) {
             contentDepthShift = TERRAIN_TANGRAM_DEPTH_SHIFT;
         }
         tileRenderer->setTerrainContentDepthShift(contentDepthShift);
-        // Metre-constant clearance for draped LINES over the shared ground (see applyDepthBias in
-        // vt). A line chords over the relief between its own vertices; under a ground that writes
-        // depth that sag is what cuts roads and contours into fragments. The quantity is metres of
-        // sag, so the clearance is expressed in metres and converted at the equator scale - the
-        // remaining 1/cos(latitude) is under a factor of 1.5 at the latitudes terrain is used at,
-        // which is inside the tolerance this is tuned to anyway.
+        // Metre-constant clearance for draped LINES over the shared ground (applyDepthBias in vt):
+        // a line chords over the relief between its vertices, and that sag is what cuts roads into
+        // fragments. In metres, converted at the equator scale.
         //   adb shell setprop debug.massif.lineclearance <metres>
         tileRenderer->setTerrainLineClearance(static_cast<float>(terrainLineClearanceMeters() * Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE));
         tileRenderer->setTerrainEdgeStitching(regularGrid && activeTerrainOptions && activeTerrainOptions->isTileEdgeStitchingEnabled());
-        // Draped content is baked FLAT (orthographic, no displacement), so lines need no terrain
-        // subdivision either - draping them is strictly cheaper as well as artifact-free. It is
-        // also the drape texture's resolution though: a line baked into it is magnified with the
-        // texture, which turns dense thin lines (contours on a steep slope) into a blurred wash.
-        // DrapeLines is what trades the one for the other, and TileLayer already decodes lines at
-        // source density / subdivided to match it.
+        // Draped content is baked FLAT, so lines need no terrain subdivision - but they also take
+        // the drape texture's resolution, which turns dense thin lines into a blurred wash.
+        // DrapeLines trades the one for the other.
         bool drapeLines = drapeFills && activeTerrainOptions && activeTerrainOptions->isDrapeLinesEnabled();
         tileRenderer->setTerrainDrapeFills(drapeFills, drapeLines);
         // 3D bridges are opt-in: off, a span feature drapes like the ground and the renderer's
@@ -1062,10 +999,9 @@ namespace massif {
         tileRenderer->setTerrainDrapeResolution(resolveDrapeResolution(activeTerrainOptions ? activeTerrainOptions->getDrapeResolution() : 0, viewState, _options.lock(),
             activeTerrainOptions ? static_cast<std::size_t>(activeTerrainOptions->getDrapeCacheSize()) : 0,
             activeTerrainOptions ? activeTerrainOptions->getDrapeWorkingSet() : 0));
-        // Sun lighting of the draped surface. Once every 2D layer is baked into the drape
-        // texture the surface is the only lit ground geometry in the scene, so the whole map
-        // is shaded by one directional light that follows the time of day - and the pre-baked
-        // hillshade raster layer becomes optional rather than the only way to get relief.
+        // Sun lighting of the draped surface: once every 2D layer is baked in, the surface is the
+        // only lit ground geometry, so one directional light shades the whole map and the pre-baked
+        // hillshade raster layer becomes optional.
         vt::GLTileRenderer::TerrainLighting terrainLighting;
         if (auto options = _options.lock()) {
             // The style's values win over the options wherever it has an opinion; the rest of the
@@ -1093,15 +1029,9 @@ namespace massif {
             _backgroundEmissive = lighting.backgroundEmissive;
             _resolvedRadiance = lighting.radiance;
             _resolvedBrightness = lighting.brightness;
-            // The terrain surface is what this lights, and it exists whenever the stack draws one:
-            // baked under a drape, or the shared ground pass when the drape is off. Gating on the
-            // drape alone left the ground AND the hillshade paint over it unlit - and with them the
-            // shadow map, since the shadow multiplies the lit colour (the paint is drawn from this
-            // layer's own pass, which runs after the owner has set the stack's sun, so it saw the
-            // value this line computes).
-            // A pre-lit style is handled inside buildTerrainLighting, which lights it neutrally so
-            // the ground keeps its authored colour and still receives the shadow. Measured at the
-            // Opera, dusk: (68,64,83) against gl-js's (69,64,83); lit twice it was (14,16,31).
+            // The terrain surface exists whenever the stack draws one - baked under a drape, or the
+            // shared ground pass. Gating on the drape alone left the ground and the paint over it
+            // unlit, and with them the shadow, which multiplies the lit colour.
             if ((drapeFills || _terrainGroundActive) && lighting.terrainLightingEnabled) {
                 terrainLighting = buildTerrainLighting(lighting);
             }
@@ -1131,10 +1061,9 @@ namespace massif {
         }
         tileRenderer->setDebugWireframe(false); // debug: terrain mesh wireframe + stencil overlay
         tileRenderer->setDebugSurfacePrefill(false); // debug: facing-coded terrain pre-fill (magenta front / cyan back)
-        // The terrain base fill (color or the map background bitmap) is rendered
-        // globally by MapRenderer BEFORE all tile layers, so it stays visible behind
-        // translucent tile layer content regardless of the layer stacking order.
-        // The per-layer surface pre-pass here stays depth-only.
+        // The terrain base fill is drawn globally by MapRenderer BEFORE all tile layers, so it
+        // stays visible behind translucent content whatever the stacking order. The per-layer
+        // surface pre-pass here stays depth-only.
         tileRenderer->setTerrainBackgroundColor(vt::Color());
         updateLabelOcclusionTest(tileRenderer, viewState, activeTerrainOptions);
 
@@ -1151,9 +1080,8 @@ namespace massif {
                 double y = normalIlluminationDir.getY();
                 double x = normalIlluminationDir.getX();
                 // Compass azimuth (0 = north, clockwise) of the horizontal part, counter-rotated by
-                // the map rotation so the light stays anchored to the viewport. The horizontal
-                // length is preserved - the previous acos(y) form assumed a unit xy and silently
-                // rewrote the horizontal/vertical balance of any other direction.
+                // the map rotation so the light stays anchored to the viewport. The horizontal length
+                // is preserved: an acos(y) form assumes a unit xy and rewrites the balance.
                 double xyLength = std::sqrt(x * x + y * y);
                 double azimuthal = std::atan2(x, y) * Const::RAD_TO_DEG - _mapRotation;
                 double sin = std::sin(azimuthal * Const::DEG_TO_RAD) * xyLength;
@@ -1525,9 +1453,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                     _labelOcclusionState.reset();
                     std::weak_ptr<MapRenderer> mapRendererWeak = _mapRenderer;
                     // The tolerance is relative to distance: at its default it only absorbs the
-                    // mismatch between the anchor and the terrain it sits on, and raising it lets
-                    // partly hidden features label (the peak-finder case). The projection itself
-                    // belongs to the depth buffer's own camera, so it lives with the buffer.
+                    // anchor-vs-terrain mismatch, and raising it lets partly hidden features label.
+                    // The projection belongs to the depth buffer's own camera, so it lives with it.
                     float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
                     tileRenderer->setLabelOcclusionTest([mapRendererWeak, occlusionTolerance](const cglib::vec3<double>& pos) {
                         auto mapRenderer = mapRendererWeak.lock();
@@ -1614,9 +1541,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
             tileRenderer->setVisibleTiles(_tiles);
             // These tiles were handed over before this renderer existed, so their placement pass
-            // found no GL renderer and did nothing (cullLabels bails out). setVisibleTiles rebuilds
-            // the label maps but places nothing, and on a still camera nothing asks again - which
-            // left a labels-only layer (markers, icons) invisible until the user panned.
+            // found no GL renderer and did nothing. On a still camera nothing asks again, which left
+            // a labels-only layer invisible until the user panned.
             _labelPlacementOwed = !_tiles.empty();
 
             if (!std::dynamic_pointer_cast<PlanarProjectionSurface>(mapRenderer->getProjectionSurface())) {
@@ -1626,10 +1552,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 tileRenderer->setLightingShader2D(lightingShader2D);
             }
 
-            // The RESOLVED sun (style over LightOptions), captured by onDrawFrame: this callback runs
-            // at draw time and cannot resolve it itself. Same four values the terrain surface is lit
-            // by, so a building and the ground it stands on agree about the hour.
-            // Per FRAGMENT: the shadow term has to reach the lighting, and it only exists there.
+            // The RESOLVED sun captured by onDrawFrame - this callback runs at draw time and cannot
+            // resolve it itself. Same values the terrain surface is lit by, so a building and its
+            // ground agree about the hour. Per FRAGMENT, because the shadow term only exists there.
             vt::GLTileRenderer::LightingShader lightingShader3D(false, LIGHTING_SHADER_3D, [this](GLuint shaderProgram, const vt::ViewState& viewState) {
                 // Linear, and already carrying the intensity: the shader sums the two and returns
                 // the sum to sRGB once, so it never needs the intensities apart.
@@ -1694,32 +1619,17 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // a replaceable grade is written against and what the emissive mixes back towards.
         uniform vec3 u_radiance;
         vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow, mediump float skyShadow) {
-            // Ambient occlusion where a wall meets the ground: that corner is shadowed by the ground
-            // and by the building's own footprint whatever the sun does, and it is the cue that
-            // makes an extrusion stand on the terrain instead of floating over it - the shadow map
-            // cannot resolve it, its texels are metres wide.
-            //
-            // wallT is the ramp itself, baked per vertex by the tesselator from the wall's ABSOLUTE
-            // height and the style's reach (TileLayerBuilder::packGradientT). Both are style values
-            // in one unit there, where the shader's own height carries a packing and a tile scale;
-            // and being absolute, every part of a building shares one ramp instead of restarting.
-            // sideVertex weights it: 1 on a wall, 0 on a roof, and partway on the bevel that
-            // rounds the edge, so the gradient fades out as the surface turns to face up.
-            // The roof shade rides the same weight: full on a roof, none on a wall, and partway
-            // across the bevel, so a darkened roof does not meet its wall on a hard line.
+            // Ambient occlusion where a wall meets the ground - the cue that makes an extrusion
+            // stand on the terrain rather than float, which the shadow map cannot resolve. wallT is
+            // baked per vertex from the ABSOLUTE height, so a whole building shares one ramp.
             lowp vec3 baseColor = color.rgb * mix(u_verticalGradient.y, mix(1.0 - u_verticalGradient.x, 1.0, wallT), sideVertex);
             // Mapbox's fill-extrusion model (docs/internals/rendering/08-lighting-sky-fog.md).
             // Ambient and sun simply SUM - no headroom coupling - and the ambient itself is
             // direction-aware, which is what separates wall tones without any gradient ramp.
             mediump float ndl = dot(normal, u_sunDir);
-            // CLAMPED, which is what fill_extrusion does (shadowed_light_factor_normal,
-            // _prelude_shadow.fragment.glsl). The WRAPPED form next to it, calculate_NdotL, is for
-            // model layers - reaching for it here flattens the whole point: a low dawn sun should
-            // leave a roof (N.L = sin(altitude)) well under the wall facing it, and wrapping lifts
-            // the roof by half the gap. The nuance between the walls comes from the ambient below.
-            // Faded out as the sun crosses the horizon: a wall's normal has no z, so N.L stays
-            // positive with the sun BELOW the map and a night facade was lit from underground.
-            // The ground needs no such term - its normal points up, so N.L closes on its own.
+            // CLAMPED, as fill_extrusion does; the WRAPPED calculate_NdotL is for model layers and
+            // lifts a roof halfway to the wall facing the sun. Faded out across the horizon: a wall's
+            // normal has no z, so N.L stays positive with the sun BELOW the map.
             mediump float sunNdl = max(0.0, ndl) * smoothstep(-0.035, 0.0, u_sunDir.z);
             // Sky is brighter near the sun: faces turned away lose up to 30% of the ambient,
             // scaled by how bright the sun actually is.
@@ -1727,15 +1637,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             mediump float ambientDirectional = mix(1.0 - 0.3 * min(dirLuminance, 1.0), 1.0, min(ndl + 1.0, 1.0));
             // Environmental light blocked from below: a downward face keeps 92%, a roof all of it.
             mediump float vertical = mix(0.92, 1.0, normal.z * 0.5 + 0.5);
-            // The sun is shadowed by the map AND by the back-face rule; the sky only by the map
-            // (skyShadow), so a wall merely turned away from the sun keeps all of it. Without the
-            // sky term a shadowed facade moved by 4% where the ground beside it went to a fifth -
-            // mapbox's own ratio, whose ambient is four times its directional.
-            //
-            // Both are raised to 2.2 first, because this sum is LINEAR and the ground applies its
-            // own shadow to a finished sRGB colour. A strength of 0.8 leaves a fifth of the light
-            // there and pow(0.2, 1/2.2) = 0.48 here: the same setting, half the shadow. Squared
-            // into the linear domain, the two come out at the same depth.
+            // The sun is shadowed by the map AND the back-face rule, the sky only by the map, so a
+            // wall merely turned away keeps all of it. Both raised to 2.2 first, because this sum is
+            // LINEAR while the ground applies its shadow to a finished sRGB colour.
             mediump float linearSky = pow(skyShadow, 2.2);
             mediump float linearSun = pow(shadow, 2.2);
             mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional * linearSky) + u_sunColor * (sunNdl * linearSun);
@@ -1800,10 +1704,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             return premul(u_shadowColor) * shadow_strength + premul(u_highlightColor) * highlight_strength;
         }
 
-        // Port of MapLibre's hillshade.fragment.glsl. Kept line-for-line comparable so the two
-        // renderers can be diffed against each other; the only deliberate difference is that the
-        // Mercator scale correction (MapLibre's 'scaleFactor') is baked into the normal map by
-        // NormalMapBuilder instead of being recomputed per fragment from a latitude range.
+        // Port of MapLibre's hillshade.fragment.glsl, kept line-for-line comparable. The only
+        // deliberate difference: the Mercator scale correction is baked into the normal map by
+        // NormalMapBuilder instead of being recomputed per fragment.
         vec4 standard_hillshade(vec2 deriv, float azimuth) {
             // We also multiply the slope by an arbitrary z-factor of 0.625
             float slope = atan(0.625 * length(deriv));
@@ -1850,10 +1753,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         }
 
         // Based on GDALHillshadeMultiDirectionalAlg(): four lights at 225/270/315/360 degrees,
-        // weighted by the aspect. The user azimuth is unused by design - only the altitude matters.
-        // Note MapLibre instead averages basic_hillshade over its illumination-source arrays, which
-        // degenerates to plain BASIC for the single light source this layer exposes; GDAL's version
-        // is used here so the mode is actually multidirectional.
+        // weighted by aspect, so the user azimuth is unused by design. MapLibre's own version
+        // degenerates to plain BASIC for the single light source this layer exposes.
         vec4 multidirectional_hillshade(vec2 deriv_in, float altitude) {
             vec2 deriv = scale_deriv(deriv_in);
             float cos_alt = cos(altitude);
@@ -1908,21 +1809,18 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         }
 
         vec4 applyLighting(lowp vec4 color, mediump vec3 normal, mediump vec3 surfaceNormal, mediump float intensity) {
-            // Recover the height gradient from the perturbed normal. On a planar surface the
-            // tangent frame flips x and y, so -normal.xy/normal.z gives (dh/dEast, dh/dNorth).
-            // The y component is negated on top of that to match MapLibre, whose DEM texture has
-            // north at v = 0 and therefore works with (dh/dEast, -dh/dNorth). Without it the
-            // aspect is mirrored about the east-west axis and the light rotates the wrong way.
+            // Recover the height gradient from the perturbed normal: the tangent frame flips x and
+            // y, so -normal.xy/normal.z is (dh/dEast, dh/dNorth). y is negated again to match
+            // MapLibre's north-at-v=0 DEM, or the aspect mirrors about the east-west axis.
             vec2 deriv = vec2(-normal.x, normal.y) / max(normal.z, 0.001);
 
             // Extra vertical exaggeration, a Massif addition with no MapLibre equivalent. At the
             // default of 1.0 the slope is left exactly as the normal map encoded it.
             deriv *= u_exaggeration;
 
-            // u_lightDir is (sin(compassAzimuth), cos(compassAzimuth), -sin(altitude)): the
-            // horizontal part points towards the light, z points down towards the ground.
-            // MapLibre adds PI to the compass azimuth for every method, because 0 degrees is north
-            // and the original shader was written to accept (-illuminationDirection - 90).
+            // u_lightDir is (sin(azimuth), cos(azimuth), -sin(altitude)): horizontal towards the
+            // light, z down. MapLibre adds PI to the compass azimuth for every method, because its
+            // original shader was written to accept (-illuminationDirection - 90).
             float azimuth = atan(u_lightDir.x, u_lightDir.y) + PI;
             float altitude = asin(clamp(-u_lightDir.z, -1.0, 1.0));
 

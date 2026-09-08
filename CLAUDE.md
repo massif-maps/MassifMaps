@@ -60,8 +60,11 @@ each mistake cost in
   additive, never restore from a backup or an older commit.
 - **Minimum code.** No speculative features, no hypothetical abstractions.
 - **No spaghetti.** A fix on top of a fix is a signal to restructure, not to add another branch.
-- **Short comments — shorter than you think.** Say why, in one line, two at most. A measurement
-  belongs in `docs/internals/rendering/`, not above the constant it produced.
+- **Comments: 3 lines HARD MAX, 1 is the norm.** A comment longer than 3 lines is a bug in the
+  diff — split it into a doc page or delete it. Say WHY only; never restate what the next line
+  does. A measurement, a dead end, a rationale narrative belong in `docs/internals/rendering/`,
+  not above the constant they produced. This applies to `//`, `/* */` and doc comments alike, and
+  to every file you touch — a long comment you pass through gets shortened, not preserved.
 - **Observed or unverified — never blur the two.** A syntax check is not a render result; an
   emulator pass is not a device pass. State the method, and retract plainly when a measurement turns
   out not to measure what you claimed.

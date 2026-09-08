@@ -21,10 +21,9 @@
 
 namespace massif {
 
-    // A Bitmap whose border strips can be rewritten after construction. The bitmap is what the
-    // texture is rebuilt from when the GL context is lost, so a border patch that only reached the
-    // GPU would be silently undone; patching both keeps them in step. Bitmap owns the pixel data
-    // and Texture holds the bitmap alive anyway, so this costs no extra memory.
+    // A Bitmap whose border strips can be rewritten after construction: the bitmap is what the
+    // texture is rebuilt from on GL context loss, so a border patch that only reached the GPU would
+    // be silently undone. Texture holds the bitmap alive anyway, so this costs no extra memory.
     class ElevationTextureCache::BorderBitmap : public Bitmap {
     public:
         BorderBitmap(const unsigned char* pixelData, unsigned int width, unsigned int height, ColorFormat::ColorFormat colorFormat, int bytesPerRow) :
@@ -90,13 +89,9 @@ namespace massif {
             gridTile = frameIt->second;
             resolved = gridTile.getZoom() >= 0;
         } else {
-            // Nothing cached for this tile: fall back to the nearest ANCESTOR that does resolve.
-            // Zooming out asks for coarse DEM tiles that were never fetched (the finer ones cannot
-            // stand in - the walk only ever goes up), so a tile is routinely left with no elevation
-            // for a moment. Rendering it FLAT there is what makes its roads snap to straight lines
-            // over ground that IS displaced, until its own grid arrives and they jump onto it. An
-            // ancestor is coarser but geometrically correct, and it is the same height field the
-            // shared ground stands on meanwhile, so the two agree.
+            // Nothing cached for this tile: fall back to the nearest ANCESTOR that resolves. Flat
+            // would snap its roads to straight lines over ground that IS displaced; an ancestor is
+            // coarser but geometrically correct, and the shared ground stands on it meanwhile.
             vt::TileId resolveTileId = tileId;
             for (;;) {
                 resolved = resolveEntry(resolveTileId, gridTile);
@@ -112,11 +107,8 @@ namespace massif {
         }
 
         // The exact grid's texture if it is on the GPU, otherwise the nearest ancestor's: a tile
-        // whose own texture is still being encoded must not be left WITHOUT elevation. Its surface
-        // would render flat, and - since the drape bake re-fills a tile from scratch - a terrain
-        // paint would bake that tile with no hillshade at all, taking the shading off ground that
-        // already had it. An ancestor texture is coarser and geometrically correct (the uv mapping
-        // covers it), which is the same stand-in the drape itself uses while a tile catches up.
+        // whose own texture is still being encoded must not be left WITHOUT elevation, or its surface
+        // renders flat and a terrain paint bakes it with no hillshade at all.
         for (MapTile tile = gridTile; ; tile = tile.getParent()) {
             auto it = _cache.find(tile.getTileId());
             if (it != _cache.end() && it->second.texture && it->second.texture->getTexId() != 0) {
@@ -137,32 +129,25 @@ namespace massif {
         int tileMask = (1 << tileId.zoom) - 1;
         MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
 
-        // The tile that carries this tile's elevation data: its own level, capped by the data
-        // source maximum zoom and by the resolution the surface mesh can express (see
-        // ElevationManager::setSurfaceResolution). The cap lives in the manager so that the
-        // displaced surface and every CPU-side elevation query use the same height field.
+        // The tile that carries this tile's elevation data: its own level, capped by the source max
+        // zoom and by what the surface mesh can express. The cap lives in the manager so the
+        // displaced surface and every CPU-side query use the same height field.
         MapTile dataTile = _elevationManager->getDetailDataTile(mapTile, _detailLevels);
 
         std::shared_ptr<ElevationTileGrid> grid = _elevationManager->getDataTileGrid(dataTile, ElevationManager::LoadMode::CACHED_ONLY);
         if (!grid || !(grid->getTile() == dataTile)) {
-            // Missing or resolved through a coarser ancestor: request the real thing, ahead of
-            // any neighbour request. Until it arrives this tile is displaced by an ancestor grid
-            // - which is a 2x2 average of its children, i.e. a different height field than the
-            // neighbouring tiles that already have their own level - and the surface tears along
-            // the shared edge. Loading the right level fast is what closes it.
-            // No-op when elevation prefetching is disabled or the tile is already queued.
+            // Missing or resolved through a coarser ancestor: request the real thing ahead of any
+            // neighbour. Until it arrives this tile is displaced by a different height field than
+            // its neighbours and the surface tears along the shared edge. No-op when queued.
             _elevationManager->prefetchTileGrid(dataTile, 2);
         }
         if (!grid || grid->getWidth() < 1 || grid->getHeight() < 1) {
             return false;
         }
 
-        // Fetch the neighbour grids: the texture gets a 1-texel border taken from them, so
-        // adjacent tiles bilinearly interpolate across tile borders from identical texel
-        // pairs - same-level DEM tile borders become seam-free. With seamless tile edges
-        // enabled, coarser ancestor grids are accepted as well and sampled geographically
-        // (ElevationTileGrid::encodeTextureWithBorders): not perfectly symmetric across a
-        // level change, but real DEM data instead of a duplicated edge texel.
+        // Fetch the neighbour grids: the texture takes a 1-texel border from them, so adjacent
+        // tiles interpolate across the seam from identical texel pairs. With seamless edges, coarser
+        // ancestors are accepted too - real DEM data instead of a duplicated edge texel.
         bool seamless = _elevationManager->isSeamlessTileEdgesEnabled();
         const MapTile& gridTile = grid->getTile();
         int gridMask = (1 << gridTile.getZoom()) - 1;
@@ -177,10 +162,9 @@ namespace massif {
             MapTile neighbourTile((gridTile.getX() + dx) & gridMask, ny, gridTile.getZoom(), 0);
             std::shared_ptr<ElevationTileGrid> neighbour = _elevationManager->getDataTileGrid(neighbourTile, ElevationManager::LoadMode::CACHED_ONLY);
             if (!neighbour || !(neighbour->getTile() == neighbourTile)) {
-                // Border texels want the real neighbour tile, but after every tile's own level:
-                // a missing neighbour costs one texel of border accuracy, a missing own level
-                // displaces the whole tile. Diagonal neighbours only fill the corner texel where
-                // four tiles meet, so they come last.
+                // Border texels want the real neighbour, but after every tile's own level: a missing
+                // neighbour costs one texel of accuracy, a missing own level displaces the whole
+                // tile. Diagonals only fill the corner texel, so they come last.
                 _elevationManager->prefetchTileGrid(neighbourTile, dx == 0 || dy == 0 ? 1 : 0);
             }
             if (neighbour && !(neighbour->getTile() == neighbourTile) && !seamless) {
@@ -225,22 +209,17 @@ namespace massif {
             }
         }
         if (gridChanged || bordersImproved) {
-            // Not encoded yet, or encoded from data that has since changed (the tile's own grid
-            // arrived, or a neighbour did and the border can be filled properly now). Either way
-            // the work goes to the worker; what is already on the GPU keeps being used until the
-            // new texture is uploaded, so a border refinement never blanks the tile.
-            // Only the ring depends on the neighbours, so when this grid's own texture is already
-            // on the GPU a neighbour landing is a patch, not a rebuild.
+            // Not encoded yet, or encoded from data that has since changed. What is on the GPU keeps
+            // being used until the new texture is uploaded, so a border refinement never blanks the
+            // tile - and only the ring depends on neighbours, so a neighbour landing is a patch.
             bool bordersOnly = isBorderPatchEnabled() && !gridChanged && it->second.bitmap && it->second.texture;
             requestEncode(gridTile.getTileId(), grid, neighbours, qualities, bordersOnly);
             if (it == _cache.end()) {
                 return false;
             }
-            // The entry keeps serving its current texture meanwhile. Its neighbours are recorded
-            // only once the patch is actually applied: the encode queue drops its oldest jobs when
-            // it overflows, and an entry that already claimed the new neighbours would never ask
-            // again - a dropped patch would silently leave a stale border. Re-requesting every
-            // frame until it lands is a failed insert into _encodePending, which is the cheap side.
+            // Neighbours are recorded only once the patch is applied: the encode queue drops its
+            // oldest jobs on overflow, and an entry that already claimed them would never ask again.
+            // Re-requesting every frame is a failed insert into _encodePending, which is cheap.
         }
         it->second.lastUsed = ++_accessCounter;
         return it->second.texture && it->second.texture->getTexId() != 0;
@@ -322,14 +301,11 @@ namespace massif {
             // megabyte behind it is allocated once instead of per encode.
             VT_STAT_CLOCK(encodeClock);
             job.grid->encodeTextureWithBorders(job.neighbours, _encodeScratch);
-            // The encoded rows are south-to-north, i.e. already bottom-up in the Bitmap
-            // convention. Bitmap treats a POSITIVE stride as top-down input and flips the
-            // rows - pass a negative stride so the data is taken as-is (a flipped texture
-            // mirrors every tile's terrain north-south).
-            // The texture is the SOURCE raster's own format and texels - tangram's model, where
-            // the elevation raster is bound as it arrived and decoded in the shader. Nothing is
-            // requantised, so the height field keeps the data source's own precision (1/256m for
-            // terrarium, 0.1m for mapbox). The negative stride keeps the rows as copied.
+            // The encoded rows are south-to-north, already bottom-up in the Bitmap convention, and
+            // Bitmap flips a POSITIVE stride - so pass a negative one and take the data as-is.
+
+            // The texture keeps the SOURCE raster's format and texels (tangram's model), so nothing
+            // is requantised and the height field keeps the data source's own precision.
             int texelBytes = job.grid->getBytesPerTexel();
             encoded.bitmap = std::make_shared<BorderBitmap>(_encodeScratch.data(), width, height, job.grid->getColorFormat(), -texelBytes * width);
             // The node texture: (nodes + 1)^2 in the same encoding, rows south-to-north as well.
@@ -450,12 +426,9 @@ namespace massif {
     }
 
     void ElevationTextureCache::evictLeastRecentlyUsed() {
-        // Evict the least-recently-used entry, NOT the whole cache. A full flush re-encodes and
-        // re-uploads every texture whenever the working set exceeds the cap, which stalls the
-        // render thread on fast multi-level zooms (the working set of visible + neighbour DEM
-        // tiles briefly exceeds the cap). LRU keeps the warm set. Entries already used in this
-        // frame are kept if possible: dropping one would make the tile fall back to flat in its
-        // remaining render passes.
+        // Evict the least-recently-used entry, NOT the whole cache: a full flush re-encodes and
+        // re-uploads everything whenever the working set exceeds the cap, stalling the render thread
+        // on fast zooms. Entries already used this frame are kept, or their tile falls back to flat.
         auto lru = _cache.end();
         for (auto entryIt = _cache.begin(); entryIt != _cache.end(); entryIt++) {
             if (entryIt->second.lastUsed > _frameStartCounter) {
@@ -551,26 +524,17 @@ namespace massif {
         }
         double displayScale = _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
         if (smooth) {
-            // A building's base: the DEM smoothed to SMOOTH_BASE_POSTING metres, bilinear, not the
-            // lidar level the surface is drawn from. A 0.84 m DEM steps by metres between a
-            // courtyard and its street, and every piece of a building anchored on it stood at its
-            // own height. The grid LRU holds it or it is asked for: the arrival bumps the elevation
-            // version and the bases are resolved again; the sentinel is drawn meanwhile.
-            //
-            // The LEVEL is derived from the grid's own resolution, never fixed. A source serving
-            // 512 px tiles has half the posting of a 256 px one at the same zoom - measured over
-            // the Louvre on mapterhorn, a hardcoded z12 meant 12.6 m posting and left neighbouring
-            // parts of one palace 0.3-1.5 m apart, which is the comb it was meant to remove.
+            // A building's base: the DEM smoothed to SMOOTH_BASE_POSTING metres, not the lidar level
+            // the surface is drawn from, or every piece of a building stands at its own height. The
+            // LEVEL comes from the grid's own resolution, never fixed - the tile size changes it.
             double metersPerInternal = 1.0 / std::max(1.0e-12, _elevationManager->getDisplayScale(internalY));
             int shift = std::max(0, zoom - SMOOTH_BASE_ZOOM_HINT);
             std::shared_ptr<ElevationTileGrid> grid;
             for (int pass = 0; pass < 2; pass++) {
                 MapTile coarse = _elevationManager->getDetailDataTile(MapTile(x >> shift, y >> shift, zoom - shift, 0), _detailLevels);
-                // An ancestor answering is fine - coarser is smoother - and it may be all there
-                // ever is: the grid cache resolves a level through an ancestor and then never
-                // fetches it, so insisting on the exact level left every building on the sentinel
-                // for good. The arrival of a finer level bumps the elevation version and every base
-                // moves together.
+                // An ancestor answering is fine - coarser is smoother - and may be all there ever is:
+                // the grid cache resolves a level through an ancestor and then never fetches it, so
+                // insisting on the exact level left every building on the sentinel for good.
                 grid = _elevationManager->getDataTileGrid(coarse, ElevationManager::LoadMode::CACHED_ONLY);
                 if (!grid) {
                     _elevationManager->prefetchTileGrid(coarse, 2);
@@ -586,14 +550,9 @@ namespace massif {
             height = grid->sampleHeight(internalX, internalY) * displayScale;
             return true;
         }
-        // The same mapping getTexture resolves a tile through (getDetailDataTile), walking up to
-        // an ancestor exactly as it does - so the query lands on the height field the surface is
-        // drawn from. Deliberately NOT _frameResolved: that is filled as tiles are drawn, and a
-        // span resolving before its tile's texture is fetched would find nothing and drape.
-        //
-        // The grid comes from the entry the TEXTURE holds, not from ElevationManager: the manager's
-        // grid LRU drops a grid while the texture built from it goes on rendering, which is what
-        // made a CACHED_ONLY query answer "no data" for ground plainly on screen.
+        // The same mapping getTexture resolves a tile through, so the query lands on the height field
+        // the surface is drawn from. Deliberately NOT _frameResolved, which is only filled as tiles
+        // are drawn. The grid comes from the entry the TEXTURE holds - the manager's LRU drops it.
         vt::TileId tileId(zoom, x, y);
         int dataZoom = -1;
         for (;;) {
@@ -601,11 +560,9 @@ namespace massif {
             if (dataZoom < 0) {
                 dataZoom = dataTile.getZoom();
             }
-            // A base is BAKED into the vertices, so an ancestor far above the level the source
-            // actually carries is not a coarser answer but a wrong one: measured over Paris, a
-            // footprint that fell through to a far ancestor came back at 127 m where the DEM says
-            // 34 m. Refusing it is strictly better than baking it: the vertex keeps its sentinel,
-            // and the base resolves for real once the tile lands.
+            // A base is BAKED into the vertices, so a far ancestor is not a coarser answer but a
+            // wrong one: over Paris a footprint that fell through came back at 127 m where the DEM
+            // says 34. The vertex keeps its sentinel and resolves for real once the tile lands.
             if (dataZoom - dataTile.getZoom() > BASE_MAX_ANCESTOR_LEVELS) {
                 return false;
             }

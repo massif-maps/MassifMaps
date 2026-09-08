@@ -144,13 +144,8 @@ namespace massif {
         float getRotation() const;
 
         /**
-         * The zoom the RENDERER works in, which is the reported zoom plus Options::ZoomOffset.
-         *
-         * The vector tile renderer sizes everything by `2^(zoom - tileZoom)`, so it has to be given
-         * the zoom the tiles were chosen for. Without that a zoom offset renumbers the camera and
-         * leaves the renderer believing the map is a level further out, which draws the same tile
-         * twice as large - every label and line with it. Reported zoom is what an app sees; this is
-         * what vt sees, and the two differ by the offset alone.
+         * The zoom the RENDERER works in: the reported zoom plus Options::ZoomOffset. vt sizes by
+         * `2^(zoom - tileZoom)`, so it needs the zoom the tiles were chosen for.
          * @return The renderer's zoom level.
          */
         float getRenderZoom() const;

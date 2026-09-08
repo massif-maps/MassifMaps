@@ -198,11 +198,9 @@ namespace massif {
             int maxOverzoomLevel = 0;
         };
 
-        // One ordered draw step after the layer's own group-0 render: either an external
-        // raster/hillshade child, or an internal VectorTileLayer rendering a later style-layer
-        // group with a fixed rendererLayerFilter (the filter is applied at tile-build time, so
-        // each group needs its own stable-filtered layer - a single renderer cannot be
-        // re-filtered per frame).
+        // One ordered draw step after the layer's own group-0 render: an external raster/hillshade
+        // child, or an internal VectorTileLayer for a later style-layer group with a fixed filter.
+        // The filter is applied at tile-build time, so each group needs its own layer.
         enum DrawItemKind { DRAW_ITEM_EXTERNAL, DRAW_ITEM_VT_GROUP };
         struct DrawItem {
             DrawItemKind kind;

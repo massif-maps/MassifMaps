@@ -19,31 +19,19 @@
 
 namespace massif::vt {
     inline constexpr int GLYPH_RENDER_SIZE = 27;
-    // The SDF spread FreeType renders, in texels. It is also the padding around the glyph in its
-    // bitmap, and therefore the largest halo that can be drawn: past it there is no field left.
-    //
-    // It must MATCH the range the field is ENCODED over (BITMAP_SDF_SCALE). Equal here but encoded
-    // over half of it, the field is truncated mid-gradient at the bitmap's edge - the outermost
-    // texel lands at 64/255 instead of 0 - and a halo wide enough to push the ramp below 64/255
-    // lights the whole border of the quad: a hairline box around every letter, on any style with a
-    // halo of about two pixels or more. Tangram ties the two together the same way
-    // (core/src/text/fontContext.cpp: m_sdfRadius is the encode range, the atlas padding AND the
-    // maximum stroke width).
+    // The SDF spread FreeType renders, in texels: also the padding around the glyph, and therefore the
+    // largest halo that can be drawn. It must MATCH the range the field is ENCODED over
+    // (BITMAP_SDF_SCALE), or the field truncates mid-gradient and a halo boxes every letter.
     inline constexpr int GLYPH_RENDER_SPREAD = 8; // NOTE: keep it equal to BITMAP_SDF_SCALE
 
-    // How much the sampled texture value (0..1) changes over one texel of signed distance.
-    //
-    // ONE convention for every SDF in the renderer, set by BitmapCanvas: 128 / BITMAP_SDF_SCALE per
-    // texel, so the full 0..255 range spans +-BITMAP_SDF_SCALE texels. A glyph is encoded onto it in
-    // addFreeTypeGlyph, and both have to agree - a glyph encoded over a NARROWER range never reaches
-    // 0 at the edge of its bitmap, which is what put a hairline box around every letter (see
-    // GLYPH_RENDER_SPREAD).
+    // How much the sampled texture value (0..1) changes over one texel of signed distance. ONE
+    // convention for every SDF in the renderer: 128 / BITMAP_SDF_SCALE per texel, so 0..255 spans
+    // +-BITMAP_SDF_SCALE texels. A glyph encoded over a NARROWER range boxes every letter.
     inline constexpr float GLYPH_SDF_UNIT = (128.0f / BITMAP_SDF_SCALE) / 255.0f;
 
-    // The em sizes a glyph may be rasterized at, as tangram has them (core/src/text/fontContext.cpp:
-    // s_fontRasterSizes = { 16, 28, 40 }): a label takes the smallest one that still covers it, and
-    // is only magnified past the last. One raster size for every label is what made large text soft
-    // - the field itself was undersampled, no antialiasing could put the detail back.
+    // The em sizes a glyph may be rasterized at, as tangram has them (s_fontRasterSizes): a label takes
+    // the smallest that still covers it and is only magnified past the last. One raster size for every
+    // label undersampled the field itself, which is what made large text soft.
     inline constexpr std::array<int, 3> GLYPH_RENDER_EM_SIZES = { { 16, 28, 40 } };
 
     // The render size (em plus the SDF spread, which is what FontManager and the renderer count in)

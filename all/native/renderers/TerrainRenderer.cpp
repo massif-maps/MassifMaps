@@ -52,12 +52,9 @@ namespace massif {
             return false;
         }
 
-        // Depth-only pass into the current framebuffer: this is the single source of truth
-        // that 2D draped geometry depth-tests against (with a bias towards the viewer).
-        // Slope-scaled polygon offset pushes the pre-pass depth slightly away from the
-        // viewer: the pre-pass mesh and the draped tile meshes are different tesselations
-        // of the same height field, and near the camera (steep, glancing surfaces) their
-        // difference exceeds any practical constant clip-space bias.
+        // Depth-only pass into the current framebuffer: the single source of truth 2D draped
+        // geometry depth-tests against. Slope-scaled polygon offset, because the pre-pass and the
+        // draped meshes are different tesselations and a constant bias cannot cover glancing ones.
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
         glDepthMask(GL_TRUE);
         glEnable(GL_DEPTH_TEST);
@@ -102,10 +99,9 @@ namespace massif {
             return false;
         }
 
-        // Opaque terrain base fill. Depth is used DURING the pass so that near slopes
-        // win over far slopes; with keepDepth it also subsumes the depth pre-pass. The
-        // slope-scaled depth push keeps draped tile content (built from different
-        // tesselations of the same height field) in front of the kept depth.
+        // Opaque terrain base fill. Depth is used DURING the pass so near slopes win over far ones,
+        // and with keepDepth it subsumes the depth pre-pass. The slope-scaled push keeps the draped
+        // content, a different tesselation, in front of the kept depth.
         glDepthMask(GL_TRUE);
         glEnable(GL_DEPTH_TEST);
         glDisable(GL_BLEND);
@@ -119,10 +115,9 @@ namespace massif {
 
         bool result = renderTiles(viewState, terrainOptions, glResourceManager, _colorShader);
 
-        // Color-only mode: the tile layer surface pre-passes provide the terrain depth
-        // with their own (differently tesselated) meshes - this fill's depth must not
-        // survive, or it would depth-clip the tile content in triangle-shaped patches
-        // wherever the meshes disagree.
+        // Color-only mode: the tile layer surface pre-passes provide the terrain depth with their
+        // own meshes, so this fill's depth must not survive - it would clip the tile content in
+        // triangle-shaped patches wherever the two tesselations disagree.
         if (!keepDepth) {
             glClear(GL_DEPTH_BUFFER_BIT);
         }
@@ -172,10 +167,9 @@ namespace massif {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, _backgroundTex->getTexId());
 
-        // World-anchored repeating pattern, matching the flat-map BackgroundRenderer:
-        // the bitmap repeats once per map tile of the current (integer) zoom level.
-        // The per-tile uv transform is reduced modulo 1 in double precision on the CPU,
-        // so the shader only ever interpolates small uv values (no precision jitter).
+        // World-anchored repeating pattern, matching the flat-map BackgroundRenderer: the bitmap
+        // repeats once per map tile of the current integer zoom. The uv transform is reduced modulo
+        // 1 in double precision on the CPU, so the shader only interpolates small uvs.
         double uvWorldScale = static_cast<double>(1 << static_cast<int>(viewState.getZoom())) / Const::WORLD_SIZE;
         GLuint uUVOffsetScale = _bitmapShader->getUniformLoc("u_uvOffsetScale");
         auto tileUniformsFn = [&](const MapTile& tile) {
@@ -341,10 +335,9 @@ namespace massif {
             return false;
         }
 
-        // The texture is still there from the last frame: with the camera and the elevation
-        // unchanged it is still the answer. This pass draws the terrain from CPU meshes at the
-        // full mesh resolution and was the largest single item in a peak-finder frame (9.5 ms of
-        // 19.3 on an Adreno 610), all of it repeated for a map that is standing still.
+        // The texture is still there from the last frame, and with the camera and the elevation
+        // unchanged it is still the answer. This pass draws the terrain from CPU meshes at full
+        // resolution - 9.5 ms of a 19.3 ms peak-finder frame on an Adreno 610.
         unsigned int elevationVersion = (terrainOptions->getElevationManager() ? terrainOptions->getElevationManager()->getVersion() : 0);
         if (_depthTextureMVPMatrix == viewState.getModelviewProjectionMat() && _depthTextureElevationVersion == elevationVersion && _depthTextureMeshResolutionCap == meshResolutionCap) {
             return true;
@@ -436,10 +429,9 @@ namespace massif {
             return true;
         }
 
-        // The worker renders on a second GL context, which the driver has to interleave with the
-        // render context - submitting on every camera change makes that contention the new cost.
-        // While the camera moves the occlusion depth is allowed to lag (billboards fade), so
-        // refresh at an interval; the frame the camera comes to rest on refreshes immediately.
+        // The worker renders on a second GL context the driver has to interleave with the render
+        // one, so submitting on every camera change makes that contention the new cost. While the
+        // camera moves the occlusion depth may lag; the frame it comes to rest on refreshes at once.
         auto now = std::chrono::steady_clock::now();
         bool moving = (_depthLastSeenMVPMatrix != mvpMatrix);
         _depthLastSeenMVPMatrix = mvpMatrix;
@@ -487,11 +479,9 @@ namespace massif {
         int bufferWidth = std::max(1, viewState.getWidth() / BUFFER_DOWNSCALE);
         int bufferHeight = std::max(1, viewState.getHeight() / BUFFER_DOWNSCALE);
 
-        // The render + read-back only needs to happen when the camera or the elevation
-        // data changed - on static frames (the common case) this is free. While the camera
-        // is moving, read-backs are additionally throttled: a slightly stale occlusion
-        // depth during motion is invisible (labels fade in/out anyway), while a
-        // glReadPixels stall every frame is not.
+        // The render + read-back only happens when the camera or the elevation changed, so a static
+        // frame is free. While the camera moves they are throttled on top: a slightly stale
+        // occlusion depth is invisible, a glReadPixels stall every frame is not.
         unsigned int elevationVersion = (terrainOptions && terrainOptions->getElevationManager() ? terrainOptions->getElevationManager()->getVersion() : 0);
         const cglib::mat4x4<double>& mvpMatrix = viewState.getModelviewProjectionMat();
         std::shared_ptr<const TerrainDepthBuffer> depthData;
@@ -580,11 +570,9 @@ namespace massif {
         if (depthW == std::numeric_limits<float>::max()) {
             return false; // sky, or moved outside what this buffer covers
         }
-        // Farthest terrain depth around the position rather than the depth of its own pixel:
-        // labels drawn on the ground sit exactly ON the terrain, the depth buffer is read back
-        // downscaled, and on a slope the neighbouring pixel can be a good deal nearer - so an
-        // exact comparison makes a label's own ground occlude it, differently on every frame,
-        // which is what made labels blink while panning.
+        // Farthest terrain depth AROUND the position, not the depth of its own pixel: a ground label
+        // sits exactly on the terrain and the buffer is read back downscaled, so on a slope an exact
+        // comparison lets a label's own ground occlude it - the labels blinking while panning.
         for (int i = 0; i < 4; i++) {
             int dx = (i & 1 ? OCCLUSION_SAMPLE_OFFSET : -OCCLUSION_SAMPLE_OFFSET);
             int dy = (i & 2 ? OCCLUSION_SAMPLE_OFFSET : -OCCLUSION_SAMPLE_OFFSET);
@@ -606,11 +594,9 @@ namespace massif {
     }
 
     void TerrainRenderer::evictLeastRecentlyUsedMeshes(unsigned int pass) {
-        // Evict the least-recently-used entries, NOT the whole cache - same reasoning as
-        // ElevationTextureCache::evictLeastRecentlyUsed. A full flush rebuilt every mesh of every
-        // pass whenever the working set crossed the cap, which is exactly what a multi-level zoom
-        // out does. Meshes already drawn in this pass are never victims: dropping one would give
-        // the tile a flat mesh for the rest of the frame.
+        // Evict the least-recently-used entries, NOT the whole cache (as
+        // ElevationTextureCache::evictLeastRecentlyUsed does). Meshes already drawn in this pass are
+        // never victims: dropping one would give the tile a flat mesh for the rest of the frame.
         while (_meshCache.size() >= MAX_CACHED_MESHES) {
             auto lru = _meshCache.end();
             for (auto entryIt = _meshCache.begin(); entryIt != _meshCache.end(); entryIt++) {
@@ -841,12 +827,9 @@ namespace massif {
             return 1;
         }
 
-        // The pre-pass mesh must never be FINER than the draped tile surfaces: a coarser
-        // draped surface would linearly cut through ridges of a finer pre-pass mesh and
-        // fail the depth test (see-through holes in the terrain). The draped surfaces are
-        // tesselated to min(meshResolution, elevation texels per tile) cells per tile edge,
-        // so the pre-pass uses the same bound and only gets coarser with distance (a
-        // coarser pre-pass merely weakens ridge occlusion, which is safe).
+        // The pre-pass mesh must never be FINER than the draped tile surfaces: a coarser draped
+        // surface cuts through the ridges of a finer pre-pass mesh and fails the depth test. Same
+        // bound as the surfaces, so it only ever gets coarser with distance, which is safe.
         double tileSize = Const::WORLD_SIZE / (1 << tile.getZoom());
         double gridWidth = grid->getInternalBounds().getMax().getX() - grid->getInternalBounds().getMin().getX();
         int texelsPerTile = MAX_MESH_GRID_SIZE;

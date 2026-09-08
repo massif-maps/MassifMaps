@@ -203,15 +203,9 @@ namespace massif {
         cglib::mat4x4<float> invMVPMat = cglib::inverse(viewState.getRTEModelviewProjectionMat());
 
         glUseProgram(_shader->getProgId());
-        // The fog comes from the owner, resolved once for the frame from the same options AND the
-        // same style environment the ground gets - resolving it here from an empty environment is
-        // what left a style-declared fog on the map and out of the sky. There is no angle to
-        // reconcile any more: the sky and the ground take the same horizon term.
-        //
-        // Passed WHOLE, not zeroed when the fog is off the way the ground renderers zero it: the
-        // atmosphere colours and the star intensity ride on FogOptions but belong to the sky, and
-        // an off switch that took the stars and the dusk sky with it was a bug. resolveFog drops
-        // the fog colour instead, so uFogColor.a is 0 and skyFog is already a no-op.
+        // The fog comes from the owner, resolved once for the frame from the same options and style
+        // environment the ground gets. Passed WHOLE rather than zeroed when the fog is off: the
+        // atmosphere colours and the star intensity ride on FogOptions but belong to the sky.
         FogShader::setUniforms(_shader->getProgId(), fog, viewState);
         if (_u_invMVPMat >= 0) {
             glUniformMatrix4fv(_u_invMVPMat, 1, GL_FALSE, invMVPMat.data());
@@ -266,10 +260,8 @@ namespace massif {
         }
 
         // Start the quad at the horizon plus a margin for the fog band - everything below is drawn
-        // over anyway (docs/internals/rendering/08-lighting-sky-fog.md). This is also what bounds
-        // the atmosphere's cost: the raymarch runs per FRAGMENT, so the pixels the quad does not
-        // cover are the cheapest optimisation available. Not applied when the terrain path draws
-        // the sky although the flat horizon says it is not visible.
+        // over anyway. This also bounds the atmosphere's cost: the raymarch runs per FRAGMENT, so
+        // the pixels the quad does not cover are the cheapest optimisation available.
         float quadBottom = -1.0f;
         if (viewState.isSkyVisible() && isHorizonClipEnabled()) {
             quadBottom = std::max(-1.0f, viewState.getSkyHorizonNDC() - SKY_HORIZON_MARGIN);
@@ -334,11 +326,8 @@ namespace massif {
     // the fog block, because the ground wedge and the star fade both read the horizon term from it.
     const std::string SkyRenderer::SKY_FRAGMENT_SHADER_COMMON = R"GLSL(
         // Mapbox's high-color / space-color over the elevation angle: the fog band fades into the
-        // upper atmosphere, and that fades into space at the zenith. The high colour uses their
-        // exponential rather than a smoothstep - a smoothstep measured from the horizon barely
-        // rises within the few degrees of sky a tilted map camera shows, which is why the two
-        // colours used to be invisible unless you looked almost straight up. Both are transparent
-        // by default and this is then a no-op.
+        // upper atmosphere and that into space at the zenith. Their exponential, not a smoothstep,
+        // which barely rises within the few degrees of sky a tilted map camera shows.
         vec3 atmosphereTint(vec3 color, float elevation) {
             float fadeout = mix(0.0005, 0.25, clamp(uFogParams.w, 0.0, 1.0));
             float high = 1.0 - exp(-(elevation / 3.14159265) / fadeout);
@@ -350,10 +339,9 @@ namespace massif {
             return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
         }
 
-        // Cells in (azimuth, elevation), one star per cell at most, placed at a random point INSIDE
-        // its cell and drawn as a soft dot. Lighting the whole cell instead reads as a grid of grey
-        // squares, and laying the cells out in a flat projection stretches them into streaks near
-        // the horizon.
+        // Cells in (azimuth, elevation), at most one star each, placed at a random point INSIDE the
+        // cell and drawn as a soft dot: lighting the whole cell reads as a grid of grey squares, and
+        // a flat projection stretches the cells into streaks near the horizon.
         float starAmount(vec3 rayDir, float elevation) {
             if (u_starIntensity <= 0.0 || elevation < 0.0) {
                 return 0.0;
@@ -389,12 +377,9 @@ namespace massif {
             return color;
         }
 
-        // Below the mathematical horizon, which is exactly the band the drawn ground stops short of:
-        // the terrain ends at the view distance, well before the horizon, and everything between the
-        // two is this ray. Returning the ground colour alone - transparent by default - left the
-        // map's clear colour there, so the hazed ground met it along a hard line. Anything down
-        // there is beyond the last tile, so it is haze, and the haze supplies the coverage the
-        // ground colour has none of.
+        // Below the mathematical horizon: the terrain ends at the view distance, well short of it,
+        // and everything between the two is this ray. Anything down there is beyond the last tile,
+        // so it is haze - and the haze supplies the coverage the ground colour has none of.
         vec4 groundBelowHorizon(vec3 rayDir) {
             return vec4(u_groundColor.rgb, mix(u_groundColor.a, 1.0, uFogColor.a * fogHorizonBlend(rayDir)));
         }
@@ -416,10 +401,9 @@ namespace massif {
         }
     )GLSL";
 
-    // Rayleigh and Mie single scattering, integrated along the view ray. Written from the public
-    // domain glsl-atmosphere model (wwwtyro, Unlicense - the one maplibre vendors) and Bruneton's
-    // "Precomputed Atmospheric Scattering" section 2.1, which is where the coefficients come from.
-    // ATMO_STEPS / ATMO_LIGHT_STEPS are defined by the caller so both loops unroll.
+    // Rayleigh and Mie single scattering along the view ray, from the public domain glsl-atmosphere
+    // model (wwwtyro, the one maplibre vendors) and Bruneton section 2.1, where the coefficients
+    // come from. ATMO_STEPS / ATMO_LIGHT_STEPS are defined by the caller so both loops unroll.
     const std::string SkyRenderer::SKY_FRAGMENT_SHADER_SCATTERING = R"GLSL(
         const float PLANET_RADIUS = 6360000.0;
         const float ATMOSPHERE_RADIUS = 6420000.0;
@@ -517,11 +501,9 @@ namespace massif {
             // The sky is at infinity, so what varies over it is the ANGULAR haze alone - the same
             // term the ground takes, which is what makes the two meet without a seam.
             vec4 premul = skyFog(vec4(color.rgb * color.a, color.a), rayDir);
-            // Stars are added AFTER the haze and take only its square root. Added before it, they
-            // were multiplied by (1 - haze) like everything else and so were wiped out wherever the
-            // fog band reached. They sit beyond the atmosphere: they should dim into it, not be
-            // erased by it. This is also why they are here and not in skyColor - a custom sky
-            // shader gets them too, and StarIntensity defaults to 0 anyway.
+            // Stars are added AFTER the haze and take only its square root: added before, they were
+            // multiplied by (1 - haze) and wiped out wherever the fog band reached. They sit beyond
+            // the atmosphere and should dim into it, not be erased by it.
             lowp float haze = uFogColor.a * fogHorizonBlend(rayDir);
             premul.rgb += vec3(starAmount(rayDir, asin(clamp(rayDir.z, -1.0, 1.0)))) * sqrt(1.0 - haze) * premul.a;
             gl_FragColor = premul;

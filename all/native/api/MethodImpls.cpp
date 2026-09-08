@@ -175,12 +175,8 @@ namespace massif { namespace api {
 
         /**
          * addFallbackFont(dataHandle) - a font for the glyphs the style names but the build has no
-         * face for.
-         *
-         * The one part of setting a style up that a spec could not express: the decoder takes the
-         * font BYTES, and the facade's way of naming bytes is a `data` handle. Without it a binding
-         * that builds its decoder from a spec loses every label of a style that names a font it
-         * does not carry - which is every converted MapBox style, since they all name DIN Pro.
+         * face for. A `data` handle, because a spec has no way to say "these bytes", and without it
+         * a spec-built decoder loses the labels of every converted MapBox style.
          */
         Result addFallbackFont(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             Handle handle = NULL_HANDLE;
@@ -207,13 +203,10 @@ namespace massif { namespace api {
         }
 
         /**
-         * setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude) - the sun
-         * where it really is at a moment and a place.
+         * setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude).
          *
-         * A binding could set sunAltitude and sunAzimuth itself, but only by carrying its own solar
-         * model; the SDK already has one, and it is the one the shadows and the sky were tuned
-         * against. Latitude and longitude matter because the sun's path over the day depends on
-         * where you are standing - pass the map centre.
+         * The SDK's own solar model, the one shadows and sky were tuned against - a binding would
+         * otherwise carry its own. The place matters as much as the time; pass the map centre.
          */
         Result setSunPositionFromTime(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             long long year = 0, month = 0, day = 0, hour = 0, minute = 0;

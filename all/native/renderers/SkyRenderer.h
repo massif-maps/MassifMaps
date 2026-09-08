@@ -64,10 +64,9 @@ namespace massif {
         SkyQuality::SkyQuality _shaderQuality;
         bool _shaderFailed;             // custom source failed to compile; do not retry it
 
-        // Uniform locations are queried directly, not through Shader::getUniformLoc: a custom
-        // sky shader may not reference every uniform of the contract, the GLSL compiler then
-        // removes it, and Shader::getUniformLoc reports the missing uniform as location 0 -
-        // which would silently overwrite whichever uniform really is at location 0.
+        // Uniform locations are queried directly, not through Shader::getUniformLoc: a custom sky
+        // shader may not reference every uniform, and getUniformLoc reports a dropped one as
+        // location 0 - which would silently overwrite whichever uniform really is at 0.
         GLuint _a_coord;
         GLint _u_invMVPMat;
         GLint _u_sunDir;

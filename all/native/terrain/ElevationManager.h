@@ -176,6 +176,16 @@ namespace massif {
         void prefetchTileGrid(const MapTile& dataTile, int priority) const;
 
         /**
+         * Sets the point the prefetch queue is ordered against - the camera focus, in internal
+         * coordinates. Within a priority level the queued tile NEAREST to it is loaded first, so
+         * the ground under the viewer appears before the ground at the horizon.
+         * Read when a tile is DEQUEUED rather than when it is queued, so that a pan re-orders what
+         * is already waiting instead of draining it against the camera of some earlier frame.
+         * Until it is called the queue drains newest first, as it always did.
+         */
+        void setPrefetchFocus(double internalX, double internalY) const;
+
+        /**
          * Returns the meters-to-internal-display-units scale at the given internal y coordinate
          * (Mercator latitude correction included, exaggeration not included).
          */
@@ -289,11 +299,22 @@ namespace massif {
         std::function<void()> _dataChangedListener; // called outside _mutex, see setDataChangedListener
         mutable std::mutex _mutex;
 
-        // Background prefetch worker: loads elevation tiles requested by the render thread
-        // (visible tiles + their neighbours) without ever blocking it. The thread is started
-        // on the first request and joined in the destructor.
-        mutable std::deque<MapTile> _prefetchQueue;      // low priority (neighbour borders)
-        mutable std::deque<MapTile> _prefetchQueueHigh;  // high priority (the tile's own level)
+        // Background prefetch worker: loads the tiles the render thread asks for without blocking
+        // it, started on the first request and joined in the destructor. The request's priority
+        // travels with it - the drain orders by priority first, distance second.
+        struct PrefetchEntry {
+            MapTile tile;
+            int priority;
+        };
+
+        mutable std::deque<PrefetchEntry> _prefetchQueue;      // low priority (neighbour borders)
+        mutable std::deque<PrefetchEntry> _prefetchQueueHigh;  // high priority (the tile's own level)
+        // Where "near" is, in normalised mercator - see setPrefetchFocus. Two plain atomics: a pair
+        // torn across a frame boundary only mis-ranks one tile, which is not worth a lock on the
+        // render thread every frame.
+        mutable std::atomic<double> _prefetchFocusU;
+        mutable std::atomic<double> _prefetchFocusV;
+        mutable std::atomic<bool> _prefetchFocusValid;
         mutable std::set<long long> _prefetchTileIds;
         mutable std::vector<std::thread> _prefetchThreads;
         mutable std::condition_variable _prefetchCondition;

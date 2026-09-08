@@ -31,11 +31,9 @@ namespace massif::vt {
         // The icon run is before the first line break, so no variant ever moves it.
         _iconBBox = calculateGlyphBBox(cglib::vec2<float>(0, 0), true, Part::ICON);
 
-        // How far the glyphs reach from the anchor, with the style transform applied the same
-        // way findClippedPointPlacement applies it. updatePlacement grows the label's geometry
-        // bounds by this before testing them against the frustum, so an anchor that sits just
-        // outside the view but whose text reaches into it is not rejected. Every side counts here:
-        // the culler may move the text to any of them AFTER this test has let the label through.
+        // How far the glyphs reach from the anchor, so updatePlacement can grow the geometry bounds
+        // before testing the frustum and keep an anchor just outside the view whose text reaches in.
+        // Every side counts - the culler may move the text to any of them after that test.
         for (std::size_t i = 0; i < std::max<std::size_t>(1, _variantBBoxes.size()); i++) {
             cglib::bbox2<float> glyphBBox = (_variantBBoxes.empty() ? _glyphBBox : _variantBBoxes[i]);
             if (glyphBBox.min(0) > glyphBBox.max(0)) {
@@ -210,14 +208,9 @@ namespace massif::vt {
     }
 
     void Label::smoothPlacementLine(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, double minEdgeLength, std::vector<cglib::vec3<double>>& smoothedVertices, std::size_t& smoothedIndex) {
-        // Glyphs are laid out edge by edge, so a line whose edges are shorter than the glyphs
-        // turns every bit of its own noise into a turn of the text - and the direction test in
-        // buildLineVertexData then rejects the placement. That is what happens to a contour
-        // traced on a DEM grid: it runs along cell edges, so it zigzags by a whole cell on every
-        // step. Averaging the vertices over a window of the given length (rather than picking
-        // every n-th one, which samples the zigzag instead of removing it) leaves the direction
-        // the line actually takes. Only the placement is smoothed; the geometry keeps being
-        // drawn from its own vertices.
+        // Glyphs are laid out edge by edge, so a line with edges shorter than the glyphs turns its own
+        // noise into a turn of the text - a contour traced on a DEM grid zigzags by a cell each step.
+        // Averaged over a window, not decimated, and only the placement: the geometry is unchanged.
         smoothedVertices.clear();
         smoothedIndex = index;
         if (vertices.size() < 2 || !(minEdgeLength > 0)) {
@@ -260,12 +253,9 @@ namespace massif::vt {
     }
 
     void Label::clampPlacementAnchor(const std::vector<cglib::vec3<double>>& vertices, double textLength, std::size_t& index, cglib::vec3<double>& position) {
-        // The glyphs are laid out FORWARD from the anchor (and backwards from it when the label is
-        // flipped to stay readable), so an anchor sitting near an end of the line has no room and
-        // the placement is dropped. Anchors are generated per segment without knowing how much
-        // line follows, and a line short enough to have no room anywhere - a contour ring cut into
-        // fragments, for instance - would never label at all. Slide the anchor along its own line
-        // until the run fits, staying as close to where it was as possible.
+        // The glyphs are laid out FORWARD from the anchor, so an anchor near an end of the line has no
+        // room and its placement is dropped - and anchors are generated per segment, without knowing
+        // how much line follows. Slide the anchor along its line until the run fits.
         if (vertices.size() < 2 || !(textLength > 0)) {
             return;
         }
@@ -281,10 +271,9 @@ namespace massif::vt {
 
         index = std::min(index, vertices.size() - 2);
         double anchor = lengths[index] + cglib::length(position - vertices[index]);
-        // A line shorter than two runs can not have room on both sides; its middle is the best
-        // compromise, and the flipped placement then fails on the side that is too short.
-        // The run needs a little more room than its own length: the glyphs are fitted edge by
-        // edge and each fit consumes slightly more line than the advance it stands for.
+        // A line shorter than two runs cannot have room on both sides; its middle is the best
+        // compromise. The run needs a little more room than its own length - the glyphs are fitted
+        // edge by edge and each fit consumes slightly more line than its advance.
         double room = textLength * PLACEMENT_ROOM_FACTOR;
         double minAnchor = std::min(room, total * 0.5);
         double maxAnchor = std::max(total - room, total * 0.5);
@@ -304,10 +293,9 @@ namespace massif::vt {
     }
 
     std::shared_ptr<const Label::Placement> Label::buildLinePlacement(const TileLine& tileLine, std::size_t index, const cglib::vec3<double>& position) const {
-        // Keeps the anchor where it is horizontally and takes its height from the line's
-        // own chord, so the anchor sits exactly on the geometry the glyphs are laid out
-        // along - the vertex heights and the anchor height can otherwise come from
-        // different elevation states (see updateElevation).
+        // Keeps the anchor where it is horizontally and takes its height from the line's own chord, so
+        // it sits exactly on the geometry the glyphs are laid out along - the vertex heights and the
+        // anchor height can otherwise come from different elevation states.
         const cglib::vec3<double>& vertex0 = tileLine.vertices[index];
         const cglib::vec3<double>& vertex1 = tileLine.vertices[index + 1];
         double dx = vertex1(0) - vertex0(0);
@@ -334,10 +322,9 @@ namespace massif::vt {
         // allowance its run already earned, or it would be re-judged strictly (and blink) every
         // time tiles stream in.
         _lineLayoutValid = label._lineLayoutValid;
-        // The same goes for where a callout was lifted to: the offset belongs to the label, not to
-        // the tiles it was built from, and a rebuilt label that starts at 0 drops onto its own
-        // anchor until the next placement pass - which is a whole screen of names jumping every
-        // time tiles stream in while panning.
+        // The same for where a callout was lifted to: the offset belongs to the label, not the tiles it
+        // was built from, and a rebuilt label starting at 0 drops onto its own anchor until the next
+        // placement pass - a whole screen of names jumping as tiles stream in.
         _calloutOffset = label._calloutOffset;
         _calloutAnchorScreenY = label._calloutAnchorScreenY;
         _calloutAnchored = label._calloutAnchored;
@@ -354,12 +341,9 @@ namespace massif::vt {
         cglib::vec3<double> oldPosition = _placement->position;
 #endif
 
-        // Prefer re-snapping onto the same source geometry (tile + feature) the placement
-        // was attached to. The merged geometry lists contain one copy of the feature per
-        // tile and are rebuilt in tile order whenever the visible tile set changes, so an
-        // unbiased nearest-geometry search can flip between copies clipped differently by
-        // neighbouring tiles. The rebuilt placement may then fail line fitting or move,
-        // which shows up as labels jumping or disappearing while panning.
+        // Prefer re-snapping onto the same source geometry (tile + feature) the placement was attached
+        // to: the merged lists hold one copy per tile and are rebuilt in tile order, so an unbiased
+        // nearest search flips between copies clipped differently and the label jumps.
         const Placement* oldPlacement = label._placement.get();
 
         _cachedFlippedPlacement.reset();
@@ -423,11 +407,9 @@ namespace massif::vt {
     }
 
     void Label::applyElevation(const std::vector<double>& heights) {
-        // Refresh anchor heights from the elevation data. Label geometry is built when the
-        // tile is decoded, possibly before its elevation data has arrived - this re-anchors
-        // the labels onto the terrain when the elevation version changes. A line placement
-        // is rebuilt from the re-anchored line (below) rather than just shifted, so the
-        // glyph run keeps following the terrain profile it is drawn over.
+        // Refresh anchor heights from the elevation data: label geometry is built when the tile decodes,
+        // possibly before its elevation arrives. A line placement is REBUILT from the re-anchored line
+        // rather than shifted, so the glyph run keeps following the profile it is drawn over.
         bool changed = false;
         _elevationAnchored = true;
         std::size_t n = 0;
@@ -454,10 +436,9 @@ namespace massif::vt {
             }
         }
 
-        // The elevation version is global: it changes whenever ANY elevation tile is
-        // decoded, while the labels affected are only those over that tile. Re-anchoring a
-        // label whose heights did not move would drop its cached vertex data (and rebuild
-        // the placement) for nothing.
+        // The elevation version is global - it moves whenever ANY tile decodes - while the labels
+        // affected are only those over that tile. Re-anchoring one whose heights did not move drops its
+        // cached vertex data and rebuilds its placement for nothing.
         if (!changed) {
             return;
         }
@@ -470,12 +451,9 @@ namespace massif::vt {
         cglib::vec3<double> position = _placement->position;
         std::shared_ptr<const Placement> placement;
         if (!_placement->edges.empty()) {
-            // Line placement: Placement::edges are stored RELATIVE to the anchor and were
-            // built from the vertex heights of the time. Moving the anchor alone leaves the
-            // whole glyph run laid out on the old terrain profile, so the label lifts off
-            // the line and snaps back the next time the placement is rebuilt - which reads
-            // as the text sliding along the road while elevation tiles stream in. Rebuild
-            // the edges from the re-anchored line instead.
+            // Placement::edges are stored RELATIVE to the anchor, from the vertex heights of the time,
+            // so moving the anchor alone leaves the glyph run on the old terrain profile and the text
+            // slides along the road as tiles stream in. Rebuild the edges from the re-anchored line.
             for (const TileLine& tileLine : _tileLines) {
                 if (!(tileLine.tileId == _placement->tileId && tileLine.localId == _placement->localId)) {
                     continue;
@@ -503,17 +481,14 @@ namespace massif::vt {
     bool Label::updatePlacement(const ViewState& viewState) {
         VT_STAT_INC(placementUpdates);
 
-        // Refresh the length of the glyph run for the placements built below: it is a screen
-        // size, so the distance it covers depends on the view - including the terrain factor
-        // that keeps labels the same size on screen, which the layout below is measured against
-        // (calculateEnvelope applies it too). Without it, a label over terrain reserves the
-        // wrong amount of line and its run then walks off the end.
+        // Refresh the length of the glyph run for the placements built below: it is a screen size, so
+        // the distance it covers depends on the view, terrain size factor included. Without it a label
+        // over terrain reserves the wrong amount of line and its run walks off the end.
         if (isLineRun()) {
             float scale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
-            // Measured at the placement itself, not at the center of the label's geometry: the
-            // geometry is the feature merged over every tile holding it, so its center can be far
-            // from where the label sits - and the terrain factor, which is what the run is
-            // measured with when it is laid out, changes with that distance.
+            // Measured at the placement itself, not at the centre of the label's geometry: the geometry
+            // is the feature merged over every tile holding it, so its centre can be far from where the
+            // label sits - and the terrain factor changes with that distance.
             scale *= calculateTerrainScaleFactor(_placement ? _placement->position : calculateGeometryBBox(viewState).center(), viewState);
             float textLength = 0;
             for (const Font::Glyph& glyph : _glyphs) {
@@ -528,12 +503,9 @@ namespace massif::vt {
             for (const cglib::vec3<float>& pos : envelope) {
                 bbox.add(viewState.origin + cglib::vec3<double>::convert(pos));
             }
-            // A line placement is only worth keeping while the glyph run can be laid out on it.
-            // The run follows the PROJECTED line, whose length changes with the camera - a stretch
-            // of road that carried the text a moment ago can be foreshortened to half of it - and
-            // keeping such a placement only hides the label, on a line that may well have another
-            // piece able to carry it. calculateEnvelope above has just laid the run out at this
-            // view, so its verdict is the current one.
+            // A line placement is only worth keeping while the glyph run can be laid out on it: the run
+            // follows the PROJECTED line, and a stretch that carried the text a moment ago can be
+            // foreshortened to half of it while another piece of the line could carry it.
             if (viewState.frustum.inside(bbox) && (!isLineRun() || _lineLayoutValid)) {
                 return false;
             }
@@ -556,10 +528,9 @@ namespace massif::vt {
             VT_STAT_INC(placementReanchorsHidden);
         }
 
-        // Nothing of this label is in view, and the loaded tile set reaches well past the viewport,
-        // so this is most of a frame's placement work. The placement is DROPPED rather than kept:
-        // an invalid label is what excludes it from the culler, and one holding a placement off
-        // screen would keep claiming (clamped) border grid cells from visible labels.
+        // Nothing of this label is in view, and the loaded tile set reaches well past the viewport, so
+        // this is most of a frame's placement work. DROPPED rather than kept: an invalid label is what
+        // excludes it from the culler, and an off-screen one would claim border cells.
         if (!viewState.frustum.inside(calculateGeometryBBox(viewState))) {
             _cachedFlippedPlacement.reset();
             if (!_placement) {
@@ -596,13 +567,9 @@ namespace massif::vt {
     }
 
     float Label::calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const {
-        // In a planar projection labels keep a CONSTANT ON-SCREEN SIZE (tangram-style): the
-        // label world size is derived from the zoom level only, so the perspective divide would
-        // otherwise scale labels by their distance - oversizing labels lifted onto high mountains,
-        // shrinking them towards the horizon, and on a tilted 2D map making the nearest ones far
-        // too big. Rescale by the ratio of the label view depth to the distance the zoom is
-        // calibrated at - the camera-to-focus distance - which exactly cancels the perspective
-        // scaling.
+        // In a planar projection labels keep a CONSTANT ON-SCREEN SIZE (tangram-style): the world size
+        // comes from the zoom alone, so the perspective divide would scale them by distance. Rescale by
+        // view depth over the camera-to-focus distance, which cancels it exactly.
         if (!viewState.planarProjection) {
             return 1.0f;
         }
@@ -623,10 +590,9 @@ namespace massif::vt {
         // Quantize to ~1% steps: line label vertex data is cached by scale and would
         // otherwise be rebuilt on every frame while the camera moves
         factor = std::exp2(std::round(std::log2(factor) * 64.0f) / 64.0f);
-        // The cap is what makes a label shrink again once it is very far away. In a panorama that
-        // is most of the frame - the focus is a few km out and the horizon a hundred - and a
-        // callout labelling a summit at that range is the whole point of the view, so it keeps its
-        // size all the way out.
+        // The cap is what makes a label shrink again once it is very far away. In a panorama that is
+        // most of the frame, and a callout labelling a summit at that range is the point of the view,
+        // so it keeps its size all the way out.
         float maxFactor = (_style->orientation == LabelOrientation::CALLOUT ? 4096.0f : 8.0f);
         return std::min(maxFactor, std::max(0.05f, factor));
     }
@@ -646,10 +612,9 @@ namespace massif::vt {
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
         if (_style->orientation == LabelOrientation::CALLOUT && size > 0) {
-            // The lift the culler decided on, plus the slide that puts the style's line anchor
-            // over the feature. One pixel is scale/size world units (the glyph quads are in units
-            // of the font size), and the envelope has to move with the glyphs or the collision
-            // test is done where the label is not.
+            // The lift the culler decided on, plus the slide that puts the style's line anchor over the
+            // feature. One pixel is scale/size world units, and the envelope has to move with the
+            // glyphs or the collision test is done where the label is not.
             float pixelScale = scale / size;
             cglib::vec2<float> calloutShift = calculateCalloutShift(scale, 1.0f / size)
                 + cglib::vec2<float>(0, calculateCalloutLift(viewState) * calculatePixelToWorld(viewState, *placement, pixelScale));
@@ -658,10 +623,9 @@ namespace massif::vt {
 
         bool valid = isSurfaceFacingView(viewState, *placement);
         if (isLineRun()) {
-            // The run is laid out in glyph units on the label's own axes (see buildLineVertexData),
-            // so its envelope is the bounds of that run put back on them - the same shape the
-            // renderer draws. The envelope serves collision, so it takes the layout that is there
-            // rather than re-laying the run out for this caller's view (see updateLineVertexData).
+            // The run is laid out in glyph units on the label's own axes, so its envelope is the bounds
+            // of that run put back on them - the shape the renderer draws. It takes the layout that is
+            // there rather than re-laying the run out for this caller's view.
             updateLineVertexData(placement, scale, viewState, false);
 
             float glyphPadding = (scale > 0 ? padding / scale : 0);
@@ -747,11 +711,9 @@ namespace massif::vt {
     }
 
     bool Label::isSurfaceFacingView(const ViewState& viewState, const Placement& placement) const {
-        // A CALLOUT is a screen object: it faces the camera, it is lifted along the camera up axis
-        // and it is joined to its feature by a leader line, so how steeply the view meets the
-        // ground it is anchored on says nothing about whether it can be read. Every other
-        // orientation is laid out against that surface and does degenerate as it is seen edge-on -
-        // and a panorama, which is what callouts are for, is that view by definition.
+        // A CALLOUT is a screen object - it faces the camera and is joined to its feature by a leader
+        // line - so how steeply the view meets the ground says nothing about whether it can be read.
+        // Every other orientation is laid out against that surface and degenerates edge-on.
         if (_style->orientation == LabelOrientation::CALLOUT) {
             return true;
         }
@@ -767,11 +729,9 @@ namespace massif::vt {
             return false;
         }
 
-        // The icon run keeps a fixed PIXEL size: it was laid out in ems of iconRefSize, so undoing
-        // that and re-applying the screen scale leaves it independent of what the text size does.
-        // A MapTiler bus stop ramps text-size 0 -> 12 between z15 and z17 while its icon-size is
-        // constant, and riding the text made the icon grow across each tile level and snap back at
-        // the next - and vanish entirely where the ramp reached 0.
+        // The icon run keeps a fixed PIXEL size: it was laid out in ems of iconRefSize, so undoing that
+        // and re-applying the screen scale leaves it independent of the text size - which a style may
+        // ramp to 0 while icon-size stays constant.
         float iconScale = scale;
         if (_style->iconRefSize > 0 && size > 0) {
             iconScale = scale * (_style->iconRefSize / size);
@@ -853,10 +813,9 @@ namespace massif::vt {
             appendLabelPlates(size, scale, placement, plates, calloutShift, origin, xAxis, yAxis, vertices, offsets, normals, texCoords, attribs, indices);
             vertices.fill(origin, _cachedVertices.size());
             if (_style->orientation == LabelOrientation::BILLBOARD_3D || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D || _style->orientation == LabelOrientation::CALLOUT) {
-                // Axes are the camera's: leave them to the shader (see labelVsh). A callout is
-                // lifted along the camera up axis by what the culler decided (see
-                // setCalloutOffset) and slid sideways so that the style's line anchor sits over
-                // the feature; the anchor itself stays put, which is where its leader line starts.
+                // Axes are the camera's: leave them to the shader. A callout is lifted along the camera
+                // up axis by what the culler decided and slid sideways so the style's line anchor sits
+                // over the feature; the anchor stays put, where its leader line starts.
                 for (std::size_t i = 0; i < _cachedVertices.size(); i++) {
                     float s = vertexScale(i);
                     offsets.append(cglib::vec3<float>(_cachedVertices[i](0) * s + calloutShift(0), _cachedVertices[i](1) * s + calloutShift(1), 0));
@@ -887,10 +846,9 @@ namespace massif::vt {
             
             std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
             for (std::uint16_t idx : _cachedIndices) {
-                // Each run takes its OWN halo, and is left out when it has none. An icon never
-                // borrows the text's: that dilated its distance field past the few texels it
-                // carries outside the ink, so the whole quad read as inside - a white square behind
-                // a city dot - and it kept drawing after icon-opacity had faded the icon out.
+                // Each run takes its OWN halo and is left out when it has none. An icon never borrows
+                // the text's: that dilates its distance field past the few texels it carries outside
+                // the ink, so the whole quad reads as inside - a white square behind a city dot.
                 if ((_cachedAttribs[idx](0) == 2 ? iconHaloStyleIndex : haloStyleIndex) < 0) {
                     continue;
                 }
@@ -1002,22 +960,17 @@ namespace massif::vt {
     // 'radius' and 'grow' are already in the label's own units (screen pixels times the label
     // scale), like the glyph offsets around them.
     void Label::appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
-        // The plate covers the box plus what it is grown by, both in glyph units (1 unit = the
-        // font size). The cell is a square barely wider than its corner radius, so it is cut into
-        // nine: the four corner cells keep the radius, the edges stretch along one axis only and
-        // the centre fills. Stretching the whole cell instead - which is what a three-column slice
-        // does vertically - flattened every corner arc into an ellipse on a label taller than the
-        // cell, and a road shield is always taller than one.
+        // The plate covers the box plus what it is grown by, in glyph units. The cell is barely wider
+        // than its corner radius, so it is cut into NINE: corners keep the radius, edges stretch along
+        // one axis, the centre fills. Stretching the whole cell flattens every arc into an ellipse.
         float x0 = box.min(0) * scale - grow(0), x1 = box.max(0) * scale + grow(0);
         float y0 = box.min(1) * scale - grow(1), y1 = box.max(1) * scale + grow(1);
         float capX = std::max(0.0f, std::min(radius, (x1 - x0) * 0.5f));
         float capY = std::max(0.0f, std::min(radius, (y1 - y0) * 0.5f));
 
-        // Atlas coordinates of the cell. Sampled one texel INSIDE the cell on EVERY side: the outer
-        // texels blend into the transparent padding around it under linear filtering, which is what
-        // made the plate's edges look soft. The cell keeps a transparent margin of its own for this,
-        // so the inset lands on the shape's own edge (see buildRoundedRectBitmap) rather than one
-        // column into it.
+        // Atlas coordinates of the cell, sampled one texel INSIDE it on every side: the outer texels
+        // blend into the transparent padding under linear filtering, which made the plate's edges look
+        // soft. The cell keeps a margin of its own, so the inset lands on the shape's edge.
         float u0 = static_cast<float>(glyph.x + 1);
         float u1 = static_cast<float>(glyph.x + glyph.width - 2);
         float uMid = (u0 + u1) * 0.5f;
@@ -1141,10 +1094,9 @@ namespace massif::vt {
         if (_style->orientation != LabelOrientation::CALLOUT) {
             return zoomScale;
         }
-        // A callout is a screen object: its size is what the style asks for in pixels, taken off
-        // the projection (see calculatePixelToWorld) rather than off the zoom. The zoom-derived
-        // scale only holds a constant screen size while the camera distance follows the zoom, and
-        // free roam breaks that - lift the viewpoint or tilt and the names grow or shrink.
+        // A callout is a screen object: its size is what the style asks in pixels, taken off the
+        // projection rather than the zoom. The zoom-derived scale only holds a constant screen size
+        // while the camera distance follows the zoom, which free roam breaks.
         return size * calculatePixelToWorld(viewState, *placement, zoomScale / std::max(size, 1.0f));
     }
 
@@ -1178,11 +1130,9 @@ namespace massif::vt {
     }
 
     float Label::calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback) const {
-        // One screen pixel is depth / (projection scale * half the screen height) world units at
-        // that depth. Taking it from the projection rather than from the label's own scale is what
-        // makes a lift in pixels MEAN pixels: the scale is derived from the zoom, so a camera that
-        // tilts or rises changes what one unit of it is worth and the label slides up or down the
-        // screen between placement passes.
+        // One screen pixel is depth / (projection scale * half the screen height) world units at that
+        // depth. Taken from the projection, not the label's zoom-derived scale, so a lift in pixels
+        // MEANS pixels - a camera that tilts or rises would otherwise slide the label.
         cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(viewState.orientation[2]);
         double depth = cglib::dot_product(placement.position - viewState.origin, viewDir);
         double halfScreen = viewState.projectionMatrix(1, 1) * viewState.resolution * 0.5;
@@ -1231,12 +1181,9 @@ namespace massif::vt {
         const cglib::vec3<float>& xBasis = (screenRun ? viewState.orientation[0] : placement->xAxis);
         const cglib::vec3<float>& yBasis = (screenRun ? viewState.orientation[1] : placement->yAxis);
 
-        // A screen run is projected through the view-projection, not just onto the camera axes:
-        // with a tilted view the far half of a line is compressed by the perspective divide, and
-        // glyphs laid out on an orthographic projection of it drift off the line and pick up the
-        // wrong angle. The basis is the anchor's own glyph unit, so the run stays in glyph units
-        // either way. The matrix comes from the caller, which keys the cache on it (see
-        // updateLineVertexData). A flat run is not projected at all - it IS the ground plane.
+        // A screen run is projected through the view-projection, not just onto the camera axes: with a
+        // tilted view the perspective divide compresses the far half of a line, and glyphs laid out
+        // orthographically drift off it. A flat run is not projected at all - it IS the ground plane.
         cglib::vec3<double> anchorPos = placement->position;
         auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<float>& result) {
             cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), mvpMatrix);
@@ -1247,11 +1194,9 @@ namespace massif::vt {
             return true;
         };
 
-        // Where the screen's right and up are IN THE SPACE THE RUN IS LAID OUT IN - the identity for
-        // a screen run, the camera axes projected onto the tangent frame for a flat one. Which way
-        // the word reads is a screen question, and a flat run's own space cannot see the camera: its
-        // x always points forward along the line, so a test there reads the word in vertex order and
-        // half the lines come out upside down.
+        // Where the screen's right and up are IN THE SPACE THE RUN IS LAID OUT IN: the identity for a
+        // screen run, the camera axes on the tangent frame for a flat one. Which way the word reads is
+        // a screen question, and a flat run's own x always points forward along the line.
         cglib::vec2<float> screenX(1, 0), screenY(0, 1);
         if (!screenRun) {
             screenX = cglib::vec2<float>(cglib::dot_product(xBasis, viewState.orientation[0]), cglib::dot_product(yBasis, viewState.orientation[0]));
@@ -1341,12 +1286,9 @@ namespace massif::vt {
         // starts.
         float penStart = lengths[segment] + cglib::dot_product(-points[segment], cglib::unit(segmentVec));
 
-        // Longest line of the run, in glyph units. The anchor is kept away from the ends of the
-        // line in world units (clampPlacementAnchor), but the line the glyphs are actually laid
-        // out on is the PROJECTED one: with a tilted view its far half is compressed by the
-        // perspective divide, so a run that has room on the ground can still overrun the end.
-        // Slide the run back onto the line rather than dropping the label - the smallest camera
-        // move changes the compression, and blinking labels are worse than a shifted one.
+        // Longest line of the run, in glyph units. The anchor is clamped in WORLD units, but the glyphs
+        // are laid out on the PROJECTED line, whose far half a tilt compresses - so a run with room on
+        // the ground can still overrun. Slid back rather than dropped, or the label blinks.
         float runLength = 0;
         float lineLength = 0;
         for (const Font::Glyph& glyph : _glyphs) {
@@ -1357,23 +1299,17 @@ namespace massif::vt {
             lineLength += glyph.advance(0);
             runLength = std::max(runLength, lineLength);
         }
-        // The run has to fit INSIDE the line, tangram's CurvedLabel::updateScreenTransform test: a
-        // run given room past the end was drawn on a straight continuation of the line, off the
-        // road it names. A run at the edge of what fits alternates between fitting and not as the
-        // camera moves; that is what LINE_LAYOUT_FAILURE_GRACE absorbs (see updateLineVertexData),
-        // not an allowance here.
+        // The run has to fit INSIDE the line, tangram's CurvedLabel::updateScreenTransform test: given
+        // room past the end it was drawn on a straight continuation, off the road it names. A run at
+        // the edge of fitting is absorbed by LINE_LAYOUT_FAILURE_GRACE, not by an allowance here.
         if (runLength > total) {
             return LineLayout::NO_ROOM; // the line is too short to carry the text
         }
         penStart = std::min(std::max(penStart, 0.0f), total - runLength);
 
-        // WHICH WAY THE WORD READS, decided on the projected line over the span the glyphs cover -
-        // tangram's CurvedLabel::updateScreenTransform. A segment past the tolerance forces its
-        // direction, and needing both ways drops the label rather than drawing a mixture; otherwise
-        // reverse when the end lands left of the start; and a hairpin (two segments in a short
-        // window pointing back at each other, their |dir(k)+dir(i)|^2 < 1.7^2) is dropped, because
-        // arc length grows around it while the screen position does not and the glyphs pile up.
-        // The anchor's own tangent is not enough - on a curve it can point the other way.
+        // WHICH WAY THE WORD READS, decided on the projected line over the span the glyphs cover, as
+        // tangram does: a segment past the tolerance forces its direction, needing both ways drops the
+        // label, and a hairpin is dropped because arc length grows around it while the screen does not.
         {
             float flipTolerance = std::sin(45.0f * 3.14159265f / 180.0f);
             bool mustForward = false, mustReverse = false;
@@ -1413,12 +1349,9 @@ namespace massif::vt {
             if (hairpin || (mustForward && mustReverse)) {
                 return LineLayout::UNREADABLE; // the run doubles back on itself
             }
-            // Which way the word reads is decided by the run's CHORD alone. Tangram lets a single
-            // segment pointing the wrong way (their mustReverse) force the reversal, and on a line
-            // that wiggles - a contour does constantly - one such segment turns a run that reads
-            // perfectly well upside down. Their own comment there is "TODO use better heuristic to
-            // decide flipping"; the segment test is kept, but only for the REJECTION above, where
-            // it is unambiguous.
+            // Which way the word reads is decided by the run's CHORD alone. Tangram lets one segment
+            // pointing the wrong way force the reversal, which on a wiggling line turns a perfectly
+            // readable run upside down. The segment test is kept only for the REJECTION above.
             cglib::vec2<float> chord = pointAt(penStart + runLength) - pointAt(penStart);
             float dx = cglib::dot_product(chord, screenX);
             float dy = cglib::dot_product(chord, screenY);
@@ -1448,31 +1381,24 @@ namespace massif::vt {
 
         float offset = penStart;
 
-        // Readability is judged against the direction the run takes as a whole, not against its
-        // first glyph: measured from the first glyph, a gently curving line accumulates deviation
-        // along the word and trips the test at whatever point the run happens to start - which the
-        // perspective projection moves on every camera step, so the label blinks. The chord is
-        // symmetric, so the same curve gives half the deviation and it does not depend on where
-        // the run starts.
+        // Readability is judged against the direction the run takes AS A WHOLE: measured from the first
+        // glyph, a gently curving line accumulates deviation along the word and trips the test at
+        // whatever point the run starts, which the projection moves on every camera step.
         cglib::vec2<float> runVec = pointAt(penStart + runLength) - pointAt(penStart);
         cglib::vec2<float> runDir = (cglib::norm(runVec) > 0 ? cglib::unit(runVec) : cglib::vec2<float>(0, 0));
 
-        // Hysteresis: the deviation of a run laid out on the PROJECTED line moves with the camera -
-        // over 3D terrain a tilted view re-compresses the line on every step - so a run sitting
-        // near the threshold flips on the smallest pan, and the label blinks. A run that is
-        // already laid out is given a wider allowance than one that is not yet placed, which
-        // costs nothing in readability (the run has to be readable to get there in the first
-        // place) and turns the flapping into a one-way transition.
+        // Hysteresis: the deviation of a run laid out on the PROJECTED line moves with the camera, so
+        // one near the threshold flips on the smallest pan. A run already laid out gets a wider
+        // allowance than an unplaced one, which turns the flapping into a one-way transition.
         float minSegmentDotProduct = (_lineLayoutValid ? MIN_LINE_SEGMENT_DOTPRODUCT_KEEP : MIN_LINE_SEGMENT_DOTPRODUCT);
         float maxRunAngleSpread = (_lineLayoutValid ? MAX_LINE_RUN_ANGLE_SPREAD_KEEP : MAX_LINE_RUN_ANGLE_SPREAD);
 
         bool readable = true;
         cglib::vec2<float> prevDir(0, 0);
         float turnAngle = 0, minAngle = 0, maxAngle = 0;
-        // How far off the line the run sits, perpendicular to it. The CR pseudo-glyph's advance
-        // carries the block's vertical alignment and its dy (TextFormatter::layoutLines), so
-        // ignoring it laid every line label on its BASELINE rather than centred on the line - and
-        // the culler tests the box the point walk builds, which does apply it.
+        // How far off the line the run sits, perpendicular to it. The CR pseudo-glyph's advance carries
+        // the block's vertical alignment and its dy, so ignoring it lays a line label on its BASELINE
+        // rather than centred - and the culler tests a box that does apply it.
         float penY = 0;
         for (const Font::Glyph& glyph : _glyphs) {
             if (glyph.codePoint == Font::CR_CODEPOINT) {
@@ -1485,11 +1411,9 @@ namespace massif::vt {
 
             float advance = glyph.advance(0);
 
-            // Direction over the glyph's OWN span, not the direction of whatever tiny segment it
-            // happens to start on: a line that shakes at a scale below the glyphs would otherwise
-            // rotate every one of them on its own and tear the word apart. The window slides back
-            // to stay on the line rather than being clamped against its end, where it would
-            // collapse to nothing and the run would read as unreadable.
+            // Direction over the glyph's OWN span, not of whatever tiny segment it starts on: a line
+            // shaking below the glyph scale would rotate each one and tear the word apart. The window
+            // slides back to stay on the line rather than collapsing against its end.
             float spanLength = std::max(advance, MIN_LINE_GLYPH_SPAN);
             float spanStart = std::max(0.0f, std::min(offset, total - spanLength));
             cglib::vec2<float> pen = pointAt(offset);
@@ -1509,10 +1433,9 @@ namespace massif::vt {
                 if (cglib::dot_product(xAxis, prevDir) < minSegmentDotProduct) {
                     readable = false;
                 }
-                // Total turn of the run, accumulated glyph by glyph rather than measured against
-                // the chord: a run that follows a hairpin turns steadily - every glyph is close to
-                // its neighbour, and the chord of the run is degenerate, so neither test above
-                // sees anything - and the word then reads as a spiral.
+                // Total turn of the run, accumulated glyph by glyph rather than against the chord: a run
+                // following a hairpin turns steadily, every glyph close to its neighbour and the chord
+                // degenerate, so neither test above sees it and the word reads as a spiral.
                 turnAngle += std::atan2(prevDir(0) * xAxis(1) - prevDir(1) * xAxis(0), cglib::dot_product(xAxis, prevDir));
                 minAngle = std::min(minAngle, turnAngle);
                 maxAngle = std::max(maxAngle, turnAngle);
@@ -1552,17 +1475,13 @@ namespace massif::vt {
     }
 
     void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const {
-        // The run is laid out on the line AS THE CAMERA PROJECTS IT, so the view-projection is part
-        // of the key: keyed on the camera axes alone a pan leaves the glyphs on a projection of the
-        // road that no longer holds until a zoom rebuilds it.
-        // Only the RENDERER rebuilds on a view change. The culler's view state lags the frame, and
-        // its layout decides whether the label is drawn at all, so re-laying out there judges the
-        // label against a view nobody sees; it reuses whatever layout exists.
+        // The run is laid out on the line AS THE CAMERA PROJECTS IT, so the view-projection is part of
+        // the key. Only the RENDERER rebuilds on a view change: the culler's view state lags the frame,
+        // so re-laying out there judges the label against a view nobody sees.
         cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
-        // A flat run does not follow the projection - it lies on the ground - but which way it
-        // reads does, so the camera AXES are its key: a rotation turns the line under the word
-        // and nothing else about the layout changes. That leaves a flat run reused across a pan,
-        // where a screen run rebuilds.
+        // A flat run does not follow the projection - it lies on the ground - but which way it reads
+        // does, so the camera AXES are its key. That leaves a flat run reused across a pan, where a
+        // screen run rebuilds.
         bool viewChanged = rebuildForView && (isScreenLineRun()
             ? mvpMatrix != _cachedMVPMatrix
             : viewState.orientation[0] != _cachedCameraXAxis || viewState.orientation[1] != _cachedCameraYAxis);
@@ -1576,13 +1495,9 @@ namespace massif::vt {
         _cachedIndices.clear();
         LineLayout layout = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
         _cachedValid = (layout == LineLayout::PLACED);
-        // A run that is already on screen rides out a few layouts that do not FIT. Fit is judged on
-        // the projected line, and it is judged from two different view states - the culler works on
-        // the snapshot of its pass, the renderer on the current camera - so a run at the edge of
-        // what fits alternates between them, which shows up as a label blinking at frame rate.
-        // An UNREADABLE run gets no such grace: the layout has just measured its glyphs turning far
-        // enough to pile up on the inside of a corner, and holding that on screen is how a label
-        // that the code already knows is illegible stays there for several passes.
+        // A run already on screen rides out a few layouts that do not FIT: fit is judged on the
+        // projected line from two different view states - the culler's snapshot and the renderer's
+        // camera - so one at the edge alternates. An UNREADABLE run gets no such grace.
         if (_cachedValid) {
             _lineLayoutFailures = 0;
         }
@@ -1655,11 +1570,9 @@ namespace massif::vt {
             return _placement;
         }
 
-        // A LINE label decides this in buildLineVertexData instead, from the PROJECTED run's own
-        // start and end - tangram's rule (CurvedLabel::updateScreenTransform). The anchor tangent
-        // used below is only the direction at one point of the line: a curving line (a contour, a
-        // bending street) can leave the anchor pointing right while the word runs left, and the
-        // label then reads upside down. Flipping the placement here as well would fight that.
+        // A LINE label decides this in buildLineVertexData instead, from the PROJECTED run's own start
+        // and end. The anchor tangent below is the direction at ONE point: on a curving line it can
+        // point right while the word runs left, and flipping the placement here would fight that.
         if (isLineRun()) {
             return _placement;
         }
@@ -1708,12 +1621,9 @@ namespace massif::vt {
     }
 
     std::shared_ptr<const Label::Placement> Label::findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines, const Placement* oldPlacement) const {
-        // Keep the anchor on the segment it already sits on when its source line is still there.
-        // Re-deriving scores by distance and only an anchor exactly on the line scores 0 - on
-        // terrain it never does (a freshly decoded tile carries its decode-time heights), so the
-        // mid-line weight decides instead and the anchor creeps toward the middle of the road on
-        // every tile-set change. A copy clipped by a tile border can be a stub too short to carry
-        // the text, so copies long enough beat the ones that are not, ahead of every other rule.
+        // Keep the anchor on the segment it already sits on while its source line is there: scored by
+        // distance, only an anchor exactly on the line scores 0, which over terrain never happens - so
+        // the mid-line weight creeps it toward the middle of the road on every tile-set change.
         double requiredLength = _placementTextLength * PLACEMENT_ROOM_FACTOR;
         auto isUsable = [&requiredLength](const TileLine& tileLine) {
             double length = 0;
@@ -1758,10 +1668,9 @@ namespace massif::vt {
                 bestDist = std::numeric_limits<double>::infinity();
                 bestRank = rank;
             }
-            // Try to find a closest point on vertices to the given position. Distances are
-            // measured horizontally: the vertex heights and the anchor height can come from
-            // different elevation states, and a height mismatch must not decide which
-            // segment of the road the label ends up on.
+            // Closest point on the vertices, measured HORIZONTALLY: the vertex heights and the anchor
+            // height can come from different elevation states, and a height mismatch must not decide
+            // which segment of the road the label ends up on.
             for (std::size_t j = 1; j < tileLine.vertices.size(); j++) {
                 cglib::vec3<double> edgeVec = tileLine.vertices[j] - tileLine.vertices[j - 1];
                 double edgeLen2 = edgeVec(0) * edgeVec(0) + edgeVec(1) * edgeVec(1);
@@ -1771,12 +1680,9 @@ namespace massif::vt {
                 cglib::vec3<double> posVec = position - tileLine.vertices[j - 1];
                 double t = (edgeVec(0) * posVec(0) + edgeVec(1) * posVec(1)) / edgeLen2;
                 cglib::vec3<double> edgePos = tileLine.vertices[j - 1] + edgeVec * std::max(0.0, std::min(1.0, t));
-                // The mid-line bias picks a placement far from the line's endpoints, which is
-                // what you want when choosing a FRESH anchor. When re-snapping an existing
-                // one it does the opposite: a zoom step changes every tile id, so the
-                // placement's own source line is gone and this fallback runs - and the bias
-                // then drags the anchor away from where it was, toward the middle of the
-                // road. Re-snapping takes the nearest point instead.
+                // The mid-line bias picks a placement far from the line's endpoints, which is right for a
+                // FRESH anchor. Re-snapping an existing one it does the opposite - it drags the anchor
+                // away from where it was - so re-snapping takes the nearest point instead.
                 double weight = (oldPlacement ? 1.0 : (1.0 / j) + (1.0 / (tileLine.vertices.size() - j)));
                 cglib::vec3<double> distVec = edgePos - position;
                 double dist = std::sqrt(distVec(0) * distVec(0) + distVec(1) * distVec(1)) * weight;
@@ -1838,10 +1744,9 @@ namespace massif::vt {
                     break;
                 }
             }
-            // Take the candidate CLOSEST TO THE CAMERA rather than the first one that fits: the
-            // anchors of a line are spread over everything loaded, so the first fitting one is
-            // usually far away - the label then sits near the horizon, tiny, while the stretch of
-            // line the user is looking at carries nothing.
+            // Take the candidate CLOSEST TO THE CAMERA rather than the first that fits: a line's anchors
+            // are spread over everything loaded, so the first fitting one is usually far away and the
+            // label sits tiny near the horizon while the stretch in view carries nothing.
             if (inside) {
                 double distance = cglib::length(tilePoint.position - viewState.origin);
                 if (distance < bestDistance) {
@@ -1861,10 +1766,9 @@ namespace massif::vt {
         // How much line a candidate offers, in the units the run is laid out in (see below).
         double bestLen = 0;
 
-        // World length of the glyph run BEFORE the terrain scale factor. Labels over planar 3D
-        // terrain keep a constant on-screen size, so the world length a run needs depends on where
-        // it is placed; _placementTextLength can not serve here, it carries the factor of the
-        // placement this search is about to replace.
+        // World length of the glyph run BEFORE the terrain scale factor: labels keep a constant
+        // on-screen size, so the world length a run needs depends on where it is placed.
+        // _placementTextLength carries the factor of the placement this search is replacing.
         double textLengthBase = 0;
         if (isLineRun()) {
             float glyphScale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
@@ -1873,15 +1777,9 @@ namespace massif::vt {
             }
         }
 
-        // A candidate is measured in the plane its run will be laid out in, and both the ranking and
-        // the fit test use that one measure.
-        //  - a SCREEN run (billboard-line) is laid out on the projected line, so a line running away
-        //    from a tilted camera is worth a fraction of its ground length and has to be compared on
-        //    screen; measured on the ground it wins the placement and the run then does not fit.
-        //  - a FLAT run (line) lies on the ground, so its own length is the ground length. Comparing
-        //    it against a screen-HORIZONTAL run of the same world length asks for several times the
-        //    room it needs as soon as the view tilts, and the label only appears once the camera is
-        //    close enough for that inflated demand - which is what "have to zoom in a lot" was.
+        // A candidate is measured in the plane its run will be laid out in, and the ranking and the fit
+        // test share that measure: a SCREEN run is worth its PROJECTED length, since a line running away
+        // from a tilted camera is a fraction of its ground length, while a FLAT run is worth its own.
         bool screenRun = isScreenLineRun();
         cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
         auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<double>& result) {

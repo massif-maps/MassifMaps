@@ -30,11 +30,12 @@ namespace massif {
         _tileDrawSize(256),
         _zoomOffset(0.0f),
         // 0.5, not tangram's 1.0: half a nominal tile of screen area before the next zoom level is
-        // used. This is the value every bench and every example screenshot in this repo was made
-        // with - see scripts/android-dev/.../demo/DemoConfig.java, which is where the tuning was
-        // done, and docs/internals/rendering/02-tiles-lod.md.
+        // used. Every bench and example screenshot in this repo was made with it.
+        // docs/internals/rendering/02-tiles-lod.md.
         _tileLODFactor(0.5f),
-        _tileLODForeshorteningLimit(0.0f),
+        _tileLODMaxZoomLevelsOnScreen(9.314f),
+        _tileLODTileCountRatio(3.0f),
+        _tileStyleZoomLift(2),
         _dpi(160.0f),
         _drawDistance(16),
         _fovY(70),
@@ -314,23 +315,78 @@ namespace massif {
         notifyOptionChanged("TileLODFactor");
     }
 
-    float Options::getTileLODForeshorteningLimit() const {
+    float Options::getTileLODMaxZoomLevelsOnScreen() const {
         std::lock_guard<std::mutex> lock(_mutex);
-        return _tileLODForeshorteningLimit;
+        return _tileLODMaxZoomLevelsOnScreen;
     }
 
-    void Options::setTileLODForeshorteningLimit(float levels) {
+    void Options::setTileLODMaxZoomLevelsOnScreen(float levels) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            float clamped = std::max(0.0f, levels);
-            if (_tileLODForeshorteningLimit == clamped) {
+            float clamped = std::max(1.0f, levels);
+            if (_tileLODMaxZoomLevelsOnScreen == clamped) {
                 return;
             }
-            _tileLODForeshorteningLimit = clamped;
+            _tileLODMaxZoomLevelsOnScreen = clamped;
         }
-        notifyOptionChanged("TileLODForeshorteningLimit");
+        notifyOptionChanged("TileLODMaxZoomLevelsOnScreen");
+    }
+
+    float Options::getTileLODTileCountRatio() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _tileLODTileCountRatio;
+    }
+
+    void Options::setTileLODTileCountRatio(float ratio) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            float clamped = std::max(1.0f, ratio);
+            if (_tileLODTileCountRatio == clamped) {
+                return;
+            }
+            _tileLODTileCountRatio = clamped;
+        }
+        notifyOptionChanged("TileLODTileCountRatio");
+    }
+
+    int Options::getTileStyleZoomLift() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _tileStyleZoomLift;
+    }
+
+    void Options::setTileStyleZoomLift(int levels) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            int clamped = std::max(0, std::min(MAX_TILE_STYLE_ZOOM_LIFT, levels));
+            if (_tileStyleZoomLift == clamped) {
+                return;
+            }
+            _tileStyleZoomLift = clamped;
+        }
+        notifyOptionChanged("TileStyleZoomLift");
     }
     
+    void Options::setTileLODProfile(TileLODProfile::TileLODProfile profile) {
+        // maplibre's two numbers are the same at every profile: they shape the far field, and the
+        // reference shape is the one we want everywhere. What a platform buys is DENSITY.
+        switch (profile) {
+        case TileLODProfile::TILE_LOD_PROFILE_REFERENCE:
+            setTileLODFactor(1.0f);
+            setTileStyleZoomLift(1);
+            break;
+        case TileLODProfile::TILE_LOD_PROFILE_MOBILE:
+            setTileLODFactor(0.71f); // half a level
+            setTileStyleZoomLift(1);
+            break;
+        case TileLODProfile::TILE_LOD_PROFILE_DESKTOP:
+            setTileLODFactor(0.5f); // a full level
+            setTileStyleZoomLift(2);
+            break;
+        }
+        setTileLODMaxZoomLevelsOnScreen(9.314f);
+        setTileLODTileCountRatio(3.0f);
+    }
+
     float Options::getDPI() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _dpi;
@@ -1060,6 +1116,7 @@ namespace massif {
         }
     }
 
+    const int Options::MAX_TILE_STYLE_ZOOM_LIFT = 8;
     const float Options::DEFAULT_LONG_CLICK_DURATION = 0.4f;
     const float Options::DEFAULT_DOUBLE_CLICK_MAX_DURATION = 0.4f;
     const Color Options::DEFAULT_CLEAR_COLOR = Color(0, 0, 0, 255);

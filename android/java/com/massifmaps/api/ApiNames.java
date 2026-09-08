@@ -865,12 +865,16 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> TILE_ID = MassifObject.key("tileId");
     /** Returns the factor on the screen size a tile may cover before it is refined. */
     public static final MassifObject.Key<Double> TILE_LODFACTOR = MassifObject.key("tileLODFactor");
-    /** Returns how many zoom levels a tile may lose to foreshortening. */
-    public static final MassifObject.Key<Double> TILE_LODFORESHORTENING_LIMIT = MassifObject.key("tileLODForeshorteningLimit");
+    /** Returns how many distinct zoom levels a tilted view may spread over. */
+    public static final MassifObject.Key<Double> TILE_LODMAX_ZOOM_LEVELS_ON_SCREEN = MassifObject.key("tileLODMaxZoomLevelsOnScreen");
+    /** Returns how many times more tiles a tilted view may load than a top-down one. */
+    public static final MassifObject.Key<Double> TILE_LODTILE_COUNT_RATIO = MassifObject.key("tileLODTileCountRatio");
     /** Returns the tile load listener. */
     public static final MassifObject.Key<MassifObject> TILE_LOAD_LISTENER = MassifObject.key("tileLoadListener");
     /** Returns the encoded tile mask of the package. This is available for map packages but not for routing packages. This should not be displayed to the user. */
     public static final MassifObject.Key<MassifObject> TILE_MASK = MassifObject.key("tileMask");
+    /** Returns how many zoom levels above its own a coarsened tile may be styled at. */
+    public static final MassifObject.Key<Long> TILE_STYLE_ZOOM_LIFT = MassifObject.key("tileStyleZoomLift");
     /** Returns the current tile substitution policy. */
     public static final MassifObject.Key<String> TILE_SUBSTITUTION_POLICY = MassifObject.key("tileSubstitutionPolicy");
     /** Returns the number of threads used by the tile task pool. */

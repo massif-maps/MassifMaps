@@ -68,8 +68,10 @@ namespace massif {
          * drops the per-frame tile resolution memo. The provider is called once per tile per
          * render pass, so without the memo every pass would redo the grid and neighbour lookups
          * (9 locked cache lookups per tile) for the same result.
+         *
+         * The view zoom bounds the border prefetch - see NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW.
          */
-        void beginFrame();
+        void beginFrame(float viewZoom);
 
         /**
          * Ground height at an internal position, in internal z units (exaggeration and the mercator
@@ -212,11 +214,17 @@ namespace massif {
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
+        float _viewZoom = 0.0f; // the camera's zoom this frame, for the border prefetch bound
         std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
         // How far above the level the source carries a CPU height query may fall back. One level
         // covers the common "the tile is decoded but not yet in the texture cache" frame; beyond
         // that the answer is a smoothed average of a region, not the ground under the point.
         static const int BASE_MAX_ANCESTOR_LEVELS = 1;
+        // How far below the camera's zoom a tile may be and still fetch its border neighbours. A
+        // tilted view's far ground is covered by very coarse tiles, and each asked for its 8
+        // neighbours: at startup that was 129 of 222 tile loads, and it delayed the near ground the
+        // user is looking at by ~2.5 s. Their seam is far below a pixel at that distance.
+        static const int NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW = 2;
         // The posting a building's base is read at, in metres. Measured over the Louvre: at 12.6 m
         // (mapterhorn z12) neighbouring parts of one palace differ by 0.3-1.5 m, at 50 m by 0.14.
         static constexpr double SMOOTH_BASE_POSTING = 50.0;

@@ -92,6 +92,15 @@ entry's position in the deque (`push_front` for 0, `push_back` otherwise, draine
 nearest-first scan would have erased that distinction silently, so the priority now travels with the
 entry.
 
+**A neighbour is only asked for within `NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW` (2) levels of the
+camera's zoom.** A tilted view's far ground is covered by very coarse tiles — at Grenoble z14.5
+tilt 65 the cover reaches z3 — and `resolveEntry` asked each of them for its 8 border neighbours.
+Measured on the Crosscall over a warm cache: **219 tile loads in 7.7 s, 129 of them those coarse
+neighbours**, and the near ground the user is looking at waited behind them. Bounded, the same start
+is 121 loads in 5.9 s (turning the neighbour prefetch off entirely: 94 in 4.1 s, which is the floor).
+A border texel of a tile four levels coarser is far below a pixel; the tiles that matter for seams
+are the ones the camera is on.
+
 ### CPU height queries
 
 `getDisplayHeight` answers with the node field (the drawn surface), `getElevationMeters` with the

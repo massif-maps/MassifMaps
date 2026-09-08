@@ -905,7 +905,7 @@ namespace massif {
                     // mesh's level cap. A dial, not a flag - each level back is 4x the working set.
                     //   adb shell setprop debug.massif.paintdetail 0|1|2   (2 = the source's own level)
                     _elevationTextureCache->setDetailLevels(_terrainPaintEnabled && _terrainPaintFullDetail ? terrainPaintDetailLevels() : 0);
-                    _elevationTextureCache->beginFrame();
+                    _elevationTextureCache->beginFrame(viewState.getZoom());
                     std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache;
                     terrainTextureProvider = [elevationTextureCache](const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
                         return elevationTextureCache->getTexture(tileId, terrainTexture);

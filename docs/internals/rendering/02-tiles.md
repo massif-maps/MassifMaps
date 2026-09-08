@@ -72,6 +72,14 @@ slow for another reason - for that, raise `TileLODMaxZoomLevelsOnScreen` or the 
 `TileLODForeshorteningLimit` is gone: it bounded the same term from the other side with a number
 that had no reference behind it.
 
+**Lowering it is expensive, and most expensive at a LOW tilt.** Measured on a Crosscall with the
+day-cycle example over Paris (z16.5, mapbox-standard, terrain and shadows on), `6.0` against the
+default `9.314`: **0.48 fps against 4.30, 97 tiles a frame against 23, and 30.9 M indices against
+6.5 M** — and the two frames are indistinguishable on screen. At tilt 65 the same change is worth
+nothing (3.8 fps against 4.3): a tilted view coarsens its far field anyway, while at 20° the whole
+screen is at near-constant scale, so a slow decay holds every one of those tiles at the camera's
+own level.
+
 :::danger The pitch gate does NOT port, and it was tried
 Both references keep the whole frame at one zoom below ~60 degrees of pitch - maplibre's
 `allowVariableZoom` (`78.5 - fov/2`, capped at 60), mapbox's `MIN_LOD_PITCH` (60). Adopting it made

@@ -146,11 +146,6 @@ public class DayCycleLightExample extends MapExample {
         // slider gets it anywhere else.
         hour = host.option("hour", START_HOUR);
 
-        // Keep a TILTED far field uniform. The LOD area test drops a tile a level for distance and
-        // again for the grazing angle; a low levels-on-screen decays the second term more slowly,
-        // so the horizon band stops jumping between levels as the camera turns.
-        map.options().set("tileLODMaxZoomLevelsOnScreen", 6.0);
-
         buildLayer(map);
 
         // A TERRAIN, for the shadows. Cast shadows are drawn from the drape pass and land on the

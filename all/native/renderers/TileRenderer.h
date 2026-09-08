@@ -172,7 +172,11 @@ namespace massif {
         bool onDrawFrame(float deltaSeconds, const ViewState& viewState);
         bool onDrawFrame3D(float deltaSeconds, const ViewState& viewState);
     
-        bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState);
+        /**
+         * Places this layer's labels. `finished` is cleared when the culler's slice ran out before
+         * this layer's labels did, so the caller knows to come back and resume the cycle.
+         */
+        bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
 
         // `spanReferenceTiles`: fetched unseen for a stranded bridge's chord, unioned by the
         // renderer and never drawn - see TileLayer::collectSpanReferenceTiles.

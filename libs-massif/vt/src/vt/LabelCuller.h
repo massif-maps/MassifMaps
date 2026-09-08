@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <chrono>
 
 #include <cglib/vec.h>
 #include <cglib/mat.h>
@@ -35,14 +36,21 @@ namespace massif::vt {
          * test - a caller that does not set it gets the previous behaviour exactly.
          */
         void setMetersToInternal(double metersToInternal);
-        /**
-         * Distance from the camera to the point the view is centred on, in the same units label
-         * positions are in. 0 disables the perspective cut - a caller that does not set it gets
-         * the previous behaviour exactly.
-         */
-        void setCameraToCenterDistance(double cameraToCenterDistance);
         void reset();
-        bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
+        /**
+         * Opens a slice of a placement cycle, giving every process() call after it a shared
+         * wall-clock budget. mapbox and maplibre both ration placement this way (2 ms, then resume
+         * next frame from a cursor); a budget of 0 restores the un-rationed behaviour exactly.
+         */
+        void beginSlice(double budgetMs);
+        /** Whether the last slice ran out of budget with labels still unvisited. */
+        bool isSliceExhausted() const;
+        /**
+         * Places labels from `cursor` onward, advancing it. Stops early once the slice's budget is
+         * spent, leaving the rest for the next pass - they keep the visibility they already had,
+         * which is what mapbox's uncommitted placement amounts to.
+         */
+        bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex, std::size_t& cursor);
 
     private:
         static constexpr int GRID_RESOLUTION_X = 16;
@@ -105,7 +113,9 @@ namespace massif::vt {
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
         double _metersToInternal = 0;
-        double _cameraToCenterDistance = 0;
+        std::chrono::steady_clock::time_point _sliceDeadline;
+        bool _sliceBudgeted = false;
+        bool _sliceExhausted = false;
         RecordGrid _recordGrid;
 
         const float _scale;

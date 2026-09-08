@@ -128,16 +128,23 @@ namespace massif {
             lastCullerNs = cullerNs;
 
             static long long lastConsidered = 0, lastDistanceCut = 0;
-            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld",
+            static long long lastCullPhase[3] = { 0 };
+            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f",
                        deltas[13], deltas[14], deltas[15], deltas[0], deltas[11],
                        deltas[1], deltas[2],
                        deltas[3], deltas[12], RenderStats::labelsLive.load(), deltas[4],
                        deltas[5], deltas[6], deltas[7], deltas[8], deltas[16],
                        deltas[9], deltas[10], deltaPasses, deltaFlips, deltaCullerNs / 1.0e6,
                        RenderStats::cullerConsidered.load() - lastConsidered,
-                       RenderStats::cullerDistanceCut.load() - lastDistanceCut);
+                       RenderStats::cullerDistanceCut.load() - lastDistanceCut,
+                       (RenderStats::cullerCollectNs.load() - lastCullPhase[0]) / 1.0e6,
+                       (RenderStats::cullerSortNs.load() - lastCullPhase[1]) / 1.0e6,
+                       (RenderStats::cullerInsertNs.load() - lastCullPhase[2]) / 1.0e6);
             lastConsidered = RenderStats::cullerConsidered.load();
             lastDistanceCut = RenderStats::cullerDistanceCut.load();
+            lastCullPhase[0] = RenderStats::cullerCollectNs.load();
+            lastCullPhase[1] = RenderStats::cullerSortNs.load();
+            lastCullPhase[2] = RenderStats::cullerInsertNs.load();
 
             // Draw submission, per interval. geomDraws is the number that matters: the frame
             // cost of a style tracks it, not the index count next to it.

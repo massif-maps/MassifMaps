@@ -110,13 +110,29 @@ namespace massif {
         }
     }
     
+    // mapbox and maplibre both slice placement at 2 ms and resume next frame
+    // (placement_algorithms/default.ts, pauseable_placement.ts). A slice is soft: the check is every
+    // 32 labels, so one can overshoot by that much.
+    static const double PLACEMENT_BUDGET_MS = 2.0;
+    // ...and they get their pacing from the frame. This thread has no frame to hang off, so an
+    // unfinished cycle would resume as fast as the CPU allows. The pair IS the guarantee: placement
+    // costs about 1000 * BUDGET / (BUDGET + DELAY) ms a second, here 74. Measured a little over
+    // that, because only the collect phase is budgeted and the sort and grid insertion ride on top.
+    static const int PLACEMENT_CONTINUE_DELAY_MS = 25;
+
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
         if (!mapRenderer) {
             return false;
         }
 
-        ViewState viewState = mapRenderer->getViewState();
+        // A cycle in progress keeps the view it was opened against: its collision grid is half
+        // built for that screen, and resuming against a moved camera would place the rest of the
+        // labels against it. mapbox freezes the transform for a cycle for the same reason.
+        if (!_cycleActive) {
+            _cycleViewState = mapRenderer->getViewState();
+        }
+        const ViewState& viewState = _cycleViewState;
         std::vector<std::shared_ptr<Layer>> layers = mapRenderer->getLayers()->getAll();
 
         // A composite layer draws its style-layer groups and its vector slots through internal
@@ -126,7 +142,15 @@ namespace massif {
             layer->collectLabelLayers(labelLayers);
         }
 
-        vt::LabelCuller culler(Const::WORLD_SIZE);
+        // The culler outlives a pass: it carries the cycle's collision grid, and clearing it
+        // mid-cycle would let the second half of the labels reuse slots the first half took.
+        if (!_culler) {
+            _culler = std::make_unique<vt::LabelCuller>(Const::WORLD_SIZE);
+        }
+        vt::LabelCuller& culler = *_culler;
+        if (!_cycleActive) {
+            culler.reset();
+        }
         // Internal units per metre at the view's own latitude, so a label style's max-distance in
         // metres compares against world-space distances. Mercator stretches by 1/cos(latitude),
         // which at 45 degrees is a factor of 1.4.
@@ -135,33 +159,49 @@ namespace massif {
             double coshLatitude = std::cosh(latitude);
             culler.setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE * coshLatitude);
         }
-        // What the perspective cut is measured against, mapbox's cameraToCenterDistance. Zoom and
-        // tilt are already in it, so one cutoff holds everywhere - and it is where the horizon band
-        // gets its labels from, since a pitched view reaches many times this far.
-        culler.setCameraToCenterDistance(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
+        // Placement is rationed like mapbox's and maplibre's: a slice of wall clock per pass, then
+        // resume next pass from where each layer stopped. Labels not reached keep the visibility
+        // they had, so the map never shows a half-placed screen.
+        culler.beginSlice(PLACEMENT_BUDGET_MS);
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
         bool changed = false;
+        bool finished = true;
         if (reversedOrder) {
             for (auto it = labelLayers.rbegin(); it != labelLayers.rend(); it++) {
-                if ((*it)->_tileRenderer->cullLabels(culler, viewState)) {
+                if ((*it)->_tileRenderer->cullLabels(culler, viewState, finished)) {
                     changed = true;
                 }
             }
         } else {
             for (auto it = labelLayers.begin(); it != labelLayers.end(); it++) {
-                if ((*it)->_tileRenderer->cullLabels(culler, viewState)) {
+                if ((*it)->_tileRenderer->cullLabels(culler, viewState, finished)) {
                     changed = true;
                 }
             }
         }
-        
 
         if (changed) {
             mapRenderer->requestRedraw();
         }
 
+        // Only the cycle asks for the pass that continues it - nothing else knows one is owed, and
+        // a still map stops waking this thread once the labels have settled.
+        _cycleActive = !finished;
+        if (_cycleActive) {
+            scheduleContinuation();
+        }
+
         return true;
+    }
+
+    void VTLabelPlacementWorker::scheduleContinuation() {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _pendingWakeup = true;
+        _wakeupTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(PLACEMENT_CONTINUE_DELAY_MS);
+        _idle = false;
+        _condition.notify_one();
     }
 
 }

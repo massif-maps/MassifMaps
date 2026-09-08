@@ -210,6 +210,10 @@ namespace massif::vt {
         // Labels the perspective cut dropped before they cost a placement - the horizon band.
         static inline std::atomic<long long> cullerDistanceCut{0};
         static inline std::atomic<long long> cullerConsidered{0};
+        // LabelCuller::process by phase - which one a time budget would have to slice.
+        static inline std::atomic<long long> cullerCollectNs{0}; // updatePlacement + variant envelopes, per label
+        static inline std::atomic<long long> cullerSortNs{0};
+        static inline std::atomic<long long> cullerInsertNs{0};  // greedy grid insertion, per label
     };
 }
 

@@ -1796,14 +1796,19 @@ namespace massif::vt {
         return false;
     }
 
-    void GLTileRenderer::cullLabels(LabelCuller& culler) {
+    bool GLTileRenderer::cullLabels(LabelCuller& culler) {
         std::vector<std::shared_ptr<Label>> labels;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             labels = _labels;
         }
 
-        culler.process(labels, _mutex);
+        culler.process(labels, _mutex, _labelCullCursor);
+        if (_labelCullCursor >= labels.size()) {
+            _labelCullCursor = 0;
+            return true;
+        }
+        return false;
     }
     
     bool GLTileRenderer::findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const {

@@ -672,6 +672,32 @@ cost, and the horizon band is where most of the labels are. It bounds the cost o
 itself on the tile worker at style-zoom + 2 and marking the losers `State::dead` for good
 (`LabelCollider::process`, plus a hard 4096-label cap per tile) — neither GL-JS renderer has that.
 
+### The pass itself is rationed
+
+The cut bounds what each label costs; the budget bounds what a pass costs. Splitting
+`LabelCuller::process` shows where to cut: **collect** (`updatePlacement` + the variant envelopes)
+is ~90% of it at ~14.6 us a label, the sort ~2%, the grid insertion the rest. Collect runs *before*
+the sort, so stopping it short costs no ordering among the labels that were collected.
+
+`beginSlice(ms)` opens a wall-clock budget shared by every `process` call in a pass; each layer
+keeps a cursor (`GLTileRenderer::_labelCullCursor`) and resumes there next pass. This is mapbox's
+`PauseablePlacement` — 2 ms, three cursors, nothing published until the cycle commits. Two things
+have to hold across a cycle, and both bit in the writing:
+
+- **the collision grid persists**, or the second half of the labels reuse slots the first half took;
+- **the view is frozen**, or the second half is collided against a grid built for another screen.
+
+The pacing is the other half of the guarantee. mapbox gets it from the frame; `VTLabelPlacementWorker`
+has no frame, so an unfinished cycle would resume as fast as the CPU allows. Budget `B` with resume
+delay `D` costs about `1000B/(B+D)` ms a second — 2 and 25 give 74, and measured worst cases are
+98 ms/s at tilt 30 and 75 at tilt 80 against a 100 ms objective
+([performance log 28](../performance-log.md)).
+
+What it costs: a full cycle now takes several hundred ms, so labels settle behind a fast camera
+rather than with it (they keep their previous visibility meanwhile, so nothing flickers), and the
+placement SELECTION shifts, since an early slice claims grid slots before a later, higher-priority
+one. mapbox has the same property.
+
 **Geometry gets no such cut, in any of the three.** The cutoff lives only in `symbol/collision_index.ts`
 and the only thing that reads a collision index is symbol placement; fills, lines and extrusions
 never go near it. Distant buildings keep drawing at any pitch. The asymmetry is the whole point —

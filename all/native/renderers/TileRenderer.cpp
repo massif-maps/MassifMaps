@@ -1190,7 +1190,7 @@ namespace massif {
         return owed;
     }
 
-    bool TileRenderer::cullLabels(vt::LabelCuller& culler, const ViewState& viewState) {
+    bool TileRenderer::cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished) {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         cglib::mat4x4<double> modelViewMat;
         {
@@ -1213,11 +1213,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         culler.setViewState(cullViewState);
 
         try {
-            tileRenderer->cullLabels(culler);
+            finished = tileRenderer->cullLabels(culler) && finished;
         }
         catch (const std::exception& ex) {
             Log::Errorf("TileRenderer::cullLabels: Culling failed: %s", ex.what());
-            return false;
+            return false; // and 'finished' is left alone - retrying a layer that threw will not help
         }
         return true;
     }

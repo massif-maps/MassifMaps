@@ -2013,3 +2013,54 @@ second x 2 ms = 12 ms/s by construction). Both still to do.
 reached from `TileLayer::loadData`, i.e. the cull worker — RenderStats.h claims it "runs inside the
 layer draw pass", which does not match that call chain. The GL thread's own measured wait for the
 mutex (`renderLabels`) is 0.0 ms/s at both tilts, so there is no lock stall to fix today.
+
+## 28. Rationing label placement, so the culler has a ceiling (2026-09-08)
+
+Crosscall `1cba1468`, `day-cycle-light` at Paris z16.5, pan bench, `shadow 1.0`, after entry 27.
+The objective was set as a ceiling rather than a saving: **`cullMs` under 100 ms a second at any
+tilt.**
+
+**Which phase to slice.** Splitting `LabelCuller::process` three ways settled it — the cost is
+`updatePlacement` plus the variant envelopes, at ~14.6 us per label:
+
+| interval (tilt 30) | cullMs | collect | sort | insert |
+|---|---|---|---|---|
+| 1 | 468.6 | 419.2 | 9.8 | 38.9 |
+| 2 | 398.8 | 295.0 | 5.8 | 93.8 |
+| 3 | 576.4 | 544.3 | 11.3 | 20.3 |
+
+Collect is ~90%, and it runs BEFORE the sort, so cutting it short costs no ordering among the
+labels that are collected. Layer granularity was no use: the style has one label layer, so a whole
+pass is one `process` call.
+
+**The port.** mapbox and maplibre both slice placement at 2 ms and resume next frame from a cursor
+(`placement_algorithms/default.ts:42`, `pauseable_placement.ts:98`), publishing nothing until the
+cycle commits. Ours: a per-layer cursor on `GLTileRenderer`, a culler that outlives the pass so its
+collision grid persists, and the view FROZEN for the cycle — resuming against a moved camera would
+collide the second half of the labels against a grid built for a different screen.
+
+**The pacing is half the guarantee.** Both references get theirs from the frame; this worker has no
+frame, so an unfinished cycle would resume as fast as the CPU allows. Budget B with delay D costs
+about `1000B/(B+D)` ms a second — B=2, D=25 gives 74.
+
+| tilt 30 | frame avg | cullMs (worst) | passes/s |
+|---|---|---|---|
+| entry 27 baseline | 129.2 | 668 | 5-9 |
+| + distance cut | 90.0 / 97.1 | 341-613 | 5-9 |
+| + budget | **78.7** | **98.2** | 29-42 |
+
+| tilt 80 | frame avg | cullMs (worst) |
+|---|---|---|
+| baseline | 46.8 | 59 |
+| + both | **42.6** | **74.8** |
+
+**Under the bar at both tilts, and the ceiling holds by construction.** Two honest costs. Total
+culler work at HIGH tilt went UP (59 -> 75 ms/s): a cycle that used to finish in one pass now takes
+many slices, each re-doing the sort and grid insertion for its own subset. And the placement
+SELECTION changes, because a label collected in an early slice claims its grid slot before a
+higher-priority label in a later one — mapbox has the same property and accepts it. At rest the
+frame is well placed, with no overlap or clutter; it simply names a different set of POIs.
+
+**Still open:** `labelsLive` is untouched at ~5000, so `buildLabelMaps` (178 ms/s at tilt 30) is
+unaffected. That is tangram's mechanism — an intra-tile collision on the tile worker at
+style-zoom + 2, plus a per-tile cap — and it is the remaining one of the three.

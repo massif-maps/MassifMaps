@@ -8,6 +8,9 @@
 #define _MASSIF_VTLABELPLACEMENTWORKER_H_
 
 #include "components/ThreadWorker.h"
+#include "graphics/ViewState.h"
+
+#include <vt/LabelCuller.h>
 
 #include <chrono>
 #include <condition_variable>
@@ -40,6 +43,17 @@ namespace massif {
         void schedule(const std::shared_ptr<Layer>& layer, int delayTime, bool postpone);
         
         bool calculateVTLabelPlacement();
+        void scheduleContinuation();
+
+        /**
+         * A placement cycle is rationed across several passes (mapbox's PauseablePlacement), so the
+         * culler, its collision grid and the view it was opened against all outlive one pass. The
+         * view is FROZEN for the cycle: resuming against a moved camera would collide the second
+         * half of the labels against a grid built for a different screen.
+         */
+        std::unique_ptr<vt::LabelCuller> _culler;
+        ViewState _cycleViewState;
+        bool _cycleActive = false;
         
         bool _stop;
         bool _idle;

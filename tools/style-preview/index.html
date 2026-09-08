@@ -22,6 +22,9 @@
   .pane iframe.map { width: 100%; height: 100%; border: 0; }
   .tag { position: absolute; z-index: 2; top: 8px; left: 8px; padding: 2px 8px; border-radius: 3px;
          background: rgba(28,31,36,.85); color: #eee; font-weight: 600; pointer-events: none; }
+  .readout { position: absolute; z-index: 2; bottom: 6px; left: 6px; padding: 2px 6px; border-radius: 3px;
+             background: rgba(28,31,36,.8); color: #d7dde6; pointer-events: none;
+             font: 11px/1.5 ui-monospace, Menlo, monospace; white-space: pre; }
   .err { position: absolute; z-index: 3; bottom: 8px; left: 8px; right: 8px; max-height: 40%; overflow: auto;
          padding: 6px 8px; border-radius: 3px; background: rgba(120,20,20,.9); color: #fff;
          white-space: pre-wrap; display: none; }
@@ -47,9 +50,11 @@
   </div>
   <div id="maps">
     <div class="pane"><div class="tag" id="tag-l">maplibre — openfreemap</div>
-      <div class="map" id="map-l"></div><div class="err" id="err-l"></div></div>
+      <div class="map" id="map-l"></div><div class="readout" id="ro-l"></div>
+      <div class="err" id="err-l"></div></div>
     <div class="pane"><div class="tag" id="tag-r">maplibre — local</div>
-      <div class="map" id="map-r"></div><div class="err" id="err-r"></div></div>
+      <div class="map" id="map-r"></div><div class="readout" id="ro-r"></div>
+      <div class="err" id="err-r"></div></div>
     <div class="pane hidden" id="pane-ml"><div class="tag">massif — openfreemap</div>
       <iframe class="map" id="massif-l"></iframe><div class="err" id="err-ml"></div></div>
     <div class="pane hidden" id="pane-mr"><div class="tag">massif — local</div>
@@ -160,8 +165,20 @@ function renderGaps() {
   el.innerHTML = html.join('');
 }
 
-function makeMap(container, style, errEl) {
+/** the line every pane prints, so a camera can be compared across renderers at a glance. */
+function cameraLine(zoom, lon, lat, bearing, pitch) {
+  return `z ${zoom.toFixed(2)}  ${lon.toFixed(5)}, ${lat.toFixed(5)}` +
+    `  rot ${bearing.toFixed(1)}  tilt ${pitch.toFixed(1)}`;
+}
+
+function makeMap(container, style, errEl, readout) {
   const map = new maplibregl.Map({ container, style, ...START, hash: false, attributionControl: false });
+  const show = () => {
+    const c = map.getCenter();
+    readout.textContent = cameraLine(map.getZoom(), c.lng, c.lat, map.getBearing(), map.getPitch());
+  };
+  map.on('move', show);
+  map.on('load', show);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
   new ResizeObserver(() => map.resize()).observe(document.getElementById(container));
   const seen = new Set();
@@ -217,8 +234,8 @@ async function load() {
   const camera = maps.length ? { center: maps[0].getCenter(), zoom: maps[0].getZoom(),
                                  bearing: maps[0].getBearing(), pitch: maps[0].getPitch() } : null;
   for (const m of maps) m.remove();
-  maps = [makeMap('map-l', styleJSON, $('err-l')),
-          makeMap('map-r', retarget(styleJSON, localURL), $('err-r'))];
+  maps = [makeMap('map-l', styleJSON, $('err-l'), $('ro-l')),
+          makeMap('map-r', retarget(styleJSON, localURL), $('err-r'), $('ro-r'))];
   if (camera) maps.forEach((m) => m.jumpTo(camera));
   sync(maps[0], maps[1]);
   $('tag-l').textContent = 'openfreemap — ' + (remoteURL || 'style default');
@@ -247,13 +264,16 @@ let massifStarted = false;
 function startMassif() {
   const base = new URL('carto', $('style-url').value.trim()).href;
   const centre = maps[0].getCenter();
-  const sources = [firstVectorTileURL(remoteTileJSON), firstVectorTileURL(localTileJSON)];
+  const tilesets = [remoteTileJSON, localTileJSON];
   for (const [i, id] of ['massif-l', 'massif-r'].entries()) {
-    if (!sources[i]) continue;
+    const source = firstVectorTileURL(tilesets[i]);
+    if (!source) continue;
     // `carto`, not `project`: the web demo reads `project` off the query string itself, and would
-    // take this URL for a folder name in its own filesystem
+    // take this URL for a folder name in its own filesystem. maxzoom is not optional - without it
+    // the SDK asks for a tile deeper than the tileset goes instead of overzooming the last one.
     const query = new URLSearchParams({
-      pane: id, carto: base, source: sources[i],
+      pane: id, carto: base, source,
+      minzoom: tilesets[i].minzoom ?? 0, maxzoom: tilesets[i].maxzoom ?? 14,
       lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
     });
     $(id).src = `./massif-pane.html?${query}`;

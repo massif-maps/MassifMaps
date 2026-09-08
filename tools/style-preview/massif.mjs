@@ -9,12 +9,23 @@
 
 const PROJECT = 'preview';
 
-/** Every file the project names: its stylesheets, and the icons its parameters point at. */
+const IMAGE_PATH = /[\w./-]+\.(?:png|jpg|jpeg|svg)/g;
+
+/**
+ * Every file the project names. An icon reaches the stylesheet three different ways - a style
+ * parameter, `url('...')`, and a bare quoted string inside a ternary - so the stylesheets are read
+ * as text and every image-shaped path in them is taken, rather than each form parsed separately.
+ */
 async function projectFiles(base) {
     const project = await (await fetch(`${base}/project.json`)).json();
-    const icons = Object.values(project.styleparameters ?? {})
-        .filter((v) => typeof v === 'string' && /\.(png|jpg|svg)$/.test(v));
-    return ['project.json', ...(project.styles ?? []), ...new Set(icons)];
+    const styles = project.styles ?? [];
+    const texts = await Promise.all(styles.map((name) => fetch(`${base}/${name}`).then((r) => r.text())));
+    const images = new Set(Object.values(project.styleparameters ?? {})
+        .filter((v) => typeof v === 'string' && /\.(?:png|jpg|jpeg|svg)$/.test(v)));
+    for (const text of texts) {
+        for (const match of text.matchAll(IMAGE_PATH)) images.add(match[0]);
+    }
+    return ['project.json', ...styles, ...images];
 }
 
 /**
@@ -22,8 +33,10 @@ async function projectFiles(base) {
  * @param base     URL of the converted CartoCSS project
  * @param source   tile URL template the map reads
  * @param camera   {center: [lon, lat], zoom}
+ * @param onError  called with each line the SDK writes to stderr - a style that names a font or an
+ *                 icon the project does not carry says so there and nowhere else
  */
-export async function createMassifPane(canvas, base, source, camera) {
+export async function createMassifPane(canvas, base, source, camera, onError = () => {}) {
     const names = await projectFiles(base);
     const files = await Promise.all(names.map(async (name) => [name,
         new Uint8Array(await (await fetch(`${base}/${name}`)).arrayBuffer())]));
@@ -43,6 +56,7 @@ export async function createMassifPane(canvas, base, source, camera) {
         // the module is imported from a path the document does not sit under, and emscripten
         // resolves its .wasm and .data against the DOCUMENT unless told otherwise
         locateFile: (file) => `/massif/demo/${file}`,
+        printErr: (line) => { console.error(line); onError(line); },
         preRun: [({ FS }) => {
             for (const [name, bytes] of files) {
                 const at = `/styles/${PROJECT}/${name}`;

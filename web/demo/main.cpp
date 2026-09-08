@@ -173,6 +173,12 @@ int main() {
     // And the SDK refines a full level finer than tangram and mapbox do: a tilelodfactor of 1 is
     // their rule verbatim, where the default 0.5 is what draws a level deeper at the same camera.
     _MapView->getOptions()->setTileLODFactor(static_cast<float>(queryNumber("tilelodfactor", 0.5)));
+    // A bigger tiledrawsize magnifies what is drawn IN the tile - vt sizes by 2^(zoom - tileZoom),
+    // and a coarser tile doubles that factor - so dpi is what puts label and line sizes back.
+    const double dpi = queryNumber("dpi", 0);
+    if (dpi > 0) {
+        _MapView->getOptions()->setDPI(static_cast<float>(dpi));
+    }
 
     massif::MapPos wgs84(queryNumber("lon", 2.3522), queryNumber("lat", 48.8566));
     _MapView->setFocusPos(_MapView->getOptions()->getBaseProjection()->fromWgs84(wgs84), 0);

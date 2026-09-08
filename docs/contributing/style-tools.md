@@ -1283,6 +1283,20 @@ text-placement-priority: (11200000 - (0 + [rank]));
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
 
+## Which road is drawn on top
+
+`line-sort-key` has no such trick available: a CartoCSS rule draws its features in the order the
+TILE lists them, and nothing in a declaration can reorder them. It becomes rule **order** instead —
+one attachment per key value, emitted lowest first, so the highest is drawn last (`expandSortKey`,
+split.ts). A road style that states the key once for every class is 7 rules where it was 1.
+
+Without it a residential road painted over the motorway it crosses wherever the tile happened to
+carry it later, which maplibre never shows because it honours the key natively.
+
+Only a `match`/`case` over the feature with numeric outcomes expands; anything else is reported as
+approximated and the layer keeps tile order. The cap is `MAX_VARIANTS`, shared with the resource
+splitting above.
+
 ## An icon and its text are ONE label
 
 MapBox draws a symbol's icon and text as a single symbol that never collides with itself. Emitted as

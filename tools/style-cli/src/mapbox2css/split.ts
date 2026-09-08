@@ -173,6 +173,39 @@ export function splitLayer(layer: MapboxLayer, coverage: Coverage): MapboxLayer[
 }
 
 /**
+ * `line-sort-key` orders features WITHIN one layer; CartoCSS has no equivalent, because a rule
+ * draws its features in the order the tile lists them. Expanded into one attachment per key value,
+ * LOWEST first, so the highest class is drawn last: without it a residential road painted over the
+ * motorway it crosses wherever the tile happened to carry it later.
+ *
+ * The branch filters are mutually exclusive by construction (see `exclusive`), so reordering them
+ * changes only which is drawn on top.
+ */
+export function expandSortKey(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
+    const key = layer.layout?.[SORT_KEY] as Json | undefined;
+    if (key === undefined) return [layer];
+
+    const branches = branchesOf(key);
+    const values = branches?.map((branch) => branch.value);
+    if (!branches || !values!.every((value) => typeof value === 'number')) {
+        coverage.approximate(`${SORT_KEY} on "${layer.id}" is not a match over the feature, so its ` +
+            'features keep the order the tile lists them in');
+        return [layer];
+    }
+    if (branches.length > MAX_VARIANTS) {
+        coverage.approximate(`${SORT_KEY} on "${layer.id}" has ${branches.length} values, past the ` +
+            `${MAX_VARIANTS}-attachment cap, so its features keep the order the tile lists them in`);
+        return [layer];
+    }
+
+    return [...branches]
+        .sort((a, b) => (a.value as number) - (b.value as number))
+        .map((branch) => withValue(layer, SORT_KEY, branch.value, branch.when));
+}
+
+const SORT_KEY = 'line-sort-key';
+
+/**
  * A sprite name that changes with ZOOM (`{stops: [[6, 'circle'], [12, ' ']]}`) cannot interpolate -
  * it names one file per zoom band. Each band becomes its own attachment, which is what puts the
  * dot back under a town name up to the zoom the style drops it at.

@@ -8,7 +8,7 @@ import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './propert
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
 import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
 import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
-import { collapseBranches, splitLayer } from './split.js';
+import { collapseBranches, expandSortKey, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
 import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer } from './fold.js';
@@ -509,8 +509,10 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 ? (rewriteContourFields(schemaLayer as unknown as Json, options.contour) as unknown as MapboxLayer)
                 : schemaLayer;
 
-            // A field-driven paint value becomes one attachment per branch - see split.ts.
-            const variants = splitLayer(isContourLayer(layer) ? retargeted : schemaLayer, coverage);
+            // A field-driven paint value becomes one attachment per branch, and a line-sort-key one
+            // per key value in draw order - see split.ts.
+            const variants = expandSortKey(isContourLayer(layer) ? retargeted : schemaLayer, coverage)
+                .flatMap((ordered) => splitLayer(ordered, coverage));
             variants.forEach((variant, branch) => {
                 const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
                 emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, target, symbolizer, index);
@@ -1350,6 +1352,7 @@ function layerDeclarations(
 
         // MapBox places the LOWEST sort key first; CartoCSS's culler takes the highest priority.
         if (name === 'symbol-sort-key') continue; // folded into the layer's priority below
+        if (name === 'line-sort-key') continue; // became this attachment's place in the order - see split.ts
 
         // MapBox's text-opacity fades the WHOLE label; CartoCSS's fades only the fill, and the halo
         // keeps its own. A style that hides a label with `step(zoom, 0, …, 13, 1)` was leaving the

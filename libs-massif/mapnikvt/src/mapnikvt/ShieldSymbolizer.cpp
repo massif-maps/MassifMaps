@@ -258,9 +258,17 @@ namespace massif::mvt {
 
         float textSize = bitmapSize < 0 ? (repeatAlongLine ? calculateTextSize(textFormatter.getFont(), text, textFormatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
+        // Same as TextSymbolizer: 'spacing' is walked per TILE, so two anchors can land a few pixels
+        // apart across a border and only the culler can see it. The label's own size is the floor.
+        if (repeatAlongLine && spacing > 0 && !_minimumDistance.isDefined()) {
+            minimumDistance = sizeStatic * fontScale;
+        }
         long long groupId = (allowOverlap ? -1 : 0);
         if (!allowOverlap && minimumDistance > 0) {
-            groupId = 1;
+            // Per TEXT along a line, as TextSymbolizer groups its repeats: one group for every
+            // shield in the style made 'shield-min-distance' a distance between DIFFERENT roads,
+            // and a style stating its symbol spacing there lost most of its shields.
+            groupId = (repeatAlongLine ? (hash & 0x7fffffffU) : 1);
         }
 
         cglib::vec2<float> backgroundOffset(0, 0);

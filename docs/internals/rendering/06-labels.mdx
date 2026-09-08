@@ -188,6 +188,12 @@ there is no label to merge them.
 they project closer together in the far field. The screen-space guarantee is `text-min-distance`,
 which gives the label a group id the culler enforces in pixels.
 
+**A line label's group is its TEXT**, so the distance thins repeats of one name and leaves a
+different name alone; only a point label shares one group with every other. `shield-min-distance`
+used to fall in the second case whatever its placement, which made it a distance between DIFFERENT
+roads: a style setting it to its own `shield-spacing` — what `mapbox2css` writes, so that a road cut
+into many ways is not shielded on each — lost most of its shields instead.
+
 **A candidate stretch of line is measured in the plane its run will be laid out in**, and the same
 measure both ranks the candidates and decides whether the run fits (`findClippedLinePlacement`). A
 screen run has to be compared on screen — a line running away from a tilted camera is worth a

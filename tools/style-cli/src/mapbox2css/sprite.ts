@@ -846,3 +846,100 @@ function edt(grid: Float64Array, width: number, height: number): void {
         pass(width, (x) => grid[row + x], (x, value) => { grid[row + x] = value; });
     }
 }
+
+/** A road plate's own colours, read off the sprite so the style needs no convention. */
+export interface FlatPlate {
+    fill: string;
+    border: string;
+    borderWidth: number;
+    radius: number;
+}
+
+/** How far two texels of the same flat may drift and still count as one colour. */
+const FLAT_TOLERANCE = 12;
+
+function hex(rgb: readonly number[]): string {
+    return '#' + rgb.slice(0, 3).map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * A sprite that is nothing but a rounded rectangle: one flat interior, an optional border of one
+ * other flat, and no ink between them.
+ *
+ * That is what a road shield outside the US is, and the SDK draws it without an image at all -
+ * `shield-background-fill` and `-border-fill` on the label's own plate. So the colours are read
+ * back off the artwork rather than named by a convention the style would have to carry, and a
+ * sprite that IS artwork - a US interstate, a roundel, a POI pin - fails one of the flat tests and
+ * keeps its bitmap.
+ */
+export function describeFlatPlate(sprites: SpriteSet, name: string): FlatPlate | null {
+    const [sheetId, iconName] = splitIconName(name);
+    const sheet = sprites.get(sheetId);
+    const entry = sheet?.index[iconName];
+    if (!sheet || !entry || entry.sdf || entry.width < 8 || entry.height < 8) return null;
+
+    const at = (x: number, y: number): readonly [number, number, number, number] => {
+        const i = ((entry.y + y) * sheet.image.width + (entry.x + x)) * 4;
+        return [sheet.image.data[i], sheet.image.data[i + 1], sheet.image.data[i + 2], sheet.image.data[i + 3]];
+    };
+    const opaque = (x: number, y: number): boolean => at(x, y)[3] >= FLAT_ALPHA;
+    const same = (a: readonly number[], b: readonly number[]): boolean =>
+        Math.abs(a[0] - b[0]) <= FLAT_TOLERANCE && Math.abs(a[1] - b[1]) <= FLAT_TOLERANCE &&
+        Math.abs(a[2] - b[2]) <= FLAT_TOLERANCE;
+
+    let x0 = entry.width, y0 = entry.height, x1 = -1, y1 = -1, area = 0;
+    for (let y = 0; y < entry.height; y++) {
+        for (let x = 0; x < entry.width; x++) {
+            if (!opaque(x, y)) continue;
+            area++;
+            x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+            x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+        }
+    }
+    const width = x1 - x0 + 1, height = y1 - y0 + 1;
+    if (x1 < x0 || y1 < y0 || width < 8 || height < 6) return null;
+
+    const midY = (y0 + y1) >> 1;
+    const fill = at((x0 + x1) >> 1, midY);
+    if (fill[3] < FLAT_ALPHA) return null;
+
+    // The border is the run of one OTHER flat the middle row crosses before the fill. The two do
+    // not meet cleanly - a stroke is antialiased against what it covers - so the blend between them
+    // is walked past rather than measured, and only the flats on either side are read.
+    const edge = at(x0, midY);
+    let borderWidth = 0;
+    while (borderWidth < width / 3 && same(at(x0 + borderWidth, midY), edge)) borderWidth++;
+    const border = same(edge, fill) ? fill : edge;
+    if (same(edge, fill)) borderWidth = 0;
+    let inner = borderWidth;
+    while (inner < width / 2 && !same(at(x0 + inner, midY), fill)) inner++;
+    if (inner >= width / 2) return null;
+
+    // A rounded rectangle fills its box; a shield outline does not.
+    if (area < 0.85 * width * height) return null;
+    // A rounded rect of w by h with corner radius r loses (4 - pi) r^2 to its corners.
+    const radiusTexels = Math.min(Math.min(width, height) / 2,
+        Math.sqrt(Math.max(0, width * height - area) / (4 - Math.PI)));
+
+    // Uniform inside: one texel of another colour is a glyph or a second field, and this is
+    // artwork - the interstate's red crown is caught here. The four CORNERS are where a rounded
+    // rect leaves its box, and where the border curves through the inset, so they are skipped.
+    const inset = inner + 1;
+    const corner = Math.ceil(radiusTexels) + inset;
+    for (let y = y0 + inset; y <= y1 - inset; y++) {
+        for (let x = x0 + inset; x <= x1 - inset; x++) {
+            const inCorner = (x - x0 < corner || x1 - x < corner) && (y - y0 < corner || y1 - y < corner);
+            if (inCorner) continue;
+            if (opaque(x, y) && !same(at(x, y), fill)) return null;
+        }
+    }
+    if (borderWidth > 0) {
+        const midX = (x0 + x1) >> 1;
+        for (const [x, y] of [[x1, midY], [midX, y0], [midX, y1]] as const) {
+            if (!same(at(x, y), border)) return null;
+        }
+    }
+
+    const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
+    return { fill: hex(fill), border: hex(border), borderWidth: borderWidth / ratio, radius: radiusTexels / ratio };
+}

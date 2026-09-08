@@ -6,7 +6,7 @@ import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
-import { type ExtractedIcon, type IconPlate, type SpriteSet, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
+import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
 import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
@@ -1224,13 +1224,16 @@ function layerDeclarations(
     // beside the text-* ones rather than replacing them - unless the icon is a road shield, whose
     // sprite is picked per feature and is drawn as a plate behind the text instead.
     const isShield = layer.type === 'symbol' && isShieldLayer(layer);
+    const plates = layer.type === 'symbol' && !isShield ? flatPlateShield(layer, options) : null;
     const iconDeclarations = layer.type === 'model'
         ? canopyDeclarations(layer, coverage)
         : layer.type !== 'symbol'
             ? []
             : isShield
                 ? plateDeclarations(layer, coverage)
-                : markerDeclarations(layer, coverage, options);
+                : plates
+                    ? flatPlateDeclarations(layer, plates, options, coverage)
+                    : markerDeclarations(layer, coverage, options);
 
     if (symbolizer === 'text') {
         out.push(`text-placement: '${resolvePlacement(layer, 'text')}';`);
@@ -1671,6 +1674,167 @@ function plateDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
     coverage.emit('text-background-radius');
     coverage.note(`"${layer.id}": shield sprite drawn as a text background plate, so the ` +
         'country-specific artwork is lost but the ref stays readable');
+    return out;
+}
+
+/** MapBox's own default when a layer states no icon-text-fit-padding. */
+const DEFAULT_FIT_PADDING = [0, 0, 0, 0];
+
+/**
+ * Rebuild an icon-image expression with every image NAME replaced by whatever `of` returns for it.
+ * Null when a name could be built rather than chosen - a `concat` of a field - because then the set
+ * of images the layer can draw is not knowable here.
+ */
+function mapImageNames(image: Json, of: (name: string) => Json | null): Json | null {
+    if (typeof image === 'string') return of(image);
+    if (!Array.isArray(image)) return null;
+    const head = image[0];
+    const rebuild = (indices: number[]): Json | null => {
+        const out = [...image] as Json[];
+        for (const i of indices) {
+            const mapped = mapImageNames(image[i] as Json, of);
+            if (mapped === null) return null;
+            out[i] = mapped;
+        }
+        return out;
+    };
+    if (head === 'image' || head === 'to-string') return mapImageNames(image[1] as Json, of);
+    if (head === 'coalesce') return rebuild(image.map((_, i) => i).slice(1));
+    if (head === 'case' && image.length >= 4 && image.length % 2 === 0) {
+        const branches = [];
+        for (let i = 2; i < image.length; i += 2) branches.push(i);
+        return rebuild([...branches, image.length - 1]);
+    }
+    if (head === 'match' && image.length >= 5 && image.length % 2 === 1) {
+        const branches = [];
+        for (let i = 3; i < image.length; i += 2) branches.push(i);
+        return rebuild([...branches, image.length - 1]);
+    }
+    return null;
+}
+
+/**
+ * The plate's colour per feature, as the ternary that picked its image - with the leaf image name
+ * replaced by the colour read off that artwork.
+ *
+ * A branch whose CONDITION has no CartoCSS form is skipped rather than fatal, the same way the
+ * sprite path treats one: MapTiler picks a shield on `slice(ref, 2, 3)` in places, and dropping the
+ * whole expression for it would cost every road its plate where dropping the branch costs one
+ * country its colour.
+ */
+function plateTernary(image: Json, colourOf: (name: string) => string, onSkip: () => void): string | null {
+    const leaf = (node: Json): string | null => {
+        if (typeof node === 'string') return colourOf(node);
+        if (Array.isArray(node) && node.length === 2
+            && (node[0] === 'image' || node[0] === 'string' || node[0] === 'to-string')) {
+            return leaf(node[1] as Json);
+        }
+        return null;
+    };
+
+    const build = (node: Json): string | null => {
+        const direct = leaf(node);
+        if (direct !== null) return direct;
+        if (!Array.isArray(node)) return null;
+
+        const pairs: Array<[Json, Json]> = [];
+        if (node[0] === 'case' && node.length >= 4 && node.length % 2 === 0) {
+            for (let i = 1; i < node.length - 1; i += 2) pairs.push([node[i] as Json, node[i + 1] as Json]);
+        } else if (node[0] === 'match' && node.length >= 5 && node.length % 2 === 1) {
+            const input = node[1] as Json;
+            for (let i = 2; i < node.length - 1; i += 2) {
+                const labels = Array.isArray(node[i]) ? node[i] as Json[] : [node[i] as Json];
+                const test = labels.length === 1
+                    ? ['==', input, labels[0]]
+                    : ['any', ...labels.map((l) => ['==', input, l])];
+                pairs.push([test as unknown as Json, node[i + 1] as Json]);
+            }
+        } else {
+            return null;
+        }
+
+        let expr = build(node[node.length - 1] as Json);
+        if (expr === null) return null;
+        for (const [condition, value] of [...pairs].reverse()) {
+            const colour = build(value);
+            let test: string | null = null;
+            try {
+                test = colour === null ? null : translateExpression(condition);
+            } catch {
+                test = null;
+            }
+            if (test === null) {
+                onSkip();
+                continue;
+            }
+            expr = `((${test}) ? ${colour} : ${expr})`;
+        }
+        return expr;
+    };
+    return build(image);
+}
+
+/**
+ * A shield whose every image is a flat plate - see describeFlatPlate. The SDK draws that without a
+ * bitmap at all, so the artwork is read for its colours and thrown away; only a shield whose
+ * outline carries meaning (a US interstate) keeps its sprite.
+ */
+function flatPlateShield(layer: MapboxLayer, options: ConvertOptions): FlatPlate[] | null {
+    const layout = layer.layout ?? {};
+    const fit = layout['icon-text-fit'];
+    if (!options.sprites || layout['text-field'] === undefined) return null;
+    // The image has to BE the text's background, not something beside it.
+    if (fit === undefined || fit === 'none') return null;
+    const plates: FlatPlate[] = [];
+    const image = layout['icon-image'] as Json;
+    const mapped = mapImageNames(image, (name) => {
+        const plate = describeFlatPlate(options.sprites!.sheets, name);
+        if (!plate) return null;
+        plates.push(plate);
+        return name;
+    });
+    if (mapped === null || plates.length === 0) return null;
+    // A shape this builder cannot write out keeps its sprite rather than losing its colour.
+    return plateTernary(image, () => '#000000', () => {}) === null ? null : plates;
+}
+
+/**
+ * A flat plate as the label's own background: the colours come from the artwork, per feature,
+ * through the same expression that picked the image.
+ */
+function flatPlateDeclarations(layer: MapboxLayer, plates: FlatPlate[], options: ConvertOptions,
+        coverage: Coverage): string[] {
+    const sheets = options.sprites!.sheets;
+    const image = (layer.layout ?? {})['icon-image'] as Json;
+    const colourOf = (pick: (plate: FlatPlate) => string) =>
+        plateTernary(image, (name) => pick(describeFlatPlate(sheets, name)!), () => {
+            coverage.approximate(`one plate branch on "${layer.id}" has no CartoCSS form and is ` +
+                'skipped: those features take the next branch that matches');
+        });
+
+    const out = [`text-background-fill: ${colourOf((p) => p.fill)};`];
+    coverage.emit('text-background-fill');
+    if (plates.some((p) => p.borderWidth > 0)) {
+        out.push(`text-background-border-fill: ${colourOf((p) => p.border)};`);
+        out.push(`text-background-border-width: ${round(Math.max(...plates.map((p) => p.borderWidth)))};`);
+        coverage.emit('text-background-border-fill');
+        coverage.emit('text-background-border-width');
+    }
+    out.push(`text-background-radius: ${round(Math.max(...plates.map((p) => p.radius)))};`);
+    coverage.emit('text-background-radius');
+
+    // MapBox grows the image to the text and pads by icon-text-fit-padding; the plate is grown by
+    // the decoder, so the same numbers become its padding. [top, right, bottom, left].
+    const fit = ((layer.layout ?? {})['icon-text-fit-padding'] ?? DEFAULT_FIT_PADDING) as number[];
+    out.push(`text-background-padding-x: ${round((fit[1] + fit[3]) / 2)};`);
+    out.push(`text-background-padding-y: ${round((fit[0] + fit[2]) / 2)};`);
+    coverage.emit('text-background-padding-x');
+    coverage.emit('text-background-padding-y');
+    coverage.emit('icon-text-fit');
+    coverage.emit('icon-text-fit-padding');
+    coverage.emit('icon-image');
+    coverage.note(`"${layer.id}": every image is a flat plate, so the colours are read off the ` +
+        'artwork and the label draws its own background - no sprite ships');
     return out;
 }
 

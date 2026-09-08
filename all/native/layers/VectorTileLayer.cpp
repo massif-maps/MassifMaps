@@ -556,6 +556,10 @@ namespace massif {
         // suits the label if it knows what a style pixel is worth on this display.
         if (std::shared_ptr<Options> opts = options.lock()) {
             _tileDecoder->setPixelScale(static_cast<float>(opts->getDPI() / Const::UNSCALED_DPI));
+            // A style's sizes are fractions of the tile it is decoded against, so the decoder has
+            // to measure against the same tile the renderer draws - or a bigger TileDrawSize
+            // magnifies every label and line instead of only picking coarser tiles.
+            _tileDecoder->setTileSize(static_cast<float>(opts->getTileDrawSize()));
         }
     }
 

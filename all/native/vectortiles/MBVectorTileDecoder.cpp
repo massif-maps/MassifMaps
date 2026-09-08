@@ -168,6 +168,7 @@ namespace massif {
     MBVectorTileDecoder::MBVectorTileDecoder(const std::shared_ptr<CompiledStyleSet>& compiledStyleSet) :
         _logger(std::make_shared<MVTLogger>("MBVectorTileDecoder")),
         _pixelScale(1.0f),
+        _tileSize(static_cast<float>(DEFAULT_TILE_SIZE)),
         _tileFormat(TileFormat::TILE_FORMAT_AUTO),
         _featureIdOverride(false),
         _cartoCSSLayerNamesIgnored(false),
@@ -191,6 +192,7 @@ namespace massif {
     MBVectorTileDecoder::MBVectorTileDecoder(const std::shared_ptr<CartoCSSStyleSet>& cartoCSSStyleSet) :
         _logger(std::make_shared<MVTLogger>("MBVectorTileDecoder")),
         _pixelScale(1.0f),
+        _tileSize(static_cast<float>(DEFAULT_TILE_SIZE)),
         _tileFormat(TileFormat::TILE_FORMAT_AUTO),
         _featureIdOverride(false),
         _cartoCSSLayerNamesIgnored(false),
@@ -365,7 +367,7 @@ namespace massif {
 
         // Settings snapshot the parameters that scale geometry and glyphs, so they are rebuilt
         // whenever a parameter changes structurally.
-        _symbolizerContextSettings = std::make_shared<mvt::SymbolizerContext::Settings>(_symbolizerContextSettings->getTileSize(), _parameterStore, _symbolizerContextSettings->getFallbackFont(), _pixelScale, _selectionState);
+        _symbolizerContextSettings = std::make_shared<mvt::SymbolizerContext::Settings>(_tileSize, _parameterStore, _symbolizerContextSettings->getFallbackFont(), _pixelScale, _selectionState);
         _symbolizerContext = std::make_shared<mvt::SymbolizerContext>(_symbolizerContext->getBitmapManager(), _symbolizerContext->getFontManager(), _symbolizerContext->getStrokeMap(), _symbolizerContext->getGlyphMap(), *_symbolizerContextSettings);
     }
 
@@ -636,6 +638,20 @@ namespace massif {
             // maps have to go - but only those. Dropping the whole context reloaded the style's
             // fonts too (~134 ms of a cold start, and this fires when a layer joins a map).
             resetSymbolizerContextRasterMaps();
+            updateSymbolizerContext();
+        }
+        notifyDecoderChanged();
+    }
+
+    void MBVectorTileDecoder::setTileSize(float tileSize) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (!(tileSize > 0.0f) || _tileSize == tileSize) {
+                return;
+            }
+            _tileSize = tileSize;
+            // Only the tile geometry carries it - the glyph and stroke rasters are picked from the
+            // pixel scale, so they survive.
             updateSymbolizerContext();
         }
         notifyDecoderChanged();
@@ -995,7 +1011,7 @@ namespace massif {
                     fallbackFont = fontManager->getFont(fontName, fallbackFont);
                 }
             }
-            mvt::SymbolizerContext::Settings settings(DEFAULT_TILE_SIZE, std::make_shared<mvt::StyleParameterStore>(), fallbackFont, _pixelScale);
+            mvt::SymbolizerContext::Settings settings(_tileSize, std::make_shared<mvt::StyleParameterStore>(), fallbackFont, _pixelScale);
             symbolizerContext = std::make_shared<mvt::SymbolizerContext>(bitmapManager, fontManager, strokeMap, glyphMap, settings);
         }
 
@@ -1031,7 +1047,7 @@ namespace massif {
         updateParameterStore();
         updateSelectionState();
 
-        _symbolizerContextSettings = std::make_shared<mvt::SymbolizerContext::Settings>(symbolizerContext->getSettings().getTileSize(), _parameterStore, symbolizerContext->getSettings().getFallbackFont(), _pixelScale, _selectionState);
+        _symbolizerContextSettings = std::make_shared<mvt::SymbolizerContext::Settings>(_tileSize, _parameterStore, symbolizerContext->getSettings().getFallbackFont(), _pixelScale, _selectionState);
         _symbolizerContext = std::make_shared<mvt::SymbolizerContext>(symbolizerContext->getBitmapManager(), symbolizerContext->getFontManager(), symbolizerContext->getStrokeMap(), symbolizerContext->getGlyphMap(), *_symbolizerContextSettings);
         _cachedFeatureDecoder.first.reset();
         _cachedFeatureDecoder.second.reset();

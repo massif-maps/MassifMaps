@@ -101,6 +101,23 @@ int main() {
         return 1;
     }
 
+    // Before any layer: a layer reads the display scale and the tile draw size when it joins the
+    // map, so a change made after it is added reaches the camera but not the style.
+    //
+    // A zoom NUMBER means a different distance here than in a web map: the SDK calibrates on a
+    // 256-pixel tile and maplibre on a 512-pixel one, so the same number is a level apart. Pass 1
+    // to read the query string's zoom as a web map would - see ZoomConvention.h. A tiledrawsize of
+    // 512 adopts the same convention for the TILE the layer picks, which the offset does not touch.
+    _MapView->getOptions()->setZoomOffset(static_cast<float>(queryNumber("zoomoffset", 0)));
+    _MapView->getOptions()->setTileDrawSize(static_cast<int>(queryNumber("tiledrawsize", 256)));
+    // And the SDK refines a full level finer than tangram and mapbox do: a tilelodfactor of 1 is
+    // their rule verbatim, where the default 0.5 is what draws a level deeper at the same camera.
+    _MapView->getOptions()->setTileLODFactor(static_cast<float>(queryNumber("tilelodfactor", 0.5)));
+    const double dpi = queryNumber("dpi", 0);
+    if (dpi > 0) {
+        _MapView->getOptions()->setDPI(static_cast<float>(dpi));
+    }
+
     std::string source = queryParam("source", DEFAULT_SOURCE);
     // A tileset that stops at z14 - every OpenMapTiles build does - draws NOTHING deeper unless
     // the source is told, because the layer asks for a tile that was never made instead of
@@ -162,22 +179,6 @@ int main() {
         terrainOptions->setAutoFlattenParallax(0.0f);
         terrainOptions->setMeshResolution(WEB_TERRAIN_MESH_RESOLUTION);
         _MapView->getOptions()->setTerrainOptions(terrainOptions);
-    }
-
-    // A zoom NUMBER means a different distance here than in a web map: the SDK calibrates on a
-    // 256-pixel tile and maplibre on a 512-pixel one, so the same number is a level apart. Pass 1
-    // to read the query string's zoom as a web map would - see ZoomConvention.h. A tiledrawsize of
-    // 512 adopts the same convention for the TILE the layer picks, which the offset does not touch.
-    _MapView->getOptions()->setZoomOffset(static_cast<float>(queryNumber("zoomoffset", 0)));
-    _MapView->getOptions()->setTileDrawSize(static_cast<int>(queryNumber("tiledrawsize", 256)));
-    // And the SDK refines a full level finer than tangram and mapbox do: a tilelodfactor of 1 is
-    // their rule verbatim, where the default 0.5 is what draws a level deeper at the same camera.
-    _MapView->getOptions()->setTileLODFactor(static_cast<float>(queryNumber("tilelodfactor", 0.5)));
-    // A bigger tiledrawsize magnifies what is drawn IN the tile - vt sizes by 2^(zoom - tileZoom),
-    // and a coarser tile doubles that factor - so dpi is what puts label and line sizes back.
-    const double dpi = queryNumber("dpi", 0);
-    if (dpi > 0) {
-        _MapView->getOptions()->setDPI(static_cast<float>(dpi));
     }
 
     massif::MapPos wgs84(queryNumber("lon", 2.3522), queryNumber("lat", 48.8566));

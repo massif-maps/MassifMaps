@@ -327,6 +327,10 @@ namespace massif {
         /**
          * Sets the tile size for drawing map tiles. Different datasources may have different tile sizes, this option
          * can be used to compensate for bigger or smaller tiles than default. The default is 256.
+         *
+         * A style's own sizes do NOT follow it: a vector tile layer decodes against this size, so a
+         * label stays the same dp whatever tile the layer picks. Set it before adding the layer -
+         * a layer reads it when it joins the map.
          * @param tileDrawSize The new tile size in density-independent pixels (dp).
          */
         void setTileDrawSize(int tileDrawSize);

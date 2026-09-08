@@ -5,6 +5,10 @@
  * The stretch boxes matter as much as the artwork: a road shield holds a ref of one to three
  * characters, and MapLibre grows one image to fit rather than picking between per-length sprites.
  * `stretchX` names the columns it may repeat, `content` the box the text is placed in.
+ *
+ * `variants` writes one sprite per colour from a single drawing, substituting `__TOKEN__` in its
+ * source. A road shield outside the US is that plate in the country's colour, and a style picks it
+ * by name like any other icon - no SDF, no tint, so the sprite stays a nine-patch that stretches.
  */
 
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
@@ -18,6 +22,20 @@ const PAD = 2;
 function render(svg, ratio) {
     const r = new Resvg(svg, { fitTo: { mode: 'zoom', value: ratio } });
     return PNG.sync.read(Buffer.from(r.render().asPng()));
+}
+
+/** One drawing, one sprite per colour: `<id>-<variant>`, with `__TOKEN__` replaced in the SVG. */
+function expand(id, svg, manifest) {
+    const variants = (manifest.variants || {})[id];
+    if (!variants) return [{ id, svg }];
+    return Object.entries(variants).map(([suffix, tokens]) => {
+        let out = svg;
+        for (const [token, value] of Object.entries(tokens)) {
+            out = out.replaceAll(`__${token}__`, value);
+        }
+        if (out.includes('__')) throw new Error(`${id}-${suffix}: a __TOKEN__ was left unreplaced`);
+        return { id: `${id}-${suffix}`, svg: out, from: id };
+    });
 }
 
 /** shelf packing, tallest first - a sprite sheet of a few dozen icons needs nothing cleverer. */
@@ -47,10 +65,11 @@ function blit(src, dst, dx, dy) {
 }
 
 function scaleBoxes(meta, ratio) {
+    const at = (v) => v * ratio;
     const out = {};
-    if (meta.stretchX) out.stretchX = meta.stretchX.map(([a, b]) => [a * ratio, b * ratio]);
-    if (meta.stretchY) out.stretchY = meta.stretchY.map(([a, b]) => [a * ratio, b * ratio]);
-    if (meta.content) out.content = meta.content.map((v) => v * ratio);
+    if (meta.stretchX) out.stretchX = meta.stretchX.map(([a, b]) => [at(a), at(b)]);
+    if (meta.stretchY) out.stretchY = meta.stretchY.map(([a, b]) => [at(a), at(b)]);
+    if (meta.content) out.content = meta.content.map(at);
     return out;
 }
 
@@ -61,10 +80,15 @@ function build(srcDir, outDir, name) {
     mkdirSync(outDir, { recursive: true });
 
     for (const ratio of RATIOS) {
-        const images = files.map((f) => ({
-            id: basename(f, '.svg'),
-            png: render(readFileSync(join(srcDir, f)), ratio),
-        }));
+        const images = files.flatMap((f) => {
+            const source = basename(f, '.svg');
+            const svg = readFileSync(join(srcDir, f), 'utf8');
+            return expand(source, svg, manifest).map((v) => ({
+                id: v.id,
+                meta: manifest.icons[v.from || v.id] || {},
+                png: render(Buffer.from(v.svg), ratio),
+            }));
+        });
         const { width, height } = pack(images, 512 * ratio);
         const sheet = new PNG({ width, height });
         const index = {};
@@ -73,7 +97,7 @@ function build(srcDir, outDir, name) {
             index[img.id] = {
                 x: img.x, y: img.y, width: img.png.width, height: img.png.height,
                 pixelRatio: ratio, visible: true,
-                ...scaleBoxes(manifest.icons[img.id] || {}, ratio),
+                ...scaleBoxes(img.meta, ratio),
             };
         }
         const suffix = ratio === 1 ? '' : `@${ratio}x`;

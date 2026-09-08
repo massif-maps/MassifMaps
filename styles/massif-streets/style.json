@@ -3,7 +3,7 @@
   "name": "Massif Streets",
   "metadata": {
     "massif:schema": "openmaptiles",
-    "massif:stage": "shields only - roads are drawn as context, not as the final design"
+    "massif:stage": "road shields - roads are drawn as context, not as the final design"
   },
   "sources": {
     "openmaptiles": { "type": "vector", "url": "https://tiles.openfreemap.org/planet" }
@@ -44,7 +44,12 @@
       "minzoom": 5,
       "filter": ["in", ["get", "class"], ["literal",
         ["motorway", "trunk", "primary", "secondary", "tertiary", "minor", "service"]]],
-      "layout": { "line-cap": "round", "line-join": "round" },
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": ["match", ["get", "class"],
+          "motorway", 7, "trunk", 6, "primary", 5, "secondary", 4, "tertiary", 3, "minor", 2, 1]
+      },
       "paint": {
         "line-color": ["match", ["get", "class"],
           "motorway", "#c08a3e", "trunk", "#c9a24a", "#c3bfb4"],
@@ -64,7 +69,12 @@
       "minzoom": 5,
       "filter": ["in", ["get", "class"], ["literal",
         ["motorway", "trunk", "primary", "secondary", "tertiary", "minor", "service"]]],
-      "layout": { "line-cap": "round", "line-join": "round" },
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": ["match", ["get", "class"],
+          "motorway", 7, "trunk", 6, "primary", 5, "secondary", 4, "tertiary", 3, "minor", 2, 1]
+      },
       "paint": {
         "line-color": ["match", ["get", "class"],
           "motorway", "#f5c98a", "trunk", "#fadfa4", "primary", "#fdf0c4", "#ffffff"],
@@ -141,30 +151,7 @@
       "paint": { "text-color": "#1a1a1a" }
     },
     {
-      "id": "road-shield-us-state",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 8,
-      "filter": ["all", ["has", "ref"], ["==", ["get", "network"], "us-state"]],
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-spacing": 350,
-        "symbol-avoid-edges": true,
-        "icon-image": "shield-us-state",
-        "icon-text-fit": "both",
-        "icon-text-fit-padding": [0, 1, 0, 1],
-        "text-field": ["get", "ref"],
-        "text-font": ["Noto Sans Bold"],
-        "text-size": 10,
-        "text-rotation-alignment": "viewport",
-        "icon-rotation-alignment": "viewport",
-        "text-padding": 2
-      },
-      "paint": { "text-color": "#1a1a1a" }
-    },
-    {
-      "id": "road-shield-default",
+      "id": "road-shield-plate",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation_name",
@@ -172,14 +159,32 @@
       "filter": ["all",
         ["has", "ref"],
         ["!", ["in", ["coalesce", ["get", "network"], ""], ["literal",
-          ["us-interstate", "us-highway", "us-state"]]]]],
+          ["us-interstate", "us-highway"]]]]],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 350,
         "symbol-avoid-edges": true,
-        "icon-image": "shield-default",
+        "icon-image": ["case",
+          ["==", ["get", "network"], "e-road"], "shield-plate-green",
+          ["match", ["coalesce", ["get", "iso_a2"], ""],
+            "FR", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+              "A", "shield-plate-red", "N", "shield-plate-red",
+              "D", "shield-plate-yellow", "M", "shield-plate-yellow", "shield-plate-neutral"],
+            "DE", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+              "A", "shield-plate-blue", "B", "shield-plate-yellow", "shield-plate-neutral"],
+            "GB", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+              "M", "shield-plate-blue", "A", "shield-plate-green", "shield-plate-neutral"],
+            "NL", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+              "A", "shield-plate-red", "N", "shield-plate-yellow", "shield-plate-neutral"],
+            "CH", ["match", ["get", "class"],
+              "motorway", "shield-plate-green", "trunk", "shield-plate-blue", "shield-plate-neutral"],
+            "IT", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+              "A", "shield-plate-green", "shield-plate-neutral"],
+            "ES", ["match", ["get", "class"],
+              "motorway", "shield-plate-blue", "trunk", "shield-plate-blue", "shield-plate-neutral"],
+            "shield-plate-neutral"]],
         "icon-text-fit": "both",
-        "icon-text-fit-padding": [0, 1, 0, 1],
+        "icon-text-fit-padding": [1, 3, 1, 3],
         "text-field": ["get", "ref"],
         "text-font": ["Noto Sans Bold"],
         "text-size": 10,
@@ -187,7 +192,30 @@
         "icon-rotation-alignment": "viewport",
         "text-padding": 2
       },
-      "paint": { "text-color": "#4a463d" }
+      "paint": {
+        "text-color": ["match",
+          ["case",
+            ["==", ["get", "network"], "e-road"], "shield-plate-green",
+            ["match", ["coalesce", ["get", "iso_a2"], ""],
+              "FR", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+                "A", "shield-plate-red", "N", "shield-plate-red",
+                "D", "shield-plate-yellow", "M", "shield-plate-yellow", "shield-plate-neutral"],
+              "DE", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+                "A", "shield-plate-blue", "B", "shield-plate-yellow", "shield-plate-neutral"],
+              "GB", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+                "M", "shield-plate-blue", "A", "shield-plate-green", "shield-plate-neutral"],
+              "NL", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+                "A", "shield-plate-red", "N", "shield-plate-yellow", "shield-plate-neutral"],
+              "CH", ["match", ["get", "class"],
+                "motorway", "shield-plate-green", "trunk", "shield-plate-blue", "shield-plate-neutral"],
+              "IT", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
+                "A", "shield-plate-green", "shield-plate-neutral"],
+              "ES", ["match", ["get", "class"],
+                "motorway", "shield-plate-blue", "trunk", "shield-plate-blue", "shield-plate-neutral"],
+              "shield-plate-neutral"]],
+          ["shield-plate-yellow", "shield-plate-neutral"], "#2b2400",
+          "#ffffff"]
+      }
     }
   ]
 }

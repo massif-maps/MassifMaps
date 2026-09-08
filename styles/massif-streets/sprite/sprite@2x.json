@@ -1,5 +1,5 @@
 {
-  "shield-default": {
+  "shield-plate-neutral": {
     "x": 0,
     "y": 0,
     "width": 48,
@@ -8,19 +8,99 @@
     "visible": true,
     "stretchX": [
       [
-        14,
-        34
+        18,
+        30
       ]
     ],
     "content": [
-      6.4,
-      9.6,
-      41.6,
-      30.4
+      6,
+      8.4,
+      42,
+      31.6
+    ]
+  },
+  "shield-plate-red": {
+    "x": 50,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        18,
+        30
+      ]
+    ],
+    "content": [
+      6,
+      8.4,
+      42,
+      31.6
+    ]
+  },
+  "shield-plate-yellow": {
+    "x": 100,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        18,
+        30
+      ]
+    ],
+    "content": [
+      6,
+      8.4,
+      42,
+      31.6
+    ]
+  },
+  "shield-plate-blue": {
+    "x": 150,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        18,
+        30
+      ]
+    ],
+    "content": [
+      6,
+      8.4,
+      42,
+      31.6
+    ]
+  },
+  "shield-plate-green": {
+    "x": 200,
+    "y": 0,
+    "width": 48,
+    "height": 40,
+    "pixelRatio": 2,
+    "visible": true,
+    "stretchX": [
+      [
+        18,
+        30
+      ]
+    ],
+    "content": [
+      6,
+      8.4,
+      42,
+      31.6
     ]
   },
   "shield-us-highway": {
-    "x": 50,
+    "x": 250,
     "y": 0,
     "width": 48,
     "height": 40,
@@ -40,7 +120,7 @@
     ]
   },
   "shield-us-interstate": {
-    "x": 100,
+    "x": 300,
     "y": 0,
     "width": 48,
     "height": 40,
@@ -57,26 +137,6 @@
       14.8,
       40,
       34.8
-    ]
-  },
-  "shield-us-state": {
-    "x": 150,
-    "y": 0,
-    "width": 48,
-    "height": 40,
-    "pixelRatio": 2,
-    "visible": true,
-    "stretchX": [
-      [
-        16,
-        32
-      ]
-    ],
-    "content": [
-      7.2,
-      7.2,
-      40.8,
-      32.8
     ]
   }
 }

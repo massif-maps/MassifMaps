@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="20" viewBox="0 0 24 20">
+  <!-- Every shield outside the US. One drawing, one sprite per colour - see manifest.json. -->
+  <rect x="0.8" y="2.8" width="22.4" height="14.4" rx="3"
+        fill="__FILL__" stroke="__STROKE__" stroke-width="1.3"/>
+</svg>

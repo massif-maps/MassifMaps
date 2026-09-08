@@ -1,9 +1,17 @@
 {
   "comment": "Boxes are in the SVG's own pixels; the sprite build scales them per pixel ratio.",
   "icons": {
+    "shield-plate":         { "stretchX": [[9, 15]], "content": [3, 4.2, 21, 15.8] },
     "shield-us-interstate": { "stretchX": [[9, 15]], "content": [4, 7.4, 20, 17.4] },
-    "shield-us-highway":    { "stretchX": [[10, 14]], "content": [5, 5.6, 19, 15.8] },
-    "shield-us-state":      { "stretchX": [[8, 16]], "content": [3.6, 3.6, 20.4, 16.4] },
-    "shield-default":       { "stretchX": [[7, 17]], "content": [3.2, 4.8, 20.8, 15.2] }
+    "shield-us-highway":    { "stretchX": [[10, 14]], "content": [5, 5.6, 19, 15.8] }
+  },
+  "variants": {
+    "shield-plate": {
+      "neutral": { "FILL": "#f6f4ef", "STROKE": "#6d6a63" },
+      "red":     { "FILL": "#c8102e", "STROKE": "#8d0b20" },
+      "yellow":  { "FILL": "#f2c500", "STROKE": "#8a7100" },
+      "blue":    { "FILL": "#1b4b9c", "STROKE": "#123566" },
+      "green":   { "FILL": "#0a6b3d", "STROKE": "#064226" }
+    }
   }
 }

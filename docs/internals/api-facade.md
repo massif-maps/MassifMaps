@@ -157,6 +157,21 @@ const ClassEntry*    cls  = findClass("massif::FogOptions");
 const PropertyEntry* prop = findProperty(cls, "rangeStart");
 ```
 
+### A colour, in every spelling
+
+A `COLOR` property, a `Color` spec key and a `Color` constructor argument all decode through
+`StructCodec::decodeColor`, the same one a struct field like `lighting.sunColor` uses. `"#rgb"`,
+`"#rrggbb"`, `"#aarrggbb"`, an ARGB number and that number spelled as text are one value:
+
+```js
+map.set("fog.color", "#ffb8c6d8");
+map.set("fog.color", 4290299608);   // the same colour
+```
+
+Anything else is **refused** and the property keeps what it had. A COLOR used to take a number
+only, so a hex string went through `asLong()` and landed as 0 — a fully transparent colour, which
+on `fog.color` renders exactly like no fog and reads exactly like a property never set.
+
 ### The concrete class, not the declared one
 
 A traversal reports what it actually found. `VectorTileLayer.tileDecoder` declares a

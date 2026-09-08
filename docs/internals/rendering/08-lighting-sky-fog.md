@@ -159,9 +159,9 @@ Through the facade it is one JSON property, `light.dayCycleLightStops`, a list o
    "sunColor": "#ff8a00", "sunIntensity": 0.6 }]
 ```
 
-Colours are written back as `#aarrggbb` and read leniently — `#rgb`, `#rrggbb`, `#aarrggbb`, or the
-plain ARGB number every other colour property carries. A stop with no `sunAltitude` is refused
-rather than defaulted; it would have no place on the curve.
+Colours are written back as `#aarrggbb` and read leniently — `#rgb`, `#rrggbb`, `#aarrggbb`, or a
+plain ARGB number, the same spellings every colour property takes. A stop with no `sunAltitude` is
+refused rather than defaulted; it would have no place on the curve.
 
 The `day-cycle-light` gallery example is this, on two converted styles and two curves.
 

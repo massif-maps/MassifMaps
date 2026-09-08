@@ -680,7 +680,10 @@ def writeExpr(entry):
   # false, and the type it stamped is what makes the conversion possible.
   setter = selfExpr(entry) + entry['setter']
   if entry['type'] == 'COLOR':
-    return '%s(massif::Color(static_cast<int>(value.asLong())));' % setter
+    # A malformed colour leaves the property alone, like a malformed struct: writing 0 over it
+    # would be a TRANSPARENT colour, which reads exactly like never having set one.
+    return ('massif::Color color; if (StructCodec::decodeColor(value, color)) { %s(color); }'
+            % setter)
   if entry['type'] == 'BOOL':
     return '%s(value.asBool());' % setter
   if entry['type'] == 'FLOAT':
@@ -830,8 +833,7 @@ def specArgReader(cppType, key, default, childKind, childClass):
   if cppType == 'std::string':
     return ('stringAt(spec, "%s", %s)' % (key, '"%s"' % default if default else '""'), None, None)
   if qualify(cppType) == 'massif::Color':
-    return ('massif::Color(static_cast<int>(intAt(spec, "%s", %s)))' % (key, default or '0'),
-            None, None)
+    return ('colorAt(spec, "%s", %s)' % (key, default or '0'), None, None)
   if qualify(cppType) == 'massif::Variant':
     return ('variantAt(spec, "%s")' % key, None, None)
   match = re.match(r'^massif::(\w+)::(\w+)$', cppType)

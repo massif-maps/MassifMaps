@@ -26,6 +26,14 @@ namespace massif { namespace api {
         return spec.containsObjectKey(key) ? spec.getObjectElement(key) : Variant();
     }
 
+    Color colorAt(const Variant& spec, const char* key, int fallback) {
+        Color color(fallback);
+        if (spec.containsObjectKey(key) && !StructCodec::decodeColor(spec.getObjectElement(key), color)) {
+            Log::Errorf("Spec: '%s' is not a colour - write \"#aarrggbb\" or an ARGB number", key);
+        }
+        return color;
+    }
+
     PropertyValue specValue(const Variant& value) {
         PropertyValue property;
         switch (value.getType()) {

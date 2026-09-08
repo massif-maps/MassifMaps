@@ -31,6 +31,9 @@ namespace massif { namespace api {
     bool boolAt(const Variant& spec, const char* key, bool fallback);
     Variant variantAt(const Variant& spec, const char* key);
 
+    /** A colour, in any spelling StructCodec::decodeColor takes. Unreadable falls back too. */
+    Color colorAt(const Variant& spec, const char* key, int fallback);
+
     /** A by-value struct, through the same codec a property uses. Absent decodes to a default. */
     template <typename T>
     T structAt(const Variant& spec, const char* key) {

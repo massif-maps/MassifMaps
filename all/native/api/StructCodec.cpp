@@ -1,5 +1,6 @@
 #include "api/StructCodec.h"
 
+#include <cstdlib>
 #include <sstream>
 #include <vector>
 
@@ -92,18 +93,21 @@ namespace massif { namespace api { namespace StructCodec {
             return out;
         }
 
-        /** Lenient: "#rgb", "#rrggbb", "#aarrggbb", or the plain ARGB number the facade uses. */
-        bool decodeColor(const Variant& value, Color& color) {
-            if (value.getType() == VariantType::VARIANT_TYPE_INTEGER || value.getType() == VariantType::VARIANT_TYPE_DOUBLE) {
-                color = Color(static_cast<unsigned int>(value.getLong()));
+        /** "#rgb", "#rrggbb", "#aarrggbb", or an ARGB number spelled as text. */
+        bool decodeColorText(const std::string& text, Color& color) {
+            if (text.empty()) {
+                return false;
+            }
+            if (text[0] != '#') {
+                // What a string-only binding - a C caller, a URL query - sends, and what the
+                // property setter's asLong() read before this decoder existed.
+                char* end = nullptr;
+                long long number = std::strtoll(text.c_str(), &end, 0);
+                if (!end || *end || end == text.c_str()) {
+                    return false;
+                }
+                color = Color(static_cast<unsigned int>(number));
                 return true;
-            }
-            if (value.getType() != VariantType::VARIANT_TYPE_STRING) {
-                return false;
-            }
-            std::string text = value.getString();
-            if (text.empty() || text[0] != '#') {
-                return false;
             }
             std::string digits = text.substr(1);
             if (digits.size() == 3) {
@@ -133,6 +137,27 @@ namespace massif { namespace api { namespace StructCodec {
             color = Color(argb);
             return true;
         }
+    }
+
+    bool decodeColor(const Variant& value, Color& color) {
+        if (value.getType() == VariantType::VARIANT_TYPE_INTEGER || value.getType() == VariantType::VARIANT_TYPE_DOUBLE) {
+            color = Color(static_cast<unsigned int>(value.getLong()));
+            return true;
+        }
+        if (value.getType() != VariantType::VARIANT_TYPE_STRING) {
+            return false;
+        }
+        return decodeColorText(value.getString(), color);
+    }
+
+    bool decodeColor(const PropertyValue& value, Color& color) {
+        // Only a STRING can be spelled; every other stamped type already carries the ARGB number,
+        // and asLong keeps a caller that writes a colour through setFloat working.
+        if (value.type == PT_STRING) {
+            return decodeColorText(value.stringValue, color);
+        }
+        color = Color(static_cast<unsigned int>(value.asLong()));
+        return true;
     }
 
     std::string encode(const LightStop& value) {

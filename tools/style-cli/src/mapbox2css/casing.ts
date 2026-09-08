@@ -64,6 +64,10 @@ export function foldCasings(layers: MapboxLayer[]): { layers: MapboxLayer[]; fol
                 // Half the difference: the casing's width is the WHOLE road, the border is what
                 // sticks out on one side.
                 'line-border-width': ['/', ['-', casing['line-width'] ?? 1, fill['line-width'] ?? 1], 2],
+                // Every rule the fill expands into shares this, so the SDK draws all of their
+                // casings before any of their fills - the order the casing LAYER gave, which is
+                // what stops one road's outline landing on the road beside it.
+                'line-border-group': out[j].id,
             } } as MapboxLayer;
             out[i] = { ...out[i], layout: { ...(out[i].layout ?? {}), visibility: 'none' } } as MapboxLayer;
             folded.push({ casing: out[i].id, fill: out[j].id });

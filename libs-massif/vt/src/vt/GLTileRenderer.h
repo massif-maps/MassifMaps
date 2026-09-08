@@ -790,7 +790,16 @@ namespace massif::vt {
         void renderTileBorder(const TileId& tileId, const TileId& sourceTileId);
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
-        void renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry);
+        // Which of a bordered line's two draws to issue. ALL is every ungrouped geometry and every
+        // geometry without a border, and is the path the renderer took before border groups existed.
+        enum class GeometryPass { ALL, BORDER, FILL };
+        void renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry, GeometryPass pass = GeometryPass::ALL);
+        // The border groups whose casings this tile has already drawn. Fixed size and only ever
+        // touched by a style that names a group, so an ordinary style neither scans nor allocates.
+        static constexpr std::size_t MAX_BORDER_GROUPS = 8;
+        std::array<int, MAX_BORDER_GROUPS> _borderGroupsDrawn = {};
+        std::size_t _borderGroupCount = 0;
+        bool takeBorderGroup(int group);
         // Which optional blocks a geometry draw runs with. Decided once by renderTileGeometry and
         // handed to the uniform setup, so the program flags and the uniforms cannot disagree.
         struct GeometryDrawMode {

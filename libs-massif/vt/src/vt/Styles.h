@@ -166,6 +166,9 @@ namespace massif::vt {
         // one draw earlier - so one rule replaces the casing/fill pair. See renderTileGeometry.
         ColorFunction borderColorFunc;
         FloatFunction borderWidthFunc;
+        // Layers sharing this draw every casing before any fill, the order a mapbox casing LAYER
+        // gives. Set after construction; 0 leaves the casing with its own line. See renderTileGeometry.
+        int borderGroup = 0;
         float splitDotLimit;
         float miterDotLimit;
         std::shared_ptr<const BitmapPattern> strokePattern;

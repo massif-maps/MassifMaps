@@ -377,7 +377,7 @@ namespace massif::vt {
             }
         }
 
-        if ((_builderParameters.strokeMap && _builderParameters.strokeMap != strokeMap) || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        if ((_builderParameters.strokeMap && _builderParameters.strokeMap != strokeMap) || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.borderGroup != style.borderGroup || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
         else if (!(_builderParameters.type == TileGeometry::Type::LINE || (_builderParameters.type == TileGeometry::Type::POLYGON && !_builderParameters.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
@@ -391,6 +391,7 @@ namespace massif::vt {
         _builderParameters.strokeMap = strokeMap;
         _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
+        _builderParameters.borderGroup = style.borderGroup;
         StrokeMap::StrokeId strokeId = (style.strokePattern ? strokeMap->loadBitmapPattern(style.strokePattern) : 0);
         const StrokeMap::Stroke* stroke = (strokeId != 0 ? strokeMap->getStroke(strokeId) : nullptr);
         int styleIndex = _builderParameters.parameterCount;
@@ -1002,6 +1003,7 @@ namespace massif::vt {
         styleParameters.compOp = _builderParameters.compOp;
         styleParameters.glyphRenderSize = _builderParameters.glyphRenderSize;
         styleParameters.polygon3DEmissiveFunc = _builderParameters.polygon3DEmissiveFunc;
+        styleParameters.borderGroup = _builderParameters.borderGroup;
 
         if (_builderParameters.strokeMap) {
             bool strokeUsed = std::any_of(_builderParameters.lineStrokeIds.begin(), _builderParameters.lineStrokeIds.begin() + _builderParameters.parameterCount, [](StrokeMap::StrokeId strokeId) { return strokeId != 0; });

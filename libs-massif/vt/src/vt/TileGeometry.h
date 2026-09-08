@@ -64,8 +64,11 @@ namespace massif::vt {
             // per fragment against one uniform, while emissiveFuncs above fold into the colour on the
             // CPU - which would grade it toward the ground radiance AND then light it.
             std::optional<FloatFunction> polygon3DEmissiveFunc;
+            // Layers sharing this draw every casing before any fill, which is what a mapbox style
+            // gets from a casing LAYER under a fill layer. 0 = the casing stays with its own line.
+            int borderGroup;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
+            StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64), borderGroup(0) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
         // A run of vertices a style parameter can repoint, so a feature it picks out repaints instead of

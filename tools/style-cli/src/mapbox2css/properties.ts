@@ -28,6 +28,9 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
         'line-blur': 'line-blur',
         'line-border-width': 'line-border-width',
         'line-border-color': 'line-border-color',
+        // Not a MapBox property: --fold-casings writes it so the SDK can draw a group's casings
+        // before its fills, the way the casing LAYER it folded away did.
+        'line-border-group': 'line-border-group',
         'line-dasharray': 'line-dasharray',
         'line-join': 'line-join',
         'line-cap': 'line-cap',

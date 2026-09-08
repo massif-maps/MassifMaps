@@ -122,10 +122,12 @@ namespace massif::vt {
             // See TileGeometry::StyleParameters::polygon3DEmissiveFunc. One uniform per draw, so a
             // change splits the batch like elevationMode does.
             std::optional<FloatFunction> polygon3DEmissiveFunc;
+            // See TileGeometry::StyleParameters::borderGroup.
+            int borderGroup;
 
             // patternUsed defaults to TRUE so every path that does not manage it (lines, points)
             // keeps sampling its pattern; only the polygon processor sets it per slot.
-            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), lineStrokeIds(), patternUsed(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternUsed.fill(true); emissiveFuncs.fill(FloatFunction(1.0f)); }
+            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), lineStrokeIds(), patternUsed(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64), borderGroup(0) { patternUsed.fill(true); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
         // What a span vertex knows about its own feature, stamped per vertex and folded into

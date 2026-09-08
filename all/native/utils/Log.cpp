@@ -17,6 +17,10 @@
 #include <windows.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/console.h>
+#endif
+
 namespace massif {
 
 #ifdef __ANDROID__
@@ -48,10 +52,26 @@ namespace massif {
 #endif
 #ifdef _WIN32
     enum LogType { LOG_TYPE_FATAL, LOG_TYPE_ERROR, LOG_TYPE_WARNING, LOG_TYPE_INFO, LOG_TYPE_DEBUG };
-    
+
     static void OutputLog(LogType logType, const std::string& tag, const char* text) {
         OutputDebugStringA(text);
         OutputDebugStringA("\n");
+    }
+#endif
+#ifdef __EMSCRIPTEN__
+    enum LogType { LOG_TYPE_FATAL, LOG_TYPE_ERROR, LOG_TYPE_WARNING, LOG_TYPE_INFO, LOG_TYPE_DEBUG };
+
+    // The console functions, not printf: they reach the browser console from a worker too, which is
+    // where every SDK thread runs.
+    static void OutputLog(LogType logType, const std::string& tag, const char* text) {
+        std::string message = tag + ": " + text;
+        if (logType == LOG_TYPE_FATAL || logType == LOG_TYPE_ERROR) {
+            emscripten_console_error(message.c_str());
+        } else if (logType == LOG_TYPE_WARNING) {
+            emscripten_console_warn(message.c_str());
+        } else {
+            emscripten_console_log(message.c_str());
+        }
     }
 #endif
 

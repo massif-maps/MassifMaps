@@ -18,3 +18,4 @@ they were run with, what breaks when a step is skipped, and the dead ends.
 | [`flatten-submodules.md`](flatten-submodules.md) | Moving `libs-external` / `libs-massif` in-tree while keeping the third-party forks as submodules — the history graft, the `.gitmodules` hoist, and what has to be fixed by hand |
 | [`api-typings-chain.md`](api-typings-chain.md) | From a `.i` declaration to an app's autocompletion: what generates what, the `--defines` trap, and how to tell which link is stale |
 | [`branding.md`](branding.md) | The one mark every logo, favicon, social card and launcher icon is generated from — and why the Android safe zone is smaller than it looks |
+| [`web-build.md`](web-build.md) | Building the SDK under emscripten: the `web/native` platform layer, the cross-origin-isolation and main-thread-GL rules, where the site's style preview gets its wasm, and what the wasm build does not carry yet |

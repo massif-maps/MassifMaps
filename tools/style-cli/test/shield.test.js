@@ -7,6 +7,10 @@ import { PNG } from 'pngjs';
 import { convert } from '../dist/mapbox2css/index.js';
 import { isShieldLayer } from '../dist/mapbox2css/shield.js';
 import { extractAllIconPlates } from '../dist/mapbox2css/sprite.js';
+import { readIcon, useMemorySpriteHost } from './sprite-host.js';
+
+useMemorySpriteHost();
+
 
 /** These tests assert on the translated literals, so they read the style before the palette
   * pass moves them out - see variables.test.js for the hoisting itself. */
@@ -128,7 +132,7 @@ test('an SDF icon carries field around it, so the halo has room to fade before t
     convert({ layers: [symbol({ 'text-field': '{name}', 'icon-image': 'circle' }, { 'icon-color': '#000' })] },
         TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } });
 
-    const png = PNG.sync.read(readFileSync('/tmp/massif-style-test/icons/circle.png'));
+    const png = PNG.sync.read(readIcon('icons/circle.png'));
     assert.equal(png.width, 20, 'padded on both sides');
     assert.equal(png.height, 20);
     // The corner is the furthest from the ink, so it is the closest to "fully outside" (0).
@@ -187,7 +191,7 @@ test('a recolourable icon is split into a glyph field and the disc it sat on', (
     assert.match(out, /shield-icon-background-radius: 0;/);
 
     // NOTHING is baked into the file: a preset overrides the colours above and reuses this one.
-    const png = PNG.sync.read(readFileSync('/tmp/massif-style-test/icons-glyph/poi.png'));
+    const png = PNG.sync.read(readIcon('icons-glyph/poi.png'));
     assert.equal(png.width, 12, 'cropped to the disc, ring and surround off');
     for (let i = 0; i < png.data.length; i += 4) {
         assert.equal(png.data[i], png.data[i + 1]);

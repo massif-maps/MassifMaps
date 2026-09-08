@@ -26,6 +26,16 @@
       "port": 8099
     },
     {
+      "name": "web-demo",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "web/demo/serve.py",
+        "--port",
+        "8088"
+      ],
+      "port": 8088
+    },
+    {
       "name": "mbref",
       "runtimeExecutable": "python3",
       "runtimeArgs": [

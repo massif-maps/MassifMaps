@@ -8,7 +8,7 @@
 
 namespace massif::vt {
     namespace {
-        const char* const PLATFORM_TAGS[] = { "android", "ios", "macos", "windows", nullptr };
+        const char* const PLATFORM_TAGS[] = { "android", "ios", "macos", "windows", "web", nullptr };
 
         const char* currentPlatformTag() {
 #if defined(__ANDROID__)
@@ -19,6 +19,8 @@ namespace massif::vt {
             return "macos";
 #elif defined(_WIN32)
             return "windows";
+#elif defined(__EMSCRIPTEN__)
+            return "web";
 #else
             return "";
 #endif

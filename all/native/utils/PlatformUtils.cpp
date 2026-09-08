@@ -17,6 +17,8 @@ namespace massif {
             return "xamarin-ios";
         case PlatformType::PLATFORM_TYPE_WINDOWS_PHONE:
             return "windows-phone";
+        case PlatformType::PLATFORM_TYPE_WEB:
+            return "web";
         default:
             return "";
         }

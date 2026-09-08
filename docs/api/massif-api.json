@@ -3767,7 +3767,44 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::LightOptions",
+          "name": "setSunPositionFromTime",
+          "args": [
+            {
+              "name": "year",
+              "type": "int"
+            },
+            {
+              "name": "month",
+              "type": "int"
+            },
+            {
+              "name": "day",
+              "type": "int"
+            },
+            {
+              "name": "hour",
+              "type": "int"
+            },
+            {
+              "name": "minute",
+              "type": "int"
+            },
+            {
+              "name": "latitude",
+              "type": "float"
+            },
+            {
+              "name": "longitude",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::LightStop": {
@@ -4197,6 +4234,18 @@
       ],
       "aliases": {},
       "methods": [
+        {
+          "cppClass": "massif::MBVectorTileDecoder",
+          "name": "addFallbackFont",
+          "args": [
+            {
+              "name": "font",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
         {
           "cppClass": "massif::MBVectorTileDecoder",
           "name": "getStyleParameter",
@@ -5323,6 +5372,15 @@
           "doc": "Returns the clear color used by the renderer before drawing anything else. By default, this is white. It should be set to (0, 0, 0, 0) if transparent MapView is needed."
         },
         {
+          "name": "clickMovingTolerance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how far a pointer may travel before a press stops counting as a click."
+        },
+        {
           "name": "clickTypeDetection",
           "type": "BOOL",
           "readOnly": false,
@@ -5708,6 +5766,15 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns the state of zoom gestures."
+        },
+        {
+          "name": "zoomOffset",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how many zoom levels the camera is offset from the tile-size convention."
         },
         {
           "name": "zoomRange",
@@ -8503,8 +8570,7 @@
           "readOnly": false,
           "static": false,
           "position": false,
-          "cppType": "int",
-          "doc": "Returns the current frame number."
+          "cppType": "int"
         },
         {
           "name": "maxOverzoomLevel",
@@ -8532,6 +8598,14 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns the state of the preloading flag of this layer."
+        },
+        {
+          "name": "preloadingTileCount",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int"
         },
         {
           "name": "projection",
@@ -8571,6 +8645,15 @@
           "cppType": "massif::TileSubstitutionPolicy::TileSubstitutionPolicy",
           "enum": "massif::TileSubstitutionPolicy::TileSubstitutionPolicy",
           "doc": "Returns the current tile substitution policy."
+        },
+        {
+          "name": "visibleTileCount",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost."
         },
         {
           "name": "zoomLevelBias",
@@ -9811,6 +9894,63 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns the distance between the focus and the camera position, when the zoom level is set to 0. This parameter depends on the screen size, DPI, tile draw size and field of view settings."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
+    "massif::WKBGeometryReader": {
+      "base": null,
+      "properties": [],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
+    "massif::WKBGeometryWriter": {
+      "base": null,
+      "properties": [
+        {
+          "name": "bigEndian",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the endianness of output format."
+        },
+        {
+          "name": "z",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the state of Z coordinate serialization."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
+    "massif::WKTGeometryReader": {
+      "base": null,
+      "properties": [],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
+    "massif::WKTGeometryWriter": {
+      "base": null,
+      "properties": [
+        {
+          "name": "z",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the state of Z coordinate serialization."
         }
       ],
       "aliases": {},

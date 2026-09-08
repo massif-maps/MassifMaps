@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy to config.json (gitignored) to choose what /demo/ shows with no query string. Any bench parameter works here; the query string still wins. Keep your tile token in config.json only.",
+  "source": "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/{z}/{x}/{y}.mvt?access_token=YOUR_TOKEN",
+  "project": "mapbox-standard",
+  "style": "project",
+  "zoom": 14,
+  "lon": 2.3522,
+  "lat": 48.8566
+}

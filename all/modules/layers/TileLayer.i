@@ -30,6 +30,8 @@
 // How the facade learns what coordinate system this layer's positions - a click, a feature - are
 // in. dataSource is already declared below.
 !attributestring_polymorphic(massif::TileLayer, projections.Projection, Projection, getProjection)
+%attribute(massif::TileLayer, int, VisibleTileCount, getVisibleTileCount)
+%attribute(massif::TileLayer, int, PreloadingTileCount, getPreloadingTileCount)
 %attribute(massif::TileLayer, int, FrameNr, getFrameNr, setFrameNr)
 %attribute(massif::TileLayer, bool, Preloading, isPreloading, setPreloading)
 %attribute(massif::TileLayer, bool, SynchronizedRefresh, isSynchronizedRefresh, setSynchronizedRefresh)

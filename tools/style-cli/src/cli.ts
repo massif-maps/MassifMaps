@@ -4,7 +4,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { VARIABLES_FILE, convert } from './mapbox2css/index.js';
-import { loadSprites } from './mapbox2css/sprite.js';
+import { nodeSpriteHost } from './mapbox2css/node-host.js';
+import { loadSprites, setSpriteHost } from './mapbox2css/sprite.js';
 import type { Json, MapboxStyle, PropertyTable } from './mapbox2css/types.js';
 import { WasmMissing, runWasm, wasmAvailable } from './wasm.js';
 
@@ -345,6 +346,8 @@ async function mapbox2css(args: string[]): Promise<number> {
 }
 
 async function main(argv: string[]): Promise<number> {
+    // The slicer reads and writes through a host so it can also run in a browser; here it is node.
+    setSpriteHost(nodeSpriteHost);
     const [command, ...args] = argv;
     if (!command || command === '--help' || command === '-h' || command === 'help') {
         process.stdout.write(USAGE);

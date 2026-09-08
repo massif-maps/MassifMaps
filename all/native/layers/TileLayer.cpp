@@ -715,10 +715,26 @@ namespace massif {
         }
     }
 
+    int TileLayer::getVisibleTileCount() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        return static_cast<int>(_visibleTiles.size());
+    }
+
+    int TileLayer::getPreloadingTileCount() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        return static_cast<int>(_preloadingTiles.size());
+    }
+
     void TileLayer::calculateVisibleTiles(const std::shared_ptr<CullState>& cullState) {
         // Remove last visible and preloading tiles
         _visibleTiles.clear();
         _preloadingTiles.clear();
+
+        // Read first: everything below that turns a camera zoom into a tile zoom needs it.
+        _lodZoomOffset = 0;
+        if (auto options = getOptions()) {
+            _lodZoomOffset = options->getZoomOffset();
+        }
 
         // In terrain mode the distance-based LOD picks higher-zoom tiles near the camera than flat
         // rendering would, so a style that renders differently per tile zoom shows LOD rings.
@@ -734,7 +750,7 @@ namespace massif {
                     // size, so a capped coarse tile has blunted ridges that content shows through.
                     _terrainOverzoomTargets = true;
                     const ViewState& viewState = cullState->getViewState();
-                    int cameraTileZoom = static_cast<int>(viewState.getZoom() + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS);
+                    int cameraTileZoom = static_cast<int>(viewState.getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS);
                     if (terrainOptions->getMaxTileZoomOffset() < 100) {
                         _terrainMaxTileZoom = cameraTileZoom + terrainOptions->getMaxTileZoomOffset();
                     }
@@ -748,7 +764,7 @@ namespace massif {
         // already decoded carry a stale [zoom] and have to go through the decoder again.
         {
             int maxTargetZoom = getMaxZoom() + (_terrainOverzoomTargets ? getMaxOverzoomLevel() : 0);
-            int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(cullState->getViewState().getZoom() + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
+            int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(cullState->getViewState().getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
             targetTileZoom = std::min(targetTileZoom, _terrainMaxTileZoom);
             if (_targetTileZoom != targetTileZoom) {
                 _targetTileZoom = targetTileZoom;
@@ -807,6 +823,9 @@ namespace massif {
         _lodCosThetaExponent = 0;
         if (auto options = getOptions()) {
             const ViewState& viewState = cullState->getViewState();
+            // TileDrawSize alone: the zoom offset belongs to the target-zoom cap, not to this
+            // screen-area rule. Scaling it here fetches a level coarser and doubles every label
+            // (docs/maintenance/web-build.md).
             double tileSizePixels = options->getTileDrawSize() * viewState.getDPI() / Const::UNSCALED_DPI;
             // Options::TileLODFactor scales it: 1 is their rule verbatim, larger keeps tiles
             // coarser (fewer tiles, fewer labels, less detail), smaller refines further.

@@ -13,6 +13,7 @@ void testExpressionRoundTrip();
 void testDataDrivenProperty();
 void testInterpolateExpression();
 void testViewStateProperty();
+void testFontNames();
 
 int main() {
     testLayerConfig();
@@ -22,6 +23,7 @@ int main() {
     testDataDrivenProperty();
     testInterpolateExpression();
     testViewStateProperty();
+    testFontNames();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

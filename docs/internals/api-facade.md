@@ -152,6 +152,11 @@ lands at 632; the default profile skips 45 and lands at 659.
 Both tables are emitted sorted, so a lookup is a binary search over static data — no `std::map`, no
 allocation, nothing built at load time.
 
+A `COLOR` property is an ARGB **number** — `-65536`, or `0xffff0000 | 0` from JavaScript. Writing
+`"#ff0000"` to one is accepted and reads as 0, a transparent colour: the string form belongs to the
+struct codec (`lighting.sunColor`), not to a property. Fog is where this bites, because a
+transparent fog draws nothing and looks exactly like a fog that was never attached.
+
 ```cpp
 const ClassEntry*    cls  = findClass("massif::FogOptions");
 const PropertyEntry* prop = findProperty(cls, "rangeStart");

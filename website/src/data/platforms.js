@@ -61,8 +61,9 @@ export const Platforms = [
     status: 'planned',
     languages: ['JavaScript', 'TypeScript'],
     distribution: 'Not published yet',
-    minVersion: 'WebAssembly + WebGL 1',
-    note: 'The renderer is GLES2, so WebGL 1 is a direct target. The real blocker is threading: the tile pool, the cull worker and the label-placement worker all assume real threads.',
+    minVersion: 'WebAssembly + WebGL 2, cross-origin isolated',
+    docs: '/docs/maintenance/web-build',
+    note: 'Builds under emscripten and renders raster and CartoCSS-styled vector tiles in a browser. Threading is solved with pthreads, which is why the page has to be cross-origin isolated. Still missing: the JavaScript binding, the persistent cache, labels and Text/BalloonPopup elements.',
   },
   {
     id: 'flutter',

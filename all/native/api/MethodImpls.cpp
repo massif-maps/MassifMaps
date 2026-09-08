@@ -12,10 +12,12 @@
 #include "api/RoutingMethods.h"
 #include "api/Methods.h"
 #include "api/StructCodec.h"
+#include "core/BinaryData.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
 #include "core/Variant.h"
 #include "components/Layers.h"
+#include "components/LightOptions.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
 #include "datasources/MultiTileDataSource.h"
@@ -171,6 +173,25 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /**
+         * addFallbackFont(dataHandle) - a font for the glyphs the style names but the build has no
+         * face for. A `data` handle, because a spec has no way to say "these bytes", and without it
+         * a spec-built decoder loses the labels of every converted MapBox style.
+         */
+        Result addFallbackFont(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto font = std::static_pointer_cast<BinaryData>(
+                context.getObject(handle, "massif::BinaryData"));
+            if (!font) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<MBVectorTileDecoder*>(obj)->addFallbackFont(font);
+            return RESULT_OK;
+        }
+
         Result getStyleParameter(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
             std::string name;
             if (!args.getString(0, name)) {
@@ -178,6 +199,26 @@ namespace massif { namespace api {
             }
             result = PropertyValue::ofString(
                 static_cast<MBVectorTileDecoder*>(obj)->getStyleParameter(name));
+            return RESULT_OK;
+        }
+
+        /**
+         * setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude).
+         *
+         * The SDK's own solar model, the one shadows and sky were tuned against - a binding would
+         * otherwise carry its own. The place matters as much as the time; pass the map centre.
+         */
+        Result setSunPositionFromTime(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long year = 0, month = 0, day = 0, hour = 0, minute = 0;
+            double latitude = 0, longitude = 0;
+            if (!args.getLong(0, year) || !args.getLong(1, month) || !args.getLong(2, day) ||
+                !args.getLong(3, hour) || !args.getLong(4, minute) ||
+                !args.getDouble(5, latitude) || !args.getDouble(6, longitude)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<LightOptions*>(obj)->setSunPositionFromTime(
+                static_cast<int>(year), static_cast<int>(month), static_cast<int>(day),
+                static_cast<int>(hour), static_cast<int>(minute), latitude, longitude);
             return RESULT_OK;
         }
 
@@ -523,6 +564,8 @@ namespace massif { namespace api {
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameter", &setStyleParameter);
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameters", &setStyleParameters);
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
+        registerMethod("massif::MBVectorTileDecoder", "addFallbackFont", &addFallbackFont);
+        registerMethod("massif::LightOptions", "setSunPositionFromTime", &setSunPositionFromTime);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);
         registerMethod("massif::Layers", "add", &addLayer);

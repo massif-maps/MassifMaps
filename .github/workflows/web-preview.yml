@@ -1,0 +1,97 @@
+name: Web preview
+
+# Builds the WebAssembly module the /preview style-preview page runs, and uploads it as an
+# artefact the docs workflow picks up.
+#
+# Its own workflow rather than a step in docs.yml on purpose: this is a full emscripten build of
+# the SDK, and docs.yml also runs on every documentation push and nightly for the roadmap page.
+# Folded in there, editing a paragraph would cost an hour.
+#
+# The artefact is NOT the deployed page - docs.yml downloads the newest successful one and deploys
+# it with the site. On master this triggers that deploy itself, so a renderer change reaches the
+# published preview without waiting for the nightly.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'all/native/**'
+      - 'all/modules/**'
+      - 'libs-massif/**'
+      - 'web/**'
+      - 'scripts/build/**'
+      - 'scripts/build-web.py'
+      - '.github/workflows/web-preview.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'scripts/build-web.py'
+      - '.github/workflows/web-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: web-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned: the sizes quoted in docs/maintenance/web-build.md were measured with this one, and a
+  # toolchain bump is a change worth seeing in a diff.
+  EMSDK_VERSION: '6.0.9'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: fetch externals
+        run: |
+          # --recursive fails on valhalla's nanobind, which the lite profile does not build.
+          git submodule update --init libs-external || true
+          git -C libs-external submodule update --init --recursive || true
+      - name: Prepare Boost
+        uses: ./.github/actions/prepare-boost
+
+      - name: Install emsdk
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install "$EMSDK_VERSION"
+          ./emsdk activate "$EMSDK_VERSION"
+
+      - name: Setup ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.ccache
+          key: ccache-web-${{ github.sha }}
+          restore-keys: ccache-web-
+
+      - name: Build the module
+        run: |
+          . "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          # Release, not RelWithDebInfo: the debug build carries DWARF and comes out around 340 MB.
+          python3 scripts/build-web.py --profile lite --configuration Release \
+            --build-demo --website
+
+      - name: Report size
+        run: |
+          ls -l website/static/preview
+          gzip -c website/static/preview/massif-demo.wasm | wc -c
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-preview
+          path: website/static/preview
+          retention-days: 30
+          if-no-files-found: error
+
+      # The site only rebuilds on a docs change or the nightly, so without this a renderer fix sits
+      # in an artefact nobody deploys.
+      - name: Publish it
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docs.yml --repo "$GITHUB_REPOSITORY"

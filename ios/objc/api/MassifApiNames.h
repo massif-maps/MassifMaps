@@ -110,6 +110,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyBaseProjection;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBaseURL;
 /** Returns whether the part of the curve below the horizon is drawn. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBelowHorizonVisible;
+/** Returns the endianness of output format. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyBigEndian;
 /** Returns the billboard/label terrain occlusion state. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBillboardOcclusionEnabled;
 /** Returns the billboard/label terrain occlusion tolerance. */
@@ -171,6 +173,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyClearColor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickHandlerLayerFilter;
 /** Returns the click info. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickInfo;
+/** Returns how far a pointer may travel before a press stops counting as a click. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyClickMovingTolerance;
 /** Returns the click position. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickPos;
 /** Returns the click radius of the curve. */
@@ -608,6 +612,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessed;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPostcode;
 /** Returns the state of the preloading flag of this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPreloading;
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPreloadingTileCount;
 /** Returns wether to prevent duplicate elements */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPreventDuplicates;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyProfile;
@@ -950,6 +955,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistanceFactor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewState;
 /** Returns the visibility of the object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVisible;
+/** How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyVisibleTileCount;
 /** Returns the visible zoom range of this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVisibleZoomRange;
 /** Returns the width of the bitmap. */
@@ -970,6 +977,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomAction;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomGestures;
 /** Gets the current zoom level bias for this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomLevelBias;
+/** Returns how many zoom levels the camera is offset from the tile-size convention. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomOffset;
 /** Returns the zoom range constraint. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomRange;
 
@@ -977,6 +986,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomRange;
 typedef NSString *MassifMethod NS_TYPED_ENUM;
 
 FOUNDATION_EXPORT MassifMethod const MassifMethodAdd;
+FOUNDATION_EXPORT MassifMethod const MassifMethodAddFallbackFont;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddLocale;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateAddresses;
@@ -1012,6 +1022,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetSunPositionFromTime;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStartDownloadArea;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopAllDownloads;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopFlight;

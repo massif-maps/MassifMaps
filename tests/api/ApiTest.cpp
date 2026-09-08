@@ -72,6 +72,7 @@ void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
 void testDrapeTuning();
+void testZoomConvention();
 void testShadowCasterRing();
 void testTerrainTesselation();
 void testFlattenSwitch();
@@ -440,6 +441,7 @@ int main() {
     testDrapeStackCuts();
     testDrapeStandIn();
     testDrapeTuning();
+    testZoomConvention();
     testShadowCasterRing();
     testTerrainTesselation();
     testFlattenSwitch();

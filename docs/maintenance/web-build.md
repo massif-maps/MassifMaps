@@ -256,6 +256,19 @@ The bench sets two things a phone would not:
 | `autoFlattenTilt` / `autoFlattenParallax` | 88 / 2 | **0 / 0** (off) | Auto-flatten drops the height field when the map looks straight down, to save a phone the cost. A desktop can hold it up, and dropping it every time the map returns to 88 degrees is a visible sink-and-rise |
 | `meshResolution` | 64 | **128** | Cells per tile edge, clamped to 2..256. 64 is a phone budget |
 
+### Tile LOD: the desktop profile, and one number off it
+
+`setTileLODProfile(TILE_LOD_PROFILE_DESKTOP)` - a real GPU, and a tilted web map draws into the
+distance rather than to a near band.
+
+On top of it, `TileLODMaxZoomLevelsOnScreen` goes from maplibre's 9.314 to **6**. The default
+coarsens the far field past the zoom OpenMapTiles carries `building` at, so a tilted view was
+extruded near and flat from halfway out; at 6 the buildings reach the horizon. A/B at
+2.3376/48.8606, zoom 15.5, tilt 30 - the difference is not subtle.
+
+It buys that with tiles. `TileLODTileCountRatio` (3) is the guard and only binds when this number
+is below the default, which is exactly this case.
+
 ### Draw distance
 
 `Options.drawDistance` defaults to 16, which is a phone's battery talking: tilt the map and

@@ -14,12 +14,9 @@
 namespace massif {
 
     /**
-     * The Fetch API, called synchronously.
-     *
-     * Every caller in the SDK blocks on the response, so this matches the other platforms - but a
-     * synchronous fetch is only legal off the browser's main thread, which is why the web build
-     * runs the SDK on a worker (PROXY_TO_PTHREAD). The whole body arrives at once, so a streaming
-     * request hands its data to the callback in a single call.
+     * The Fetch API, called synchronously, which is what every caller in the SDK expects. Legal
+     * only off the browser's main thread - the SDK's own tile and envelope pools are threads, so
+     * that holds. The whole body arrives at once, so a streaming request gets one callback.
      */
     class HTTPClient::EmscriptenImpl : public HTTPClient::Impl {
     public:

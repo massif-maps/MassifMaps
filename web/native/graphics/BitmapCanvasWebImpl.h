@@ -12,13 +12,9 @@
 namespace massif {
 
     /**
-     * NOT IMPLEMENTED on the web build.
-     *
-     * The other platforms draw this through a system text and 2D API (Canvas/CoreGraphics/D2D);
-     * the browser's are on the main thread and asynchronous, which this synchronous interface
-     * cannot reach from a worker. Only Text and BalloonPopup vector elements use it, so the web
-     * build simply does not carry them - every call warns once and produces an empty bitmap
-     * rather than silently drawing nothing.
+     * NOT IMPLEMENTED on the web: the browser's 2D text API is async and main-thread only, which
+     * this synchronous interface cannot reach. Only Text and BalloonPopup use it, so the web build
+     * does not carry them - every call warns once and returns an empty bitmap.
      */
     class BitmapCanvas::WebImpl : public BitmapCanvas::Impl {
     public:

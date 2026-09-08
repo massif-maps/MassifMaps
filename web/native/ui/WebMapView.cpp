@@ -26,14 +26,9 @@ namespace massif {
 
         const float NO_COORDINATE = -1.0f;
 
-        // Ported from maplibre-gl-js so a mouse feels the same here as on any other web map:
-        // src/ui/handler/mouse.ts (rotateSpeed, pitchSpeed) and scroll_zoom.ts (the zoom rates and
-        // the sigmoid). Degrees per CSS pixel of drag, and zoom per unit of wheel delta.
-        //
-        // Both are NEGATED against maplibre's, because both angles are measured the other way here:
-        // maplibre turns the camera's bearing where rotate() turns the map under it, and this SDK's
-        // tilt is 90 at straight down where mapbox's pitch is 0 there. Taken as written, a
-        // right-drag moved the map the wrong way on both axes.
+        // maplibre-gl-js: handler/mouse.ts and scroll_zoom.ts. Degrees per CSS pixel, zoom per
+        // wheel unit. Both NEGATED - it turns the camera's bearing where rotate() turns the map,
+        // and its pitch is 0 where this tilt is 90.
         const float ROTATE_SPEED = -0.8f;
         const float PITCH_SPEED = 0.5f;
         const double WHEEL_ZOOM_RATE = 1.0 / 450.0;
@@ -54,6 +49,9 @@ namespace massif {
         // link, a style's zoom stops and every piece of advice about web maps assume their
         // convention. Every other platform keeps the SDK's own - see Options::setZoomOffset.
         const float WEB_ZOOM_OFFSET = 1.0f;
+
+        // Below maplibre's 9.314, so the far field keeps the zoom buildings exist at when tilted.
+        const float WEB_LOD_MAX_ZOOM_LEVELS_ON_SCREEN = 6.0f;
     }
 
     class WebMapView::RedrawListener : public RedrawRequestListener {
@@ -112,11 +110,9 @@ namespace massif {
 
         setRedrawRequestListener(std::make_shared<RedrawListener>(this));
 
-        // Down on the canvas, but move and up on the DOCUMENT - maplibre's own arrangement, and for
-        // its reason (handler_manager.ts): there is no pointer capture to rely on, so a release
-        // outside the canvas only ever reaches a document-level listener. Bound to the canvas, a
-        // drag that ended off it never saw its mouseup, so the map stayed in the drag and every
-        // later hover panned it.
+        // Down on the canvas, move and up on the DOCUMENT - maplibre's arrangement, for its reason
+        // (handler_manager.ts): with no pointer capture, a release outside the canvas reaches only
+        // a document listener, and a drag that ended off it never saw its mouseup.
         emscripten_set_mousedown_callback(_canvasSelector.c_str(), this, EM_FALSE, OnPointer);
         emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, this, EM_TRUE, OnPointer);
         emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, this, EM_FALSE, OnPointer);
@@ -183,6 +179,14 @@ namespace massif {
         getOptions()->setDrawDistance(WEB_DRAW_DISTANCE);
         // Zoom 14 here means what zoom 14 means in maplibre.
         getOptions()->setZoomOffset(WEB_ZOOM_OFFSET);
+        // The desktop density: a real GPU, and a tilted web map is expected to draw into the
+        // distance rather than to a near band.
+        getOptions()->setTileLODProfile(TileLODProfile::TILE_LOD_PROFILE_DESKTOP);
+        // One override on top. maplibre's 9.314 coarsens the far field past the zoom OpenMapTiles
+        // carries buildings at, so a tilted view went flat halfway out; 6 keeps them to the
+        // horizon. TileLODTileCountRatio is what bounds the extra tiles - it only binds below the
+        // default, which is exactly here.
+        getOptions()->setTileLODMaxZoomLevelsOnScreen(WEB_LOD_MAX_ZOOM_LEVELS_ON_SCREEN);
         int pixelWidth = static_cast<int>(width * pixelRatio);
         int pixelHeight = static_cast<int>(height * pixelRatio);
         if (pixelWidth <= 0 || pixelHeight <= 0 || (pixelWidth == _width && pixelHeight == _height)) {
@@ -216,12 +220,9 @@ namespace massif {
     }
 
     /**
-     * A mouse event in CANVAS pixels.
-     *
-     * targetX/targetY are relative to whatever the listener was bound to, and move and up are bound
-     * to the document - so they are measured from the page, not from the map. clientX/clientY minus
-     * the canvas rect is the same thing maplibre's DOM.mousePos computes, rect read per event
-     * because the panel beside the map resizes and the page scrolls.
+     * A mouse event in CANVAS pixels. targetX/targetY are relative to the listener's element, and
+     * move and up are on the document - so measure from clientX/clientY minus the canvas rect,
+     * which is what maplibre's DOM.mousePos does. Read per event: the page scrolls and resizes.
      */
     void WebMapView::canvasPos(const EmscriptenMouseEvent* event, double pixelRatio, float& x, float& y) const {
         double left = EM_ASM_DOUBLE({

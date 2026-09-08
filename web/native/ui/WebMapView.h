@@ -19,11 +19,9 @@
 namespace massif {
 
     /**
-     * The host of a map on a canvas element: the WebGL 2 context, the animation-frame loop and the
-     * pointer events, which is everything BaseMapView needs from a platform.
-     *
-     * Everything here runs on the browser's main thread - the SDK's own worker threads never touch
-     * GL. A frame is drawn only when the renderer asks for one, same as the Android and iOS hosts.
+     * The host of a map on a canvas: the WebGL 2 context, the animation-frame loop and the pointer
+     * events. All on the browser's main thread - the SDK's workers never touch GL - and a frame is
+     * drawn only when the renderer asks, as on Android and iOS.
      */
     class WebMapView : public BaseMapView {
     public:

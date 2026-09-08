@@ -15,11 +15,9 @@ namespace massif {
     class BinaryData;
 
     /**
-     * A helper class for managing application-bundled assets.
-     *
-     * On the web there is no bundle: assets live in the emscripten virtual filesystem, under a
-     * root the host page fills (--preload-file, or FS.writeFile from JavaScript). Paths are
-     * resolved against that root, so an asset path means the same thing here as on a device.
+     * A helper class for managing application-bundled assets. There is no bundle on the web:
+     * assets live in the emscripten filesystem under a root the host page fills, so an asset path
+     * means the same thing here as on a device.
      */
     class AssetUtils {
     public:

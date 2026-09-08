@@ -49,10 +49,6 @@ namespace massif {
         // link, a style's zoom stops and every piece of advice about web maps assume their
         // convention. Every other platform keeps the SDK's own - see Options::setZoomOffset.
         const float WEB_ZOOM_OFFSET = 1.0f;
-
-        // Below maplibre's 9.314, so the far field keeps the zoom buildings exist at when tilted.
-        // 7.5 costs 2.4x the tiles at zoom 15.5 / tilt 30; 6 reaches barely further for 5.9x.
-        const float WEB_LOD_MAX_ZOOM_LEVELS_ON_SCREEN = 7.5f;
     }
 
     class WebMapView::RedrawListener : public RedrawRequestListener {
@@ -180,13 +176,10 @@ namespace massif {
         getOptions()->setDrawDistance(WEB_DRAW_DISTANCE);
         // Zoom 14 here means what zoom 14 means in maplibre.
         getOptions()->setZoomOffset(WEB_ZOOM_OFFSET);
-        // The desktop density: a real GPU, and a tilted web map is expected to draw into the
-        // distance rather than to a near band.
-        getOptions()->setTileLODProfile(TileLODProfile::TILE_LOD_PROFILE_DESKTOP);
-        // One override on top: maplibre's 9.314 coarsens the far field past the zoom OpenMapTiles
-        // carries buildings at, so a tilted view went flat halfway out. Measured tile counts are
-        // in docs/maintenance/web-build.md - this is not free.
-        getOptions()->setTileLODMaxZoomLevelsOnScreen(WEB_LOD_MAX_ZOOM_LEVELS_ON_SCREEN);
+        // maplibre's and mapbox's own numbers, unmodified. Refining the far ground to keep
+        // buildings past the source's zoom 13 costs 2.4x the tiles and reads as less smooth
+        // (docs/maintenance/web-build.md).
+        getOptions()->setTileLODProfile(TileLODProfile::TILE_LOD_PROFILE_REFERENCE);
         int pixelWidth = static_cast<int>(width * pixelRatio);
         int pixelHeight = static_cast<int>(height * pixelRatio);
         if (pixelWidth <= 0 || pixelHeight <= 0 || (pixelWidth == _width && pixelHeight == _height)) {

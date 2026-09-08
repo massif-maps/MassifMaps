@@ -256,31 +256,40 @@ The bench sets two things a phone would not:
 | `autoFlattenTilt` / `autoFlattenParallax` | 88 / 2 | **0 / 0** (off) | Auto-flatten drops the height field when the map looks straight down, to save a phone the cost. A desktop can hold it up, and dropping it every time the map returns to 88 degrees is a visible sink-and-rise |
 | `meshResolution` | 64 | **128** | Cells per tile edge, clamped to 2..256. 64 is a phone budget |
 
-### Tile LOD: the desktop profile, and one number off it
+### Tile LOD: maplibre's numbers, and why buildings stop when you flatten the tilt
 
-`setTileLODProfile(TILE_LOD_PROFILE_DESKTOP)` - a real GPU, and a tilted web map draws into the
-distance rather than to a near band.
+`setTileLODProfile(TILE_LOD_PROFILE_REFERENCE)` - maplibre's and mapbox's own values, unmodified.
 
-On top of it, `TileLODMaxZoomLevelsOnScreen` goes from maplibre's 9.314 to **7.5**. The default
-coarsens the far field past the zoom OpenMapTiles carries `building` at, so a tilted view was
-extruded near and flat from halfway out.
+The obvious complaint about them is that a tilted view loses its 3D buildings partway out, and that
+it gets WORSE the flatter you tilt, which sounds backwards. It is not, and it is worth writing down
+because two plausible explanations are both wrong.
 
-It is not free, and the cost is steep. Measured at 2.3376/48.8606, zoom 15.5, tilt 30, reading
-`TileLayer.visibleTileCount` after a settle:
+**The LOD applies no tilt penalty.** Measured at the reference values: `cosThetaExponent` is -0.306
+at tilt 24, 32, 60 and 90, and `uniformLevelDrop` is 0 at every one of them - the tile-count cap is
+inert here, exactly as its own doc says. Neither term moves with pitch.
+
+**The cliff is in the DATA.** OpenMapTiles carries `building` from zoom 13 (`transportation` from 4,
+`water` and `place` from 0). Flatten the tilt and the far ground covers very few pixels, so the
+area rule correctly coarsens it - measured at tilt 18, the frame fetches z7 through z14. Every tile
+below 13 has no building geometry at all, so instead of simpler buildings you get none, while the
+roads and water keep drawing. The boundary moves toward the camera as you tilt down.
+
+Buying it back means refining the far field, and that is expensive. Measured at 2.3376/48.8606,
+zoom 15.5, tilt 30, reading `TileLayer.visibleTileCount`:
 
 | `MaxZoomLevelsOnScreen` | visible | preloading | vs the default |
 |---|---|---|---|
-| 9.314 (maplibre) | 44 | 7 | 1.0x |
-| **7.5** | **107** | 14 | **2.4x** |
+| 9.314 (maplibre, shipped) | 44 | 7 | 1.0x |
+| 7.5 | 107 | 14 | 2.4x |
 | 6.0 | 259 | 18 | 5.9x |
 
-7.5 is the knee: it reaches nearly as far as 6 for less than half the tiles. `TileLODTileCountRatio`
-does NOT rescue this - it caps the pitched count against the FLAT one, which is a different
-quantity, and 6.0 measured 5.9x regardless.
+Not worth it: the boundary moves a little, the tile count multiplies, and the map reads as less
+smooth. **What mapbox and maplibre actually do with that horizon is hide it behind fog**, not buy
+tiles for it - `FogOptions` is the lever, and it costs nothing per tile.
 
-**Measuring it needs a camera move.** No LOD option is in `MapRenderer`'s option-change list, so
-changing one at runtime does not re-cull: the tile list, and the counter, stay as they were until
-the camera actually moves. Three identical readings in a row are the symptom.
+**Measuring any of this needs a camera move.** No LOD option is in `MapRenderer`'s option-change
+list, so changing one at runtime does not re-cull: the tile list, and the counter, stay as they
+were until the camera actually moves. Three identical readings in a row are the symptom.
 
 ### Draw distance
 

@@ -1283,6 +1283,16 @@ text-placement-priority: (11200000 - (0 + [rank]));
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
 
+## A zoom stop is relative to a tile size
+
+The SDK's zoom number sits `log2(512 / TileDrawSize)` levels above MapBox's — a level at the default
+256, none at all for an app that adopted maplibre's 512. Every zoom stop and every zoom predicate
+carries that shift, so `--tile-draw-size` has to state what the style will be DRAWN at.
+
+Converted at 256 and drawn at 512, a trunk casing measured 5.2 px where maplibre gave 7.6 at the
+same camera: the whole style renders a level behind, which reads as roads that are simply too thin
+rather than as a zoom error.
+
 ## Which road is drawn on top
 
 `line-sort-key` has no such trick available: a CartoCSS rule draws its features in the order the

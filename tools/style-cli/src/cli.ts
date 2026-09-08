@@ -99,6 +99,9 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             line-border-* rule. Halves those rules and their geometry,
                             and MOVES the casing: it then draws per class instead of
                             under every fill
+      --tile-draw-size N    the Options::TileDrawSize the style will be drawn at, in dp.
+                            Shifts every zoom stop by log2(512 / N); the default 256 is
+                            the SDK's own, 512 an app on maplibre's convention
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
                             metres) attribute; --contour-major-div is the major threshold,
                             and --contour-elevation is what the target tiles call the
@@ -136,7 +139,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
+const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'tile-draw-size', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -287,6 +290,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         flattenSdf: flags.has('sdf-flatten'),
         foldCasings: flags.has('fold-casings'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
+        tileDrawSize: Number(flags.get('tile-draw-size') ?? 256),
         shieldAnchors: shieldAnchors?.join(','),
         iconFont,
         schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,

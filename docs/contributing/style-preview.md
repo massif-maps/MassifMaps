@@ -41,7 +41,7 @@ converter wrote from it**, rendered by the SDK's own web build. Four panes, two 
 left against right is what the tiles carry, top against bottom is what survives the conversion.
 
 ```sh
-massif-style mapbox2css style.json carto --fold-casings   # run from the style project's folder
+massif-style mapbox2css style.json carto --fold-casings --tile-draw-size 512   # from the project's folder
 gh run download <run-id> --repo massif-maps/MassifMaps    # the web-preview artefact
 cp web-preview/massif-demo.* web/demo/
 ```
@@ -49,6 +49,10 @@ cp web-preview/massif-demo.* web/demo/
 The sprite URL is resolved against the process's working directory, not the style file, so the
 conversion has to run from the project's own folder. The output lands in `carto/`, which is
 gitignored — it is generated, never edited.
+
+`--tile-draw-size 512` because the panes run the SDK on maplibre's tile convention, where the zoom
+number already is maplibre's: converted at the default 256 every zoom stop fires a level late and
+the roads come out visibly thin against the row above.
 
 Three things about the web build shape this:
 

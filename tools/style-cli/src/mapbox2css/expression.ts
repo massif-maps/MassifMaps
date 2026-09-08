@@ -76,12 +76,28 @@ const GEOMETRY_TYPE_VALUE: Record<string, number> = {
 
 /**
  * MapBox's zoom, expressed in the SDK's. Both span 2^z tiles, but a MapBox tile is 512 style px
- * and the SDK's tileDrawSize is 256, so the same ground scale is one level higher here
+ * and the SDK's tileDrawSize defaults to 256, so the same ground scale is one level higher here
  * (WORLD_SIZE / (2^z * tileDrawSize) either way). A stop authored at MapBox z14 must therefore
  * fire at SDK z15. Measured: SDK z15 = 3.144 m/CSS px, mapbox-gl z15 = 1.573.
  */
-export const ZOOM_OFFSET = 1;
-export const ZOOM_INPUT = `([view::zoom] - ${ZOOM_OFFSET})`;
+let zoomOffset = 1;
+
+/**
+ * Which makes the offset `log2(512 / tileDrawSize)`, not a constant: an app that sets 512 already
+ * numbers its zoom the way maplibre does, and shifting it there drew every road a level thin -
+ * a trunk casing 5.2 px where maplibre gave 7.6 at the same camera.
+ */
+export function setTileDrawSize(tileDrawSize: number): void {
+    zoomOffset = Math.log2(512 / tileDrawSize);
+}
+
+export function zoomOffsetLevels(): number {
+    return zoomOffset;
+}
+
+export function zoomInput(): string {
+    return zoomOffset === 0 ? '[view::zoom]' : `([view::zoom] - ${zoomOffset})`;
+}
 
 /**
  * mapbox's `["measure-light", "brightness"]`, left LIVE instead of folded to the preset's value.
@@ -127,7 +143,7 @@ export function translateExpression(expr: Json, notes?: string[]): string {
         }
 
         case 'zoom':
-            return ZOOM_INPUT;
+            return zoomInput();
 
         // Only reached when the fold was told to LEAVE it live (--live-light); otherwise it was
         // already replaced by the preset's constant before translation.
@@ -376,7 +392,7 @@ function translateStep(args: Json[]): string {
     // per-feature decision, which is a chain of ternaries. Unlike `interpolate` there is nothing to
     // unroll - a step has finitely many outcomes, one per stop. Mapbox Standard sizes 10 label
     // layers by `["step", ["get", "sizerank"], …]`, which was 35 text-sizes dropped.
-    if (translateExpression(args[0]) !== ZOOM_INPUT) return stepOnField(args);
+    if (translateExpression(args[0]) !== zoomInput()) return stepOnField(args);
     const input = requireZoom(args[0], 'step');
     const stops = [`(0, ${translateExpression(args[1])})`];
     for (let i = 2; i < args.length; i += 2) {
@@ -503,7 +519,7 @@ function stepOnField(args: Json[]): string {
 function requireZoom(input: Json, where: string): string {
     const translated = translateExpression(input);
     // The scene brightness is a view variable too, and a ramp over it interpolates the same way.
-    if (translated !== ZOOM_INPUT && translated !== BRIGHTNESS_INPUT) {
+    if (translated !== zoomInput() && translated !== BRIGHTNESS_INPUT) {
         throw new Untranslatable(`${where} over ${translated} rather than zoom`);
     }
     return translated;
@@ -519,7 +535,7 @@ function requireZoom(input: Json, where: string): string {
 function translateStopFunction(fn: Record<string, Json>, notes?: string[]): string {
     const type = typeof fn.type === 'string' ? fn.type : undefined;
     const property = typeof fn.property === 'string' ? fn.property : undefined;
-    const input = property !== undefined ? `[${property}]` : ZOOM_INPUT;
+    const input = property !== undefined ? `[${property}]` : zoomInput();
 
     if (type === 'identity') {
         return input;

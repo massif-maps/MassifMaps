@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { Untranslatable, expandTokens, translateExpression } from '../dist/mapbox2css/expression.js';
+import { Untranslatable, expandTokens, setTileDrawSize, translateExpression } from '../dist/mapbox2css/expression.js';
 import { translateFilter, zoomPredicates } from '../dist/mapbox2css/filter.js';
 
 test('literals', () => {
@@ -266,4 +266,20 @@ test('a ramp at the stop of another ramp collapses: CartoCSS cannot nest two', (
     assert.ok(!/linear\([^)]*linear\(/.test(out), out);
     assert.match(out, /view::brightness/);
     assert.match(notes.join(' '), /cannot nest/);
+});
+
+test('the zoom shift follows the tile draw size the style will be drawn at', () => {
+    // log2(512 / size): the SDK's 256 is a level above MapBox, an app on maplibre's 512 is level
+    // with it. Shifting there drew every road a level thin.
+    try {
+        setTileDrawSize(512);
+        assert.equal(translateExpression(['zoom']), '[view::zoom]');
+        assert.equal(
+            translateExpression(['interpolate', ['linear'], ['zoom'], 6, 1, 16, 12]),
+            'linear([view::zoom], (6, 1), (16, 12))');
+        assert.deepEqual(zoomPredicates(6, 20), ['[zoom >= 6]', '[zoom < 20]']);
+    } finally {
+        setTileDrawSize(256);
+    }
+    assert.equal(translateExpression(['zoom']), '([view::zoom] - 1)');
 });

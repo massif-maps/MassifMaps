@@ -1,7 +1,7 @@
 import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteContourFilter } from './contour.js';
 import { foldCasings } from './casing.js';
 import { Coverage } from './coverage.js';
-import { Untranslatable, ZOOM_INPUT, expandTokens, translateExpression } from './expression.js';
+import { Untranslatable, expandTokens, setTileDrawSize, translateExpression, zoomInput } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
@@ -157,6 +157,13 @@ export interface ConvertOptions {
     foldCasings?: boolean;
     /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
     labelSpacing?: number;
+    /**
+     * The Options::TileDrawSize the converted style will be DRAWN at, in dp. Every zoom stop and
+     * zoom predicate is shifted by `log2(512 / tileDrawSize)`, because that is how far the SDK's
+     * zoom number sits from MapBox's. The default 256 is the SDK's; pass 512 for an app that
+     * adopted maplibre's convention, or its roads come out a level thin.
+     */
+    tileDrawSize?: number;
     /**
      * Sides a shield's TEXT may take, for a style that states no `text-variable-anchor` of its own -
      * MapBox Standard states none anywhere. The layer also gets `shield-text-optional`, so a POI
@@ -324,6 +331,9 @@ const EMISSIVE_NO_DEFAULT = new Set(['building-emissive-strength']);
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
     options = { ...options, styleParams: options.styleParams ?? new Map() };
+    // Module state, so it has to be set on every call and not only the first - the tests convert
+    // many styles in one process.
+    setTileDrawSize(options.tileDrawSize ?? 256);
     const coverage = new Coverage();
     const allowed = new Map<string, CartoProperty>(table.properties.map((p) => [p.cartocss, p]));
 
@@ -1032,7 +1042,7 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
     if (ramp && !seen.has('building-height-scale')) {
         const minZoom = typeof layer.minzoom === 'number' ? layer.minzoom : 15;
         seen.add('building-height-scale');
-        out.push(`building-height-scale: linear(${ZOOM_INPUT}, (${round(minZoom)}, 0), (${round(minZoom + 0.3)}, 1));`);
+        out.push(`building-height-scale: linear(${zoomInput()}, (${round(minZoom)}, 0), (${round(minZoom + 0.3)}, 1));`);
         coverage.emit('building-height-scale');
     }
     return out;

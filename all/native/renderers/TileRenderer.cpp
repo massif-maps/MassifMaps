@@ -938,18 +938,30 @@ namespace massif {
             // An extrusion BAKES its ground into its vertices, so it cannot accept "0 means no
             // data", and it reads the TEXTURE cache rather than the grid LRU - a grid is routinely
             // evicted while its texture keeps rendering. vt hands over normalized coordinates.
-            if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
-                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, bool smooth, double& height) {
-                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, smooth, height);
-                });
-            } else {
-                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, bool, double& height) {
-                    return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
-                });
+            // ...and only when the source behind it changed: pushed every frame, it re-resolved
+            // every building's base every frame (1.3 M elevation queries a second on the device).
+            std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache;
+            std::pair<const void*, const void*> providerKey(tileRenderer.get(), elevationTextureCache
+                ? static_cast<const void*>(elevationTextureCache.get())
+                : static_cast<const void*>(elevationManager.get()));
+            if (_extrusionProviderKey != providerKey) {
+                _extrusionProviderKey = providerKey;
+                if (elevationTextureCache) {
+                    tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, bool smooth, double& height) {
+                        return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, smooth, height);
+                    });
+                } else {
+                    tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, bool, double& height) {
+                        return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
+                    });
+                }
             }
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
-            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
+            if (_extrusionProviderKey.first || _extrusionProviderKey.second) {
+                _extrusionProviderKey = { nullptr, nullptr };
+                tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
+            }
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());

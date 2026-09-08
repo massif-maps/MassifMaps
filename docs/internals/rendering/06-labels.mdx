@@ -687,11 +687,20 @@ have to hold across a cycle, and both bit in the writing:
 - **the collision grid persists**, or the second half of the labels reuse slots the first half took;
 - **the view is frozen**, or the second half is collided against a grid built for another screen.
 
-The pacing is the other half of the guarantee. mapbox gets it from the frame; `VTLabelPlacementWorker`
-has no frame, so an unfinished cycle would resume as fast as the CPU allows. Budget `B` with resume
-delay `D` costs about `1000B/(B+D)` ms a second — 2 and 25 give 74, and measured worst cases are
-98 ms/s at tilt 30 and 75 at tilt 80 against a 100 ms objective
-([performance log 28](../performance-log.md)).
+The pacing is the other half of the guarantee, and it is a **duty-cycle gate** rather than a fixed
+delay: after a pass costing `C` ms, no pass may start for `C · (1000/TARGET − 1)` ms. That holds
+placement to `TARGET` (90) ms of every second whatever the tilt, the cycle size, or how often the
+camera asks — a cap, not a quota, so a still map spends none of it. A fixed delay was tried first
+and does not work: it bounds one cycle, and once placement got cheap enough to run whole it simply
+ran more often, back to 120 ms/s ([performance log 29](../performance-log.md)). Measured worst cases
+are 62 ms/s at tilt 30 and 57 at tilt 80, against a 100 ms objective.
+
+The cut is applied in TWO places, and the second is the one that matters. In the culler it can only
+HIDE a label, and it reads the label's placement - which an unplaced label does not have, so the
+~9000 unplaced labels a second bypassed it. In `Label::updatePlacement`, next to the existing
+frustum reject and measured off the geometry bbox, it stops the placement SEARCH instead: 12 295
+searches a second became ~250 ([performance log 29](../performance-log.md)). A frustum does not
+bound distance; pitched at the horizon it reaches kilometres.
 
 **Rationing is only worth it when there is something to ration.** Slicing a cheap cycle costs more
 than it saves — each slice re-sorts and re-inserts its own subset, and the pacing stretches it over

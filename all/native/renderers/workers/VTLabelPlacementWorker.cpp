@@ -58,6 +58,7 @@ namespace massif {
         else {
             _wakeupTime = std::min(_wakeupTime, wakeupTime);
         }
+        _wakeupTime = std::max(_wakeupTime, _nextAllowedTime);
         _pendingWakeup = true;
         _condition.notify_one();
     }
@@ -114,17 +115,19 @@ namespace massif {
     // (placement_algorithms/default.ts, pauseable_placement.ts). A slice is soft: the check is every
     // 32 labels, so one can overshoot by that much.
     static const double PLACEMENT_BUDGET_MS = 2.0;
-    // ...and they get their pacing from the frame. This thread has no frame to hang off, so an
-    // unfinished cycle would resume as fast as the CPU allows. The pair IS the guarantee: placement
-    // costs about 1000 * BUDGET / (BUDGET + DELAY) ms a second, here 74. Measured a little over
-    // that, because only the collect phase is budgeted and the sort and grid insertion ride on top.
-    static const int PLACEMENT_CONTINUE_DELAY_MS = 25;
+    // ...and they get their pacing from the frame. This thread has no frame to hang off, so the
+    // duty-cycle gate below is what paces it instead.
     // A cycle this cheap is run whole, unsliced: mapbox does the same through
     // isFullPlacementRequested / fadeDuration == 0, maplibre through _forceFullPlacement. Looking
     // DOWN a cycle is ~10 ms, and slicing it made the culler cost MORE, not less - the ceiling is
-    // only worth paying for when there is something to ration. Chosen so that even at the pass rate
-    // a moving camera drives, whole cycles stay inside the same 100 ms/s the sliced path guarantees.
+    // only worth paying for when there is something to ration.
     static const double FULL_PLACEMENT_MS = 10.0;
+    // The ceiling itself, and the only thing that actually enforces it. A cycle's SIZE cannot bound
+    // a RATE: once placement got cheap enough to run whole, it simply ran more often, and 8 ms at
+    // 15 passes a second is 120 ms/s again. So after spending C ms, the next pass waits
+    // C * (1000/TARGET - 1), holding placement to TARGET ms of every second whatever the tilt, the
+    // cycle size or how often the camera asks. It is a cap, not a quota - a still map spends none.
+    static const double PLACEMENT_TARGET_MS_PER_SECOND = 90.0;
 
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
@@ -194,7 +197,13 @@ namespace massif {
             mapRenderer->requestRedraw();
         }
 
-        _cycleMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - passStart).count();
+        double passMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - passStart).count();
+        _cycleMs += passMs;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            double gapMs = passMs * (1000.0 / PLACEMENT_TARGET_MS_PER_SECOND - 1.0);
+            _nextAllowedTime = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double, std::milli>(gapMs));
+        }
 
         // Only the cycle asks for the pass that continues it - nothing else knows one is owed, and
         // a still map stops waking this thread once the labels have settled.
@@ -215,7 +224,7 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _pendingWakeup = true;
-        _wakeupTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(PLACEMENT_CONTINUE_DELAY_MS);
+        _wakeupTime = std::max(_nextAllowedTime, std::chrono::steady_clock::now());
         _idle = false;
         _condition.notify_one();
     }

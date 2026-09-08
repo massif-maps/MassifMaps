@@ -61,6 +61,8 @@ namespace massif {
          */
         double _cycleMs = 0;
         double _lastCycleMs = 0;
+        /** No pass may start before this: what holds placement to its share of wall clock. */
+        std::chrono::steady_clock::time_point _nextAllowedTime;
         
         bool _stop;
         bool _idle;

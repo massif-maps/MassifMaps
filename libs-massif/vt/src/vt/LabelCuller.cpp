@@ -214,6 +214,9 @@ namespace massif::vt {
                 label->setOpacity(0);
             }
 
+            if (!label->isValid()) {
+                VT_STAT_INC(cullerInvalid);
+            }
             if (label->isValid()) {
                 float size = (style->sizeFunc)(_viewState);
                 // Ranking is the label's own priority plus what the style makes of the view - the one
@@ -245,6 +248,7 @@ namespace massif::vt {
         }
 
         cursor = index;
+        VT_STAT_ADD(cullerSorted, static_cast<long long>(validLabelList.size()));
 
         // Handed back around the sort: it is the one stretch of a pass long enough for the GL
         // thread to notice, and it reads no label state that thread writes.
@@ -316,6 +320,7 @@ namespace massif::vt {
             }
 
             if (visible) {
+                VT_STAT_INC(cullerVisible);
                 if (groupId >= 0) {
                     addGridRecord(_recordGrid, labelInfo.cullRecord);
                 }

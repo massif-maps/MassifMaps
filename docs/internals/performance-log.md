@@ -2074,3 +2074,60 @@ clutter; it simply names a different set of POIs.
 **Still open:** `labelsLive` is untouched at ~5000, so `buildLabelMaps` (178 ms/s at tilt 30) is
 unaffected. That is tangram's mechanism — an intra-tile collision on the tile worker at
 style-zoom + 2, plus a per-tile cap — and it is the remaining one of the three.
+
+## 29. Where the placement work really went, and why a cycle's size cannot bound its rate (2026-09-08)
+
+Crosscall `1cba1468`, `day-cycle-light` at Paris z16.5, pan bench, `shadow 1.0`, after entry 28.
+The plan was tangram's intra-tile prefilter. Measuring first killed that plan and found two better
+things.
+
+**The fate of a considered label**, tilt 30, representative interval:
+
+| | count |
+|---|---|
+| considered | 2400 |
+| cut by distance | 411 |
+| invalid after `updatePlacement` | 943 |
+| reached the sort | 1046 |
+| **ended up visible** | **13** |
+
+Full placement work on ~2400 labels a second to draw ~30. And the placement counters say the same:
+`placeUpd` 23 995/s, of which `reNull` 9 078 and `reHidden` 11 208 against `reVisible` **13**, with
+`search` at **12 295/s** (763 at tilt 80).
+
+**Tangram's prefilter is the wrong tool here.** It collides a tile against itself at style-zoom + 2
+and caps at 4096 labels a tile. We carry ~40 labels a tile, so the cap can never fire and 40 labels
+in a tile drawn 4x larger rarely collide. Not built.
+
+**What was actually wrong.** `Label::updatePlacement` already rejects on the frustum before
+searching, and that reject is documented as most of a frame's placement work - but a frustum does
+not bound DISTANCE, and pitched toward the horizon it reaches kilometres. Worse, entry 27's
+perspective cut could not help: it lives in the culler and reads the label's PLACEMENT, which the
+9 078 unplaced labels a second do not have, so they bypassed it entirely. Applying the same cut
+next to the frustum reject, off the geometry bbox, stops the search instead of hiding its result:
+
+| tilt 30, per second | before | after |
+|---|---|---|
+| `search` | 12 295 | **~250** |
+| `placeUpd` | 23 995 | **~600** |
+
+**Then `cullMs` went UP, to 122-131.** Entry 28's `FULL_PLACEMENT_MS` rule runs a cycle whole when
+it is cheap - and placement had just become cheap, so cycles ran unsliced at the full pass rate.
+8 ms at 15 passes a second is 120 ms/s. **A cycle's SIZE cannot bound a RATE**, which is what the
+objective is about.
+
+Replaced by a duty-cycle gate, which is the objective expressed directly: after a pass costing C ms,
+no pass may start for `C * (1000/TARGET - 1)` ms, holding placement to TARGET (90) ms of every
+second whatever the tilt, the cycle size, or how often the camera asks. It is a cap, not a quota -
+a still map spends none of it.
+
+| | cullMs worst | frame avg |
+|---|---|---|
+| tilt 30 | 94.0 -> **61.8** | 73.9 -> **71.3** |
+| tilt 80 | 60.6 -> **57.3** | 43.9 -> **43.5** |
+
+At rest the frame is richer, not poorer: the near and mid field name more POIs than before and the
+horizon road shields are gone, which is the clutter the cut is for.
+
+**Where the tilt ladder stands now**, against 129.2 ms and 668 ms/s at the start of entry 27:
+frame avg 71.3 at tilt 30 and 43.5 at tilt 80, `cullMs` under 62 at both.

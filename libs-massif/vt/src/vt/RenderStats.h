@@ -214,6 +214,11 @@ namespace massif::vt {
         static inline std::atomic<long long> cullerCollectNs{0}; // updatePlacement + variant envelopes, per label
         static inline std::atomic<long long> cullerSortNs{0};
         static inline std::atomic<long long> cullerInsertNs{0};  // greedy grid insertion, per label
+        // What becomes of a considered label: cut by distance, thrown out by updatePlacement as
+        // off-screen/unplaceable, or carried into the sort - and of those, how many end up drawn.
+        static inline std::atomic<long long> cullerInvalid{0};
+        static inline std::atomic<long long> cullerSorted{0};
+        static inline std::atomic<long long> cullerVisible{0};
     };
 }
 

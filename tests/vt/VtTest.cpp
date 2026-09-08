@@ -13,6 +13,7 @@ void testExtrusionRingOrientation();
 void testExtrusionBevel();
 void testLineJoinReach();
 void testExtrusionBase();
+void testExtrusionFloor();
 void testSpanGeometry();
 void testShadowCasterClip();
 void testExtrusionAnchor();
@@ -29,6 +30,7 @@ int main() {
     testExtrusionBevel();
     testLineJoinReach();
     testExtrusionBase();
+    testExtrusionFloor();
     testSpanGeometry();
     testShadowCasterClip();
     testExtrusionAnchor();

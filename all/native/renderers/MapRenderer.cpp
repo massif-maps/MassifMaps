@@ -277,6 +277,24 @@ namespace massif {
                        (pass3D[2] - lastPass3D[2]) / 1.0e6);
             for (int i = 0; i < 3; i++) { lastPass3D[i] = pass3D[i]; }
 
+            static long long lastExtrusion[9] = { 0 };
+            const long long extrusion[6] = {
+                RenderStats::extrusionResolveCalls.load(), RenderStats::extrusionResolveHits.load(),
+                RenderStats::extrusionResolveUnresolved.load(), RenderStats::extrusionResolveVertices.load(),
+                RenderStats::extrusionElevQueries.load(), RenderStats::extrusionResolveNs.load()
+            };
+            Log::Infof("RenderStats: extrusionBases calls=%lld hits=%lld unresolved=%lld verts=%lld elevQueries=%lld ms=%.1f | bumps=%lld pendingTiles=%lld cleared=%lld (per interval)",
+                       extrusion[0] - lastExtrusion[0], extrusion[1] - lastExtrusion[1],
+                       extrusion[2] - lastExtrusion[2], extrusion[3] - lastExtrusion[3],
+                       extrusion[4] - lastExtrusion[4], (extrusion[5] - lastExtrusion[5]) / 1.0e6,
+                       RenderStats::extrusionVersionBumps.load() - lastExtrusion[6],
+                       RenderStats::extrusionPendingTiles.load() - lastExtrusion[7],
+                       RenderStats::extrusionBasesCleared.load() - lastExtrusion[8]);
+            for (int i = 0; i < 6; i++) { lastExtrusion[i] = extrusion[i]; }
+            lastExtrusion[6] = RenderStats::extrusionVersionBumps.load();
+            lastExtrusion[7] = RenderStats::extrusionPendingTiles.load();
+            lastExtrusion[8] = RenderStats::extrusionBasesCleared.load();
+
             static long long lastEndFrame = 0, lastSwept = 0;
             long long endFrameNs = RenderStats::endFrameNs.load();
             long long swept = RenderStats::endFrameSwept.load();

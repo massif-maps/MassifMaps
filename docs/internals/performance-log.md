@@ -1906,3 +1906,58 @@ At rest the probe then reads `hits=294 misses=0`, and the ground queries fall to
 
 **What is next, in order.** `drape` is now the largest block on both (GPU 32-38 ms), and the
 shadow pass costs nearly nothing next to it. `sky` is the swap-buffer wait, not work.
+
+## 26. The building floor, asked of every vertex on every DEM arrival (2026-09-08)
+
+Crosscall `1cba1468`, profile APK, the `day-cycle-light` example at Paris (2.3376/48.8600) z16.5
+tilt 50, 8 swipes 1.5 s apart, windows over 1600 ms dropped. Entry 25's camera was Grenoble; this
+is the one that was slow.
+
+**Entry 25's "what is next" was wrong.** `drape` read 97.8 ms a frame, but drape BAKES were
+18–22 ms a *second* — `applyTerrainShadows` runs inside the drape section, and what it costs is the
+shadow caster pass re-resolving extrusion bases. A `shadow 0` A/B shows it does not remove that work,
+only move it, which is why shadows had measured free before:
+
+| same script, shadow knob only | `1.0` | `0` |
+|---|---|---|
+| frame avg | 203.3 ms | 75.3 ms |
+| `drape` / `layers3D` | 97.8 / 64.1 | 5.4 / 25.8 |
+| `resolveExtrusionBases` | **407 ms/s** | 123 ms/s |
+| drape bakes | 18 ms/s | 22 ms/s |
+
+A new probe (`RenderStats: extrusionBases`) put **407 ms of every 693 ms of frame time in
+`resolveExtrusionBases`** — 59%. Not the invalidation entry 25 fixed (`bumps=0`), and not a stalled
+DEM (`unresolved=0`): 3–12 DEM tiles land a second, each clears ~30 geometries, and each re-resolve
+re-walked ~18k vertices asking the elevation source at ~14k of them. 2.3 M queries a second.
+
+**The floor was the cost.** The base is the max drawn ground under a building, and it was taken over
+every rising vertex. Two changes, both of them things the reference renderers already do:
+
+- The footprints depend on the vertex data alone, so they are found by ONE walk and kept
+  (`TileGeometry::setBaseFootprints`). mapbox does not re-walk vertices on a DEM arrival either.
+- The max is taken over **eight support points** of the footprint (`vt::ExtrusionFloor`), not every
+  vertex. Nine queries a building, not fourteen thousand.
+
+| Paris pan, `shadow 1.0` | before | after |
+|---|---|---|
+| frame avg | 203.3 ms | **65.0 / 65.5 ms** (2 runs) |
+| worst frame | 1013 ms | 224 / 246 ms |
+| `drape` | 97.8 | **15.8** |
+| `layers3D` | 64.1 | **10.4** |
+| `resolveExtrusionBases` | 407 ms/s | **28 ms/s** |
+
+At matched vertex counts in the same pan: 210 367 → 4 788 elevation queries (−98%), 97.0 → 18.0 ms.
+
+**What a bounding box would have cost.** 04-terrain.md records mapbox's corner-sampled
+`flatElevation` lift being reverted — a corner beside the Seine landed on the Tuileries terrace and
+lifted a wing 5 m. Support points are footprint VERTICES, so the max is over a subset of the old
+one: it can under-lift a building, never lift one it should not.
+
+**Not established: a visual A/B.** Grenoble city, hour pinned, 150 s settle — HEAD vs the new model
+diffs at mean 8.35, and two runs of the SAME binary diff at 9.36. The scene does not converge to a
+repeatable frame at this camera, so the screenshot cannot resolve the two models either way. The
+argument above is structural, not measured.
+
+**What is next.** `sky` — the swap-buffer wait, not work — is now 18–29 ms, so the frame waits on
+the GPU rather than the CPU. `drape` (15.8) and `layers3D` (10.4) are the remaining CPU blocks, and
+`tileSetChange refreshMs` is down from 0.7–1.0 s/s to 65–82 ms/s without being touched.

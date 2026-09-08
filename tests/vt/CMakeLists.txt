@@ -14,6 +14,7 @@ add_executable(vt_tests
   ExtrusionBevelTest.cpp
   LineJoinTest.cpp
   ExtrusionBaseTest.cpp
+  ExtrusionFloorTest.cpp
   ShadowCasterClipTest.cpp
   ExtrusionAnchorTest.cpp
   ExtrusionEmissiveTest.cpp

@@ -150,6 +150,19 @@ namespace massif::vt {
         static inline std::atomic<long long> drapeBakeNs{0};
         static inline std::atomic<long long> geometrySkips{0};   // renderTileGeometry calls that set up and then bailed out (invisible)
 
+        // resolveExtrusionBases: a miss re-walks every vertex of the geometry, so what matters is
+        // how often the cached answer is NOT taken, and how much of that is a resolve abandoned
+        // part-way because a DEM had not decoded (which repeats every frame until it does).
+        static inline std::atomic<long long> extrusionResolveCalls{0};
+        static inline std::atomic<long long> extrusionResolveHits{0};     // cached, same base version
+        static inline std::atomic<long long> extrusionResolveUnresolved{0}; // walked, then gave up
+        static inline std::atomic<long long> extrusionResolveVertices{0}; // vertices walked on a miss
+        static inline std::atomic<long long> extrusionElevQueries{0};
+        static inline std::atomic<long long> extrusionResolveNs{0};
+        static inline std::atomic<long long> extrusionVersionBumps{0};   // global invalidations (every geometry)
+        static inline std::atomic<long long> extrusionPendingTiles{0};   // elevation tiles queued for a targeted re-resolve
+        static inline std::atomic<long long> extrusionBasesCleared{0};   // geometries marked stale by those tiles
+
         // Elevation texture pipeline (the SDK's ElevationTextureCache). Extra DEM detail multiplies the
         // tiles by four a level, and these say which end pays for it: the encode worker, the per-frame
         // upload budget, or simply more distinct textures to bind.

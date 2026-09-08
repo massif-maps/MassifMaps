@@ -168,9 +168,8 @@ public class DayCycleLightExample extends MapExample {
                     // Picks the elevation decoder per tile; without it the SDK assumes mapbox
                     // encoding and terrarium heights come out in the hundreds of kilometres.
                     .set("metaData", Spec.object().set("dem_encoding", "terrarium")))))
-           // The style stands the bridge decks on their chord (deck3d); the SDK keeps 3D bridges
-           // off until asked, so this example asks.
-           .apply(Spec.object().set("exaggeration", 1).set("cameraClearance", 40).set("bridges3DEnabled", true));
+           // 3D bridges (terrain.bridges3DEnabled) stay OFF here: still experimental.
+           .apply(Spec.object().set("exaggeration", 1).set("cameraClearance", 40));
 
         // The curve is only read while this is on; off, the style's and the app's own sun colours
         // stand, which is what every map did before the curve existed.

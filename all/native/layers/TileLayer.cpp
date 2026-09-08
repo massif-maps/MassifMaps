@@ -715,6 +715,16 @@ namespace massif {
         }
     }
 
+    int TileLayer::getVisibleTileCount() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        return static_cast<int>(_visibleTiles.size());
+    }
+
+    int TileLayer::getPreloadingTileCount() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        return static_cast<int>(_preloadingTiles.size());
+    }
+
     void TileLayer::calculateVisibleTiles(const std::shared_ptr<CullState>& cullState) {
         // Remove last visible and preloading tiles
         _visibleTiles.clear();

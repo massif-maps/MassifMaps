@@ -93,6 +93,17 @@ class ProjectionSurface;
          * Returns the current frame number.
          * @return The current frame number.
          */
+        /**
+         * How many tiles the last cull put on screen, and how many are preloaded around them.
+         * A diagnostic: it is what the tile LOD numbers actually cost.
+         * @return The tile count after the last cull pass.
+         */
+        int getVisibleTileCount() const;
+        /**
+         * @return The count of tiles fetched around the visible ones, but not drawn.
+         */
+        int getPreloadingTileCount() const;
+
         int getFrameNr() const;
         /**
          * Sets the frame number, only used for animated tiles. 

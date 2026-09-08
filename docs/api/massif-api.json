@@ -8570,8 +8570,7 @@
           "readOnly": false,
           "static": false,
           "position": false,
-          "cppType": "int",
-          "doc": "Returns the current frame number."
+          "cppType": "int"
         },
         {
           "name": "maxOverzoomLevel",
@@ -8599,6 +8598,14 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns the state of the preloading flag of this layer."
+        },
+        {
+          "name": "preloadingTileCount",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int"
         },
         {
           "name": "projection",
@@ -8638,6 +8645,15 @@
           "cppType": "massif::TileSubstitutionPolicy::TileSubstitutionPolicy",
           "enum": "massif::TileSubstitutionPolicy::TileSubstitutionPolicy",
           "doc": "Returns the current tile substitution policy."
+        },
+        {
+          "name": "visibleTileCount",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost."
         },
         {
           "name": "zoomLevelBias",

@@ -612,6 +612,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> POSTCODE = MassifObject.key("postcode");
     /** Returns the state of the preloading flag of this layer. */
     public static final MassifObject.Key<Boolean> PRELOADING = MassifObject.key("preloading");
+    public static final MassifObject.Key<Long> PRELOADING_TILE_COUNT = MassifObject.key("preloadingTileCount");
     /** Returns wether to prevent duplicate elements */
     public static final MassifObject.Key<Boolean> PREVENT_DUPLICATES = MassifObject.key("preventDuplicates");
     public static final MassifObject.Key<String> PROFILE = MassifObject.key("profile");
@@ -954,6 +955,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> VIEW_STATE = MassifObject.key("viewState");
     /** Returns the visibility of the object. */
     public static final MassifObject.Key<Boolean> VISIBLE = MassifObject.key("visible");
+    /** How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    public static final MassifObject.Key<Long> VISIBLE_TILE_COUNT = MassifObject.key("visibleTileCount");
     /** Returns the visible zoom range of this layer. */
     public static final MassifObject.Key<String> VISIBLE_ZOOM_RANGE = MassifObject.key("visibleZoomRange");
     /** Returns the width of the bitmap. */

@@ -261,13 +261,26 @@ The bench sets two things a phone would not:
 `setTileLODProfile(TILE_LOD_PROFILE_DESKTOP)` - a real GPU, and a tilted web map draws into the
 distance rather than to a near band.
 
-On top of it, `TileLODMaxZoomLevelsOnScreen` goes from maplibre's 9.314 to **6**. The default
+On top of it, `TileLODMaxZoomLevelsOnScreen` goes from maplibre's 9.314 to **7.5**. The default
 coarsens the far field past the zoom OpenMapTiles carries `building` at, so a tilted view was
-extruded near and flat from halfway out; at 6 the buildings reach the horizon. A/B at
-2.3376/48.8606, zoom 15.5, tilt 30 - the difference is not subtle.
+extruded near and flat from halfway out.
 
-It buys that with tiles. `TileLODTileCountRatio` (3) is the guard and only binds when this number
-is below the default, which is exactly this case.
+It is not free, and the cost is steep. Measured at 2.3376/48.8606, zoom 15.5, tilt 30, reading
+`TileLayer.visibleTileCount` after a settle:
+
+| `MaxZoomLevelsOnScreen` | visible | preloading | vs the default |
+|---|---|---|---|
+| 9.314 (maplibre) | 44 | 7 | 1.0x |
+| **7.5** | **107** | 14 | **2.4x** |
+| 6.0 | 259 | 18 | 5.9x |
+
+7.5 is the knee: it reaches nearly as far as 6 for less than half the tiles. `TileLODTileCountRatio`
+does NOT rescue this - it caps the pitched count against the FLAT one, which is a different
+quantity, and 6.0 measured 5.9x regardless.
+
+**Measuring it needs a camera move.** No LOD option is in `MapRenderer`'s option-change list, so
+changing one at runtime does not re-cull: the tile list, and the counter, stay as they were until
+the camera actually moves. Three identical readings in a row are the symptom.
 
 ### Draw distance
 

@@ -612,6 +612,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessed;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPostcode;
 /** Returns the state of the preloading flag of this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPreloading;
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPreloadingTileCount;
 /** Returns wether to prevent duplicate elements */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPreventDuplicates;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyProfile;
@@ -954,6 +955,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistanceFactor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewState;
 /** Returns the visibility of the object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVisible;
+/** How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyVisibleTileCount;
 /** Returns the visible zoom range of this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVisibleZoomRange;
 /** Returns the width of the bitmap. */

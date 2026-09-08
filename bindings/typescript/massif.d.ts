@@ -1696,7 +1696,6 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "dataSource.projection.bounds": Bounds;
     readonly "dataSource.projection.name": string;
-    /** Returns the current frame number. */
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
@@ -1716,6 +1715,7 @@ export interface PropertyTypes {
     "postProcessed": boolean;
     /** Returns the state of the preloading flag of this layer. */
     "preloading": boolean;
+    readonly "preloadingTileCount": number;
     /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
     readonly "projection": Handle<"massif::Projection">;
     /** (read-only) Returns the bounds of this projection. */
@@ -1764,6 +1764,8 @@ export interface PropertyTypes {
     "vectorTileEventListener": Handle<"massif::VectorTileEventListener">;
     /** Returns the visibility of this layer. */
     "visible": boolean;
+    /** (read-only) How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    readonly "visibleTileCount": number;
     /** Returns the visible zoom range of this layer. */
     "visibleZoomRange": [number, number];
     /** Gets the current zoom level bias for this layer. */
@@ -2027,7 +2029,6 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "dataSource.projection.bounds": Bounds;
     readonly "dataSource.projection.name": string;
-    /** Returns the current frame number. */
     "frameNr": number;
     /** Gets the current maximum overzoom level for this layer. */
     "maxOverzoomLevel": number;
@@ -2041,6 +2042,7 @@ export interface PropertyTypes {
     "postProcessed": boolean;
     /** Returns the state of the preloading flag of this layer. */
     "preloading": boolean;
+    readonly "preloadingTileCount": number;
     /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
     readonly "projection": Handle<"massif::Projection">;
     /** (read-only) Returns the bounds of this projection. */
@@ -2083,6 +2085,8 @@ export interface PropertyTypes {
     "updatePriority": number;
     /** Returns the visibility of this layer. */
     "visible": boolean;
+    /** (read-only) How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    readonly "visibleTileCount": number;
     /** Returns the visible zoom range of this layer. */
     "visibleZoomRange": [number, number];
     /** Gets the current zoom level bias for this layer. */
@@ -2632,7 +2636,6 @@ export interface PropertyTypes {
     "exagerateHeightScaleEnabled": boolean;
     /** Returns the per-frame relief exaggeration factor, i.e. the vertical exaggeration of the slope. Unlike height scale this is a shader uniform applied at render time (no tile re-decode), so it can be animated smoothly. */
     "exaggeration": number;
-    /** Returns the current frame number. */
     "frameNr": number;
     /** Returns the height scale of the hillshade overlay. */
     "heightScale": number;
@@ -2659,6 +2662,7 @@ export interface PropertyTypes {
     "postProcessed": boolean;
     /** Returns the state of the preloading flag of this layer. */
     "preloading": boolean;
+    readonly "preloadingTileCount": number;
     /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
     readonly "projection": Handle<"massif::Projection">;
     /** (read-only) Returns the bounds of this projection. */
@@ -2707,6 +2711,8 @@ export interface PropertyTypes {
     "updatePriority": number;
     /** Returns the visibility of this layer. */
     "visible": boolean;
+    /** (read-only) How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    readonly "visibleTileCount": number;
     /** Returns the visible zoom range of this layer. */
     "visibleZoomRange": [number, number];
     /** Gets the current zoom level bias for this layer. */
@@ -5156,7 +5162,6 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "dataSource.projection.bounds": Bounds;
     readonly "dataSource.projection.name": string;
-    /** Returns the current frame number. */
     "frameNr": number;
     /** Gets the current maximum overzoom level for this layer. */
     "maxOverzoomLevel": number;
@@ -5170,6 +5175,7 @@ export interface PropertyTypes {
     "postProcessed": boolean;
     /** Returns the state of the preloading flag of this layer. */
     "preloading": boolean;
+    readonly "preloadingTileCount": number;
     /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
     readonly "projection": Handle<"massif::Projection">;
     /** (read-only) Returns the bounds of this projection. */
@@ -5210,6 +5216,8 @@ export interface PropertyTypes {
     "updatePriority": number;
     /** Returns the visibility of this layer. */
     "visible": boolean;
+    /** (read-only) How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    readonly "visibleTileCount": number;
     /** Returns the visible zoom range of this layer. */
     "visibleZoomRange": [number, number];
     /** Gets the current zoom level bias for this layer. */
@@ -5868,7 +5876,6 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "dataSource.projection.bounds": Bounds;
     readonly "dataSource.projection.name": string;
-    /** Returns the current frame number. */
     "frameNr": number;
     /** Gets the current maximum overzoom level for this layer. */
     "maxOverzoomLevel": number;
@@ -5882,6 +5889,7 @@ export interface PropertyTypes {
     "postProcessed": boolean;
     /** Returns the state of the preloading flag of this layer. */
     "preloading": boolean;
+    readonly "preloadingTileCount": number;
     /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
     readonly "projection": Handle<"massif::Projection">;
     /** (read-only) Returns the bounds of this projection. */
@@ -5914,6 +5922,8 @@ export interface PropertyTypes {
     "updatePriority": number;
     /** Returns the visibility of this layer. */
     "visible": boolean;
+    /** (read-only) How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    readonly "visibleTileCount": number;
     /** Returns the visible zoom range of this layer. */
     "visibleZoomRange": [number, number];
     /** Gets the current zoom level bias for this layer. */
@@ -6005,7 +6015,6 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "dataSource.projection.bounds": Bounds;
     readonly "dataSource.projection.name": string;
-    /** Returns the current frame number. */
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
@@ -6025,6 +6034,7 @@ export interface PropertyTypes {
     "postProcessed": boolean;
     /** Returns the state of the preloading flag of this layer. */
     "preloading": boolean;
+    readonly "preloadingTileCount": number;
     /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
     readonly "projection": Handle<"massif::Projection">;
     /** (read-only) Returns the bounds of this projection. */
@@ -6071,6 +6081,8 @@ export interface PropertyTypes {
     "vectorTileEventListener": Handle<"massif::VectorTileEventListener">;
     /** Returns the visibility of this layer. */
     "visible": boolean;
+    /** (read-only) How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    readonly "visibleTileCount": number;
     /** Returns the visible zoom range of this layer. */
     "visibleZoomRange": [number, number];
     /** Gets the current zoom level bias for this layer. */
@@ -6460,7 +6472,6 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "dataSource.projection.bounds": Bounds;
     readonly "dataSource.projection.name": string;
-    /** Returns the current frame number. */
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
@@ -6480,6 +6491,7 @@ export interface PropertyTypes {
     "postProcessed": boolean;
     /** Returns the state of the preloading flag of this layer. */
     "preloading": boolean;
+    readonly "preloadingTileCount": number;
     /** (read-only) Returns the projection this layer's data is in, which is its data source's. */
     readonly "projection": Handle<"massif::Projection">;
     /** (read-only) Returns the bounds of this projection. */
@@ -6526,6 +6538,8 @@ export interface PropertyTypes {
     "vectorTileEventListener": Handle<"massif::VectorTileEventListener">;
     /** Returns the visibility of this layer. */
     "visible": boolean;
+    /** (read-only) How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    readonly "visibleTileCount": number;
     /** Returns the visible zoom range of this layer. */
     "visibleZoomRange": [number, number];
     /** Gets the current zoom level bias for this layer. */
@@ -7050,7 +7064,6 @@ export interface LayerSpec_composite_vector {
   clickRadius?: number;
   /** Returns the culling delay of the layer in milliseconds. */
   cullDelay?: number;
-  /** Returns the current frame number. */
   frameNr?: number;
   /** Returns the current relative label blending speed. */
   labelBlendingSpeed?: number;
@@ -7145,7 +7158,6 @@ export interface LayerSpec_hillshade {
   exagerateHeightScaleEnabled?: boolean;
   /** Returns the per-frame relief exaggeration factor, i.e. the vertical exaggeration of the slope. Unlike height scale this is a shader uniform applied at render time (no tile re-decode), so it can be animated smoothly. */
   exaggeration?: number;
-  /** Returns the current frame number. */
   frameNr?: number;
   /** Returns the height scale of the hillshade overlay. */
   heightScale?: number;
@@ -7213,7 +7225,6 @@ export interface LayerSpec_raster {
   UTFGridEventListener?: Handle<"massif::UTFGridEventListener">;
   /** Returns the culling delay of the layer in milliseconds. */
   cullDelay?: number;
-  /** Returns the current frame number. */
   frameNr?: number;
   /** Gets the current maximum overzoom level for this layer. */
   maxOverzoomLevel?: number;
@@ -7290,7 +7301,6 @@ export interface LayerSpec_vector {
   clickRadius?: number;
   /** Returns the culling delay of the layer in milliseconds. */
   cullDelay?: number;
-  /** Returns the current frame number. */
   frameNr?: number;
   /** Returns the current relative label blending speed. */
   labelBlendingSpeed?: number;

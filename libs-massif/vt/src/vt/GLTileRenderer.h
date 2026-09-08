@@ -453,7 +453,8 @@ namespace massif::vt {
         void renderLabels(bool labels2D, bool labels3D);
         bool endFrame();
 
-        void cullLabels(LabelCuller& culler);
+        /** Returns false when the culler's slice ran out before this layer's labels did. */
+        bool cullLabels(LabelCuller& culler);
 
         bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
         bool findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, bool geom2D, bool geom3D, std::vector<GeometryIntersectionInfo>& results) const;
@@ -742,6 +743,7 @@ namespace massif::vt {
          * instead loses the building outright, and any wrong-but-plausible base buries it.
          */
         bool resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const;
+        void buildExtrusionBaseFootprints(const std::shared_ptr<TileGeometry>& geometry, const TileGeometry::VertexGeometryLayoutParameters& params, const VertexArray<std::uint8_t>& vertexGeometry, std::size_t vertexCount) const;
         /**
          * The DECK height over a point standing on a span, for anything anchored to the ground
          * that belongs to the bridge rather than to the terrain under it - a road name, a POI, a
@@ -1019,6 +1021,7 @@ namespace massif::vt {
         std::array<std::shared_ptr<PassLabels>, 2> _passLabels; // for 'ground' labels and for 'billboard' labels
         std::array<std::shared_ptr<PassLabels>, 2> _visiblePassLabels;  // for 'ground' labels and for 'billboard' labels
         std::vector<std::shared_ptr<Label>> _labels;
+        std::size_t _labelCullCursor = 0; // how far the current placement cycle got through _labels
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
         std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;

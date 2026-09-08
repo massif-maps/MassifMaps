@@ -676,6 +676,14 @@ an exaggeration ramp, since the exaggeration is inside that height. It is a coun
 labels' per-tile list because `setVertexBase` is a no-op when the height has not moved, so a
 needless re-resolve costs the queries and uploads nothing.
 
+"Costs the queries and uploads nothing" was the whole error: on a pan 3–12 DEM tiles land a second,
+each clearing ~30 geometries, and a re-resolve used to re-derive the footprints by walking every
+vertex again. The footprints depend on the **vertex data alone**, so they are found by one walk and
+kept on the geometry (`TileGeometry::setBaseFootprints`); an arrival re-samples nine points per
+building and rewrites the bases. mapbox never re-walks vertices for this either — its CPU path is
+restricted to parts split across a tile border and gated on the DEM's timestamp
+(`draw_fill_extrusion.ts updateBorders`).
+
 **The ground the anchor reads is a SMOOTHED field, not the lidar level the surface is drawn
 from.** `ElevationTextureCache::getDisplayHeight(..., smooth = true)` samples the DEM at
 `SMOOTH_BASE_POSTING` (50 m), bilinear, from the grid LRU — an ancestor level answers too, and is
@@ -718,20 +726,27 @@ uphill. Done on the CPU through the provider, not in the shader: overzoomed geom
 target tile, where `applyTerrain` clamps to the edge texel, and a shader floor read there tilted
 whole roofs into ramps.
 
-Theirs is per **vertex**; ours is per **building** — the max drawn ground over its own rising
-vertices, against its tallest of them. Per vertex on a 0.84 m lidar DEM, a low part's roof followed
-the ground down every bump it covers; the roof has to stay one plane, and one plane per building is
-the whole point of the anchor. It is accumulated per ANCHOR rather than per vertex run, since the
-pieces of one building need not be contiguous in the vertex order. One query per rising vertex
-position, columns of a wall share theirs.
+Theirs is per **vertex**; ours is per **building** — the max drawn ground under it, against its
+tallest vertex. Per vertex on a 0.84 m lidar DEM, a low part's roof followed the ground down every
+bump it covers; the roof has to stay one plane, and one plane per building is the whole point of
+the anchor. It is accumulated per ANCHOR rather than per vertex run, since the pieces of one
+building need not be contiguous in the vertex order.
 
-mapbox's `flatElevation` lift (the rise across the span, sampled at the span's corners) is NOT
-ported: its corners lie off the footprint, and beside the Seine one on the Tuileries terrace lifted
-a wing 5 m above its neighbour. On a smooth field the floor covers what the lift was for.
+The max is taken over **eight support points**, not every rising vertex: the footprint vertices
+reaching furthest along ±x, ±y and the two diagonals (`vt::ExtrusionFloor`). Asking every vertex
+was 2.3 M elevation queries a second while panning and 407 ms of every 693 ms frame — see
+[performance log 26](../performance-log.md). A support point is **always a footprint vertex**,
+which is the property that matters:
 
-This **removes** the previous model's 5 elevation samples per above-ground vertex, measured at
-**+0.35 ms** on the `layers3D` pass on an Adreno 610 at the Grenoble city camera (2.30 vs 1.95 ms
-median) — see the [performance log](../performance-log.md). Not re-measured since.
+mapbox's `flatElevation` lift (the rise across the span, sampled at the span's corners) is still
+NOT ported, and a bounding box is not the cheap way to bound this either. Their corners lie off the
+footprint — beside the Seine one on the Tuileries terrace lifted a wing 5 m above its neighbour,
+and an L-shaped plan has a box corner the building never reaches. A support-point max is over a
+SUBSET of the vertices the old max used, so it can only land at or below the old answer: it can
+under-lift a building, never lift one it should not. That is the direction this has to fail in.
+
+The diagonals are what a box would get wrong the other way: a building at 45° has its extremes
+there, and its axis-aligned corners on its neighbours.
 
 
 ### The dead ends

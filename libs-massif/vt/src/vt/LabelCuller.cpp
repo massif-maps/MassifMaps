@@ -111,14 +111,32 @@ namespace massif::vt {
         _metersToInternal = metersToInternal;
     }
 
+    void LabelCuller::beginSlice(double budgetMs) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _sliceBudgeted = budgetMs > 0;
+        _sliceExhausted = false;
+        _sliceDeadline = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double, std::milli>(budgetMs));
+    }
+
+    bool LabelCuller::isSliceExhausted() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        return _sliceExhausted;
+    }
+
     void LabelCuller::reset() {
         std::lock_guard<std::mutex> lock(_mutex);
 
         clearGrid();
     }
 
-    bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
+    bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex, std::size_t& cursor) {
         std::lock_guard<std::mutex> lock(_mutex);
+
+        if (cursor > labelList.size()) {
+            cursor = 0; // the label set was rebuilt under us; start this layer again
+        }
 
         VT_STAT_INC(cullerPasses);
         VT_STAT_CLOCK(cullerClock);
@@ -138,14 +156,24 @@ namespace massif::vt {
         // otherwise be a heap allocation each, per label, per pass.
         std::vector<std::array<cglib::vec3<float>, 4>> worldEnvelopes;
         std::vector<CullRecord> variants;
+        VT_STAT_CLOCK(phaseClock);
         BatchLock labelLock(labelMutex, LABEL_LOCK_BATCH);
-        for (const std::shared_ptr<Label>& label : labelList) {
+        // Collect is ~90% of a pass (performance-log 28), and it runs BEFORE the sort, so cutting
+        // it short costs no ordering among the labels that do get collected.
+        std::size_t index = cursor;
+        for (; index < labelList.size(); index++) {
+            if (_sliceBudgeted && (index & 0x1f) == 0 && std::chrono::steady_clock::now() > _sliceDeadline) {
+                _sliceExhausted = true;
+                break;
+            }
+            const std::shared_ptr<Label>& label = labelList[index];
             labelLock.step();
 
             // Analyze only active and valid labels
             if (!label->isActive()) {
                 continue;
             }
+            VT_STAT_INC(cullerConsidered);
 
             // Capture visibility from the previous frame BEFORE updatePlacement, which may
             // reset opacity to 0 even for labels that were already visible on screen.
@@ -158,13 +186,26 @@ namespace massif::vt {
             bool ranked = !(style->rankFunc == FloatFunction(0.0f));
             float maxDistance = style->maxDistance;
             float distance = 0; // meters, 0 when it could not be resolved
-            if ((maxDistance > 0 || ranked) && _metersToInternal > 0) {
+            double cameraToCenter = _viewState.focusDistance;
+            if ((maxDistance > 0 || ranked || cameraToCenter > 0) && (_metersToInternal > 0 || cameraToCenter > 0)) {
                 cglib::vec3<double> position(0, 0, 0);
                 if (label->calculateCenter(position)) {
-                    distance = static_cast<float>(cglib::length(position - _viewState.origin) / _metersToInternal);
-                    if (maxDistance > 0 && distance > maxDistance) {
+                    double internalDistance = cglib::length(position - _viewState.origin);
+                    // The perspective cut comes FIRST and costs one length: everything below it -
+                    // updatePlacement, the variant envelopes, the grid test - is per label, and the
+                    // horizon band is where most of the labels are (performance-log 27).
+                    if (cameraToCenter > 0 &&
+                        LabelDistance::perspectiveRatio(cameraToCenter, internalDistance) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF) {
+                        VT_STAT_INC(cullerDistanceCut);
                         label->setVisible(false);
                         continue;
+                    }
+                    if (_metersToInternal > 0) {
+                        distance = static_cast<float>(internalDistance / _metersToInternal);
+                        if (maxDistance > 0 && distance > maxDistance) {
+                            label->setVisible(false);
+                            continue;
+                        }
                     }
                 }
             }
@@ -173,6 +214,9 @@ namespace massif::vt {
                 label->setOpacity(0);
             }
 
+            if (!label->isValid()) {
+                VT_STAT_INC(cullerInvalid);
+            }
             if (label->isValid()) {
                 float size = (style->sizeFunc)(_viewState);
                 // Ranking is the label's own priority plus what the style makes of the view - the one
@@ -203,9 +247,13 @@ namespace massif::vt {
             }
         }
 
+        cursor = index;
+        VT_STAT_ADD(cullerSorted, static_cast<long long>(validLabelList.size()));
+
         // Handed back around the sort: it is the one stretch of a pass long enough for the GL
         // thread to notice, and it reads no label state that thread writes.
         labelLock.release();
+        VT_STAT_SPLIT(cullerCollectNs, phaseClock);
 
         // Sort by priority/wasVisible/layerIndex/size/opacity: a label visible in the previous frame is
         // placed before a new one of equal priority, which is MapLibre's "committed placement". The
@@ -228,6 +276,8 @@ namespace massif::vt {
             }
             return labelInfo1.label->getGlobalId() > labelInfo2.label->getGlobalId();
         });
+
+        VT_STAT_SPLIT(cullerSortNs, phaseClock);
 
         // Update label visibility flag based on overlap analysis
         std::unordered_map<long long, std::vector<const LabelInfo*>> groupMap;
@@ -270,6 +320,7 @@ namespace massif::vt {
             }
 
             if (visible) {
+                VT_STAT_INC(cullerVisible);
                 if (groupId >= 0) {
                     addGridRecord(_recordGrid, labelInfo.cullRecord);
                 }
@@ -283,6 +334,7 @@ namespace massif::vt {
                 changed = true;
             }
         }
+        VT_STAT_SPLIT(cullerInsertNs, phaseClock);
         VT_STAT_SPLIT(cullerNs, cullerClock);
         return changed;
     }

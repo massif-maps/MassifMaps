@@ -1,4 +1,5 @@
 #include "Label.h"
+#include "LabelDistance.h"
 #include "RenderStats.h"
 
 #include <algorithm>
@@ -531,7 +532,16 @@ namespace massif::vt {
         // Nothing of this label is in view, and the loaded tile set reaches well past the viewport, so
         // this is most of a frame's placement work. DROPPED rather than kept: an invalid label is what
         // excludes it from the culler, and an off-screen one would claim border cells.
-        if (!viewState.frustum.inside(calculateGeometryBBox(viewState))) {
+        //
+        // The frustum alone does not bound DISTANCE - pitched toward the horizon it reaches
+        // kilometres, and 12k searches a second ran for labels that were never going to be drawn.
+        // So the same perspective cut the culler applies is applied here, where it can stop a search
+        // rather than merely hide the result: the culler's copy reads the PLACEMENT, which an
+        // unplaced label does not have, so it could not see these at all (performance-log 29).
+        cglib::bbox3<double> geometryBBox = calculateGeometryBBox(viewState);
+        bool beyondCutoff = viewState.focusDistance > 0 &&
+            LabelDistance::perspectiveRatio(viewState.focusDistance, cglib::length(geometryBBox.center() - viewState.origin)) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF;
+        if (beyondCutoff || !viewState.frustum.inside(geometryBBox)) {
             _cachedFlippedPlacement.reset();
             if (!_placement) {
                 return false; // already unplaced, nothing changed - do not reset the opacity

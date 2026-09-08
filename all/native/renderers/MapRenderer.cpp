@@ -127,12 +127,31 @@ namespace massif {
             lastFlips = flips;
             lastCullerNs = cullerNs;
 
-            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f",
+            static long long lastConsidered = 0, lastDistanceCut = 0;
+            static long long lastCullPhase[3] = { 0 };
+            static long long lastCullFate[3] = { 0 };
+            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld",
                        deltas[13], deltas[14], deltas[15], deltas[0], deltas[11],
                        deltas[1], deltas[2],
                        deltas[3], deltas[12], RenderStats::labelsLive.load(), deltas[4],
                        deltas[5], deltas[6], deltas[7], deltas[8], deltas[16],
-                       deltas[9], deltas[10], deltaPasses, deltaFlips, deltaCullerNs / 1.0e6);
+                       deltas[9], deltas[10], deltaPasses, deltaFlips, deltaCullerNs / 1.0e6,
+                       RenderStats::cullerConsidered.load() - lastConsidered,
+                       RenderStats::cullerDistanceCut.load() - lastDistanceCut,
+                       (RenderStats::cullerCollectNs.load() - lastCullPhase[0]) / 1.0e6,
+                       (RenderStats::cullerSortNs.load() - lastCullPhase[1]) / 1.0e6,
+                       (RenderStats::cullerInsertNs.load() - lastCullPhase[2]) / 1.0e6,
+                       RenderStats::cullerInvalid.load() - lastCullFate[0],
+                       RenderStats::cullerSorted.load() - lastCullFate[1],
+                       RenderStats::cullerVisible.load() - lastCullFate[2]);
+            lastCullFate[0] = RenderStats::cullerInvalid.load();
+            lastCullFate[1] = RenderStats::cullerSorted.load();
+            lastCullFate[2] = RenderStats::cullerVisible.load();
+            lastConsidered = RenderStats::cullerConsidered.load();
+            lastDistanceCut = RenderStats::cullerDistanceCut.load();
+            lastCullPhase[0] = RenderStats::cullerCollectNs.load();
+            lastCullPhase[1] = RenderStats::cullerSortNs.load();
+            lastCullPhase[2] = RenderStats::cullerInsertNs.load();
 
             // Draw submission, per interval. geomDraws is the number that matters: the frame
             // cost of a style tracks it, not the index count next to it.
@@ -276,6 +295,24 @@ namespace massif {
                        (pass3D[0] - lastPass3D[0]) / 1.0e6, (pass3D[1] - lastPass3D[1]) / 1.0e6,
                        (pass3D[2] - lastPass3D[2]) / 1.0e6);
             for (int i = 0; i < 3; i++) { lastPass3D[i] = pass3D[i]; }
+
+            static long long lastExtrusion[9] = { 0 };
+            const long long extrusion[6] = {
+                RenderStats::extrusionResolveCalls.load(), RenderStats::extrusionResolveHits.load(),
+                RenderStats::extrusionResolveUnresolved.load(), RenderStats::extrusionResolveVertices.load(),
+                RenderStats::extrusionElevQueries.load(), RenderStats::extrusionResolveNs.load()
+            };
+            Log::Infof("RenderStats: extrusionBases calls=%lld hits=%lld unresolved=%lld verts=%lld elevQueries=%lld ms=%.1f | bumps=%lld pendingTiles=%lld cleared=%lld (per interval)",
+                       extrusion[0] - lastExtrusion[0], extrusion[1] - lastExtrusion[1],
+                       extrusion[2] - lastExtrusion[2], extrusion[3] - lastExtrusion[3],
+                       extrusion[4] - lastExtrusion[4], (extrusion[5] - lastExtrusion[5]) / 1.0e6,
+                       RenderStats::extrusionVersionBumps.load() - lastExtrusion[6],
+                       RenderStats::extrusionPendingTiles.load() - lastExtrusion[7],
+                       RenderStats::extrusionBasesCleared.load() - lastExtrusion[8]);
+            for (int i = 0; i < 6; i++) { lastExtrusion[i] = extrusion[i]; }
+            lastExtrusion[6] = RenderStats::extrusionVersionBumps.load();
+            lastExtrusion[7] = RenderStats::extrusionPendingTiles.load();
+            lastExtrusion[8] = RenderStats::extrusionBasesCleared.load();
 
             static long long lastEndFrame = 0, lastSwept = 0;
             long long endFrameNs = RenderStats::endFrameNs.load();

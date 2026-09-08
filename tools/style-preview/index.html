@@ -274,8 +274,10 @@ function startMassif() {
     const query = new URLSearchParams({
       pane: id, carto: base, source,
       minzoom: tilesets[i].minzoom ?? 0, maxzoom: tilesets[i].maxzoom ?? 14,
-      // the pane is being handed a MapLibre zoom, which is a level off the SDK's own convention
-      zoomoffset: 1,
+      // the pane is handed a MapLibre camera, so it adopts MapLibre's conventions on both counts:
+      // the 512-pixel tile the zoom NUMBER is calibrated on, and the refinement density the SDK
+      // otherwise sets a full level finer
+      tiledrawsize: 512, tilelodfactor: 1,
       lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
     });
     $(id).src = `./massif-pane.html?${query}`;

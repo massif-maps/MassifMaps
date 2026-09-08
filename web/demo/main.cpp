@@ -6,7 +6,7 @@
  *   ?source=https://tile.openstreetmap.org/{z}/{x}/{y}.png          raster (inferred)
  *   ?source=https://.../{z}/{x}/{y}.mvt&css=<url-encoded CartoCSS>  vector
  *   ?minzoom=0&maxzoom=14                                           what the tileset actually holds
- *   ?zoomoffset=1                                                   read zoom as a web map does
+ *   ?tiledrawsize=512&tilelodfactor=1                               pick tiles as a web map does
  *
  * The style is passed in rather than fetched: main() runs on the browser's main thread, where a
  * synchronous fetch is illegal. The JavaScript binding over the facade C ABI is what will replace
@@ -166,8 +166,13 @@ int main() {
 
     // A zoom NUMBER means a different distance here than in a web map: the SDK calibrates on a
     // 256-pixel tile and maplibre on a 512-pixel one, so the same number is a level apart. Pass 1
-    // to read the query string's zoom as a web map would - see ZoomConvention.h.
+    // to read the query string's zoom as a web map would - see ZoomConvention.h. A tiledrawsize of
+    // 512 adopts the same convention for the TILE the layer picks, which the offset does not touch.
     _MapView->getOptions()->setZoomOffset(static_cast<float>(queryNumber("zoomoffset", 0)));
+    _MapView->getOptions()->setTileDrawSize(static_cast<int>(queryNumber("tiledrawsize", 256)));
+    // And the SDK refines a full level finer than tangram and mapbox do: a tilelodfactor of 1 is
+    // their rule verbatim, where the default 0.5 is what draws a level deeper at the same camera.
+    _MapView->getOptions()->setTileLODFactor(static_cast<float>(queryNumber("tilelodfactor", 0.5)));
 
     massif::MapPos wgs84(queryNumber("lon", 2.3522), queryNumber("lat", 48.8566));
     _MapView->setFocusPos(_MapView->getOptions()->getBaseProjection()->fromWgs84(wgs84), 0);

@@ -180,7 +180,10 @@ function makeMap(container, style, errEl, readout) {
   map.on('move', show);
   map.on('load', show);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-  new ResizeObserver(() => map.resize()).observe(document.getElementById(container));
+  // Kept on the map: an observer nothing holds a reference to is collectable, and once collected
+  // it stops observing - which left the canvas at its old height when the Massif row opened.
+  map._paneObserver = new ResizeObserver(() => map.resize());
+  map._paneObserver.observe(document.getElementById(container));
   const seen = new Set();
   map.on('error', (e) => {
     const msg = (e && e.error && e.error.message) || String(e);
@@ -262,7 +265,10 @@ function firstVectorURL(style) {
  */
 let massifStarted = false;
 function startMassif() {
-  const base = new URL('carto', $('style-url').value.trim()).href;
+  // ?carto= names another conversion of the same style - one built without --fold-casings, say -
+  // so two runs of the converter can be compared over the same tiles without editing anything.
+  const asked = new URLSearchParams(location.search).get('carto');
+  const base = new URL(asked ?? 'carto', $('style-url').value.trim()).href;
   const centre = maps[0].getCenter();
   const tilesets = [remoteTileJSON, localTileJSON];
   for (const [i, id] of ['massif-l', 'massif-r'].entries()) {
@@ -274,10 +280,13 @@ function startMassif() {
     const query = new URLSearchParams({
       pane: id, carto: base, source,
       minzoom: tilesets[i].minzoom ?? 0, maxzoom: tilesets[i].maxzoom ?? 14,
-      // the pane is handed a MapLibre camera, so it adopts MapLibre's conventions on both counts:
-      // the 512-pixel tile the zoom NUMBER is calibrated on, and the refinement density the SDK
-      // otherwise sets a full level finer
+      // The pane is handed a MapLibre camera, so it adopts MapLibre's conventions on all three
+      // counts: the 512-pixel tile the zoom NUMBER is calibrated on, the refinement density the
+      // SDK otherwise sets a full level finer, and a dpi of 160 - one dp per CSS pixel, which is
+      // what MapLibre sizes a label in. Measured: all three panes then span the same longitude.
+      // ?dpi= overrides it.
       tiledrawsize: 512, tilelodfactor: 1,
+      dpi: new URLSearchParams(location.search).get('dpi') ?? 160,
       lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
     });
     $(id).src = `./massif-pane.html?${query}`;
@@ -303,10 +312,14 @@ $('massif-toggle').onclick = () => {
   if (massifStarted) {
     grid.classList.toggle('rows');
     for (const id of ['pane-ml', 'pane-mr']) $(id).classList.toggle('hidden');
+    for (const m of maps) m.resize();
     return;
   }
   grid.classList.add('rows');
   for (const id of ['pane-ml', 'pane-mr']) $(id).classList.remove('hidden');
+  // The grid just halved the MapLibre panes. Told rather than observed: a ResizeObserver does not
+  // run while the pane is hidden, and a map left at its old height draws off the bottom of its box.
+  for (const m of maps) m.resize();
   startMassif();
 };
 

@@ -68,9 +68,11 @@ export async function createMassifPane(canvas, base, source, camera, onError = (
 
     const { Massif, MassifCamera } = await import('/massif/js/massif.mjs');
     const massif = new Massif(module);
-    // same as the demo's own page: leave the handles reachable from the console
+    // same as the demo's own page: leave the handles reachable from the console. Before the
+    // camera, so a failure attaching one still leaves the module there to ask what went wrong.
     Object.assign(globalThis, { module, massif });
     const cam = await MassifCamera.attach(massif);
+    globalThis.camera = cam;
     return {
         module,
         massif,

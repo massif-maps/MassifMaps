@@ -2052,14 +2052,24 @@ about `1000B/(B+D)` ms a second — B=2, D=25 gives 74.
 | tilt 80 | frame avg | cullMs (worst) |
 |---|---|---|
 | baseline | 46.8 | 59 |
-| + both | **42.6** | **74.8** |
+| + both, always sliced | 42.6 | 74.8 |
+| + slice only when needed | **43.9** | **60.6** |
 
-**Under the bar at both tilts, and the ceiling holds by construction.** Two honest costs. Total
-culler work at HIGH tilt went UP (59 -> 75 ms/s): a cycle that used to finish in one pass now takes
-many slices, each re-doing the sort and grid insertion for its own subset. And the placement
-SELECTION changes, because a label collected in an early slice claims its grid slot before a
-higher-priority label in a later one — mapbox has the same property and accepts it. At rest the
-frame is well placed, with no overlap or clutter; it simply names a different set of POIs.
+**Slicing is not free, so it is not unconditional.** Always slicing made the culler cost MORE at
+high tilt (59 -> 75 ms/s): each slice re-sorts and re-inserts its own subset, and the pacing
+stretches one cheap cycle over many passes. The fix is the bypass both references already have
+(mapbox `isFullPlacementRequested` / `fadeDuration == 0`, maplibre `_forceFullPlacement`), made
+self-tuning rather than tilt-aware: measure each cycle, and ration the next one only if the last did
+not fit in `FULL_PLACEMENT_MS` (10 ms). Looking down, a cycle is ~10 ms and runs whole; pitched, it
+is 60-100 ms and gets rationed. Tilting back down drops the rationing again on the next cycle.
+
+Final, both under the 100 ms objective: **tilt 30 worst 94.0, tilt 80 worst 60.6**, frame avg
+78.7 -> 73.9 and 42.6 -> 43.9.
+
+The one cost that remains is that the placement SELECTION changes while rationed, because a label
+collected in an early slice claims its grid slot before a higher-priority label in a later one —
+mapbox has the same property and accepts it. At rest the frame is well placed, with no overlap or
+clutter; it simply names a different set of POIs.
 
 **Still open:** `labelsLive` is untouched at ~5000, so `buildLabelMaps` (178 ms/s at tilt 30) is
 unaffected. That is tangram's mechanism — an intra-tile collision on the tile worker at

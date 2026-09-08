@@ -54,6 +54,13 @@ namespace massif {
         std::unique_ptr<vt::LabelCuller> _culler;
         ViewState _cycleViewState;
         bool _cycleActive = false;
+        /**
+         * Wall clock the current cycle has spent, and what the last COMPLETED one cost. Slicing is
+         * not free - each slice re-sorts and re-inserts its own subset, and the pacing stretches a
+         * cycle over many passes - so a cycle that fits in one pass is run in one pass.
+         */
+        double _cycleMs = 0;
+        double _lastCycleMs = 0;
         
         bool _stop;
         bool _idle;

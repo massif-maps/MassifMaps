@@ -693,10 +693,18 @@ delay `D` costs about `1000B/(B+D)` ms a second — 2 and 25 give 74, and measur
 98 ms/s at tilt 30 and 75 at tilt 80 against a 100 ms objective
 ([performance log 28](../performance-log.md)).
 
-What it costs: a full cycle now takes several hundred ms, so labels settle behind a fast camera
-rather than with it (they keep their previous visibility meanwhile, so nothing flickers), and the
-placement SELECTION shifts, since an early slice claims grid slots before a later, higher-priority
-one. mapbox has the same property.
+**Rationing is only worth it when there is something to ration.** Slicing a cheap cycle costs more
+than it saves — each slice re-sorts and re-inserts its own subset, and the pacing stretches it over
+many passes; applied unconditionally it took the culler from 59 to 75 ms/s at high tilt. Both
+references have a bypass (mapbox `isFullPlacementRequested` / `fadeDuration == 0`, maplibre
+`_forceFullPlacement`); ours is self-tuning rather than tilt-aware — a cycle is timed, and the next
+one is rationed only if the last exceeded `FULL_PLACEMENT_MS`. Looking down, a cycle is ~10 ms and
+runs whole; pitched, it is 60-100 ms and gets sliced.
+
+What it costs while rationed: a cycle takes several hundred ms, so labels settle behind a fast
+camera rather than with it (they keep their previous visibility meanwhile, so nothing flickers), and
+the placement SELECTION shifts, since an early slice claims grid slots before a later,
+higher-priority one. mapbox has the same property.
 
 **Geometry gets no such cut, in any of the three.** The cutoff lives only in `symbol/collision_index.ts`
 and the only thing that reads a collision index is symbol placement; fills, lines and extrusions

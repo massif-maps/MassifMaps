@@ -119,6 +119,12 @@ namespace massif {
     // costs about 1000 * BUDGET / (BUDGET + DELAY) ms a second, here 74. Measured a little over
     // that, because only the collect phase is budgeted and the sort and grid insertion ride on top.
     static const int PLACEMENT_CONTINUE_DELAY_MS = 25;
+    // A cycle this cheap is run whole, unsliced: mapbox does the same through
+    // isFullPlacementRequested / fadeDuration == 0, maplibre through _forceFullPlacement. Looking
+    // DOWN a cycle is ~10 ms, and slicing it made the culler cost MORE, not less - the ceiling is
+    // only worth paying for when there is something to ration. Chosen so that even at the pass rate
+    // a moving camera drives, whole cycles stay inside the same 100 ms/s the sliced path guarantees.
+    static const double FULL_PLACEMENT_MS = 10.0;
 
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
@@ -161,8 +167,11 @@ namespace massif {
         }
         // Placement is rationed like mapbox's and maplibre's: a slice of wall clock per pass, then
         // resume next pass from where each layer stopped. Labels not reached keep the visibility
-        // they had, so the map never shows a half-placed screen.
-        culler.beginSlice(PLACEMENT_BUDGET_MS);
+        // they had, so the map never shows a half-placed screen. A cycle that fit in one pass last
+        // time is not rationed at all - see FULL_PLACEMENT_MS.
+        bool sliced = _lastCycleMs > FULL_PLACEMENT_MS;
+        culler.beginSlice(sliced ? PLACEMENT_BUDGET_MS : 0.0);
+        std::chrono::steady_clock::time_point passStart = std::chrono::steady_clock::now();
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
         bool changed = false;
@@ -185,11 +194,18 @@ namespace massif {
             mapRenderer->requestRedraw();
         }
 
+        _cycleMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - passStart).count();
+
         // Only the cycle asks for the pass that continues it - nothing else knows one is owed, and
         // a still map stops waking this thread once the labels have settled.
         _cycleActive = !finished;
         if (_cycleActive) {
             scheduleContinuation();
+        } else {
+            // What the NEXT cycle decides on. Measured over the whole cycle, so a sliced one that
+            // has become cheap - the camera tilted back down - drops the rationing again.
+            _lastCycleMs = _cycleMs;
+            _cycleMs = 0;
         }
 
         return true;

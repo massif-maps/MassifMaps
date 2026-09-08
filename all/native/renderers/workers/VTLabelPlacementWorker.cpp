@@ -135,6 +135,10 @@ namespace massif {
             double coshLatitude = std::cosh(latitude);
             culler.setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE * coshLatitude);
         }
+        // What the perspective cut is measured against, mapbox's cameraToCenterDistance. Zoom and
+        // tilt are already in it, so one cutoff holds everywhere - and it is where the horizon band
+        // gets its labels from, since a pitched view reaches many times this far.
+        culler.setCameraToCenterDistance(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
         bool changed = false;

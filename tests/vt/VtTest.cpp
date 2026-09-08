@@ -14,6 +14,7 @@ void testExtrusionBevel();
 void testLineJoinReach();
 void testExtrusionBase();
 void testExtrusionFloor();
+void testLabelDistance();
 void testSpanGeometry();
 void testShadowCasterClip();
 void testExtrusionAnchor();
@@ -31,6 +32,7 @@ int main() {
     testLineJoinReach();
     testExtrusionBase();
     testExtrusionFloor();
+    testLabelDistance();
     testSpanGeometry();
     testShadowCasterClip();
     testExtrusionAnchor();

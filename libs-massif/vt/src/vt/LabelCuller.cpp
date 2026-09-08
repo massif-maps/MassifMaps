@@ -111,6 +111,12 @@ namespace massif::vt {
         _metersToInternal = metersToInternal;
     }
 
+    void LabelCuller::setCameraToCenterDistance(double cameraToCenterDistance) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _cameraToCenterDistance = cameraToCenterDistance;
+    }
+
     void LabelCuller::reset() {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -146,6 +152,7 @@ namespace massif::vt {
             if (!label->isActive()) {
                 continue;
             }
+            VT_STAT_INC(cullerConsidered);
 
             // Capture visibility from the previous frame BEFORE updatePlacement, which may
             // reset opacity to 0 even for labels that were already visible on screen.
@@ -158,13 +165,25 @@ namespace massif::vt {
             bool ranked = !(style->rankFunc == FloatFunction(0.0f));
             float maxDistance = style->maxDistance;
             float distance = 0; // meters, 0 when it could not be resolved
-            if ((maxDistance > 0 || ranked) && _metersToInternal > 0) {
+            if ((maxDistance > 0 || ranked || _cameraToCenterDistance > 0) && (_metersToInternal > 0 || _cameraToCenterDistance > 0)) {
                 cglib::vec3<double> position(0, 0, 0);
                 if (label->calculateCenter(position)) {
-                    distance = static_cast<float>(cglib::length(position - _viewState.origin) / _metersToInternal);
-                    if (maxDistance > 0 && distance > maxDistance) {
+                    double internalDistance = cglib::length(position - _viewState.origin);
+                    // The perspective cut comes FIRST and costs one length: everything below it -
+                    // updatePlacement, the variant envelopes, the grid test - is per label, and the
+                    // horizon band is where most of the labels are (performance-log 27).
+                    if (_cameraToCenterDistance > 0 &&
+                        LabelDistance::perspectiveRatio(_cameraToCenterDistance, internalDistance) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF) {
+                        VT_STAT_INC(cullerDistanceCut);
                         label->setVisible(false);
                         continue;
+                    }
+                    if (_metersToInternal > 0) {
+                        distance = static_cast<float>(internalDistance / _metersToInternal);
+                        if (maxDistance > 0 && distance > maxDistance) {
+                            label->setVisible(false);
+                            continue;
+                        }
                     }
                 }
             }

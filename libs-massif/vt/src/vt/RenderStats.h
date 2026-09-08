@@ -207,6 +207,9 @@ namespace massif::vt {
         // label's several sides costs anything. It runs on the placement worker, never on the GL thread,
         // so no frame section shows it.
         static inline std::atomic<long long> cullerNs{0};
+        // Labels the perspective cut dropped before they cost a placement - the horizon band.
+        static inline std::atomic<long long> cullerDistanceCut{0};
+        static inline std::atomic<long long> cullerConsidered{0};
     };
 }
 

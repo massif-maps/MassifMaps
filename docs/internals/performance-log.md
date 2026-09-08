@@ -1961,3 +1961,55 @@ argument above is structural, not measured.
 **What is next.** `sky` — the swap-buffer wait, not work — is now 18–29 ms, so the frame waits on
 the GPU rather than the CPU. `drape` (15.8) and `layers3D` (10.4) are the remaining CPU blocks, and
 `tileSetChange refreshMs` is down from 0.7–1.0 s/s to 65–82 ms/s without being touched.
+
+## 27. Tilt costs 2.8x the frame, and it is not more content (2026-09-08)
+
+Crosscall `1cba1468`, profile APK, `day-cycle-light` at Paris z16.5, pan bench, `shadow 1.0`, after
+entry 26. 90 is nadir, so LOWER tilt means more horizon.
+
+| tilt | frame avg | worst | drape | layers | layers3D | prelude | cullMs/s |
+|---|---|---|---|---|---|---|---|
+| 80 | 46.8 | 126 | 8.3 | 4.2 | 6.1 | 1.1 | 59 |
+| 60 | 48.5 | 134 | 9.3 | 4.7 | 7.4 | 1.1 | – |
+| 45 | 78.7 | 411 | 19.3 | 10.8 | 12.9 | 3.8 | – |
+| 30 | 129.2 | 464 | 33.4 | 19.9 | 18.8 | 16.6 | 668 |
+
+**Per frame, tilt 30 draws LESS**: 219 vs 224 draws, 28 vs 31 render tiles, 8.4 vs 10.1 M indices,
+~95 vs ~140 extrusion geometries. So it is not more content, and not more buildings. What scales is
+everything sized by the tile SET rather than by the draws — the set grows toward the horizon while
+what is drawn stays capped by the LOD:
+
+| per interval | tilt 80 | tilt 30 |
+|---|---|---|
+| live labels | 950 | 5001 |
+| `cullMs` | 59 | 668 |
+| `lineLayouts` | 933 | 14 852 |
+| `tileSetChange refreshMs` / of which `labelMapsMs` | 43 / 33 | 271 / 178 |
+| `dem live` textures | 32 | 128 |
+| `perDraw compile` / `vboMisses` | 7.2 us / 70 | 29.2 us / 202 |
+
+**What the references do** (full notes in [06-labels](rendering/06-labels.mdx)): none of the three
+narrows the symbol tile set — mapbox and maplibre feed symbols from a SUPERSET of the render set.
+They bound the cost three other ways: an always-on per-symbol distance cut in camera-relative units,
+a 2 ms per-frame placement budget with resume cursors, and (tangram only) an intra-tile collision
+pre-filter on the tile worker that kills losers permanently.
+
+**Ported first: the distance cut** (`vt::LabelDistance`, maplibre's 0.6 = 5x camera-to-centre).
+
+| tilt | frame avg before | after | `distCut` |
+|---|---|---|---|
+| 80 | 46.8 | 49.3 | **0** |
+| 30 | 129.2 | 90.0 / 97.1 | **29%** |
+
+At tilt 80 it fires on nothing at all, which is the safety property: looking down, the view never
+reaches 5x the centre distance. At tilt 30 it drops 29% of labels before they cost a placement.
+
+**It does not reach the bar.** `cullMs` is 341-613, against a target of **under 100 at any tilt**,
+and `labelsLive` is unchanged at 5003 — the cut bounds the cost of PLACING labels, not the number
+built. The count is tangram's mechanism, and the hard guarantee is the 2 ms budget (6 passes a
+second x 2 ms = 12 ms/s by construction). Both still to do.
+
+**Also unresolved:** `setVisibleTiles` holds the renderer mutex across `buildLabelMaps` and is
+reached from `TileLayer::loadData`, i.e. the cull worker — RenderStats.h claims it "runs inside the
+layer draw pass", which does not match that call chain. The GL thread's own measured wait for the
+mutex (`renderLabels`) is 0.0 ms/s at both tilts, so there is no lock stall to fix today.

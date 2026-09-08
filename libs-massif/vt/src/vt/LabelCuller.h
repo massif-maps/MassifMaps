@@ -9,6 +9,7 @@
 
 #include "ViewState.h"
 #include "Label.h"
+#include "LabelDistance.h"
 
 #include <array>
 #include <functional>
@@ -34,6 +35,12 @@ namespace massif::vt {
          * test - a caller that does not set it gets the previous behaviour exactly.
          */
         void setMetersToInternal(double metersToInternal);
+        /**
+         * Distance from the camera to the point the view is centred on, in the same units label
+         * positions are in. 0 disables the perspective cut - a caller that does not set it gets
+         * the previous behaviour exactly.
+         */
+        void setCameraToCenterDistance(double cameraToCenterDistance);
         void reset();
         bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
 
@@ -98,6 +105,7 @@ namespace massif::vt {
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
         double _metersToInternal = 0;
+        double _cameraToCenterDistance = 0;
         RecordGrid _recordGrid;
 
         const float _scale;

@@ -978,7 +978,11 @@ namespace massif {
             for (auto it = _fallbackFonts.rbegin(); it != _fallbackFonts.rend(); it++) {
                 std::shared_ptr<BinaryData> fontData = *it;
                 std::string fontName = fontManager->loadFontData(*fontData->getDataPtr());
-                fallbackFont = fontManager->getFont(fontName, fallbackFont);
+                // One entry that is not a font must not take the chain down with it: assigning
+                // unconditionally left a whole style unlabelled when a README sat beside the .ttf
+                if (std::shared_ptr<const vt::Font> font = fontManager->getFont(fontName, fallbackFont)) {
+                    fallbackFont = font;
+                }
             }
             if (!fallbackFont) {
                 // Styles without any font (inline CartoCSS, for example) still need a font for their labels

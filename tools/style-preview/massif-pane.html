@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Massif pane</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f7f5f0; }
+  #map { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #err { position: fixed; inset: auto 8px 8px 8px; max-height: 50%; overflow: auto;
+         padding: 6px 8px; border-radius: 3px; background: rgba(120,20,20,.9); color: #fff;
+         font: 12px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; display: none; }
+</style>
+</head>
+<body>
+<!--
+  One Massif view per DOCUMENT: the web build hard-codes its canvas selector (WebMapView("#map")),
+  so the preview grid embeds this page twice rather than putting two canvases side by side.
+-->
+<canvas id="map"></canvas>
+<div id="err"></div>
+<script type="module">
+  import { createMassifPane } from './massif.mjs';
+
+  const params = new URLSearchParams(location.search);
+  const camera = {
+    center: [Number(params.get('lon')), Number(params.get('lat'))],
+    zoom: Number(params.get('zoom')),
+  };
+
+  try {
+    const pane = await createMassifPane(document.getElementById('map'),
+      params.get('carto'), params.get('source'), camera);
+    // the grid drives every pane from the MapLibre map above it
+    addEventListener('message', (event) => {
+      if (event.data && event.data.massifCamera) pane.moveTo(event.data.massifCamera);
+    });
+    parent.postMessage({ massifReady: params.get('pane') }, '*');
+  } catch (error) {
+    const el = document.getElementById('err');
+    el.style.display = 'block';
+    // a C++ throw arrives as a WebAssembly.Exception, which stringifies to nothing useful
+    const decode = globalThis.module && globalThis.module.getExceptionMessage;
+    el.textContent = (decode ? String(decode(error)) + '\n' : '') +
+      String(error && error.stack || error);
+  }
+</script>
+</body>
+</html>

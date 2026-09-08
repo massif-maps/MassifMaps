@@ -13,10 +13,13 @@
                           background: #12151a; color: #ddd; font: inherit; }
   #bar button, #bar select { padding: 4px 8px; border: 1px solid #444; border-radius: 3px;
                              background: #2a2f38; color: #ddd; font: inherit; cursor: pointer; }
-  #maps { flex: 1; display: flex; min-height: 0; }
-  .pane { flex: 1; position: relative; min-width: 0; border-left: 1px solid #1c1f24; }
-  .pane:first-child { border-left: 0; }
+  #maps { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; gap: 1px;
+          background: #1c1f24; }
+  #maps.rows { grid-template-rows: 1fr 1fr; }
+  .pane { position: relative; min-width: 0; min-height: 0; background: #f7f5f0; }
+  .pane.hidden { display: none; }
   .pane .map { position: absolute; inset: 0; }
+  .pane iframe.map { width: 100%; height: 100%; border: 0; }
   .tag { position: absolute; z-index: 2; top: 8px; left: 8px; padding: 2px 8px; border-radius: 3px;
          background: rgba(28,31,36,.85); color: #eee; font-weight: 600; pointer-events: none; }
   .err { position: absolute; z-index: 3; bottom: 8px; left: 8px; right: 8px; max-height: 40%; overflow: auto;
@@ -40,12 +43,17 @@
     <select id="local-set"></select>
     <button id="fit">fit local</button>
     <button id="gaps-toggle">gaps</button>
+    <button id="massif-toggle">massif row</button>
   </div>
   <div id="maps">
-    <div class="pane"><div class="tag" id="tag-l">openfreemap</div><div class="map" id="map-l"></div>
-      <div class="err" id="err-l"></div></div>
-    <div class="pane"><div class="tag" id="tag-r">local</div><div class="map" id="map-r"></div>
-      <div class="err" id="err-r"></div></div>
+    <div class="pane"><div class="tag" id="tag-l">maplibre — openfreemap</div>
+      <div class="map" id="map-l"></div><div class="err" id="err-l"></div></div>
+    <div class="pane"><div class="tag" id="tag-r">maplibre — local</div>
+      <div class="map" id="map-r"></div><div class="err" id="err-r"></div></div>
+    <div class="pane hidden" id="pane-ml"><div class="tag">massif — openfreemap</div>
+      <iframe class="map" id="massif-l"></iframe><div class="err" id="err-ml"></div></div>
+    <div class="pane hidden" id="pane-mr"><div class="tag">massif — local</div>
+      <iframe class="map" id="massif-r"></iframe><div class="err" id="err-mr"></div></div>
   </div>
   <div id="gaps"></div>
 </div>
@@ -229,6 +237,54 @@ function firstVectorURL(style) {
   }
   return null;
 }
+
+/**
+ * The Massif row, off until asked for: it is two wasm modules and a tile pool each. The panes read
+ * the CartoCSS the converter wrote from this same style, so the row below answers "and what does
+ * the device make of it" for whatever the row above is showing.
+ */
+let massifStarted = false;
+function startMassif() {
+  const base = new URL('carto', $('style-url').value.trim()).href;
+  const centre = maps[0].getCenter();
+  const sources = [firstVectorTileURL(remoteTileJSON), firstVectorTileURL(localTileJSON)];
+  for (const [i, id] of ['massif-l', 'massif-r'].entries()) {
+    if (!sources[i]) continue;
+    // `carto`, not `project`: the web demo reads `project` off the query string itself, and would
+    // take this URL for a folder name in its own filesystem
+    const query = new URLSearchParams({
+      pane: id, carto: base, source: sources[i],
+      lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
+    });
+    $(id).src = `./massif-pane.html?${query}`;
+  }
+  massifStarted = true;
+  maps[0].on('move', () => {
+    if (!$('sync').checked) return;
+    const to = { center: maps[0].getCenter().toArray(), zoom: maps[0].getZoom(),
+                 bearing: maps[0].getBearing(), pitch: maps[0].getPitch() };
+    for (const id of ['massif-l', 'massif-r']) {
+      const frame = $(id).contentWindow;
+      if (frame) frame.postMessage({ massifCamera: to }, '*');
+    }
+  });
+}
+
+function firstVectorTileURL(tilejson) {
+  return tilejson && tilejson.tiles && tilejson.tiles[0];
+}
+
+$('massif-toggle').onclick = () => {
+  const grid = $('maps');
+  if (massifStarted) {
+    grid.classList.toggle('rows');
+    for (const id of ['pane-ml', 'pane-mr']) $(id).classList.toggle('hidden');
+    return;
+  }
+  grid.classList.add('rows');
+  for (const id of ['pane-ml', 'pane-mr']) $(id).classList.remove('hidden');
+  startMassif();
+};
 
 $('reload').onclick = load;
 $('fit').onclick = () => {

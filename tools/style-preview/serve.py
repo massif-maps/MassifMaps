@@ -56,23 +56,35 @@ class Tileset:
 class Handler(SimpleHTTPRequestHandler):
     tilesets = {}
     styles_dir = None
+    massif_dir = None
+    isolate = False
 
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
 
     def translate_path(self, path):
-        # a style project lives outside this folder, so mount it rather than copying it in
-        if self.styles_dir and path.split("?")[0].startswith("/styles/"):
-            rel = os.path.normpath(path.split("?")[0][len("/styles/"):]).lstrip("/.")
-            return os.path.join(self.styles_dir, rel)
+        # a style project and the web build live outside this folder, so mount them
+        clean = path.split("?")[0]
+        for prefix, root in (("/styles/", self.styles_dir), ("/massif/", self.massif_dir)):
+            if root and clean.startswith(prefix):
+                rel = os.path.normpath(clean[len(prefix):]).lstrip("/.")
+                return os.path.join(root, rel)
         return super().translate_path(path)
 
     def log_message(self, fmt, *args):
-        if "/tiles/" not in (args[0] if args else ""):
+        # log_error passes an HTTPStatus here, so this cannot assume the request line
+        if "/tiles/" not in str(args[0] if args else ""):
             super().log_message(fmt, *args)
 
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
+        # every file here is being edited; a cached wasm or style is only ever confusing
+        self.send_header("Cache-Control", "no-store")
+        if self.isolate:
+            # the SDK's tile pools are pthreads, so the page needs SharedArrayBuffer
+            self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+            self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
+            self.send_header("Cross-Origin-Resource-Policy", "cross-origin")
         super().end_headers()
 
     def do_GET(self):
@@ -127,9 +139,15 @@ def main():
                     help="register an archive at /tiles/NAME (repeatable)")
     ap.add_argument("--styles", metavar="DIR", default=os.path.join(ROOT, "..", "..", "styles"),
                     help="folder served at /styles, holding the style projects")
+    ap.add_argument("--massif", metavar="DIR", default=os.path.join(ROOT, "..", "..", "web"),
+                    help="the web build, served at /massif; needs massif-demo.wasm in its demo/")
+    ap.add_argument("--no-isolate", dest="isolate", action="store_false",
+                    help="drop COOP/COEP, which the Massif panes need but a strict CDN dislikes")
     args = ap.parse_args()
 
     Handler.styles_dir = os.path.abspath(args.styles)
+    Handler.massif_dir = os.path.abspath(args.massif)
+    Handler.isolate = args.isolate
 
     for spec in args.mbtiles:
         name, _, path = spec.partition("=")

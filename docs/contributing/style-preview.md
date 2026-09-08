@@ -34,6 +34,35 @@ The `style` box takes any MapLibre style URL. The left pane loads it as written;
 the same JSON with **every vector source repointed** at the local archive. Nothing else is touched,
 so a style with a raster or DEM source keeps it on both sides.
 
+## The Massif row
+
+`massif row` adds a second row underneath: the same style again, this time as the **CartoCSS the
+converter wrote from it**, rendered by the SDK's own web build. Four panes, two questions at once —
+left against right is what the tiles carry, top against bottom is what survives the conversion.
+
+```sh
+massif-style mapbox2css style.json carto --fold-casings   # run from the style project's folder
+gh run download <run-id> --repo massif-maps/MassifMaps    # the web-preview artefact
+cp web-preview/massif-demo.* web/demo/
+```
+
+The sprite URL is resolved against the process's working directory, not the style file, so the
+conversion has to run from the project's own folder. The output lands in `carto/`, which is
+gitignored — it is generated, never edited.
+
+Three things about the web build shape this:
+
+- **One map per document.** `WebMapView("#map")` is a hardcoded selector, so the two panes are two
+  `<iframe>`s of `massif-pane.html` rather than two canvases.
+- **The style comes out of the module's filesystem**, and `main()` runs as the module starts, so
+  the converted project is fetched first and written in `preRun`.
+- **`main()` reads the query string before `MASSIF_DEFAULTS`**, and `project` is one of the names it
+  reads — hence `carto=` for the pane's own parameter. A URL there is otherwise taken for a folder
+  name inside the module and throws.
+
+`serve.py` sends COOP/COEP so the module gets SharedArrayBuffer. OpenFreeMap keeps working through
+that: MapLibre fetches with CORS, which satisfies `require-corp`, so nothing has to be proxied.
+
 ## The gaps panel
 
 `gaps` answers the only two questions worth asking:

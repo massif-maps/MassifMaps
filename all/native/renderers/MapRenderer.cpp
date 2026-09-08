@@ -2215,15 +2215,9 @@ namespace massif {
             if (_terrainShadowMaskBuffer->beginPass()) {
                 // The mask is produced by the FIRST layer alone: the surface is shared, so every
                 // layer would draw the same geometry into it.
-                int maskDraws = tileLayers.front()->renderTerrainShadowMask(coverTileIds);
+                tileLayers.front()->renderTerrainShadowMask(coverTileIds);
                 _terrainShadowMaskBuffer->endPass(prevFBO, viewState.getWidth(), viewState.getHeight());
                 maskTexture = _terrainShadowMaskBuffer->getTexture();
-                {
-                    static int probe = 0;
-                    if ((probe++ % 121) == 120) {
-                        Log::Infof("PROBE mask: texture %u, %d x %d, draws %d, cover %d", maskTexture, _terrainShadowMaskBuffer->getWidth(), _terrainShadowMaskBuffer->getHeight(), maskDraws, static_cast<int>(coverTileIds.size()));
-                    }
-                }
                 // Screen pixels -> mask uv. The scale is the SCREEN size, not the mask's, because
                 // it maps gl_FragCoord of the full-resolution draw that samples it.
                 invWidth = 1.0f / viewState.getWidth();

@@ -55,9 +55,17 @@ class Tileset:
 
 class Handler(SimpleHTTPRequestHandler):
     tilesets = {}
+    styles_dir = None
 
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
+
+    def translate_path(self, path):
+        # a style project lives outside this folder, so mount it rather than copying it in
+        if self.styles_dir and path.split("?")[0].startswith("/styles/"):
+            rel = os.path.normpath(path.split("?")[0][len("/styles/"):]).lstrip("/.")
+            return os.path.join(self.styles_dir, rel)
+        return super().translate_path(path)
 
     def log_message(self, fmt, *args):
         if "/tiles/" not in (args[0] if args else ""):
@@ -117,7 +125,11 @@ def main():
     ap.add_argument("--port", type=int, default=8787)
     ap.add_argument("--mbtiles", action="append", default=[], metavar="NAME=PATH",
                     help="register an archive at /tiles/NAME (repeatable)")
+    ap.add_argument("--styles", metavar="DIR", default=os.path.join(ROOT, "..", "..", "styles"),
+                    help="folder served at /styles, holding the style projects")
     args = ap.parse_args()
+
+    Handler.styles_dir = os.path.abspath(args.styles)
 
     for spec in args.mbtiles:
         name, _, path = spec.partition("=")

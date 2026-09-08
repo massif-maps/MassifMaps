@@ -26,6 +26,10 @@ Python's standard library only — `serve.py` reads tiles straight out of the SQ
 serves a TileJSON beside them, so there is no conversion step and no 250 MB copy. `--mbtiles`
 repeats; the picker in the toolbar chooses which archive the right pane reads.
 
+`--styles` mounts a folder of style projects at `/styles`, defaulting to the repo's own, so
+`styles/massif-streets` is served without being copied anywhere. `?style=<url>` opens straight on
+one.
+
 The `style` box takes any MapLibre style URL. The left pane loads it as written; the right pane gets
 the same JSON with **every vector source repointed** at the local archive. Nothing else is touched,
 so a style with a raster or DEM source keeps it on both sides.
@@ -61,8 +65,9 @@ Going the other way, the local tileset carries what upstream OpenMapTiles does n
 
 ## Limits
 
-Screenshots of a WebGL canvas are only valid once the tiles have drawn — take one, then take
-another. A first capture right after `reload` is usually blank.
+Screenshots of a WebGL canvas go stale: the buffer is only re-read after the map paints, so a
+capture right after `reload` shows the previous frame or nothing at all. Pan by a few pixels, then
+capture. Two captures in a row is not enough on its own.
 
 The panes share a camera but not a frame budget, so the two are not a fair performance comparison;
 use the demo app's bench for that.

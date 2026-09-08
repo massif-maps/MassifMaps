@@ -182,6 +182,8 @@ function sync(a, b) {
 }
 
 async function boot() {
+  const asked = new URLSearchParams(location.search).get('style');
+  if (asked) $('style-url').value = asked;
   const sets = await (await fetch(ORIGIN + '/tilesets.json')).json();
   const sel = $('local-set');
   sel.innerHTML = Object.keys(sets).map((n) => `<option value="${n}">${n}</option>`).join('');
@@ -194,12 +196,19 @@ async function boot() {
 async function load() {
   const url = $('style-url').value.trim();
   styleJSON = await (await fetch(url)).json();
+  // the style is handed over as an object, so nothing else is left to resolve its relative URLs
+  for (const key of ['sprite', 'glyphs']) {
+    const v = styleJSON[key];
+    if (typeof v === 'string' && !/^([a-z]+:)?\/\//i.test(v)) {
+      styleJSON[key] = new URL(v, url).href;
+    }
+  }
   const localURL = ORIGIN + '/tiles/' + localName + '.json';
   const remoteURL = firstVectorURL(styleJSON);
 
-  for (const m of maps) m.remove();
   const camera = maps.length ? { center: maps[0].getCenter(), zoom: maps[0].getZoom(),
                                  bearing: maps[0].getBearing(), pitch: maps[0].getPitch() } : null;
+  for (const m of maps) m.remove();
   maps = [makeMap('map-l', styleJSON, $('err-l')),
           makeMap('map-r', retarget(styleJSON, localURL), $('err-r'))];
   if (camera) maps.forEach((m) => m.jumpTo(camera));

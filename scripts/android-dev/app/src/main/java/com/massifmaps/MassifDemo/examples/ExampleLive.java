@@ -57,6 +57,11 @@ public final class ExampleLive extends BroadcastReceiver {
         knob("stitch", "terrain", "tileEdgeStitchingEnabled");
         knob("textOcclusion", "terrain", "textOcclusionOpacity");
         knob("occlusionTolerance", "terrain", "billboardOcclusionTolerance");
+        // tiles and LOD
+        knob("styleZoomLift", "options", "tileStyleZoomLift");
+        knob("lodFactor", "options", "tileLODFactor");
+        knob("lodLevels", "options", "tileLODMaxZoomLevelsOnScreen");
+        knob("lodRatio", "options", "tileLODTileCountRatio");
         // light and shadows
         knob("terrainLight", "light", "terrainLightingEnabled");
         knob("sunAzimuth", "light", "sunAzimuth");
@@ -130,7 +135,11 @@ public final class ExampleLive extends BroadcastReceiver {
             // Everything arrives as a string (--es), and the facade coerces to the property's own
             // type - so "true", "1.6" and "64" all land correctly with no per-knob parsing here.
             String value = String.valueOf(extras.get(key));
-            group(knob[0]).set(knob[1], value);
+            if ("options".equals(knob[0])) {
+                map.options().set(knob[1], value); // Options is the map's own object, not a group
+            } else {
+                group(knob[0]).set(knob[1], value);
+            }
             Log.i(TAG, knob[0] + "." + knob[1] + " = " + value);
         }
         applyCamera(extras);

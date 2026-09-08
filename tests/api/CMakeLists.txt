@@ -200,6 +200,9 @@ add_executable(api_tests
   MetaDataTest.cpp
   BagTest.cpp
   FogSkyTest.cpp
+  # FogOptions is the class the colour-spelling bug bit, and the only COLOR property the reduced
+  # table carries - so this needs nothing the list above does not already link.
+  ColorValueTest.cpp
   SpecKeyTest.cpp
   # Reads the two schemas below, links nothing of its own.
   SpecSchemaTest.cpp

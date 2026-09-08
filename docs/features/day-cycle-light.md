@@ -138,8 +138,8 @@ contribution is folded into the ambient instead, which lands on their number. Th
 reproduce what Standard *renders*, not what it states.
 
 - `sunAltitude` is required; a stop with no height has no place on a curve and is refused.
-- Colours read `#rgb`, `#rrggbb`, `#aarrggbb`, or the plain ARGB number every other colour property
-  carries. They are written back as `#aarrggbb`.
+- Colours read `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa` (alpha last, as in a style sheet), or a
+  plain ARGB number — the same spellings every colour property takes. Written back as `#rrggbbaa`.
 - The doubled twilight stop is deliberate: it holds the light flat from 3° to 12°, so the sun passes
   **through** dusk instead of crossing it.
 - `dayCycleRisingLightStops` gives a rising sun its own curve, which is how dawn differs from dusk

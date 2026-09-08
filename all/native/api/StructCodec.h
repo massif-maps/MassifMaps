@@ -17,6 +17,7 @@
 #include "core/ScreenPos.h"
 #include "components/LightStop.h"
 #include "core/Variant.h"
+#include "graphics/Color.h"
 #include "ui/ClickInfo.h"
 
 #include <map>
@@ -90,6 +91,18 @@ namespace massif { namespace api {
         bool decode(const std::string& json, std::vector<std::vector<MapPos> >& value);
         bool decode(const std::string& json, std::map<std::string, std::string>& value);
         bool decode(const std::string& json, std::map<std::string, Variant>& value);
+
+        /**
+         * A colour, from "#rgb", "#rgba", "#rrggbb", "#rrggbbaa" or a plain ARGB number.
+         *
+         * The ONE decoder for every colour the facade takes, so a struct field, a property and a
+         * spec key all read the same spelling - and the SAME one mvt::parseCSSColor gives a style
+         * sheet. A NUMBER stays ARGB: that is what Color is built from and reads back as.
+         *
+         * @return false for anything else, so the caller leaves the value alone.
+         */
+        bool decodeColor(const Variant& value, Color& color);
+        bool decodeColor(const PropertyValue& value, Color& color);
 
         /**
          * One entry of a bag property - see IndexedAccess. Overloaded rather than templated so the

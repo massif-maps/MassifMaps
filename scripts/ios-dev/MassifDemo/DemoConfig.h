@@ -22,7 +22,7 @@
 + (double)doubleFor:(NSString *)key;
 + (int)intFor:(NSString *)key;
 + (NSString *)stringFor:(NSString *)key;
-/** "#rrggbb" or "#aarrggbb" as an ARGB integer. */
+/** "#rrggbb" or "#rrggbbaa" as an ARGB integer. */
 + (unsigned int)colorFor:(NSString *)key;
 
 + (void)setValue:(id)value forKey:(NSString *)key;

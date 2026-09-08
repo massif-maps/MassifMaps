@@ -207,7 +207,7 @@ namespace massif::mvt {
                         }
                     }
                 }
-                auto anchors = std::make_shared<const std::unordered_map<long long, cglib::vec2<float>>>(vt::buildExtrusionAnchors(footprints, getSourceBox()));
+                auto anchors = std::make_shared<const std::unordered_map<long long, std::vector<vt::ExtrusionAnchor>>>(vt::buildExtrusionAnchors(footprints, getSourceBox()));
                 _extrusionAnchors[layer.get()] = anchors;
                 layerBuilder.setPolygon3DAnchors(anchors);
             }

@@ -598,10 +598,18 @@ mapbox-streets z16 over the Louvre (2026-09-04):
 `vt::buildExtrusionAnchors` (called from `TileReader::processLayer`, host test
 `ExtrusionGroupAnchorTest`) answers both, before anything is drawn:
 
-- parts that **share a vertex**, that carry the same **`building_id`**, or that are polygons of one
-  multi-polygon feature are one building, and take the mean of every outer ring point they own.
-  mapbox groups by `building_id` alone (`_finalizeBuildingGroups`, default group id = the feature
-  id); the shared vertex is what makes it work on data that mostly does not carry the field.
+- parts that **share a vertex** or carry the same **`building_id`** are one building, and take the
+  mean of every outer ring point they own. mapbox groups by `building_id` alone
+  (`_finalizeBuildingGroups`, default group id = the feature id); the shared vertex is what makes it
+  work on data that mostly does not carry the field.
+- sharing a FEATURE is **not** one of them, and the table holds **one entry per footprint** rather
+  than one per id. An OpenMapTiles mbtiles packs a whole tile of unrelated buildings into one
+  multi-polygon feature — Grenoble z15: 3513 footprints under 18 ids — so grouping by the id gave a
+  tile ONE anchor, and every building on the Bastille slope stood on the valley floor 100 m below,
+  its walls stretched up to its roof. The drawn polygon picks its entry by the bounds its centroid
+  falls in (`findExtrusionAnchor`); the bounds come from the UNCLIPPED ring, so a clipped piece
+  still lands in them. Parts of one feature that genuinely are one building still share, through the
+  shared vertex or `building_id`.
 - a building crossing **exactly one edge of the source box** anchors on the MIDDLE of its crossing
   of that edge — the one point both tiles compute identically, because the server buffer means both
   hold the whole crossing. A **corner** cut anchors on the corner. Anything more tangled keeps the

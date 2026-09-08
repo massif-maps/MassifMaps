@@ -105,7 +105,11 @@ public final class DemoCfg {
             return def;
         }
         try {
-            return android.graphics.Color.parseColor(v.startsWith("#") ? v : "#" + v);
+            int argb = android.graphics.Color.parseColor(v.startsWith("#") ? v : "#" + v);
+            // parseColor reads 8 digits as #aarrggbb; the SDK and a style sheet spell them
+            // #rrggbbaa, so rotate the alpha back to the front.
+            String digits = v.startsWith("#") ? v.substring(1) : v;
+            return digits.length() == 8 ? (argb >>> 8) | (argb << 24) : argb;
         } catch (Exception e) {
             return def;
         }

@@ -160,17 +160,24 @@ const PropertyEntry* prop = findProperty(cls, "rangeStart");
 ### A colour, in every spelling
 
 A `COLOR` property, a `Color` spec key and a `Color` constructor argument all decode through
-`StructCodec::decodeColor`, the same one a struct field like `lighting.sunColor` uses. `"#rgb"`,
-`"#rrggbb"`, `"#aarrggbb"`, an ARGB number and that number spelled as text are one value:
+`StructCodec::decodeColor`, the same one a struct field like `lighting.sunColor` uses. The hex
+forms are **`mvt::parseCSSColor`'s**, so a colour means the same thing in a style sheet and in the
+facade: `"#rgb"`, `"#rgba"`, `"#rrggbb"`, `"#rrggbbaa"` — **alpha last**, as in CSS.
 
 ```js
-map.set("fog.color", "#ffb8c6d8");
+map.set("fog.color", "#b8c6d8ff");
 map.set("fog.color", 4290299608);   // the same colour
 ```
 
-Anything else is **refused** and the property keeps what it had. A COLOR used to take a number
-only, so a hex string went through `asLong()` and landed as 0 — a fully transparent colour, which
-on `fog.color` renders exactly like no fog and reads exactly like a property never set.
+A **number** stays ARGB (`0xAARRGGBB`) — that is what `Color` is built from and what `getARGB`
+reads back, and it is also what a number spelled as text (`"4290299608"`) means. Only the `#` forms
+are CSS-ordered.
+
+Anything else is **refused** and the property keeps what it had. Two things used to go wrong here:
+a COLOR took a number only, so a hex string went through `asLong()` and landed as 0 — a fully
+transparent colour, which on `fog.color` renders exactly like no fog and reads exactly like a
+property never set; and the eight-digit form the codec did take was `#aarrggbb`, the reverse of the
+style sheet's, so one spelling meant two colours inside one SDK.
 
 ### The concrete class, not the declared one
 

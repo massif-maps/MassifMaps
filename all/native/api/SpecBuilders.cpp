@@ -29,7 +29,7 @@ namespace massif { namespace api {
     Color colorAt(const Variant& spec, const char* key, int fallback) {
         Color color(fallback);
         if (spec.containsObjectKey(key) && !StructCodec::decodeColor(spec.getObjectElement(key), color)) {
-            Log::Errorf("Spec: '%s' is not a colour - write \"#aarrggbb\" or an ARGB number", key);
+            Log::Errorf("Spec: '%s' is not a colour - write \"#rrggbbaa\" or an ARGB number", key);
         }
         return color;
     }

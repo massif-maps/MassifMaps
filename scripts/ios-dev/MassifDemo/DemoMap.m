@@ -1067,11 +1067,9 @@ static const DemoFeature LAYER_ORDER[] = {
     unsigned int value = 0;
     [[NSScanner scannerWithString:[hex stringByReplacingOccurrencesOfString:@"#" withString:@""]]
         scanHexInt:&value];
-    // "#rrggbb" carries no alpha; the SDK wants ARGB, so assume opaque.
+    // "#rrggbb" carries no alpha, so assume opaque; "#rrggbbaa" does, and the SDK wants ARGB.
     NSUInteger digits = [hex stringByReplacingOccurrencesOfString:@"#" withString:@""].length;
-    if (digits <= 6) {
-        value |= 0xff000000;
-    }
+    value = digits <= 6 ? (value | 0xff000000) : ((value << 24) | (value >> 8));
     return [[MSFColor alloc] initWithColor:(int)value];
 }
 

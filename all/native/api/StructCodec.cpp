@@ -82,25 +82,38 @@ namespace massif { namespace api { namespace StructCodec {
     }
 
     namespace {
-        /** "#aarrggbb" - what a style writes and what an app reads back. */
+        /** "#rrggbbaa" - CSS order, the same one a style sheet is written in. */
         std::string encodeColor(const Color& color) {
             static const char* HEX = "0123456789abcdef";
-            unsigned int argb = static_cast<unsigned int>(color.getARGB());
+            unsigned char components[4] = { color.getR(), color.getG(), color.getB(), color.getA() };
             std::string out = "#";
-            for (int shift = 28; shift >= 0; shift -= 4) {
-                out += HEX[(argb >> shift) & 0xf];
+            for (unsigned char component : components) {
+                out += HEX[component >> 4];
+                out += HEX[component & 0xf];
             }
             return out;
         }
 
-        /** "#rgb", "#rrggbb", "#aarrggbb", or an ARGB number spelled as text. */
+        int hexDigit(char ch) {
+            return ch >= '0' && ch <= '9' ? ch - '0'
+                 : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+                 : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10 : -1;
+        }
+
+        /**
+         * "#rgb", "#rgba", "#rrggbb", "#rrggbbaa", or an ARGB number spelled as text.
+         *
+         * The hex forms and their order are mvt::parseCSSColor's, so a colour means the same thing
+         * in a style sheet and in the facade.
+         */
         bool decodeColorText(const std::string& text, Color& color) {
             if (text.empty()) {
                 return false;
             }
             if (text[0] != '#') {
                 // What a string-only binding - a C caller, a URL query - sends, and what the
-                // property setter's asLong() read before this decoder existed.
+                // property setter's asLong() read before this decoder existed. A NUMBER is ARGB,
+                // because that is the one Color is built from and reads back as.
                 char* end = nullptr;
                 long long number = std::strtoll(text.c_str(), &end, 0);
                 if (!end || *end || end == text.c_str()) {
@@ -110,7 +123,7 @@ namespace massif { namespace api { namespace StructCodec {
                 return true;
             }
             std::string digits = text.substr(1);
-            if (digits.size() == 3) {
+            if (digits.size() == 3 || digits.size() == 4) {
                 std::string expanded;
                 for (char ch : digits) {
                     expanded += ch;
@@ -118,23 +131,19 @@ namespace massif { namespace api { namespace StructCodec {
                 }
                 digits = expanded;
             }
-            if (digits.size() == 6) {
-                digits = "ff" + digits;
-            }
-            if (digits.size() != 8) {
+            if (digits.size() != 6 && digits.size() != 8) {
                 return false;
             }
-            unsigned int argb = 0;
-            for (char ch : digits) {
-                int digit = ch >= '0' && ch <= '9' ? ch - '0'
-                          : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
-                          : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10 : -1;
-                if (digit < 0) {
+            unsigned int components[4] = { 0, 0, 0, 255 };
+            for (std::size_t index = 0; index < digits.size() / 2; index++) {
+                int high = hexDigit(digits[index * 2]), low = hexDigit(digits[index * 2 + 1]);
+                if (high < 0 || low < 0) {
                     return false;
                 }
-                argb = (argb << 4) | static_cast<unsigned int>(digit);
+                components[index] = static_cast<unsigned int>(high * 16 + low);
             }
-            color = Color(argb);
+            color = Color((components[3] << 24) | (components[0] << 16)
+                          | (components[1] << 8) | components[2]);
             return true;
         }
     }

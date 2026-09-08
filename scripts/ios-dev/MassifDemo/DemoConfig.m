@@ -381,8 +381,8 @@ static NSMutableDictionary *sValues = nil;
     NSString *text = [[self stringFor:key] stringByReplacingOccurrencesOfString:@"#" withString:@""];
     unsigned int value = 0;
     [[NSScanner scannerWithString:text] scanHexInt:&value];
-    // "#rrggbb" carries no alpha; the SDK wants ARGB, so assume opaque.
-    return text.length <= 6 ? (0xff000000 | value) : value;
+    // "#rrggbb" carries no alpha, so assume opaque; "#rrggbbaa" does, and the SDK wants ARGB.
+    return text.length <= 6 ? (0xff000000 | value) : ((value << 24) | (value >> 8));
 }
 
 + (void)setValue:(id)value forKey:(NSString *)key {

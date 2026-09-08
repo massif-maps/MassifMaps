@@ -93,11 +93,11 @@ namespace massif { namespace api {
         bool decode(const std::string& json, std::map<std::string, Variant>& value);
 
         /**
-         * A colour, from "#rgb", "#rrggbb", "#aarrggbb" or a plain ARGB number.
+         * A colour, from "#rgb", "#rgba", "#rrggbb", "#rrggbbaa" or a plain ARGB number.
          *
          * The ONE decoder for every colour the facade takes, so a struct field, a property and a
-         * spec key all read the same spelling. "#ffb8c6d8" used to land as 0 on a property - a
-         * transparent colour, indistinguishable from one never set.
+         * spec key all read the same spelling - and the SAME one mvt::parseCSSColor gives a style
+         * sheet. A NUMBER stays ARGB: that is what Color is built from and reads back as.
          *
          * @return false for anything else, so the caller leaves the value alone.
          */

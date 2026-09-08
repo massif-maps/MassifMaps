@@ -134,7 +134,7 @@ typedef NS_ENUM(NSInteger, DemoFeature) {
 + (NSString *)reliefPaper;
 + (NSString *)reliefShade;
 + (NSString *)reliefSky;
-/** "#rrggbb" / "#aarrggbb" as an SDK colour. */
+/** "#rrggbb" / "#rrggbbaa" as an SDK colour. */
 + (MSFColor *)colorFromHex:(NSString *)hex;
 
 @end

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Massif style preview</title>
+<link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font: 13px/1.4 system-ui, sans-serif; }
+  #app { display: flex; flex-direction: column; height: 100%; }
+  #bar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: #1c1f24; color: #ddd; }
+  #bar input[type=text] { flex: 1; min-width: 200px; padding: 4px 6px; border: 1px solid #444; border-radius: 3px;
+                          background: #12151a; color: #ddd; font: inherit; }
+  #bar button, #bar select { padding: 4px 8px; border: 1px solid #444; border-radius: 3px;
+                             background: #2a2f38; color: #ddd; font: inherit; cursor: pointer; }
+  #maps { flex: 1; display: flex; min-height: 0; }
+  .pane { flex: 1; position: relative; min-width: 0; border-left: 1px solid #1c1f24; }
+  .pane:first-child { border-left: 0; }
+  .pane .map { position: absolute; inset: 0; }
+  .tag { position: absolute; z-index: 2; top: 8px; left: 8px; padding: 2px 8px; border-radius: 3px;
+         background: rgba(28,31,36,.85); color: #eee; font-weight: 600; pointer-events: none; }
+  .err { position: absolute; z-index: 3; bottom: 8px; left: 8px; right: 8px; max-height: 40%; overflow: auto;
+         padding: 6px 8px; border-radius: 3px; background: rgba(120,20,20,.9); color: #fff;
+         white-space: pre-wrap; display: none; }
+  #gaps { display: none; max-height: 38%; overflow: auto; padding: 8px 12px; background: #14171c; color: #cfd4dc;
+          border-top: 1px solid #2a2f38; }
+  #gaps h3 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #8fa0b6; }
+  #gaps code { color: #ffd580; }
+  #gaps .miss { color: #ff9b9b; }
+  #gaps ul { margin: 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <label>style</label>
+    <input id="style-url" type="text" value="https://tiles.openfreemap.org/styles/liberty">
+    <button id="reload">reload</button>
+    <label><input id="sync" type="checkbox" checked> sync</label>
+    <select id="local-set"></select>
+    <button id="fit">fit local</button>
+    <button id="gaps-toggle">gaps</button>
+  </div>
+  <div id="maps">
+    <div class="pane"><div class="tag" id="tag-l">openfreemap</div><div class="map" id="map-l"></div>
+      <div class="err" id="err-l"></div></div>
+    <div class="pane"><div class="tag" id="tag-r">local</div><div class="map" id="map-r"></div>
+      <div class="err" id="err-r"></div></div>
+  </div>
+  <div id="gaps"></div>
+</div>
+<script>
+const ORIGIN = location.origin;
+const START = { center: [5.7245, 45.1885], zoom: 13, pitch: 0, bearing: 0 };  // Grenoble
+
+const $ = (id) => document.getElementById(id);
+let localName = null, localTileJSON = null, remoteTileJSON = null, styleJSON = null;
+
+/** every vector source in the style points at one tileset; swap them all to `url`. */
+function retarget(style, url) {
+  const out = JSON.parse(JSON.stringify(style));
+  for (const src of Object.values(out.sources || {})) {
+    if (src.type !== 'vector') continue;
+    delete src.tiles;
+    src.url = url;
+  }
+  return out;
+}
+
+/** field names a style layer reads, from both legacy filters and expressions. */
+function fieldsOf(node, out) {
+  if (Array.isArray(node)) {
+    const op = node[0];
+    if (typeof op === 'string' && typeof node[1] === 'string') {
+      if (op === 'get' || op === 'has' || op === '!has') out.add(node[1]);
+      else if (['==', '!=', '>', '<', '>=', '<=', 'in', '!in'].includes(op) &&
+               node[1] !== '$type' && node[1] !== '$id') out.add(node[1]);
+    }
+    node.forEach((c) => fieldsOf(c, out));
+  } else if (node && typeof node === 'object') {
+    for (const [k, v] of Object.entries(node)) {
+      if (k === 'property' && typeof v === 'string') out.add(v);
+      fieldsOf(v, out);
+    }
+  }
+  return out;
+}
+
+function styleDemand(style) {
+  const demand = new Map();
+  for (const l of style.layers || []) {
+    if (!l['source-layer']) continue;
+    if (!demand.has(l['source-layer'])) demand.set(l['source-layer'], new Set());
+    const into = demand.get(l['source-layer']);
+    fieldsOf(l.filter, into); fieldsOf(l.layout, into); fieldsOf(l.paint, into);
+  }
+  return demand;
+}
+
+function schemaOf(tilejson) {
+  const out = new Map();
+  for (const l of (tilejson && tilejson.vector_layers) || []) {
+    out.set(l.id, new Set(Object.keys(l.fields || {})));
+  }
+  return out;
+}
+
+/** a localized name is dropped when it equals the default, so `name` standing alone satisfies it. */
+function has(schema, layer, field) {
+  const fields = schema.get(layer);
+  if (!fields) return false;
+  if (fields.has(field)) return true;
+  return /^name[:_]/.test(field) && (fields.has('name') || fields.has('name_int'));
+}
+
+function renderGaps() {
+  const el = $('gaps');
+  if (!styleJSON || !localTileJSON || !remoteTileJSON) { el.innerHTML = 'load a style first'; return; }
+  const demand = styleDemand(styleJSON);
+  const local = schemaOf(localTileJSON), remote = schemaOf(remoteTileJSON);
+  const html = [];
+
+  const missLayers = [], missFields = [];
+  for (const [layer, fields] of demand) {
+    if (!local.has(layer)) { missLayers.push(layer); continue; }
+    const gone = [...fields].filter((f) => !has(local, layer, f));
+    if (gone.length) missFields.push([layer, gone]);
+  }
+  html.push('<h3>the style reads this and the local tileset does not carry it</h3>');
+  html.push(missLayers.length
+    ? '<ul>' + missLayers.map((l) => `<li class="miss">layer <code>${l}</code></li>`).join('') + '</ul>'
+    : '<div>every source-layer the style reads is present</div>');
+  html.push(missFields.length
+    ? '<ul>' + missFields.map(([l, f]) =>
+        `<li><code>${l}</code>: <span class="miss">${f.join(', ')}</span></li>`).join('') + '</ul>'
+    : '<div>every field the style reads is present</div>');
+
+  const onlyRemote = [], fieldDiff = [];
+  for (const [layer, fields] of remote) {
+    if (!local.has(layer)) { onlyRemote.push(layer); continue; }
+    const gone = [...fields].filter((f) => !/^name[:_]/.test(f) && !local.get(layer).has(f));
+    if (gone.length) fieldDiff.push([layer, gone]);
+  }
+  const onlyLocal = [...local.keys()].filter((l) => !remote.has(l));
+  html.push('<h3>schema diff, openfreemap vs local (ignoring what the style reads)</h3>');
+  html.push(`<div>only openfreemap: ${onlyRemote.length ? onlyRemote.join(', ') : '—'}</div>`);
+  html.push(`<div>only local: ${onlyLocal.length ? onlyLocal.join(', ') : '—'}</div>`);
+  html.push(fieldDiff.length
+    ? '<ul>' + fieldDiff.map(([l, f]) => `<li><code>${l}</code> lacks: ${f.join(', ')}</li>`).join('') + '</ul>'
+    : '<div>no field differs</div>');
+
+  el.innerHTML = html.join('');
+}
+
+function makeMap(container, style, errEl) {
+  const map = new maplibregl.Map({ container, style, ...START, hash: false, attributionControl: false });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  new ResizeObserver(() => map.resize()).observe(document.getElementById(container));
+  const seen = new Set();
+  map.on('error', (e) => {
+    const msg = (e && e.error && e.error.message) || String(e);
+    if (seen.has(msg)) return;
+    seen.add(msg);
+    errEl.style.display = 'block';
+    errEl.textContent = [...seen].slice(-8).join('\n');
+  });
+  return map;
+}
+
+let maps = [];
+function sync(a, b) {
+  let guard = false;
+  const copy = (from, to) => {
+    if (guard || !$('sync').checked) return;
+    guard = true;
+    to.jumpTo({ center: from.getCenter(), zoom: from.getZoom(),
+                bearing: from.getBearing(), pitch: from.getPitch() });
+    guard = false;
+  };
+  a.on('move', () => copy(a, b));
+  b.on('move', () => copy(b, a));
+}
+
+async function boot() {
+  const sets = await (await fetch(ORIGIN + '/tilesets.json')).json();
+  const sel = $('local-set');
+  sel.innerHTML = Object.keys(sets).map((n) => `<option value="${n}">${n}</option>`).join('');
+  localName = Object.keys(sets)[0];
+  if (!localName) { $('err-r').style.display = 'block'; $('err-r').textContent = 'serve.py has no --mbtiles registered'; }
+  sel.onchange = () => { localName = sel.value; load(); };
+  await load();
+}
+
+async function load() {
+  const url = $('style-url').value.trim();
+  styleJSON = await (await fetch(url)).json();
+  const localURL = ORIGIN + '/tiles/' + localName + '.json';
+  const remoteURL = firstVectorURL(styleJSON);
+
+  for (const m of maps) m.remove();
+  const camera = maps.length ? { center: maps[0].getCenter(), zoom: maps[0].getZoom(),
+                                 bearing: maps[0].getBearing(), pitch: maps[0].getPitch() } : null;
+  maps = [makeMap('map-l', styleJSON, $('err-l')),
+          makeMap('map-r', retarget(styleJSON, localURL), $('err-r'))];
+  if (camera) maps.forEach((m) => m.jumpTo(camera));
+  sync(maps[0], maps[1]);
+  $('tag-l').textContent = 'openfreemap — ' + (remoteURL || 'style default');
+  $('tag-r').textContent = 'local — ' + localName;
+
+  [localTileJSON, remoteTileJSON] = await Promise.all([
+    fetch(localURL).then((r) => r.json()).catch(() => null),
+    remoteURL ? fetch(remoteURL).then((r) => r.json()).catch(() => null) : null,
+  ]);
+  if ($('gaps').style.display === 'block') renderGaps();
+}
+
+function firstVectorURL(style) {
+  for (const src of Object.values(style.sources || {})) {
+    if (src.type === 'vector' && src.url) return src.url;
+  }
+  return null;
+}
+
+$('reload').onclick = load;
+$('fit').onclick = () => {
+  if (!localTileJSON || !localTileJSON.bounds) return;
+  maps.forEach((m) => m.fitBounds(localTileJSON.bounds, { duration: 0 }));
+};
+$('gaps-toggle').onclick = () => {
+  const el = $('gaps');
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+  if (el.style.display === 'block') renderGaps();
+};
+
+boot();
+</script>
+</body>
+</html>

@@ -36,6 +36,18 @@
       "port": 8088
     },
     {
+      "name": "style-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "tools/style-preview/serve.py",
+        "--port",
+        "8787",
+        "--mbtiles",
+        "rhone-alpes=/Volumes/dev/carto/alpimaps_data_generator/alpimaps_mbtiles/rhone-alpes/rhone-alpes.mbtiles"
+      ],
+      "port": 8787
+    },
+    {
       "name": "mbref",
       "runtimeExecutable": "python3",
       "runtimeArgs": [

@@ -163,6 +163,84 @@ export function applyStyle({ module, massif, layers }, { sourceUrl, maxZoom, sty
 }
 
 /*
+ * 3D terrain, from Mapterhorn's global DEM - Terrarium-coded WebP, z1-16, CORS open.
+ *
+ * Not a nicety here: shadows are cast over the TERRAIN cover (MapRenderer::applyTerrainShadows), so
+ * with no height field the map has no shadow pass at all and the hour only moves the shading.
+ */
+export const DEFAULT_DEM_URL = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
+const DEM_MAX_ZOOM = 16;
+/** A desktop holds the height field up at any tilt and affords a finer mesh than a phone budget. */
+const TERRAIN_MESH_RESOLUTION = 128;
+
+export function applyTerrain({ massif }, enabled, { url = DEFAULT_DEM_URL } = {}) {
+  const options = massif.find('options', 'map');
+  let terrain = massif.getObject(options, 'terrainOptions');
+  if (!terrain) {
+    if (!enabled) return false;
+    // The elevation decoder is not a spec argument: it is resolved from the source's own
+    // "dem_encoding", which is why that meta data entry is set here rather than a decoder built.
+    const built = massif.create('options', 'preview-terrain', {
+      type: 'terrain',
+      source: {
+        type: 'http',
+        url,
+        minZoom: 1,
+        maxZoom: DEM_MAX_ZOOM,
+        'metaData.dem_encoding': 'terrarium',
+      },
+      meshResolution: TERRAIN_MESH_RESOLUTION,
+      autoFlattenTilt: 0,
+      autoFlattenParallax: 0,
+    });
+    massif.setObject(options, 'terrainOptions', built);
+    terrain = massif.getObject(options, 'terrainOptions');
+  }
+  if (!terrain) return false;
+  massif.set(terrain, 'enabled', enabled);
+  return true;
+}
+
+/**
+ * The atmosphere. Values are the demo's "haze" preset: daylight, thin, no stars.
+ *
+ * A FogOptions with the default transparent colour changes nothing, so the colour is the setting
+ * that matters - and a colour property takes an ARGB NUMBER: a "#rrggbb" string reads as 0, which
+ * is a transparent fog that draws nothing. Ranges are multiples of the camera-to-focus distance,
+ * so one pair holds at every zoom.
+ */
+const FOG = {
+  color: 0xffb8c6d8 | 0,
+  highColor: 0xff8fb4dc | 0,
+  spaceColor: 0xff5b86c4 | 0,
+  horizonBlend: 0.2,
+  starIntensity: 0,
+};
+
+/** MapBox's own documented range, and FogOptions' default. The demo's haze preset (0.4) is closer. */
+export const FOG_RANGE = { start: 0.8, end: 8 };
+
+export function applyFog({ massif }, enabled, { rangeStart, rangeEnd } = {}) {
+  const options = massif.find('options', 'map');
+  let fog = massif.getObject(options, 'fogOptions');
+  if (!fog) {
+    if (!enabled) return false;
+    massif.setObject(options, 'fogOptions', massif.create('options', 'preview-fog', {
+      type: 'fog',
+      ...FOG,
+      rangeStart: FOG_RANGE.start,
+      rangeEnd: FOG_RANGE.end,
+    }));
+    fog = massif.getObject(options, 'fogOptions');
+  }
+  if (!fog) return false;
+  if (rangeStart !== undefined) massif.set(fog, 'rangeStart', rangeStart);
+  if (rangeEnd !== undefined) massif.set(fog, 'rangeEnd', rangeEnd);
+  massif.set(fog, 'enabled', enabled);
+  return true;
+}
+
+/*
  * The sun, and the light preset that goes with an hour.
  *
  * The hour drives the SDK's own solar model (LightOptions.setSunPositionFromTime), not a copy of it
@@ -213,6 +291,8 @@ export function applyHour({ massif, camera }, hour, { shadows = true } = {}) {
     [SUN_DATE.year, SUN_DATE.month, SUN_DATE.day, whole, minutes, lat, lon]);
   // Otherwise a style that states its own sun wins and the slider appears to do nothing.
   massif.set(light, 'sunOverridingStyle', true);
+  // Off by default, and the shadow pass is gated on it - without this the strength below is inert.
+  massif.set(light, 'terrainLightingEnabled', true);
   massif.set(light, 'shadowStrength', shadows ? 1 : 0);
   return true;
 }

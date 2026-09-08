@@ -23,6 +23,9 @@ Everything runs in your browser. No style, tile key or sprite sheet is uploaded 
 | **MapBox style JSON** | Paste one and press Apply. It is translated by `mapbox2css` in the page — sprite sheet, icons, light presets and all — then rendered. |
 | **Tiles** | Any TileJSON URL or `{z}/{x}/{y}` template. The default is [OpenFreeMap](https://openfreemap.org)'s planet, which needs no key. |
 | **Camera** | Drag to pan, wheel to zoom, right-drag to rotate and tilt. **Copy link** puts the style and the camera in the URL. |
+| **Terrain** | 3D terrain over [Mapterhorn](https://mapterhorn.com)'s global DEM, on by default and streamed straight from their tiles — no key. |
+| **Fog** | The SDK's MapBox-modelled atmosphere: the haze the far ground fades into, which is what hides the horizon a tilted view ends at. Two sliders set where it starts and where it saturates, in multiples of the camera-to-focus distance. |
+| **Shadows** | Sun shadows cast by the ground and by the buildings, at the hour the slider is on. |
 | **Search** | Any place name, through [Photon](https://photon.komoot.io) — OSM data, no key. A result with an extent is fitted to it, a point is flown to. Only the query you type is sent. |
 | **Light** | An hour slider drives the SDK's own solar model at the map centre, so shadows fall where they would there on 21 June. A converted MapBox style also carries dawn/day/dusk/night presets, and the page can follow them from the hour. |
 
@@ -45,7 +48,10 @@ the **map centre** — the sun over Reykjavik in June barely sets, and the slide
 also means the sun is re-placed when you search somewhere new, not when you pan by hand. Nudge the
 slider after a long pan.
 
-Shadows need something to cast them: a style with `building-height`, or 3D terrain.
+Shadows are cast over the **terrain** cover, so the **Terrain** button is what turns the shadow
+pass on at all: with it off the hour still moves the shading, and nothing casts. With it on, the
+casters are the ground itself and any extrusion a style declares — `building-height` in the
+starters. Judge them at a low sun; at noon over a city there is barely anything to see.
 
 ## What it is not
 

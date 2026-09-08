@@ -188,14 +188,6 @@ function Panel({state, actions}) {
         <label className={styles.checkbox}>
           <input
             type="checkbox"
-            checked={state.shadows}
-            onChange={(event) => actions.setShadows(event.target.checked)}
-          />
-          Shadows
-        </label>
-        <label className={styles.checkbox}>
-          <input
-            type="checkbox"
             checked={state.autoPreset}
             disabled={state.themes.length < 2}
             onChange={(event) => actions.setAutoPreset(event.target.checked)}
@@ -204,10 +196,43 @@ function Panel({state, actions}) {
         </label>
         <p className={styles.note}>
           The hour drives the SDK&apos;s own solar model at the map centre, so the sun moves the way
-          it would there on 21 June — pan a long way and nudge the slider to re-place it.
+          it would there on 21 June — pan a long way and nudge the slider to re-place it. Cast
+          shadows are the <strong>Shadows</strong> button over the map, and they need 3D terrain:
+          the shadow pass runs over the terrain cover, so a flat map has none.
           {state.themes.length > 1
             ? ' A converted style carries presets, and the checkbox switches between them.'
             : ' A converted MapBox style adds dawn/day/dusk/night presets here.'}
+        </p>
+      </div>
+
+      <div className={styles.panelSection}>
+        <h2>Fog</h2>
+        <label className={styles.field}>
+          Starts at <strong>{state.fogStart.toFixed(1)}×</strong> the camera distance
+          <input
+            type="range"
+            min="0.2"
+            max="6"
+            step="0.1"
+            value={state.fogStart}
+            onChange={(event) => actions.setFogRange({fogStart: Number(event.target.value)})}
+          />
+        </label>
+        <label className={styles.field}>
+          Saturates at <strong>{state.fogEnd.toFixed(0)}×</strong>
+          <input
+            type="range"
+            min="1"
+            max="24"
+            step="0.5"
+            value={state.fogEnd}
+            onChange={(event) => actions.setFogRange({fogEnd: Number(event.target.value)})}
+          />
+        </label>
+        <p className={styles.note}>
+          Both are multiples of the camera-to-focus distance, not metres — that distance is a
+          function of the zoom alone, so one pair holds at every zoom. 0.8 and 8 are MapBox&apos;s
+          own numbers; push the start out to clear the near ground.
         </p>
       </div>
 
@@ -233,6 +258,11 @@ function Panel({state, actions}) {
         <p className={styles.note}>
           Drag to pan, wheel to zoom, right-drag to rotate and tilt. Everything renders in your
           browser: no style, key or sprite sheet leaves this page.
+        </p>
+        <p className={styles.note}>
+          <strong>Terrain</strong> is <a href="https://mapterhorn.com">Mapterhorn</a>&apos;s global
+          DEM, streamed straight from their tiles. <strong>Fog</strong> is the SDK&apos;s
+          MapBox-modelled atmosphere, which is what hides the horizon a tilted view ends at.
         </p>
       </div>
     </div>
@@ -266,6 +296,10 @@ function StylePreview() {
     notes: [],
     error: '',
     hour: 12,
+    terrain: true,
+    fog: true,
+    fogStart: 0.8,
+    fogEnd: 8,
     shadows: true,
     autoPreset: true,
     query: '',
@@ -328,6 +362,9 @@ function StylePreview() {
           tilejson: params.get('source') ?? engineModule.DEFAULT_TILEJSON,
         });
         if (cancelled) return;
+        engineModule.applyTerrain(map, true);
+        engineModule.applyFog(map, true);
+        patch({fogStart: engineModule.FOG_RANGE.start, fogEnd: engineModule.FOG_RANGE.end});
         engineModule.applyHour(map, 12, {shadows: true});
 
         const tick = () => {
@@ -492,6 +529,28 @@ function StylePreview() {
     pickTheme: (theme) => patch({theme}),
     setHour: (hour) => { patch({hour}); applyLight({hour}); },
     setShadows: (shadows) => { patch({shadows}); applyLight({shadows}); },
+    setTerrain: (terrain) => {
+      const map = mapRef.current;
+      if (!map || !engine) return;
+      patch({terrain});
+      engine.applyTerrain(map, terrain);
+    },
+    setFog: (fog) => {
+      const map = mapRef.current;
+      if (!map || !engine) return;
+      patch({fog});
+      engine.applyFog(map, fog);
+    },
+    setFogRange: (next) => {
+      const map = mapRef.current;
+      if (!map || !engine) return;
+      // The end is never allowed under the start: the shader divides by the span, and a reversed
+      // pair saturates the whole view in one step.
+      const fogStart = next.fogStart ?? state.fogStart;
+      const fogEnd = Math.max(next.fogEnd ?? state.fogEnd, fogStart + 0.5);
+      patch({fogStart, fogEnd});
+      engine.applyFog(map, state.fog, {rangeStart: fogStart, rangeEnd: fogEnd});
+    },
     setAutoPreset: (autoPreset) => { patch({autoPreset}); applyLight({autoPreset}); },
     setQuery: (query) => patch({query}),
     search,
@@ -514,6 +573,26 @@ function StylePreview() {
               <button type="button" onClick={() => flyTo(45)}>3D</button>
               <button type="button" onClick={() => flyTo(90)}>2D</button>
               <button type="button" onClick={() => flyTo(undefined, 0)}>North</button>
+              <button
+                type="button"
+                className={state.terrain ? styles.toggleOn : ''}
+                onClick={() => actions.setTerrain(!state.terrain)}>
+                Terrain
+              </button>
+              <button
+                type="button"
+                className={state.fog ? styles.toggleOn : ''}
+                onClick={() => actions.setFog(!state.fog)}>
+                Fog
+              </button>
+              <button
+                type="button"
+                className={state.shadows && state.terrain ? styles.toggleOn : ''}
+                title={state.terrain ? 'Sun shadows cast by the ground and by the buildings'
+                  : 'Turn 3D terrain on: the shadow pass runs over the terrain cover'}
+                onClick={() => actions.setShadows(!state.shadows)}>
+                Shadows
+              </button>
             </div>
             <div className={styles.overlay}>{readout}</div>
           </>

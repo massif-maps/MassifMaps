@@ -38,6 +38,9 @@
   right: 0.75rem;
   top: 0.75rem;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 55%;
   gap: 0.4rem;
 }
 
@@ -53,6 +56,11 @@
 
 .viewButtons button:hover {
   background: rgba(0, 0, 0, 0.85);
+}
+
+.viewButtons button.toggleOn {
+  background: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary-light);
 }
 
 .status {
@@ -196,7 +204,8 @@
   position: absolute;
   left: 0.75rem;
   top: 0.75rem;
-  width: min(20rem, calc(100% - 1.5rem));
+  /* Half the stage at most: the view buttons sit at the other end of the same line. */
+  width: min(20rem, calc(50% - 1.5rem));
   z-index: 1;
 }
 

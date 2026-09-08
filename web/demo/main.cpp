@@ -5,6 +5,7 @@
  *   ?lon=2.35&lat=48.86&zoom=12
  *   ?source=https://tile.openstreetmap.org/{z}/{x}/{y}.png          raster (inferred)
  *   ?source=https://.../{z}/{x}/{y}.mvt&css=<url-encoded CartoCSS>  vector
+ *   ?minzoom=0&maxzoom=14                                           what the tileset actually holds
  *
  * The style is passed in rather than fetched: main() runs on the browser's main thread, where a
  * synchronous fetch is illegal. The JavaScript binding over the facade C ABI is what will replace
@@ -100,7 +101,12 @@ int main() {
     }
 
     std::string source = queryParam("source", DEFAULT_SOURCE);
-    auto dataSource = std::make_shared<massif::HTTPTileDataSource>(0, 19, source);
+    // A tileset that stops at z14 - every OpenMapTiles build does - draws NOTHING deeper unless
+    // the source is told, because the layer asks for a tile that was never made instead of
+    // overzooming the last one it has.
+    int minZoom = static_cast<int>(queryNumber("minzoom", 0));
+    int maxZoom = static_cast<int>(queryNumber("maxzoom", 19));
+    auto dataSource = std::make_shared<massif::HTTPTileDataSource>(minZoom, maxZoom, source);
 
     if (isRasterSource(source)) {
         _MapView->getLayers()->add(std::make_shared<massif::RasterTileLayer>(dataSource));

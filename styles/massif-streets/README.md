@@ -50,7 +50,22 @@ domain. Everything else here is drawn for this project. No MapTiler or Mapbox st
 ## Owed
 
 - `glyphs` points at OpenFreeMap's font server; there is no font pipeline here yet.
-- `mapbox2css` draws these as sprites. Folding a per-colour plate onto `text-background-*` — one
-  rule with the colour read per feature, no artwork shipped — is converter work not done yet.
 - A ref whose letter no country branch names — `VV1` on a French cycleway — takes the neutral
   plate, which on a light background is held together only by its border.
+
+What the converted CartoCSS loses, seen side by side in [the preview](../../docs/contributing/style-preview.md):
+
+- **The country's colour, and the shield's text colour.** CartoCSS has no `slice`, so all eleven
+  `iso_a2` branches collapse onto the neutral plate and `text-color` is dropped outright — the ref
+  draws black on every road in every country.
+- **The plate's padding.** `icon-text-fit-padding` has no equivalent while the plate is a sprite;
+  the properties that would carry it (`shield-background-padding-x`, `-radius`, `-fill`,
+  `-border-fill`) exist only on the plate the SDK generates. Folding the tinted sprite onto those is
+  one piece of converter work that fixes the colour and the padding together.
+- **Shields, thinned.** `shield-min-distance` is set from `shield-spacing` — 350 px here — so the
+  culler drops most repeats: three shields on screen where MapLibre draws six. Cutting it to 20
+  matches. The rule has a reason ([style-tools](../../docs/contributing/style-tools.md), "How far
+  apart labels stay"): the decoder restarts spacing per feature, so the culler is what stops a road
+  cut into many ways carrying a shield on each. The distance is what needs tuning, not the idea.
+- **Bold.** Not the converter — `shield-face-name` converts correctly, but the web build carries
+  only `Roboto.ttf`, so a bold face falls back to a regular one.

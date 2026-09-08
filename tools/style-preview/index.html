@@ -280,13 +280,12 @@ function startMassif() {
     const query = new URLSearchParams({
       pane: id, carto: base, source,
       minzoom: tilesets[i].minzoom ?? 0, maxzoom: tilesets[i].maxzoom ?? 14,
-      // The pane is handed a MapLibre camera, so it adopts MapLibre's conventions on all three
-      // counts: the 512-pixel tile the zoom NUMBER is calibrated on, the refinement density the
-      // SDK otherwise sets a full level finer, and a dpi of 160 - one dp per CSS pixel, which is
-      // what MapLibre sizes a label in. Measured: all three panes then span the same longitude.
-      // ?dpi= overrides it.
+      // The pane is handed a MapLibre camera, so it adopts MapLibre's conventions: the 512-pixel
+      // tile the zoom NUMBER is calibrated on, and the refinement density the SDK otherwise sets a
+      // full level finer. The dpi it reads off the display is already right - measured against
+      // maplibre at one camera, both draw 4831.1 CSS pixels to the degree. ?dpi= overrides it.
       tiledrawsize: 512, tilelodfactor: 1,
-      dpi: new URLSearchParams(location.search).get('dpi') ?? 160,
+      dpi: new URLSearchParams(location.search).get('dpi') ?? 0,
       lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
     });
     $(id).src = `./massif-pane.html?${query}`;

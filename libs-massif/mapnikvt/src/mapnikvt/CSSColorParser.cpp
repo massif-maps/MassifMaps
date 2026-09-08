@@ -2,8 +2,6 @@
 #include "StringUtils.h"
 
 #include <array>
-#include <sstream>
-#include <iomanip>
 #include <algorithm>
 
 namespace massif::mvt {
@@ -179,13 +177,17 @@ namespace massif::mvt {
             else if (code.size() != 6 && code.size() != 8) {
                 return false;
             }
+            // Digit by digit, not a stream: >> only sets failbit on a non-hex char, and bad() never
+            // saw it - so "#gg0000" parsed as black instead of being refused.
             std::array<unsigned int, 4> components = { 0, 0, 0, 255 };
-            for (std::size_t i = 0; i < code.size() / 2; i++) {
-                std::istringstream ss(code.substr(i * 2, 2));
-                ss >> std::hex >> components[i];
-                if (ss.bad()) {
+            for (std::size_t i = 0; i < code.size(); i++) {
+                int digit = code[i] >= '0' && code[i] <= '9' ? code[i] - '0'
+                          : code[i] >= 'a' && code[i] <= 'f' ? code[i] - 'a' + 10
+                          : code[i] >= 'A' && code[i] <= 'F' ? code[i] - 'A' + 10 : -1;
+                if (digit < 0) {
                     return false;
                 }
+                components[i / 2] = (i % 2 ? components[i / 2] * 16 : 0) + digit;
             }
             value = (components[3] << 24) | (components[0] << 16) | (components[1] << 8) | components[2];
             return true;

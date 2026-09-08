@@ -31,6 +31,7 @@ add_executable(style_tests
   StyleTest.cpp
   LayerConfigTest.cpp
   CartoCSSParseTest.cpp
+  CSSColorTest.cpp
   StyleParameterFoldTest.cpp
   ExpressionRoundTripTest.cpp
   InterpolateExpressionTest.cpp

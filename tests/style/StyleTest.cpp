@@ -8,6 +8,7 @@ int failures = 0;
 
 void testLayerConfig();
 void testCartoCSSParse();
+void testCSSColor();
 void testStyleParameterFold();
 void testExpressionRoundTrip();
 void testDataDrivenProperty();
@@ -17,6 +18,7 @@ void testViewStateProperty();
 int main() {
     testLayerConfig();
     testCartoCSSParse();
+    testCSSColor();
     testStyleParameterFold();
     testExpressionRoundTrip();
     testDataDrivenProperty();

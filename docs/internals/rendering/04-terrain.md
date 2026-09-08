@@ -92,6 +92,15 @@ entry's position in the deque (`push_front` for 0, `push_back` otherwise, draine
 nearest-first scan would have erased that distinction silently, so the priority now travels with the
 entry.
 
+**A neighbour is only asked for within `NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW` (2) levels of the
+camera's zoom.** A tilted view's far ground is covered by very coarse tiles — at Grenoble z14.5
+tilt 65 the cover reaches z3 — and `resolveEntry` asked each of them for its 8 border neighbours.
+Measured on the Crosscall over a warm cache: **219 tile loads in 7.7 s, 129 of them those coarse
+neighbours**, and the near ground the user is looking at waited behind them. Bounded, the same start
+is 121 loads in 5.9 s (turning the neighbour prefetch off entirely: 94 in 4.1 s, which is the floor).
+A border texel of a tile four levels coarser is far below a pixel; the tiles that matter for seams
+are the ones the camera is on.
+
 ### CPU height queries
 
 `getDisplayHeight` answers with the node field (the drawn surface), `getElevationMeters` with the
@@ -598,10 +607,18 @@ mapbox-streets z16 over the Louvre (2026-09-04):
 `vt::buildExtrusionAnchors` (called from `TileReader::processLayer`, host test
 `ExtrusionGroupAnchorTest`) answers both, before anything is drawn:
 
-- parts that **share a vertex**, that carry the same **`building_id`**, or that are polygons of one
-  multi-polygon feature are one building, and take the mean of every outer ring point they own.
-  mapbox groups by `building_id` alone (`_finalizeBuildingGroups`, default group id = the feature
-  id); the shared vertex is what makes it work on data that mostly does not carry the field.
+- parts that **share a vertex** or carry the same **`building_id`** are one building, and take the
+  mean of every outer ring point they own. mapbox groups by `building_id` alone
+  (`_finalizeBuildingGroups`, default group id = the feature id); the shared vertex is what makes it
+  work on data that mostly does not carry the field.
+- sharing a FEATURE is **not** one of them, and the table holds **one entry per footprint** rather
+  than one per id. An OpenMapTiles mbtiles packs a whole tile of unrelated buildings into one
+  multi-polygon feature — Grenoble z15: 3513 footprints under 18 ids — so grouping by the id gave a
+  tile ONE anchor, and every building on the Bastille slope stood on the valley floor 100 m below,
+  its walls stretched up to its roof. The drawn polygon picks its entry by the bounds its centroid
+  falls in (`findExtrusionAnchor`); the bounds come from the UNCLIPPED ring, so a clipped piece
+  still lands in them. Parts of one feature that genuinely are one building still share, through the
+  shared vertex or `building_id`.
 - a building crossing **exactly one edge of the source box** anchors on the MIDDLE of its crossing
   of that edge — the one point both tiles compute identically, because the server buffer means both
   hold the whole crossing. A **corner** cut anchors on the corner. Anything more tangled keeps the

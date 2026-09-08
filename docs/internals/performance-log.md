@@ -1873,3 +1873,36 @@ window (`logcat -c; sleep 10; grep -c 'Loading MapTile'; grep -c 'cullUpd='`) to
 a busy frame; a per-thread `/proc/<pid>/task/*/stat` snapshot told a hang from a load spike (every
 thread sleeping, frames still coming); `PROF SPIKE` sections named the frame's cost. Screenshots
 were counted by exact colour before any was looked at.
+
+## 25. Every building's base re-resolved every frame (2026-09-08)
+
+Crosscall `1cba1468`, master `4db525f7`, profile APK (`-PprofileRender`, RelWithDebInfo, arm64),
+bench default camera (Grenoble z16.22 tilt 26), 8 swipes, idle windows dropped.
+
+The ladder said terrain and extrusions were each cheap and the pair ruinous:
+
+| config | fps | frame avg | layers3D CPU | `pass3D geometryMs` per second |
+|---|---|---|---|---|
+| 2D (terrain off) | 20.5 | 30.4 ms | 2.7 ms | – |
+| 3D terrain, no buildings | 18.1 | 44.1 ms | 2.4 ms | 3 |
+| buildings, terrain OFF | 11.8 | 60.3 ms | 5.5 ms | 14 |
+| terrain + buildings | 9.4 | 112.5 ms | 75.1 ms | 750 |
+| ...+ shadows | 8.4 | 128.8 ms | 86.9 ms | 885 |
+
+A probe in `GLTileRenderer::resolveExtrusionBases` found **zero cache hits**: 200 re-resolves,
+2.5 M vertices and **1.3 M elevation queries a second**, with `_extrusionBaseVersion` bumped ~30
+times a second. All of the bumps came from `setExtrusionElevationProvider`, which
+`TileRenderer::onDrawFrame` pushed unconditionally every frame — and the setter invalidates every
+extrusion base, since it cannot compare two `std::function`s.
+
+Pushing it only when the vt renderer or the elevation source behind it changes:
+
+| config | before | after |
+|---|---|---|
+| terrain + buildings | 9.4 fps, layers3D 75.1 ms | **13.3 fps**, layers3D **8.3 ms** |
+| ...+ shadows | 8.4 fps, layers3D 86.9 ms | **13.4 fps**, layers3D **9.1 ms** |
+
+At rest the probe then reads `hits=294 misses=0`, and the ground queries fall to zero.
+
+**What is next, in order.** `drape` is now the largest block on both (GPU 32-38 ms), and the
+shadow pass costs nearly nothing next to it. `sky` is the swap-buffer wait, not work.

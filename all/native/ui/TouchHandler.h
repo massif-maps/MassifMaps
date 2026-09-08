@@ -196,11 +196,14 @@ namespace massif {
         cglib::vec2<float> _swipe1;
         cglib::vec2<float> _swipe2;
     
-        int _cameraEvents;
+        // Atomic, and read by the RENDERER's listener without taking _mutex: a gesture holds _mutex
+        // and then asks the renderer for the view state, so a listener call that waited for _mutex
+        // while the renderer held its own deadlocked the two (it did, on every tilt over Paris).
+        std::atomic<int> _cameraEvents;
         int _pointersDown;
         // The movement onMapStable owes a report for; taking it is the edge that fires the event.
         std::optional<MapMoveReason::MapMoveReason> _pendingMoveReason;
-        bool _idling;
+        std::atomic<bool> _idling;
         bool _noDualPointerYet;
         std::chrono::steady_clock::time_point _dualPointerReleaseTime;
     

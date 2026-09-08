@@ -316,11 +316,7 @@ namespace massif {
     }
 
     void TouchHandler::checkCameraEvents() {
-        int cameraEvents = 0;
-        {
-            std::lock_guard<std::recursive_mutex> lock(_mutex);
-            std::swap(cameraEvents, _cameraEvents);
-        }
+        int cameraEvents = _cameraEvents.exchange(0);
 
         if (cameraEvents) {
             noteMapMoved(MapMoveReason::MAP_MOVE_REASON_GESTURE);
@@ -353,7 +349,7 @@ namespace massif {
         std::optional<MapMoveReason::MapMoveReason> reason;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            if (atRest && _pointersDown == 0 && _idling) {
+            if (atRest && _pointersDown == 0 && _idling.load()) {
                 std::swap(reason, _pendingMoveReason);
             }
         }
@@ -444,7 +440,7 @@ namespace massif {
             cglib::vec3<double> offset = forward * (dy * panScale) + right * (-dx * panScale);
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(focusMapPos, projectionSurface->calculateMapPos(focusPos + offset)));
-            _cameraEvents |= CAMERA_PAN;
+            _cameraEvents.fetch_or(CAMERA_PAN);
             _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             return;
         }
@@ -474,7 +470,7 @@ namespace massif {
 
         CameraPanEvent cameraEvent;
         cameraEvent.setPosDelta(std::make_pair(currentPos, prevPos));
-        _cameraEvents |= CAMERA_PAN;
+        _cameraEvents.fetch_or(CAMERA_PAN);
         _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
     }
 
@@ -500,7 +496,7 @@ namespace massif {
                 if (projectionSurface && _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
                     cameraEvent.setTargetPos(projectionSurface->calculateMapPos(viewState.getCameraPos()));
                 }
-                _cameraEvents |= CAMERA_ROTATE;
+                _cameraEvents.fetch_or(CAMERA_ROTATE);
                 _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
             // Up and down changes the tilt, in the same direction the two-finger tilt uses.
@@ -511,7 +507,7 @@ namespace massif {
                 }
                 CameraTiltEvent cameraEvent;
                 cameraEvent.setTiltDelta(dy * scale);
-                _cameraEvents |= CAMERA_TILT;
+                _cameraEvents.fetch_or(CAMERA_TILT);
                 _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
         }
@@ -537,7 +533,7 @@ namespace massif {
 
             CameraZoomEvent cameraEvent;
             cameraEvent.setZoomDelta(delta);
-            _cameraEvents |= CAMERA_ZOOM;
+            _cameraEvents.fetch_or(CAMERA_ZOOM);
             _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
         _prevScreenPos1 = screenPos;
@@ -644,7 +640,7 @@ namespace massif {
 
             CameraTiltEvent cameraEvent;
             cameraEvent.setTiltDelta((screenPos.getY() - _prevScreenPos1.getY()) * scale);
-            _cameraEvents |= CAMERA_TILT;
+            _cameraEvents.fetch_or(CAMERA_TILT);
             _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
         _prevScreenPos1 = screenPos;
@@ -704,7 +700,7 @@ namespace massif {
 
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(cameraMapPos, projectionSurface->calculateMapPos(cameraPos + offset)));
-            _cameraEvents |= CAMERA_PAN;
+            _cameraEvents.fetch_or(CAMERA_PAN);
             _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
     }
@@ -743,7 +739,7 @@ namespace massif {
                 CameraZoomEvent cameraZoomTargetEvent;
                 cameraZoomTargetEvent.setScale(static_cast<float>(prevDist / currentDist));
                 cameraZoomTargetEvent.setTargetPos(pivotPos);
-                _cameraEvents |= CAMERA_ZOOM;
+                _cameraEvents.fetch_or(CAMERA_ZOOM);
                 _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
 
@@ -756,7 +752,7 @@ namespace massif {
                 CameraRotationEvent cameraRotateTargetEvent;
                 cameraRotateTargetEvent.setRotationDelta(static_cast<float>(std::atan2(cross, dot) * Const::RAD_TO_DEG));
                 cameraRotateTargetEvent.setTargetPos(pivotPos);
-                _cameraEvents |= CAMERA_ROTATE;
+                _cameraEvents.fetch_or(CAMERA_ROTATE);
                 _mapRenderer->calculateCameraEvent(cameraRotateTargetEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
         }
@@ -1085,12 +1081,11 @@ namespace massif {
     void TouchHandler::MapRendererListener::onMapChanged(MapMoveReason::MapMoveReason reason) {
         if (auto touchHandler = _touchHandler.lock()) {
             touchHandler->noteMapMoved(reason);
-            {
-                std::lock_guard<std::recursive_mutex> lock(touchHandler->_mutex);
-                touchHandler->_idling = false;
-                if (touchHandler->_cameraEvents) {
-                    return; // postpone listener call, will be called together with onMapInteraction
-                }
+            // NO _mutex here: this runs on the render thread, which holds the renderer's own lock,
+            // and a gesture holds _mutex while it asks the renderer for the view state.
+            touchHandler->_idling.store(false);
+            if (touchHandler->_cameraEvents.load()) {
+                return; // postpone listener call, will be called together with onMapInteraction
             }
 
             DirectorPtr<MapEventListener> mapEventListener = touchHandler->_mapEventListener;
@@ -1103,10 +1098,7 @@ namespace massif {
     
     void TouchHandler::MapRendererListener::onMapIdle() {
         if (auto touchHandler = _touchHandler.lock()) {
-            {
-                std::lock_guard<std::recursive_mutex> lock(touchHandler->_mutex);
-                touchHandler->_idling = true;
-            }
+            touchHandler->_idling.store(true);
 
             DirectorPtr<MapEventListener> mapEventListener = touchHandler->_mapEventListener;
 

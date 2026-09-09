@@ -42,18 +42,21 @@ range — so that `--fold-casings` could merge the pair into one `line-border-*`
 MapLibre has no way to state (`line-border-color` is Mapbox GL v3 and our CartoCSS, not the spec).
 
 It is Mapbox Standard's shape now: a `line-gap-width` outline drawn OUTSIDE the fill, a near-hairline
-of 1 px at z14 reaching 2 by z22, and only from **z15**. That came with Standard's road widths and
-could not be separated from them — see "Taken from Mapbox Standard" below for why taking the widths
-alone looks wrong.
+of 1 px at z14 reaching 2 by z22. That came with Standard's road widths and could not be separated
+from them — see "Taken from Mapbox Standard" below for why taking the widths alone looks wrong.
 
-Two consequences worth knowing:
+**It does not stop at z15, where Standard stops it.** Standard's gate is there because a casing on a
+half-pixel road is all casing, but the fill ramp already fades a class in by WIDTH, so the casing can
+mirror its zero points and follow it all the way down: 0.5 px for motorway/trunk/primary at z3,
+nothing for the rest until they widen, everything cased by z12. Zoomed out that is what makes a road
+read as one line rather than a coloured thread — Liberty draws its casings from z5 for exactly that
+reason, and cutting them at z15 was the most visible thing lost when Standard's widths came in.
 
-- **`--fold-casings` is a no-op for this style.** There is no casing/fill pair left to fold. It was
-  already doing nothing before the change — the fold refuses a pair whose fill states a
-  `line-sort-key`, and `road-fill` states one to order the classes — so the flag has been inert for
-  a while. It stays on the command line because it costs nothing and would apply again if a foldable
-  pair were added.
-- **A road below z15 is its fill alone.** No outline at all, which is Standard's own answer.
+**`--fold-casings` is a no-op for this style.** There is no casing/fill pair left to fold. It was
+already doing nothing before the change — the fold refuses a pair whose fill states a
+`line-sort-key`, and `road-fill` states one to order the classes — so the flag has been inert for a
+while. It stays on the command line because it costs nothing and would apply again if a foldable
+pair were added.
 
 ## Taken from Mapbox Standard
 
@@ -86,11 +89,18 @@ narrower than Standard's everywhere except motorway, with the hierarchy compress
 | minor / street | 2.85 | 2.0 |
 
 The casing came with it, because the two do not separate. Standard draws a near-hairline **outside**
-the fill — a `line-gap-width` outline of 1 px at z14 growing only to 2 by z22 — and only from
-**z15**. Ours was a wider line *under* the fill, from z5. Taking the widths without the casing is
-what looks wrong: at z12 Standard's minor road is half a pixel, and the old casing would have drawn
-2.5 px of outline around it, so the street would have read as a grey line with a white thread in it.
-Below z15 a road is now its fill alone.
+the fill — a `line-gap-width` outline of 1 px at z14 growing only to 2 by z22. Ours was a wider line
+*under* the fill. Taking the widths without the casing is what looks wrong: at z12 Standard's minor
+road is half a pixel, and the old casing would have drawn 2.5 px of outline around it, so the street
+would have read as a grey line with a white thread in it. Standard's own z15 gate is the one number
+here we did not take — see the casing section above.
+
+**Road names.** Standard's `road-label`: uppercase at `text-letter-spacing` 0.15, sized 9 → 16 px
+over z10 → z18 for the classes down to tertiary, 8 → 14 for `minor`, 6.5 → 13 for `service`, in
+`hsl(0, 0%, 25%)` on a `hsl(0, 0%, 95%)` halo. Standard turns the classes on with a `step` over zoom
+INSIDE its filter, which is the one thing not taken: a filter that reads the zoom is a `when()`. The
+same gate is **one layer per class**, ordered least important first so the motorway's name is placed
+first and wins the collision.
 
 ## Where this style departs from the references
 
@@ -128,9 +138,9 @@ style is written to give the converter tests it can bracket — see
   an earlier band drew. `minzoom` is a predicate the compiler decides per tile; an `any` of
   zoom-and-class branches is a `when()` that every feature pays at every zoom.
 
-The one `when()` left is `road-label`'s class list: a positive set test is a disjunction with no
-bracketed form, and the layer paints one way throughout, so splitting it would buy six label rules
-to save one or-chain.
+**The generated stylesheet has no `when()` at all.** The last one was a class list on a layer that
+paints one way throughout, which `expandSetFilter` used to leave whole; it now splits a set that is
+the whole filter regardless, since each attachment is then one bracketed test and nothing else.
 
 ## Licensing
 
@@ -156,7 +166,8 @@ What the converted CartoCSS loses, seen side by side in [the preview](../../docs
   `text-background-padding-x: 3` / `-y: 1`.
 - **`symbol-avoid-edges` is dropped** on all six shield layers, so a shield can still land on a
   stub of road that MapLibre refuses to label. The zoom bands are the workaround, not a fix.
-- **`text-max-angle`** on `road-label`, so a name follows a sharper bend here than in MapLibre.
+- **`text-max-angle`** on all five road-name layers, so a name follows a sharper bend here than in
+  MapLibre.
 - **Shields, thinned.** `shield-min-distance` is set from `shield-spacing` — 350 px here — because
   the decoder restarts spacing per feature, so the culler is what stops a road cut into many ways
   carrying a shield on each ([style-tools](../../docs/contributing/style-tools.md), "How far apart

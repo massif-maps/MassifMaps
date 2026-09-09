@@ -79,7 +79,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 15,
+      "minzoom": 3,
       "filter": [
         "in",
         [
@@ -238,6 +238,40 @@
           ],
           [
             "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary"
+            ],
+            0.5,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary"
+            ],
+            0.8,
+            "minor",
+            0.5,
+            0
           ],
           14,
           [
@@ -736,11 +770,11 @@
       }
     },
     {
-      "id": "road-label",
+      "id": "road-label-service",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation_name",
-      "minzoom": 12,
+      "minzoom": 15,
       "filter": [
         "in",
         [
@@ -750,11 +784,66 @@
         [
           "literal",
           [
-            "motorway",
-            "trunk",
-            "primary",
-            "secondary",
-            "tertiary",
+            "service"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          6.5,
+          18,
+          13
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-minor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
             "minor"
           ]
         ]
@@ -783,18 +872,203 @@
           [
             "zoom"
           ],
-          12,
-          9,
+          10,
+          8,
           18,
-          13
+          14
         ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
         "text-max-angle": 30,
-        "text-padding": 2
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
       },
       "paint": {
-        "text-color": "#4a463d",
-        "text-halo-color": "#f7f5f0",
-        "text-halo-width": 1.2
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-tertiary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "tertiary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-primary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "primary",
+            "secondary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-major",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 10,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
       }
     },
     {

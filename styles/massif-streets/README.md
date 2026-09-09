@@ -102,12 +102,17 @@ INSIDE its filter, which is the one thing not taken: a filter that reads the zoo
 same gate is **one layer per class**, ordered least important first so the motorway's name is placed
 first and wins the collision.
 
-**POIs are the one thing Standard could not lend.** Its `poi-label` is built on `filterrank`,
-`sizerank` and `maki` — Mapbox's own tileset fields, none of which OpenMapTiles has — so its density
-gate, its size steps and its icon names all resolve to nothing here. OMT offers `rank` and that is
-all, so the POI layers follow **Liberty**'s three rank bands instead: `rank < 7` from z15, `7–20`
-from z16, `>= 20` from z17, one bracketed pair of tests each. Liberty's italic face for them is
-taken as well — it is the one thing on the map that is not a road, and it should not read like one.
+**POIs come in by CATEGORY, which is MapTiler's model.** Standard's `poi-label` is built on
+`filterrank`, `sizerank` and `maki` — Mapbox's own tileset fields, none of which OpenMapTiles has —
+so its density gate, its size steps and its icon names all resolve to nothing here. MapTiler's
+OpenStreetMap style is built on the SAME schema and gates by category and zoom, which says something
+`rank` cannot: a museum matters before a bus stop. Its zooms, over the classes we have drawings for:
+cemetery at z14; cultural, attraction and shop at z15; food, education, outdoor, sport, health,
+worship and public at z16; transport and lodging at z17; waste and the small shops at z18.
+
+Fourteen layers, each an `in class` the converter splits into one bracketed rule per class, ordered
+least important first. Liberty's italic face for them is taken as well — it is the one thing on the
+map that is not a road, and it should not read like one.
 
 Their icons are **Maki**, the CC0 set both references descend from, vendored under `sprite-src/poi/`
 and renamed from Maki's hyphens to the OMT `class` they answer to (`art-gallery` → `art_gallery`),
@@ -116,13 +121,23 @@ with eight that do not line up mapped by hand — `rail` for `railway`, `toilet`
 rather than a ninety-branch table, which the converter resolves through one style parameter per
 sprite. A class with no drawing simply draws its label, which is what Liberty does too.
 
+**The icon sits on a disc, and ONE sprite carries every colour.** Each drawing is a white disc with
+a grey ring and a neutral glyph — three flats, which is what lets `extractIconPlate` split it: the
+glyph becomes a distance field the style tints (`shield-icon-fill`) and the disc becomes the label's
+icon plate, whose fill, ring and radius are style properties (`shield-icon-background-*`). Nothing
+is baked but the shape.
+
+The colours arrive as Mapbox Standard states them, as `icon-image` image params — `background`,
+`background-stroke`, `icon`. Those are GL v3 and MapLibre will not parse them, so they ride in
+`metadata` (`massif:layout`) and the plain `icon-image` beside them is what the reference pane draws:
+**the MapLibre row shows the neutral disc, the massif row the category colour.** That is the cost of
+one sprite, and the same trade the extrusion properties already make.
+
 **The ICON says what a POI is for; the label says nothing.** Transit `hsl(216, 60%, 50%)`, anything
 green and outdoors `hsl(126, 42%, 40%)`, care and emergency `hsl(0, 58%, 52%)`, everything else
 `hsl(203, 7%, 48%)` — MapTiler's categorical hues at a lightness that reads on a near-white
-background, over Mapbox Standard's neutral grey. The label is one colour throughout,
-`hsl(203, 7%, 40%)`, which is Standard's model: a categorical colour on a word is hard to read and
-harder to scan, and the glyph beside it already carries the category. The sheet is baked, so each
-drawing is re-cut in its group's colour rather than tinted per feature.
+background. The label is one colour throughout, `hsl(203, 7%, 40%)`: a categorical colour on a word
+is hard to read and harder to scan, and the glyph beside it already carries the category.
 
 **The name takes whichever side of the icon is free, and the icon stays when no side fits.**
 `text-variable-anchor: [bottom, right, left]` with `text-optional: true`, which the converter maps to

@@ -2294,20 +2294,264 @@
       }
     },
     {
-      "id": "poi-minor",
+      "id": "poi-waste",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 18,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "drinking_water",
+            "toilets",
+            "waste_basket"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-shop",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 18,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "alcohol_shop",
+            "bakery",
+            "beer",
+            "butcher",
+            "clothing_store",
+            "florist",
+            "furniture",
+            "gift",
+            "grocery",
+            "hairdresser",
+            "ice_cream",
+            "laundry",
+            "nightclub",
+            "shop",
+            "sushi",
+            "telephone"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-transport",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
       "minzoom": 17,
       "filter": [
-        "all",
+        "in",
         [
-          ">=",
+          "get",
+          "class"
+        ],
+        [
+          "literal",
           [
-            "get",
-            "rank"
-          ],
-          20
+            "aerialway",
+            "airfield",
+            "airport",
+            "bicycle",
+            "bicycle_rental",
+            "bus",
+            "car",
+            "ferry",
+            "fuel",
+            "harbor",
+            "heliport",
+            "parking",
+            "parking_garage",
+            "railway",
+            "railway_light",
+            "railway_metro"
+          ]
         ]
       ],
       "layout": {
@@ -2330,6 +2574,7 @@
             "class"
           ]
         ],
+        "icon-size": 0.6,
         "text-field": [
           "coalesce",
           [
@@ -2344,7 +2589,7 @@
         "text-font": [
           "Noto Sans Italic"
         ],
-        "text-size": 11,
+        "text-size": 12,
         "text-max-width": 9,
         "text-padding": 2,
         "text-variable-anchor": [
@@ -2353,38 +2598,186 @@
           "right"
         ],
         "text-radial-offset": 1.0,
-        "text-optional": true,
-        "text-justify": "auto"
+        "text-justify": "auto",
+        "text-optional": true
       },
       "paint": {
         "text-color": "hsl(203, 7%, 40%)",
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(216, 60%, 50%)"
+              }
+            }
+          ]
+        }
       }
     },
     {
-      "id": "poi-mid",
+      "id": "poi-lodging",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "alpine_hut",
+            "campsite",
+            "lodging",
+            "picnic_site",
+            "shelter"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-public",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
       "minzoom": 16,
       "filter": [
-        "all",
+        "in",
         [
-          ">=",
-          [
-            "get",
-            "rank"
-          ],
-          7
+          "get",
+          "class"
         ],
         [
-          "<",
+          "literal",
           [
-            "get",
-            "rank"
-          ],
-          20
+            "atm",
+            "bank",
+            "cinema",
+            "embassy",
+            "fire_station",
+            "information",
+            "library",
+            "music",
+            "police",
+            "post",
+            "prison",
+            "theatre",
+            "town_hall"
+          ]
         ]
       ],
       "layout": {
@@ -2407,6 +2800,7 @@
             "class"
           ]
         ],
+        "icon-size": 0.6,
         "text-field": [
           "coalesce",
           [
@@ -2430,30 +2824,728 @@
           "right"
         ],
         "text-radial-offset": 1.0,
-        "text-optional": true,
-        "text-justify": "auto"
+        "text-justify": "auto",
+        "text-optional": true
       },
       "paint": {
         "text-color": "hsl(203, 7%, 40%)",
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
       }
     },
     {
-      "id": "poi-major",
+      "id": "poi-sport",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "american_football",
+            "baseball",
+            "basketball",
+            "cricket",
+            "golf",
+            "pitch",
+            "skiing",
+            "soccer",
+            "stadium",
+            "swimming",
+            "tennis"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(126, 42%, 40%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-outdoor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "beach",
+            "dog_park",
+            "garden",
+            "mountain",
+            "park",
+            "playground",
+            "viewpoint",
+            "volcano",
+            "water",
+            "waterfall",
+            "wetland",
+            "zoo"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(126, 42%, 40%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-food",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "bar",
+            "cafe",
+            "fast_food",
+            "restaurant"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-education",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "college",
+            "school"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-worship",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "place_of_worship"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-health",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "dentist",
+            "doctors",
+            "hospital",
+            "pharmacy",
+            "veterinary"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(0, 58%, 52%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-cultural",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
       "minzoom": 15,
       "filter": [
-        "all",
+        "in",
         [
-          "<",
+          "get",
+          "class"
+        ],
+        [
+          "literal",
           [
-            "get",
-            "rank"
-          ],
-          7
+            "art_gallery",
+            "castle",
+            "monument",
+            "museum",
+            "ruins"
+          ]
         ]
       ],
       "layout": {
@@ -2476,6 +3568,7 @@
             "class"
           ]
         ],
+        "icon-size": 0.6,
         "text-field": [
           "coalesce",
           [
@@ -2499,13 +3592,256 @@
           "right"
         ],
         "text-radial-offset": 1.0,
-        "text-optional": true,
-        "text-justify": "auto"
+        "text-justify": "auto",
+        "text-optional": true
       },
       "paint": {
         "text-color": "hsl(203, 7%, 40%)",
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-attraction",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "attraction"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-cemetery",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "cemetery"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.6,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": "hsl(0, 0%, 100%)",
+                "background-stroke": "hsl(203, 10%, 82%)",
+                "icon": "hsl(203, 7%, 48%)"
+              }
+            }
+          ]
+        }
       }
     },
     {

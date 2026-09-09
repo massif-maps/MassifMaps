@@ -276,8 +276,12 @@ export function extractIcon(
 
 /** Alpha at which a texel counts as one of the icon's flat colours rather than an edge. */
 const FLAT_ALPHA = 200;
-/** How far in from the silhouette the ring is looked for, in texels. */
-const RING_DEPTH = 3;
+/**
+ * How far in from the silhouette the ring is looked for, in texels. A transit roundel's ring IS the
+ * mark and is drawn several texels thick, so a cap of 3 measured it as 3 and every roundel came out
+ * with a poi disc's hairline. Bounded all the same: past this the band is the disc, not a ring.
+ */
+const RING_DEPTH = 8;
 /** Where the plate fields are written, so they never collide with the raster cut of the same name. */
 const GLYPH_DIR = 'icons-glyph';
 

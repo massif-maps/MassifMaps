@@ -915,6 +915,17 @@ export function describeFlatPlate(sprites: SpriteSet, name: string): FlatPlate |
     while (inner < width / 2 && !same(at(x0 + inner, midY), fill)) inner++;
     if (inner >= width / 2) return null;
 
+    // The OUTER edge of a stroke is antialiased against nothing, so its last texels fall under
+    // FLAT_ALPHA and the box starts INSIDE them - a 1.3 px stroke measured 1.0 at ratio 2, its
+    // outermost 0.75 texel dropped. Alpha there IS coverage, so it is added back rather than
+    // rounded away. The inner edge needs no such thing: it meets the fill at full alpha.
+    let outer = 0;
+    for (let x = x0 - 1; x >= 0 && borderWidth > 0; x--) {
+        const texel = at(x, midY);
+        if (texel[3] === 0 || texel[3] >= FLAT_ALPHA || !same(texel, edge)) break;
+        outer += texel[3] / 255;
+    }
+
     // A rounded rectangle fills its box; a shield outline does not.
     if (area < 0.85 * width * height) return null;
     // A rounded rect of w by h with corner radius r loses (4 - pi) r^2 to its corners.
@@ -941,5 +952,5 @@ export function describeFlatPlate(sprites: SpriteSet, name: string): FlatPlate |
     }
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
-    return { fill: hex(fill), border: hex(border), borderWidth: borderWidth / ratio, radius: radiusTexels / ratio };
+    return { fill: hex(fill), border: hex(border), borderWidth: (borderWidth + outer) / ratio, radius: radiusTexels / ratio };
 }

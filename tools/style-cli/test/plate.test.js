@@ -103,3 +103,22 @@ test('the border and radius are reported in logical pixels', () => {
     assert.equal(found.borderWidth, atOne.borderWidth / 2);
     assert.equal(found.radius, atOne.radius / 2);
 });
+
+test('a stroke\'s antialiased outer texel counts toward the border width', () => {
+    // A rasteriser spreads a 1.3 px stroke over 2.75 texels, and the outermost falls under the
+    // alpha the opaque box is found with - so the walk starts INSIDE the stroke and measured 1.0
+    // where the artwork says 1.3. Alpha there is coverage, and is added back.
+    const partial = (x, y) => {
+        const base = plate()(x, y);
+        if (base === null) return null;
+        const edge = Math.min(x, y, WIDTH - 1 - x, HEIGHT - 1 - y);
+        // A rim at 75% coverage over a solid ring: 1.75 texels of border, of which the walk can
+        // only see the solid one, because the rim is under the alpha the box is found with.
+        if (edge === 0) return [BORDER[0], BORDER[1], BORDER[2], 191];
+        return edge === 1 ? BORDER : base;
+    };
+    const found = describeFlatPlate(sheetOf(partial), 'plate');
+    assert.equal(found.border, '#8d0b20');
+    assert.ok(found.borderWidth > 1.5 && found.borderWidth < 2,
+        `border measured as ${found.borderWidth}, expected the rim's coverage added to it`);
+});

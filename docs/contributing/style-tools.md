@@ -1300,6 +1300,20 @@ Making the casing ONE unsplit rule instead of seven looks like a free win and is
 2.5M geometry indices a frame against 5.2k, and 44 ms a frame against 32. Unexplained; do not
 retry it without a bench.
 
+## A plate's border is measured off the raster, ramp included
+
+`describeFlatPlate` reads a shield plate's fill, border and radius off the artwork, so the SDK can
+draw it with no sprite at all. The border is the run of border-coloured texels the middle row
+crosses, and that run starts at the OPAQUE box - which excludes the stroke's outermost texels,
+because a stroke is antialiased against nothing and they fall under `FLAT_ALPHA`.
+
+So the walk started inside the stroke: a 1.3 px stroke rendered at @2x spans 2.75 texels (one at
+alpha 192, two solid) and measured 2, a border a fifth thin against what maplibre draws from the
+same sprite. The alpha of those outer texels IS their coverage, and is added back.
+
+The inner edge needs no equivalent: a stroke meets the fill it covers at full alpha, and the
+colour step there is sharp.
+
 ## A style carries its own fonts
 
 `--fonts DIR` copies the faces in DIR into the project's `fonts/` and names them in project.json.

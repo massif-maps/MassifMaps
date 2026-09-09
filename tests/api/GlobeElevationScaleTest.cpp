@@ -36,6 +36,7 @@ namespace {
     // sphere's RADIUS in internal units, which is why it is not WORLD_SIZE.
     const double SPHERE_RADIUS = Const::WORLD_SIZE / Const::PI;
     const double EARTH_RADIUS = 6378137.0; // metres, TileTransformer's own constant
+    const double PI = 3.14159265358979323846;
 
     // Mont Blanc, the camera the globe's terrain was judged at.
     const vt::TileId TILE(13, 4265, 2929);
@@ -130,6 +131,59 @@ namespace {
                    "the internal frame is one tile-local unit apart - about 40x at zoom 13");
     }
 
+    /** uTerrainSphereTileUV, as GLTileRenderer::setupTerrainUniforms builds it. */
+    cglib::vec4<double> tileUV(const vt::TileId& tileId) {
+        double tileCount = static_cast<double>(1 << tileId.zoom);
+        double tileSizeRadians = 2 * PI / tileCount;
+        return cglib::vec4<double>((tileId.x / tileCount - 0.5) * 2 * PI,
+                                   ((tileCount - 1 - tileId.y) / tileCount - 0.5) * 2 * PI,
+                                   1.0 / tileSizeRadians, 1.0 / tileSizeRadians);
+    }
+
+    /** What terrainSphereTileUnit does in the shader, from a unit-sphere point. */
+    cglib::vec2<double> tileUnitOf(const vt::TileId& tileId, const cglib::vec3<double>& spherePoint) {
+        cglib::vec4<double> uv = tileUV(tileId);
+        double rz = std::max(-0.999999, std::min(0.999999, spherePoint(2) / cglib::length(spherePoint)));
+        double mercX = std::atan2(spherePoint(1), spherePoint(0)) - uv(0);
+        double mercY = 0.5 * std::log((1.0 + rz) / (1.0 - rz)) - uv(1);
+        mercX -= 2 * PI * std::floor(mercX / (2 * PI) + 0.5);
+        return cglib::vec2<double>(mercX * uv(2), mercY * uv(3));
+    }
+
+    /** The unit-sphere point under a tile position, through the transformer itself. */
+    cglib::vec3<double> spherePointAt(const vt::TileTransformer& t, const vt::TileId& tileId, float x, float y) {
+        return cglib::vec3<double>::convert(t.createTileVertexTransformer(tileId)->calculateNormal(cglib::vec2<float>(x, y)));
+    }
+
+    void testATileUnitIsRecoveredFromTheSphere() {
+        // The line clip discards a fragment outside [0, 1]: on the plane the vertex xy IS that
+        // square, on a sphere it is a curved position and the clip threw away every road.
+        std::shared_ptr<vt::SphericalTileTransformer> t = transformer();
+        cglib::vec2<double> corner00 = tileUnitOf(TILE, spherePointAt(*t, TILE, 0.0f, 1.0f));
+        cglib::vec2<double> corner11 = tileUnitOf(TILE, spherePointAt(*t, TILE, 1.0f, 0.0f));
+        cglib::vec2<double> centre = tileUnitOf(TILE, spherePointAt(*t, TILE, 0.5f, 0.5f));
+        TEST_CHECK(nearly(corner00(0), 0.0, 1.0e-4) && nearly(corner00(1), 0.0, 1.0e-4),
+                   "the tile's south-west corner is unit (0, 0)");
+        TEST_CHECK(nearly(corner11(0), 1.0, 1.0e-4) && nearly(corner11(1), 1.0, 1.0e-4),
+                   "... its north-east corner is unit (1, 1)");
+        TEST_CHECK(nearly(centre(0), 0.5, 1.0e-4) && nearly(centre(1), 0.5, 1.0e-4),
+                   "... and its centre is unit (0.5, 0.5)");
+
+        // A neighbour's road carried in this tile's buffer is what the clip is FOR.
+        cglib::vec2<double> neighbour = tileUnitOf(TILE, spherePointAt(*t, vt::TileId(TILE.zoom, TILE.x + 1, TILE.y), 0.5f, 0.5f));
+        TEST_CHECK(neighbour(0) > 1.0005, "a point in the tile to the east falls outside the clip");
+    }
+
+    void testTheTileUnitSurvivesTheAntimeridian() {
+        // atan2 recovers the longitude modulo 2pi, so the last tile of a row reads a whole world
+        // out without the wrap - the same trap the DEM node uv hit.
+        std::shared_ptr<vt::SphericalTileTransformer> t = transformer();
+        vt::TileId edge(TILE.zoom, (1 << TILE.zoom) - 1, TILE.y);
+        cglib::vec2<double> centre = tileUnitOf(edge, spherePointAt(*t, edge, 0.5f, 0.5f));
+        TEST_CHECK(nearly(centre(0), 0.5, 1.0e-4) && nearly(centre(1), 0.5, 1.0e-4),
+                   "the last tile of a row still reads its own centre as (0.5, 0.5)");
+    }
+
     void testTheScaleIsTheSameAtEveryZoom() {
         // In INTERNAL coordinates a metre is a metre, whatever tile is being drawn: the shared
         // ground spans tiles of several zooms in ONE mesh, so a zoom-dependent scale there would
@@ -153,4 +207,6 @@ void testGlobeElevationScale() {
     testOneMetreIsOneMetreInEveryFrame();
     testTheFramesReallyDoDiffer();
     testTheScaleIsTheSameAtEveryZoom();
+    testATileUnitIsRecoveredFromTheSphere();
+    testTheTileUnitSurvivesTheAntimeridian();
 }

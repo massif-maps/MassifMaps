@@ -9,9 +9,9 @@ sidebar_position: 18
 `Options.setRenderProjectionMode(RENDER_PROJECTION_MODE_SPHERICAL)` draws the map on a sphere
 instead of the Mercator plane. It arrived with CARTO's `feature/globe` and was carried unexercised
 for years. 2D tiled content, vector elements, the camera and the sky reach it and look right on a
-device. **3D terrain was visibly wrong on a device**; the two causes are found and fixed, and the
-re-check is owed - see the section below. Terrain shadows, picking on terrain and the camera rules
-over terrain are deliberately still planar-only.
+device. **3D terrain draws on it too** - the relief and its content, after the three fixes below;
+polygon fills are still shredded, which is the open one. Terrain shadows, picking on terrain and the
+camera rules over terrain are deliberately still planar-only.
 
 This page is the shared conventions and the traps. What is missing is at the bottom.
 
@@ -26,9 +26,10 @@ Terrain **decorates** a base rather than replacing it: both terrain classes take
 globe and add elevation to it, and every condition that used to refuse terrain on a globe is gone.
 `RENDER_PROJECTION_MODE_PLANAR` no longer appears in `MapRenderer` or `VectorLayer` at all.
 
-**Everything terrain does here is unverified on a screen.** 2D content, the sky and the limb have
-been seen on emulator-5554; the terrain fixes below have not. The gate is 3D terrain at a globe
-camera, plus a planar A/B to confirm none of this moved the shipping map.
+**Seen on emulator-5554** at Mont Blanc (z11 tilt 40, z13 tilt 60): 2D content, the sky, the limb,
+the terrain relief and its contours. **The planar A/B is still owed** - none of this has been
+checked against the shipping map, and the regular-grid path it uses is what the globe now steps
+around.
 
 ## What the two surfaces share
 
@@ -144,13 +145,17 @@ reused for every tile through that tile's matrix. A spherical tile matrix only s
 translates, so it cannot curve that square or orient it: each tile got a flat quad hung at its own
 origin. That is the quads, exactly.
 
-The grid is now PLANAR-only. The globe takes the per-tile surfaces instead, which is the path the
-rest of the spherical work was already built for: `SphericalTileTransformer` curves them,
-`TerrainTileTransformer` subdivides them for the relief on top of that, and `aVertexSkirt` only
-exists on that path — `buildRegularGridSurface` passes no skirts at all.
+The GEOMETRY is now planar-only, through `GLTileRenderer::terrainGridSurfaces()`. The globe takes
+the per-tile surfaces instead, which is the path the rest of the spherical work was already built
+for: `SphericalTileTransformer` curves them, `TerrainTileTransformer` subdivides them for the relief
+on top of that, and `aVertexSkirt` only exists on that path — `buildRegularGridSurface` passes no
+skirts at all.
 
-Turning the grid off on the globe also turns off, through the same flag, terrain shadow casting
-from the ground, the lattice clamp and edge stitching. All three were already out of scope there.
+Only the geometry changes. `_terrainRegularGrid` itself stays on, because tangram's PAINTER DEPTH
+MODEL hangs off the same flag — the first attempt turned the flag off in `TileRenderer` and put the
+renderer in the adaptive depth configuration while `MapRenderer` was still driving the shared
+ground. The lattice clamp, the edge stitching, ground shadow casting and the terrain paint follow
+the geometry (all four read the grid mesh, and all four were already out of scope on the globe).
 
 ### The flatness: a metre is not the same length in every vertex frame
 
@@ -168,23 +173,34 @@ zoom 13) for the shared ground, whose vertices are internal coordinates. It is
 three frames and checks the world point moves by one metre, and that one earth radius of height puts
 it twice as far from the planet's centre. The old formula fails four of its checks.
 
-### What the device says after both fixes
+### The lines: a tile clip that reads a curved xy as a unit square
 
-Seen on emulator-5554, Mont Blanc, the local French tiles: **the relief is there and the quads are
-gone**, at z11 tilt 40 and at z13. The two fixes above are confirmed on a screen.
+With the ground fixed, every LINE was still missing on the globe - contours, roads, labels - while
+the same camera with terrain off drew them all. `lineFsh` discards a fragment outside the target
+tile, from `vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset`, and `uTileUnitScale` is non-zero
+exactly when the tile HAS elevation. That affine form is the plane's: there tile-local xy IS the
+unit square, on a sphere it is a curved position, so the test threw away nearly every fragment.
 
-What is wrong now is the CONTENT over that ground, and it is a different bug:
+`vTileUnit` now comes from the same sphere inversion the DEM node uv uses -
+`terrainSphereTileUnit` against `uTerrainSphereTileUV`, the tile's own Mercator extent in RADIANS,
+antimeridian wrap included. `tests/api/GlobeElevationScaleTest.cpp` pins the corners, the centre, a
+neighbour's vertex landing outside, and the last tile of a row.
 
-- polygon fills are **shredded** - torn edges with the ground colour showing through, which is
-  content sinking below the surface and being depth-rejected;
-- **every line is missing** - contours, roads and labels alike.
+The clip is worth keeping rather than switching off on a sphere: heights would now agree between
+two tiles drawing the same road, but a semi-transparent line drawn twice still blends twice.
 
-The same camera with terrain OFF draws all of it correctly on the globe, so this is the terrain
-content path on a sphere, not the projection. The first suspect is the depth model's world-space
-terms - `_terrainDrawClearance * proj(2, 3)`, the decal polygon offset, the depth slack - because
-the spherical world is TWICE the planar scale (see "the two traps" above). A line is a decal that
-lives entirely on that clearance, which is why it disappears completely while a fill only loses the
-half of each triangle that sags.
+### What the device says
+
+emulator-5554, Mont Blanc, the local French tiles, z11 tilt 40 and z13: **the relief is there, the
+quads are gone and the contours are back**, following the terrain in perspective.
+
+Still wrong, and the next thing: **polygon fills are shredded** - torn edges with the ground colour
+through them, which is content sinking below the surface and being depth-rejected. The planar
+no-drape A/B at the same camera (`--es drape false`) is clean, so this is spherical, not the
+shared-ground content path in general. A fill is carried at SOURCE DENSITY on purpose (tangram's
+model - it is not subdivided, and the depth slack pays for the chord), so the first suspect is that
+slack: `TERRAIN_DEPTH_CLIP_SLACK` and `_terrainDrawClearance` are in WORLD units, and the spherical
+world is TWICE the planar scale (see "the two traps" above).
 
 Two further gaps seen at the same time, both already on the list rather than new: the camera sits
 INSIDE the mountain at z13 (camera clearance is planar-only, step 4), and there is no RTT drape on

@@ -74,6 +74,7 @@ namespace massif::vt {
         U_TERRAINSPHEREORIGIN,
         U_TERRAINSPHERESCALE,
         U_TERRAINSPHERENODEUV,
+        U_TERRAINSPHERETILEUV,
         U_ELEVATIONNODETEXELSIZE,
         U_TERRAINEDGECOARSENING,
         U_LAYERDEPTHOFFSET,
@@ -257,6 +258,7 @@ namespace massif::vt {
         { "uTerrainSphereOrigin",  U_TERRAINSPHEREORIGIN },
         { "uTerrainSphereScale",   U_TERRAINSPHERESCALE },
         { "uTerrainSphereNodeUV",  U_TERRAINSPHERENODEUV },
+        { "uTerrainSphereTileUV",  U_TERRAINSPHERETILEUV },
         { "uElevationNodeTexelSize", U_ELEVATIONNODETEXELSIZE },
         { "uTerrainEdgeCoarsening", U_TERRAINEDGECOARSENING },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
@@ -520,6 +522,9 @@ namespace massif::vt {
         // DEM node uv from INTERNAL Mercator coordinates: uv = (internal - xy) * zw. Tile-local xy
         // is a curved position on a sphere, so uElevationNodeUV's affine form cannot be used.
         uniform highp vec4 uTerrainSphereNodeUV;
+        // The TARGET tile's own unit square, from Mercator RADIANS: unit = (merc - xy) * zw. Same
+        // reason as above - uTileUnitScale's affine form reads a curved xy on a sphere.
+        uniform highp vec4 uTerrainSphereTileUV;
         #endif
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
         // The NODE texture: the same DEM box-filtered to the surface lattice, one texel per mesh node.
@@ -567,6 +572,13 @@ namespace massif::vt {
             highp float len = length(p);
             highp float rz = clamp(p.z / len, -0.999999, 0.999999);
             return vec2(atan(p.y, p.x), 0.5 * log((1.0 + rz) / (1.0 - rz)));
+        }
+        // Where a vertex sits in the TARGET tile, for the line clip. Same antimeridian wrap as the
+        // node uv: atan gives the longitude modulo 2pi and a tile never spans it.
+        highp vec2 terrainSphereTileUnit(highp vec3 pos) {
+            highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereTileUV.xy;
+            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
+            return merc * uTerrainSphereTileUV.zw;
         }
         #endif
         vec3 applyTerrain(vec3 pos) {
@@ -2039,7 +2051,11 @@ namespace massif::vt {
             // their quad tapers with distance, which is right, but grows without bound towards the
             // camera. The shrink factor is <= 1 by construction, so it cannot enlarge a quad.
             setTerrainSlopeVaryings(pos);
+        #ifdef TERRAIN_SPHERICAL
+            vTileUnit = terrainSphereTileUnit(pos);
+        #else
             vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
+        #endif
             highp vec3 centerPos = applyTerrain(pos);
         #ifdef SPAN
             // A degenerate pair is the builder saying this span was CLIPPED by the tile, so its

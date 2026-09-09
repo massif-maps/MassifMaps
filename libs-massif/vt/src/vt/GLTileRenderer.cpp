@@ -635,12 +635,20 @@ namespace massif::vt {
         }
     }
 
+    // The shared grid surface is a FLAT unit square, so only a plane can lay its ground with it: a
+    // spherical tile matrix cannot curve it, and each tile would get a quad hung at its own origin.
+    // The globe takes the per-tile surfaces instead. Only the GEOMETRY differs - the painter depth
+    // model keyed on _terrainRegularGrid is the same on both surfaces.
+    bool GLTileRenderer::terrainGridSurfaces() const {
+        return _terrainRegularGrid && !(_transformer && _transformer->isSpherical());
+    }
+
     int GLTileRenderer::renderShadowCasters(const std::vector<TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
+        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
             return 0;
         }
         int draws = 0;
@@ -1208,7 +1216,7 @@ namespace massif::vt {
         // interpolates the DEM between its own 2^k times wider lattice nodes, so the fine tile must
         // chord across the same nodes or the shared edge cracks open. That multiple caps k.
         _terrainEdgeCoarseningMap.clear();
-        if (!(_terrainEdgeStitching && _terrainRegularGrid)) {
+        if (!(_terrainEdgeStitching && terrainGridSurfaces())) {
             return;
         }
         const std::set<TileId>& tileIds = terrainSurfaceTileIds();
@@ -2195,7 +2203,7 @@ namespace massif::vt {
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
+        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
             return 0;
         }
         if (_terrainShadowTexture == 0 || _terrainShadowStrength <= 0.0f || !_terrainLighting.enabled) {
@@ -3983,7 +3991,7 @@ namespace massif::vt {
         // Not on a sphere: the clamp locates a cell from tile-local xy, which is a curved position
         // there and not the tile's unit square (docs/internals/rendering/18-globe.md).
         bool latticeNodes = (gridSurface && edgeCoarsening == cglib::vec4<float>(1, 1, 1, 1)) || _transformer->isSpherical();
-        if (_terrainRegularGrid && _terrainRegularGridResolution > 0 && _terrainDemTaps >= 16 && !latticeNodes) {
+        if (terrainGridSurfaces() && _terrainRegularGridResolution > 0 && _terrainDemTaps >= 16 && !latticeNodes) {
             double worldTileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
             float latticeCellX = static_cast<float>(worldTileSize * invNodeSizeX / _terrainRegularGridResolution);
             float latticeCellY = static_cast<float>(worldTileSize * invNodeSizeY / _terrainRegularGridResolution);
@@ -4016,6 +4024,15 @@ namespace massif::vt {
                 static_cast<float>(nodeOrigin(1) / internalPerRadian),
                 static_cast<float>(internalPerRadian * invNodeSizeX),
                 static_cast<float>(internalPerRadian * invNodeSizeY));
+            // The same for the TARGET tile, which the line clip tests against. Pure tile arithmetic:
+            // a zoom level spans 2pi of Mercator radians on both axes, y counted from the south.
+            double tileCount = static_cast<double>(1 << tileId.zoom);
+            double tileSizeRadians = 6.283185307179586 / tileCount;
+            glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERETILEUV],
+                static_cast<float>((tileId.x / tileCount - 0.5) * 6.283185307179586),
+                static_cast<float>(((tileCount - 1 - tileId.y) / tileCount - 0.5) * 6.283185307179586),
+                static_cast<float>(1.0 / tileSizeRadians),
+                static_cast<float>(1.0 / tileSizeRadians));
         }
 
         double frameScaleZ = (vertexFrameMatrix(2, 2) != 0 ? vertexFrameMatrix(2, 2) : 1.0);
@@ -4298,7 +4315,7 @@ namespace massif::vt {
         VT_STAT_CLOCK(maskClock);
         struct MaskTimer { std::chrono::steady_clock::time_point& c; ~MaskTimer() { VT_STAT_SPLIT(surfMaskNs, c); } } maskTimer { maskClock };
 #endif
-        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        bool gridMode = terrainGridSurfaces() && _terrainMode && static_cast<bool>(_terrainTextureProvider);
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
         for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
@@ -4398,7 +4415,7 @@ namespace massif::vt {
         // The displaced tile surface as a solid colour, or depth-only when transparent. Drawn UNDER
         // the style content with the per-draw depth bias: the pre-pass pushes it slightly back so
         // content passes over it at its real depth.
-        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        bool gridMode = terrainGridSurfaces() && _terrainMode && static_cast<bool>(_terrainTextureProvider);
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
         for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
@@ -4573,7 +4590,7 @@ namespace massif::vt {
         // With the paint AS the ground there is one draw per tile, not two: the paint carries this
         // colour as its base and shades it, as tangram's terrain raster does. The fill is then only
         // needed where the paint cannot draw, or the ground has a hole.
-        bool paintIsGround = _terrainPaintOnGround && _terrainPaint.enabled && _lightingShaderNormalMap && !_lightingShaderNormalMap->perVertex && _terrainRegularGrid && _terrainTextureProvider;
+        bool paintIsGround = _terrainPaintOnGround && _terrainPaint.enabled && _lightingShaderNormalMap && !_lightingShaderNormalMap->perVertex && terrainGridSurfaces() && _terrainTextureProvider;
 
         int surfaceDraws = 0;
         for (std::size_t i = 0; i < _terrainGroundTiles.size(); i++) {
@@ -5095,7 +5112,7 @@ namespace massif::vt {
         if (drapeTexture == 0) {
             return -1;
         }
-        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
+        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
             return -2; // the shared grid the drape UV depends on is not active
         }
         // renderTileSurfaceDrape reads the texture from the map; swap the external one in for the
@@ -5122,7 +5139,7 @@ namespace massif::vt {
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
+        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
             return -2;
         }
         // Stand-in for a tile whose drape texture is not baked yet: the SAME surface mesh, in the
@@ -5291,7 +5308,7 @@ namespace massif::vt {
         if (!_lightingShaderNormalMap || _lightingShaderNormalMap->perVertex || paintTiles.empty()) {
             return 0;
         }
-        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
+        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
             return 0; // the shared grid surface is what this draws
         }
 
@@ -5726,7 +5743,7 @@ namespace massif::vt {
             return -3;
         }
         int surfaces = 0;
-        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        bool gridMode = terrainGridSurfaces() && _terrainMode && static_cast<bool>(_terrainTextureProvider);
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
         for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
@@ -5784,7 +5801,7 @@ namespace massif::vt {
     void GLTileRenderer::renderTileWireframe(const TileId& tileId) {
         // Debug view: the tile surface triangle mesh as red edges, displaced exactly like
         // the rendered surfaces (same vertex buffers + terrain uniforms as the mask/background).
-        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        bool gridMode = terrainGridSurfaces() && _terrainMode && static_cast<bool>(_terrainTextureProvider);
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
         for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
@@ -5859,7 +5876,7 @@ namespace massif::vt {
             glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
 
-        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        bool gridMode = terrainGridSurfaces() && _terrainMode && static_cast<bool>(_terrainTextureProvider);
         cglib::mat4x4<double> surfaceFrame = calculateTileMatrix(tileId, 1.0f);
         unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider ? TERRAIN_VTF_FLAG : 0);
         const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
@@ -5918,7 +5935,7 @@ namespace massif::vt {
 
         bool flatDrape = (_drapeMVPOverride != nullptr);
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
-        bool gridMode = _terrainRegularGrid && terrainVTF;
+        bool gridMode = terrainGridSurfaces() && terrainVTF;
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
         // The bake is flat and orthographic: two triangles reproduce it exactly, and drawing the
         // displaced grid instead means tens of thousands of triangles per layer per tile - which
@@ -6013,7 +6030,7 @@ namespace massif::vt {
         // source-vs-target overzoom, so the bake frame is the plain target-tile square.
         bool flatDrape = (_drapeMVPOverride != nullptr);
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
-        bool gridMode = _terrainRegularGrid && terrainVTF;
+        bool gridMode = terrainGridSurfaces() && terrainVTF;
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(targetTileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
         // Two triangles for the flat bake; see renderTileBackground.
         for (const std::shared_ptr<TileSurface>& tileSurface : (flatDrape ? buildCompiledFlatSurfaces() : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(targetTileId)))) {

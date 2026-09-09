@@ -264,7 +264,7 @@ namespace massif {
         }
         tileRenderer->setTerrainTextureProvider(terrainTextureProvider);
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
-        tileRenderer->setTerrainRegularGrid(terrainMode && isPlanarProjectionMode() && (bool) terrainTextureProvider,
+        tileRenderer->setTerrainRegularGrid(terrainMode && (bool) terrainTextureProvider,
                                             activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
     }
 
@@ -1021,10 +1021,7 @@ namespace massif {
         // Tangram's model: one shared grid surface reused for every tile, and painter-order depth
         // on top of it (the surface is the bottom painter layer, no occluder pre-pass, no slack).
         // Needs GPU draping - a GPU without vertex texture fetch falls back to adaptive tesselation.
-        // PLANAR only: that shared surface is a FLAT unit square, so on a globe it lays a tile-sized
-        // quad at each tile's origin instead of curving with the sphere. The globe takes the per-tile
-        // surfaces, which the spherical transformer curves and subdivides for the relief as well.
-        bool regularGrid = terrainMode && activeTerrainOptions && isPlanarProjectionMode() && (bool) terrainTextureProvider;
+        bool regularGrid = terrainMode && activeTerrainOptions && (bool) terrainTextureProvider;
         tileRenderer->setTerrainRegularGrid(regularGrid, activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
         // Maplibre-style RTT draping. It requires the shared regular grid: the drape UV is the
         // grid's tile-local [0,1] vertex position, which only the regular grid provides.

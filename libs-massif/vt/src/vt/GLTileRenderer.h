@@ -714,6 +714,7 @@ namespace massif::vt {
         void blendScreenTexture(float opacity, GLuint texture);
         void updateTerrainSkirts();
         const std::pair<bool, TerrainTexture>& resolveTerrainTexture(const TileId& tileId) const;
+        bool terrainGridSurfaces() const;
         bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface = false);
         // The tile set the terrain SURFACES are drawn from this frame, which is not the renderer's own
         // visible tiles as soon as a cover is handed in. Edge stitching has to follow the DRAWN cover,

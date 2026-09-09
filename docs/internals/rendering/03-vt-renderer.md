@@ -436,6 +436,14 @@ view state (`_colorFuncCache` and friends, with `styleFuncLookups`/`styleFuncMis
 - Client-side vertex arrays and bound VBOs are a cross-renderer hazard: the terrain paint pass once
   left `GL_ARRAY_BUFFER` bound and `SkyRenderer`, which draws from a client array, turned its quad
   into an offset into that buffer — the sky went black. **Unbind after every draw loop.**
+- **State the shared ground needs is pushed in `prepareFrame`, not `onDrawFrame`.** `MapRenderer`
+  draws the cross-layer terrain ground BEFORE any layer's `onDrawFrame` runs, so anything
+  `renderDrapedSurface` reads has to be set earlier - that is what `TileRenderer::prepareFrame`
+  already does for the view state, the lighting and the ground AO. `terrainMode`, the regular grid
+  and the elevation texture provider were missing from it, and `renderDrapedSurface` returns `-2`
+  without all three: on the first frame of a 2D->3D switch every surface bailed and the map drew
+  with NO ground - sky through it, buildings still there, one frame. `pushTerrainDrapeState` sends
+  them early; `onDrawFrame` still sends the authoritative values later in the same frame.
 - **A VAO belongs to ONE program.** `CompiledGeometry` keeps a VAO per program, built on first use.
   A VAO records pointers per attribute INDEX, and one geometry is drawn by several programs whose
   locations need not match — the main pass and the sun caster, or the `TERRAIN` and flat variants of

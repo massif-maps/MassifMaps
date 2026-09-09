@@ -240,6 +240,35 @@ Two further gaps seen at the same time, both already on the list rather than new
 INSIDE the mountain at z13 (camera clearance is planar-only, step 4), and there is no RTT drape on
 the globe by design (`MapRenderer` forces it off - the bake maps a tile's unit square).
 
+### Labels: sized in screen space, and in the globe's own world
+
+Two faults, one after the other. The constant-on-screen-size rule and the pixel-grid snap were
+gated behind `vt::ViewState::planarProjection`, so on the globe labels fell back to scaling with
+the perspective divide - they grew and shrank as you zoomed. Both corrections are pure screen space
+(view depth over focus depth; a snap in NDC), so nothing in them needs a flat world and the flag is
+gone.
+
+That exposed the second: a label's world size is `2^-zoom` scaled by vt's own `_scale`, which
+`VTRenderer` sets to `Const::WORLD_SIZE`. The globe's world is twice as wide, so every label came
+out half size. `vt::ViewState::zoomScale` now carries `ViewState::worldPerInternal()` at all five
+construction sites, the culler's included - its envelopes have to match the glyphs that are drawn.
+
+### The tile LOD measured a meaningless area
+
+Tiles refined far too late on the globe: you had to be nearly on top of one. Tangram's rule
+(`TileLayer::calculateVisibleTilesRecursive`) projects the four corners `(0,0)...(1,1)` through the
+tile MATRIX and compares the enclosed screen area - but that matrix only scales and translates, so
+on a sphere those points land off the surface entirely. The corners go through
+`createTileVertexTransformer()->calculatePoint()` now, which is the same unit square on a plane.
+The rule's other planar assumptions went with it: the LOD elevation is applied through
+`calculateElevatedPos` (radial on a sphere), the incidence cosine measures against the tile's own
+normal rather than the z axis, and the two view-distance limits convert metres through the
+surface's own world width.
+
+**This is the third fault of one family**, after the camera distance and the tile extents: a length
+in WORLD units compared against a planar constant. Anything that feels off by exactly 2x, or by one
+zoom level, on the globe is worth looking at with that in mind.
+
 ## Two things worth knowing about the spherical shader path
 
 **A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the

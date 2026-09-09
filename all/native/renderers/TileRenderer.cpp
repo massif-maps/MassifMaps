@@ -311,7 +311,9 @@ namespace massif {
         // a pan and snaps into place when the motion stops.
         cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
-        prepareViewState.planarProjection = isPlanarProjectionMode();
+        // A label's world size is 2^-zoom of the WORLD, and vt scales it by the planar
+        // Const::WORLD_SIZE: the globe's own world is twice as wide, or labels come out half size.
+        prepareViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         prepareViewState.lightBrightness = _resolvedBrightness;
         tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
@@ -822,7 +824,7 @@ namespace massif {
 
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
-        vtViewState.planarProjection = isPlanarProjectionMode(); // labels rescale by view depth, so neither terrain elevation nor a tilt blows up their screen size
+        vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
         tileRenderer->setViewState(vtViewState);
@@ -1252,7 +1254,7 @@ namespace massif {
         }
         vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
-        cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
+        cullViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
         culler.setViewState(cullViewState);
@@ -1388,6 +1390,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         vtViewState.lightBrightness = brightness;
         return Color(colorFunc(vtViewState).value());
     }
@@ -1401,6 +1404,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
     float TileRenderer::evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness) {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         vtViewState.lightBrightness = brightness;
         return floatFunc(vtViewState);
     }

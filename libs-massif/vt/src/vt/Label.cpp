@@ -577,12 +577,10 @@ namespace massif::vt {
     }
 
     float Label::calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const {
-        // In a planar projection labels keep a CONSTANT ON-SCREEN SIZE (tangram-style): the world size
-        // comes from the zoom alone, so the perspective divide would scale them by distance. Rescale by
-        // view depth over the camera-to-focus distance, which cancels it exactly.
-        if (!viewState.planarProjection) {
-            return 1.0f;
-        }
+        // Labels keep a CONSTANT ON-SCREEN SIZE (tangram-style): the world size comes from the zoom
+        // alone, so the perspective divide would scale them by distance. Rescale by view depth over
+        // the camera-to-focus distance, which cancels it exactly - a screen-space correction, so it
+        // holds on a globe as much as on a plane.
         cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(viewState.orientation[2]);
         double depth = cglib::dot_product(position - viewState.origin, viewDir);
         if (!(depth > 0)) {
@@ -1535,7 +1533,7 @@ namespace massif::vt {
 
     void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const {
         cglib::vec3<double> position = placement->position;
-        if (viewState.planarProjection && !isLineRun() && viewState.resolution > 0) {
+        if (!isLineRun() && viewState.resolution > 0) {
             // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
             // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
             // shimmer-free (tangram-style screen-space anchoring)

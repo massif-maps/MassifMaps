@@ -8,8 +8,9 @@ sidebar_position: 18
 
 `Options.setRenderProjectionMode(RENDER_PROJECTION_MODE_SPHERICAL)` draws the map on a sphere
 instead of the Mercator plane. It arrived with CARTO's `feature/globe` and was carried unexercised
-for years. 2D tiled content, vector elements, the camera, the sky and now 3D terrain all reach it;
-**terrain shadows, picking on terrain, and the camera rules over terrain do not**.
+for years. 2D tiled content, vector elements, the camera and the sky reach it and look right on a
+device. **3D terrain reaches it and is visibly wrong** - see the section below. Terrain shadows,
+picking on terrain and the camera rules over terrain are deliberately still planar-only.
 
 This page is the shared conventions and the traps. What is missing is at the bottom.
 
@@ -125,6 +126,60 @@ suite before the one that depends on it.
 Spans, bridges and 3D extrusions are **not** in that list. They carry their own anchor and chord
 machinery built around a flat frame ([3D bridges](17-bridges.md)) and will be wrong on the globe
 until they are done separately.
+
+## Terrain on the globe is WRONG on a device - start here
+
+Everything below the "what is missing" list is implemented and host-tested, and the globe draws 2D
+content correctly. **3D terrain on the globe does not work yet**, seen on emulator-5554 at Mont
+Blanc, zoom 13, tilted, with Mapbox Standard:
+
+- the terrain surface is **flat** - no relief at all;
+- **large tile-sized quads float in the sky** at assorted angles, which is geometry landing in the
+  wrong place rather than displacement being off.
+
+Do not start by editing. The whole question is which frame `aVertexPosition` is in, and one logged
+number settles it.
+
+### The number that settles it
+
+A spherical tile-local unit is `EARTH_RADIUS / 2 ^ zoom` metres - **778 m at zoom 13** - and a tile
+spans about `2 * pi` of them (about 4.9 km at z13, which is a z13 tile). So 4000 m of relief must
+come out as **about 5.1 tile-local units**.
+
+`GLTileRenderer::setupTerrainUniforms` currently uploads, for a sphere:
+
+```cpp
+double localPerMeter = ...->calculateHeight(centre, 1.0f);   // tile-local per metre
+glUniform4f(..., localPerMeter / frameScaleZ, 0.0f, 0.0f, 0.0f);
+```
+
+The planar line beside it divides by `frameScaleZ` because its `metersToInternal` is in INTERNAL
+units and the division converts internal to frame. `calculateHeight` already returns **tile-local**,
+so if the vertex frame is tile-local the division is a second conversion and the displacement is
+about 40x too small at z13 - 0.126 units instead of 5.1, which reads as flat.
+
+It is NOT obviously wrong, which is why this needs measuring rather than editing:
+`TileSurfaceBuilder::buildTileGeometry` stores `coords3D` as
+`transform_point(calculatePoint(...), matrix)`, already matrix-transformed. If the vertex frame is
+the matrix frame then the division is right and the fault is elsewhere.
+
+**Log `uElevationScale.x`, `frameScaleZ` and `vertexFrameMatrix` for one z13 tile and compare
+against 778 m per unit.** That distinguishes the two readings in one frame.
+
+### The floating quads are probably a separate bug
+
+Most likely the skirts: `aVertexSkirt` is new, and the spherical branch of `applyTerrain` displaces
+by `(z - aVertexSkirt)`. A drop in the wrong units flings exactly these tile-shaped slabs off the
+surface. The same probe answers it - log the attribute alongside the scale.
+
+### Two traps that cost measurements already
+
+- **Terrain's default `minZoom` is 5**, and `BenchActivity` parks the camera at zoom 3.43 whatever
+  `--es zoom` says. Every frame captured below zoom 5 shows `0 ground draws`, which is correct
+  behaviour and says nothing. Drive the camera by hand with `--es ui true`.
+- The `neither the RTT drape nor a shared ground is active` line is behind a `static bool` and is
+  logged **once per process**. It can be a stale first frame; the periodic
+  `shared terrain ground - N layers, N cover tiles ... N ground draws` line is the live one.
 
 ## Two things worth knowing about the spherical shader path
 

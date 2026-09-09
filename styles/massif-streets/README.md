@@ -42,6 +42,28 @@ CartoCSS have it. So the source of truth carries `road-casing` under `road-fill`
 filter, zoom range and joins, and `--fold-casings` merges them into one `line-border-*` rule. It
 refuses to fold a dashed casing, which is the case that has to stay two layers anyway.
 
+## Where this style departs from the references
+
+The preview compares against OpenFreeMap Liberty and Mapbox Standard, and most of what differs
+between them and us is a bug on our side. This list is the opposite: the places where we have
+looked at what they do and **decided against it**. Add to it rather than quietly re-converging.
+
+### A POI wins a collision against a road shield
+
+Both references give it to the shield. Symbol placement runs in REVERSE layer order — maplibre's
+`pauseable_placement.ts` walks the style's layers from the last to the first, and whoever is placed
+first claims the slot — so Liberty's shields (layers 98–100) beat its POIs (91–94). The SDK does the
+same by the opposite arithmetic: the converter numbers `text-placement-priority` up with the layer
+index and `LabelCuller` sorts it down, so the later layer still wins.
+
+We want the POI. A shield repeats along its road and can be read a hundred metres further on; a POI
+is one place and is either drawn or lost. So **the POI layers go BELOW the shield layers** in
+`style.json` — later in the array is a higher index, a higher priority, and placement first.
+
+Not implemented: this style has no POI layers yet. It is written down here because the ordering is
+invisible in the output — nothing in the generated CartoCSS says "this was deliberate" — and the
+natural thing to do when adding POIs is to copy Liberty's order and inherit its answer.
+
 ## Written so the CartoCSS brackets
 
 A CartoCSS `when(...)` is evaluated per feature and the compiler cannot prune around it, so this

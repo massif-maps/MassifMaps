@@ -305,6 +305,34 @@ test('buildings get a style parameter, so an app can drop the 3D pass', () => {
     assert.equal(JSON.parse(project).styleparameters.buildings, 2, 'defaults to what the source drew');
 });
 
+test("an extrusion's opacity is the STYLE's, carried as a parameter", () => {
+    // maplibre draws Liberty's buildings at 0.8, which blends a fifth of the pale background back
+    // through every wall - a good part of why ours read darker. Forcing it to 1 threw that away.
+    const { mss, project } = convert({ layers: [
+        { id: 'b3d', type: 'fill-extrusion', 'source-layer': 'building',
+            paint: { 'fill-extrusion-color': '#ddd', 'fill-extrusion-height': 10,
+                'fill-extrusion-opacity': 0.8 } },
+    ] }, TABLE, { variables: false });
+
+    assert.match(mss, /building-fill-opacity: \[param::building_opacity\];/);
+    assert.equal(JSON.parse(project).styleparameters.building_opacity, 0.8);
+});
+
+test('a ramped opacity still flattens, and its last stop is what the parameter holds', () => {
+    // Standard fades an extrusion in by ramping opacity alongside the height. The shadow map is
+    // drawn at the building's FULL cast whatever its alpha, so a half-transparent wall shows the
+    // shadow it is itself casting - the height ramp alone is the better fade.
+    const { mss, project } = convert({ layers: [
+        { id: 'b3d', type: 'fill-extrusion', 'source-layer': 'building',
+            paint: { 'fill-extrusion-color': '#ddd', 'fill-extrusion-height': 10,
+                'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.3, 1] } },
+    ] }, TABLE, { variables: false });
+
+    assert.match(mss, /building-fill-opacity: \[param::building_opacity\];/);
+    assert.equal(JSON.parse(project).styleparameters.building_opacity, 1,
+        'a converted Standard is left opaque, as it was before the parameter existed');
+});
+
 test('a style with no buildings declares no such parameter', () => {
     const { project } = convert({ layers: [
         { id: 'w', type: 'fill', 'source-layer': 'water', paint: { 'fill-color': '#a0c8f0' } }] },

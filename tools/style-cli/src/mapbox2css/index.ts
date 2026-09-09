@@ -673,8 +673,24 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
         const paramised = paramiseValues(layer, options, coverage);
-        const source = symbolizer === 'building' ? flattenExtrusionOpacity(paramised.layer, coverage) : paramised.layer;
-        let declarations = layerDeclarations(source, symbolizer, allowed, coverage, options, layerIndex);
+        const extrusion = symbolizer === 'building'
+            ? flattenExtrusionOpacity(paramised.layer) : { layer: paramised.layer, opacity: null };
+        let declarations = layerDeclarations(extrusion.layer, symbolizer, allowed, coverage, options, layerIndex);
+        // The style's own opacity, as a parameter rather than a literal - see flattenExtrusionOpacity.
+        if (extrusion.opacity !== null) {
+            const stated = options.styleParams!.get(OPACITY_PARAM);
+            // One parameter for every extrusion, so a style asking for two different alphas gets the
+            // first of them everywhere. No source style does; say so rather than pick silently.
+            if (typeof stated === 'number' && stated !== extrusion.opacity) {
+                coverage.approximate(`"${layer.id}" asks for fill-extrusion-opacity ${extrusion.opacity} `
+                    + `where another extrusion asks for ${stated}: both draw at ${stated}, the `
+                    + `${OPACITY_PARAM} parameter being one knob for all of them`);
+            } else {
+                options.styleParams!.set(OPACITY_PARAM, extrusion.opacity);
+            }
+            declarations = declarations.map((declaration) => (declaration.startsWith('building-fill-opacity:')
+                ? `building-fill-opacity: [param::${OPACITY_PARAM}];` : declaration));
+        }
         if (paramised.subs.size > 0) {
             declarations = declarations.map((declaration) => {
                 for (const [sentinel, lookup] of paramised.subs) declaration = declaration.split(sentinel).join(lookup);
@@ -1007,34 +1023,39 @@ function rampLikeGroundAO(intensity: Json, layer: MapboxLayer): Json {
 }
 
 /**
- * A 3D building's OPACITY, taken as a constant.
+ * A 3D building's OPACITY, taken as a constant and carried as a STYLE PARAMETER.
  *
  * Standard fades an extrusion in by ramping `fill-extrusion-opacity` alongside its height. We draw
  * the shadow map from the buildings at their FULL cast whatever their alpha, so during the fade the
  * shadows are already at full strength and visible straight THROUGH the half-transparent walls that
  * cast them. The height ramp alone is the better fade: a building grows out of the ground opaque,
- * and its shadow grows with it.
+ * and its shadow grows with it. So the ramp is flattened to one number.
+ *
+ * That number is the style's, not ours. It used to be forced to 1 - the 3D pass draws with blending
+ * off, and MapTiler's 0.4 turned a city into a wash of half-buildings showing through each other -
+ * but forcing it also threw away what the style meant by it: maplibre draws Liberty's buildings at
+ * 0.8, which blends a fifth of the pale background back through every wall and is a good part of
+ * why ours read darker than the browser's. A parameter states the style's value and lets an app
+ * take it back to 1 as a redraw rather than a re-decode.
  */
-function flattenExtrusionOpacity(layer: MapboxLayer, coverage?: Coverage): MapboxLayer {
+function flattenExtrusionOpacity(layer: MapboxLayer): { layer: MapboxLayer; opacity: number | null } {
     const opacity = layer.paint?.['fill-extrusion-opacity'];
     let value: Json | undefined = opacity as Json | undefined;
     if (Array.isArray(opacity) && opacity[0] === 'interpolate') {
         const constant = representativeConstant(opacity as Json);
-        if (constant === null) return layer;
+        if (constant === null) return { layer, opacity: null };
         value = constant;
     }
-    // A TRANSLUCENT extrusion is not something this renderer can draw. Its 3D pass runs with
-    // blending off and depth writes on - one opaque surface per pixel - so a fractional alpha is
-    // not composited, it is written straight into the frame: MapTiler's 0.4 turned a city into a
-    // wash of half-buildings showing through each other. Opaque is the closer answer of the two.
-    if (typeof value === 'number' && value < 1) {
-        coverage?.approximate(`fill-extrusion-opacity ${value} on "${layer.id}" drawn opaque: `
-            + 'the 3D pass has no translucent path, and a fractional alpha reads as a wash');
-        value = 1;
-    }
-    if (value === opacity || value === undefined) return layer;
-    return { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': value } };
+    if (typeof value !== 'number') return { layer, opacity: null };
+    const clamped = Math.min(1, Math.max(0, value));
+    return {
+        layer: value === opacity ? layer : { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': clamped } },
+        opacity: clamped,
+    };
 }
+
+/** The style parameter a converted extrusion's opacity is carried as. */
+const OPACITY_PARAM = 'building_opacity';
 
 function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean): string[] {
     const out: string[] = [];

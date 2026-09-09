@@ -432,6 +432,23 @@ It defaults to `2`, so a converted style keeps drawing what its source drew unti
 otherwise — and an app that cannot afford the 3D pass on a given device turns it off with one
 parameter instead of editing the CartoCSS. A style with no buildings declares nothing.
 
+### …and their opacity is the style's, as a parameter
+
+`fill-extrusion-opacity` becomes `building-fill-opacity: [param::building_opacity]`, with the
+style's own value as the default. It used to be forced to **1**, because the 3D pass draws with
+blending off and MapTiler's `0.4` turned a city into a wash of half-buildings showing through each
+other. But forcing it also threw away what the style meant: maplibre draws OpenFreeMap Liberty's
+buildings at `0.8`, blending a fifth of the pale background back through every wall, and that is a
+good part of why ours read darker than the browser's.
+
+A ramped opacity still flattens to one number — Standard fades an extrusion in by ramping it
+alongside the height, and the shadow map is drawn from the building's **full** cast whatever its
+alpha, so a half-transparent wall shows the shadow it is itself casting. The height ramp alone is
+the better fade. Standard's ramp ends at 1, so a converted Standard is opaque exactly as before.
+
+One parameter covers every extrusion in the style. A style asking for two different alphas keeps the
+first and the coverage report says so; no source style does this.
+
 ## A recolourable icon: the glyph is a field, the disc is a plate
 
 Mapbox Standard names its POI and transit icons `["image", <name>, { params: { background,

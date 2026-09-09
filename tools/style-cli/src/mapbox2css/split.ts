@@ -1,4 +1,6 @@
 import type { Coverage } from './coverage.js';
+import { translateFilter } from './filter.js';
+import { closedSets, narrowLayer } from './narrow.js';
 import type { Json, MapboxLayer } from './types.js';
 
 /**
@@ -204,6 +206,62 @@ export function expandSortKey(layer: MapboxLayer, coverage: Coverage): MapboxLay
 }
 
 const SORT_KEY = 'line-sort-key';
+
+/**
+ * A layer whose filter pins a field to a set AND whose paint branches on that same field, as one
+ * attachment per value. The set test cannot bracket - it is a disjunction - so left whole it is a
+ * when() the decoder evaluates per feature, and the paint chain re-tests the field it just passed.
+ * Split, each attachment is one bracketed test and a constant (narrow.ts does the folding).
+ *
+ * Only when the paint branches: a set test over a layer that paints one way throughout has nothing
+ * to fold, and N rules for it would cost more than the one when() it saves.
+ */
+export function expandSetFilter(layer: MapboxLayer): MapboxLayer[] {
+    for (const { field, values } of closedSets(layer.filter as Json | undefined)) {
+        if (values.length > MAX_VARIANTS || !branchesOn(layer, field)) continue;
+        const expanded = values.map((value) => narrowLayer({
+            ...layer,
+            filter: mergeFilter(layer.filter, ['==', field, value] as unknown as Json),
+        }));
+        // Splitting COPIES the rest of the filter into every attachment, so it only pays when that
+        // rest brackets: otherwise the one when() it removes comes back N times. Measured on
+        // MapTiler topo-v4, which is full of layers testing a class set AND something else.
+        if (expanded.every((variant) => brackets(variant.filter as Json | undefined))) return expanded;
+    }
+    return [layer];
+}
+
+function brackets(filter: Json | undefined): boolean {
+    if (filter === undefined || filter === null) return true;
+    try {
+        return !translateFilter(filter).some((predicate) => predicate.startsWith('when('));
+    } catch {
+        return false;
+    }
+}
+
+/** Does any paint or layout value pick a branch by this field? */
+function branchesOn(layer: MapboxLayer, field: string): boolean {
+    return Object.values({ ...layer.layout, ...layer.paint })
+        .some((value) => selectsOn(value as Json, field));
+}
+
+function selectsOn(value: Json, field: string): boolean {
+    if (!Array.isArray(value)) return false;
+    if (value[0] === 'match' && readsField(value[1] as Json, field)) return true;
+    if (value[0] === 'case') {
+        for (let i = 1; i + 1 < value.length; i += 2) {
+            if (readsField(value[i] as Json, field)) return true;
+        }
+    }
+    return value.some((item) => selectsOn(item as Json, field));
+}
+
+function readsField(value: Json, field: string): boolean {
+    if (!Array.isArray(value)) return false;
+    if (value[0] === 'get' && value[1] === field) return true;
+    return value.some((item) => readsField(item as Json, field));
+}
 
 /**
  * A sprite name that changes with ZOOM (`{stops: [[6, 'circle'], [12, ' ']]}`) cannot interpolate -

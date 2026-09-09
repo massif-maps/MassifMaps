@@ -8,7 +8,8 @@ import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './propert
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
 import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
 import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
-import { collapseBranches, expandSortKey, splitLayer } from './split.js';
+import { narrowLayer } from './narrow.js';
+import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
 import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer } from './fold.js';
@@ -532,7 +533,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             // A field-driven paint value becomes one attachment per branch, and a line-sort-key one
             // per key value in draw order - see split.ts.
             const variants = expandSortKey(isContourLayer(layer) ? retargeted : schemaLayer, coverage)
-                .flatMap((ordered) => splitLayer(ordered, coverage));
+                .flatMap(expandSetFilter)
+                .flatMap((ordered) => splitLayer(ordered, coverage))
+                .map(narrowLayer);
             variants.forEach((variant, branch) => {
                 const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
                 emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, target, symbolizer, index);

@@ -1,4 +1,5 @@
 import { Untranslatable, conjunction, translateExpression, zoomOffsetLevels } from './expression.js';
+import { negatedSet } from './narrow.js';
 import type { Json } from './types.js';
 
 const LEGACY_COMPARISON: Record<string, string> = {
@@ -30,7 +31,22 @@ export function translateFilter(filter: Json): string[] {
     }
 
     const bracketed = translateBracketed(filter as Json[]);
-    return [bracketed ?? `when(${filterExpression(filter)})`];
+    if (bracketed !== null) return [bracketed];
+
+    // "None of these" is a conjunction, so it brackets one test per value and the compiler keeps
+    // its grip on the rule. The positive set test is a disjunction and has no bracketed form.
+    const excluded = translateExcluded(filter);
+    return excluded ?? [`when(${filterExpression(filter)})`];
+}
+
+function translateExcluded(filter: Json): string[] | null {
+    const clause = negatedSet(filter);
+    if (clause === null) return null;
+    const tests = clause.values.map((v) => {
+        const value = expressionConstant(clause.field, v);
+        return value === null ? null : `[${predicateKey(clause.field)} != ${value}]`;
+    });
+    return tests.every((test) => test !== null) ? (tests as string[]) : null;
 }
 
 /**

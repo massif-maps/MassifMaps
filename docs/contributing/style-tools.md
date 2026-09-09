@@ -1231,6 +1231,48 @@ as a filter it is just the or-chain, and a one-label match is an equality that b
 Measured on MapTiler topo-v4: **389 `when()` down to 191**, all 91 `? true : false` wrappers gone,
 declarations byte-identical, and 0.06% of pixels different at La Clusaz z14.5 (label jitter).
 
+### What makes a `when()` cost more than a rule
+
+The compiler, not just the decoder. `PredicateContainsChecker` and `PredicateIntersectsChecker`
+(`libs-massif/cartocss/src/cartocss/PredicateUtils.h`) compare two `OpPredicate`s and can say one
+implies or contradicts the other, so contradictory rules are dropped and redundant tests fold away.
+Against a `WhenPredicate` they return `boost::indeterminate` — every rule survives, and the whole
+expression is evaluated per feature at decode. So `when()` is a last resort, and where a style
+forces one, change the STYLE.
+
+### Narrowing: a rule that pins a field should say so once
+
+`narrow.ts` reads a layer's own filter for what it proves — `field = value`, `field ≠ value`, and
+the closed set an `in` states — and then restates both the filter and every property value against
+it. Three things fall out:
+
+- **A closed set minus its exclusions is an equality.** The fallback branch of an expanded `match`
+  arrives as "one of these seven, and none of the other six", which is `[class = 'service']`.
+- **The set test and the negations drop**, because the equality that replaces them implies each.
+  Only equalities may retire a clause: the exclusions were read off those very clauses, so letting
+  them judge had every `[subclass != 'junction']` prove itself and vanish.
+- **`match` and `case` in a VALUE take their branch.** A `line-width` that was a three-stop
+  exponential with a six-deep class ternary at each stop becomes
+  `exponential(1.5, [view::zoom], (5, 0.6), (14, 3.5), (18, 13))` — no feature read at all.
+
+`coalesce` is seen through, since a missing field already compares unequal
+(`mapnikvt/Predicate.cpp`: `NEQ` on a type mismatch is `MismatchResult = true`, `EQ` is false) — but
+**not** when a value compared against it is one of the guard's own defaults, where
+`coalesce(f, '') = ''` is true for a missing field and `f = ''` is not.
+
+### Splitting a set filter, and when it backfires
+
+A positive set test is a disjunction, so it has no bracketed form; a NEGATED one is a conjunction
+and brackets one test per value. `expandSetFilter` turns the positive case into one attachment per
+value — but only when the paint actually branches on that field (otherwise there is nothing to fold
+and N rules cost more than the one `when()`), and only when the REST of the filter brackets.
+Splitting copies the rest into every attachment, so without that second gate the one `when()` it
+removes comes back N times: MapTiler topo-v4 went 142 → **239** before the gate, 134 after.
+
+Across the reference styles, `when()` before → after: mapbox-standard 221 → 146, MapTiler
+openstreetmap 119 → 52, streets-v4 220 → 204, outdoor-v4 152 → 143, topo-v4 142 → 134, and
+ofm-liberty 73 → 73 (legacy filters, no branching paint — nothing to fold).
+
 ## A fill's outline
 
 `fill-outline-color` has no polygon property to land on, so it becomes a second symbolizer — a line
@@ -1316,6 +1358,12 @@ up: OpenMapTiles promotes a road's class as the zoom drops. `D 106B` is `minor` 
 `secondary` in the z12 one, so a gate letting `secondary` through at z11 still drew it - and gating
 `secondary` at all is nearly free, because by z12 everything worth drawing has been promoted into
 it.
+
+Write it as one LAYER PER BAND, not as an `any` of zoom-and-class branches. A layer's `minzoom`
+becomes `[zoom >= n]`, which the compiler decides per tile and can prune - so at z9 the later bands
+do not exist. The `any` is a `when()` every feature is dragged through at every zoom, and it cannot
+bracket. Massif Streets' three plate layers each exclude the classes an earlier band already drew,
+which is what stops a motorway shield being placed twice from z13.
 
 ## `??` binds looser than a comparison
 

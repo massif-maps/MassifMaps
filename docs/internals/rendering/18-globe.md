@@ -123,6 +123,10 @@ suite before the one that depends on it.
    `calculatePosition`, so they work on either surface, and `ViewState::worldPerInternal` bridges
    the ORBIT (a world distance) and a height (an internal one), which differ by 2 here.
    `ElevationManager::intersectRay` and `AutoFlatten::parallax` are still along the Z axis.
+   Vector ELEMENTS take the terrain surface here too now - `TerrainProjectionSurface` delegates
+   every position to its base and only adds the height, so the one thing that stays planar is its
+   `calculateHitPoint`, which marches the height field in the planar frame. Picking on terrain over
+   a globe therefore falls back to the base surface: it hits the sphere, not the relief.
 
    The camera's ZOOM was wrong here in a way that made everything look wrong:
    `ViewState::calculateZoom0Distance` calibrated on `Const::WORLD_SIZE` whatever surface was

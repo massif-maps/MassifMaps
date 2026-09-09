@@ -208,7 +208,6 @@ namespace massif {
         struct LabelOcclusionState;
 
         bool initializeRenderer();
-        bool isPlanarProjectionMode() const;
         // Tangram-model measurement switch, read once from debug.massif.depthshift (Android only).
         static float getTerrainContentDepthShift();
         // tangram res/scenes/terrain-3d.yaml: depth_shift = -0.02*u_proj[2][3], and [2][3] is -1.

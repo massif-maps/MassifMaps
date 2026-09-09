@@ -1488,16 +1488,6 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 #endif
     }
 
-    bool TileRenderer::isPlanarProjectionMode() const {
-        // The label size correction and the pixel-grid snapping belong to the PROJECTION, not to
-        // the terrain: a tilted flat map divides by w exactly the same way, which is what made
-        // labels near the camera far larger than the ones behind them.
-        if (auto options = _options.lock()) {
-            return options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR;
-        }
-        return false;
-    }
-
     void TileRenderer::updateLabelOcclusionTest(const std::shared_ptr<vt::GLTileRenderer>& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) {
         if (!terrainOptions || !terrainOptions->isBillboardOcclusionEnabled()) {
             _labelOcclusionState.reset();

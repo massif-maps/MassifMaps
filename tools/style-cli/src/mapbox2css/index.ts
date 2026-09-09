@@ -1609,6 +1609,14 @@ function layerDeclarations(
             continue;
         }
 
+        // A per-category palette belongs in project.json, not baked into the rule.
+        const paramTable = fieldParamTable(value, layer, name, target, coverage, options);
+        if (paramTable !== null) {
+            out.push(`${target}: ${paramTable};`);
+            coverage.emit(target);
+            continue;
+        }
+
         const translated = tryTranslate(value, name, layer.id, coverage);
         if (translated === null) continue;
         out.push(`${target}: ${remapValue(target, translated)};`);
@@ -1706,7 +1714,8 @@ function layerDeclarations(
  * border falls exactly where the artwork's ring was. All three colours are style properties here,
  * so they are evaluated per feature, which is what gets a POI its class colour back.
  */
-function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage): string[] {
+function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage,
+                               options: ConvertOptions): string[] {
     const params = layer.layout?.[ICON_PARAMS] as Record<string, Json> | undefined;
     if (!icon.plate || !params) return [];
     const out: string[] = [];
@@ -1715,7 +1724,10 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     const scoped = (value: string) => (icon.plateWhen ? `(${icon.plateWhen} ? ${value} : transparent)` : value);
     const colour = (name: string, target: string, gate = false): boolean => {
         if (params[name] === undefined) return false;
-        const translated = tryTranslate(params[name], `icon-image params.${name}`, layer.id, coverage);
+        // `"massif:params": ["icon-image"]` puts the icon's own palette in project.json too, so the
+        // disc, its ring and the glyph are tuned in the same place as the label's colour.
+        const translated = fieldParamTable(params[name], layer, 'icon-image', target, coverage, options)
+            ?? tryTranslate(params[name], `icon-image params.${name}`, layer.id, coverage);
         if (translated === null) return false;
         out.push(`${target}: ${gate ? scoped(translated) : translated};`);
         coverage.emit(target);
@@ -1979,7 +1991,7 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
         // mapbox and now separate here.
         emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
         emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
-        out.push(...iconPlateDeclarations(layer, icon, coverage));
+        out.push(...iconPlateDeclarations(layer, icon, coverage, options));
     } else if (layer.layout?.[RECOLOURABLE_ICON] === true) {
         // A recolourable sprite whose artwork is NOT a disc with a glyph on it (extractIconPlate
         // took it apart where it is): the sheet ships one flat render with the icon's own default
@@ -3334,6 +3346,57 @@ function emitTranslated(
 }
 
 /** The translated form of a layer property, counting the drop itself when it has none. */
+/**
+ * A `match` on ONE field whose branches are all constants, written as a style-parameter LOOKUP keyed
+ * by that field - `[param::poi-fill-bus]`, one parameter per label - instead of the ternary chain
+ * the decoder would otherwise walk per feature.
+ *
+ * Two things come with it. A category palette becomes EDITABLE in project.json without touching the
+ * generated stylesheet, which is where a style's colours want to live; and sixty string comparisons
+ * per POI become one lookup. The fallback stays in the rule, so a class the table does not name
+ * still draws - `??` is what a parameter miss falls through on, as the icon table already relies on.
+ *
+ * OPT-IN, per property, through the style's own metadata:
+ *
+ *     "metadata": { "massif:params": ["text-color"] }
+ *
+ * which keeps the layer a valid MapLibre style (metadata is ignored by every renderer) and leaves
+ * every other converted style byte-identical. A table is worth it for a palette the author means to
+ * tune and not for the two-branch colour ramp on a road, and only the author knows which is which.
+ */
+function fieldParamTable(value: Json, layer: MapboxLayer, property: string, target: string,
+                         coverage: Coverage, options: ConvertOptions): string | null {
+    if (!options.styleParams || !Array.isArray(value) || value[0] !== 'match') return null;
+    const asked = (layer.metadata as Record<string, Json> | undefined)?.['massif:params'];
+    if (!Array.isArray(asked) || !asked.includes(property)) return null;
+    if (value.length < 5 || value.length % 2 === 0) return null;
+    const input = value[1] as Json;
+    if (!Array.isArray(input) || input[0] !== 'get' || typeof input[1] !== 'string') return null;
+    const field = input[1];
+
+    const entries: Array<[string, Json]> = [];
+    for (let i = 2; i + 1 < value.length; i += 2) {
+        const labels = Array.isArray(value[i]) ? value[i] as Json[] : [value[i] as Json];
+        const branch = value[i + 1] as Json;
+        if (typeof branch !== 'string' && typeof branch !== 'number') return null;
+        for (const label of labels) {
+            if (typeof label !== 'string' || !/^[A-Za-z0-9_]+$/.test(label)) return null;
+            entries.push([label, branch]);
+        }
+    }
+
+    const rest = value[value.length - 1] as Json;
+    if (typeof rest !== 'string' && typeof rest !== 'number') return null;
+    const fallback = tryTranslate(rest, property, layer.id, coverage);
+    if (fallback === null) return null;
+
+    const slug = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}`;
+    for (const [label, branch] of entries) options.styleParams.set(`${slug}-${label}`, branch);
+    coverage.note(`"${layer.id}": ${property} is a ${entries.length}-entry table in project.json ` +
+        `(${slug}-*), read per feature by [${field}]`);
+    return `(([param::${slug}-[${field}]]) ?? ${fallback})`;
+}
+
 function name(property: string, layer: MapboxLayer, coverage: Coverage): string | null {
     const value = layer.paint?.[property] ?? layer.layout?.[property];
     if (value === undefined) return null;

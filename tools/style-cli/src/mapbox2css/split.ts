@@ -35,6 +35,8 @@ function mustNotReadFeature(name: string): boolean {
 
 /** A layer splitting into more than this many attachments is left whole - the compile cost is real. */
 const MAX_VARIANTS = 8;
+/** ...and how many a set that IS the whole filter may have: one rule each, nothing copied. */
+const MAX_SET_VALUES = 24;
 
 interface Branch {
     /** The MapBox filter selecting this branch, null when it is the fallback and stands alone. */
@@ -219,12 +221,17 @@ const SORT_KEY = 'line-sort-key';
  */
 export function expandSetFilter(layer: MapboxLayer): MapboxLayer[] {
     for (const { field, values } of closedSets(layer.filter as Json | undefined)) {
-        if (values.length > MAX_VARIANTS) continue;
+        if (values.length > MAX_SET_VALUES) continue;
         const expanded = values.map((value) => narrowLayer({
             ...layer,
             filter: mergeFilter(layer.filter, ['==', field, value] as unknown as Json),
         }));
-        if (!branchesOn(layer, field) && !expanded.every((variant) => isOnlyTest(variant.filter))) continue;
+        const whole = expanded.every((variant) => isOnlyTest(variant.filter));
+        // The cap is there to stop a cartesian blow-up when the REST of the filter is copied into
+        // every attachment. Where the set is the whole filter there is no rest, so the only cost is
+        // one bracketed rule per value - which is what a category of sixteen poi classes needs.
+        if (values.length > MAX_VARIANTS && !whole) continue;
+        if (!branchesOn(layer, field) && !whole) continue;
         // Splitting COPIES the rest of the filter into every attachment, so it only pays when that
         // rest brackets: otherwise the one when() it removes comes back N times. Measured on
         // MapTiler topo-v4, which is full of layers testing a class set AND something else.

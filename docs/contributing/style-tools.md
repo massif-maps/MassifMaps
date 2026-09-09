@@ -1339,9 +1339,28 @@ else. The second was added because a layer that paints one way over a class list
 a `when()` behind for no gain: across the six reference styles it is 442 → **426** `when()` for
 1176 → 1257 rules, and it takes Massif Streets to zero.
 
+A set of more than `MAX_VARIANTS` values normally stays whole, since splitting copies the rest of
+the filter into every attachment. Where the set IS the whole filter there is no rest, so the cap
+rises to `MAX_SET_VALUES` — one bracketed rule per value and nothing copied, which is what a POI
+category of sixteen classes needs.
+
 Both grounds are still subject to the REST of the filter bracketing. Splitting copies that rest into
 every attachment, so without the gate the one `when()` it removes comes back N times: MapTiler
 topo-v4 went 142 → **239** before the gate, 134 after.
+
+### A palette in project.json, not in the rule
+
+`"metadata": { "massif:params": ["text-color"] }` on a layer turns that property's `match` on one
+field into a style-parameter LOOKUP — `[param::poi-fill-[class]]`, one parameter per label, the
+`match`'s fallback left in the rule for `??` to land on. The palette is then editable in
+`project.json` without touching the generated stylesheet, and a sixty-branch ternary the decoder
+walked per feature becomes one lookup.
+
+**Opt-in per property**, because only the author knows which is which: a table is worth it for a
+palette meant to be tuned and not for the two-branch colour ramp on a road. `metadata` is ignored by
+every renderer, so a layer asking for it stays a valid MapLibre style, and every other converted
+style is byte-identical. `["icon-image"]` covers a recolourable icon's own params — the disc, its
+ring and the glyph — so an icon palette lands in the same place as the label's.
 
 ### A set test's labels are constants, and a geometry name is a NUMBER
 

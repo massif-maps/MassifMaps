@@ -264,3 +264,43 @@ test('a style carries its own fonts, and project.json names them for whoever shi
     // A style that carries none says nothing rather than an empty list.
     assert.ok(!('fonts' in JSON.parse(convert({ layers }, table, NO_PALETTE).project)));
 });
+
+
+test('a palette the style asks for becomes a parameter table, read per feature', () => {
+    // metadata is ignored by every renderer, so a layer can ask for this and stay a valid MapLibre
+    // style. Opt-in per property: a table is worth it for a palette meant to be tuned, and not for
+    // the two-branch colour ramp on a road - only the author knows which is which.
+    const styleParams = new Map();
+    const { mss } = convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['match', ['get', 'class'],
+                    ['bus', 'railway'], '#2e5a80', 'park', '#4a7a3a', '#666666'],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    // The fallback stays in the rule: a class the table does not name still draws, and `??` is what
+    // a parameter miss falls through on.
+    assert.match(mss, /text-fill: \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\);/);
+    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+    assert.equal(styleParams.get('poi-fill-railway'), '#2e5a80');
+    assert.equal(styleParams.get('poi-fill-park'), '#4a7a3a');
+});
+
+test('a property the style does not ask for keeps its ternary', () => {
+    const styleParams = new Map();
+    const { mss } = convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            layout: { 'text-field': ['get', 'name'] },
+            paint: { 'text-color': ['match', ['get', 'class'], 'bus', '#2e5a80', '#666666'] },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.match(mss, /text-fill: \(\(\[class\] = 'bus'\) \? #2e5a80 : #666666\);/);
+    assert.equal(styleParams.size, 0);
+});

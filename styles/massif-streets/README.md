@@ -35,12 +35,25 @@ boxes, and repeating a texel column smears the distance field wherever that colu
 the distance to a *side* — which on a plate this size is everywhere. It rendered as a bar in the
 halo colour at each end.
 
-## Roads are a pair here and one line on the device
+## A road's casing is an outline beside it, not a wider line under it
 
-MapLibre has no `line-border-color` — it is not in the style spec, only Mapbox GL v3 and our
-CartoCSS have it. So the source of truth carries `road-casing` under `road-fill` with the same
-filter, zoom range and joins, and `--fold-casings` merges them into one `line-border-*` rule. It
-refuses to fold a dashed casing, which is the case that has to stay two layers anyway.
+`road-casing` used to be exactly that — a wider line under `road-fill`, same filter, same zoom
+range — so that `--fold-casings` could merge the pair into one `line-border-*` rule, which is what
+MapLibre has no way to state (`line-border-color` is Mapbox GL v3 and our CartoCSS, not the spec).
+
+It is Mapbox Standard's shape now: a `line-gap-width` outline drawn OUTSIDE the fill, a near-hairline
+of 1 px at z14 reaching 2 by z22, and only from **z15**. That came with Standard's road widths and
+could not be separated from them — see "Taken from Mapbox Standard" below for why taking the widths
+alone looks wrong.
+
+Two consequences worth knowing:
+
+- **`--fold-casings` is a no-op for this style.** There is no casing/fill pair left to fold. It was
+  already doing nothing before the change — the fold refuses a pair whose fill states a
+  `line-sort-key`, and `road-fill` states one to order the classes — so the flag has been inert for
+  a while. It stays on the command line because it costs nothing and would apply again if a foldable
+  pair were added.
+- **A road below z15 is its fill alone.** No outline at all, which is Standard's own answer.
 
 ## Taken from Mapbox Standard
 

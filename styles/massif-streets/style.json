@@ -2393,11 +2393,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -2513,11 +2580,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -2546,6 +2680,7 @@
             "fuel",
             "harbor",
             "heliport",
+            "lighthouse",
             "parking",
             "parking_garage",
             "railway",
@@ -2633,11 +2768,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(216, 60%, 50%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -2742,11 +2944,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -2859,11 +3128,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -2974,11 +3310,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(126, 42%, 40%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3002,6 +3405,7 @@
             "mountain",
             "park",
             "playground",
+            "ranger_station",
             "viewpoint",
             "volcano",
             "water",
@@ -3090,11 +3494,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(126, 42%, 40%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3198,11 +3669,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3304,11 +3842,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3409,11 +4014,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3518,11 +4190,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(0, 58%, 52%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3627,11 +4366,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3649,6 +4455,8 @@
         [
           "literal",
           [
+            "amusement_park",
+            "aquarium",
             "attraction"
           ]
         ]
@@ -3732,11 +4540,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {
@@ -3837,11 +4712,78 @@
               "params": {
                 "background": "hsl(0, 0%, 100%)",
                 "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": "hsl(203, 7%, 48%)"
+                "icon": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bicycle",
+                    "bicycle_rental",
+                    "bus",
+                    "car",
+                    "ferry",
+                    "fuel",
+                    "harbor",
+                    "heliport",
+                    "parking",
+                    "parking_garage",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(216, 60%, 50%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "campsite",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "picnic_site",
+                    "pitch",
+                    "playground",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 40%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "fire_station",
+                    "hospital",
+                    "pharmacy",
+                    "police",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 52%)",
+                  "hsl(203, 7%, 48%)"
+                ]
               }
             }
           ]
-        }
+        },
+        "massif:params": [
+          "icon-image"
+        ]
       }
     },
     {

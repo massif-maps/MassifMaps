@@ -139,6 +139,17 @@ green and outdoors `hsl(126, 42%, 40%)`, care and emergency `hsl(0, 58%, 52%)`, 
 background. The label is one colour throughout, `hsl(203, 7%, 40%)`: a categorical colour on a word
 is hard to read and harder to scan, and the glyph beside it already carries the category.
 
+**The palette lives in `project.json`, not in the rules.** Every POI layer states the same `match` on
+`class` for its glyph colour and names `icon-image` in `metadata.massif:params`, so the converter
+turns it into one shared table — `poi-icon-fill-bus`, `poi-icon-fill-park`, 48 entries — and every
+rule reads `[param::poi-icon-fill-[class]]`. Retinting the map is editing the project file. The match
+is stated per layer and identical on all of them on purpose: a table needs a field to key on, and a
+constant per layer has none.
+
+**Every class a layer names has a drawing.** With the disc coming from the rule and only the glyph
+from the sheet, a class with no drawing now draws an EMPTY disc where it used to draw nothing, so the
+two lists have to be kept in step.
+
 **The name takes whichever side of the icon is free, and the icon stays when no side fits.**
 `text-variable-anchor: [bottom, right, left]` with `text-optional: true`, which the converter maps to
 `shield-anchors` and `shield-text-optional` — the same model on both sides. No `top`: a name above

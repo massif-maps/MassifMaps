@@ -38,19 +38,30 @@ export function narrowLayer(layer: MapboxLayer): MapboxLayer {
     const facts = collectFacts(clauses);
     if (facts.eq.size === 0) return layer;
 
+    // A property the style put in project.json is left ALONE: folding it to the constant this
+    // attachment proves is exactly right for a rule and exactly wrong for a palette, which has to
+    // stay a match for fieldParamTable to key a lookup off (see index.ts, "massif:params").
+    const kept = new Set(paramProperties(layer));
     return {
         ...layer,
         filter: rebuildFilter(clauses, facts),
-        layout: narrowProperties(layer.layout, facts),
-        paint: narrowProperties(layer.paint, facts),
+        layout: narrowProperties(layer.layout, facts, kept),
+        paint: narrowProperties(layer.paint, facts, kept),
     };
 }
 
+/** The properties a layer's `metadata` asks to keep as a style-parameter table. */
+function paramProperties(layer: MapboxLayer): string[] {
+    const asked = (layer.metadata as Record<string, Json> | undefined)?.['massif:params'];
+    return Array.isArray(asked) ? asked.filter((name): name is string => typeof name === 'string') : [];
+}
+
 function narrowProperties(
-    props: Record<string, Json> | undefined, facts: Facts,
+    props: Record<string, Json> | undefined, facts: Facts, kept: Set<string>,
 ): Record<string, Json> | undefined {
     if (!props) return props;
-    return Object.fromEntries(Object.entries(props).map(([k, v]) => [k, narrowValue(v, facts)]));
+    return Object.fromEntries(Object.entries(props)
+        .map(([k, v]) => [k, kept.has(k) ? v : narrowValue(v, facts)]));
 }
 
 /** Every `all` unpacked, so a clause is judged on its own. */

@@ -173,10 +173,12 @@ function parseClause(node: Json): Clause | null {
         return inner === null ? null : { ...inner, op: inverse[inner.op] };
     }
 
-    // `["match", input, labels, true, false]` is how a boolean set test is spelled.
-    if (head === 'match' && node.length === 5 && node[3] === true && node[4] === false) {
+    // `["match", input, labels, true, false]` is a boolean set test, and the operands the other way
+    // round is its negation - which the generic translation turns into a `? false : true` ternary
+    // the decoder re-evaluates per feature, where the negation brackets one test per value.
+    if (head === 'match' && node.length === 5 && typeof node[3] === 'boolean' && node[4] === !node[3]) {
         const labels = Array.isArray(node[2]) ? (node[2] as Json[]) : [node[2] as Json];
-        return build('in', node[1] as Json, labels);
+        return build(node[3] === true ? 'in' : 'nin', node[1] as Json, labels);
     }
 
     if ((head === '==' || head === '!=') && node.length === 3) {

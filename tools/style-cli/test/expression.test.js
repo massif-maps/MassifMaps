@@ -208,7 +208,15 @@ test('the in OPERATOR is not the in FILTER, and a style using it must not be dro
         ["when(([class] = 'track' || [class] = 'service'))"]);
     // A one-element haystack is an equality, so it brackets like any other.
     assert.deepEqual(translateFilter(['in', ['get', 'class'], ['literal', ['track']]]),
-        ["when(([class] = 'track'))"]);
+        ["[class = 'track']"]);
+    // Several labels naming ONE constant collapse to that equality: both geometry names are
+    // mapnik geometry type 2, and comparing the NUMBER against the NAME matched nothing.
+    assert.deepEqual(
+        translateFilter(['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]]),
+        ["['mapnik::geometry_type' = 2]"]);
+    assert.deepEqual(
+        translateFilter(['match', ['geometry-type'], ['LineString', 'Polygon'], true, false]),
+        ['when(([mapnik::geometry_type] = 2 || [mapnik::geometry_type] = 3))']);
     assert.match(translateExpression(['case', ['in', ['get', 'class'], ['literal', ['a', 'b']]], '#f00', '#00f']),
         /\(\[class\] = 'a' \|\| \[class\] = 'b'\)/);
     assert.equal(translateExpression(['in', ['get', 'class'], ['literal', []]]), 'false');

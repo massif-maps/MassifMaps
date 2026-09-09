@@ -1269,9 +1269,26 @@ and N rules cost more than the one `when()`), and only when the REST of the filt
 Splitting copies the rest into every attachment, so without that second gate the one `when()` it
 removes comes back N times: MapTiler topo-v4 went 142 → **239** before the gate, 134 after.
 
-Across the reference styles, `when()` before → after: mapbox-standard 221 → 146, MapTiler
-openstreetmap 119 → 52, streets-v4 220 → 204, outdoor-v4 152 → 143, topo-v4 142 → 134, and
-ofm-liberty 73 → 73 (legacy filters, no branching paint — nothing to fold).
+### A set test's labels are constants, and a geometry name is a NUMBER
+
+`mapnik::geometry_type` is a `long long` (`mapnikvt/ExpressionContext.cpp`), so comparing it against
+`'LineString'` is a type mismatch — which `EQ` answers **false** (`Predicate.cpp`,
+`ComparisonOperator`). A bracketed test always mapped the name to its code; the or-chain the set
+tests fell back to did not, so `when(([mapnik::geometry_type] = 'LineString' || … = 'Polygon'))` was
+false for every feature and **the rule never drew**: 20 rules in OpenFreeMap Liberty and 11 in
+MapTiler streets-v4, which is why Liberty's minor roads rendered as a dark casing with no fill.
+
+`setTest` now recognises a set test in every spelling a style writes one in — `["match", input,
+labels, true, false]`, the same with the operands reversed (its negation), and
+`["in", input, ["literal", labels]]` — and runs the labels through the same constant translation a
+bracketed test uses. Two consequences beyond the fix: several labels can name ONE constant
+(`LineString` and `MultiLineString` are both type 2), and collapsed to one the test brackets; and a
+reversed match is a conjunction, so it brackets one `!=` per value instead of a `? false : true`
+ternary.
+
+Across the reference styles, `when()` before → after: mapbox-standard 221 → 135, MapTiler
+openstreetmap 119 → 52, streets-v4 220 → 191, outdoor-v4 152 → 133, topo-v4 142 → 128, ofm-liberty
+73 → 28. **927 → 667 in total, and all 66 dead geometry comparisons gone.**
 
 ## A fill's outline
 

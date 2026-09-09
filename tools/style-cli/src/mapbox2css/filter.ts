@@ -84,29 +84,65 @@ function filterExpression(filter: Json[]): string {
         return `(${field} ${LEGACY_COMPARISON[head as string]} ${literalFor(args[0] as string, args[1] as Json)})`;
     }
 
-    const orChain = booleanMatchChain(filter);
-    if (orChain !== null) return orChain;
+    const chain = setTestChain(filter);
+    if (chain !== null) return chain;
 
     return translateExpression(filter);
 }
 
 /**
- * `["match", input, labels, true, false]` is how MapTiler spells "input is one of these", and the
- * generic match translation wraps it in `? true : false` - noise the decoder re-evaluates for every
- * feature. As a filter it is just the or-chain.
+ * "input is one of these", in the two spellings a style writes it in: `["match", input, labels,
+ * true, false]` (MapTiler's) and `["in", input, ["literal", labels]]`. The generic translation
+ * wraps the first in `? true : false` - noise the decoder re-evaluates for every feature. As a
+ * filter each is just the chain. The operands the other way round is the NEGATION, which is a
+ * conjunction rather than an or-chain.
+ *
+ * The labels go through the same constant translation a bracketed test uses.
+ * `mapnik::geometry_type` is a NUMBER (mapnikvt ExpressionContext.cpp), so a label naming it
+ * `'LineString'` was a type mismatch, which `EQ` answers false for - the chain was false for every
+ * feature and the rule never drew. 20 rules in OpenFreeMap Liberty and 11 in MapTiler streets-v4
+ * were dead this way.
  */
-function booleanMatchChain(filter: Json[]): string | null {
-    const labels = booleanMatchLabels(filter);
-    if (labels === null) return null;
-    const input = translateExpression(filter[1] as Json);
-    return `(${labels.map((l) => `${input} = ${translateExpression(l)}`).join(' || ')})`;
+function setTestChain(filter: Json[]): string | null {
+    const test = setTest(filter);
+    if (test === null) return null;
+    const input = translateExpression(test.input);
+    const key = expressionKey(test.input);
+    const values = (key === null ? null : distinctConstants(key, test.labels))
+        ?? test.labels.map((label) => translateExpression(label));
+    const tests = values.map((value) => `${input} ${test.positive ? '=' : '!='} ${value}`);
+    return test.positive ? `(${tests.join(' || ')})` : conjunction(tests);
 }
 
-/** The label list of a `match` used as a boolean, or null when it is not one. */
-function booleanMatchLabels(filter: Json[]): Json[] | null {
-    if (filter[0] !== 'match' || filter.length !== 5) return null;
-    if (filter[3] !== true || filter[4] !== false) return null;
-    return Array.isArray(filter[2]) ? (filter[2] as Json[]) : [filter[2] as Json];
+interface SetTest { input: Json; labels: Json[]; positive: boolean }
+
+function setTest(filter: Json[]): SetTest | null {
+    const [head, ...args] = filter;
+
+    if (head === 'match' && filter.length === 5 && typeof filter[3] === 'boolean' && filter[4] === !filter[3]) {
+        const labels = Array.isArray(filter[2]) ? (filter[2] as Json[]) : [filter[2] as Json];
+        return { input: args[0] as Json, labels, positive: filter[3] === true };
+    }
+
+    // The legacy `["in", "class", "a", "b"]` names its field bare and is handled with the other
+    // legacy forms; this is the expression spelling.
+    if ((head === 'in' || head === '!in') && filter.length === 3 && typeof args[0] !== 'string') {
+        const literal = filter[2];
+        if (!Array.isArray(literal) || literal[0] !== 'literal' || !Array.isArray(literal[1])) return null;
+        return { input: args[0] as Json, labels: literal[1] as Json[], positive: head === 'in' };
+    }
+
+    return null;
+}
+
+/**
+ * The labels of a set test as DISTINCT constants, or null when one of them is not a constant.
+ * Several labels can name one constant - LineString and MultiLineString are both geometry type 2 -
+ * and collapsed to one, the test brackets.
+ */
+function distinctConstants(key: string, labels: Json[]): string[] | null {
+    const values = labels.map((label) => expressionConstant(key, label));
+    return values.some((value) => value === null) ? null : [...new Set(values as string[])];
 }
 
 /** MapBox's own test: a legacy filter names its field as a bare string. */
@@ -127,6 +163,13 @@ function literalFor(key: string, value: Json): string {
 /** The legacy forms that have a `[field op constant]` equivalent. Null when they do not. */
 function translateBracketed(filter: Json[]): string | null {
     const [head, ...args] = filter;
+
+    // `["!", ["has", f]]` is `!has`, which brackets; left as a negation it became a when().
+    if (head === '!' && args.length === 1 && Array.isArray(args[0])) {
+        const inner = args[0] as Json[];
+        if (inner[0] === 'has') return translateBracketed(['!has', inner[1] as Json]);
+        if (inner[0] === '!has') return translateBracketed(['has', inner[1] as Json]);
+    }
 
     if (typeof head === 'string' && LEGACY_COMPARISON[head] && args.length === 2 && typeof args[0] === 'string') {
         const key = fieldRef(args[0]);
@@ -155,12 +198,13 @@ function translateBracketed(filter: Json[]): string | null {
         return key !== null && value !== null ? `[${predicateKey(key)} ${LEGACY_COMPARISON[head]} ${value}]` : null;
     }
 
-    // A one-label boolean match is an equality test.
-    const labels = booleanMatchLabels(filter);
-    if (labels !== null && labels.length === 1) {
-        const key = expressionKey(filter[1] as Json);
-        const value = key === null ? null : expressionConstant(key, labels[0]);
-        return key !== null && value !== null ? `[${predicateKey(key)} = ${value}]` : null;
+    // A set test naming ONE distinct constant is an equality test - which is every
+    // `["LineString", "MultiLineString"]` geometry test, both being mapnik geometry type 2.
+    const test = setTest(filter);
+    const setKey = test?.positive ? expressionKey(test.input) : null;
+    const setValues = setKey === null ? null : distinctConstants(setKey, test!.labels);
+    if (setKey !== null && setValues !== null && setValues.length === 1) {
+        return `[${predicateKey(setKey)} = ${setValues[0]}]`;
     }
 
     return null;

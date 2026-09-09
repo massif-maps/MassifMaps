@@ -244,6 +244,12 @@ export interface ConvertOptions {
      * ramp pops them in at full height. The ramp is placed at the extrusion layer's own minzoom.
      */
     buildingHeightRamp?: boolean;
+    /**
+     * Fade the ground AO on the same ramp that lays the buildings down. Off by default: whether the
+     * contact shadow outlives the walls is the STYLE's call, and the converter states it rather
+     * than the renderer forcing it.
+     */
+    aoFollowsHeight?: boolean;
 }
 
 /**
@@ -434,7 +440,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         // layer only - Standard's indoor walls state their own ambient occlusion and come first,
         // so reading every extrusion gave the whole map the shading of an indoor floor plan.
         if (layer.type === 'fill-extrusion' && BUILDING_LAYER.test(layer['source-layer'] ?? '')) {
-            mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage, options.buildingHeightRamp));
+            mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage, options.buildingHeightRamp, options.aoFollowsHeight));
         }
 
         // The only 3D model worth standing in for is a TREE: Standard draws the whole `tree`
@@ -1002,7 +1008,7 @@ function flattenExtrusionOpacity(layer: MapboxLayer, coverage?: Coverage): Mapbo
     return { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': value } };
 }
 
-function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean): string[] {
+function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean, aoFollowsHeight?: boolean): string[] {
     const out: string[] = [];
     for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
         // `fill-extrusion-edge-radius` is a LAYOUT property, not a paint one - reading only paint
@@ -1019,8 +1025,13 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
             : tryTranslate(value, from, layer.id, coverage);
         if (translated === null) continue;
         seen.add(to);
+        // --ao-follows-height: the contact shadow belongs to the building standing in it, so it
+        // fades on the SAME ramp that lays the walls down - a flattened city otherwise keeps a
+        // full-strength dark ring around every footprint, the stain the drop exists to remove.
+        // Opt-in, and in the STYLE rather than the renderer: whether the shadow outlives the walls
+        // is the style's call. Both are view-state expressions, so neither costs a re-decode.
         out.push(to === 'building-ao-intensity'
-            ? `${to}: [param::${AO_PARAM}] * (${translated});`
+            ? `${to}: [param::${AO_PARAM}] * (${translated})${aoFollowsHeight ? ` * (${HEIGHT_TILT_RAMP})` : ''};`
             : `${to}: ${translated};`);
         coverage.emit(to);
     }

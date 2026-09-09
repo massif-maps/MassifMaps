@@ -42,6 +42,24 @@ CartoCSS have it. So the source of truth carries `road-casing` under `road-fill`
 filter, zoom range and joins, and `--fold-casings` merges them into one `line-border-*` rule. It
 refuses to fold a dashed casing, which is the case that has to stay two layers anyway.
 
+## Written so the CartoCSS brackets
+
+A CartoCSS `when(...)` is evaluated per feature and the compiler cannot prune around it, so this
+style is written to give the converter tests it can bracket — see
+[style-tools](../../docs/contributing/style-tools.md), "Bracketed predicates, not `when()`":
+
+- **No `coalesce` null guard in a filter.** A missing field already compares unequal, in MapLibre
+  and in mapnikvt alike. The guard only stopped the test bracketing. In a VALUE it still earns its
+  place, where `slice` and `upcase` need a string.
+- **One layer per zoom band, not a zoom test inside a filter.** The road shields come in by class
+  over three layers — motorway and trunk at 9, primary at 11, the rest at 13 — each excluding what
+  an earlier band drew. `minzoom` is a predicate the compiler decides per tile; an `any` of
+  zoom-and-class branches is a `when()` that every feature pays at every zoom.
+
+The one `when()` left is `road-label`'s class list: a positive set test is a disjunction with no
+bracketed form, and the layer paints one way throughout, so splitting it would buy six label rules
+to save one or-chain.
+
 ## Licensing
 
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public

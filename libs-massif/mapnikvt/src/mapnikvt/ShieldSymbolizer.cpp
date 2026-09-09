@@ -211,6 +211,7 @@ namespace massif::mvt {
         iconPlate.color = vt::Color::fromColorOpacity(_iconBackgroundFill.getValue(exprContext), _iconBackgroundOpacity.getValue(exprContext));
         iconPlate.radius = _iconBackgroundRadius.getValue(exprContext) * fontScale;
         iconPlate.padding = cglib::vec2<float>(_iconBackgroundPaddingX.getValue(exprContext) * fontScale, _iconBackgroundPaddingY.getValue(exprContext) * fontScale);
+        iconPlate.size = cglib::vec2<float>(_iconBackgroundWidth.getValue(exprContext) * fontScale, _iconBackgroundHeight.getValue(exprContext) * fontScale);
         iconPlate.borderColor = vt::Color::fromColorOpacity(_iconBackgroundBorderFill.getValue(exprContext), _iconBackgroundBorderOpacity.getValue(exprContext));
         iconPlate.borderWidth = _iconBackgroundBorderWidth.getValue(exprContext) * fontScale;
         bool textOptional = _textOptional.getValue(exprContext);

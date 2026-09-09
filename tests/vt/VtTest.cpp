@@ -7,6 +7,7 @@
 int failures = 0;
 
 void testPlateBitmap();
+void testPlateBox();
 void testLineLabel();
 void testExtrusionCorner();
 void testExtrusionRingOrientation();
@@ -25,6 +26,7 @@ void testSpanResolver();
 
 int main() {
     testPlateBitmap();
+    testPlateBox();
     testLineLabel();
     testExtrusionCorner();
     testExtrusionRingOrientation();

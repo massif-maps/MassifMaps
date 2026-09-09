@@ -1145,6 +1145,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-background-height",
+      "mapnik": "background-height",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "shield-background-opacity",
       "mapnik": "background-opacity",
       "symbolizer": "shield",
@@ -1177,6 +1187,16 @@
     {
       "cartocss": "shield-background-radius",
       "mapnik": "background-radius",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-background-width",
+      "mapnik": "background-width",
       "symbolizer": "shield",
       "kind": "float",
       "type": "FloatProperty",
@@ -1385,6 +1405,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-icon-background-height",
+      "mapnik": "icon-background-height",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "shield-icon-background-opacity",
       "mapnik": "icon-background-opacity",
       "symbolizer": "shield",
@@ -1417,6 +1447,16 @@
     {
       "cartocss": "shield-icon-background-radius",
       "mapnik": "icon-background-radius",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-icon-background-width",
+      "mapnik": "icon-background-width",
       "symbolizer": "shield",
       "kind": "float",
       "type": "FloatProperty",
@@ -1835,6 +1875,16 @@
       "baked": false
     },
     {
+      "cartocss": "text-background-height",
+      "mapnik": "background-height",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "text-background-opacity",
       "mapnik": "background-opacity",
       "symbolizer": "text",
@@ -1867,6 +1917,16 @@
     {
       "cartocss": "text-background-radius",
       "mapnik": "background-radius",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-background-width",
+      "mapnik": "background-width",
       "symbolizer": "text",
       "kind": "float",
       "type": "FloatProperty",

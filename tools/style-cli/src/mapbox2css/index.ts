@@ -1737,11 +1737,17 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     // The glyph, unless the layer states an icon-color of its own - that one is already out.
     if (layer.paint?.['icon-color'] === undefined) colour('icon', 'shield-icon-fill');
     colour('background', 'shield-icon-background-fill', true);
+    // A shape the STYLE states wins over the one measured off the drawing. Radius alone spells every
+    // plate there is - half the box is a circle, a few pixels a rounded square, 0 a rectangle - so a
+    // transit badge needs no artwork of its own, and one sheet of discs covers the lot. Measured
+    // otherwise, which is what a Standard sheet of real roundels wants.
+    if (!colour('radius', 'shield-icon-background-radius')) {
+        out.push(`shield-icon-background-radius: ${round(icon.plate.radius)};`);
+        coverage.emit('shield-icon-background-radius');
+    }
     // Both paddings default to a text plate's, which would grow the disc off its own artwork.
-    out.push(`shield-icon-background-radius: ${round(icon.plate.radius)};`,
-        'shield-icon-background-padding-x: 0;',
+    out.push('shield-icon-background-padding-x: 0;',
         'shield-icon-background-padding-y: 0;');
-    coverage.emit('shield-icon-background-radius');
     coverage.emit('shield-icon-background-padding-x');
     coverage.emit('shield-icon-background-padding-y');
     // Only with a colour to draw it in. `icon-background-border-fill` defaults to BLACK, and

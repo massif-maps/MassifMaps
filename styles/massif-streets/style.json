@@ -2367,6 +2367,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -2391,9 +2394,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -2403,36 +2404,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -2445,26 +2451,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -2554,6 +2579,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -2578,9 +2606,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -2590,36 +2616,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -2632,26 +2663,444 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
+        }
+      }
+    },
+    {
+      "id": "poi-amenity",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "bicycle",
+            "bicycle_rental",
+            "car",
+            "fuel",
+            "parking",
+            "parking_garage"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
         "massif:params": [
           "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-bus",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "bus"
+          ]
         ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        }
       }
     },
     {
@@ -2728,6 +3177,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -2752,9 +3204,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -2764,36 +3214,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -2806,26 +3261,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -2904,6 +3378,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -2928,9 +3405,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -2940,36 +3415,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -2982,26 +3462,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -3086,6 +3585,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -3110,9 +3612,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -3122,36 +3622,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -3164,26 +3669,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -3270,6 +3794,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -3294,9 +3821,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -3306,36 +3831,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -3348,26 +3878,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -3445,6 +3994,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -3469,9 +4021,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -3481,36 +4031,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -3523,26 +4078,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -3617,6 +4191,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -3641,9 +4218,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -3653,36 +4228,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -3695,26 +4275,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -3793,6 +4392,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -3817,9 +4419,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -3829,36 +4429,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -3871,26 +4476,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -3977,6 +4601,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -4001,9 +4628,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -4013,36 +4638,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -4055,26 +4685,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -4149,6 +4798,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -4173,9 +4825,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -4185,36 +4835,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -4227,26 +4882,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -4322,6 +4996,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -4346,9 +5023,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -4358,36 +5033,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -4400,26 +5080,45 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
@@ -4498,6 +5197,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -4522,9 +5224,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -4534,36 +5234,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -4576,34 +5281,53 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
-        "massif:params": [
-          "icon-image"
-        ]
+        }
       }
     },
     {
-      "id": "poi-transport",
+      "id": "poi-transit",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "minzoom": 14,
+      "minzoom": 13,
       "filter": [
         "in",
         [
@@ -4614,19 +5338,9 @@
           "literal",
           [
             "aerialway",
-            "airfield",
-            "airport",
-            "bicycle",
-            "bicycle_rental",
-            "bus",
-            "car",
             "ferry",
-            "fuel",
             "harbor",
-            "heliport",
             "lighthouse",
-            "parking",
-            "parking_garage",
             "railway",
             "railway_light",
             "railway_metro"
@@ -4686,6 +5400,9 @@
         "text-halo-width": 1
       },
       "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
         "massif:layout": {
           "icon-image": [
             "image",
@@ -4710,9 +5427,7 @@
             ],
             {
               "params": {
-                "background": "hsl(0, 0%, 100%)",
-                "background-stroke": "hsl(203, 10%, 82%)",
-                "icon": [
+                "background": [
                   "match",
                   [
                     "get",
@@ -4722,36 +5437,41 @@
                     "aerialway",
                     "airfield",
                     "airport",
-                    "bicycle",
-                    "bicycle_rental",
                     "bus",
-                    "car",
                     "ferry",
-                    "fuel",
                     "harbor",
                     "heliport",
-                    "parking",
-                    "parking_garage",
+                    "lighthouse",
                     "railway",
                     "railway_light",
                     "railway_metro"
                   ],
-                  "hsl(216, 60%, 50%)",
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
                   [
                     "american_football",
                     "baseball",
                     "basketball",
                     "beach",
-                    "campsite",
                     "cricket",
                     "dog_park",
                     "garden",
                     "golf",
                     "mountain",
                     "park",
-                    "picnic_site",
                     "pitch",
                     "playground",
+                    "ranger_station",
                     "skiing",
                     "soccer",
                     "stadium",
@@ -4764,26 +5484,244 @@
                     "wetland",
                     "zoo"
                   ],
-                  "hsl(126, 42%, 40%)",
+                  "hsl(126, 42%, 38%)",
                   [
                     "dentist",
                     "doctors",
-                    "fire_station",
                     "hospital",
                     "pharmacy",
-                    "police",
                     "veterinary"
                   ],
-                  "hsl(0, 58%, 52%)",
-                  "hsl(203, 7%, 48%)"
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
                 ]
               }
             }
           ]
-        },
+        }
+      }
+    },
+    {
+      "id": "poi-airport",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "airfield",
+            "airport",
+            "heliport"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
         "massif:params": [
           "icon-image"
-        ]
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        }
       }
     },
     {

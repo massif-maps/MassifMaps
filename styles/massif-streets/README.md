@@ -102,16 +102,26 @@ INSIDE its filter, which is the one thing not taken: a filter that reads the zoo
 same gate is **one layer per class**, ordered least important first so the motorway's name is placed
 first and wins the collision.
 
-**POIs come in by CATEGORY, which is MapTiler's model.** Standard's `poi-label` is built on
-`filterrank`, `sizerank` and `maki` — Mapbox's own tileset fields, none of which OpenMapTiles has —
-so its density gate, its size steps and its icon names all resolve to nothing here. MapTiler's
-OpenStreetMap style is built on the SAME schema and gates by category and zoom, which says something
-`rank` cannot: a museum matters before a bus stop. Its zooms, over the classes we have drawings for:
-cemetery at z14; cultural, attraction and shop at z15; food, education, outdoor, sport, health,
-worship and public at z16; transport and lodging at z17; waste and the small shops at z18.
+**POIs come in by CATEGORY, and transit by MODE.** Standard's `poi-label` is built on `filterrank`,
+`sizerank` and `maki`, none of which OpenMapTiles has, so the gate is taken from what Standard
+DRAWS early rather than from its expressions. Its `transit-label` is a layer of its own from z12 and
+lets buses in only at z17; parking and fuel are not transit to it at all, they sit with the shops.
+So:
 
-Fourteen layers, each an `in class` the converter splits into one bracketed rule per class, ordered
-least important first. Liberty's italic face for them is taken as well — it is the one thing on the
+| z | |
+|---|---|
+| 12 | airport |
+| 13 | transit — rail, metro, tram, ferry, harbour, aerialway |
+| 14 | health |
+| 15 | education, worship, public, lodging, cemetery |
+| 16 | food, outdoor, sport, cultural, attraction, **bus** |
+| 17 | shop, **amenity** — parking, fuel, car, bicycle |
+| 18 | waste |
+
+MapTiler's own zooms were tried first and put a gallery two levels before the tram stop that gets you
+to it. Seventeen layers, ordered least important first, so a station still wins a collision.
+
+Liberty's italic face for them is taken as well — it is the one thing on the
 map that is not a road, and it should not read like one.
 
 Their icons are **Maki**, the CC0 set both references descend from, vendored under `sprite-src/poi/`
@@ -133,30 +143,33 @@ The colours arrive as Mapbox Standard states them, as `icon-image` image params 
 **the MapLibre row shows the neutral disc, the massif row the category colour.** That is the cost of
 one sprite, and the same trade the extrusion properties already make.
 
-**The ICON says what a POI is for; the label says nothing.** Transit `hsl(216, 60%, 50%)`, anything
-green and outdoors `hsl(126, 42%, 40%)`, care and emergency `hsl(0, 58%, 52%)`, everything else
-`hsl(203, 7%, 48%)` — MapTiler's categorical hues at a lightness that reads on a near-white
-background. The label is one colour throughout, `hsl(203, 7%, 40%)`: a categorical colour on a word
-is hard to read and harder to scan, and the glyph beside it already carries the category.
+**The DISC carries the category and the glyph is white on it** — Mapbox Standard's arrangement, not
+the reverse. Transit `hsl(225, 60%, 58%)` (Standard's own), health red, outdoors green, culture and
+attractions amber, everything else a neutral `hsl(203, 10%, 45%)`; the ring is white and the label
+one grey throughout. A coloured glyph on a white disc, which this style drew first, reads as a smudge
+at 19 px — the disc is the thing with area.
 
 **The palette lives in `project.json`, not in the rules.** Every POI layer states the same `match` on
-`class` for its glyph colour and names `icon-image` in `metadata.massif:params`, so the converter
-turns it into one shared table — `poi-icon-fill-bus`, `poi-icon-fill-park`, 48 entries — and every
-rule reads `[param::poi-icon-fill-[class]]`. Retinting the map is editing the project file. The match
+`class` and names `icon-image` in `metadata.massif:params`, so the converter turns it into one shared
+table — `poi-icon-background-fill-railway_metro`, 48 entries — and every rule reads
+`[param::poi-icon-background-fill-[class]]`. Retinting the map is editing the project file. The match
 is stated per layer and identical on all of them on purpose: a table needs a field to key on, and a
 constant per layer has none.
 
+**A colour goes in as HEX.** A parameter is a plain string the decoder reads with `parseColor`, whose
+grammar knows `#rrggbb`, `rgb()` and the CSS names and NOT `hsl()` — which the CartoCSS compiler does
+know, so the same literal was fine in a rule and silently dropped in a parameter. The converter
+normalises it; the style goes on writing `hsl()`.
+
+**The plate's SHAPE is a number, not a drawing.** `radius` in the icon params wins over the one
+measured off the artwork: half the box is a circle, a few pixels a rounded square, 0 a rectangle. So
+`railway` is a square badge at 5, `railway_light` a squircle at 11, an air terminal 8, everything
+else the disc's own 21 — all in `project.json`, and the sheet is 99 identical discs.
+
 **A glyph is drawn at 48 px because it becomes a distance field.** The split hands the SDK an SDF,
-and a thin drawing - a bicycle's wheels, a doctor's figure - resolves at 32 px to a field that barely
+and a thin drawing — a bicycle's wheels, a doctor's figure — resolves at 32 px to a field that barely
 clears the 0.5 threshold and loses it when the icon is drawn smaller: the disc arrived with nothing
 on it. `icon-size` is 0.4 to match, so the icon is the same 19 px it was.
-
-**The transit shapes reach MapLibre and not the SDK.** `railway` is drawn as a square badge,
-`railway_light` as a squircle and `railway_metro` as a roundel whose ring is the mark. MapLibre draws
-the artwork, so the reference pane has them. The SDK takes ONE plate geometry per RULE and this style
-names its icon per feature, so the radius is a median over the whole sheet — every transit stop draws
-the POI disc. `iconExpression` says as much where it takes the sample. A class that wants its own
-shape needs its own layer with a CONSTANT `icon-image`; that is the follow-up.
 
 **Every class a layer names has a drawing.** With the disc coming from the rule and only the glyph
 from the sheet, a class with no drawing now draws an EMPTY disc where it used to draw nothing, so the

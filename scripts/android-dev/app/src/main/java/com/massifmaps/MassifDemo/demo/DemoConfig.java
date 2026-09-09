@@ -53,6 +53,11 @@ public final class DemoConfig {
     public static BaseMode BASE_MODE = BaseMode.COMPOSITE;
     public static StyleSource STYLE_SOURCE = StyleSource.INLINE;
 
+    /** Render the map on a sphere instead of the Mercator plane (Options.setRenderProjectionMode).
+     *  Terrain, shadows and the sky's up vector are still planar-only, so the globe currently
+     *  shows 2D content alone - see docs/internals/rendering/18-globe.md. */
+    public static boolean GLOBE_MODE = false;
+
     // =============================================================================================
     // FILES ON THE DEVICE
     // Data root is <external-storage>/alpimaps_mbtiles (same convention as before).
@@ -1170,6 +1175,7 @@ public final class DemoConfig {
         // what is shown
         BASE_MODE = DemoCfg.cfgEnum("base", BASE_MODE, BaseMode.class);              // --es base plain|composite
         STYLE_SOURCE = DemoCfg.cfgEnum("style", STYLE_SOURCE, StyleSource.class);    // --es style dir|zip|inline|project
+        GLOBE_MODE = DemoCfg.cfgBool("globe", GLOBE_MODE);                           // --es globe true|false
         // legacy 'demo' names kept working: terrain = plain base + terrain, nuti = style project
         String demo = DemoCfg.cfg("demo");
         if ("terrain".equals(demo)) {

@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.massifmaps.components.LightOptions;
 import com.massifmaps.components.Options;
+import com.massifmaps.components.RenderProjectionMode;
 import com.massifmaps.components.SkyOptions;
 import com.massifmaps.components.SkyQuality;
 import com.massifmaps.components.TileLODProfile;
@@ -179,6 +180,7 @@ public class DemoMap {
         mapView.getOptions().setEnvelopeThreadPoolSize(DemoConfig.TILE_THREAD_POOL_SIZE);
         applyTileLODConfig();
         applyDebugConfig();
+        applyGlobeMode();
         applyTerrainOptions();
         applyLightOptions();
         applySkyOptions();
@@ -1496,6 +1498,13 @@ public class DemoMap {
         }
         mapView.getOptions().setTileLODMaxZoomLevelsOnScreen(DemoConfig.TILE_LOD_LEVELS_ON_SCREEN);
         mapView.getOptions().setTileLODTileCountRatio(DemoConfig.TILE_LOD_COUNT_RATIO);
+    }
+
+    /** Plane or sphere. Rebuilds every tile layer's transformer, so the tile caches drop and refill. */
+    public void applyGlobeMode() {
+        mapView.getOptions().setRenderProjectionMode(DemoConfig.GLOBE_MODE
+                ? RenderProjectionMode.RENDER_PROJECTION_MODE_SPHERICAL
+                : RenderProjectionMode.RENDER_PROJECTION_MODE_PLANAR);
     }
 
     /** Creates the TerrainOptions on first call, then pushes every terrain value onto it. */

@@ -407,6 +407,11 @@ public final class DemoPanel {
         }
 
         header(context, "BASE MAP");
+        // Rebuilds every tile layer's transformer, so the tile caches drop and refill. Terrain is
+        // dropped while it is on: TileLayer picks the spherical transformer over the terrain one.
+        check(context, "globe", DemoConfig.GLOBE_MODE, new BoolSetting() {
+            public void set(boolean value) { DemoConfig.GLOBE_MODE = value; demo.applyGlobeMode(); }
+        });
         // Switching either of these rebuilds the base layer with a new decoder / layer class.
         choice(context, "mode", enumNames(DemoConfig.BaseMode.values()), DemoConfig.BASE_MODE.ordinal(), new IntSetting() {
             public void set(int index) {

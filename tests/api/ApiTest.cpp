@@ -82,6 +82,7 @@ void testFlattenSwitch();
 void testPrefetchOrder();
 void testTileStyleZoom();
 void testTileLODRule();
+void testSphericalSurface();
 
 namespace {
 
@@ -454,6 +455,7 @@ int main() {
     testPrefetchOrder();
     testTileStyleZoom();
     testTileLODRule();
+    testSphericalSurface();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -90,6 +90,10 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG3857.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG4326.cpp"
+  # The two projection surfaces, for SphericalSurfaceTest. They need Const, MapPos, MapVec and
+  # cglib and nothing else - no Options, no renderer, so the link stays as small as it was.
+  "${SDK_BASE_DIR}/all/native/projections/PlanarProjectionSurface.cpp"
+  "${SDK_BASE_DIR}/all/native/projections/SphericalProjectionSurface.cpp"
   # Spec.cpp holds create() and the registry; the built-in factories live in SpecFactories.cpp,
   # which is deliberately NOT here - linking it would need every source and layer constructor.
   "${SDK_BASE_DIR}/all/native/api/Spec.cpp"
@@ -236,6 +240,9 @@ add_executable(api_tests
   TileStyleZoomTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.
   TileLODRuleTest.cpp
+  # The globe's surface against the planar one - the conventions terrain-on-globe rests on.
+  # Needs the two projection surface sources added above.
+  SphericalSurfaceTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

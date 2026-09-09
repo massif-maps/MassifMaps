@@ -168,6 +168,28 @@ zoom 13) for the shared ground, whose vertices are internal coordinates. It is
 three frames and checks the world point moves by one metre, and that one earth radius of height puts
 it twice as far from the planet's centre. The old formula fails four of its checks.
 
+### What the device says after both fixes
+
+Seen on emulator-5554, Mont Blanc, the local French tiles: **the relief is there and the quads are
+gone**, at z11 tilt 40 and at z13. The two fixes above are confirmed on a screen.
+
+What is wrong now is the CONTENT over that ground, and it is a different bug:
+
+- polygon fills are **shredded** - torn edges with the ground colour showing through, which is
+  content sinking below the surface and being depth-rejected;
+- **every line is missing** - contours, roads and labels alike.
+
+The same camera with terrain OFF draws all of it correctly on the globe, so this is the terrain
+content path on a sphere, not the projection. The first suspect is the depth model's world-space
+terms - `_terrainDrawClearance * proj(2, 3)`, the decal polygon offset, the depth slack - because
+the spherical world is TWICE the planar scale (see "the two traps" above). A line is a decal that
+lives entirely on that clearance, which is why it disappears completely while a fill only loses the
+half of each triangle that sags.
+
+Two further gaps seen at the same time, both already on the list rather than new: the camera sits
+INSIDE the mountain at z13 (camera clearance is planar-only, step 4), and there is no RTT drape on
+the globe by design (`MapRenderer` forces it off - the bake maps a tile's unit square).
+
 ## Two things worth knowing about the spherical shader path
 
 **A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the

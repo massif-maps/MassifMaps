@@ -31,6 +31,8 @@ add_executable(vt_tests
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/ExtrusionAnchors.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileTransformer.cpp"
+  # Drives the surface builder so the skirt attribute can be shown to be globe-only.
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileSurfaceBuilder.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/PolygonTesselator.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TextFormatter.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/GlyphMap.cpp"

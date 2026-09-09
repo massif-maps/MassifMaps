@@ -13,6 +13,7 @@ namespace massif::vt {
         A_VERTEXUV,
         A_VERTEXNORMAL,
         A_VERTEXBINORMAL,
+        A_VERTEXSKIRT,
         A_VERTEXHEIGHT,
         A_VERTEXBASE,
         A_VERTEXCHORD,
@@ -195,6 +196,7 @@ namespace massif::vt {
         { "aVertexUV",       A_VERTEXUV },
         { "aVertexNormal",   A_VERTEXNORMAL },
         { "aVertexBinormal", A_VERTEXBINORMAL },
+        { "aVertexSkirt",    A_VERTEXSKIRT },
         { "aVertexHeight",   A_VERTEXHEIGHT },
         { "aVertexBase",     A_VERTEXBASE },
         { "aVertexChord",    A_VERTEXCHORD },
@@ -509,6 +511,8 @@ namespace massif::vt {
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         uniform highp vec2 uElevationLatticeCell; // regular-grid surface cell size in NODE-uv units (0 = off = plain node sample)
         #ifdef TERRAIN_SPHERICAL
+        // How far this vertex hangs below the surface: 0 everywhere but a skirt's bottom ring.
+        attribute highp float aVertexSkirt;
         // The unit-sphere point under a vertex: p = origin + pos * scale. Both come off the vertex
         // frame matrix, which is diagonal-plus-translate in either projection.
         uniform highp vec3 uTerrainSphereOrigin;
@@ -613,24 +617,18 @@ namespace massif::vt {
             highp float my = uElevationScale.y + pos.y * uElevationScale.z;
             float coshMY = 0.5 * (exp(my) + exp(-my));
             float z = meters * uElevationScale.x * coshMY + uElevationScale.w;
-            bool isSkirt = pos.z < -900000.0;
-            if (isSkirt) {
+        #ifdef TERRAIN_SPHERICAL
+            // The drop arrives in its own attribute here, so the vertex keeps its curved position
+            // and the sphere point stays recoverable - unlike the flat encoding below, which
+            // REPLACES pos.z. Displacement is along the surface normal rather than along z.
+            return pos + normalize(terrainSpherePoint(pos)) * (z - aVertexSkirt);
+        #else
+            if (pos.z < -900000.0) {
                 // tile skirt bottom vertex: z encodes -1000000 - drop; extrude downwards
                 // from the terrain surface to cover cracks between neighbouring tiles
                 // that sample different elevation levels
                 z += pos.z + 1000000.0;
             }
-        #ifdef TERRAIN_SPHERICAL
-            // Displace along the surface normal rather than along z. A skirt is passed through
-            // untouched: the sentinel REPLACES pos.z, so on a curved surface the vertex's own
-            // position is unrecoverable and the sphere point would be garbage. Nothing builds a
-            // spherical skirt yet - the mesh that will needs its drop in its own attribute
-            // (docs/internals/rendering/18-globe.md).
-            if (isSkirt) {
-                return pos;
-            }
-            return pos + normalize(terrainSpherePoint(pos)) * z;
-        #else
             return vec3(pos.xy, z);
         #endif
         }

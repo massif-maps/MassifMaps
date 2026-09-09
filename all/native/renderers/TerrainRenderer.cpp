@@ -922,6 +922,19 @@ namespace massif {
                     unsigned short i1 = edge[i + 1];
                     unsigned short s0 = static_cast<unsigned short>(mesh->vertices.size() / 3);
                     for (unsigned short idx : { i0, i1 }) {
+                        if (spherical) {
+                            // skirtZ is a height, not a z coordinate: hang the skirt off the BASE
+                            // surface point along its normal, which on the plane reduces to
+                            // (x, y, skirtZ) exactly as the branch below writes it.
+                            int gx = idx % rowSize, gy = idx / rowSize;
+                            cglib::vec2<float> tilePos(static_cast<float>(gx) / gridSize, 1.0f - static_cast<float>(gy) / gridSize);
+                            cglib::vec3<float> point = vertexTransformer->calculatePoint(tilePos);
+                            cglib::vec3<float> normal = cglib::unit(vertexTransformer->calculateNormal(tilePos));
+                            for (int k = 0; k < 3; k++) {
+                                mesh->vertices.push_back(static_cast<float>(point(k) + normal(k) * skirtZ));
+                            }
+                            continue;
+                        }
                         mesh->vertices.push_back(mesh->vertices[idx * 3 + 0]);
                         mesh->vertices.push_back(mesh->vertices[idx * 3 + 1]);
                         mesh->vertices.push_back(static_cast<float>(skirtZ));

@@ -14,10 +14,14 @@
  * is still refused on a globe. See docs/internals/rendering/18-globe.md.
  */
 
+#include "vt/TileSurface.h"
+#include "vt/TileSurfaceBuilder.h"
 #include "vt/TileTransformer.h"
 
 #include <cmath>
 #include <memory>
+#include <set>
+#include <vector>
 
 using namespace massif;
 using namespace massif::vt;
@@ -190,6 +194,59 @@ namespace {
     }
 
     /*
+     * The skirt drop is a GLOBE-ONLY vertex attribute. On the plane the drop is folded into the
+     * vertex z as a sentinel, which costs nothing; on a sphere that would destroy the curved
+     * position the shader displaces from, so it travels separately. The plane must not pay for it.
+     */
+    void testTheSkirtAttributeIsGlobeOnly() {
+        auto planar = std::make_shared<DefaultTileTransformer>(static_cast<float>(WORLD_SIZE));
+        auto sphere = std::make_shared<SphericalTileTransformer>(static_cast<float>(WORLD_SIZE / 3.1415926535897932));
+        TileId tileId(6, 20, 20);
+
+        auto build = [&](const std::shared_ptr<const TileTransformer>& transformer, bool skirts) {
+            TileSurfaceBuilder builder(transformer);
+            builder.setOrigin(transformer->calculateTileOrigin(tileId));
+            builder.setVisibleTiles(std::set<TileId>{ tileId });
+            builder.setTerrainSkirts(skirts);
+            return builder.buildTileSurface(tileId);
+        };
+
+        std::vector<std::shared_ptr<TileSurface>> planarSurfaces = build(planar, true);
+        std::vector<std::shared_ptr<TileSurface>> sphereSurfaces = build(sphere, true);
+        std::vector<std::shared_ptr<TileSurface>> sphereNoSkirts = build(sphere, false);
+        TEST_CHECK(!planarSurfaces.empty() && !sphereSurfaces.empty(), "both surfaces build with skirts on");
+        if (planarSurfaces.empty() || sphereSurfaces.empty()) {
+            return;
+        }
+        const TileSurface::VertexGeometryLayoutParameters& planarLayout = planarSurfaces.front()->getVertexGeometryLayoutParameters();
+        const TileSurface::VertexGeometryLayoutParameters& sphereLayout = sphereSurfaces.front()->getVertexGeometryLayoutParameters();
+
+        TEST_CHECK(planarLayout.skirtOffset < 0, "a planar surface carries no skirt attribute");
+        TEST_CHECK(sphereLayout.skirtOffset >= 0, "a spherical one does");
+        // Against the SAME surface without skirts, so the comparison isolates the attribute
+        // rather than the normals and binormals a sphere carries and a plane does not.
+        TEST_CHECK(!sphereNoSkirts.empty() && sphereNoSkirts.front()->getVertexGeometryLayoutParameters().skirtOffset < 0,
+                   "a spherical surface without skirts carries no skirt attribute either");
+        TEST_CHECK(!sphereNoSkirts.empty() && sphereLayout.vertexSize == sphereNoSkirts.front()->getVertexGeometryLayoutParameters().vertexSize + static_cast<int>(sizeof(float)),
+                   "and when it is there it costs exactly one float per vertex");
+
+        // The plane still folds the drop into z; the globe leaves the position alone, which is the
+        // whole reason for the attribute.
+        auto lowestZ = [](const std::shared_ptr<TileSurface>& surface) {
+            const TileSurface::VertexGeometryLayoutParameters& layout = surface->getVertexGeometryLayoutParameters();
+            const VertexArray<std::uint8_t>& data = surface->getVertexGeometry();
+            float lowest = 0;
+            for (std::size_t i = 0; i + layout.vertexSize <= data.size(); i += layout.vertexSize) {
+                const float* coord = reinterpret_cast<const float*>(&data[i] + layout.coordOffset);
+                lowest = std::min(lowest, coord[2]);
+            }
+            return lowest;
+        };
+        TEST_CHECK(lowestZ(planarSurfaces.front()) < -900000.0f, "the plane still encodes a skirt as a sentinel z");
+        TEST_CHECK(lowestZ(sphereSurfaces.front()) > -900000.0f, "the globe never does, so its vertex stays on the sphere");
+    }
+
+    /*
      * A height on a sphere is radial: unlike the plane, it does NOT grow with latitude. The shader
      * relies on this by setting the Mercator terms to zero so its cosh is 1.
      */
@@ -221,5 +278,6 @@ void testSphericalTerrain() {
     testOnlyTheSphereReportsItself();
     testTheShaderInversionRecoversTheTileUV();
     testNeighbouringTilesSampleTheSharedEdgeIdentically();
+    testTheSkirtAttributeIsGlobeOnly();
     testSphericalHeightHasNoLatitudeStretch();
 }

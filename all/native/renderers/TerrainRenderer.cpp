@@ -24,7 +24,13 @@
 namespace massif {
 
     struct TerrainRenderer::TileMesh {
-        std::vector<float> vertices; // x, y in tile coordinates [0..1], z in tile-local units
+        std::vector<float> vertices; // planar: x, y in tile coordinates [0..1], z tile-local; spherical: the curved position
+        // The grid node heights, tile-local. Kept because on a sphere they are NOT recoverable
+        // from a vertex's z, which there is a curved coordinate rather than a height.
+        std::vector<float> heights;
+        // The grid vertex each SKIRT vertex hangs from, so its shading can be copied from that
+        // vertex. Recovering it from the position only works while the tile is a flat unit square.
+        std::vector<unsigned short> skirtSources;
         std::vector<unsigned short> indices;
         // Surface pass only, filled on first use: nx, ny, nz, elevation in metres per vertex.
         std::vector<float> surfaceAttribs;
@@ -744,8 +750,17 @@ namespace massif {
         auto localZ = [&](int gx, int gy) {
             gx = std::min(std::max(gx, 0), gridSize);
             gy = std::min(std::max(gy, 0), gridSize);
-            return mesh.vertices[(gy * rowSize + gx) * 3 + 2];
+            return mesh.heights[gy * rowSize + gx];
         };
+
+        // On a sphere the tile-local axes are not the world's, so the slope normal has to be
+        // rotated into the local east/north/up frame. On a plane that frame IS the identity, and
+        // the branch below keeps the exact expression it always had.
+        bool spherical = _tileTransformer->isSpherical();
+        std::shared_ptr<const vt::TileTransformer::VertexTransformer> vertexTransformer;
+        if (spherical) {
+            vertexTransformer = _tileTransformer->createTileVertexTransformer(vt::TileId(tile.getZoom(), tile.getX(), tile.getY()));
+        }
 
         mesh.surfaceAttribs.resize(vertexCount * 4);
         for (int gy = 0; gy <= gridSize; gy++) {
@@ -756,6 +771,13 @@ namespace massif {
                 float dzdx = (localZ(gx + 1, gy) - localZ(gx - 1, gy)) * 0.5f * gridSize;
                 float dzdy = (localZ(gx, gy + 1) - localZ(gx, gy - 1)) * 0.5f * gridSize;
                 cglib::vec3<float> normal = cglib::unit(cglib::vec3<float>(-dzdx, -dzdy, 1.0f));
+                if (spherical) {
+                    cglib::vec2<float> tilePos(static_cast<float>(gx) / gridSize, 1.0f - static_cast<float>(gy) / gridSize);
+                    cglib::vec3<float> east = cglib::unit(vertexTransformer->calculateVector(tilePos, cglib::vec2<float>(1, 0)));
+                    cglib::vec3<float> north = cglib::unit(vertexTransformer->calculateVector(tilePos, cglib::vec2<float>(0, -1)));
+                    cglib::vec3<float> up = cglib::unit(vertexTransformer->calculateNormal(tilePos));
+                    normal = cglib::unit(east * normal(0) + north * normal(1) + up * normal(2));
+                }
                 std::size_t offset = static_cast<std::size_t>(gy * rowSize + gx) * 4;
                 mesh.surfaceAttribs[offset + 0] = normal(0);
                 mesh.surfaceAttribs[offset + 1] = normal(1);
@@ -767,12 +789,16 @@ namespace massif {
         // Skirt vertices duplicate a grid vertex's x/y at a lower z: give them that vertex's
         // values, so the crack-filling walls shade like the edge they hang from instead of
         // showing up as flat-lit bands.
-        for (std::size_t i = static_cast<std::size_t>(rowSize) * rowSize; i < vertexCount; i++) {
-            int gx = static_cast<int>(mesh.vertices[i * 3 + 0] * gridSize + 0.5f);
-            int gy = static_cast<int>(mesh.vertices[i * 3 + 1] * gridSize + 0.5f);
-            gx = std::min(std::max(gx, 0), gridSize);
-            gy = std::min(std::max(gy, 0), gridSize);
-            std::size_t source = static_cast<std::size_t>(gy * rowSize + gx) * 4;
+        std::size_t gridVertices = static_cast<std::size_t>(rowSize) * rowSize;
+        for (std::size_t i = gridVertices; i < vertexCount; i++) {
+            std::size_t skirtIndex = i - gridVertices;
+            if (skirtIndex >= mesh.skirtSources.size()) {
+                break;
+            }
+            std::size_t source = static_cast<std::size_t>(mesh.skirtSources[skirtIndex]) * 4;
+            if (source + 4 > mesh.surfaceAttribs.size()) {
+                continue;
+            }
             std::copy(mesh.surfaceAttribs.begin() + source, mesh.surfaceAttribs.begin() + source + 4, mesh.surfaceAttribs.begin() + i * 4);
         }
     }
@@ -790,7 +816,23 @@ namespace massif {
         double size = zoomScale * Const::WORLD_SIZE;
         double minZ = 0, maxZ = 0;
         elevationManager->getMinMaxDisplayHeight(tile, minZ, maxZ);
-        cglib::bbox3<double> tileBounds(cglib::vec3<double>(minX, minY, minZ), cglib::vec3<double>(minX + size, minY + size, maxZ));
+
+        // The tile's own frame, so the box and the LOD centre follow the surface. On a plane the
+        // transformer reproduces the flat box exactly: its bbox is the unit square through the tile
+        // matrix, and one internal unit of height is one world unit.
+        vt::TileId vtTileId(tile.getZoom(), tile.getX(), tile.getY());
+        cglib::mat4x4<double> tileMatrix = _tileTransformer->calculateTileMatrix(vtTileId, 1.0f);
+        std::shared_ptr<const vt::TileTransformer::VertexTransformer> vertexTransformer = _tileTransformer->createTileVertexTransformer(vtTileId);
+        cglib::vec2<float> centre(0.5f, 0.5f);
+        double worldPerInternal = tileMatrix(0, 0) * (_tileTransformer->isSpherical() ? sphericalLocalPerInternal(tile, minY + size * 0.5) : (1 << tile.getZoom()) / static_cast<double>(Const::WORLD_SIZE));
+
+        cglib::bbox3<double> tileBounds = _tileTransformer->calculateTileBBox(vtTileId);
+        cglib::vec3<double> up = cglib::vec3<double>::convert(cglib::unit(vertexTransformer->calculateNormal(centre)));
+        for (double height : { minZ, maxZ }) {
+            cglib::vec3<double> offset = up * (height * worldPerInternal);
+            tileBounds.add(tileBounds.min + offset);
+            tileBounds.add(tileBounds.max + offset);
+        }
 
         if (!viewState.getFrustum().inside(tileBounds)) {
             return;
@@ -799,7 +841,7 @@ namespace massif {
         // Same distance-based subdivision criterion as TileLayer::calculateVisibleTilesRecursive.
         // Like there, the LOD center is at surface level so decisions are stable while
         // elevation data streams in.
-        cglib::vec3<double> lodCenter(minX + size * 0.5, minY + size * 0.5, 0);
+        cglib::vec3<double> lodCenter = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(centre)), tileMatrix);
         const cglib::mat4x4<double>& mvpMat = viewState.getModelviewProjectionMat();
         double tileW = lodCenter(0) * mvpMat(3, 0) + lodCenter(1) * mvpMat(3, 1) + lodCenter(2) * mvpMat(3, 2) + mvpMat(3, 3);
         double zoomDistance = tileW * std::pow(2.0, static_cast<double>(tile.getZoom()));
@@ -869,6 +911,7 @@ namespace massif {
         bool spherical = _tileTransformer->isSpherical();
 
         mesh->vertices.reserve((rowSize * rowSize + 8 * rowSize) * 3); // grid + skirt vertices
+        mesh->heights.reserve(rowSize * rowSize);
         double minLocalZ = 0;
         for (int gy = 0; gy <= gridSize; gy++) {
             for (int gx = 0; gx <= gridSize; gx++) {
@@ -886,6 +929,7 @@ namespace massif {
                     localZ = internalZ * (spherical ? sphericalLocalPerInternal(tile, internalY) : localFromInternal);
                 }
                 minLocalZ = std::min(minLocalZ, localZ);
+                mesh->heights.push_back(static_cast<float>(localZ));
                 if (spherical) {
                     cglib::vec2<float> tilePos(static_cast<float>(x), static_cast<float>(1.0 - y));
                     cglib::vec3<float> point = vertexTransformer->calculatePoint(tilePos);
@@ -922,6 +966,7 @@ namespace massif {
                     unsigned short i1 = edge[i + 1];
                     unsigned short s0 = static_cast<unsigned short>(mesh->vertices.size() / 3);
                     for (unsigned short idx : { i0, i1 }) {
+                        mesh->skirtSources.push_back(idx);
                         if (spherical) {
                             // skirtZ is a height, not a z coordinate: hang the skirt off the BASE
                             // surface point along its normal, which on the plane reduces to

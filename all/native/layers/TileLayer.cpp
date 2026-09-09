@@ -1337,7 +1337,12 @@ namespace massif {
                     // MUST match what calculateDrawData compares against: these decide the
                     // tesselation the cached tiles were built with, so a mismatch leaves tiles
                     // decoded for the other mode in place forever.
-                    bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
+                    // The globe never takes the RTT drape (MapRenderer picks the shared ground
+                    // there), so it is tangram content whatever the option says. This MUST agree
+                    // with that choice or the tiles are tesselated for the other mode.
+                    bool drapeFills = terrainOptions->isDrapeFillsEnabled()
+                                   && options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR;
+                    bool tangramContent = !drapeFills;
                     tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
                 }
             }

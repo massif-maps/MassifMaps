@@ -6088,6 +6088,13 @@ namespace massif::vt {
         if (blend * opacity <= 0) {
             return;
         }
+        // Buildings scaled to nothing by the style (building-height-scale, or the view scale at the
+        // top of its ramp): every wall is a zero-area triangle, and the roof lands on the ground it
+        // would z-fight. The whole pass draws nothing, so it is not submitted.
+        if (geometry->getType() == TileGeometry::Type::POLYGON3D
+            && buildingHeightScale(blend, !geometry->getSpanRecords().empty()) <= 0.0f) {
+            return;
+        }
 
         VT_STAT_CLOCK(statClock);
         VT_STAT_SPLIT(geomProbeNs, statClock);
@@ -6511,14 +6518,32 @@ namespace massif::vt {
         }
     }
 
+    GLuint GLTileRenderer::findGeometryVAO(const CompiledGeometry& compiledGeometry, GLuint program) {
+        for (const std::pair<GLuint, GLuint>& programVAO : compiledGeometry.geometryVAOs) {
+            if (programVAO.first == program) {
+                return programVAO.second;
+            }
+        }
+        return 0;
+    }
+
     void GLTileRenderer::bindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry) {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
         bool lit = _lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D;
 
-        if (compiledGeometry.geometryVAO != 0) {
-            glBindVertexArray(compiledGeometry.geometryVAO);
+        GLuint geometryVAO = findGeometryVAO(compiledGeometry, shaderProgram.program);
+        bool freshVAO = false;
+        if (geometryVAO == 0) {
+            glGenVertexArrays(1, &geometryVAO);
+            if (geometryVAO != 0) {
+                compiledGeometry.geometryVAOs.emplace_back(shaderProgram.program, geometryVAO);
+                freshVAO = true;
+            }
         }
-        if (compiledGeometry.geometryVAO == 0 || compiledGeometry.geometryVAOProgram != shaderProgram.program) {
+        if (geometryVAO != 0) {
+            glBindVertexArray(geometryVAO);
+        }
+        if (geometryVAO == 0 || freshVAO) {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
 
@@ -6567,7 +6592,7 @@ namespace massif::vt {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
         bool lit = _lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D;
 
-        if (compiledGeometry.geometryVAO != 0) {
+        if (findGeometryVAO(compiledGeometry, shaderProgram.program) != 0) {
             glBindVertexArray(0);
         } else {
 
@@ -6602,12 +6627,11 @@ namespace massif::vt {
             disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
         }
 
-        if (compiledGeometry.geometryVAO == 0 || compiledGeometry.geometryVAOProgram != shaderProgram.program) {
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-            compiledGeometry.geometryVAOProgram = (compiledGeometry.geometryVAO != 0 ? shaderProgram.program : 0);
-        }
+        // ALWAYS, whether a VAO carried the draw or not: the compile path binds the geometry's
+        // buffers on VAO 0, and a name left there outlives the geometry - the next renderer to draw
+        // from VAO 0 then indexes a deleted buffer.
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
     void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap) {
@@ -7270,16 +7294,16 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::createCompiledGeometry(CompiledGeometry& compiledGeometry) {
-        glGenVertexArrays(1, &compiledGeometry.geometryVAO);
         glGenBuffers(1, &compiledGeometry.vertexGeometryVBO);
         glGenBuffers(1, &compiledGeometry.indicesVBO);
     }
     
     void GLTileRenderer::deleteCompiledGeometry(CompiledGeometry& compiledGeometry) {
-        if (compiledGeometry.geometryVAO != 0) {
-            glDeleteVertexArrays(1, &compiledGeometry.geometryVAO);
-            compiledGeometry.geometryVAO = 0;
+        for (const std::pair<GLuint, GLuint>& programVAO : compiledGeometry.geometryVAOs) {
+            GLuint geometryVAO = programVAO.second;
+            glDeleteVertexArrays(1, &geometryVAO);
         }
+        compiledGeometry.geometryVAOs.clear();
         if (compiledGeometry.vertexGeometryVBO != 0) {
             glDeleteBuffers(1, &compiledGeometry.vertexGeometryVBO);
             compiledGeometry.vertexGeometryVBO = 0;

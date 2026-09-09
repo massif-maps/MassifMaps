@@ -12,10 +12,15 @@ Both were produced by the converter, and both carry the **upstream provider's sp
 
 ```sh
 massif-style mapbox2css --live-light --label-emissive 0.6 --halo-emissive 0 \
-    --sprite-key '?access_token=…' standard.json mapbox-standard
+    --ao-follows-height --sprite-key '?access_token=…' standard.json mapbox-standard
 massif-style mapbox2css --live-light --label-emissive 0.45 --halo-emissive 0 \
     --sprite-key '?key=…' streets.json maptiler-streets
 ```
+
+`--ao-follows-height` fades the ground AO on the same ramp that lays the buildings down, so a
+flattened city does not keep a dark ring around every footprint. It is opt-in: whether the contact
+shadow outlives the walls is the style's call. The checked-in `mapbox-standard/style.mss` predates
+the flag and does not carry it yet - it takes a re-run against Mapbox's own `standard.json`.
 
 They are here so the `day-cycle-light` example can be run and the light curve judged against a real
 map. **They are to be replaced by open-licensed equivalents**, for two reasons:

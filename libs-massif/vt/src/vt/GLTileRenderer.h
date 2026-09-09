@@ -535,13 +535,12 @@ namespace massif::vt {
         struct CompiledGeometry {
             GLuint vertexGeometryVBO;
             GLuint indicesVBO;
-            GLuint geometryVAO;
-            // The program whose ATTRIBUTE LOCATIONS the VAO's pointers were set up for, or 0. A VAO
-            // records pointers per attribute INDEX, and the same geometry is drawn by more than one
-            // program whose locations need not match.
-            mutable GLuint geometryVAOProgram;
+            // ONE VAO PER PROGRAM, built on first use. A VAO records pointers per attribute INDEX,
+            // and the same geometry is drawn by more than one program whose locations need not
+            // match - re-specifying a single VAO for a second program draws garbage on Adreno.
+            mutable std::vector<std::pair<GLuint, GLuint>> geometryVAOs; // program -> VAO
 
-            CompiledGeometry() : vertexGeometryVBO(0), indicesVBO(0), geometryVAO(0), geometryVAOProgram(0) { }
+            CompiledGeometry() : vertexGeometryVBO(0), indicesVBO(0) { }
         };
 
         struct CompiledLabelBatch {
@@ -807,6 +806,7 @@ namespace massif::vt {
         void setupGeometryCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry, const GeometryDrawMode& mode);
         // The vertex attribute layout of one compiled geometry. Bound as a VAO where the geometry
         // has one, attribute by attribute otherwise - which is also what the unbind undoes.
+        static GLuint findGeometryVAO(const CompiledGeometry& compiledGeometry, GLuint program);
         void bindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
         void unbindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);

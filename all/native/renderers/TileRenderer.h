@@ -317,6 +317,7 @@ namespace massif {
         bool _terrainPaintEnabled = false; // this renderer shades the DEM instead of drawing tiles
         bool _terrainPaintFullDetail = true; // shade from the DEM's own max zoom, not the mesh's level
         bool prepareFrameUnsafe(float deltaSeconds, const ViewState& viewState); // caller holds _mutex
+        void pushTerrainDrapeState(); // caller holds _mutex
 
         bool _framePrepared = false;   // startFrame already ran this frame (cross-layer drape ordering)
         bool _framePrepareResult = false;

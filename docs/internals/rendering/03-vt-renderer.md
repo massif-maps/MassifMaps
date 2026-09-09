@@ -436,3 +436,20 @@ view state (`_colorFuncCache` and friends, with `styleFuncLookups`/`styleFuncMis
 - Client-side vertex arrays and bound VBOs are a cross-renderer hazard: the terrain paint pass once
   left `GL_ARRAY_BUFFER` bound and `SkyRenderer`, which draws from a client array, turned its quad
   into an offset into that buffer — the sky went black. **Unbind after every draw loop.**
+- **State the shared ground needs is pushed in `prepareFrame`, not `onDrawFrame`.** `MapRenderer`
+  draws the cross-layer terrain ground BEFORE any layer's `onDrawFrame` runs, so anything
+  `renderDrapedSurface` reads has to be set earlier - that is what `TileRenderer::prepareFrame`
+  already does for the view state, the lighting and the ground AO. `terrainMode`, the regular grid
+  and the elevation texture provider were missing from it, and `renderDrapedSurface` returns `-2`
+  without all three: on the first frame of a 2D->3D switch every surface bailed and the map drew
+  with NO ground - sky through it, buildings still there, one frame. `pushTerrainDrapeState` sends
+  them early; `onDrawFrame` still sends the authoritative values later in the same frame.
+- **A VAO belongs to ONE program.** `CompiledGeometry` keeps a VAO per program, built on first use.
+  A VAO records pointers per attribute INDEX, and one geometry is drawn by several programs whose
+  locations need not match — the main pass and the sun caster, or the `TERRAIN` and flat variants of
+  `polygon3DVsh`. Re-specifying a single VAO for a second program is legal GL and the state reads
+  back correct, but on the Crosscall's Adreno the next draw rasterises garbage: extrusions smeared
+  into screen-long diagonal streaks, then `kgsl gpu fault` and SIGKILL. Auto-flatten is what used to
+  reach it, by switching the 3D geometry between the two variants with the tiles kept
+  ([04-terrain.md](04-terrain.md)). Deleting and re-creating the VAO on each program change also
+  cures it but ran 4000+ times a minute, so the per-program VAO is the one to keep.

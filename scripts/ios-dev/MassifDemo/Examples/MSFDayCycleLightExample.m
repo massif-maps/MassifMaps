@@ -17,6 +17,7 @@
     __weak id<MSFExampleHost> _host;
     NSUInteger _style;
     NSUInteger _formula;
+    NSUInteger _tiltDropStep;
     double _hour;
     double _sunAltitude;
     double _sunAzimuth;
@@ -108,6 +109,17 @@ static const double kStartHour = 17.4;
  */
 static const double kPresetHours[] = { 6.8, 12.0, 17.4, 22.0 };
 
+/** The SDK's own thresholds, written out because the toggle switches between them and off. */
+static const double kAutoFlattenTilt = 88.0;
+static const double kAutoFlattenParallax = 2.0;
+
+/**
+ * Both style projects declare this parameter; only Mapbox Standard's Map block reads it. At 80 a
+ * building keeps a fifth of its height at tilt 90 - still legible as a building, where the
+ * project's own default of 90 reads as flat once the camera is that far over.
+ */
+static const double kTiltDrops[] = { 80.0, 0.0, 50.0 };
+
 /**
  * Local solar time to a sun position - the NOAA low-accuracy form, good to ~0.1 degree, which is
  * what LightOptions.setSunPositionFromTime computes in C++; the facade cannot reach that method,
@@ -157,7 +169,11 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
                 set:@"url" value:@"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]
                 set:@"maxZoom" value:@16]
                 set:@"metaData" value:[[MSFSpec object] set:@"dem_encoding" value:@"terrarium"]]]]]
-        apply:[[[MSFSpec object] set:@"exaggeration" value:@1] set:@"cameraClearance" value:@40]];
+        // The auto 2D/3D thresholds are the SDK's defaults, set out loud because the toggle below
+        // is what an app turns them off with.
+        apply:[[[[[MSFSpec object] set:@"exaggeration" value:@1] set:@"cameraClearance" value:@40]
+            set:@"autoFlattenTilt" value:@(kAutoFlattenTilt)]
+            set:@"autoFlattenParallax" value:@(kAutoFlattenParallax)]];
 
     // The curve is only read while this is on; off, the style's and the app's own sun colours
     // stand, which is what every map did before the curve existed.
@@ -208,7 +224,26 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
         [self applyHour];
         [self caption];
     }];
-    [host caption:@"Two styles, two formulas: the hour picks the light, the curve picks the look."];
+    // How far the buildings sink as the camera lies down, in PERCENT of their height at tilt 90.
+    // A button, not a slider: the control row scrolls, and a horizontal drag there fights it.
+    [host button:@"Tilt drop" action:^{
+        self->_tiltDropStep = (self->_tiltDropStep + 1) % 3;
+        [self applyTiltDrop];
+        [self->_host caption:[NSString stringWithFormat:
+            @"Buildings drop %.0f%% of their height by tilt 90.", kTiltDrops[self->_tiltDropStep]]];
+    }];
+    // Off holds the map in 3D at any tilt: the thresholds are a pair, and a 0 disables its own
+    // half of the rule (see TerrainOptions.setAutoFlattenParallax).
+    [host toggle:@"Auto 2D/3D" on:YES action:^(BOOL on) {
+        [self->_host.map.terrain apply:[[[MSFSpec object]
+            set:@"autoFlattenTilt" value:@(on ? kAutoFlattenTilt : 0.0)]
+            set:@"autoFlattenParallax" value:@(on ? kAutoFlattenParallax : 0.0)]];
+        [self->_host caption:on
+            ? @"Auto 2D/3D on: tilt past 88 degrees and the map renders flat."
+            : @"Auto 2D/3D off: the map stays 3D all the way to 90 degrees."];
+    }];
+    [host caption:@"Two styles, two formulas: the hour picks the light, the curve picks the look. "
+                   "Zoom out past z15, or tilt to 90, and the buildings lie down."];
 }
 
 /**
@@ -244,6 +279,7 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
                                  set:@"url" value:[NSString stringWithFormat:@"assets://styles/%@.zip",
                                                    styles()[_style][1]]]]]]]
             error:nil];
+    [self applyTiltDrop]; // a rebuilt layer is a fresh decoder, back on the style's own default
 }
 
 /**
@@ -252,6 +288,19 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
  * tiles are untouched, so this is a redraw. Both are written every time, or a formula without a
  * dawn of its own would keep the previous one's.
  */
+/**
+ * A style PARAMETER, not an SDK option: the drop is spelled out in the style's Map block and this
+ * only picks the value it reads. Applied through the layer's decoder, so it is a redraw.
+ */
+- (void)applyTiltDrop {
+    MSFMassifLayer *layer = [_host.map layer:@"basemap"];
+    NSString *value = [NSString stringWithFormat:@"%.0f", kTiltDrops[_tiltDropStep]];
+    MSFMassifObject *result = [layer call:@"tileDecoder.setStyleParameter"
+                                     args:@[ @"building_tilt_drop", value ]
+                                    error:nil];
+    [result destroy];
+}
+
 - (void)applyFormula {
     [_host.map.light apply:[[[MSFSpec object]
         set:@"dayCycleLightStops" value:formulas()[_formula][1]]

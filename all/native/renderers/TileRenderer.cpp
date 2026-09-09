@@ -224,6 +224,52 @@ namespace massif {
         _horizontalLayerOffset += offset;
     }
     
+    /**
+     * The three pieces of state GLTileRenderer::renderDrapedSurface refuses to draw without. Pushed
+     * from prepareFrame as well as onDrawFrame because MapRenderer draws the shared ground BEFORE
+     * this layer's onDrawFrame runs: on the first frame of a 2D->3D switch every surface bailed and
+     * the frame had no ground at all - the sky through it, buildings still there.
+     * Caller must hold _mutex.
+     */
+    void TileRenderer::pushTerrainDrapeState() {
+        std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>());
+        if (!tileRenderer) {
+            return;
+        }
+        bool terrainMode = false;
+        std::shared_ptr<TerrainOptions> activeTerrainOptions;
+        if (auto options = _options.lock()) {
+            if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+                if (auto terrainOptions = options->getTerrainOptions()) {
+                    if (terrainOptions->isActive()) {
+                        terrainMode = true;
+                        activeTerrainOptions = terrainOptions;
+                    }
+                }
+            }
+        }
+        // An ALREADY BUILT cache only: creating one, and its per-frame begin, stay in onDrawFrame,
+        // which runs later in the same frame and pushes the authoritative values over these.
+        std::shared_ptr<ElevationTextureCache> elevationTextureCache;
+        if (terrainMode) {
+            elevationTextureCache = _elevationTextureCache;
+        }
+        vt::GLTileRenderer::TerrainTextureProvider terrainTextureProvider;
+        if (elevationTextureCache) {
+            terrainTextureProvider = [elevationTextureCache](const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
+                return elevationTextureCache->getTexture(tileId, terrainTexture);
+            };
+        }
+        float terrainDepthBias = 0.0f;
+        if (terrainMode && !terrainTextureProvider) {
+            terrainDepthBias = activeTerrainOptions->getDepthBias() * 0.1f;
+        }
+        tileRenderer->setTerrainTextureProvider(terrainTextureProvider);
+        tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
+        tileRenderer->setTerrainRegularGrid(terrainMode && (bool) terrainTextureProvider,
+                                            activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
+    }
+
     bool TileRenderer::prepareFrame(float deltaSeconds, const ViewState& viewState) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -275,6 +321,7 @@ namespace massif {
         tileRenderer->setBackgroundEmissive(_backgroundEmissive);
         tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
+        pushTerrainDrapeState();
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
         }

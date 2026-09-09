@@ -9,6 +9,7 @@ file(GLOB BIDI_SOURCES "${SDK_BASE_DIR}/libs-external/bidi/bidi.c" "${SDK_BASE_D
 add_executable(vt_tests
   VtTest.cpp
   PlateBitmapTest.cpp
+  PlateBoxTest.cpp
   LineLabelTest.cpp
   ExtrusionCornerTest.cpp
   ExtrusionBevelTest.cpp

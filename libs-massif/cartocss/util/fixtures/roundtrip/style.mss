@@ -84,3 +84,16 @@ Map {
   text-fill: #333333;
   text-placement: line;
 }
+
+/* the label plate, sized rather than padded */
+#transportation::shield {
+  shield-name: [ref];
+  shield-face-name: 'DIN Pro Regular';
+  shield-file: url(marker.svg);
+  shield-background-fill: #ffffff;
+  shield-background-width: 22;
+  shield-background-height: 22;
+  shield-icon-background-fill: #e04020;
+  shield-icon-background-width: 18;
+  shield-icon-background-height: 18;
+}

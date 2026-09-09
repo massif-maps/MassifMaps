@@ -39,6 +39,8 @@ namespace massif::mvt {
             bindProperty("icon-background-radius", &_iconBackgroundRadius);
             bindProperty("icon-background-padding-x", &_iconBackgroundPaddingX);
             bindProperty("icon-background-padding-y", &_iconBackgroundPaddingY);
+            bindProperty("icon-background-width", &_iconBackgroundWidth);
+            bindProperty("icon-background-height", &_iconBackgroundHeight);
             bindProperty("icon-background-border-fill", &_iconBackgroundBorderFill);
             bindProperty("icon-background-border-opacity", &_iconBackgroundBorderOpacity);
             bindProperty("icon-background-border-width", &_iconBackgroundBorderWidth);
@@ -93,6 +95,8 @@ namespace massif::mvt {
         FloatProperty _iconBackgroundRadius = FloatProperty(0.0f);
         FloatProperty _iconBackgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _iconBackgroundPaddingY = FloatProperty(2.0f);
+        FloatProperty _iconBackgroundWidth = FloatProperty(0.0f);
+        FloatProperty _iconBackgroundHeight = FloatProperty(0.0f);
         ColorProperty _iconBackgroundBorderFill = ColorProperty("#000000");
         FloatProperty _iconBackgroundBorderOpacity = FloatProperty(1.0f);
         FloatProperty _iconBackgroundBorderWidth = FloatProperty(0.0f);

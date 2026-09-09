@@ -481,6 +481,7 @@ namespace massif::mvt {
         plate.color = vt::Color::fromColorOpacity(_backgroundFill.getValue(exprContext), _backgroundOpacity.getValue(exprContext));
         plate.radius = _backgroundRadius.getValue(exprContext) * fontScale;
         plate.padding = cglib::vec2<float>(_backgroundPaddingX.getValue(exprContext) * fontScale, _backgroundPaddingY.getValue(exprContext) * fontScale);
+        plate.size = cglib::vec2<float>(_backgroundWidth.getValue(exprContext) * fontScale, _backgroundHeight.getValue(exprContext) * fontScale);
         plate.borderColor = vt::Color::fromColorOpacity(_backgroundBorderFill.getValue(exprContext), _backgroundBorderOpacity.getValue(exprContext));
         plate.borderWidth = _backgroundBorderWidth.getValue(exprContext) * fontScale;
         return plate;

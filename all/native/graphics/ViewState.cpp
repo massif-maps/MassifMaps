@@ -118,8 +118,14 @@ namespace massif {
         return static_cast<float>(ZoomConvention::renderZoom(_zoom, _zoomOffset));
     }
 
-    double ViewState::calculateZoom0Distance(double tanHalfFOVY) const {
-        return ZoomConvention::zoom0Distance(_height, Const::WORLD_SIZE, _tileDrawSize, _zoomOffset,
+    double ViewState::calculateZoom0Distance(double tanHalfFOVY, const std::shared_ptr<ProjectionSurface>& projectionSurface) const {
+        // The SURFACE's world, not the planar constant: a sphere's equator is twice as wide, so
+        // calibrating on WORLD_SIZE put the globe's camera at half the distance its zoom means -
+        // everything a zoom level too large, and the camera inside the relief by zoom 12.
+        // The surface comes in rather than off the member: on the frame the projection CHANGES the
+        // member is still the old one, and reading it there made the globe jump a zoom on startup.
+        double worldWidth = (projectionSurface ? projectionSurface->getWorldWidth() : Const::WORLD_SIZE);
+        return ZoomConvention::zoom0Distance(_height, worldWidth, _tileDrawSize, _zoomOffset,
                                              tanHalfFOVY, _dpi / Const::UNSCALED_DPI);
     }
 
@@ -563,7 +569,7 @@ namespace massif {
             _tanHalfFOVX = _aspectRatio * _tanHalfFOVY;
             _cosHalfFOVXY = std::cos(std::atan(_tanHalfFOVX)) * _cosHalfFOVY;
 
-            _zoom0Distance = static_cast<float>(calculateZoom0Distance(_tanHalfFOVY));
+            _zoom0Distance = static_cast<float>(calculateZoom0Distance(_tanHalfFOVY, projectionSurface));
             _minZoom = zoomRange.getMin();
             _zoomRange = zoomRange;
             _restrictedPanning = restrictedPanning;
@@ -747,7 +753,7 @@ namespace massif {
     void ViewState::calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible, float& skyHorizonNDC) const {
         float halfFOVY = options.getFieldOfViewY() * 0.5f;
         float tanHalfFOVY = std::tan(static_cast<float>(halfFOVY * Const::DEG_TO_RAD));
-        float zoom0Distance = static_cast<float>(calculateZoom0Distance(tanHalfFOVY));
+        float zoom0Distance = static_cast<float>(calculateZoom0Distance(tanHalfFOVY, _projectionSurface));
         float initialZ = std::pow(2.0f, -_zoom) * zoom0Distance / 64.0f;
         // The direction the camera actually looks along, which above the horizon is not the
         // direction of the focus point (calculateLookatMat).

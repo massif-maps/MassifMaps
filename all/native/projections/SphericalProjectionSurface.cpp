@@ -6,6 +6,10 @@ namespace massif {
     SphericalProjectionSurface::SphericalProjectionSurface() {
     }
 
+    double SphericalProjectionSurface::getWorldWidth() const {
+        return 2 * Const::PI * SPHERE_SIZE; // = 2 * WORLD_SIZE, the sphere being WORLD_SIZE / PI across
+    }
+
     MapPos SphericalProjectionSurface::calculateMapPos(const cglib::vec3<double>& pos) const {
         return SphericalToInternal(pos * (1.0 / SPHERE_SIZE));
     }

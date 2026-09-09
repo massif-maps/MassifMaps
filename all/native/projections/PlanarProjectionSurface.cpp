@@ -6,6 +6,10 @@ namespace massif {
     PlanarProjectionSurface::PlanarProjectionSurface() {
     }
 
+    double PlanarProjectionSurface::getWorldWidth() const {
+        return Const::WORLD_SIZE;
+    }
+
     MapPos PlanarProjectionSurface::calculateMapPos(const cglib::vec3<double>& pos) const {
         return MapPos(pos(0), pos(1), pos(2));
     }

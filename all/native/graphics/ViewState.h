@@ -478,7 +478,7 @@ namespace massif {
          * One function because it is computed in two places, and a zoom convention that holds in
          * only one of them is worse than none.
          */
-        double calculateZoom0Distance(double tanHalfFOVY) const;
+        double calculateZoom0Distance(double tanHalfFOVY, const std::shared_ptr<ProjectionSurface>& projectionSurface) const;
         MapPos calculateMapBoundsCenter(const Options& options, const MapBounds& mapBounds) const;
    
         cglib::mat4x4<double> calculatePerspMat(float halfFOVY, float near, float far, const Options& options) const;

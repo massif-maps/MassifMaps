@@ -252,7 +252,34 @@ namespace {
     }
 }
 
+    void testTheZoomIsCalibratedOnEachSurfacesOwnWorld() {
+        // The camera's zoom-0 distance is derived from the world's WIDTH. Read off the planar
+        // constant on both, the globe's camera sat at half the distance its zoom meant: content a
+        // zoom level too large, and the camera inside the relief by zoom 12.
+        PlanarProjectionSurface planar;
+        SphericalProjectionSurface spherical;
+        TEST_CHECK(nearly(planar.getWorldWidth(), Const::WORLD_SIZE),
+                   "the planar world is WORLD_SIZE wide");
+        TEST_CHECK(nearly(spherical.getWorldWidth(), 2 * Const::WORLD_SIZE),
+                   "... and the sphere's equator is twice that, as its scale trap says");
+
+        // The same ground under the same screen: one tile of world at zoom z is worldWidth / 2^z,
+        // so the two surfaces cover the same Mercator extent at a given zoom only if each is
+        // calibrated on its own width.
+        double zoom = 12.0;
+        double planarTile = planar.getWorldWidth() / std::pow(2.0, zoom);
+        double sphericalTile = spherical.getWorldWidth() / std::pow(2.0, zoom);
+        MapPos p0 = internalOf(0.0, 0.0);
+        MapPos p1 = internalOf(360.0 / std::pow(2.0, zoom), 0.0);
+        TEST_CHECK(nearly(planar.calculateDistance(planar.calculatePosition(p0), planar.calculatePosition(p1)), planarTile, 1.0e-6),
+                   "a zoom-12 tile of planar world is one planar tile wide");
+        TEST_CHECK(nearly(spherical.calculateDistance(spherical.calculatePosition(p0), spherical.calculatePosition(p1)), sphericalTile, 1.0e-3),
+                   "... and a zoom-12 tile of spherical world is one spherical tile wide");
+    }
+
+
 void testSphericalSurface() {
+    testTheZoomIsCalibratedOnEachSurfacesOwnWorld();
     testInternalCoordinatesAreStillMercator();
     testHeightMeansTheSameMetresOnBothSurfaces();
     testTheSphericalWorldIsTwiceThePlanarScale();

@@ -34,6 +34,9 @@ namespace massif {
         const std::shared_ptr<ElevationProvider>& getElevationManager() const { return _elevationManager; }
         unsigned int getElevationVersion() const { return _elevationVersion; }
 
+        // The base's: terrain changes the height of a point, not the width of the world.
+        virtual double getWorldWidth() const { return _base->getWorldWidth(); }
+
         virtual MapPos calculateMapPos(const cglib::vec3<double>& pos) const;
         virtual MapVec calculateMapVec(const cglib::vec3<double>& pos, const cglib::vec3<double>& vec) const;
         virtual cglib::vec3<double> calculatePosition(const MapPos& mapPos) const;

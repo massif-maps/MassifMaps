@@ -123,6 +123,37 @@ test('a dash ramped over zoom still dashes, at the LAST stop that dashes', () =>
     assert.ok(!mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [1, 0]]]).includes('dasharray'));
 });
 
+test('a PLAIN dash over a ramped width becomes one rule per zoom band', () => {
+    // Liberty's rail hatching: [0.2, 8] over a width running 3 px at z15 to 8 px at z20. One scale
+    // cannot serve that - at 5.5 the dash drew 1.8x too long at the bottom of the range - and a
+    // plain literal has no stop zoom of its own to be read at, the way a ramped dash does.
+    const hatching = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 14.5, 0, 15, 3, 20, 8],
+        'line-dasharray': [0.2, 8],
+    } };
+    const out = convert({ layers: [hatching] }, table, NO_PALETTE).mss;
+    const dashes = [...out.matchAll(/line-dasharray: ([\d.]+),/g)].map((m) => Number(m[1]));
+
+    assert.equal(dashes.length, 2, 'a 2.7x width range is two bands, cut where the width doubles');
+    assert.ok(dashes[0] < dashes[1], 'the lower band scales by the narrower line');
+    // Measured from the first POSITIVE stop: the ramp starts at width 0, and below that there is
+    // nothing for the dash to be in proportion to.
+    assert.match(out, /#road\[zoom < 19\]::l_b1 \{/);
+    assert.match(out, /#road\[zoom >= 19\]::l_b2 \{/);
+});
+
+test('a dash a style RAMPS keeps its own stop zoom, and is not banded', () => {
+    // The stop the pattern begins at is already the targeted zoom to read the width at - Standard's
+    // stair treads depend on it. Banding on top of that would move it.
+    const steps = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 0, 18, 6, 22, 80],
+        'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 19, ['literal', [0.1, 0.1]]],
+    } };
+    const out = convert({ layers: [steps] }, table, NO_PALETTE).mss;
+    assert.equal([...out.matchAll(/line-dasharray:/g)].length, 1, 'one rule, not a band each');
+    assert.match(out, /line-dasharray: 1.51,1.51;/, 'width(19) = 15.1, as gl-js draws it there');
+});
+
 test('a dash is scaled by the line width AT the zoom its stop starts', () => {
     // MapBox dash lengths are multiples of the line width, and Standard's steps ramp that width to
     // 80 px by z22: the mean of the stops is 43, so a 0.1 dash came out at 4.3 px where gl-js

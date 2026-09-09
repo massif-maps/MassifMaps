@@ -807,6 +807,26 @@ takes ONE pattern where MapBox takes a ramp. Two rules follow from that:
   fallback is the width nearly every feature has; a piste is the exception, and one pattern cannot
   serve both.
 
+### A PLAIN dash over a ramped width becomes one rule per zoom band
+
+The rules above pick the one zoom to read the width at. When the style *ramps the dash*, that zoom
+is the pattern's own stop and the answer is already targeted. When the dash is a plain literal there
+is no such zoom, and one scale has to cover the whole width ramp — which it cannot. Liberty's rail
+hatching is `[0.2, 8]` over a width running 3 px at z15 to 8 px at z20: scaled at 5.5 it drew
+**1.8× too long at z15** and 0.7× too short at z20, which reads as "the dashes are twice the size".
+
+`splitDashByZoom` cuts such a layer into one attachment per band, each scaling its dash by the width
+in the MIDDLE of its own band. Bands are cut where the width **doubles** (`ceil(log2(ratio))`,
+capped at 4), so the worst error inside one is √2 rather than the ramp's whole range — the hatching
+becomes `0.75,30` below z18 and `1.25,49.96` above, against a single `1.1,44`.
+
+Three things keep it from doing harm. It measures from the first stop whose width is **positive** —
+that hatching ramp starts `(14.5, 0)`, and below it there is no width to be in proportion to — and
+no further than the last stop, above which the width is flat and a band would read the same number
+twice. The outer bands keep the layer's own `minzoom`/`maxzoom`, so banding never narrows what is
+drawn. And band edges are whole zooms, because `zoomPredicates` floors the min and ceils the max: a
+fractional edge would round outwards on both sides and draw the seam twice.
+
 ## The light, not the colours: how a preset gets dark
 
 Standard's night preset uses the **same authored colours as day** — `colorLand` is

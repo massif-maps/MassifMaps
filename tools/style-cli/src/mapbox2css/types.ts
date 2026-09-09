@@ -10,6 +10,11 @@ export interface MapboxLayer {
     filter?: Json;
     layout?: Record<string, Json>;
     paint?: Record<string, Json>;
+    /**
+     * Converter-internal, not a MapBox property: the zoom a banded dash reads its line width at.
+     * Set by splitDashByZoom, read where `line-dasharray` is emitted.
+     */
+    dashZoom?: number;
 }
 
 export interface MapboxStyle {

@@ -535,6 +535,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             const variants = expandSortKey(isContourLayer(layer) ? retargeted : schemaLayer, coverage)
                 .flatMap(expandSetFilter)
                 .flatMap((ordered) => splitLayer(ordered, coverage))
+                .flatMap((ordered) => splitDashByZoom(ordered, coverage))
                 .map(narrowLayer);
             variants.forEach((variant, branch) => {
                 const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
@@ -1502,8 +1503,11 @@ function layerDeclarations(
             // At the zoom the pattern is CHOSEN at, not the mean of the width's stops: Standard's
             // steps ramp to 80 px by z22, so the mean is 43 and its 0.2 dash came out at 8.6 px
             // where gl-js draws under 2 - coarse bands instead of fine treads.
-            const scale = (zoom === null ? null : rampAt(width, zoom)) ?? representativeScale(width, 1);
-            if (typeof width !== 'number') {
+            // A banded attachment reads the width in the middle of its OWN band; see splitDashByZoom.
+            const banded = layer.dashZoom === undefined ? null : rampAt(width, layer.dashZoom);
+            const scale = banded ?? (zoom === null ? null : rampAt(width, zoom))
+                ?? representativeScale(width, 1);
+            if (typeof width !== 'number' && banded === null) {
                 coverage.approximate(`line-dasharray scaled by ${round(scale)}, a zoom-driven ` +
                     'line-width read at one zoom: CartoCSS takes one dash pattern, not a ramp');
             }
@@ -2000,6 +2004,82 @@ function dashPattern(value: Json): { pattern: number[]; zoom: number | null } | 
     const pattern = dashing.length ? dashing[dashing.length - 1] : patterns[0];
     return { pattern, zoom: stopZoomOf(value, pattern) };
 }
+
+/**
+ * A dashed line whose WIDTH ramps over zoom, as one attachment per zoom band.
+ *
+ * A MapBox dash length is a multiple of the line width, and CartoCSS takes ONE pattern of PIXELS per
+ * rule - the decoder rasterises it into a bitmap keyed by the literal string, so it cannot be a
+ * function of anything. A single rule is therefore only right at one zoom: Liberty's rail hatching
+ * ramps its width 3 -> 8 between z15 and z20, and the one scale we could pick drew the dash 1.8x too
+ * long at the bottom of that range and 0.7x too short at the top.
+ *
+ * Banded, each attachment scales its dash by the width in the MIDDLE of its own band, and the bands
+ * are cut where the width DOUBLES - so the worst error inside one is a factor of sqrt(2) instead of
+ * the whole ramp. The outer edges keep the layer's own zoom range, so nothing stops being drawn.
+ *
+ * It lives here rather than in split.ts because it needs `dashPattern` and `rampAt`, and moving
+ * those would cost an import cycle for one caller.
+ */
+function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
+    const dash = layer.paint?.['line-dasharray'];
+    const width = layer.paint?.['line-width'];
+    if (dash === undefined || layer.dashZoom !== undefined || !Array.isArray(width)) return [layer];
+    const pattern = dashPattern(dash as Json);
+    // A dash the style RAMPS states the zoom its pattern begins at, and reading the width there is
+    // already the targeted answer - Standard's treads depend on it. Banding is for the plain
+    // literal dash, which has no zoom of its own to be read at.
+    if (pattern === null || pattern.zoom !== null) return [layer];
+
+    // From the first stop that is actually DRAWN, not the first stop: a ramp starting at width 0 -
+    // Liberty's rail hatchings start (14.5, 0) - has nothing to keep the dash in proportion to
+    // below it. And no further than the last stop, above which the width is flat and a band would
+    // read the same number twice.
+    const stops = rampStops(width as Json);
+    const lo = Math.floor(Math.max(layer.minzoom ?? 0, stops.find(([, w]) => w > 0)?.[0] ?? 0));
+    const hi = Math.ceil(Math.min(layer.maxzoom ?? 24, stops[stops.length - 1]?.[0] ?? 24, 24));
+    const wLo = rampAt(width as Json, lo);
+    const wHi = rampAt(width as Json, hi);
+    if (hi - lo < 2 || !wLo || !wHi || wLo <= 0 || wHi <= 0) return [layer];
+
+    // Cut where the width DOUBLES, rounding up: a band spanning a 2x range is at worst sqrt(2) out
+    // in the middle, which is the error this is willing to keep.
+    const ratio = Math.max(wHi / wLo, wLo / wHi);
+    const bandCount = Math.min(MAX_DASH_BANDS, hi - lo, Math.ceil(Math.log2(ratio)));
+    if (bandCount < 2) return [layer];
+
+    const step = Math.max(1, Math.round((hi - lo) / bandCount));
+    const bands: MapboxLayer[] = [];
+    for (let from = lo; from < hi; from += step) {
+        const to = Math.min(hi, from + step);
+        bands.push({
+            ...layer,
+            // The ends keep whatever the layer stated, so banding never narrows what it draws.
+            minzoom: from === lo ? layer.minzoom : from,
+            maxzoom: to >= hi ? layer.maxzoom : to,
+            dashZoom: (from + to) / 2,
+        });
+    }
+    if (bands.length < 2) return [layer];
+    coverage.approximate(`line-dasharray on "${layer.id}" split into ${bands.length} zoom bands: a `
+        + 'dash is a multiple of the line width and CartoCSS takes one pattern per rule, so a '
+        + 'ramped width needs a rule per band to stay in proportion');
+    return bands;
+}
+
+/** A zoom ramp's `(zoom, value)` stops, in order. Empty for anything that is not one. */
+function rampStops(expr: Json): Array<[number, number]> {
+    if (!Array.isArray(expr) || (expr[0] !== 'interpolate' && expr[0] !== 'step')) return [];
+    const stops: Array<[number, number]> = [];
+    for (let i = 3; i + 1 < expr.length; i += 2) {
+        const value = stopNumber(expr[i + 1] as Json);
+        if (typeof expr[i] === 'number' && value !== null) stops.push([expr[i] as number, value]);
+    }
+    return stops;
+}
+
+/** Past this the rule count costs more than the dash proportions are worth. */
+const MAX_DASH_BANDS = 4;
 
 /** The zoom a `step` ramp switches to this pattern at, so the line width can be read there. */
 function stopZoomOf(value: Json, pattern: number[]): number | null {

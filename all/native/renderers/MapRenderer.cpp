@@ -622,7 +622,6 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
-            _pannedSinceClearance = true;
     
             // Calculate parameters for kinetic events
             newFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
@@ -1017,33 +1016,47 @@ namespace massif {
             terrainDecodeChanged = updateTerrainFlatten(deltaSeconds);
 
             // Terrain: extend view distances by the terrain height range and keep
-            // the camera above the terrain surface.
-            // PLANAR only: everything below reads focusPos.xy and cameraPos.y as INTERNAL
-            // coordinates, which they are on a plane and are not on a sphere, where they are a
-            // point in 3D. Lifting the focus by a height looked up at a sphere's x/y is what makes
-            // the focus point and the zoom go wrong there. See docs/internals/rendering/18-globe.md.
+            // the camera above the terrain surface. A position is turned into internal coordinates
+            // through the SURFACE - on a sphere its xyz is a point in 3D, not an x/y and a height.
             std::shared_ptr<ElevationManager> elevationManager;
-            if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-                if (auto terrainOptions = _options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled()) {
-                        elevationManager = terrainOptions->getElevationManager();
-                    }
+            std::shared_ptr<TerrainOptions> focusTerrainOptions;
+            std::shared_ptr<ProjectionSurface> projectionSurface = _options->getProjectionSurface();
+            if (auto terrainOptions = _options->getTerrainOptions()) {
+                if (terrainOptions->isEnabled() && projectionSurface) {
+                    elevationManager = terrainOptions->getElevationManager();
+                    focusTerrainOptions = terrainOptions;
                 }
             }
             if (elevationManager) {
                 // The focus sits ON the ground, as in mapbox (transform._centerAltitude): the zoom
                 // is the camera's distance to the terrain there. The projection surface is planar, so
                 // every camera event drops the focus to sea level - lift it back whenever they differ.
+                // NEAR THE CLEARANCE SHELL ONLY (CameraClearance::focusFollow): pinned at every
+                // altitude, a pan across a ridge carried the whole camera up and down with it.
                 {
-                    const cglib::vec3<double>& focusPos = _viewState.getFocusPos();
+                    MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
+                    MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
                     double terrainZ = 0;
-                    if (elevationManager->getDisplayHeightCached(focusPos(0), focusPos(1), terrainZ)) {
-                        _viewState.liftFocus(terrainZ - focusPos(2));
+                    if (elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), terrainZ)) {
+                        // Everything below is measured with the focus PINNED, so the lift it decides
+                        // cannot feed back into its own input and oscillate.
+                        double cameraTerrainZ = terrainZ;
+                        elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ);
+                        double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ(); // invariant under the lift
+                        double pinnedCameraZ = terrainZ + orbitHeight;
+                        double clearanceFloor = focusTerrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
+                        double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
+                        double minHeight = CameraClearance::minHeight(pinnedCameraZ, maxZoomOrbit, clearanceFloor);
+                        double follow = CameraClearance::focusFollow(pinnedCameraZ - cameraTerrainZ, minHeight);
+                        // ... and never below the shell: the focus RAISES the camera, which keeps the
+                        // tilt and the zoom the user set. Correcting by tilting jumped the view.
+                        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor) - orbitHeight;
+                        _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ));
                     }
                 }
-                cglib::vec3<double> cameraPos = _viewState.getCameraPos();
+                MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
                 double minZ = 0, maxZ = 0;
-                elevationManager->getDisplayHeightRange(cameraPos(1), minZ, maxZ);
+                elevationManager->getDisplayHeightRange(cameraMapPos.getY(), minZ, maxZ);
                 _viewState.setTerrainHeightRange(static_cast<float>(minZ), static_cast<float>(maxZ));
 
                 // The camera is deliberately NOT clamped above the terrain here: ViewState keeps
@@ -2516,51 +2529,17 @@ namespace massif {
                     // (transform._constrainCamera), see docs/internals/rendering/04-terrain.md.
                     {
                         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
-                        float clampDuration = terrainOptions->getCameraClampDuration();
-                        cglib::vec3<double> cameraPos = viewState.getCameraPos();
-                        double displayScale = elevationManager->getDisplayScale(cameraPos(1));
-                        double terrainZ = elevationManager->getDisplayHeight(cameraPos(0), cameraPos(1), ElevationManager::LoadMode::CACHED_ONLY);
+                        // Through the surface: a camera position is a point in 3D on a globe, and an
+                        // ORBIT is a world length where a height is an internal one - 2x apart there.
+                        std::shared_ptr<ProjectionSurface> clearanceSurface = _options->getProjectionSurface();
+                        MapPos cameraMapPos = (clearanceSurface ? clearanceSurface->calculateMapPos(viewState.getCameraPos()) : MapPos());
+                        double worldPerInternalZ = viewState.worldPerInternal();
+                        double displayScale = elevationManager->getDisplayScale(cameraMapPos.getY());
+                        double terrainZ = elevationManager->getDisplayHeight(cameraMapPos.getX(), cameraMapPos.getY(), ElevationManager::LoadMode::CACHED_ONLY);
                         double clearanceFloor = terrainOptions->getCameraClearance() * displayScale;
-                        {
+                        if (clearanceSurface) {
                             std::lock_guard<std::recursive_mutex> lock(_mutex);
                             _viewState.setTerrainCameraReference(terrainZ, clearanceFloor);
-                        }
-                        bool panned = _pannedSinceClearance.exchange(false);
-                        double focusZ = viewState.getFocusPos()(2);
-                        double orbit = viewState.getOrbitDistance(viewState.getZoom());
-                        double maxZoomOrbit = viewState.getOrbitDistance(_options->getZoomRange().getMax());
-                        double minHeight = CameraClearance::minHeight(cameraPos(2), maxZoomOrbit, clearanceFloor);
-                        double cameraHeight = cameraPos(2) - terrainZ;
-                        double deadBand = 0.005 * minHeight;
-                        if (orbit > 0 && cameraHeight < minHeight - deadBand && (panned || cameraHeight < 0)) {
-                            // The height above the focus that puts the camera on the shell, and the
-                            // tilt that gives it (tilt 90 is straight down); past the tilt range's
-                            // top the rest comes from zooming out, about the focus.
-                            MapRange tiltRange = _options->getTiltRange();
-                            double maxTiltSin = std::sin(tiltRange.getMax() * Const::DEG_TO_RAD);
-                            double targetHeight = CameraClearance::targetHeight(focusZ, terrainZ, maxZoomOrbit, clearanceFloor);
-                            float tilt = viewState.getTilt();
-                            if (targetHeight <= orbit * maxTiltSin) {
-                                tilt = static_cast<float>(std::asin(std::max(0.0, targetHeight / orbit)) * Const::RAD_TO_DEG);
-                            } else {
-                                tilt = tiltRange.getMax();
-                                float maxZoom = CameraClearance::maxZoom(viewState.getZoom(), focusZ, focusZ + orbit * maxTiltSin, terrainZ,
-                                                                         maxZoomOrbit, clearanceFloor);
-                                float zoom = std::max(maxZoom, _options->getZoomRange().getMin());
-                                if (zoom < viewState.getZoom() - 1.0e-4f) {
-                                    CameraZoomEvent zoomEvent;
-                                    zoomEvent.setZoomDelta(zoom - viewState.getZoom());
-                                    // API, not GESTURE: the SDK corrects the camera here, and it does so
-                                    // after a programmatic move just as much as after a gesture.
-                                    calculateCameraEvent(zoomEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
-                                }
-                            }
-                            if (tilt > viewState.getTilt() + 1.0e-3f) {
-                                CameraTiltEvent tiltEvent;
-                                tiltEvent.setKeepRotation(true);
-                                tiltEvent.setTilt(tilt);
-                                calculateCameraEvent(tiltEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
-                            }
                         }
                     }
                 }

@@ -39,6 +39,26 @@ namespace massif {
             return std::max(std::max(0.0, std::max(cameraZ, maxZoomOrbit)) * FRACTION, floorZ);
         }
 
+        // How far above the shell the focus stops following the ground, in shells. Ours, not
+        // mapbox's: they pin the centre to the terrain at every altitude, which makes a pan across
+        // a ridge lift the whole camera with it - visible bobbing from far above the ground.
+        static constexpr double FOLLOW_BAND = 4.0;
+
+        /**
+         * How much of the ground's height the FOCUS takes: all of it at the shell, none of it
+         * FOLLOW_BAND shells above, linear in between.
+         * @param clearance The camera's height above the ground under it, with the focus PINNED to
+         *                  the ground - the lift itself moves the camera, so feeding the current
+         *                  height back would oscillate.
+         * @param minHeight The shell, from minHeight() above.
+         */
+        static double focusFollow(double clearance, double minHeight) {
+            if (!(minHeight > 0) || !(clearance > minHeight)) {
+                return 1.0;
+            }
+            return std::max(0.0, 1.0 - (clearance - minHeight) / (minHeight * (FOLLOW_BAND - 1)));
+        }
+
         /**
          * The camera height ABOVE THE FOCUS that lands it on the shell. The shell moves with the
          * camera, so the lift is a fixed point, not terrainZ + minHeight: rising raises the
@@ -49,10 +69,18 @@ namespace massif {
          * @param floorZ An app's explicit minimum clearance, 0 for none.
          */
         static double targetHeight(double focusZ, double terrainZ, double maxZoomOrbit, double floorZ) {
-            // focusZ + h - terrainZ >= max(FRACTION * (focusZ + h), c), two lower bounds on h; both
-            // gain with h (FRACTION < 1), so the answer is the larger.
+            return shellCameraZ(terrainZ, maxZoomOrbit, floorZ) - focusZ;
+        }
+
+        /**
+         * The camera height above sea level that lands ON the shell over ground at `terrainZ`.
+         * cameraZ - terrainZ >= max(FRACTION * cameraZ, c) - two lower bounds on cameraZ, both
+         * gaining with it (FRACTION < 1), so the answer is the larger. It does not depend on the
+         * focus, which is what lets the focus be moved to satisfy it.
+         */
+        static double shellCameraZ(double terrainZ, double maxZoomOrbit, double floorZ) {
             double c = std::max(std::max(0.0, maxZoomOrbit) * FRACTION, floorZ);
-            return std::max(terrainZ / (1 - FRACTION), terrainZ + c) - focusZ;
+            return std::max(terrainZ / (1 - FRACTION), terrainZ + c);
         }
 
         /**

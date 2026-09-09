@@ -1037,6 +1037,32 @@ terrainZ + floor) - focusZ`) and not `terrainZ + minHeight`: rising raises the c
 clear, and a lift that ignores that under-shoots every frame. Both the lift and the zoom bound read
 the same shell, so they cannot disagree.
 
+**The camera is held on the shell by the FOCUS, not by a tilt.** The per-frame correction used to
+raise the camera by tilting it up (and by zooming out past the tilt range), which the user reads as
+the view jumping - "the tilt suddenly changed to 54". `CameraClearance::shellCameraZ` is the camera
+height the shell asks for over the ground under the camera, and it does not depend on the focus,
+which is exactly what lets the focus be raised to satisfy it: the camera keeps the tilt and the
+zoom it was given and rises vertically. The zoom BOUND (`getTerrainMaxZoom`) stays - it stops a
+zoom from driving the camera into the ground in the first place.
+`TerrainOptions::CameraClampDuration` animated that correction and no longer has anything to
+animate.
+
+**The focus follows the ground only NEAR the shell**, which is a second divergence.
+mapbox pins the centre to the terrain at every altitude (`_centerAltitude`), and because the lift
+carries the camera with it, a pan across a ridge lifted the whole view - the map visibly bobbing
+from far above the ground, which is what the previous paragraph's tilt fix only halved.
+`CameraClearance::focusFollow` ramps it instead: the full ground height at the shell, none of it
+`FOLLOW_BAND` (4) shells above, linear between. Everything feeding the ramp is measured with the
+focus PINNED - the lift moves the camera, so a ramp fed the CURRENT height would drive its own
+input and oscillate.
+
+**Both work on the globe too.** They read a camera or focus position through
+`ProjectionSurface::calculateMapPos`, so a sphere's 3D point becomes the internal x/y an elevation
+lookup wants and the height above the surface; `ViewState::setFocusHeight` puts the focus back
+through `calculatePosition`, which is radial there and a z move on the plane. The one trap is that
+an ORBIT is a world distance while a height is an internal one, and those differ by 2 on a sphere
+([18-globe.md](18-globe.md)) - `ViewState::worldPerInternal` is the conversion.
+
 It is a
 **bound on the zoom** (`ViewState::getTerrainMaxZoom`, clamped in `CameraZoomEvent::calculate`),
 solved on the camera-to-focus vector so it lands exactly on the shell, plus a per-frame

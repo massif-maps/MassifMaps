@@ -151,6 +151,49 @@ namespace {
                    "and over flat ground at sea level nothing binds at any tilt");
     }
 
+    void testTheShellHeightLandsExactlyOnTheShell() {
+        // What the focus lifts the camera to. The shell moves with the camera, so this is a fixed
+        // point: the height it answers must itself satisfy minHeight at that height.
+        bool onShell = true;
+        for (double terrainZ : { 0.0, 100.0, 3842.0 }) {
+            for (double floorZ : { 0.0, 50.0 }) {
+                double cameraZ = CameraClearance::shellCameraZ(terrainZ, 0, floorZ);
+                double required = CameraClearance::minHeight(cameraZ, 0, floorZ);
+                onShell = onShell && std::fabs((cameraZ - terrainZ) - required) <= 1.0e-9 * std::max(1.0, required);
+            }
+        }
+        TEST_CHECK(onShell, "the shell height clears the shell it implies, at every ground height");
+        TEST_CHECK(CameraClearance::shellCameraZ(500, 0, 0) > 500, "and it is above the ground it stands on");
+        // The old expression, kept as the camera height above a focus - the two must not drift.
+        TEST_CHECK(CameraClearance::targetHeight(120, 500, 0, 0) == CameraClearance::shellCameraZ(500, 0, 0) - 120,
+                   "targetHeight is the same height, measured from the focus");
+    }
+
+    void testTheFocusFollowsTheGroundOnlyNearTheShell() {
+        // The focus is pinned to the ground so the zoom means "distance to the terrain". Pinned at
+        // EVERY altitude - mapbox's rule - a pan across a ridge lifts the camera with it, which
+        // reads as the whole view bobbing from far above the ground.
+        double shell = 200;
+        TEST_CHECK(CameraClearance::focusFollow(0, shell) == 1.0, "under the shell the focus is on the ground");
+        TEST_CHECK(CameraClearance::focusFollow(shell, shell) == 1.0, "... and exactly at it too");
+        TEST_CHECK(CameraClearance::focusFollow(shell * CameraClearance::FOLLOW_BAND, shell) == 0.0,
+                   "a band above it the focus is back at sea level");
+        TEST_CHECK(CameraClearance::focusFollow(shell * 100, shell) == 0.0, "and stays there however high");
+
+        // Monotone in between, so a slow climb hands the ground over smoothly instead of stepping.
+        double previous = 1.0;
+        bool monotone = true;
+        for (double h = shell; h <= shell * CameraClearance::FOLLOW_BAND; h += shell * 0.1) {
+            double follow = CameraClearance::focusFollow(h, shell);
+            monotone = monotone && follow <= previous + 1.0e-12 && follow >= 0.0 && follow <= 1.0;
+            previous = follow;
+        }
+        TEST_CHECK(monotone, "and falls monotonically between the two, inside [0, 1]");
+
+        // No shell (no terrain options, no floor, a camera at sea level) leaves the old behaviour.
+        TEST_CHECK(CameraClearance::focusFollow(1000, 0) == 1.0, "with no shell at all the focus still follows");
+    }
+
 }
 
 void testCameraClearance() {
@@ -161,4 +204,6 @@ void testCameraClearance() {
     testMaxZoomLandsOnTheShell();
     testMaxZoomAppFloor();
     testMaxZoomGivesUpWhereNoZoomHelps();
+    testTheFocusFollowsTheGroundOnlyNearTheShell();
+    testTheShellHeightLandsExactlyOnTheShell();
 }

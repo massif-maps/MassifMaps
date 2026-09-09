@@ -66,6 +66,13 @@ namespace massif {
          * the focus, as in mapbox, rather than to sea level.
          */
         void liftFocus(double deltaZ);
+        /**
+         * Put the focus at `internalZ` above the surface, carrying the camera with it. Through the
+         * projection surface, so it is a radial move on a globe and a z move on a plane.
+         */
+        void setFocusHeight(double internalZ);
+        /** World units per internal unit: 1 on the plane, 2 on the globe (its equator is 2x). */
+        double worldPerInternal() const;
 
         /**
          * Returns the up direction vector.

@@ -118,8 +118,20 @@ suite before the one that depends on it.
    back out of the vertex `z`, which on a sphere is a curved coordinate and not a height, so the
    mesh now keeps its node heights and rotates the slope normal into the local east/north/up frame.
    And **skirts** no longer fold their drop into the vertex `z` on a globe — see below.
-4. **Picking and the camera.** `ElevationManager::intersectRay`, `CameraClearance` and
-   `AutoFlatten::parallax` are all expressed along the Z axis.
+4. **Picking and the camera.** ~~The clearance and the focus~~ are done: both read a position
+   through `ProjectionSurface::calculateMapPos` and put the focus back through
+   `calculatePosition`, so they work on either surface, and `ViewState::worldPerInternal` bridges
+   the ORBIT (a world distance) and a height (an internal one), which differ by 2 here.
+   `ElevationManager::intersectRay` and `AutoFlatten::parallax` are still along the Z axis.
+
+   The camera's ZOOM was wrong here in a way that made everything look wrong:
+   `ViewState::calculateZoom0Distance` calibrated on `Const::WORLD_SIZE` whatever surface was
+   active, so the globe's camera sat at half the distance its zoom meant - content a zoom level
+   too large, and the camera inside the relief by zoom 12.
+   `ProjectionSurface::getWorldWidth` answers per surface now. Two traps came with it: the width
+   has to be read from the INCOMING surface in `calculateViewState` (the member is still the old
+   one on the frame the projection changes, which made the globe jump a zoom on startup), and the
+   demo's own zoom readout is derived from the camera distance, so it moves with the fix.
 5. **Space.** `Options::setZoomRange` clamps the minimum to `0`, so there is no zoom at which the
    whole planet is small on screen. Beyond the clamp: a planet-relative atmosphere (mapbox's globe
    atmosphere is a shell the ray is tested against, not a hemisphere overhead), fog that fades with

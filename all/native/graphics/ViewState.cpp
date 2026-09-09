@@ -110,8 +110,12 @@ namespace massif {
         if (!_terrainCameraBound || !(_zoom0Distance > 0)) {
             return std::numeric_limits<float>::infinity();
         }
-        return CameraClearance::maxZoom(_zoom, _focusPos(2), _cameraPos(2), _terrainCameraZ,
-                                        getOrbitDistance(_zoomRange.getMax()), _terrainClearanceFloor);
+        // Heights are INTERNAL and an orbit is a WORLD distance: on a globe those differ by 2.
+        double worldPerInternalZ = worldPerInternal();
+        double focusZ = (_projectionSurface ? _projectionSurface->calculateMapPos(_focusPos).getZ() : _focusPos(2));
+        double cameraZ = (_projectionSurface ? _projectionSurface->calculateMapPos(_cameraPos).getZ() : _cameraPos(2));
+        return CameraClearance::maxZoom(_zoom, focusZ, cameraZ, _terrainCameraZ,
+                                        getOrbitDistance(_zoomRange.getMax()) / worldPerInternalZ, _terrainClearanceFloor);
     }
 
     float ViewState::getRenderZoom() const {
@@ -162,6 +166,28 @@ namespace massif {
         _cameraChanged = true;
     }
     
+    void ViewState::setFocusHeight(double internalZ) {
+        if (!_projectionSurface || !std::isfinite(internalZ)) {
+            return;
+        }
+        MapPos focusMapPos = _projectionSurface->calculateMapPos(_focusPos);
+        if (focusMapPos.getZ() == internalZ) {
+            return;
+        }
+        cglib::vec3<double> focusPos = _projectionSurface->calculatePosition(MapPos(focusMapPos.getX(), focusMapPos.getY(), internalZ));
+        cglib::vec3<double> delta = focusPos - _focusPos;
+        if (!std::isfinite(cglib::norm(delta))) {
+            return;
+        }
+        _focusPos = focusPos;
+        _cameraPos = _cameraPos + delta;
+        _cameraChanged = true;
+    }
+
+    double ViewState::worldPerInternal() const {
+        return (_projectionSurface ? _projectionSurface->getWorldWidth() / Const::WORLD_SIZE : 1.0);
+    }
+
     const cglib::vec3<double>& ViewState::getUpVec() const {
         return _upVec;
     }

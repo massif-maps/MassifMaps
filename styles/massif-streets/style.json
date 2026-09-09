@@ -6,7 +6,10 @@
     "massif:stage": "road shields - roads are drawn as context, not as the final design"
   },
   "sources": {
-    "openmaptiles": { "type": "vector", "url": "https://tiles.openfreemap.org/planet" }
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://tiles.openfreemap.org/planet"
+    }
   },
   "sprite": "sprite/sprite",
   "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
@@ -14,17 +17,43 @@
     {
       "id": "background",
       "type": "background",
-      "paint": { "background-color": "#f7f5f0" }
+      "paint": {
+        "background-color": "#f7f5f0"
+      }
     },
     {
       "id": "landcover",
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "filter": ["in", ["get", "class"], ["literal", ["wood", "grass", "farmland"]]],
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "wood",
+            "grass",
+            "farmland"
+          ]
+        ]
+      ],
       "paint": {
-        "fill-color": ["match", ["get", "class"],
-          "wood", "#dfe7d5", "grass", "#e7edda", "#efeee2"],
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "wood",
+          "#dfe7d5",
+          "grass",
+          "#e7edda",
+          "#efeee2"
+        ],
         "fill-opacity": 0.8
       }
     },
@@ -33,8 +62,17 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "water",
-      "filter": ["!=", ["get", "brunnel"], "tunnel"],
-      "paint": { "fill-color": "#a8ccdf" }
+      "filter": [
+        "!=",
+        [
+          "get",
+          "brunnel"
+        ],
+        "tunnel"
+      ],
+      "paint": {
+        "fill-color": "#a8ccdf"
+      }
     },
     {
       "id": "road-casing",
@@ -42,23 +80,121 @@
       "source": "openmaptiles",
       "source-layer": "transportation",
       "minzoom": 5,
-      "filter": ["in", ["get", "class"], ["literal",
-        ["motorway", "trunk", "primary", "secondary", "tertiary", "minor", "service"]]],
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary",
+            "minor",
+            "service"
+          ]
+        ]
+      ],
       "layout": {
         "line-cap": "round",
         "line-join": "round",
-        "line-sort-key": ["match", ["get", "class"],
-          "motorway", 7, "trunk", 6, "primary", 5, "secondary", 4, "tertiary", 3, "minor", 2, 1]
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
       },
       "paint": {
-        "line-color": ["match", ["get", "class"],
-          "motorway", "#c08a3e", "trunk", "#c9a24a", "#c3bfb4"],
-        "line-width": ["interpolate", ["exponential", 1.5], ["zoom"],
-          5, ["match", ["get", "class"], "motorway", 1.6, 0.6],
-          14, ["match", ["get", "class"],
-            "motorway", 9, "trunk", 8, "primary", 7, "secondary", 6, "tertiary", 5, 3.5],
-          18, ["match", ["get", "class"],
-            "motorway", 34, "trunk", 30, "primary", 26, "secondary", 22, "tertiary", 18, 13]]
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "#c08a3e",
+          "trunk",
+          "#c9a24a",
+          "#c3bfb4"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.6,
+            0.6
+          ],
+          14,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            9,
+            "trunk",
+            8,
+            "primary",
+            7,
+            "secondary",
+            6,
+            "tertiary",
+            5,
+            3.5
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            34,
+            "trunk",
+            30,
+            "primary",
+            26,
+            "secondary",
+            22,
+            "tertiary",
+            18,
+            13
+          ]
+        ]
       }
     },
     {
@@ -67,23 +203,123 @@
       "source": "openmaptiles",
       "source-layer": "transportation",
       "minzoom": 5,
-      "filter": ["in", ["get", "class"], ["literal",
-        ["motorway", "trunk", "primary", "secondary", "tertiary", "minor", "service"]]],
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary",
+            "minor",
+            "service"
+          ]
+        ]
+      ],
       "layout": {
         "line-cap": "round",
         "line-join": "round",
-        "line-sort-key": ["match", ["get", "class"],
-          "motorway", 7, "trunk", 6, "primary", 5, "secondary", 4, "tertiary", 3, "minor", 2, 1]
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
       },
       "paint": {
-        "line-color": ["match", ["get", "class"],
-          "motorway", "#f5c98a", "trunk", "#fadfa4", "primary", "#fdf0c4", "#ffffff"],
-        "line-width": ["interpolate", ["exponential", 1.5], ["zoom"],
-          5, ["match", ["get", "class"], "motorway", 0.8, 0.2],
-          14, ["match", ["get", "class"],
-            "motorway", 6.5, "trunk", 5.5, "primary", 4.8, "secondary", 4, "tertiary", 3.2, 2],
-          18, ["match", ["get", "class"],
-            "motorway", 29, "trunk", 25, "primary", 21, "secondary", 17, "tertiary", 14, 10]]
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "#f5c98a",
+          "trunk",
+          "#fadfa4",
+          "primary",
+          "#fdf0c4",
+          "#ffffff"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            0.8,
+            0.2
+          ],
+          14,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            6.5,
+            "trunk",
+            5.5,
+            "primary",
+            4.8,
+            "secondary",
+            4,
+            "tertiary",
+            3.2,
+            2
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            29,
+            "trunk",
+            25,
+            "primary",
+            21,
+            "secondary",
+            17,
+            "tertiary",
+            14,
+            10
+          ]
+        ]
       }
     },
     {
@@ -92,17 +328,61 @@
       "source": "openmaptiles",
       "source-layer": "transportation_name",
       "minzoom": 12,
-      "filter": ["in", ["get", "class"], ["literal",
-        ["motorway", "trunk", "primary", "secondary", "tertiary", "minor"]]],
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary",
+            "minor"
+          ]
+        ]
+      ],
       "layout": {
         "symbol-placement": "line",
-        "text-field": ["coalesce", ["get", "name"], ["get", "name_int"]],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 9, 18, 13],
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          9,
+          18,
+          13
+        ],
         "text-max-angle": 30,
         "text-padding": 2
       },
-      "paint": { "text-color": "#4a463d", "text-halo-color": "#f7f5f0", "text-halo-width": 1.2 }
+      "paint": {
+        "text-color": "#4a463d",
+        "text-halo-color": "#f7f5f0",
+        "text-halo-width": 1.2
+      }
     },
     {
       "id": "road-shield-us-interstate",
@@ -110,22 +390,72 @@
       "source": "openmaptiles",
       "source-layer": "transportation_name",
       "minzoom": 7,
-      "filter": ["all", ["has", "ref"], ["==", ["get", "network"], "us-interstate"]],
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-interstate"
+        ]
+      ],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 350,
         "symbol-avoid-edges": true,
         "icon-image": "shield-us-interstate",
         "icon-text-fit": "both",
-        "icon-text-fit-padding": [0, 1, 0, 1],
-        "text-field": ["get", "ref"],
-        "text-font": ["Noto Sans Bold"],
+        "icon-text-fit-padding": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
         "text-size": 10,
         "text-rotation-alignment": "viewport",
         "icon-rotation-alignment": "viewport",
         "text-padding": 2
       },
-      "paint": { "text-color": "#ffffff" }
+      "paint": {
+        "text-color": "#ffffff"
+      }
     },
     {
       "id": "road-shield-us-highway",
@@ -133,22 +463,72 @@
       "source": "openmaptiles",
       "source-layer": "transportation_name",
       "minzoom": 7,
-      "filter": ["all", ["has", "ref"], ["==", ["get", "network"], "us-highway"]],
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-highway"
+        ]
+      ],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 350,
         "symbol-avoid-edges": true,
         "icon-image": "shield-us-highway",
         "icon-text-fit": "both",
-        "icon-text-fit-padding": [0, 1, 0, 1],
-        "text-field": ["get", "ref"],
-        "text-font": ["Noto Sans Bold"],
+        "icon-text-fit-padding": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
         "text-size": 10,
         "text-rotation-alignment": "viewport",
         "icon-rotation-alignment": "viewport",
         "text-padding": 2
       },
-      "paint": { "text-color": "#1a1a1a" }
+      "paint": {
+        "text-color": "#1a1a1a"
+      }
     },
     {
       "id": "road-shield-plate",
@@ -156,65 +536,498 @@
       "source": "openmaptiles",
       "source-layer": "transportation_name",
       "minzoom": 9,
-      "filter": ["all",
-        ["has", "ref"],
-        ["!", ["in", ["coalesce", ["get", "network"], ""], ["literal",
-          ["us-interstate", "us-highway"]]]]],
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "coalesce",
+              [
+                "get",
+                "network"
+              ],
+              ""
+            ],
+            [
+              "literal",
+              [
+                "us-interstate",
+                "us-highway"
+              ]
+            ]
+          ]
+        ]
+      ],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 350,
         "symbol-avoid-edges": true,
-        "icon-image": ["case",
-          ["==", ["get", "network"], "e-road"], "shield-plate-green",
-          ["match", ["coalesce", ["get", "iso_a2"], ""],
-            "FR", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-              "A", "shield-plate-red", "N", "shield-plate-red",
-              "D", "shield-plate-yellow", "M", "shield-plate-yellow", "shield-plate-neutral"],
-            "DE", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-              "A", "shield-plate-blue", "B", "shield-plate-yellow", "shield-plate-neutral"],
-            "GB", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-              "M", "shield-plate-blue", "A", "shield-plate-green", "shield-plate-neutral"],
-            "NL", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-              "A", "shield-plate-red", "N", "shield-plate-yellow", "shield-plate-neutral"],
-            "CH", ["match", ["get", "class"],
-              "motorway", "shield-plate-green", "trunk", "shield-plate-blue", "shield-plate-neutral"],
-            "IT", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-              "A", "shield-plate-green", "shield-plate-neutral"],
-            "ES", ["match", ["get", "class"],
-              "motorway", "shield-plate-blue", "trunk", "shield-plate-blue", "shield-plate-neutral"],
-            "shield-plate-neutral"]],
+        "icon-image": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "network"
+            ],
+            "e-road"
+          ],
+          "shield-plate-green",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "iso_a2"
+              ],
+              ""
+            ],
+            "FR",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-red",
+              "D",
+              "shield-plate-yellow",
+              "M",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "DE",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-blue",
+              "B",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "GB",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "M",
+              "shield-plate-blue",
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "NL",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "CH",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-green",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "IT",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "ES",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-blue",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "shield-plate-neutral"
+          ]
+        ],
         "icon-text-fit": "both",
-        "icon-text-fit-padding": [1, 3, 1, 3],
-        "text-field": ["get", "ref"],
-        "text-font": ["Noto Sans Bold"],
+        "icon-text-fit-padding": [
+          1,
+          3,
+          1,
+          3
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
         "text-size": 10,
         "text-rotation-alignment": "viewport",
         "icon-rotation-alignment": "viewport",
         "text-padding": 2
       },
       "paint": {
-        "text-color": ["match",
-          ["case",
-            ["==", ["get", "network"], "e-road"], "shield-plate-green",
-            ["match", ["coalesce", ["get", "iso_a2"], ""],
-              "FR", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-                "A", "shield-plate-red", "N", "shield-plate-red",
-                "D", "shield-plate-yellow", "M", "shield-plate-yellow", "shield-plate-neutral"],
-              "DE", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-                "A", "shield-plate-blue", "B", "shield-plate-yellow", "shield-plate-neutral"],
-              "GB", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-                "M", "shield-plate-blue", "A", "shield-plate-green", "shield-plate-neutral"],
-              "NL", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-                "A", "shield-plate-red", "N", "shield-plate-yellow", "shield-plate-neutral"],
-              "CH", ["match", ["get", "class"],
-                "motorway", "shield-plate-green", "trunk", "shield-plate-blue", "shield-plate-neutral"],
-              "IT", ["match", ["upcase", ["slice", ["coalesce", ["get", "ref"], ""], 0, 1]],
-                "A", "shield-plate-green", "shield-plate-neutral"],
-              "ES", ["match", ["get", "class"],
-                "motorway", "shield-plate-blue", "trunk", "shield-plate-blue", "shield-plate-neutral"],
-              "shield-plate-neutral"]],
-          ["shield-plate-yellow", "shield-plate-neutral"], "#2b2400",
-          "#ffffff"]
+        "text-color": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "network"
+              ],
+              "e-road"
+            ],
+            "shield-plate-green",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "iso_a2"
+                ],
+                ""
+              ],
+              "FR",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-red",
+                "D",
+                "shield-plate-yellow",
+                "M",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "DE",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-blue",
+                "B",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "GB",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "M",
+                "shield-plate-blue",
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "NL",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "CH",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-green",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "IT",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "ES",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-blue",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "shield-plate-neutral"
+            ]
+          ],
+          [
+            "shield-plate-yellow",
+            "shield-plate-neutral"
+          ],
+          "#2b2400",
+          "#ffffff"
+        ]
+      }
+    },
+    {
+      "id": "road-exit-shield",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          "junction"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 250,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-plate-neutral",
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          1,
+          3,
+          1,
+          3
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#4a463d"
       }
     }
   ]

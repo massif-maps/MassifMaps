@@ -16,17 +16,18 @@ fixed is at the bottom.
 
 ## Two hierarchies decide the shape of the world
 
-| | plane | sphere | terrain |
+| | plane | sphere | terrain, over either of them |
 |---|---|---|---|
 | `ProjectionSurface` — vector elements, camera, celestial | `PlanarProjectionSurface` | `SphericalProjectionSurface` | `TerrainProjectionSurface` |
 | `vt::TileTransformer` — tiled content | `DefaultTileTransformer` | `SphericalTileTransformer` | `TerrainTileTransformer` |
 
-In both, **terrain is a sibling of the plane rather than a decorator over it** —
-`TerrainProjectionSurface` derives from `PlanarProjectionSurface`, and `TerrainTileTransformer`
-inlines the planar tile math. Globe and terrain are therefore mutually exclusive by construction,
-and the exclusion is enforced explicitly: `TileLayer::resetTileTransformer` picks the spherical
-transformer over the terrain one, and `MapRenderer` gates the flatten rule, the depth pre-pass, the
-camera clearance and the terrain surface on `RENDER_PROJECTION_MODE_PLANAR`.
+Terrain **decorates** a base rather than replacing it: both terrain classes take the plane or the
+globe and add elevation to it. So globe and terrain are no longer exclusive by construction — but
+they are still exclusive by policy, because the displacement itself is planar. Terrain is refused
+on a globe in `TileLayer::resetTileTransformer` and `VectorLayer::getElementProjectionSurface`, and
+`MapRenderer` gates the flatten rule, the depth pre-pass, the camera clearance and the terrain
+surface on `RENDER_PROJECTION_MODE_PLANAR`. Those five conditions go together, once the two
+displacement sites below are surface-aware.
 
 ## What the two surfaces share
 
@@ -82,11 +83,17 @@ suite before the one that depends on it.
    (`renderers/utils/SkyFrame.h`) and everything downstream is unchanged. The frame is the identity
    on the plane, so planar output is bit-exact. `u_cameraHeight` reads the surface's own internal z
    for the same reason.
-2. **Terrain as a decorator.** Composing `TerrainProjectionSurface` and `TerrainTileTransformer`
-   over a *base* surface instead of over the plane. The vt vertex transformer already has
-   `calculateHeight` implemented spherically, so the composed point is
-   `base->calculatePoint(pos) + base->calculateNormal(pos) * height` — which reduces to today's
-   planar output exactly.
+2. ~~**Terrain as a decorator.**~~ Done. `TerrainProjectionSurface` and `TerrainTileTransformer`
+   now take a BASE surface / transformer and add elevation to it, instead of deriving from the
+   plane and inlining planar tile math. The structural exclusion is gone; both call sites still
+   refuse a spherical base by an explicit condition, because the displacement below is planar.
+
+   Two things this turned up. The tile transformer barely displaces anything: since the GPU-draping
+   commit, `calculateLocalHeight` returns 0 and tile geometry is built FLAT, so the composition
+   there is a pure forward of point, normal, vector and metres-to-tile-local, and what terrain adds
+   is only subdivision and a bbox grown by the elevation range. And `TerrainProjectionSurface` now
+   takes the light `ElevationProvider` interface rather than `ElevationManager`, which is what lets
+   `tests/api/TerrainSurfaceTest.cpp` drive it from a synthetic height field.
 3. **The terrain surface itself.** `TerrainRenderer` builds a unit-square grid with a z
    displacement and an affine tile matrix, in four separate copies of the planar tile math; it has
    to consume the layer's `TileTransformer` instead. The GPU half is `applyTerrain` in

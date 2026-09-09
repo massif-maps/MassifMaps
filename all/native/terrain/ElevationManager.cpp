@@ -555,6 +555,17 @@ namespace massif {
         return getDisplayHeight(internalX, internalY, LoadMode::CACHED_ONLY);
     }
 
+    void ElevationManager::getDisplayGradient(double internalX, double internalY, double& dhdx, double& dhdy) const {
+        getDisplayGradient(internalX, internalY, LoadMode::CACHED_ONLY, dhdx, dhdy);
+    }
+
+    int ElevationManager::getMaxDataZoom() const {
+        if (std::shared_ptr<TileDataSource> dataSource = getDataSource()) {
+            return dataSource->getMaxZoom();
+        }
+        return -1;
+    }
+
     bool ElevationManager::intersectRay(const cglib::ray3<double>& ray, double& t) const {
         if (ray.direction(2) >= 0) {
             return false; // upward/horizontal rays can not hit terrain from above

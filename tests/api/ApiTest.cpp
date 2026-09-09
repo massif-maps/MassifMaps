@@ -84,6 +84,7 @@ void testTileStyleZoom();
 void testTileLODRule();
 void testSphericalSurface();
 void testSkyFrame();
+void testTerrainSurface();
 
 namespace {
 
@@ -458,6 +459,7 @@ int main() {
     testTileLODRule();
     testSphericalSurface();
     testSkyFrame();
+    testTerrainSurface();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

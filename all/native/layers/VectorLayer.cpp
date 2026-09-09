@@ -369,6 +369,9 @@ namespace massif {
     
     std::shared_ptr<ProjectionSurface> VectorLayer::getElementProjectionSurface(const std::shared_ptr<ProjectionSurface>& baseProjectionSurface) const {
         std::shared_ptr<Options> options = getOptions();
+        // TerrainProjectionSurface decorates whatever surface it is given, so the globe could carry
+        // it - but picking still marches the height field in the planar frame
+        // (ElevationManager::intersectRay), so it stays off there; see 18-globe.md.
         if (!options || !baseProjectionSurface || options->getRenderProjectionMode() != RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
             return baseProjectionSurface;
         }
@@ -382,8 +385,8 @@ namespace massif {
         // then trigger a rebuild of the element draw data.
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (!_terrainProjectionSurface || _terrainProjectionSurface->getElevationManager() != elevationManager || _terrainProjectionSurface->getElevationVersion() != elevationManager->getVersion()) {
-            _terrainProjectionSurface = std::make_shared<TerrainProjectionSurface>(elevationManager);
+        if (!_terrainProjectionSurface || _terrainProjectionSurface->getBase() != baseProjectionSurface || _terrainProjectionSurface->getElevationManager() != elevationManager || _terrainProjectionSurface->getElevationVersion() != elevationManager->getVersion()) {
+            _terrainProjectionSurface = std::make_shared<TerrainProjectionSurface>(baseProjectionSurface, elevationManager);
         }
         return _terrainProjectionSurface;
     }

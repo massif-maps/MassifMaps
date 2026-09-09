@@ -247,6 +247,11 @@ add_executable(api_tests
   # split out of SkyRenderer precisely so it could be reached from here - the renderer itself
   # needs GL.
   SkyFrameTest.cpp
+  # The terrain surface as a decorator over the plane and over the globe. It takes the light
+  # ElevationProvider interface, so a synthetic height field stands in for the manager, which
+  # needs the data source and the grid cache and does not link here.
+  TerrainSurfaceTest.cpp
+  "${SDK_BASE_DIR}/all/native/terrain/TerrainProjectionSurface.cpp"
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

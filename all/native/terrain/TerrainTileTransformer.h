@@ -16,20 +16,21 @@ namespace massif {
     class ElevationTileGrid;
 
     /**
-     * A planar tile transformer that displaces geometry by terrain elevation.
-     * Heights are sampled CPU-side from the decoded elevation grids of the ElevationManager
-     * at tile build time. Heights are a pure function of world position (the same DEM data
-     * and deterministic parent-fallback rules are used by all tiles), so neighboring tiles at
-     * different zoom levels produce matching edge geometry.
-     * Line strings and triangles are adaptively subdivided with world-unit thresholds
-     * (binary halving) so that subdivision points of different-zoom tiles coincide.
+     * A tile transformer that adds terrain to a BASE transformer - the plane or the globe - rather
+     * than replacing it. The shape of the world stays the base's: every position, normal, vector
+     * and metres-to-tile-local conversion is forwarded, because tile geometry is built FLAT and the
+     * draping shader supplies the displacement (see TerrainVertexTransformer::calculatePoint).
+     * What this adds is the adaptive subdivision that flat geometry needs before the shader can
+     * displace it, and a tile bounding box grown by the elevation range.
+     * Subdivision thresholds are in world units and split by binary halving, so the subdivision
+     * points of different-zoom tiles coincide.
      * Internal class, not exposed in the public API.
      */
     class TerrainTileTransformer final : public vt::TileTransformer {
     public:
         class TerrainVertexTransformer final : public VertexTransformer {
         public:
-            TerrainVertexTransformer(const vt::TileId& tileId, double scale, std::shared_ptr<ElevationTileGrid> grid, float exaggeration, float divideThreshold, float lineDivideThreshold, float latticeCell, float sagToleranceMeters);
+            TerrainVertexTransformer(const vt::TileId& tileId, std::shared_ptr<const VertexTransformer> base, std::shared_ptr<ElevationTileGrid> grid, float exaggeration, float divideThreshold, float lineDivideThreshold, float latticeCell, float sagToleranceMeters);
             virtual ~TerrainVertexTransformer() = default;
 
             virtual cglib::vec3<float> calculatePoint(const cglib::vec2<float>& pos) const override;
@@ -44,7 +45,6 @@ namespace massif {
 
         private:
             double calculateLocalHeight(const cglib::vec2<float>& pos) const;
-            double calculateMercatorCosine(double internalY) const;
 
             void tesselateSegment(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, float dist, float threshold, vt::VertexArray<cglib::vec2<float>>& points) const;
             // Splits a segment only where the terrain under it leaves the chord, until the residual
@@ -58,7 +58,7 @@ namespace massif {
             void tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& indices) const;
 
             const vt::TileId _tileId;
-            const double _scale;
+            const std::shared_ptr<const VertexTransformer> _base;
             const std::shared_ptr<ElevationTileGrid> _grid;
             const float _exaggeration;
             const float _divideThreshold; // triangle subdivision, EPSG3857 meters; infinity disables subdivision
@@ -66,15 +66,13 @@ namespace massif {
             const float _latticeCell; // surface grid cell size in tile-local units; 0 outside regular-grid mode
             float _sagToleranceLocal = 0.0f; // max chord sag in tile-local height units; 0 disables sag subdivision
             float _sagMinSegmentMeters = 0.0f; // never cut below the elevation data's own resolution
-            cglib::vec2<double> _tileOffsetInternal; // internal coordinates of the tile origin (min x, min y)
-            double _tileScaleInternal;
-            double _tileScaleMeters;
-            double _localFromInternal;
+            double _tileScaleMeters; // tile-local length to metres, at the equator
         };
 
-        TerrainTileTransformer(float scale, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines);
+        TerrainTileTransformer(std::shared_ptr<const vt::TileTransformer> base, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines);
         virtual ~TerrainTileTransformer() = default;
 
+        const std::shared_ptr<const vt::TileTransformer>& getBase() const { return _base; }
         std::shared_ptr<ElevationManager> getElevationManager() const { return _elevationManager; }
         int getMeshResolution() const { return _meshResolution; }
         int getMinZoom() const { return _minZoom; }
@@ -89,6 +87,10 @@ namespace massif {
         virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const vt::TileId& tileId) const override;
 
     private:
+        // Metres per internal unit at the tile's centre latitude - the Mercator stretch, which the
+        // elevation range from getMinMaxDisplayHeight carries and the base's world does not.
+        static double metersPerInternalUnit(const vt::TileId& tileId);
+
         static constexpr float FLAT_HEIGHT_RANGE_EPSILON = 0.001f;
         // Regular-grid draped LINES subdivide to this fraction of a surface cell (< 1 = finer) so
         // they stop chording the cell's anti-diagonal fold. Lower = fewer cracks, more vertices.
@@ -102,7 +104,7 @@ namespace massif {
         // real DEM asks for, and it bounds the work a pathological cliff can demand.
         static constexpr int MAX_SAG_SPLIT_DEPTH = 10;
 
-        const double _scale;
+        const std::shared_ptr<const vt::TileTransformer> _base;
         const std::shared_ptr<ElevationManager> _elevationManager;
         const int _meshResolution;
         const int _minZoom; // tiles below this zoom level are rendered flat

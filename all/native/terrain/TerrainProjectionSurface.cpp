@@ -1,6 +1,6 @@
 #include "TerrainProjectionSurface.h"
-#include "datasources/TileDataSource.h"
-#include "terrain/ElevationManager.h"
+#include "components/ElevationProvider.h"
+
 #include "utils/Const.h"
 
 #include <algorithm>
@@ -10,8 +10,8 @@
 
 namespace massif {
 
-    TerrainProjectionSurface::TerrainProjectionSurface(const std::shared_ptr<ElevationManager>& elevationManager) :
-        PlanarProjectionSurface(),
+    TerrainProjectionSurface::TerrainProjectionSurface(const std::shared_ptr<ProjectionSurface>& base, const std::shared_ptr<ElevationProvider>& elevationManager) :
+        _base(base),
         _elevationManager(elevationManager),
         _elevationVersion(elevationManager->getVersion()),
         _splitThreshold(CalculateSplitThreshold(elevationManager)),
@@ -20,44 +20,73 @@ namespace massif {
     }
 
     MapPos TerrainProjectionSurface::calculateMapPos(const cglib::vec3<double>& pos) const {
-        double terrainZ = _elevationManager->getDisplayHeight(pos(0), pos(1), ElevationManager::LoadMode::CACHED_ONLY);
-        return MapPos(pos(0), pos(1), pos(2) - terrainZ - _heightLift);
+        MapPos mapPos = _base->calculateMapPos(pos);
+        double terrainZ = _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY());
+        return MapPos(mapPos.getX(), mapPos.getY(), mapPos.getZ() - terrainZ - _heightLift);
+    }
+
+    MapVec TerrainProjectionSurface::calculateMapVec(const cglib::vec3<double>& pos, const cglib::vec3<double>& vec) const {
+        return _base->calculateMapVec(pos, vec);
     }
 
     cglib::vec3<double> TerrainProjectionSurface::calculatePosition(const MapPos& mapPos) const {
         // Cached-only: element positioning may run on the UI thread and must never block on IO;
         // MapRenderer rebuilds the draw data when the elevation version changes. The small lift
         // keeps densely sampled draped geometry clear of the terrain depth in concave areas.
-        double terrainZ = _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY(), ElevationManager::LoadMode::CACHED_ONLY);
-        return cglib::vec3<double>(mapPos.getX(), mapPos.getY(), mapPos.getZ() + terrainZ + _heightLift);
+        double terrainZ = _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY());
+        return _base->calculatePosition(MapPos(mapPos.getX(), mapPos.getY(), mapPos.getZ() + terrainZ + _heightLift));
     }
 
     cglib::vec3<double> TerrainProjectionSurface::calculateNormal(const MapPos& mapPos) const {
         // The terrain surface normal (from the elevation gradient). Line width extrusion
         // is performed perpendicular to this normal, so wide lines lie in the local
         // terrain tangent plane instead of a horizontal plane cutting into slopes.
+        // Tilting the base's own normal, so the slope rides whatever shape the base has.
         double dhdx = 0, dhdy = 0;
-        _elevationManager->getDisplayGradient(mapPos.getX(), mapPos.getY(), ElevationManager::LoadMode::CACHED_ONLY, dhdx, dhdy);
-        return cglib::unit(cglib::vec3<double>(-dhdx, -dhdy, 1));
+        _elevationManager->getDisplayGradient(mapPos.getX(), mapPos.getY(), dhdx, dhdy);
+        return cglib::unit(_base->calculateVector(mapPos, MapVec(-dhdx, -dhdy, 1)));
     }
 
     cglib::vec3<double> TerrainProjectionSurface::calculateVector(const MapPos& mapPos, const MapVec& mapVec) const {
         // Tilt local vectors into the terrain tangent plane (see calculateNormal)
         double dhdx = 0, dhdy = 0;
-        _elevationManager->getDisplayGradient(mapPos.getX(), mapPos.getY(), ElevationManager::LoadMode::CACHED_ONLY, dhdx, dhdy);
-        return cglib::vec3<double>(mapVec.getX(), mapVec.getY(), mapVec.getZ() + dhdx * mapVec.getX() + dhdy * mapVec.getY());
+        _elevationManager->getDisplayGradient(mapPos.getX(), mapPos.getY(), dhdx, dhdy);
+        return _base->calculateVector(mapPos, MapVec(mapVec.getX(), mapVec.getY(), mapVec.getZ() + dhdx * mapVec.getX() + dhdy * mapVec.getY()));
+    }
+
+    double TerrainProjectionSurface::calculateDistance(const cglib::vec3<double> pos0, const cglib::vec3<double>& pos1) const {
+        return _base->calculateDistance(pos0, pos1);
     }
 
     cglib::vec3<double> TerrainProjectionSurface::calculateNearestPoint(const cglib::vec3<double>& pos, double height) const {
-        double terrainZ = _elevationManager->getDisplayHeight(pos(0), pos(1), ElevationManager::LoadMode::CACHED_ONLY);
-        return cglib::vec3<double>(pos(0), pos(1), height + terrainZ + _heightLift);
+        MapPos mapPos = _base->calculateMapPos(pos);
+        double terrainZ = _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY());
+        return _base->calculateNearestPoint(pos, height + terrainZ + _heightLift);
+    }
+
+    cglib::vec3<double> TerrainProjectionSurface::calculateNearestPoint(const cglib::ray3<double>& ray, double height, double& t) const {
+        if (calculateHitPoint(ray, height, t)) {
+            return ray(t);
+        }
+        return _base->calculateNearestPoint(ray, height, t);
     }
 
     bool TerrainProjectionSurface::calculateHitPoint(const cglib::ray3<double>& ray, double height, double& t) const {
+        // ElevationManager::intersectRay marches the height field in the PLANAR frame, so it only
+        // answers for a planar base; on a globe base the fallback below is what picking gets until
+        // the manager learns the surface (18-globe.md).
         if (_elevationManager->intersectRay(ray, t)) {
             return true;
         }
-        return PlanarProjectionSurface::calculateHitPoint(ray, height, t);
+        return _base->calculateHitPoint(ray, height, t);
+    }
+
+    cglib::mat4x4<double> TerrainProjectionSurface::calculateLocalFrameMatrix(const cglib::vec3<double>& pos) const {
+        return _base->calculateLocalFrameMatrix(pos);
+    }
+
+    cglib::mat4x4<double> TerrainProjectionSurface::calculateTranslateMatrix(const cglib::vec3<double>& pos0, const cglib::vec3<double>& pos1, double t) const {
+        return _base->calculateTranslateMatrix(pos0, pos1, t);
     }
 
     void TerrainProjectionSurface::tesselateSegment(const MapPos& mapPos0, const MapPos& mapPos1, std::vector<MapPos>& mapPoses) const {
@@ -71,12 +100,18 @@ namespace massif {
         if (_splitThreshold > 0 && std::isfinite(len)) {
             count = std::min(512, std::max(1, static_cast<int>(std::ceil(len / _splitThreshold))));
         }
-        mapPoses.push_back(mapPos0);
-        for (int i = 1; i < count; i++) {
-            double t = static_cast<double>(i) / count;
-            mapPoses.push_back(MapPos(mapPos0.getX() + dx * t, mapPos0.getY() + dy * t, mapPos0.getZ() + (mapPos1.getZ() - mapPos0.getZ()) * t));
+        // Each terrain sub-segment then goes through the base, which is what curves it on a globe.
+        // The base emits both endpoints, so the point shared with the previous sub-segment is
+        // dropped - otherwise every join would carry a duplicate the flat surface never produced.
+        std::vector<MapPos> subPoses;
+        for (int i = 0; i < count; i++) {
+            double t0 = static_cast<double>(i) / count, t1 = static_cast<double>(i + 1) / count;
+            MapPos sub0(mapPos0.getX() + dx * t0, mapPos0.getY() + dy * t0, mapPos0.getZ() + (mapPos1.getZ() - mapPos0.getZ()) * t0);
+            MapPos sub1(mapPos0.getX() + dx * t1, mapPos0.getY() + dy * t1, mapPos0.getZ() + (mapPos1.getZ() - mapPos0.getZ()) * t1);
+            subPoses.clear();
+            _base->tesselateSegment(i == 0 ? mapPos0 : sub0, i + 1 == count ? mapPos1 : sub1, subPoses);
+            mapPoses.insert(mapPoses.end(), subPoses.begin() + (i > 0 && !subPoses.empty() ? 1 : 0), subPoses.end());
         }
-        mapPoses.push_back(mapPos1);
     }
 
     void TerrainProjectionSurface::tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, std::vector<unsigned int>& indices, std::vector<MapPos>& mapPoses) const {
@@ -109,9 +144,9 @@ namespace massif {
                 stack.push_back({ { tri[0], tri[1], iM } });
                 stack.push_back({ { tri[2], tri[0], iM } });
             } else {
-                indices.push_back(tri[0]);
-                indices.push_back(tri[1]);
-                indices.push_back(tri[2]);
+                // Terrain has refined it as far as it needs; the base decides whether the SHAPE
+                // still needs splitting, which on a globe it does at low zoom.
+                _base->tesselateTriangle(tri[0], tri[1], tri[2], indices, mapPoses);
             }
             budget--;
         }
@@ -127,12 +162,12 @@ namespace massif {
         return true;
     }
 
-    double TerrainProjectionSurface::CalculateSplitThreshold(const std::shared_ptr<ElevationManager>& elevationManager) {
+    double TerrainProjectionSurface::CalculateSplitThreshold(const std::shared_ptr<ElevationProvider>& elevationManager) {
         // Subdivide down to roughly the elevation data texel size (assuming 256px tiles at the
         // maximum data source zoom level), clamped to a sane range to bound vertex counts.
         int maxZoom = 12;
-        if (std::shared_ptr<TileDataSource> dataSource = elevationManager->getDataSource()) {
-            maxZoom = std::min(20, std::max(0, dataSource->getMaxZoom()));
+        if (elevationManager->getMaxDataZoom() >= 0) {
+            maxZoom = std::min(20, std::max(0, elevationManager->getMaxDataZoom()));
         }
         double texelSize = Const::WORLD_SIZE / (static_cast<double>(1 << maxZoom) * 256.0);
         return std::max(texelSize, Const::WORLD_SIZE / static_cast<double>(1 << 22));

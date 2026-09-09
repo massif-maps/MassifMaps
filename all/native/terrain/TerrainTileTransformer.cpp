@@ -3,6 +3,7 @@
 #include "terrain/ElevationManager.h"
 #include "terrain/ElevationTileGrid.h"
 #include "terrain/TesselationBounds.h"
+#include "utils/Const.h"
 
 #include <algorithm>
 #include <cmath>
@@ -104,21 +105,20 @@ namespace massif {
     }
 #endif
 
-    TerrainTileTransformer::TerrainVertexTransformer::TerrainVertexTransformer(const vt::TileId& tileId, double scale, std::shared_ptr<ElevationTileGrid> grid, float exaggeration, float divideThreshold, float lineDivideThreshold, float latticeCell, float sagToleranceMeters) :
+    TerrainTileTransformer::TerrainVertexTransformer::TerrainVertexTransformer(const vt::TileId& tileId, std::shared_ptr<const VertexTransformer> base, std::shared_ptr<ElevationTileGrid> grid, float exaggeration, float divideThreshold, float lineDivideThreshold, float latticeCell, float sagToleranceMeters) :
         _tileId(tileId),
-        _scale(scale),
+        _base(std::move(base)),
         _grid(std::move(grid)),
         _exaggeration(exaggeration),
         _divideThreshold(divideThreshold),
         _lineDivideThreshold(lineDivideThreshold),
         _latticeCell(latticeCell)
     {
-        int tileMask = (1 << tileId.zoom) - 1;
         double zoomScale = 1.0 / (1 << tileId.zoom);
-        _tileOffsetInternal = cglib::vec2<double>((tileId.x * zoomScale - 0.5) * _scale, ((tileMask - tileId.y) * zoomScale - 0.5) * _scale);
-        _tileScaleInternal = zoomScale * _scale;
+        // Tile-local length to metres, at the EQUATOR: the thresholds this feeds were calibrated
+        // against it. It is the planar convention - the globe's tile-local unit is 2 * PI smaller -
+        // so it holds only while terrain is planar-only (docs/internals/rendering/18-globe.md).
         _tileScaleMeters = EARTH_CIRCUMFERENCE * zoomScale;
-        _localFromInternal = (1 << tileId.zoom) / _scale;
 
         if (sagToleranceMeters > 0.0f) {
             // The tolerance is in METRES to match the depth clearance (04-terrain.md); heights are
@@ -133,27 +133,29 @@ namespace massif {
     }
 
     cglib::vec3<float> TerrainTileTransformer::TerrainVertexTransformer::calculatePoint(const cglib::vec2<float>& pos) const {
-        return cglib::vec3<float>(pos(0), 1 - pos(1), static_cast<float>(calculateLocalHeight(pos)));
+        // The base's surface, undisplaced: tile geometry is built FLAT and the draping shader
+        // replaces the z of every draped vertex (calculateLocalHeight).
+        return _base->calculatePoint(pos);
     }
 
     cglib::vec3<float> TerrainTileTransformer::TerrainVertexTransformer::calculateNormal(const cglib::vec2<float>& pos) const {
-        // Keep 'up' as the normal: it is the extrusion direction for 3D geometry (buildings must
-        // stay vertical) and keeps hillshade/lighting behavior identical to the flat planar case.
-        return cglib::vec3<float>(0, 0, 1);
+        // The base's 'up', not the terrain's: it is the extrusion direction for 3D geometry
+        // (buildings must stay vertical) and keeps hillshade and lighting as the base has them.
+        return _base->calculateNormal(pos);
     }
 
     cglib::vec3<float> TerrainTileTransformer::TerrainVertexTransformer::calculateVector(const cglib::vec2<float>& pos, const cglib::vec2<float>& vec) const {
-        return cglib::vec3<float>(vec(0), -vec(1), 0);
+        return _base->calculateVector(pos, vec);
     }
 
     cglib::vec2<float> TerrainTileTransformer::TerrainVertexTransformer::calculateTilePosition(const cglib::vec3<float>& pos) const {
-        return cglib::vec2<float>(pos(0), 1 - pos(1));
+        return _base->calculateTilePosition(pos);
     }
 
     float TerrainTileTransformer::TerrainVertexTransformer::calculateHeight(const cglib::vec2<float>& pos, float height) const {
-        double internalY = _tileOffsetInternal(1) + (1 - pos(1)) * _tileScaleInternal;
-        double cosLatitude = calculateMercatorCosine(internalY);
-        return static_cast<float>(height / cosLatitude * (1 << _tileId.zoom) / EARTH_CIRCUMFERENCE);
+        // The base owns metres-to-tile-local: on the globe a height is radial and carries no
+        // Mercator stretch, on the plane it carries one, and the two differ by 2 * PI besides.
+        return _base->calculateHeight(pos, height);
     }
 
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateLineString(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
@@ -258,11 +260,6 @@ namespace massif {
         // with the shared elevation sample, so sampling at build time is wasted work - it was by far
         // the most expensive part of terrain tile decodes.
         return 0.0;
-    }
-
-    double TerrainTileTransformer::TerrainVertexTransformer::calculateMercatorCosine(double internalY) const {
-        double sin = std::tanh(internalY * 2 * PI / _scale);
-        return std::sqrt(std::max(1.0e-6, 1.0 - sin * sin));
     }
 
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateSegment(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, float dist, float threshold, vt::VertexArray<cglib::vec2<float>>& points) const {
@@ -379,8 +376,8 @@ namespace massif {
         }
     }
 
-    TerrainTileTransformer::TerrainTileTransformer(float scale, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines) :
-        _scale(scale),
+    TerrainTileTransformer::TerrainTileTransformer(std::shared_ptr<const vt::TileTransformer> base, const std::shared_ptr<ElevationManager>& elevationManager, int meshResolution, int minZoom, bool sourceDensity, bool sourceDensityLines) :
+        _base(std::move(base)),
         _elevationManager(elevationManager),
         _meshResolution(std::max(1, meshResolution)),
         _minZoom(minZoom),
@@ -389,46 +386,48 @@ namespace massif {
     {
     }
 
-    cglib::vec3<double> TerrainTileTransformer::calculateTileOrigin(const vt::TileId& tileId) const {
+    double TerrainTileTransformer::metersPerInternalUnit(const vt::TileId& tileId) {
         int tileMask = (1 << tileId.zoom) - 1;
         double zoomScale = 1.0 / (1 << tileId.zoom);
-        cglib::vec3<double> p;
-        p(0) = (tileId.x * zoomScale - 0.5) * _scale;
-        p(1) = ((tileMask - tileId.y) * zoomScale - 0.5) * _scale;
-        p(2) = 0;
-        return p;
+        double internalY = ((tileMask - tileId.y) * zoomScale - 0.5 + 0.5 * zoomScale) * Const::WORLD_SIZE;
+        double sinLatitude = std::tanh(internalY * 2 * PI / Const::WORLD_SIZE);
+        double cosLatitude = std::sqrt(std::max(1.0e-6, 1.0 - sinLatitude * sinLatitude));
+        return Const::EARTH_CIRCUMFERENCE * cosLatitude / Const::WORLD_SIZE;
+    }
+
+    cglib::vec3<double> TerrainTileTransformer::calculateTileOrigin(const vt::TileId& tileId) const {
+        return _base->calculateTileOrigin(tileId);
     }
 
     cglib::bbox3<double> TerrainTileTransformer::calculateTileBBox(const vt::TileId& tileId) const {
-        cglib::bbox3<double> bbox = cglib::transform_bbox(cglib::bbox3<double>(cglib::vec3<double>(0, 0, 0), cglib::vec3<double>(1, 1, 0)), calculateTileMatrix(tileId, 1.0f));
+        cglib::bbox3<double> bbox = _base->calculateTileBBox(tileId);
         if (tileId.zoom >= _minZoom) {
             int tileMask = (1 << tileId.zoom) - 1;
             MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
             double minZ = 0, maxZ = 0;
             _elevationManager->getMinMaxDisplayHeight(mapTile, minZ, maxZ);
-            bbox.add(cglib::vec3<double>(bbox.min(0), bbox.min(1), minZ));
-            bbox.add(cglib::vec3<double>(bbox.max(0), bbox.max(1), maxZ));
+            // The elevation range is in INTERNAL units, and the base's world is neither internal
+            // nor flat: push the box out along the base's own up, by the world length of that
+            // range. Exactly one on the plane, two cosines of the latitude on the globe.
+            std::shared_ptr<const VertexTransformer> vertexTransformer = _base->createTileVertexTransformer(tileId);
+            cglib::vec2<float> centre(0.5f, 0.5f);
+            cglib::vec3<double> up = cglib::vec3<double>::convert(vertexTransformer->calculateNormal(centre));
+            double worldPerInternal = metersPerInternalUnit(tileId) * vertexTransformer->calculateHeight(centre, 1.0f) * calculateTileMatrix(tileId, 1.0f)(0, 0);
+            for (double height : { minZ, maxZ }) {
+                cglib::vec3<double> offset = up * (height * worldPerInternal);
+                bbox.add(bbox.min + offset);
+                bbox.add(bbox.max + offset);
+            }
         }
         return bbox;
     }
 
     cglib::mat4x4<double> TerrainTileTransformer::calculateTileMatrix(const vt::TileId& tileId, float coordScale) const {
-        double s = _scale * coordScale / (1 << tileId.zoom);
-        cglib::vec3<double> p = calculateTileOrigin(tileId);
-
-        cglib::mat4x4<double> m = cglib::mat4x4<double>::zero();
-        m(0, 0) = s;
-        m(1, 1) = s;
-        m(2, 2) = s;
-        m(0, 3) = p(0);
-        m(1, 3) = p(1);
-        m(2, 3) = p(2);
-        m(3, 3) = 1;
-        return m;
+        return _base->calculateTileMatrix(tileId, coordScale);
     }
 
     cglib::mat4x4<float> TerrainTileTransformer::calculateTileTransform(const vt::TileId& tileId, const cglib::vec2<float>& translate, float coordScale) const {
-        return cglib::translate4_matrix(cglib::vec3<float>(translate(0) / coordScale, -translate(1) / coordScale, 0));
+        return _base->calculateTileTransform(tileId, translate, coordScale);
     }
 
     std::shared_ptr<const vt::TileTransformer::VertexTransformer> TerrainTileTransformer::createTileVertexTransformer(const vt::TileId& tileId) const {
@@ -457,6 +456,6 @@ namespace massif {
             latticeCell = (_sourceDensityLines || !latticeWorthIt) ? 0.0f : static_cast<float>(1.0 / _meshResolution);
         }
 
-        return std::make_shared<TerrainVertexTransformer>(tileId, _scale, std::move(grid), _elevationManager->getExaggeration(), divideThreshold, lineDivideThreshold, latticeCell, lineSagToleranceMeters());
+        return std::make_shared<TerrainVertexTransformer>(tileId, _base->createTileVertexTransformer(tileId), std::move(grid), _elevationManager->getExaggeration(), divideThreshold, lineDivideThreshold, latticeCell, lineSagToleranceMeters());
     }
 }

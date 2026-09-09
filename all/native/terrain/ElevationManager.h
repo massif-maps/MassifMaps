@@ -203,6 +203,8 @@ namespace massif {
         void getDisplayHeightRange(double internalY, float exaggeration, double& minZ, double& maxZ) const;
 
         virtual double getDisplayHeight(double internalX, double internalY) const override;
+        virtual void getDisplayGradient(double internalX, double internalY, double& dhdx, double& dhdy) const override;
+        virtual int getMaxDataZoom() const override;
         virtual bool intersectRay(const cglib::ray3<double>& ray, double& t) const override;
         /**
          * The tile must be in XYZ convention (y=0 north, same as vt::TileId).

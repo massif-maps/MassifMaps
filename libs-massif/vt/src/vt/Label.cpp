@@ -218,15 +218,22 @@ namespace massif::vt {
             return;
         }
 
+        // The ENDS are kept where they are, and only the interior is averaged. A centroid lies inside
+        // its own window, so averaging the first and last ones pulled the line in by half a window at
+        // each end - and the window is a fraction of the TEXT, so a longer run shortened the very line
+        // it then had to fit on (buildLineVertexData, `runLength > total`). MapBox smooths nothing and
+        // measures the whole line, so a street name it places was being dropped here.
         std::vector<std::size_t> sourceIndices;
-        cglib::vec3<double> sum = vertices.front();
-        std::size_t count = 1;
+        smoothedVertices.push_back(vertices.front());
+        sourceIndices.push_back(0);
+        cglib::vec3<double> sum(0, 0, 0);
+        std::size_t count = 0;
         double length = 0;
-        for (std::size_t i = 1; i < vertices.size(); i++) {
+        for (std::size_t i = 1; i + 1 < vertices.size(); i++) {
             length += cglib::length(vertices[i] - vertices[i - 1]);
             sum += vertices[i];
             count++;
-            if (length >= minEdgeLength || i + 1 == vertices.size()) {
+            if (length >= minEdgeLength) {
                 smoothedVertices.push_back(sum * (1.0 / count));
                 sourceIndices.push_back(i);
                 sum = cglib::vec3<double>(0, 0, 0);
@@ -234,11 +241,8 @@ namespace massif::vt {
                 length = 0;
             }
         }
-        if (smoothedVertices.size() < 2) {
-            smoothedVertices = vertices;
-            smoothedIndex = index;
-            return;
-        }
+        smoothedVertices.push_back(vertices.back());
+        sourceIndices.push_back(vertices.size() - 1);
 
         // The anchor lies on source segment [index, index + 1]. Each smoothed vertex averages one
         // window of source vertices ending at sourceIndices[i], so the anchor belongs to the first

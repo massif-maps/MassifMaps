@@ -8,8 +8,8 @@ sidebar_position: 18
 
 `Options.setRenderProjectionMode(RENDER_PROJECTION_MODE_SPHERICAL)` draws the map on a sphere
 instead of the Mercator plane. It arrived with CARTO's `feature/globe` and has been carried,
-unexercised, ever since: 2D tiled content, vector elements and the camera work; **3D terrain,
-terrain shadows and the sky's horizon do not**.
+unexercised, ever since: 2D tiled content, vector elements, the camera and the sky work; **3D
+terrain and terrain shadows do not**.
 
 This page is the shared conventions and the traps. What is missing and in what order it is being
 fixed is at the bottom.
@@ -75,9 +75,13 @@ planar caller will not, because below the horizon the plane is always ahead.
 In the order it is being addressed. The sequence is chosen so each step is provable by the host
 suite before the one that depends on it.
 
-1. **The sky's up vector.** `SkyRenderer`'s fragment shader reads `rayDir.z` as the elevation angle
-   and takes the camera height from `cameraPos(2)` — both flat-earth. The sky is drawn with a
-   global up on the globe, so the horizon, the star fade and the ground wedge are all wrong.
+1. ~~**The sky's up vector.**~~ Done. The sky shader's model was always a local-observer one — the
+   elevation angle, the star azimuth, the planet-relative atmosphere origin, and `u_sunDir`, which
+   `LightOptions::getSunDirection` produces from an azimuth/altitude pair. Only the view ray
+   arrived in world space, so `main()` now rotates it by `u_localFrame`
+   (`renderers/utils/SkyFrame.h`) and everything downstream is unchanged. The frame is the identity
+   on the plane, so planar output is bit-exact. `u_cameraHeight` reads the surface's own internal z
+   for the same reason.
 2. **Terrain as a decorator.** Composing `TerrainProjectionSurface` and `TerrainTileTransformer`
    over a *base* surface instead of over the plane. The vt vertex transformer already has
    `calculateHeight` implemented spherically, so the composed point is
@@ -106,8 +110,13 @@ until they are done separately.
 - `calculateNormal` returning a non-unit vector is a bug in all but name; the only reason it is
   documented here rather than fixed is that changing it moves the planar lighting too, and that
   needs a device A/B.
-- There is no globe render check anywhere. `tests/api/SphericalSurfaceTest.cpp` covers the surface
-  arithmetic; that the globe *draws* is still an unverified device check.
+- There is no globe render check anywhere. `tests/api/SphericalSurfaceTest.cpp` and
+  `tests/api/SkyFrameTest.cpp` cover the arithmetic; that the globe *draws* is still an unverified
+  device check.
+- `u_cameraHeight` omits the Mercator latitude scale — it is internal z times
+  `EARTH_CIRCUMFERENCE / WORLD_SIZE` with no `cos(lat)`, so at latitude 60 the atmosphere marches
+  from twice the real altitude. Both surfaces omit it alike, which is the only reason it is
+  documented here rather than fixed: correcting it moves the planar sky and needs a device A/B.
 
 ## Trying it
 

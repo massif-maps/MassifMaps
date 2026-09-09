@@ -243,6 +243,10 @@ add_executable(api_tests
   # The globe's surface against the planar one - the conventions terrain-on-globe rests on.
   # Needs the two projection surface sources added above.
   SphericalSurfaceTest.cpp
+  # Same: SkyFrame.h is the sky's observer rotation and camera height, and nothing else. It was
+  # split out of SkyRenderer precisely so it could be reached from here - the renderer itself
+  # needs GL.
+  SkyFrameTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

@@ -1281,13 +1281,20 @@ Pick it for a flat or brand-coloured sky, or as the A/B when measuring what the 
 `SkyOptions::setShaderSource` replaces `vec4 skyColor(vec3 rayDir)`. The wrapper declares
 `u_sunDir`, `u_sunColor`, `u_skyColor`, `u_horizonColor`, `u_groundColor`, `u_horizonBlend`,
 `u_sunIntensity`, `u_sunDisc`, `u_atmosphere`, `u_atmosphereColor`, `u_haloColor`, `u_time`,
-`u_zoom`, `u_cameraHeight`, `u_resolution`, `u_starIntensity`, the whole fog block, and the helpers
+`u_zoom`, `u_cameraHeight`, `u_localFrame`, `u_resolution`, `u_starIntensity`, the whole fog block, and the helpers
 `atmosphereTint`, `starAmount`, `sunDisc`, `groundBelowHorizon` (and `atmosphere` / `tonemap` when
 the type is `ATMOSPHERE`) — **redeclaring any of them is a compile error and the renderer silently
 falls back to the built-in sky**, which is the usual reason a custom sky "does nothing".
 
 A custom sky must NOT fog itself: `main()` applies `skyFog` once to whatever `skyColor` returns, so
 a custom fog shader reaches a custom sky too.
+
+`rayDir` arrives in the OBSERVER frame — east, north, up at the focus — not in world space, so
+`rayDir.z` is the elevation angle and `atan(rayDir.y, rayDir.x)` the azimuth wherever the camera
+is. `main()` applies `u_localFrame` before calling `skyColor`, and `u_sunDir` is in that frame
+already ([`LightOptions::getSunDirection`](https://github.com/massif-maps/MassifMaps/blob/master/all/native/components/LightOptions.cpp)
+is an azimuth/altitude pair). On the plane the frame is the identity; on the globe it is what
+keeps the horizon under the camera instead of at world z = 0. See [Globe mode](18-globe.md).
 
 Two implementation notes: it uses `glGetUniformLocation` with `>= 0` guards (see
 [03-vt-renderer.md](03-vt-renderer.md#shaders)), and it draws from a **client-side array**, so any

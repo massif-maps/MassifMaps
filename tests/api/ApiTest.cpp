@@ -83,6 +83,7 @@ void testPrefetchOrder();
 void testTileStyleZoom();
 void testTileLODRule();
 void testSphericalSurface();
+void testSkyFrame();
 
 namespace {
 
@@ -456,6 +457,7 @@ int main() {
     testTileStyleZoom();
     testTileLODRule();
     testSphericalSurface();
+    testSkyFrame();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -9,6 +9,7 @@
 #include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
+#include "renderers/utils/SkyFrame.h"
 #include "utils/Const.h"
 #include "utils/Log.h"
 
@@ -32,6 +33,7 @@ namespace massif {
         _shaderFailed(false),
         _a_coord(0),
         _u_invMVPMat(-1),
+        _u_localFrame(-1),
         _u_sunDir(-1),
         _u_sunColor(-1),
         _u_skyColor(-1),
@@ -130,6 +132,7 @@ namespace massif {
         GLuint progId = _shader->getProgId();
         _a_coord = _shader->getAttribLoc("a_coord");
         _u_invMVPMat = glGetUniformLocation(progId, "u_invMVPMat");
+        _u_localFrame = glGetUniformLocation(progId, "u_localFrame");
         _u_sunDir = glGetUniformLocation(progId, "u_sunDir");
         _u_sunColor = glGetUniformLocation(progId, "u_sunColor");
         _u_skyColor = glGetUniformLocation(progId, "u_skyColor");
@@ -210,6 +213,14 @@ namespace massif {
         if (_u_invMVPMat >= 0) {
             glUniformMatrix4fv(_u_invMVPMat, 1, GL_FALSE, invMVPMat.data());
         }
+        if (_u_localFrame >= 0) {
+            cglib::mat3x3<float> localFrame = cglib::mat3x3<float>::identity();
+            if (std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface()) {
+                localFrame = SkyFrame::orientation(*projectionSurface, viewState.getFocusPos());
+            }
+            // GL_FALSE: orientation() already returns world -> local, and cglib is column-major.
+            glUniformMatrix3fv(_u_localFrame, 1, GL_FALSE, localFrame.data());
+        }
         if (_u_sunDir >= 0) {
             glUniform3fv(_u_sunDir, 1, sunDir.data());
         }
@@ -250,7 +261,11 @@ namespace massif {
             glUniform1f(_u_zoom, viewState.getZoom());
         }
         if (_u_cameraHeight >= 0) {
-            glUniform1f(_u_cameraHeight, static_cast<float>(viewState.getCameraPos()(2) * Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE));
+            float cameraHeight = 0.0f;
+            if (std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface()) {
+                cameraHeight = SkyFrame::cameraHeight(*projectionSurface, viewState.getCameraPos());
+            }
+            glUniform1f(_u_cameraHeight, cameraHeight);
         }
         if (_u_resolution >= 0) {
             glUniform2f(_u_resolution, static_cast<float>(viewState.getWidth()), static_cast<float>(viewState.getHeight()));
@@ -304,6 +319,9 @@ namespace massif {
         precision mediump float;
         #endif
         varying vec3 v_rayDir;
+        // World -> local (east, north, up) at the focus. The identity on the plane; on the globe it
+        // is what gives every angle below a real observer's up. u_sunDir is already local.
+        uniform mat3 u_localFrame;
         uniform vec3 u_sunDir;
         uniform vec4 u_sunColor;
         uniform vec4 u_skyColor;
@@ -496,7 +514,7 @@ namespace massif {
 
     const std::string SkyRenderer::SKY_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
-            vec3 rayDir = normalize(v_rayDir);
+            vec3 rayDir = normalize(u_localFrame * v_rayDir);
             vec4 color = clamp(skyColor(rayDir), 0.0, 1.0);
             // The sky is at infinity, so what varies over it is the ANGULAR haze alone - the same
             // term the ground takes, which is what makes the two meet without a seam.

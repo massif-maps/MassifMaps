@@ -94,6 +94,9 @@ set(TEST_SDK_SOURCES
   # cglib and nothing else - no Options, no renderer, so the link stays as small as it was.
   "${SDK_BASE_DIR}/all/native/projections/PlanarProjectionSurface.cpp"
   "${SDK_BASE_DIR}/all/native/projections/SphericalProjectionSurface.cpp"
+  # vt's tile frames, for GlobeElevationScaleTest. cglib and boost's constants and nothing else -
+  # no GL, no renderer.
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileTransformer.cpp"
   # Spec.cpp holds create() and the registry; the built-in factories live in SpecFactories.cpp,
   # which is deliberately NOT here - linking it would need every source and layer constructor.
   "${SDK_BASE_DIR}/all/native/api/Spec.cpp"
@@ -243,6 +246,9 @@ add_executable(api_tests
   # The globe's surface against the planar one - the conventions terrain-on-globe rests on.
   # Needs the two projection surface sources added above.
   SphericalSurfaceTest.cpp
+  # Same: TerrainElevationScale.h is metres-to-vertex-frame on a sphere and nothing else. Needs
+  # vt's TileTransformer source added above.
+  GlobeElevationScaleTest.cpp
   # Same: SkyFrame.h is the sky's observer rotation and camera height, and nothing else. It was
   # split out of SkyRenderer precisely so it could be reached from here - the renderer itself
   # needs GL.

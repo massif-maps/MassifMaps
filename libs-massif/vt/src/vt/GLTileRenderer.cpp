@@ -6,6 +6,7 @@
 #include "Color.h"
 #include "TileGeometryIterator.h"
 #include "TileSurfaceBuilder.h"
+#include "TerrainElevationScale.h"
 #include "BitmapManager.h"
 #include "LabelCuller.h"
 #include "RenderStats.h"
@@ -4025,10 +4026,9 @@ namespace massif::vt {
         if (_transformer->isSpherical()) {
             // A height on a sphere is RADIAL: no Mercator stretch (y and z zero, so the shader's
             // cosh is 1) and no frame z offset, because the displacement is along the normal rather
-            // than along an axis. One metre is calculateHeight's tile-local length, in frame units.
-            double localPerMeter = _transformer->createTileVertexTransformer(tileId)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
+            // than along an axis.
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE],
-                static_cast<float>(localPerMeter / frameScaleZ), 0.0f, 0.0f, 0.0f);
+                static_cast<float>(sphericalMetersToFrame(*_transformer, tileId, vertexFrameMatrix)), 0.0f, 0.0f, 0.0f);
         } else {
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE],
                 static_cast<float>(terrainTexture.metersToInternal / frameScaleZ),

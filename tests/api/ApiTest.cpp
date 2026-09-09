@@ -83,6 +83,7 @@ void testPrefetchOrder();
 void testTileStyleZoom();
 void testTileLODRule();
 void testSphericalSurface();
+void testGlobeElevationScale();
 void testSkyFrame();
 void testTerrainSurface();
 
@@ -458,6 +459,7 @@ int main() {
     testTileStyleZoom();
     testTileLODRule();
     testSphericalSurface();
+    testGlobeElevationScale();
     testSkyFrame();
     testTerrainSurface();
 

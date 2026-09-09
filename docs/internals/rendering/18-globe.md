@@ -9,8 +9,9 @@ sidebar_position: 18
 `Options.setRenderProjectionMode(RENDER_PROJECTION_MODE_SPHERICAL)` draws the map on a sphere
 instead of the Mercator plane. It arrived with CARTO's `feature/globe` and was carried unexercised
 for years. 2D tiled content, vector elements, the camera and the sky reach it and look right on a
-device. **3D terrain reaches it and is visibly wrong** - see the section below. Terrain shadows,
-picking on terrain and the camera rules over terrain are deliberately still planar-only.
+device. **3D terrain was visibly wrong on a device**; the two causes are found and fixed, and the
+re-check is owed - see the section below. Terrain shadows, picking on terrain and the camera rules
+over terrain are deliberately still planar-only.
 
 This page is the shared conventions and the traps. What is missing is at the bottom.
 
@@ -25,9 +26,9 @@ Terrain **decorates** a base rather than replacing it: both terrain classes take
 globe and add elevation to it, and every condition that used to refuse terrain on a globe is gone.
 `RENDER_PROJECTION_MODE_PLANAR` no longer appears in `MapRenderer` or `VectorLayer` at all.
 
-**None of it has been seen on a device.** Everything below is host-tested arithmetic and a shader
-that has never been compiled. The first device check is the real gate: 3D terrain at a globe camera,
-plus a planar A/B to confirm none of this moved the shipping map.
+**Everything terrain does here is unverified on a screen.** 2D content, the sky and the limb have
+been seen on emulator-5554; the terrain fixes below have not. The gate is 3D terrain at a globe
+camera, plus a planar A/B to confirm none of this moved the shipping map.
 
 ## What the two surfaces share
 
@@ -102,7 +103,8 @@ suite before the one that depends on it.
    tile's unit square. Two things fall out of the arithmetic rather than being tuned: the frame-space
    displacement is exactly `SphericalVertexTransformer::calculateHeight`, so shader and CPU agree by
    construction; and a spherical height is radial, so setting `uElevationScale.y/z` to zero makes
-   the shader's existing `cosh` equal 1 and the scale formula needs no spherical case at all.
+   the shader's existing `cosh` equal 1. The scale itself does need a spherical case — it was
+   assumed not to, and that was the flat globe below.
 
    The CPU half is done too. `Options` now owns the BASE tile transformer alongside the projection
    surface it already owned, on the same lifecycle, so `TileLayer` and `TerrainRenderer` read one
@@ -127,59 +129,44 @@ Spans, bridges and 3D extrusions are **not** in that list. They carry their own 
 machinery built around a flat frame ([3D bridges](17-bridges.md)) and will be wrong on the globe
 until they are done separately.
 
-## Terrain on the globe is WRONG on a device - start here
+## Terrain on the globe was WRONG on a device - two bugs, both found by reading
 
-Everything below the "what is missing" list is implemented and host-tested, and the globe draws 2D
-content correctly. **3D terrain on the globe does not work yet**, seen on emulator-5554 at Mont
-Blanc, zoom 13, tilted, with Mapbox Standard:
+Reported from emulator-5554 at Mont Blanc, zoom 13, tilted, with Mapbox Standard: the terrain
+surface was **flat**, and **large tile-sized quads floated in the sky** at assorted angles. Both
+causes were settled by reading the code rather than by logging, and both are fixed. **The device
+check is still owed** — nothing below has been seen on a screen.
 
-- the terrain surface is **flat** - no relief at all;
-- **large tile-sized quads float in the sky** at assorted angles, which is geometry landing in the
-  wrong place rather than displacement being off.
+### The quads: the globe was drawing the flat shared grid as its ground
 
-Do not start by editing. The whole question is which frame `aVertexPosition` is in, and one logged
-number settles it.
+`TileRenderer` turns the tangram-style shared ground on whenever there is a terrain texture
+provider, and `buildRegularGridSurface` builds ONE unit grid — `(u, 1 - v, 0)`, normal `(0, 0, 1)` —
+reused for every tile through that tile's matrix. A spherical tile matrix only scales and
+translates, so it cannot curve that square or orient it: each tile got a flat quad hung at its own
+origin. That is the quads, exactly.
 
-### The number that settles it
+The grid is now PLANAR-only. The globe takes the per-tile surfaces instead, which is the path the
+rest of the spherical work was already built for: `SphericalTileTransformer` curves them,
+`TerrainTileTransformer` subdivides them for the relief on top of that, and `aVertexSkirt` only
+exists on that path — `buildRegularGridSurface` passes no skirts at all.
 
-A spherical tile-local unit is `EARTH_RADIUS / 2 ^ zoom` metres - **778 m at zoom 13** - and a tile
-spans about `2 * pi` of them (about 4.9 km at z13, which is a z13 tile). So 4000 m of relief must
-come out as **about 5.1 tile-local units**.
+Turning the grid off on the globe also turns off, through the same flag, terrain shadow casting
+from the ground, the lattice clamp and edge stitching. All three were already out of scope there.
 
-`GLTileRenderer::setupTerrainUniforms` currently uploads, for a sphere:
+### The flatness: a metre is not the same length in every vertex frame
 
-```cpp
-double localPerMeter = ...->calculateHeight(centre, 1.0f);   // tile-local per metre
-glUniform4f(..., localPerMeter / frameScaleZ, 0.0f, 0.0f, 0.0f);
-```
+A spherical tile-local unit is `EARTH_RADIUS / 2 ^ zoom` — 778 m at zoom 13 — so 4000 m of relief is
+about 5.1 of them. `SphericalVertexTransformer::calculateHeight` returns exactly that, in the tile's
+OWN frame. `setupTerrainUniforms` then divided it by `frameScaleZ`, which is right for the planar
+line beside it (its `metersToInternal` is in INTERNAL units and the division converts internal to
+frame) and is a second conversion here: at zoom 13 it made 4000 m read as 0.13 units instead of 5.1.
 
-The planar line beside it divides by `frameScaleZ` because its `metersToInternal` is in INTERNAL
-units and the division converts internal to frame. `calculateHeight` already returns **tile-local**,
-so if the vertex frame is tile-local the division is a second conversion and the displacement is
-about 40x too small at z13 - 0.126 units instead of 5.1, which reads as flat.
-
-It is NOT obviously wrong, which is why this needs measuring rather than editing:
-`TileSurfaceBuilder::buildTileGeometry` stores `coords3D` as
-`transform_point(calculatePoint(...), matrix)`, already matrix-transformed. If the vertex frame is
-the matrix frame then the division is right and the fault is elsewhere.
-
-**Log `uElevationScale.x`, `frameScaleZ` and `vertexFrameMatrix` for one z13 tile and compare
-against 778 m per unit.** That distinguishes the two readings in one frame.
-
-### The floating quads are probably a separate bug
-
-Most likely the skirts: `aVertexSkirt` is new, and the spherical branch of `applyTerrain` displaces
-by `(z - aVertexSkirt)`. A drop in the wrong units flings exactly these tile-shaped slabs off the
-surface. The same probe answers it - log the attribute alongside the scale.
-
-### Two traps that cost measurements already
-
-- **Terrain's default `minZoom` is 5**, and `BenchActivity` parks the camera at zoom 3.43 whatever
-  `--es zoom` says. Every frame captured below zoom 5 shows `0 ground draws`, which is correct
-  behaviour and says nothing. Drive the camera by hand with `--es ui true`.
-- The `neither the RTT drape nor a shared ground is active` line is behind a `static bool` and is
-  logged **once per process**. It can be a stale first frame; the periodic
-  `shared terrain ground - N layers, N cover tiles ... N ground draws` line is the live one.
+Three frames reach that function, and the conversion is the ratio between the tile's own frame and
+theirs — 1 for the grid path, the coordScale for tile geometry, and one tile-local unit (about 40 at
+zoom 13) for the shared ground, whose vertices are internal coordinates. It is
+`vt::sphericalMetersToFrame` now, in `TerrainElevationScale.h`, split out so
+`tests/api/GlobeElevationScaleTest.cpp` can pin it: the test displaces a real vertex in each of the
+three frames and checks the world point moves by one metre, and that one earth radius of height puts
+it twice as far from the planet's centre. The old formula fails four of its checks.
 
 ## Two things worth knowing about the spherical shader path
 
@@ -212,5 +199,7 @@ node sample, which is what the adaptive path already does.
 
 ## Trying it
 
-The demo has a `globe` checkbox under **BASE MAP**, and `--es globe true` at launch. Terrain is
-dropped while it is on, so the globe shows 2D content alone until step 2 above lands.
+The demo has a `globe` checkbox under **BASE MAP**, and `--es globe true` at launch. Terrain is on
+there like anywhere else; `BenchActivity` overrides `--es zoom` and `--es tilt`, so drive the camera
+by hand with `--es ui true` - and terrain's `minZoom` is 5, below which `0 ground draws` is correct
+and says nothing.

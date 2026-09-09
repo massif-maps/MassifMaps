@@ -432,6 +432,31 @@ It defaults to `2`, so a converted style keeps drawing what its source drew unti
 otherwise — and an app that cannot afford the 3D pass on a given device turns it off with one
 parameter instead of editing the CartoCSS. A style with no buildings declares nothing.
 
+### A property MapLibre will not accept goes in `metadata`
+
+A hand-written source style has to stay a **valid MapLibre style** — the preview draws it with
+maplibre beside the SDK, and that comparison is the point of the file. But a good deal of what is
+worth taking from Mapbox Standard is GL v3 only: `fill-extrusion-edge-radius`, `-vertical-scale`,
+`-ambient-occlusion-intensity`, `-ambient-occlusion-ground-radius`, `-rounded-roof`. Written into
+`paint`, maplibre rejects the whole style and the reference pane goes blank — it does not skip the
+property, it refuses the file.
+
+`metadata` is the style spec's own escape hatch: arbitrary, and ignored by every renderer. So those
+go there, under `massif:paint` and `massif:layout`, and `applyMassifExtras` merges them back over
+the real blocks before anything else runs:
+
+```json
+{ "id": "building-3d", "type": "fill-extrusion",
+  "paint": { "fill-extrusion-height": ["get", "render_height"] },
+  "metadata": {
+    "massif:layout": { "fill-extrusion-edge-radius": 0.4 },
+    "massif:paint": { "fill-extrusion-ambient-occlusion-intensity": 0.15 }
+  } }
+```
+
+The converter then treats them exactly as if Standard had stated them. Converting a real MapBox
+style is unaffected: it states these in `paint`, where they are legal for it.
+
 ### …and their opacity is the style's, as a parameter
 
 `fill-extrusion-opacity` becomes `building-fill-opacity: [param::building_opacity]`, with the

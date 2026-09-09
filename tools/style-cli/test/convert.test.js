@@ -60,11 +60,17 @@ test('zoom-driven paint stays a per-frame function', () => {
 });
 
 test('unsupported layers and properties are dropped AND counted', () => {
-    const { coverage } = run();
+    const { coverage, mss } = run();
     assert.ok(coverage.dropped.has('layer type "heatmap"'), 'heatmap layer reported');
     assert.ok(!coverage.dropped.has('line-blur'), 'line-blur is carried now, not dropped');
     assert.equal(coverage.dropped.get('fill-antialias').reason, 'always on in the vt renderer');
-    assert.ok(coverage.droppedCount >= 3);
+    // An extrusion's LOOK is a Map setting, taken by buildingMapSettings before the per-layer pass
+    // sees it. Reporting it dropped as well said a vertical gradient had been thrown away when it
+    // is in the Map block - so this fixture's two drops are the only two, and both are real.
+    assert.ok(!coverage.dropped.has('fill-extrusion-vertical-gradient'),
+        'a building Map setting is carried, not dropped');
+    assert.match(mss, /building-vertical-gradient:/);
+    assert.equal(coverage.droppedCount, 2);
     assert.match(coverage.report(), /^Coverage: \d+\/\d+ properties \(\d+%\)/);
 });
 

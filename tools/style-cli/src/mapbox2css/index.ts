@@ -409,7 +409,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         const gate = buildings3DGate(layer);
         if (gate) buildings3D.set(layer.id, gate);
     }
-    const layers = (style.layers ?? []).map((layer) => {
+    const layers = (style.layers ?? []).map((raw) => {
+        const layer = applyMassifExtras(raw);
         const folded = foldLayer(layer, values, scene);
         if (!buildings3D.has(layer.id)) return folded;
         // The `buildings` parameter carries the switch now, so the visibility must not.
@@ -1058,6 +1059,37 @@ function flattenExtrusionOpacity(layer: MapboxLayer): { layer: MapboxLayer; opac
 /** The style parameter a converted extrusion's opacity is carried as. */
 const OPACITY_PARAM = 'building_opacity';
 
+/**
+ * A layer's `metadata["massif:paint"]` / `["massif:layout"]`, merged over its real paint and layout.
+ *
+ * A hand-written source style has to stay a VALID MapLibre style - the preview draws it with
+ * maplibre beside the SDK, and that comparison is the whole point of the file. But half of what is
+ * worth taking from Mapbox Standard is GL v3 only: `fill-extrusion-edge-radius`,
+ * `-vertical-scale`, `-ambient-occlusion-*`. Written into paint, maplibre rejects the style and the
+ * reference pane goes blank.
+ *
+ * `metadata` is the style spec's own escape hatch - arbitrary, and ignored by every renderer. So a
+ * property maplibre will not accept goes there, and this lifts it back out for the converter, which
+ * then treats it exactly as if Standard had stated it. Converting a real MapBox style is unaffected:
+ * it states these in paint, where they are legal for it.
+ */
+function applyMassifExtras(layer: MapboxLayer): MapboxLayer {
+    const metadata = layer.metadata;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return layer;
+    const paint = (metadata as Record<string, Json>)['massif:paint'];
+    const layout = (metadata as Record<string, Json>)['massif:layout'];
+    const object = (value: Json | undefined) =>
+        (value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, Json> : null);
+    const extraPaint = object(paint);
+    const extraLayout = object(layout);
+    if (!extraPaint && !extraLayout) return layer;
+    return {
+        ...layer,
+        paint: extraPaint ? { ...layer.paint, ...extraPaint } : layer.paint,
+        layout: extraLayout ? { ...layer.layout, ...extraLayout } : layer.layout,
+    };
+}
+
 function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean): string[] {
     const out: string[] = [];
     for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
@@ -1566,7 +1598,12 @@ function layerDeclarations(
 
         const target = table[name];
         if (!target) {
-            coverage.drop(name, KNOWN_GAPS[name] ?? 'not mapped', layer.id);
+            // An extrusion's LOOK is a Map setting here, and buildingMapSettings has already taken
+            // it (see BUILDING_MAP_SETTINGS). Reporting it dropped as well says a bevel or an
+            // ambient occlusion was thrown away when it is in the Map block.
+            if (!(symbolizer === 'building' && name in BUILDING_MAP_SETTINGS)) {
+                coverage.drop(name, KNOWN_GAPS[name] ?? 'not mapped', layer.id);
+            }
             continue;
         }
         if (!allowed.has(target)) {

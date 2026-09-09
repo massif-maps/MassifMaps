@@ -11,6 +11,11 @@ export interface MapboxLayer {
     layout?: Record<string, Json>;
     paint?: Record<string, Json>;
     /**
+     * The style spec's own escape hatch, ignored by every renderer. `massif:paint` and
+     * `massif:layout` inside it are merged over the real ones - see applyMassifExtras.
+     */
+    metadata?: Json;
+    /**
      * Converter-internal, not a MapBox property: the zoom a banded dash reads its line width at.
      * Set by splitDashByZoom, read where `line-dasharray` is emitted.
      */

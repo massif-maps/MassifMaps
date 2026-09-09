@@ -681,7 +681,6 @@ namespace massif::css {
         { "line-gap-width", "gap-width" },
         { "line-blur", "blur" },
         { "line-border-width", "border-width" },
-        { "line-border-group", "border-group" },
         { "line-border-color", "border-color" },
         { "line-end-arrow", "end-arrow" },
         { "line-arrow-width", "arrow-width" },

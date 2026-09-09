@@ -355,16 +355,6 @@
       "baked": false
     },
     {
-      "cartocss": "line-border-group",
-      "mapnik": "border-group",
-      "symbolizer": "line",
-      "kind": "string",
-      "type": "StringProperty",
-      "default": "",
-      "live": false,
-      "baked": true
-    },
-    {
       "cartocss": "line-border-width",
       "mapnik": "border-width",
       "symbolizer": "line",

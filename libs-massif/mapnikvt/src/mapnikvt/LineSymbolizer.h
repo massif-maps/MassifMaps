@@ -27,7 +27,6 @@ namespace massif::mvt {
             bindProperty("blur", &_blur);
             bindProperty("border-width", &_borderWidth);
             bindProperty("border-color", &_borderColor);
-            bindProperty("border-group", &_borderGroup, true); // groups the casing draws at decode
             bindProperty("end-arrow", &_endArrow);
             bindProperty("arrow-width", &_arrowWidth);
             bindProperty("arrow-length", &_arrowLength);
@@ -71,9 +70,6 @@ namespace massif::mvt {
         // drawn from the same geometry one draw earlier, so one rule replaces a casing/fill pair.
         FloatFunctionProperty _borderWidth = FloatFunctionProperty(0.0f);
         ColorFunctionProperty _borderColor = ColorFunctionProperty("#000000");
-        // Rules sharing this name draw every casing before any fill, which is the order a mapbox
-        // casing LAYER under a fill layer gives. Empty leaves the casing with its own line.
-        StringProperty _borderGroup = StringProperty("");
         // An arrow head at the last vertex, sized in multiples of the line width. A casing rule
         // repeats the same three properties with its own width and gets an even border for free.
         BoolProperty _endArrow = BoolProperty(false);

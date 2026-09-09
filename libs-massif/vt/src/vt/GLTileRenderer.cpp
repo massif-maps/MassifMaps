@@ -3024,7 +3024,6 @@ namespace massif::vt {
             }
 
             // Render tile layers for this layer
-            _borderGroupCount = 0; // the casings of a group are drawn once per pass over these layers
             for (const RenderTileLayer* renderLayer : renderLayers) {
                 if (maskStencilBits > 0) {
                     int stencilValue = 0;
@@ -3181,25 +3180,6 @@ namespace massif::vt {
                     if (drapedTile && isDrapeableGeometry(geometry) && isLayerDraped(renderLayer->layer)) {
                         continue;
                     }
-                    // A border GROUP draws every casing in it before any of its fills, which is the
-                    // order a mapbox casing LAYER under a fill layer gives: without it a road's own
-                    // outline lands on the neighbouring road's fill wherever the two rules differ.
-                    // The members come from ONE source layer, so they share comp op and drape state
-                    // and the first member's is right for all of them.
-                    int borderGroup = geometry->getStyleParameters().borderGroup;
-                    if (borderGroup != 0 && takeBorderGroup(borderGroup)) {
-                        for (const RenderTileLayer* borderLayer : renderLayers) {
-                            for (const std::shared_ptr<TileGeometry>& other : borderLayer->layer->getGeometries()) {
-                                if (other->getStyleParameters().borderGroup != borderGroup) {
-                                    continue;
-                                }
-                                if (drapedTile && isDrapeableGeometry(other) && isLayerDraped(borderLayer->layer)) {
-                                    continue;
-                                }
-                                renderTileGeometry(borderLayer->sourceTileId, borderLayer->targetTileId, borderLayer->blend, geometryOpacity, borderLayer->tileSize, other, GeometryPass::BORDER);
-                            }
-                        }
-                    }
                     // POLYGON3DGROUND is a contact shadow for the 3D pass, not 2D content.
                     if (geometry->getType() != TileGeometry::Type::POLYGON3D && geometry->getType() != TileGeometry::Type::POLYGON3DGROUND) {
                         CompOp geometryCompOp = geometry->getStyleParameters().compOp;
@@ -3221,8 +3201,7 @@ namespace massif::vt {
                         if (decal) {
                             _terrainDrawClearance = _terrainLineClearance;
                         }
-                        renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry,
-                            borderGroup != 0 ? GeometryPass::FILL : GeometryPass::ALL);
+                        renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry);
                         _terrainDrawClearance = 0.0f;
                         if (decal) {
                             glDisable(GL_POLYGON_OFFSET_FILL);
@@ -6057,23 +6036,7 @@ namespace massif::vt {
         }
     }
 
-    /**
-     * Claims a border group for this tile, returning false once its casings are drawn. Linear over
-     * at most MAX_BORDER_GROUPS, and only ever reached by a style that names a group.
-     */
-    bool GLTileRenderer::takeBorderGroup(int group) {
-        for (std::size_t i = 0; i < _borderGroupCount; i++) {
-            if (_borderGroupsDrawn[i] == group) {
-                return false;
-            }
-        }
-        if (_borderGroupCount < MAX_BORDER_GROUPS) {
-            _borderGroupsDrawn[_borderGroupCount++] = group;
-        }
-        return true;
-    }
-
-    void GLTileRenderer::renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry, GeometryPass pass) {
+    void GLTileRenderer::renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry) {
         const TileGeometry::StyleParameters& styleParams = geometry->getStyleParameters();
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
         
@@ -6402,7 +6365,7 @@ namespace massif::vt {
 
         // The same buffer, extruded wider by the vertex shader. Drawn for the WHOLE batch first,
         // which is mapbox's casing-layer-under-fill-layer order and what keeps a junction clean.
-        if (styleBorder && pass != GeometryPass::FILL) {
+        if (styleBorder) {
             glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], styleParams.parameterCount, borderColors[0].data());
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, borderWidths.data());
             if (styleGapWidth) {
@@ -6419,12 +6382,10 @@ namespace massif::vt {
             }
         }
 
-        if (pass != GeometryPass::BORDER) {
-            glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
-            VT_STAT_INC(geometryDraws);
-            VT_STAT_ADD(geometryIndices, geometry->getIndicesCount());
-        }
+        glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
         VT_STAT_SPLIT(geomDrawNs, statClock);
+        VT_STAT_INC(geometryDraws);
+        VT_STAT_ADD(geometryIndices, geometry->getIndicesCount());
 
         unbindGeometryVertexLayout(shaderProgram, geometry, compiledGeometry);
 

@@ -1283,17 +1283,6 @@ text-placement-priority: (11200000 - (0 + [rank]));
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
 
-## A folded casing still draws under its neighbours
-
-`--fold-casings` moves the casing INTO the fill rule, so each rule draws its own casing — and a
-casing then lands on the road beside it wherever two rules differ, which a casing LAYER never did.
-It bites hardest with the sort-key expansion above, where one road layer becomes seven rules.
-
-The fold therefore writes `line-border-group: '<fill layer id>'`. Every rule sharing the name has
-its casing drawn before any of their fills (`GLTileRenderer::takeBorderGroup`), which is the layer
-order back. Measured on the Crosscall, folding is worth 0.64 ms of the `layers` section against
-converting the pair unfolded, at the same camera.
-
 ## A zoom stop is relative to a tile size
 
 The SDK's zoom number sits `log2(512 / TileDrawSize)` levels above MapBox's — a level at the default

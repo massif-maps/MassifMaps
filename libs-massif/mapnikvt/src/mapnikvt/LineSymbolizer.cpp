@@ -103,13 +103,6 @@ namespace massif::mvt {
         }
 
         vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape, gapWidthFunc, blurFunc, _strokeEmissive.getFunction(exprContext), _borderColorFuncBuilder.createColorOpacityFunction(_borderColor.getFunction(exprContext), strokeOpacityFunc), borderWidthFunc, elevationMode);
-        // Hashed rather than carried as a string: the renderer only ever compares it, and a 0 has
-        // to mean "no group" - so an empty name is left alone and a hash that lands on 0 is nudged.
-        std::string borderGroup = _borderGroup.getValue(exprContext);
-        if (!borderGroup.empty()) {
-            std::size_t hash = std::hash<std::string>()(borderGroup);
-            style.borderGroup = static_cast<int>(hash & 0x7fffffffU) | 1;
-        }
         
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

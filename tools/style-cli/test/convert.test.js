@@ -189,21 +189,3 @@ test("a mapbox:// sprite names an API URL, since nothing can fetch that scheme",
         'https://api.mapbox.com/styles/v1/mapbox/standard/sprite');
     assert.equal(resolveSpriteUrl('https://example.com/sprite'), 'https://example.com/sprite');
 });
-
-test('--fold-casings groups the casings so the SDK draws them under every fill', () => {
-    // The fold moves the casing INTO the fill rule, so without a group each rule draws its own
-    // casing over the road beside it - the order a casing LAYER never had.
-    const pair = { layers: [
-        { id: 'road-casing', type: 'line', source: 'osm', 'source-layer': 'transportation',
-          paint: { 'line-color': '#c08a3e', 'line-width': 8 } },
-        { id: 'road-fill', type: 'line', source: 'osm', 'source-layer': 'transportation',
-          paint: { 'line-color': '#ffffff', 'line-width': 5 } },
-    ] };
-    const { mss } = convert(pair, table, { variables: false, foldCasings: true });
-    assert.match(mss, /line-border-group: 'road-fill';/);
-    assert.match(mss, /line-border-width: \(\(8 - 5\) \/ 2\);/);
-
-    // Not folding leaves the casing its own rule, which already draws under every fill.
-    const plain = convert(pair, table, { variables: false }).mss;
-    assert.ok(!plain.includes('line-border-group'));
-});

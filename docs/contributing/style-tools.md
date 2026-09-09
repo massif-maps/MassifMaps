@@ -1326,10 +1326,15 @@ it. Three things fall out:
 
 A positive set test is a disjunction, so it has no bracketed form; a NEGATED one is a conjunction
 and brackets one test per value. `expandSetFilter` turns the positive case into one attachment per
-value — but only when the paint actually branches on that field (otherwise there is nothing to fold
-and N rules cost more than the one `when()`), and only when the REST of the filter brackets.
-Splitting copies the rest into every attachment, so without that second gate the one `when()` it
-removes comes back N times: MapTiler topo-v4 went 142 → **239** before the gate, 134 after.
+value, on either of two grounds: the paint branches on that field, so each attachment folds down to
+a constant — or the set is the WHOLE filter, so each attachment is one bracketed test and nothing
+else. The second was added because a layer that paints one way over a class list is common and left
+a `when()` behind for no gain: across the six reference styles it is 442 → **426** `when()` for
+1176 → 1257 rules, and it takes Massif Streets to zero.
+
+Both grounds are still subject to the REST of the filter bracketing. Splitting copies that rest into
+every attachment, so without the gate the one `when()` it removes comes back N times: MapTiler
+topo-v4 went 142 → **239** before the gate, 134 after.
 
 ### A set test's labels are constants, and a geometry name is a NUMBER
 

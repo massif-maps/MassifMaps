@@ -213,22 +213,29 @@ const SORT_KEY = 'line-sort-key';
  * when() the decoder evaluates per feature, and the paint chain re-tests the field it just passed.
  * Split, each attachment is one bracketed test and a constant (narrow.ts does the folding).
  *
- * Only when the paint branches: a set test over a layer that paints one way throughout has nothing
- * to fold, and N rules for it would cost more than the one when() it saves.
+ * Also when the set is the WHOLE filter, even though nothing branches on it: there each attachment
+ * carries one bracketed test and nothing else, so the split trades a when() for N rules that the
+ * decoder can prune - which is the trade the styles want.
  */
 export function expandSetFilter(layer: MapboxLayer): MapboxLayer[] {
     for (const { field, values } of closedSets(layer.filter as Json | undefined)) {
-        if (values.length > MAX_VARIANTS || !branchesOn(layer, field)) continue;
+        if (values.length > MAX_VARIANTS) continue;
         const expanded = values.map((value) => narrowLayer({
             ...layer,
             filter: mergeFilter(layer.filter, ['==', field, value] as unknown as Json),
         }));
+        if (!branchesOn(layer, field) && !expanded.every((variant) => isOnlyTest(variant.filter))) continue;
         // Splitting COPIES the rest of the filter into every attachment, so it only pays when that
         // rest brackets: otherwise the one when() it removes comes back N times. Measured on
         // MapTiler topo-v4, which is full of layers testing a class set AND something else.
         if (expanded.every((variant) => brackets(variant.filter as Json | undefined))) return expanded;
     }
     return [layer];
+}
+
+/** Is this filter the single `==` the split just pinned, with nothing else left beside it? */
+function isOnlyTest(filter: Json | undefined): boolean {
+    return Array.isArray(filter) && filter[0] === '==';
 }
 
 function brackets(filter: Json | undefined): boolean {

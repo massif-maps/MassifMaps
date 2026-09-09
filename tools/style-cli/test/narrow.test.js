@@ -66,14 +66,16 @@ test('a set filter becomes one attachment per value when the paint branches on i
     ]);
 });
 
-test('a set filter with nothing to fold stays one rule, because N rules would cost more', () => {
+test('a set filter that is the whole filter splits even with nothing to fold', () => {
+    // Nothing branches on class here, so there is no paint chain to shorten - but each attachment
+    // still carries one bracketed test and nothing else, which the decoder can prune.
     const mss = mssOf([roadLayer({
         filter: ['in', ['get', 'class'], ['literal', CLASSES]],
         paint: { 'line-color': '#ff0000' },
     })]);
 
-    assert.equal(selectors(mss).length, 1);
-    assert.ok(mss.includes('when('), mss);
+    assert.equal(selectors(mss).length, CLASSES.length);
+    assert.ok(!mss.includes('when('), mss);
 });
 
 test('a set filter is left whole when the rest of it would not bracket', () => {

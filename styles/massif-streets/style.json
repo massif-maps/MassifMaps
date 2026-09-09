@@ -613,18 +613,12 @@
               11
             ],
             [
-              "in",
+              "==",
               [
                 "get",
                 "class"
               ],
-              [
-                "literal",
-                [
-                  "primary",
-                  "secondary"
-                ]
-              ]
+              "primary"
             ]
           ],
           [

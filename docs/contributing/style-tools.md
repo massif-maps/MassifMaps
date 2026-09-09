@@ -1311,6 +1311,12 @@ Massif Streets gates its road shields that way, bringing the classes in over sev
 to: the converter drops `symbol-avoid-edges`, so a tertiary ref that maplibre never placed - too
 short a stub of road, or one crossing a tile edge - drew at z12 here.
 
+Pick the thresholds against the class the TILE reports, not the one the road has when you look it
+up: OpenMapTiles promotes a road's class as the zoom drops. `D 106B` is `minor` in the z14 tile and
+`secondary` in the z12 one, so a gate letting `secondary` through at z11 still drew it - and gating
+`secondary` at all is nearly free, because by z12 everything worth drawing has been promoted into
+it.
+
 ## `??` binds looser than a comparison
 
 CartoCSSParser puts `??` in term0, with `&&` and `||`; the comparisons are in term1 and bind

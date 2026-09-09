@@ -586,6 +586,54 @@
               ]
             ]
           ]
+        ],
+        [
+          "any",
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "motorway",
+                "trunk"
+              ]
+            ]
+          ],
+          [
+            "all",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              11
+            ],
+            [
+              "in",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "literal",
+                [
+                  "primary",
+                  "secondary"
+                ]
+              ]
+            ]
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            13
+          ]
         ]
       ],
       "layout": {

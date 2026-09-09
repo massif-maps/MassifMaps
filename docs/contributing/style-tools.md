@@ -1300,6 +1300,17 @@ Making the casing ONE unsplit rule instead of seven looks like a free win and is
 2.5M geometry indices a frame against 5.2k, and 44 ms a frame against 32. Unexplained; do not
 retry it without a bench.
 
+## A zoom test in a FILTER is decided per tile
+
+`ExpressionContext::getVariable` answers `view::zoom` with the tile's own zoom plus 0.5 when there
+is no view state - which is where a FILTER is evaluated, at decode. So a zoom gate in a filter
+behaves as maplibre's does, decided once per tile: `>= 13` is off for a z12 tile and on for a z13
+one. In a VALUE the same variable is the live camera zoom, re-read per frame.
+
+Massif Streets gates its road shields that way, bringing the classes in over several levels. It has
+to: the converter drops `symbol-avoid-edges`, so a tertiary ref that maplibre never placed - too
+short a stub of road, or one crossing a tile edge - drew at z12 here.
+
 ## `??` binds looser than a comparison
 
 CartoCSSParser puts `??` in term0, with `&&` and `||`; the comparisons are in term1 and bind

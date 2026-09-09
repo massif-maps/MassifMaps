@@ -309,3 +309,16 @@ test('a coalesce is parenthesised whole, because ?? binds looser than a comparis
     // The parens have to sit OUTSIDE the ??, not just around each operand.
     assert.ok(!/\[subclass\]\) \?\? \(''\) =/.test(eq), `precedence lost: ${eq}`);
 });
+
+test('a zoom test inside a FILTER is per tile, not per frame', () => {
+    // ExpressionContext hands a predicate `view::zoom` = the tile's own zoom + 0.5 when there is no
+    // view state, which is where a filter is evaluated. So a filter gate behaves like maplibre's:
+    // decided once per tile. A gate at 13 is off for a z12 tile (12.5) and on for a z13 one (13.5).
+    assert.equal(translateExpression(['>=', ['zoom'], 13]), '(([view::zoom] - 1) >= 13)');
+    try {
+        setTileDrawSize(512);
+        assert.equal(translateExpression(['>=', ['zoom'], 13]), '([view::zoom] >= 13)');
+    } finally {
+        setTileDrawSize(256);
+    }
+});

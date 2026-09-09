@@ -291,6 +291,26 @@ test('a palette the style asks for becomes a parameter table, read per feature',
     assert.equal(styleParams.get('poi-fill-park'), '#4a7a3a');
 });
 
+test('a parameter colour goes in as hex, because that is what the decoder can parse', () => {
+    // A rule's hsl() is read by the CartoCSS compiler; a PARAMETER is a plain string parseColor has
+    // to read at runtime, and its grammar knows #rrggbb, rgb() and the CSS names but not hsl().
+    const styleParams = new Map();
+    convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['match', ['get', 'class'],
+                    'bus', 'hsl(216, 60%, 50%)', 'park', 'hsl(126, 42%, 40%)', '#666666'],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.equal(styleParams.get('poi-fill-bus'), '#3370cc');
+    assert.equal(styleParams.get('poi-fill-park'), '#3b9144');
+});
+
 test('a property the style does not ask for keeps its ternary', () => {
     const styleParams = new Map();
     const { mss } = convert({

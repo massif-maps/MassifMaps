@@ -12,7 +12,7 @@ import { narrowLayer } from './narrow.js';
 import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
-import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer } from './fold.js';
+import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer, toHsla } from './fold.js';
 import { applyLighting, emissiveDefault, emissiveForLayerType, emissiveProperty, groundRadiance, lightingFactor } from './emissive.js';
 import type { SceneLights } from './emissive.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
@@ -3391,10 +3391,31 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
     if (fallback === null) return null;
 
     const slug = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}`;
-    for (const [label, branch] of entries) options.styleParams.set(`${slug}-${label}`, branch);
+    for (const [label, branch] of entries) options.styleParams.set(`${slug}-${label}`, paramValue(branch));
     coverage.note(`"${layer.id}": ${property} is a ${entries.length}-entry table in project.json ` +
         `(${slug}-*), read per feature by [${field}]`);
     return `(([param::${slug}-[${field}]]) ?? ${fallback})`;
+}
+
+/**
+ * A parameter value as the DECODER will read it. A colour goes in as hex: a style parameter is a
+ * plain string that `parseColor` has to read at runtime, and its grammar knows `#rrggbb`, `rgb()`
+ * and the CSS names but NOT `hsl()` - which the CartoCSS compiler does know, so an hsl() literal in
+ * a rule is fine and the same literal in a parameter silently lost every POI its colour.
+ */
+function paramValue(branch: Json): Json {
+    if (typeof branch !== 'string') return branch;
+    const hsla = toHsla(branch);
+    if (!hsla) return branch;
+    const [h, s, l, a] = hsla;
+    if (a < 1) return branch; // an alpha has no hex spelling here; rgba() parses, so leave it
+    const c = (1 - Math.abs(2 * l / 100 - 1)) * (s / 100);
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l / 100 - c / 2;
+    const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+        : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    const hex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 
 function name(property: string, layer: MapboxLayer, coverage: Coverage): string | null {

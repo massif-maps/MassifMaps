@@ -6088,6 +6088,13 @@ namespace massif::vt {
         if (blend * opacity <= 0) {
             return;
         }
+        // Buildings scaled to nothing by the style (building-height-scale, or the view scale at the
+        // top of its ramp): every wall is a zero-area triangle, and the roof lands on the ground it
+        // would z-fight. The whole pass draws nothing, so it is not submitted.
+        if (geometry->getType() == TileGeometry::Type::POLYGON3D
+            && buildingHeightScale(blend, !geometry->getSpanRecords().empty()) <= 0.0f) {
+            return;
+        }
 
         VT_STAT_CLOCK(statClock);
         VT_STAT_SPLIT(geomProbeNs, statClock);

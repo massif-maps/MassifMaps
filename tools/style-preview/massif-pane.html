@@ -47,6 +47,9 @@
     addEventListener('message', (event) => {
       if (event.data && event.data.massifCamera) pane.moveTo(event.data.massifCamera);
     });
+    // The SDK starts north-up and flat whatever MASSIF_DEFAULTS said, so the opening camera is
+    // pushed once the pane is up rather than left to the first sync, which only fires on a move.
+    pane.moveTo(camera);
     parent.postMessage({ massifReady: params.get('pane') }, '*');
 
     // the same line the MapLibre panes print; tilt is reported the way they state it, not the

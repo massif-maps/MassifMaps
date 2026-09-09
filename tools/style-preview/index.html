@@ -64,7 +64,16 @@
 </div>
 <script>
 const ORIGIN = location.origin;
-const START = { center: [5.7245, 45.1885], zoom: 13, pitch: 0, bearing: 0 };  // Grenoble
+// Grenoble, and ?lon=/?lat=/?zoom=/?tilt=/?rot= to open somewhere else. tilt is maplibre's PITCH,
+// 0 = straight down, which is what the readouts print for both rows.
+const ASKED = new URLSearchParams(location.search);
+const num = (name, fallback) => (ASKED.has(name) ? Number(ASKED.get(name)) : fallback);
+const START = {
+  center: [num('lon', 5.7245), num('lat', 45.1885)],
+  zoom: num('zoom', 13),
+  pitch: num('tilt', 0),
+  bearing: num('rot', 0),
+};
 
 const $ = (id) => document.getElementById(id);
 let localName = null, localTileJSON = null, remoteTileJSON = null, styleJSON = null;
@@ -210,7 +219,7 @@ function sync(a, b) {
 }
 
 async function boot() {
-  const asked = new URLSearchParams(location.search).get('style');
+  const asked = ASKED.get('style');
   if (asked) $('style-url').value = asked;
   const sets = await (await fetch(ORIGIN + '/tilesets.json')).json();
   const sel = $('local-set');
@@ -267,7 +276,7 @@ let massifStarted = false;
 function startMassif() {
   // ?carto= names another conversion of the same style - one built without --fold-casings, say -
   // so two runs of the converter can be compared over the same tiles without editing anything.
-  const asked = new URLSearchParams(location.search).get('carto');
+  const asked = ASKED.get('carto');
   const base = new URL(asked ?? 'carto', $('style-url').value.trim()).href;
   const centre = maps[0].getCenter();
   const tilesets = [remoteTileJSON, localTileJSON];
@@ -285,12 +294,15 @@ function startMassif() {
       // full level finer. The dpi it reads off the display is already right - measured against
       // maplibre at one camera, both draw 4831.1 CSS pixels to the degree. ?dpi= overrides it.
       tiledrawsize: 512, tilelodfactor: 1,
-      dpi: new URLSearchParams(location.search).get('dpi') ?? 0,
+      dpi: ASKED.get('dpi') ?? 0,
       // ?blendspeed=0 turns the tile cross-fade off, which is what maplibre does with vector
       // geometry. A cased road fades badly: its fill is near the background colour, so early in
       // the fade only the casing reads and the road looks like an outline waiting to be filled.
-      blendspeed: new URLSearchParams(location.search).get('blendspeed') ?? 1,
+      blendspeed: ASKED.get('blendspeed') ?? 1,
       lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
+      // The pane starts at the camera the URL asked for, not at north-up nadir: sync only fires
+      // on a MOVE, so ?tilt= would otherwise not reach the massif row until something dragged.
+      tilt: maps[0].getPitch(), rot: maps[0].getBearing(),
     });
     $(id).src = `./massif-pane.html?${query}`;
   }

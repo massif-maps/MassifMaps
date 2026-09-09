@@ -59,10 +59,10 @@ Map {
   raster-filter-mode: bicubic;
 }
 
-/* expression operators the generator emits */
+/* expression operators the generator emits, table parameters read with get/has/length */
 #transportation {
-  line-color: @road;
-  line-width: [width] ?? 2;
+  line-color: has([param::class_colors], [class]) ? get([param::class_colors], [class], @road) : @road;
+  line-width: [width] ?? get([param::class_widths], length([param::class_widths]) - 1, 2);
   line-opacity: ([class] & 1) ^ 2;
   line-offset: min([a], 4) + max([b], 2);
   line-cap: round;

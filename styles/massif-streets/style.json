@@ -323,6 +323,133 @@
       }
     },
     {
+      "id": "rail",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "rail"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          16,
+          1,
+          18,
+          2,
+          22,
+          20
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.5,
+          22,
+          2
+        ]
+      }
+    },
+    {
+      "id": "rail-tracks",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "rail"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          2,
+          18,
+          6,
+          20,
+          16,
+          22,
+          32
+        ],
+        "line-dasharray": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "literal",
+            [
+              0.1,
+              15
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              0.1,
+              1
+            ]
+          ],
+          18,
+          [
+            "literal",
+            [
+              0.05,
+              0.5
+            ]
+          ]
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13.75,
+          0,
+          14,
+          1
+        ]
+      }
+    },
+    {
       "id": "road-label",
       "type": "symbol",
       "source": "openmaptiles",

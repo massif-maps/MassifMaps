@@ -42,6 +42,35 @@ CartoCSS have it. So the source of truth carries `road-casing` under `road-fill`
 filter, zoom range and joins, and `--fold-casings` merges them into one `line-border-*` rule. It
 refuses to fold a dashed casing, which is the case that has to stay two layers anyway.
 
+## Taken from Mapbox Standard
+
+Standard is the better-drawn of the two references for road furniture, so its numbers are worth
+lifting rather than inventing. Its zoom stops are on the 512 px tile, which is the convention this
+style is authored in, so they transfer as written.
+
+**Rail, taken.** `road-rail` + `road-rail-tracks`, the two-layer idiom: a `line-gap-width` pair for
+the rails themselves (gap 0 at z15 opening to 20 at z22, each rail 0.5 → 2 px), and over it a wide
+line worn almost entirely away by a very short dash — 2 → 32 px carrying `[0.05, 0.5]` — which is
+what draws the sleepers. Ours filters OpenMapTiles' `class = 'rail'` where Standard has
+`major_rail`/`minor_rail`. **Trams are not drawn yet**: OMT files them under `class = 'transit'`,
+and a second pair for them is owed — they usually want to be thinner than heavy rail anyway.
+
+**Road widths, still to take.** Ours are narrower than Standard's everywhere except motorway, and
+the hierarchy is compressed differently: Standard keeps minor roads much closer to the trunk widths.
+Interpolated to z14 (`exponential 1.5` between its z12 and z18 stops):
+
+| class | Standard @z14 | ours @z14 |
+|---|---|---|
+| motorway | 6.42 | 6.5 |
+| primary | 6.01 | 4.8 |
+| secondary | 5.06 | 4.0 |
+| tertiary | 5.06 | 3.2 |
+| minor / street | 2.85 | 2.0 |
+
+Standard also draws its casing as a near-hairline — a constant 1 px at z14 growing only to 2 by z22,
+as a `line-gap-width` outline — where ours scales with the road. Changing either is a look decision,
+not a bug fix, which is why the numbers are recorded here rather than applied.
+
 ## Where this style departs from the references
 
 The preview compares against OpenFreeMap Liberty and Mapbox Standard, and most of what differs

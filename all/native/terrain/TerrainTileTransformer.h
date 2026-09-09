@@ -44,6 +44,12 @@ namespace massif {
             virtual void tesselateTriangles(const std::size_t* indices, std::size_t count, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& tesselatedIndices) const override;
 
         private:
+            // The terrain half of each tesselation. The public entry points run these and then
+            // hand the result to the base, which is what curves it on a globe.
+            void tesselateLineStringTerrain(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const;
+            void tesselateLabelLineStringTerrain(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const;
+            void tesselateTrianglesTerrain(const std::size_t* indices, std::size_t count, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& tesselatedIndices) const;
+
             double calculateLocalHeight(const cglib::vec2<float>& pos) const;
 
             void tesselateSegment(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, float dist, float threshold, vt::VertexArray<cglib::vec2<float>>& points) const;

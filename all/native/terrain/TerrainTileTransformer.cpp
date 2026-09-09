@@ -158,7 +158,29 @@ namespace massif {
         return _base->calculateHeight(pos, height);
     }
 
+    // Terrain refines for the RELIEF, then the base refines for the SHAPE. Without the second
+    // pass a globe tile keeps whatever chords the terrain thresholds happened to leave, and at low
+    // zoom those cut straight through the planet - the tile then loses its depth test and the
+    // background shows through it. On a plane the base is a pass-through and this costs a copy.
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateLineString(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+        vt::VertexArray<cglib::vec2<float>> terrainPoints;
+        tesselateLineStringTerrain(points, count, terrainPoints);
+        _base->tesselateLineString(terrainPoints.data(), terrainPoints.size(), tesselatedPoints);
+    }
+
+    void TerrainTileTransformer::TerrainVertexTransformer::tesselateLabelLineString(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+        vt::VertexArray<cglib::vec2<float>> terrainPoints;
+        tesselateLabelLineStringTerrain(points, count, terrainPoints);
+        _base->tesselateLabelLineString(terrainPoints.data(), terrainPoints.size(), tesselatedPoints);
+    }
+
+    void TerrainTileTransformer::TerrainVertexTransformer::tesselateTriangles(const std::size_t* indices, std::size_t count, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& tesselatedIndices) const {
+        vt::VertexArray<std::size_t> terrainIndices;
+        tesselateTrianglesTerrain(indices, count, coords, texCoords, terrainIndices);
+        _base->tesselateTriangles(terrainIndices.data(), terrainIndices.size(), coords, texCoords, tesselatedIndices);
+    }
+
+    void TerrainTileTransformer::TerrainVertexTransformer::tesselateLineStringTerrain(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
         if (count > 0) {
             tesselatedPoints.append(points[0]);
             for (std::size_t i = 0; i + 1 < count; i++) {
@@ -181,7 +203,7 @@ namespace massif {
         }
     }
 
-    void TerrainTileTransformer::TerrainVertexTransformer::tesselateLabelLineString(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+    void TerrainTileTransformer::TerrainVertexTransformer::tesselateLabelLineStringTerrain(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
         // A label line is READ, never drawn, so the lattice split buys a glyph run nothing - halve
         // to the SURFACE cell instead. Every vertex dropped here is an elevation sample dropped from
         // every re-anchor: with no line subdivision, 'prepare' goes 154 -> 68 ms on the north pan.
@@ -243,7 +265,7 @@ namespace massif {
         return true;
     }
 
-    void TerrainTileTransformer::TerrainVertexTransformer::tesselateTriangles(const std::size_t* indices, std::size_t count, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& tesselatedIndices) const {
+    void TerrainTileTransformer::TerrainVertexTransformer::tesselateTrianglesTerrain(const std::size_t* indices, std::size_t count, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& tesselatedIndices) const {
         for (std::size_t i = 0; i + 2 < count; i += 3) {
             std::size_t i0 = indices[i + 0];
             std::size_t i1 = indices[i + 1];

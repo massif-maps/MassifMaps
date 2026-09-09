@@ -152,7 +152,12 @@ int main() {
                 decoder->addFallbackFont(data);
             }
         }
-        _MapView->getLayers()->add(std::make_shared<massif::VectorTileLayer>(dataSource, decoder));
+        auto vectorLayer = std::make_shared<massif::VectorTileLayer>(dataSource, decoder);
+        // A cased road cross-fades badly: the fill is near the background colour, so early in the
+        // fade only the casing reads and the road looks like an outline waiting to be filled.
+        // 0 is what maplibre does - vector geometry appears, only rasters fade.
+        vectorLayer->setLayerBlendingSpeed(static_cast<float>(queryNumber("blendspeed", 1)));
+        _MapView->getLayers()->add(vectorLayer);
     }
 
     // ?terrain=<DEM url> turns on real 3D terrain. Mapterhorn's planet archive is Terrarium-coded

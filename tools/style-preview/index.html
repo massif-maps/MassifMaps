@@ -286,6 +286,10 @@ function startMassif() {
       // maplibre at one camera, both draw 4831.1 CSS pixels to the degree. ?dpi= overrides it.
       tiledrawsize: 512, tilelodfactor: 1,
       dpi: new URLSearchParams(location.search).get('dpi') ?? 0,
+      // ?blendspeed=0 turns the tile cross-fade off, which is what maplibre does with vector
+      // geometry. A cased road fades badly: its fill is near the background colour, so early in
+      // the fade only the casing reads and the road looks like an outline waiting to be filled.
+      blendspeed: new URLSearchParams(location.search).get('blendspeed') ?? 1,
       lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
     });
     $(id).src = `./massif-pane.html?${query}`;

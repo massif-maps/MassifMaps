@@ -50,6 +50,11 @@ The sprite URL is resolved against the process's working directory, not the styl
 conversion has to run from the project's own folder. The output lands in `carto/`, which is
 gitignored — it is generated, never edited.
 
+`?blendspeed=0` turns the tile cross-fade off for the Massif panes, which is what maplibre does
+with vector geometry - it fades rasters only. A cased road fades badly at the default 1: the fill
+sits near the background colour, so for the length of the fade only the casing reads and the road
+looks like an outline waiting to be filled. It is `VectorTileLayer::setLayerBlendingSpeed`.
+
 `--tile-draw-size 512` because the panes run the SDK on maplibre's tile convention, where the zoom
 number already is maplibre's: converted at the default 256 every zoom stop fires a level late and
 the roads come out visibly thin against the row above.

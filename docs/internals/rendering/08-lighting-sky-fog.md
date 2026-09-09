@@ -686,6 +686,10 @@ because it is mapbox's default; the case for it is a lower depth bias, which has
 entry point for anything solid drawn in the 3D pass — extrusions today, source-driven 3D models next
 (#131) — so a model and the wall beside it cannot disagree about the sun.
 
+There are **two** models behind that entry point, and which one runs is decided once per frame by
+`StyleEnvironment::resolveLighting` — see "A style that lights nothing gets maplibre's model" below.
+The default, and everything written here unless said otherwise, is mapbox's.
+
 It is **mapbox's `fill-extrusion` model**, ported from `_prelude_lighting.glsl` and
 `fill_extrusion.{vertex,fragment}.glsl` (semantics only — mapbox-gl-js v3 is under their TOS, not
 BSD, so nothing is copied):
@@ -1223,6 +1227,42 @@ a TODO on their side) — which is most of our benches.
 Porting it is a per-vertex term from a centroid plus a four-float uniform, not the per-tile function
 plumbing it is easily mistaken for. The open question is whether `TileLayerBuilder` already carries a
 per-building centroid in the extrusion vertex layout, or whether one has to be added.
+
+### A style that lights nothing gets maplibre's model
+
+A plain converted style — OpenFreeMap Liberty, MapTiler's, anything without a `lights` block — was
+authored against **maplibre** drawing it, and the two models do not agree about facades. MapLibre
+floors its directional term at `1 - intensity` (0.5) whichever way a wall faces, then multiplies
+every wall by its vertical-gradient floor, so its walls land at **42–63% of the roof**. Mapbox's
+model gives an away-facing wall the ambient alone, and cannot get below **74%** without an
+`ambient + direct` pair that blows the roof out at some other sun altitude. Buildings came out flat
+where the reference row had two clearly different greys per block.
+
+So `resolveLighting` sets `buildingLightingMapLibre` when nothing — style, `LightOptions`, or the
+day cycle — states a light, and `applyLighting3D` takes maplibre's branch instead
+(`fill_extrusion.vertex.glsl`, BSD-3, so this one IS a port rather than a restatement):
+
+```glsl
+directional = clamp(dot(N, lightPos), 0.0, 1.0)
+directional = mix(1 - intensity, max(1 - luminance(color) + intensity, 1.0), directional)
+wall       *= (1 - verticalGradient) + verticalGradient * mix(0.7, 0.98, 1 - intensity)
+rgb         = (color + 0.03) * directional
+```
+
+Their defaults come from `mbgl` `light_impl.hpp`: position spherical `(1.15, 210°, 30°)` through
+`sphericalToCartesian`, intensity `0.5`, gradient on, anchor **viewport** — so the light is turned by
+the bearing every frame and the shading rotates with the map, which mapbox's world-anchored sun does
+not do.
+
+Two things this deliberately does not carry. The vertical gradient is applied as its **clamp floor**
+rather than the ramp: maplibre's `clamp((t + base) * pow(height / 150, 0.5), floor, 1)` only rises
+above the floor past ~106 m, so for a city tile the floor *is* the term, and a tower taller than that
+is lit a touch flatter here. And the map's own shadow still multiplies the result, where maplibre has
+no shadow map at all — a style that turns shadows on keeps them.
+
+The moment anything states a light, mapbox's model is the right one: it is what a converted Standard
+and the day-cycle example are written against, and both set `building-ambient` and
+`building-light-intensity` explicitly, so neither ever reaches this branch.
 
 ## Sky
 

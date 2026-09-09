@@ -1015,6 +1015,7 @@ namespace massif {
             _buildingAmbient = lighting.buildingAmbient;
             _buildingVerticalGradient = lighting.buildingVerticalGradient;
             _buildingRoofShade = lighting.buildingRoofShade;
+            _buildingLightingMapLibre = lighting.buildingLightingMapLibre;
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
             _buildingHeightScale = lighting.buildingHeightScale;
@@ -1566,6 +1567,17 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 glUniform2f(glGetUniformLocation(shaderProgram, "u_verticalGradient"), _buildingVerticalGradient, _buildingRoofShade);
                 glUniform1f(glGetUniformLocation(shaderProgram, "u_emissive"), _buildingEmissive);
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_radiance"), 1, _resolvedRadiance.data());
+                glUniform1f(glGetUniformLocation(shaderProgram, "u_mlMode"), _buildingLightingMapLibre ? 1.0f : 0.0f);
+                // MapLibre's default light, anchored to the VIEWPORT: spherical (1.15, 210, 30)
+                // through their sphericalToCartesian, with y negated because their tile y runs
+                // south and this one runs north, then turned by the bearing as they turn it.
+                double bearing = viewState.rotation * Const::DEG_TO_RAD;
+                float c = static_cast<float>(std::cos(bearing)), s = static_cast<float>(std::sin(bearing));
+                cglib::vec3<float> light(ML_LIGHT_POS(0) * c - ML_LIGHT_POS(1) * s,
+                                         ML_LIGHT_POS(0) * s + ML_LIGHT_POS(1) * c,
+                                         ML_LIGHT_POS(2));
+                glUniform3fv(glGetUniformLocation(shaderProgram, "u_mlLightPos"), 1, light.data());
+                glUniform2f(glGetUniformLocation(shaderProgram, "u_mlLight"), ML_LIGHT_INTENSITY, ML_VERTICAL_GRADIENT);
             });
             tileRenderer->setLightingShader3D(lightingShader3D);
 
@@ -1598,6 +1610,12 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return _vtRenderer && _vtRenderer->isValid();
     }
 
+    // sphericalToCartesian([1.15, 210, 30]), used as maplibre computes it: their extrusion normals
+    // and this SDK's agree on the sign of y, so negating it for the "north-up" axis put the light
+    // on the wrong side and darkened exactly the walls maplibre lights. Left UNNORMALISED, as they
+    // leave it - the 1.15 radius is part of the look.
+    const cglib::vec3<float> TileRenderer::ML_LIGHT_POS = cglib::vec3<float>(0.2875f, -0.4980f, 0.9959f);
+
     const std::string TileRenderer::LIGHTING_SHADER_2D = R"GLSL(
         uniform vec3 u_viewDir;
         vec4 applyLighting(lowp vec4 color, mediump vec3 normal) {
@@ -1618,7 +1636,30 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // space. Passed even though the 3D pass computes its own per-face term, because it is what
         // a replaceable grade is written against and what the emissive mixes back towards.
         uniform vec3 u_radiance;
+        // MapLibre's own fill-extrusion model, for a style that lights nothing (see
+        // StyleEnvironment::resolveLighting). Its light is VIEWPORT-anchored, so u_mlLightPos
+        // arrives already turned by the bearing.
+        uniform float u_mlMode;
+        uniform vec3 u_mlLightPos;
+        uniform vec2 u_mlLight; // x = intensity, y = vertical gradient
         vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow, mediump float skyShadow) {
+            if (u_mlMode > 0.5) {
+                // fill_extrusion.vertex.glsl, ported: a slight ambient so nothing is ever black, a
+                // directional term whose range NARROWS with the light intensity and with how bright
+                // the surface already is, and a flat darkening of the facades.
+                mediump vec3 mlColor = color.rgb + 0.03 * color.a;
+                mediump float mlValue = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+                mediump float mlDir = clamp(dot(normal, u_mlLightPos), 0.0, 1.0);
+                mlDir = mix(1.0 - u_mlLight.x, max(1.0 - mlValue + u_mlLight.x, 1.0), mlDir);
+                // Their gradient is clamped at mix(0.7, 0.98, 1 - intensity), and a building has to
+                // pass ~106 m before the ramp above that floor is reached at all - so for a city
+                // tile the floor IS the term, and a wall wears it whole. A tower taller than that
+                // is lit here a touch flatter than maplibre lights it.
+                mlDir *= mix(1.0, (1.0 - u_mlLight.y) + u_mlLight.y * mix(0.7, 0.98, 1.0 - u_mlLight.x), sideVertex);
+                // Their shading has no shadow map; the map's own shadow still multiplies it, so a
+                // style that turns shadows on keeps them.
+                return vec4(min(mlColor * mlDir * shadow, vec3(color.a)), color.a);
+            }
             // Ambient occlusion where a wall meets the ground - the cue that makes an extrusion
             // stand on the terrain rather than float, which the shadow map cannot resolve. wallT is
             // baked per vertex from the ABSOLUTE height, so a whole building shares one ramp.

@@ -126,12 +126,17 @@ namespace massif {
 
         /**
          * Returns the current relative layer blending speed.
-         * @return The current relative layer blending speed. Default is 1.0.
+         * @return The current relative layer blending speed. Default is 0.0 (no blending).
          */
         float getLayerBlendingSpeed() const;
         /**
          * Sets the relative layer blending speed.
-         * @param speed The new relative speed value. Default is 1.0. Use zero or negative values to disable blending.
+         *
+         * The default is 0 - a tile's geometry appears, as maplibre and mapbox-gl do it; they fade
+         * rasters only. A cased road cross-fades badly, because its fill is usually near the
+         * background colour: for the length of the fade only the casing reads and the road looks
+         * like an outline waiting to be filled. Set 1 for the fade this SDK used to do.
+         * @param speed The new relative speed value. Use zero or negative values to disable blending.
          */
         void setLayerBlendingSpeed(float speed);
 

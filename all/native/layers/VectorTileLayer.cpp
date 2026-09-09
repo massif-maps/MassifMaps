@@ -54,7 +54,7 @@ namespace massif {
         _labelRenderOrder(VectorTileRenderOrder::VECTOR_TILE_RENDER_ORDER_LAYER),
         _buildingRenderOrder(VectorTileRenderOrder::VECTOR_TILE_RENDER_ORDER_LAST),
         _clickRadius(4.0f),
-        _layerBlendingSpeed(1.0f),
+        _layerBlendingSpeed(0.0f),
         _labelBlendingSpeed(1.0f),
         _rendererLayerFilter(),
         _clickHandlerLayerFilter(),

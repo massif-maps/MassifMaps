@@ -67,23 +67,27 @@ domain. Everything else here is drawn for this project. No MapTiler or Mapbox st
 
 ## Owed
 
-- `glyphs` points at OpenFreeMap's font server; there is no font pipeline here yet.
-- A ref whose letter no country branch names — `VV1` on a French cycleway — takes the neutral
-  plate, which on a light background is held together only by its border.
+- `glyphs` points at OpenFreeMap's font server, which is what MapLibre reads. The SDK side no
+  longer needs it: `fonts/NotoSans-Bold.ttf` ships with the style and `--fonts fonts` wires it
+  through `project.json`.
+- The country's colour needs `iso_a2` on `transportation_name`, and neither tileset carries it, so
+  every plate is still drawn neutral in the preview — see
+  [what the style needs from the tileset](../../docs/contributing/tileset-asks.md). The branches
+  themselves convert.
 
 What the converted CartoCSS loses, seen side by side in [the preview](../../docs/contributing/style-preview.md):
 
-- **The country's colour, and the shield's text colour.** CartoCSS has no `slice`, so all eleven
-  `iso_a2` branches collapse onto the neutral plate and `text-color` is dropped outright — the ref
-  draws black on every road in every country.
-- **The plate's padding.** `icon-text-fit-padding` has no equivalent while the plate is a sprite;
-  the properties that would carry it (`shield-background-padding-x`, `-radius`, `-fill`,
-  `-border-fill`) exist only on the plate the SDK generates. Folding the tinted sprite onto those is
-  one piece of converter work that fixes the colour and the padding together.
-- **Shields, thinned.** `shield-min-distance` is set from `shield-spacing` — 350 px here — so the
-  culler drops most repeats: three shields on screen where MapLibre draws six. Cutting it to 20
-  matches. The rule has a reason ([style-tools](../../docs/contributing/style-tools.md), "How far
-  apart labels stay"): the decoder restarts spacing per feature, so the culler is what stops a road
-  cut into many ways carrying a shield on each. The distance is what needs tuning, not the idea.
-- **Bold.** Not the converter — `shield-face-name` converts correctly, but the web build carries
-  only `Roboto.ttf`, so a bold face falls back to a regular one.
+- **A US shield does not stretch to its ref.** `icon-text-fit` has no CartoCSS equivalent, and
+  `shield-us-interstate` / `shield-us-highway` are real artwork rather than generated plates, so a
+  long ref overruns the sprite instead of widening it. The generated plates are unaffected: they
+  are drawn from `text-background-*`, and `icon-text-fit-padding`'s `[1, 3, 1, 3]` arrives as
+  `text-background-padding-x: 3` / `-y: 1`.
+- **`symbol-avoid-edges` is dropped** on all six shield layers, so a shield can still land on a
+  stub of road that MapLibre refuses to label. The zoom bands are the workaround, not a fix.
+- **`text-max-angle`** on `road-label`, so a name follows a sharper bend here than in MapLibre.
+- **Shields, thinned.** `shield-min-distance` is set from `shield-spacing` — 350 px here — because
+  the decoder restarts spacing per feature, so the culler is what stops a road cut into many ways
+  carrying a shield on each ([style-tools](../../docs/contributing/style-tools.md), "How far apart
+  labels stay"). Since the culler started grouping per REF rather than per shield layer the density
+  tracks MapLibre closely at z13–z14; the panes are framed differently, so it has not been counted
+  exactly.

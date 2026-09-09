@@ -2349,7 +2349,6 @@
         "text-padding": 2,
         "text-variable-anchor": [
           "bottom",
-          "top",
           "right",
           "left"
         ],
@@ -2357,70 +2356,7 @@
         "text-optional": true
       },
       "paint": {
-        "text-color": [
-          "match",
-          [
-            "get",
-            "class"
-          ],
-          [
-            "aerialway",
-            "airfield",
-            "airport",
-            "bus",
-            "ferry",
-            "harbor",
-            "heliport",
-            "railway",
-            "railway_light",
-            "railway_metro"
-          ],
-          "#2e5a80",
-          [
-            "american_football",
-            "attraction",
-            "baseball",
-            "basketball",
-            "beach",
-            "campsite",
-            "cemetery",
-            "cricket",
-            "dog_park",
-            "garden",
-            "golf",
-            "mountain",
-            "park",
-            "picnic_site",
-            "pitch",
-            "playground",
-            "skiing",
-            "soccer",
-            "stadium",
-            "swimming",
-            "tennis",
-            "viewpoint",
-            "volcano",
-            "water",
-            "waterfall",
-            "wetland",
-            "zoo"
-          ],
-          "#4a7a3a",
-          [
-            "dentist",
-            "doctors",
-            "drinking_water",
-            "fire_station",
-            "hospital",
-            "pharmacy",
-            "police",
-            "shelter",
-            "toilets",
-            "veterinary"
-          ],
-          "#a33a3a",
-          "#666666"
-        ],
+        "text-color": "hsl(203, 7%, 40%)",
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
       }
@@ -2489,7 +2425,6 @@
         "text-padding": 2,
         "text-variable-anchor": [
           "bottom",
-          "top",
           "right",
           "left"
         ],
@@ -2497,70 +2432,7 @@
         "text-optional": true
       },
       "paint": {
-        "text-color": [
-          "match",
-          [
-            "get",
-            "class"
-          ],
-          [
-            "aerialway",
-            "airfield",
-            "airport",
-            "bus",
-            "ferry",
-            "harbor",
-            "heliport",
-            "railway",
-            "railway_light",
-            "railway_metro"
-          ],
-          "#2e5a80",
-          [
-            "american_football",
-            "attraction",
-            "baseball",
-            "basketball",
-            "beach",
-            "campsite",
-            "cemetery",
-            "cricket",
-            "dog_park",
-            "garden",
-            "golf",
-            "mountain",
-            "park",
-            "picnic_site",
-            "pitch",
-            "playground",
-            "skiing",
-            "soccer",
-            "stadium",
-            "swimming",
-            "tennis",
-            "viewpoint",
-            "volcano",
-            "water",
-            "waterfall",
-            "wetland",
-            "zoo"
-          ],
-          "#4a7a3a",
-          [
-            "dentist",
-            "doctors",
-            "drinking_water",
-            "fire_station",
-            "hospital",
-            "pharmacy",
-            "police",
-            "shelter",
-            "toilets",
-            "veterinary"
-          ],
-          "#a33a3a",
-          "#666666"
-        ],
+        "text-color": "hsl(203, 7%, 40%)",
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
       }
@@ -2621,7 +2493,6 @@
         "text-padding": 2,
         "text-variable-anchor": [
           "bottom",
-          "top",
           "right",
           "left"
         ],
@@ -2629,70 +2500,7 @@
         "text-optional": true
       },
       "paint": {
-        "text-color": [
-          "match",
-          [
-            "get",
-            "class"
-          ],
-          [
-            "aerialway",
-            "airfield",
-            "airport",
-            "bus",
-            "ferry",
-            "harbor",
-            "heliport",
-            "railway",
-            "railway_light",
-            "railway_metro"
-          ],
-          "#2e5a80",
-          [
-            "american_football",
-            "attraction",
-            "baseball",
-            "basketball",
-            "beach",
-            "campsite",
-            "cemetery",
-            "cricket",
-            "dog_park",
-            "garden",
-            "golf",
-            "mountain",
-            "park",
-            "picnic_site",
-            "pitch",
-            "playground",
-            "skiing",
-            "soccer",
-            "stadium",
-            "swimming",
-            "tennis",
-            "viewpoint",
-            "volcano",
-            "water",
-            "waterfall",
-            "wetland",
-            "zoo"
-          ],
-          "#4a7a3a",
-          [
-            "dentist",
-            "doctors",
-            "drinking_water",
-            "fire_station",
-            "hospital",
-            "pharmacy",
-            "police",
-            "shelter",
-            "toilets",
-            "veterinary"
-          ],
-          "#a33a3a",
-          "#666666"
-        ],
+        "text-color": "hsl(203, 7%, 40%)",
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
       }

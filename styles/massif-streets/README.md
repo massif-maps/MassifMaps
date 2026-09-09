@@ -116,17 +116,19 @@ with eight that do not line up mapped by hand — `rail` for `railway`, `toilet`
 rather than a ninety-branch table, which the converter resolves through one style parameter per
 sprite. A class with no drawing simply draws its label, which is what Liberty does too.
 
-**Colour says what a POI is FOR**, not what it is: transit blue `#2e5a80`, anything green and
-outdoors `#4a7a3a`, care and emergency `#a33a3a`, everything else the ordinary `#666666`. The map
-answers "can I get there", "is it a park", "is it help" before it answers "which shop is this". The
-sheet is baked, so the drawings are re-cut in their group's colour rather than tinted per feature;
-the LABEL takes the same colour from a `match` on `class`, which converts to a ternary chain — no
-`when()`, but a per-feature chain all the same, and the one place this style pays for a colour.
+**The ICON says what a POI is for; the label says nothing.** Transit `hsl(216, 60%, 50%)`, anything
+green and outdoors `hsl(126, 42%, 40%)`, care and emergency `hsl(0, 58%, 52%)`, everything else
+`hsl(203, 7%, 48%)` — MapTiler's categorical hues at a lightness that reads on a near-white
+background, over Mapbox Standard's neutral grey. The label is one colour throughout,
+`hsl(203, 7%, 40%)`, which is Standard's model: a categorical colour on a word is hard to read and
+harder to scan, and the glyph beside it already carries the category. The sheet is baked, so each
+drawing is re-cut in its group's colour rather than tinted per feature.
 
 **The name takes whichever side of the icon is free, and the icon stays when no side fits.**
-`text-variable-anchor: [bottom, top, right, left]` with `text-optional: true`, which the converter
-maps to `shield-anchors` and `shield-text-optional` — the same model on both sides. A crowded corner
-keeps the icon and drops only the name, instead of losing the place entirely.
+`text-variable-anchor: [bottom, right, left]` with `text-optional: true`, which the converter maps to
+`shield-anchors` and `shield-text-optional` — the same model on both sides. No `top`: a name above
+its icon reads as belonging to whatever is above it. A crowded corner keeps the icon and drops only
+the name, instead of losing the place entirely.
 
 ## Where this style departs from the references
 

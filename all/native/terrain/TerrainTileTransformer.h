@@ -92,6 +92,9 @@ namespace massif {
         virtual cglib::mat4x4<float> calculateTileTransform(const vt::TileId& tileId, const cglib::vec2<float>& translate, float coordScale) const override;
 
         virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const vt::TileId& tileId) const override;
+        // Both are the base's: terrain adds height to the tile geometry, not to the projection.
+        virtual cglib::vec3<double> calculateMercatorPos(const cglib::vec3<double>& pos) const override { return _base->calculateMercatorPos(pos); }
+        virtual cglib::vec3<double> calculateElevatedPos(const cglib::vec3<double>& pos, double height) const override { return _base->calculateElevatedPos(pos, height); }
 
     private:
         // Metres per internal unit at the tile's centre latitude - the Mercator stretch, which the

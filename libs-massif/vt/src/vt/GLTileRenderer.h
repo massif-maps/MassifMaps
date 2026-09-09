@@ -752,7 +752,7 @@ namespace massif::vt {
          * @return False when the point is not on a resolved span.
          */
         void markPendingLabelsDirty();
-        std::function<double(const cglib::vec3<double>&)> labelHeightFunc() const;
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> labelAnchorFunc() const;
         bool anchorDirtyLabels();
         bool spanHeightAt(const cglib::vec2<double>& pos, double& height) const;
         void renderTileMask(const TileId& tileId);

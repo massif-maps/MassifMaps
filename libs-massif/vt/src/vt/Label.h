@@ -108,12 +108,12 @@ namespace massif::vt {
         void mergeGeometries(Label& label);
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
-        void updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc);
+        void updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
         // updateElevation in two halves, so the sampling - one elevation lookup per vertex, the
         // whole cost - can run off the renderer's lock: sample reads the x,y of the geometry
         // alone, apply writes the heights back under the lock and rebuilds the placement.
-        std::vector<double> sampleElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) const;
-        void applyElevation(const std::vector<double>& heights);
+        std::vector<cglib::vec3<double>> sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const;
+        void applyElevation(const std::vector<cglib::vec3<double>>& positions);
 
         // Which part of a label a draw pass wants. CALLOUT leader lines are drawn in a pass of
         // their own, BEFORE all text, so that no label's line crosses another label's glyphs.

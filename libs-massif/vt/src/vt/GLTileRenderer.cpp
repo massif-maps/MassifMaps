@@ -953,7 +953,8 @@ namespace massif::vt {
         // before the ground reached 0: every label stayed there - 90 of 228 up, the highest 17 m
         // over a flat ground (Petit-Pont z19, 2026-09-06) - and nothing would anchor them again.
         if (had && !_labelElevationProvider) {
-            std::function<double(const cglib::vec3<double>&)> flat = [](const cglib::vec3<double>&) { return 0.0; };
+            std::shared_ptr<const TileTransformer> transformer = _transformer;
+            std::function<cglib::vec3<double>(const cglib::vec3<double>&)> flat = [transformer](const cglib::vec3<double>& pos) { return transformer->calculateElevatedPos(pos, 0.0); };
             for (const std::shared_ptr<Label>& label : _labels) {
                 label->updateElevation(flat);
                 label->setElevationDirty(false);
@@ -1152,7 +1153,7 @@ namespace massif::vt {
         // All other operations must be synchronized
         VT_STAT_CLOCK(visibleClock);
         std::vector<std::shared_ptr<Label>> dirtyLabels;
-        std::function<double(const cglib::vec3<double>&)> heightFunc;
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc;
         {
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_SPLIT(setVisibleTilesLockNs, visibleClock);
@@ -1181,7 +1182,7 @@ namespace massif::vt {
                     dirtyLabels.push_back(label);
                 }
             }
-            heightFunc = labelHeightFunc();
+            anchorFunc = labelAnchorFunc();
         }
         }
 
@@ -1189,14 +1190,14 @@ namespace massif::vt {
         // thread: 300 labels was a 50-75 ms frame. Sampled here on the cull thread with the lock
         // RELEASED - a sample reads only x,y, which nothing changes after a label is built.
         if (!dirtyLabels.empty()) {
-            std::vector<std::vector<double>> heights(dirtyLabels.size());
+            std::vector<std::vector<cglib::vec3<double>>> positions(dirtyLabels.size());
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
-                heights[i] = dirtyLabels[i]->sampleElevation(heightFunc);
+                positions[i] = dirtyLabels[i]->sampleElevation(anchorFunc);
             }
             std::lock_guard<std::mutex> lock(_mutex);
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
                 if (dirtyLabels[i]->isElevationDirty()) {
-                    dirtyLabels[i]->applyElevation(heights[i]);
+                    dirtyLabels[i]->applyElevation(positions[i]);
                     dirtyLabels[i]->setElevationDirty(false);
                 }
             }
@@ -4269,22 +4270,23 @@ namespace massif::vt {
         _pendingLabelElevationTiles.clear();
     }
 
-    std::function<double(const cglib::vec3<double>&)> GLTileRenderer::labelHeightFunc() const {
+    std::function<cglib::vec3<double>(const cglib::vec3<double>&)> GLTileRenderer::labelAnchorFunc() const {
         // A label ON a bridge belongs to the deck, not to the ground under it - road names,
         // POIs and one-way arrows are all symbols, so they all come through here.
         // A copy of the chords and the provider: the sampler outlives the lock it was made under.
         std::vector<SpanResolver::SpanChord> chords = _spanResolver.chords(_extrusionBaseVersion.load(std::memory_order_relaxed));
-        if (chords.empty()) {
-            return _labelElevationProvider;
-        }
         std::function<double(const cglib::vec3<double>&)> provider = _labelElevationProvider;
+        std::shared_ptr<const TileTransformer> transformer = _transformer;
         double scale = _labelPositionScale;
-        return [chords, provider, scale](const cglib::vec3<double>& pos) {
-            double deck = 0;
-            if (SpanResolver::chordHeightAt(chords, cglib::vec2<double>(pos(0) * scale, pos(1) * scale), deck)) {
-                return deck;
+        // A world anchor in, a world anchor ON the terrain out: the lookup is keyed by internal
+        // Mercator and the lift is along the surface, neither of which is the vertex z on a globe.
+        return [chords, provider, transformer, scale](const cglib::vec3<double>& pos) {
+            cglib::vec3<double> mercatorPos = transformer->calculateMercatorPos(pos);
+            double height = 0;
+            if (!(!chords.empty() && SpanResolver::chordHeightAt(chords, cglib::vec2<double>(mercatorPos(0) * scale, mercatorPos(1) * scale), height))) {
+                height = provider(mercatorPos);
             }
-            return provider(pos);
+            return transformer->calculateElevatedPos(pos, height);
         };
     }
 
@@ -4295,11 +4297,11 @@ namespace massif::vt {
         VT_STAT_CLOCK(anchorClock);
         markPendingLabelsDirty();
         VT_STAT_SPLIT(prepElevDirtyNs, anchorClock);
-        std::function<double(const cglib::vec3<double>&)> heightFunc = labelHeightFunc();
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc = labelAnchorFunc();
         bool anchored = false;
         for (const std::shared_ptr<Label>& label : _labels) {
             if (label->isElevationDirty()) {
-                label->updateElevation(heightFunc);
+                label->updateElevation(anchorFunc);
                 label->setElevationDirty(false);
                 anchored = true;
             }

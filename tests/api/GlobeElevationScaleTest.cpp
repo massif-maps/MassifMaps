@@ -19,6 +19,7 @@
  * whether the globe's surface LOOKS right. Device checks, see docs/internals/rendering/18-globe.md.
  */
 
+#include "projections/SphericalProjectionSurface.h"
 #include "utils/Const.h"
 
 #include <vt/TerrainElevationScale.h>
@@ -43,6 +44,13 @@ namespace {
 
     std::shared_ptr<vt::SphericalTileTransformer> transformer() {
         return std::make_shared<vt::SphericalTileTransformer>(static_cast<float>(SPHERE_RADIUS));
+    }
+
+    /** An internal MapPos for a WGS84 lon/lat at sea level. */
+    MapPos internalOf(double lon, double lat) {
+        double x = lon * Const::WORLD_SIZE / 360.0;
+        double y = std::atanh(std::sin(lat * PI / 180.0)) * Const::WORLD_SIZE / (2 * PI);
+        return MapPos(x, y, 0);
     }
 
     bool nearly(double value, double expected, double tolerance = 1.0e-5) {
@@ -200,6 +208,48 @@ namespace {
         TEST_CHECK(true, "the internal-frame scale is zoom-independent");
     }
 
+
+    void testALabelAnchorLandsWhereAVectorElementDoes() {
+        // A label's anchor is a WORLD position that the terrain moves: on the plane the height IS
+        // the z, on a sphere it is radial and drops the Mercator stretch an internal height carries.
+        // The invariant that matters is that vt agrees with the projection surface - a label and a
+        // marker at the same MapPos must land in the same place.
+        std::shared_ptr<vt::SphericalTileTransformer> t = transformer();
+        SphericalProjectionSurface surface;
+        const double heights[] = { 0.0, 12.5, 1000.0 * Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE };
+        const MapPos places[] = { internalOf(0.0, 0.0), internalOf(6.865, 45.833), internalOf(-179.9, 60.0) };
+        bool agree = true, idempotent = true;
+        for (const MapPos& place : places) {
+            cglib::vec3<double> ground = surface.calculatePosition(place);
+            for (double height : heights) {
+                cglib::vec3<double> expected = surface.calculatePosition(MapPos(place.getX(), place.getY(), height));
+                cglib::vec3<double> anchored = t->calculateElevatedPos(ground, height);
+                agree = agree && cglib::length(anchored - expected) <= 1.0e-6 * SPHERE_RADIUS;
+                // Applied twice - which is what re-anchoring does on every elevation version.
+                idempotent = idempotent && cglib::length(t->calculateElevatedPos(anchored, height) - anchored) <= 1.0e-9 * SPHERE_RADIUS;
+            }
+        }
+        TEST_CHECK(agree, "a lifted label anchor lands where the projection surface puts the same MapPos");
+        TEST_CHECK(idempotent, "... and lifting an already-lifted anchor does not move it");
+    }
+
+    void testTheAnchorLookupIsKeyedByMercator() {
+        // The elevation provider is keyed by INTERNAL x/y. Feeding it a sphere position read the
+        // world coordinates as Mercator ones, so every label sampled the wrong ground.
+        std::shared_ptr<vt::SphericalTileTransformer> t = transformer();
+        SphericalProjectionSurface surface;
+        MapPos place = internalOf(6.865, 45.833);
+        cglib::vec3<double> mercator = t->calculateMercatorPos(surface.calculatePosition(place));
+        TEST_CHECK(nearly(mercator(0), place.getX(), 1.0e-6) && nearly(mercator(1), place.getY(), 1.0e-6),
+                   "a world position reads back as its own internal Mercator xy");
+
+        vt::DefaultTileTransformer planar(static_cast<float>(Const::WORLD_SIZE));
+        cglib::vec3<double> flat(1234.5, -678.9, 42.0);
+        TEST_CHECK(planar.calculateMercatorPos(flat) == flat, "the planar world IS internal, so the lookup is the identity");
+        TEST_CHECK(planar.calculateElevatedPos(flat, 17.0) == cglib::vec3<double>(1234.5, -678.9, 17.0),
+                   "... and a planar height is just the z");
+    }
+
 }
 
 void testGlobeElevationScale() {
@@ -209,4 +259,6 @@ void testGlobeElevationScale() {
     testTheScaleIsTheSameAtEveryZoom();
     testATileUnitIsRecoveredFromTheSphere();
     testTheTileUnitSurvivesTheAntimeridian();
+    testALabelAnchorLandsWhereAVectorElementDoes();
+    testTheAnchorLookupIsKeyedByMercator();
 }

@@ -385,29 +385,29 @@ namespace massif::vt {
         return false;
     }
 
-    void Label::updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) {
-        applyElevation(sampleElevation(heightFunc));
+    void Label::updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) {
+        applyElevation(sampleElevation(anchorFunc));
     }
 
-    std::vector<double> Label::sampleElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) const {
-        std::vector<double> heights;
-        heights.reserve(_tilePoints.size() + _tileLines.size() * 4 + 1);
+    std::vector<cglib::vec3<double>> Label::sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const {
+        std::vector<cglib::vec3<double>> positions;
+        positions.reserve(_tilePoints.size() + _tileLines.size() * 4 + 1);
         for (const TilePoint& tilePoint : _tilePoints) {
-            heights.push_back(heightFunc(tilePoint.position));
+            positions.push_back(anchorFunc(tilePoint.position));
         }
         for (const TileLine& tileLine : _tileLines) {
             for (const cglib::vec3<double>& vertex : tileLine.vertices) {
-                heights.push_back(heightFunc(vertex));
+                positions.push_back(anchorFunc(vertex));
             }
         }
         // The placement's own anchor last, for a point placement (see applyElevation).
         if (_placement) {
-            heights.push_back(heightFunc(_placement->position));
+            positions.push_back(anchorFunc(_placement->position));
         }
-        return heights;
+        return positions;
     }
 
-    void Label::applyElevation(const std::vector<double>& heights) {
+    void Label::applyElevation(const std::vector<cglib::vec3<double>>& positions) {
         // Refresh anchor heights from the elevation data: label geometry is built when the tile decodes,
         // possibly before its elevation arrives. A line placement is REBUILT from the re-anchored line
         // rather than shifted, so the glyph run keeps following the profile it is drawn over.
@@ -415,23 +415,23 @@ namespace massif::vt {
         _elevationAnchored = true;
         std::size_t n = 0;
         for (TilePoint& tilePoint : _tilePoints) {
-            if (n >= heights.size()) {
+            if (n >= positions.size()) {
                 return; // geometry grew since the sample (a merge): sampled again next time
             }
-            double height = heights[n++];
-            if (height != tilePoint.position(2)) {
-                tilePoint.position(2) = height;
+            const cglib::vec3<double>& position = positions[n++];
+            if (position != tilePoint.position) {
+                tilePoint.position = position;
                 changed = true;
             }
         }
         for (TileLine& tileLine : _tileLines) {
             for (cglib::vec3<double>& vertex : tileLine.vertices) {
-                if (n >= heights.size()) {
+                if (n >= positions.size()) {
                     return;
                 }
-                double height = heights[n++];
-                if (height != vertex(2)) {
-                    vertex(2) = height;
+                const cglib::vec3<double>& position = positions[n++];
+                if (position != vertex) {
+                    vertex = position;
                     changed = true;
                 }
             }
@@ -466,8 +466,8 @@ namespace massif::vt {
             }
         }
         if (!placement) {
-            if (n < heights.size()) {
-                position(2) = heights[n];
+            if (n < positions.size()) {
+                position = positions[n];
             }
             auto pointPlacement = std::make_shared<Placement>(*_placement);
             pointPlacement->position = position;

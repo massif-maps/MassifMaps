@@ -77,6 +77,14 @@ namespace massif::vt {
         return std::make_shared<DefaultVertexTransformer>(tileId);
     }
 
+    cglib::vec3<double> DefaultTileTransformer::calculateMercatorPos(const cglib::vec3<double>& pos) const {
+        return pos; // the planar world IS internal Mercator
+    }
+
+    cglib::vec3<double> DefaultTileTransformer::calculateElevatedPos(const cglib::vec3<double>& pos, double height) const {
+        return cglib::vec3<double>(pos(0), pos(1), height);
+    }
+
     SphericalTileTransformer::SphericalVertexTransformer::SphericalVertexTransformer(const TileId& tileId, const cglib::vec3<double>& origin, float divideThreshold) :
         _tileId(tileId), _origin(origin), _divideThreshold(divideThreshold), _tileOffset(tileOffset(tileId)), _tileScale(tileScale(tileId))
     {
@@ -318,6 +326,25 @@ namespace massif::vt {
 
     std::shared_ptr<const TileTransformer::VertexTransformer> SphericalTileTransformer::createTileVertexTransformer(const TileId& tileId) const {
         return std::make_shared<SphericalVertexTransformer>(tileId, calculateTileOrigin(tileId) * (1.0 / _scale), _divideThreshold);
+    }
+
+    cglib::vec3<double> SphericalTileTransformer::calculateMercatorPos(const cglib::vec3<double>& pos) const {
+        // EPSG3857 metres to internal: the equator is WORLD_SIZE = _scale * PI wide.
+        cglib::vec2<double> epsg3857Pos = sphericalToEPSG3857(pos);
+        double internalPerMeter = _scale * PI / EARTH_CIRCUMFERENCE;
+        return cglib::vec3<double>(epsg3857Pos(0) * internalPerMeter, epsg3857Pos(1) * internalPerMeter, 0);
+    }
+
+    cglib::vec3<double> SphericalTileTransformer::calculateElevatedPos(const cglib::vec3<double>& pos, double height) const {
+        double len = cglib::length(pos);
+        if (!(len > 0)) {
+            return pos;
+        }
+        cglib::vec3<double> unitPos = pos * (1.0 / len);
+        // SphericalProjectionSurface::InternalToSpherical's own rule: length 1 + z * 2pi/WORLD_SIZE
+        // scaled by cos(latitude), which drops the Mercator stretch an internal height carries.
+        double cosLat = std::sqrt(std::max(0.0, unitPos(0) * unitPos(0) + unitPos(1) * unitPos(1)));
+        return unitPos * (_scale + height * 2 * cosLat);
     }
 
     cglib::vec2<double> SphericalTileTransformer::tileOffset(const TileId& tileId) {

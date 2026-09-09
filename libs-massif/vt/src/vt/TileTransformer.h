@@ -61,6 +61,17 @@ namespace massif::vt {
 
         virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const TileId& tileId) const = 0;
 
+        /**
+         * A world position as INTERNAL Mercator xy, which is what an elevation lookup is keyed by.
+         * The identity on a plane; on a sphere it inverts the projection.
+         */
+        virtual cglib::vec3<double> calculateMercatorPos(const cglib::vec3<double>& pos) const = 0;
+        /**
+         * A world position moved to `height` INTERNAL z units above the surface - absolute, not
+         * relative, so applying it twice lands in the same place. On a sphere that is radial.
+         */
+        virtual cglib::vec3<double> calculateElevatedPos(const cglib::vec3<double>& pos, double height) const = 0;
+
     protected:
         static constexpr double PI = boost::math::constants::pi<double>();
         static constexpr double EARTH_RADIUS = 6378137.0;
@@ -96,7 +107,9 @@ namespace massif::vt {
         virtual cglib::mat4x4<float> calculateTileTransform(const TileId& tileId, const cglib::vec2<float>& translate, float coordScale) const override;
 
         virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const TileId& tileId) const override;
-    
+        virtual cglib::vec3<double> calculateMercatorPos(const cglib::vec3<double>& pos) const override;
+        virtual cglib::vec3<double> calculateElevatedPos(const cglib::vec3<double>& pos, double height) const override;
+
     private:
         const float _scale;
     };
@@ -146,7 +159,9 @@ namespace massif::vt {
         virtual cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale) const override;
         virtual cglib::mat4x4<float> calculateTileTransform(const TileId& tileId, const cglib::vec2<float>& translate, float coordScale) const override;
 
-        virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const TileId& tileId) const override;
+virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const TileId& tileId) const override;
+        virtual cglib::vec3<double> calculateMercatorPos(const cglib::vec3<double>& pos) const override;
+        virtual cglib::vec3<double> calculateElevatedPos(const cglib::vec3<double>& pos, double height) const override;
 
     private:
         static cglib::vec2<double> tileOffset(const TileId& tileId);

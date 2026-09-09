@@ -94,11 +94,20 @@ suite before the one that depends on it.
    is only subdivision and a bbox grown by the elevation range. And `TerrainProjectionSurface` now
    takes the light `ElevationProvider` interface rather than `ElevationManager`, which is what lets
    `tests/api/TerrainSurfaceTest.cpp` drive it from a synthetic height field.
-3. **The terrain surface itself.** `TerrainRenderer` builds a unit-square grid with a z
-   displacement and an affine tile matrix, in four separate copies of the planar tile math; it has
-   to consume the layer's `TileTransformer` instead. The GPU half is `applyTerrain` in
-   `GLTileRendererShaders.h`, which ends `return vec3(pos.xy, z)` — it needs to displace along the
-   surface normal, which covers the terrain surface, the drape, the skirts and the shadow casters.
+3. **The terrain surface itself.** Half done.
+
+   The GPU half is in, behind a `TERRAIN_SPHERICAL` define set centrally in `buildShaderProgram`
+   so it is part of the program cache key. `applyTerrain` now displaces along the surface normal
+   rather than along z, and recovers the DEM uv by inverting the sphere — `atan` for the longitude
+   and `atanh` for the Mercator y — because tile-local xy is a curved position there and not the
+   tile's unit square. Two things fall out of the arithmetic rather than being tuned: the frame-space
+   displacement is exactly `SphericalVertexTransformer::calculateHeight`, so shader and CPU agree by
+   construction; and a spherical height is radial, so setting `uElevationScale.y/z` to zero makes
+   the shader's existing `cosh` equal 1 and the scale formula needs no spherical case at all.
+
+   Still to do: `TerrainRenderer` builds a unit-square grid with a z displacement and an affine tile
+   matrix, in four separate copies of the planar tile math, and has to consume the layer's
+   `TileTransformer` instead. Only when that lands do the five conditions come out.
 4. **Picking and the camera.** `ElevationManager::intersectRay`, `CameraClearance` and
    `AutoFlatten::parallax` are all expressed along the Z axis.
 5. **Space.** `Options::setZoomRange` clamps the minimum to `0`, so there is no zoom at which the
@@ -109,6 +118,17 @@ suite before the one that depends on it.
 Spans, bridges and 3D extrusions are **not** in that list. They carry their own anchor and chord
 machinery built around a flat frame ([3D bridges](17-bridges.md)) and will be wrong on the globe
 until they are done separately.
+
+## Two things the spherical shader path does not do
+
+**Skirts are passed through undisplaced.** A skirt's drop is encoded by REPLACING `pos.z` with
+`-1000000 - drop`, so on a curved surface the vertex's own position is gone and the sphere point
+cannot be recovered. Nothing builds a spherical skirt today; whatever does needs to carry the drop
+in its own attribute instead.
+
+**The lattice clamp is off on a globe.** It locates a surface cell from tile-local xy, which is the
+one thing that stops meaning "position in the tile" there. Draped geometry then takes the plain
+node sample, which is what the adaptive path already does.
 
 ## What could be better
 

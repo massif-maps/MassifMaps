@@ -23,6 +23,9 @@ add_executable(vt_tests
   SpanGeometryTest.cpp
   SpanDrapeLightTest.cpp
   SpanResolverTest.cpp
+  # The arithmetic the TERRAIN_SPHERICAL shader path rests on, checked against the transformer
+  # the geometry is built with. Needs TileTransformer.cpp, added below.
+  SphericalTerrainTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"

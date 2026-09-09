@@ -3978,7 +3978,9 @@ namespace massif::vt {
         // Lattice clamp: draped geometry snaps its height to the regular grid the surface is built
         // from, in NODE-uv units (0 in adaptive mode). THE SURFACE DOES NOT NEED IT - its vertices
         // ARE the nodes - except on a stitched edge, where it bends onto the coarse neighbour.
-        bool latticeNodes = gridSurface && edgeCoarsening == cglib::vec4<float>(1, 1, 1, 1);
+        // Not on a sphere: the clamp locates a cell from tile-local xy, which is a curved position
+        // there and not the tile's unit square (docs/internals/rendering/18-globe.md).
+        bool latticeNodes = (gridSurface && edgeCoarsening == cglib::vec4<float>(1, 1, 1, 1)) || _transformer->isSpherical();
         if (_terrainRegularGrid && _terrainRegularGridResolution > 0 && _terrainDemTaps >= 16 && !latticeNodes) {
             double worldTileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
             float latticeCellX = static_cast<float>(worldTileSize * invNodeSizeX / _terrainRegularGridResolution);
@@ -3987,16 +3989,52 @@ namespace massif::vt {
         } else {
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
         }
+        if (_transformer->isSpherical()) {
+            // The unit-sphere point under a vertex, off the frame matrix's own diagonal and
+            // translation, so the shader needs no knowledge of the tile.
+            // The zoom-0 tile matrix diagonal IS the transformer's scale, which for a sphere is its
+            // radius in world units. Read that way so no constant is duplicated here.
+            double sphereRadius = _transformer->calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
+            if (!(sphereRadius > 0)) {
+                sphereRadius = 1.0;
+            }
+            glUniform3f(shaderProgram.uniforms[U_TERRAINSPHEREORIGIN],
+                static_cast<float>(vertexFrameMatrix(0, 3) / sphereRadius),
+                static_cast<float>(vertexFrameMatrix(1, 3) / sphereRadius),
+                static_cast<float>(vertexFrameMatrix(2, 3) / sphereRadius));
+            glUniform3f(shaderProgram.uniforms[U_TERRAINSPHERESCALE],
+                static_cast<float>(vertexFrameMatrix(0, 0) / sphereRadius),
+                static_cast<float>(vertexFrameMatrix(1, 1) / sphereRadius),
+                static_cast<float>(vertexFrameMatrix(2, 2) / sphereRadius));
+            // The DEM node uv from Mercator RADIANS, which is what the shader's inverse produces:
+            // internal = radians * WORLD_SIZE / 2pi, so that factor is folded in here.
+            double internalPerRadian = sphereRadius * 0.5;
+            glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERENODEUV],
+                static_cast<float>(nodeOrigin(0) / internalPerRadian),
+                static_cast<float>(nodeOrigin(1) / internalPerRadian),
+                static_cast<float>(internalPerRadian * invNodeSizeX),
+                static_cast<float>(internalPerRadian * invNodeSizeY));
+        }
+
         double frameScaleZ = (vertexFrameMatrix(2, 2) != 0 ? vertexFrameMatrix(2, 2) : 1.0);
         // An extrusion's CPU base is already in INTERNAL z units - getDisplayHeight applied the
         // exaggeration and the mercator stretch - so it owes only the frame scale, the same
         // 1/frameScaleZ folded into uElevationScale.x for heights that come from the texture.
         glUniform1f(shaderProgram.uniforms[U_BASESCALE], static_cast<float>(1.0 / frameScaleZ));
-        glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE],
-            static_cast<float>(terrainTexture.metersToInternal / frameScaleZ),
-            static_cast<float>(frameOrigin(1) * terrainTexture.mercatorYScale),
-            static_cast<float>(frameScale(1) * terrainTexture.mercatorYScale),
-            static_cast<float>(-vertexFrameMatrix(2, 3) / frameScaleZ)); // tile surface frames are origin-relative, with a non-zero origin z in terrain mode
+        if (_transformer->isSpherical()) {
+            // A height on a sphere is RADIAL: no Mercator stretch (y and z zero, so the shader's
+            // cosh is 1) and no frame z offset, because the displacement is along the normal rather
+            // than along an axis. One metre is calculateHeight's tile-local length, in frame units.
+            double localPerMeter = _transformer->createTileVertexTransformer(tileId)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f);
+            glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE],
+                static_cast<float>(localPerMeter / frameScaleZ), 0.0f, 0.0f, 0.0f);
+        } else {
+            glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE],
+                static_cast<float>(terrainTexture.metersToInternal / frameScaleZ),
+                static_cast<float>(frameOrigin(1) * terrainTexture.mercatorYScale),
+                static_cast<float>(frameScale(1) * terrainTexture.mercatorYScale),
+                static_cast<float>(-vertexFrameMatrix(2, 3) / frameScaleZ)); // tile surface frames are origin-relative, with a non-zero origin z in terrain mode
+        }
         return true;
     }
 
@@ -6867,6 +6905,12 @@ namespace massif::vt {
         // Every program is ESSL 3.00. Set here rather than at the 20-odd call sites, and before the
         // cache key is built so the key still distinguishes a program that fell back to 1.00.
         flags |= ESSL3_FLAG;
+
+        // Same reason, and in the same place so the key separates the two surfaces: a terrain
+        // program displaces along z on the plane and along the surface normal on a globe.
+        if ((flags & TERRAIN_VTF_FLAG) && _transformer && _transformer->isSpherical()) {
+            flags |= TERRAIN_SPHERICAL_FLAG;
+        }
 
         // Fast path: the call site's literal pointer + the flags, no allocation (see the
         // cache declaration). Only a miss builds the string key below.

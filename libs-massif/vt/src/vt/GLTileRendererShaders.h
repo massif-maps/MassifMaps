@@ -70,6 +70,9 @@ namespace massif::vt {
         U_ELEVATIONLATTICECELL,
         U_ELEVATIONNODETEXTURE,
         U_ELEVATIONNODEUV,
+        U_TERRAINSPHEREORIGIN,
+        U_TERRAINSPHERESCALE,
+        U_TERRAINSPHERENODEUV,
         U_ELEVATIONNODETEXELSIZE,
         U_TERRAINEDGECOARSENING,
         U_LAYERDEPTHOFFSET,
@@ -179,7 +182,12 @@ namespace massif::vt {
         // The shadow receiver is a 3D EXTRUSION, not the ground. An extrusion defends against acne
         // with the normal offset; the ground has no normal and defends with the receiver-plane
         // bias. Each one hurts the other, so the shader has to tell them apart.
-        SHADOW_RECEIVER_3D_FLAG = 536870912
+        SHADOW_RECEIVER_3D_FLAG = 536870912,
+        // The terrain sits on a SPHERE. The displacement then runs along the surface normal instead
+        // of z, and the DEM lookup cannot use tile-local xy, because that is a curved position and
+        // not the tile's unit square. See docs/internals/rendering/18-globe.md.
+        // 1073741824 is deliberately skipped: it is being taken by the DRAPE_MASK_FLAG fix.
+        TERRAIN_SPHERICAL_FLAG = 2147483648u
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -244,6 +252,9 @@ namespace massif::vt {
         { "uElevationLatticeCell", U_ELEVATIONLATTICECELL },
         { "uElevationNodeTexture", U_ELEVATIONNODETEXTURE },
         { "uElevationNodeUV",      U_ELEVATIONNODEUV },
+        { "uTerrainSphereOrigin",  U_TERRAINSPHEREORIGIN },
+        { "uTerrainSphereScale",   U_TERRAINSPHERESCALE },
+        { "uTerrainSphereNodeUV",  U_TERRAINSPHERENODEUV },
         { "uElevationNodeTexelSize", U_ELEVATIONNODETEXELSIZE },
         { "uTerrainEdgeCoarsening", U_TERRAINEDGECOARSENING },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
@@ -316,7 +327,8 @@ namespace massif::vt {
         { COVERAGE_FLAG, "COVERAGE" },
         { SPAN_FLAG, "SPAN" },
         { DRAPE_MASK_FLAG, "DRAPE_MASK" },
-        { SPAN_DRAPE_FLAG, "SPAN_DRAPE" }
+        { SPAN_DRAPE_FLAG, "SPAN_DRAPE" },
+        { TERRAIN_SPHERICAL_FLAG, "TERRAIN_SPHERICAL" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -496,6 +508,15 @@ namespace massif::vt {
         uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z, w: vertex frame z offset
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         uniform highp vec2 uElevationLatticeCell; // regular-grid surface cell size in NODE-uv units (0 = off = plain node sample)
+        #ifdef TERRAIN_SPHERICAL
+        // The unit-sphere point under a vertex: p = origin + pos * scale. Both come off the vertex
+        // frame matrix, which is diagonal-plus-translate in either projection.
+        uniform highp vec3 uTerrainSphereOrigin;
+        uniform highp vec3 uTerrainSphereScale;
+        // DEM node uv from INTERNAL Mercator coordinates: uv = (internal - xy) * zw. Tile-local xy
+        // is a curved position on a sphere, so uElevationNodeUV's affine form cannot be used.
+        uniform highp vec4 uTerrainSphereNodeUV;
+        #endif
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
         // The NODE texture: the same DEM box-filtered to the surface lattice, one texel per mesh node.
         // The vertex stage displaces from THIS - point-sampling a lidar DEM aliases every relief finer
@@ -530,8 +551,30 @@ namespace massif::vt {
             return mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
         }
         #endif
+        #ifdef TERRAIN_SPHERICAL
+        // The unit-sphere point under a vertex, which is both the surface normal and the way back
+        // to Mercator. Reversing SphericalTileTransformer::tileToSpherical.
+        highp vec3 terrainSpherePoint(vec3 pos) {
+            return uTerrainSphereOrigin + pos * uTerrainSphereScale;
+        }
+        // Unit sphere -> internal Mercator, matching SphericalProjectionSurface::SphericalToInternal.
+        // WORLD_SIZE / 2pi is folded into uTerrainSphereNodeUV, so this returns radians.
+        highp vec2 terrainSphereToMercator(highp vec3 p) {
+            highp float len = length(p);
+            highp float rz = clamp(p.z / len, -0.999999, 0.999999);
+            return vec2(atan(p.y, p.x), 0.5 * log((1.0 + rz) / (1.0 - rz)));
+        }
+        #endif
         vec3 applyTerrain(vec3 pos) {
+        #ifdef TERRAIN_SPHERICAL
+            highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereNodeUV.xy;
+            // atan recovers the longitude modulo 2pi, so a tile at the antimeridian gets its
+            // relative x a whole world out. Wrap it back; a DEM node never spans 2pi.
+            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
+            highp vec2 uv = merc * uTerrainSphereNodeUV.zw;
+        #else
             highp vec2 uv = uElevationNodeUV.xy + pos.xy * uElevationNodeUV.zw;
+        #endif
             float meters;
             if (uElevationLatticeCell.x != 0.0) {
                 // LATTICE CLAMP: interpolate the 4 surrounding node heights with the SAME two-triangle
@@ -565,16 +608,31 @@ namespace massif::vt {
             } else {
                 meters = nodeMeters(uv);
             }
+            // On a sphere y/z are 0, so cosh is 1: a height there is RADIAL and carries no
+            // Mercator stretch, unlike on the plane where this factor is the stretch.
             highp float my = uElevationScale.y + pos.y * uElevationScale.z;
             float coshMY = 0.5 * (exp(my) + exp(-my));
             float z = meters * uElevationScale.x * coshMY + uElevationScale.w;
-            if (pos.z < -900000.0) {
+            bool isSkirt = pos.z < -900000.0;
+            if (isSkirt) {
                 // tile skirt bottom vertex: z encodes -1000000 - drop; extrude downwards
                 // from the terrain surface to cover cracks between neighbouring tiles
                 // that sample different elevation levels
                 z += pos.z + 1000000.0;
             }
+        #ifdef TERRAIN_SPHERICAL
+            // Displace along the surface normal rather than along z. A skirt is passed through
+            // untouched: the sentinel REPLACES pos.z, so on a curved surface the vertex's own
+            // position is unrecoverable and the sphere point would be garbage. Nothing builds a
+            // spherical skirt yet - the mesh that will needs its drop in its own attribute
+            // (docs/internals/rendering/18-globe.md).
+            if (isSkirt) {
+                return pos;
+            }
+            return pos + normalize(terrainSpherePoint(pos)) * z;
+        #else
             return vec3(pos.xy, z);
+        #endif
         }
         #else
         vec3 applyTerrain(vec3 pos) {

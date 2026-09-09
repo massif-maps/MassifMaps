@@ -1,0 +1,225 @@
+/*
+ * Tests for the arithmetic the TERRAIN_SPHERICAL shader path depends on
+ * (libs-massif/vt/src/vt/GLTileRendererShaders.h, applyTerrain).
+ *
+ * The shader cannot run here, so the two functions it added - terrainSpherePoint and
+ * terrainSphereToMercator - are reproduced below EXACTLY as the GLSL writes them, fed the uniform
+ * values GLTileRenderer::setupTerrainUniforms computes, and checked against the transformer the
+ * geometry was actually built with. That is the part worth testing: an inversion that disagrees
+ * with the transformer by any amount puts the DEM sample in the wrong place, and on a globe there
+ * is no flat reference frame to notice it in.
+ *
+ * NOT covered here: that any of it draws. The displacement direction, the skirt pass-through and
+ * the disabled lattice clamp are all device checks, and nothing exercises this path yet - terrain
+ * is still refused on a globe. See docs/internals/rendering/18-globe.md.
+ */
+
+#include "vt/TileTransformer.h"
+
+#include <cmath>
+#include <memory>
+
+using namespace massif;
+using namespace massif::vt;
+
+#include "TestCheck.h"
+
+namespace {
+
+    const double EARTH_CIRCUMFERENCE = 40075016.68558;
+    const double WORLD_SIZE = 1 << 20;
+
+    bool nearly(double value, double expected, double tolerance) {
+        return std::fabs(value - expected) <= tolerance;
+    }
+
+    /** The uniforms setupTerrainUniforms uploads for a tile, derived the same way it derives them. */
+    struct SphereUniforms {
+        cglib::vec3<double> origin;
+        cglib::vec3<double> scale;
+        cglib::vec4<double> nodeUV;
+
+        SphereUniforms(const TileTransformer& transformer, const TileId& tileId,
+                       const cglib::vec2<double>& nodeOrigin, const cglib::vec2<double>& nodeSize) {
+            cglib::mat4x4<double> frame = transformer.calculateTileMatrix(tileId, 1.0f);
+            double sphereRadius = transformer.calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
+            origin = cglib::vec3<double>(frame(0, 3), frame(1, 3), frame(2, 3)) * (1.0 / sphereRadius);
+            scale = cglib::vec3<double>(frame(0, 0), frame(1, 1), frame(2, 2)) * (1.0 / sphereRadius);
+            double internalPerRadian = sphereRadius * 0.5;
+            nodeUV = cglib::vec4<double>(nodeOrigin(0) / internalPerRadian, nodeOrigin(1) / internalPerRadian,
+                                         internalPerRadian / nodeSize(0), internalPerRadian / nodeSize(1));
+        }
+    };
+
+    // GLSL: uTerrainSphereOrigin + pos * uTerrainSphereScale
+    cglib::vec3<double> terrainSpherePoint(const SphereUniforms& u, const cglib::vec3<float>& pos) {
+        return cglib::vec3<double>(u.origin(0) + pos(0) * u.scale(0),
+                                   u.origin(1) + pos(1) * u.scale(1),
+                                   u.origin(2) + pos(2) * u.scale(2));
+    }
+
+    // GLSL: atan(p.y, p.x), 0.5 * log((1 + rz) / (1 - rz))
+    cglib::vec2<double> terrainSphereToMercator(const cglib::vec3<double>& p) {
+        double len = cglib::length(p);
+        double rz = std::min(0.999999, std::max(-0.999999, p(2) / len));
+        return cglib::vec2<double>(std::atan2(p(1), p(0)), 0.5 * std::log((1.0 + rz) / (1.0 - rz)));
+    }
+
+    // GLSL: (mercator - uTerrainSphereNodeUV.xy) * uTerrainSphereNodeUV.zw
+    cglib::vec2<double> shaderNodeUV(const SphereUniforms& u, const cglib::vec3<float>& pos) {
+        cglib::vec2<double> mercator = terrainSphereToMercator(terrainSpherePoint(u, pos));
+        double x = mercator(0) - u.nodeUV(0);
+        x -= 6.283185307179586 * std::floor(x * 0.15915494309189535 + 0.5);
+        return cglib::vec2<double>(x * u.nodeUV(2), (mercator(1) - u.nodeUV(1)) * u.nodeUV(3));
+    }
+
+    /** The tile's own internal-coordinate bounds, which is what a DEM node texture covers. */
+    void tileInternalBounds(const TileId& tileId, cglib::vec2<double>& origin, cglib::vec2<double>& size) {
+        int tileMask = (1 << tileId.zoom) - 1;
+        double zoomScale = 1.0 / (1 << tileId.zoom);
+        origin = cglib::vec2<double>(((tileId.x & tileMask) * zoomScale - 0.5) * WORLD_SIZE,
+                                     ((tileMask - tileId.y) * zoomScale - 0.5) * WORLD_SIZE);
+        size = cglib::vec2<double>(zoomScale * WORLD_SIZE, zoomScale * WORLD_SIZE);
+    }
+
+    void testOnlyTheSphereReportsItself() {
+        DefaultTileTransformer planar(static_cast<float>(WORLD_SIZE));
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / 3.1415926535897932));
+        TEST_CHECK(!planar.isSpherical(), "the planar transformer is not spherical");
+        TEST_CHECK(sphere.isSpherical(), "the spherical one is");
+    }
+
+    /*
+     * THE check. The shader reconstructs the DEM uv from a curved vertex position; it has to land
+     * on the same texel the tile's own geometry says it should.
+     */
+    void testTheShaderInversionRecoversTheTileUV() {
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / 3.1415926535897932));
+        // TileId is (zoom, x, y). Zoom 0 is left out: one tile spans a full 2pi, which the
+        // longitude wrap cannot represent, and TerrainOptions::getMinZoom keeps terrain far above
+        // it. The last two sit either side of the antimeridian, which is what the wrap is for.
+        const TileId tileIds[] = { TileId(4, 8, 5), TileId(10, 700, 400), TileId(12, 2100, 1400), TileId(6, 0, 20), TileId(6, 63, 20) };
+
+        bool interiorMatch = true;
+        double worstInterior = 0, worstBorder = 0;
+        for (const TileId& tileId : tileIds) {
+            cglib::vec2<double> nodeOrigin, nodeSize;
+            tileInternalBounds(tileId, nodeOrigin, nodeSize);
+            SphereUniforms uniforms(sphere, tileId, nodeOrigin, nodeSize);
+            std::shared_ptr<const TileTransformer::VertexTransformer> vertexTransformer = sphere.createTileVertexTransformer(tileId);
+
+            for (float u : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f }) {
+                for (float v : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f }) {
+                    cglib::vec3<float> pos = vertexTransformer->calculatePoint(cglib::vec2<float>(u, v));
+                    cglib::vec2<double> uv = shaderNodeUV(uniforms, pos);
+                    // The node texture spans the tile, and its v runs with internal y - which is
+                    // the tile's 1 - v (tileToEPSG3857 flips it).
+                    double error = std::max(std::fabs(uv(0) - u), std::fabs(uv(1) - (1.0 - v)));
+                    bool border = (u == 0.0f || u == 1.0f || v == 0.0f || v == 1.0f);
+                    if (border) {
+                        worstBorder = std::max(worstBorder, error);
+                    } else {
+                        worstInterior = std::max(worstInterior, error);
+                        interiorMatch = interiorMatch && error < 1.0e-4;
+                    }
+                }
+            }
+        }
+        TEST_CHECK(interiorMatch, "the shader's spherical inversion recovers the tile uv it was built from");
+        TEST_CHECK(worstInterior < 1.0e-4, "to a ten-thousandth of a tile, well inside one DEM texel");
+
+        // A BORDER vertex is NOT on the sphere: calculatePoint deliberately linearises tile edges
+        // so that neighbouring tiles share them and no crack opens. Inverting one therefore returns
+        // the chord's position rather than the nominal uv - up to a percent of a tile out at zoom 6,
+        // where the whole edge is one chord. That is not an error: the vertex really is there, and
+        // sampling the DEM where the vertex IS is what displaces it correctly. What must hold is
+        // the next test, that both tiles agree on where that is.
+        TEST_CHECK(worstBorder > worstInterior * 10, "a linearised tile border does not invert to its nominal uv");
+    }
+
+    /*
+     * THE property the linearised border has to keep: two tiles meeting at an edge must invert
+     * their shared vertices to the SAME place, or they sample different DEM texels there and the
+     * displaced surface tears along every tile boundary.
+     */
+    void testNeighbouringTilesSampleTheSharedEdgeIdentically() {
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / 3.1415926535897932));
+        bool eastWestAgree = true, northSouthAgree = true;
+        double worstGap = 0;
+        const cglib::vec2<double> unitOrigin(0, 0), unitSize(1, 1);
+
+        for (const TileId& left : { TileId(6, 20, 20), TileId(10, 700, 400), TileId(6, 63, 20) }) {
+            TileId right(left.zoom, (left.x + 1) & ((1 << left.zoom) - 1), left.y);
+            TileId below(left.zoom, left.x, left.y + 1);
+
+            std::shared_ptr<const TileTransformer::VertexTransformer> l = sphere.createTileVertexTransformer(left);
+            std::shared_ptr<const TileTransformer::VertexTransformer> r = sphere.createTileVertexTransformer(right);
+            std::shared_ptr<const TileTransformer::VertexTransformer> b = sphere.createTileVertexTransformer(below);
+            SphereUniforms lu(sphere, left, unitOrigin, unitSize);
+            SphereUniforms ru(sphere, right, unitOrigin, unitSize);
+            SphereUniforms bu(sphere, below, unitOrigin, unitSize);
+
+            for (float t : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f }) {
+                // The left tile's east edge is the right tile's west edge.
+                cglib::vec2<double> a = terrainSphereToMercator(terrainSpherePoint(lu, l->calculatePoint(cglib::vec2<float>(1.0f, t))));
+                cglib::vec2<double> c = terrainSphereToMercator(terrainSpherePoint(ru, r->calculatePoint(cglib::vec2<float>(0.0f, t))));
+                // A circular difference: the pair across the antimeridian is one tile apart, not
+                // a world apart, and atan already folded both into (-pi, pi].
+                double dx = a(0) - c(0);
+                dx -= 6.283185307179586 * std::floor(dx * 0.15915494309189535 + 0.5);
+                double gapX = std::fabs(dx);
+                worstGap = std::max(worstGap, std::max(gapX, std::fabs(a(1) - c(1))));
+                eastWestAgree = eastWestAgree && gapX < 1.0e-6 && std::fabs(a(1) - c(1)) < 1.0e-6;
+
+                // ... and its v = 1 edge is the v = 0 edge of the tile below. tileToEPSG3857 flips
+                // v, so v = 1 is the SOUTH edge and the tile below it is the one with y + 1.
+                cglib::vec2<double> d = terrainSphereToMercator(terrainSpherePoint(lu, l->calculatePoint(cglib::vec2<float>(t, 1.0f))));
+                cglib::vec2<double> e = terrainSphereToMercator(terrainSpherePoint(bu, b->calculatePoint(cglib::vec2<float>(t, 0.0f))));
+                // Circular again: a tile at the antimeridian has both edges at +/- pi, and atan
+                // can land on either sign for the two tiles.
+                double dx2 = d(0) - e(0);
+                dx2 -= 6.283185307179586 * std::floor(dx2 * 0.15915494309189535 + 0.5);
+                double gap2 = std::max(std::fabs(dx2), std::fabs(d(1) - e(1)));
+                worstGap = std::max(worstGap, gap2);
+                northSouthAgree = northSouthAgree && gap2 < 1.0e-6;
+            }
+        }
+        TEST_CHECK(eastWestAgree, "tiles either side of a shared meridian invert that edge to the same place");
+        TEST_CHECK(northSouthAgree, "and so do tiles above and below a shared parallel");
+        TEST_CHECK(worstGap < 1.0e-6, "so the DEM sample cannot tear along a tile boundary");
+    }
+
+    /*
+     * A height on a sphere is radial: unlike the plane, it does NOT grow with latitude. The shader
+     * relies on this by setting the Mercator terms to zero so its cosh is 1.
+     */
+    void testSphericalHeightHasNoLatitudeStretch() {
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / 3.1415926535897932));
+        DefaultTileTransformer planar(static_cast<float>(WORLD_SIZE));
+
+        // Two tiles at very different latitudes, same zoom.
+        std::shared_ptr<const TileTransformer::VertexTransformer> equator = sphere.createTileVertexTransformer(TileId(5, 16, 16));
+        std::shared_ptr<const TileTransformer::VertexTransformer> north = sphere.createTileVertexTransformer(TileId(5, 16, 4));
+        float atEquator = equator->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1000.0f);
+        float atNorth = north->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1000.0f);
+        TEST_CHECK(nearly(atEquator, atNorth, 1.0e-9), "a spherical height is the same at any latitude");
+
+        // The plane's is not, which is exactly the term the shader's cosh supplies there.
+        std::shared_ptr<const TileTransformer::VertexTransformer> planarNorth = planar.createTileVertexTransformer(TileId(5, 16, 4));
+        std::shared_ptr<const TileTransformer::VertexTransformer> planarEquator = planar.createTileVertexTransformer(TileId(5, 16, 16));
+        TEST_CHECK(planarNorth->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1000.0f) >
+                   planarEquator->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1000.0f) * 1.2f,
+                   "while the plane's grows with latitude, which is why only one of them needs the cosh");
+
+        // And it is the 2 * PI tile-local convention, not the plane's.
+        double expected = 1000.0 * (1 << 5) / EARTH_CIRCUMFERENCE * 2 * 3.1415926535897932;
+        TEST_CHECK(nearly(atEquator, expected, 1.0e-6), "the spherical height is calculateHeight's own 2 * PI convention");
+    }
+}
+
+void testSphericalTerrain() {
+    testOnlyTheSphereReportsItself();
+    testTheShaderInversionRecoversTheTileUV();
+    testNeighbouringTilesSampleTheSharedEdgeIdentically();
+    testSphericalHeightHasNoLatitudeStretch();
+}

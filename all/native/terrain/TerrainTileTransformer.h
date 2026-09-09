@@ -78,6 +78,7 @@ namespace massif {
         int getMinZoom() const { return _minZoom; }
 
         virtual bool isElevationBased() const override { return true; }
+        virtual bool isSpherical() const override { return _base->isSpherical(); }
 
         virtual cglib::vec3<double> calculateTileOrigin(const vt::TileId& tileId) const override;
         virtual cglib::bbox3<double> calculateTileBBox(const vt::TileId& tileId) const override;

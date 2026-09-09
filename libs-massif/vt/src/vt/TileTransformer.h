@@ -49,6 +49,11 @@ namespace massif::vt {
         // the terrain is switched, and the tile caches are dropped with it.
         virtual bool isElevationBased() const { return false; }
 
+        // True when the tile surface is a SPHERE rather than the Mercator plane. The terrain
+        // displacement needs it: a height is radial and carries no Mercator stretch, and tile-local
+        // xy is no longer the tile's unit square, so the DEM lookup cannot use it.
+        virtual bool isSpherical() const { return false; }
+
         virtual cglib::vec3<double> calculateTileOrigin(const TileId& tileId) const = 0;
         virtual cglib::bbox3<double> calculateTileBBox(const TileId& tileId) const = 0;
         virtual cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale) const = 0;
@@ -130,6 +135,8 @@ namespace massif::vt {
 
         explicit SphericalTileTransformer(float scale) : _scale(scale) { }
         virtual ~SphericalTileTransformer() = default;
+
+        virtual bool isSpherical() const override { return true; }
 
         float getDivideThreshold() const { return _divideThreshold; }
         void setDivideThreshold(float divideThreshold) { _divideThreshold = divideThreshold; }

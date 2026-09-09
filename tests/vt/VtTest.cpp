@@ -22,6 +22,7 @@ void testExtrusionEmissive();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 void testSpanResolver();
+void testSphericalTerrain();
 
 int main() {
     testPlateBitmap();
@@ -40,6 +41,7 @@ int main() {
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
     testSpanResolver();
+    testSphericalTerrain();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

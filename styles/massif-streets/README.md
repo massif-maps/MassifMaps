@@ -109,6 +109,13 @@ all, so the POI layers follow **Liberty**'s three rank bands instead: `rank < 7`
 from z16, `>= 20` from z17, one bracketed pair of tests each. Liberty's italic face for them is
 taken as well — it is the one thing on the map that is not a road, and it should not read like one.
 
+Their icons are **Maki**, the CC0 set both references descend from, vendored under `sprite-src/poi/`
+and renamed from Maki's hyphens to the OMT `class` they answer to (`art-gallery` → `art_gallery`),
+with eight that do not line up mapped by hand — `rail` for `railway`, `toilet` for `toilets`,
+`doctor` for `doctors`, and so on. Named by the class, `icon-image` is a plain `["get", "class"]`
+rather than a ninety-branch table, which the converter resolves through one style parameter per
+sprite. A class with no drawing simply draws its label, which is what Liberty does too.
+
 ## Where this style departs from the references
 
 The preview compares against OpenFreeMap Liberty and Mapbox Standard, and most of what differs
@@ -153,17 +160,18 @@ the whole filter regardless, since each attachment is then one bracketed test an
 ## Licensing
 
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
-domain. Everything else here is drawn for this project. No MapTiler or Mapbox style is copied.
+domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki), **CC0** — a public-domain
+dedication, so it carries no attribution requirement and no share-alike; it is credited here because
+it is worth crediting, not because it must be. Everything else is drawn for this project. No
+MapTiler or Mapbox **style** is copied.
 
 ## Owed
 
 - `glyphs` points at OpenFreeMap's font server, which is what MapLibre reads. The SDK side no
   longer needs it: `fonts/NotoSans-Bold.ttf` ships with the style and `--fonts fonts` wires it
   through `project.json`.
-- **A POI is a name with no icon.** The sprite holds shields and nothing else, and both references
-  mark a POI with a glyph from an icon set — Liberty names one per OMT `class`/`subclass`, Standard
-  one per `maki`. Until that set is drawn, the label carries the point alone, so the transit POIs
-  Liberty colours blue and offsets beside their icon are not split out here either.
+- **A transit POI is not coloured or set beside its icon.** Liberty gives `airport`/`bus`/`rail`
+  their own layer, in blue with the label to the right; here they take the ordinary POI treatment.
 - The country's colour needs `iso_a2` on `transportation_name`, and neither tileset carries it, so
   every plate is still drawn neutral in the preview — see
   [what the style needs from the tileset](../../docs/contributing/tileset-asks.md). The branches

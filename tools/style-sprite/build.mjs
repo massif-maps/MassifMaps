@@ -75,7 +75,12 @@ function scaleBoxes(meta, ratio) {
 
 function build(srcDir, outDir, name) {
     const manifest = JSON.parse(readFileSync(join(srcDir, 'manifest.json'), 'utf8'));
-    const files = readdirSync(srcDir).filter((f) => f.endsWith('.svg')).sort();
+    // One level of folders, so a sheet of a hundred POI glyphs does not sit loose beside the
+    // shields. The sprite NAME is still the bare filename - the folder groups the sources only.
+    const files = readdirSync(srcDir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory()
+        ? readdirSync(join(srcDir, entry.name)).filter((f) => f.endsWith('.svg'))
+            .map((f) => join(entry.name, f))
+        : entry.name.endsWith('.svg') ? [entry.name] : [])).sort();
     if (!files.length) throw new Error(`no SVG in ${srcDir}`);
     mkdirSync(outDir, { recursive: true });
 

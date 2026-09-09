@@ -2613,6 +2613,25 @@
         ]
       ],
       "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
         "text-field": [
           "coalesce",
           [
@@ -2629,7 +2648,12 @@
         ],
         "text-size": 11,
         "text-max-width": 9,
-        "text-padding": 2
+        "text-padding": 2,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.7
+        ]
       },
       "paint": {
         "text-color": "hsl(0, 0%, 40%)",
@@ -2663,6 +2687,25 @@
         ]
       ],
       "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
         "text-field": [
           "coalesce",
           [
@@ -2679,7 +2722,12 @@
         ],
         "text-size": 12,
         "text-max-width": 9,
-        "text-padding": 2
+        "text-padding": 2,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.7
+        ]
       },
       "paint": {
         "text-color": "hsl(0, 0%, 40%)",
@@ -2705,6 +2753,25 @@
         ]
       ],
       "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
         "text-field": [
           "coalesce",
           [
@@ -2721,7 +2788,12 @@
         ],
         "text-size": 12,
         "text-max-width": 9,
-        "text-padding": 2
+        "text-padding": 2,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.7
+        ]
       },
       "paint": {
         "text-color": "hsl(0, 0%, 40%)",

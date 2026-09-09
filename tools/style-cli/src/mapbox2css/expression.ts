@@ -176,7 +176,11 @@ export function translateExpression(expr: Json, notes?: string[]): string {
                 .reduce((acc, part) => `concat(${acc}, ${part})`);
 
         case 'coalesce':
-            return args.map((a) => `(${translateExpression(a as Json)})`).join(' ?? ');
+            // Parenthesised WHOLE: `??` sits in the grammar's term0 with && and ||, so it binds
+            // LOOSER than a comparison (CartoCSSParser, term0/term1). Left bare, `[x] ?? '' = 'y'`
+            // parses as `[x] ?? ('' = 'y')` - true for any feature carrying the field, which
+            // silently passed every filter written that way.
+            return `(${args.map((a) => `(${translateExpression(a as Json)})`).join(' ?? ')})`;
 
         // ["format", section, options, section, options, …]. The per-section options are the rich
         // part - a font, a scale, a colour for that run alone - and CartoCSS styles the whole

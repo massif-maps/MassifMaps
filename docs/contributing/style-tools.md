@@ -1300,6 +1300,19 @@ Making the casing ONE unsplit rule instead of seven looks like a free win and is
 2.5M geometry indices a frame against 5.2k, and 44 ms a frame against 32. Unexplained; do not
 retry it without a bench.
 
+## `??` binds looser than a comparison
+
+CartoCSSParser puts `??` in term0, with `&&` and `||`; the comparisons are in term1 and bind
+TIGHTER. So `[x] ?? '' = 'y'` parses as `[x] ?? ('' = 'y')` - the coalesce of a field with a
+boolean, which is truthy for any feature that carries the field at all.
+
+Emitted bare, that made every filter written over a possibly-absent field pass EVERYTHING, silently:
+motorway exits (`subclass = 'junction'`) drew as road shields, and the guard excluding US networks
+became `!([network] ?? false || ...)`, false for every road that had a network - so on a source
+carrying `network` no road shield drew at all, while the same style was fine on a source without it.
+
+A coalesce is therefore parenthesised WHOLE, not just per operand.
+
 ## A prefix is a regex, in a match as well as an ==
 
 A style picks a road shield's colour from the first letter of its ref - `A` is an autoroute, `D` a

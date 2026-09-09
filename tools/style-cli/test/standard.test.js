@@ -285,7 +285,7 @@ test('a format run keeps its text and drops the per-section styling', () => {
     const label = (field) => convert({ layers: [{ id: 'poi', type: 'symbol', 'source-layer': 'poi_label',
         layout: { 'text-field': field } }] }, TABLE, { variables: false }).mss;
     assert.match(label(['format', ['coalesce', ['get', 'name_en'], ['get', 'name']], {}]),
-        /text-name: \(\[name_en\]\) \?\? \(\[name\]\);/);
+        /text-name: \(\(\[name_en\]\) \?\? \(\[name\]\)\);/);
     assert.match(label(['format', ['get', 'a'], {}, ' ', {}, ['get', 'b'], {}]),
         /text-name: concat\(concat\(\[a\], ' '\), \[b\]\);/);
 });

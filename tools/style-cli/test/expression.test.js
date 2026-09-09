@@ -291,10 +291,21 @@ test('a match on a sliced prefix becomes one regex per branch', () => {
     const out = translateExpression(['match',
         ['upcase', ['slice', ['coalesce', ['get', 'ref'], ''], 0, 1]],
         'A', '#ff0000', 'D', '#ffcc00', '#ffffff']);
-    assert.match(out, /uppercase\(\(\[ref\]\) \?\? \(''\)\) =~ 'A\.\*'/);
+    assert.match(out, /uppercase\(\(\(\[ref\]\) \?\? \(''\)\)\) =~ 'A\.\*'/);
     assert.match(out, /=~ 'D\.\*'/);
     assert.ok(out.includes('#ff0000') && out.includes('#ffcc00') && out.includes('#ffffff'));
 
     // A label that cannot be a prefix of that length never matches, and says so.
     assert.match(translateExpression(['match', ['slice', ['get', 'ref'], 0, 1], 'AB', 1, 0]), /false/);
+});
+
+test('a coalesce is parenthesised whole, because ?? binds looser than a comparison', () => {
+    // CartoCSSParser puts ?? in term0 with && and ||, and comparisons in term1 - so `[x] ?? '' =
+    // 'y'` parses as `[x] ?? ('' = 'y')`, true for ANY feature carrying the field. Bare, it made
+    // every filter written that way pass everything: motorway exits drew as road shields, and a
+    // guard on `network` excluded every road that had one.
+    const eq = translateExpression(['==', ['coalesce', ['get', 'subclass'], ''], 'junction']);
+    assert.equal(eq, "((([subclass]) ?? ('')) = 'junction')");
+    // The parens have to sit OUTSIDE the ??, not just around each operand.
+    assert.ok(!/\[subclass\]\) \?\? \(''\) =/.test(eq), `precedence lost: ${eq}`);
 });

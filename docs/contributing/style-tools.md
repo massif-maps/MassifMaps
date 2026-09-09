@@ -1300,6 +1300,18 @@ Making the casing ONE unsplit rule instead of seven looks like a free win and is
 2.5M geometry indices a frame against 5.2k, and 44 ms a frame against 32. Unexplained; do not
 retry it without a bench.
 
+## A prefix is a regex, in a match as well as an ==
+
+A style picks a road shield's colour from the first letter of its ref - `A` is an autoroute, `D` a
+departmental road - written `["match", ["upcase", ["slice", ref, 0, 1]], "A", ..., "D", ...]`.
+CartoCSS has no substring, but `=~` is a full `std::regex_match` (`Predicate::applyOp`), so a prefix
+is `A.*`. `==` and `in` already took that path; `match` did not, and threw on its own input - which
+dropped the plate colour for every country and left every shield on the neutral plate.
+
+`upcase` folds onto the WHOLE string rather than the slice: `uppercase([ref]) =~ 'A.*'` says the
+same thing about a prefix, and leaves a shape the regex can take. A label that is not a string of
+the slice's own length can never match and becomes `false`.
+
 ## A plate's border is measured off the raster, ramp included
 
 `describeFlatPlate` reads a shield plate's fill, border and radius off the artwork, so the SDK can

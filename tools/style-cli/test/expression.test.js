@@ -283,3 +283,18 @@ test('the zoom shift follows the tile draw size the style will be drawn at', () 
     }
     assert.equal(translateExpression(['zoom']), '([view::zoom] - 1)');
 });
+
+test('a match on a sliced prefix becomes one regex per branch', () => {
+    // How a style picks a road shield's colour: the first letter of the ref says which network it
+    // is. CartoCSS has no substring, so each label is the same prefix regex `==` already used -
+    // and upcase folds onto the whole string, which says the same thing for a prefix.
+    const out = translateExpression(['match',
+        ['upcase', ['slice', ['coalesce', ['get', 'ref'], ''], 0, 1]],
+        'A', '#ff0000', 'D', '#ffcc00', '#ffffff']);
+    assert.match(out, /uppercase\(\(\[ref\]\) \?\? \(''\)\) =~ 'A\.\*'/);
+    assert.match(out, /=~ 'D\.\*'/);
+    assert.ok(out.includes('#ff0000') && out.includes('#ffcc00') && out.includes('#ffffff'));
+
+    // A label that cannot be a prefix of that length never matches, and says so.
+    assert.match(translateExpression(['match', ['slice', ['get', 'ref'], 0, 1], 'AB', 1, 0]), /false/);
+});

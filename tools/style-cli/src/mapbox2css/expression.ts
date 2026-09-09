@@ -258,7 +258,7 @@ export function translateExpression(expr: Json, notes?: string[]): string {
             return translateCase(args as Json[]);
 
         case 'match':
-            return translateMatch(args as Json[]);
+            return translateMatch(args as Json[], notes);
 
         case 'step':
             return translateStep(args as Json[]);
@@ -324,9 +324,21 @@ export function translateExpression(expr: Json, notes?: string[]): string {
  * no regex equivalent and is left to be refused.
  */
 function sliceSource(node: Json): { of: string; length: number } | null {
+    // A style upcases the prefix before comparing it. Case-folding the WHOLE string and matching
+    // the prefix against it says the same thing, and leaves a shape the regex below can take.
+    if (Array.isArray(node) && node.length === 2 && typeof node[0] === 'string' && node[0] in UNARY_FN) {
+        const inner = sliceSource(node[1] as Json);
+        return inner === null ? null : { of: `${UNARY_FN[node[0]]}(${inner.of})`, length: inner.length };
+    }
     if (!Array.isArray(node) || node[0] !== 'slice' || node.length !== 4) return null;
     if (node[2] !== 0 || typeof node[3] !== 'number') return null;
     return { of: translateExpression(node[1] as Json), length: node[3] };
+}
+
+/** One label of a match over a slice, as the prefix regex a CartoCSS `=~` can take. */
+function prefixLabel(sliced: { of: string; length: number }, label: Json): string {
+    if (typeof label !== 'string' || label.length !== sliced.length) return 'false';
+    return `(${sliced.of} =~ '${escapeRegex(label)}.*')`;
 }
 
 /** `slice(x, 0, n) == 'PREFIX'` as a full-regex match, or null when it is not that shape. */
@@ -367,13 +379,20 @@ function translateCase(args: Json[]): string {
  * ["match", input, label, value, ..., fallback]. CartoCSS has no match over an arbitrary input, so
  * this expands to equality ternaries. Multi-label branches (a label array) expand to an or-chain.
  */
-function translateMatch(args: Json[]): string {
+function translateMatch(args: Json[], notes?: string[]): string {
     if (args.length < 4 || args.length % 2 !== 0) throw new Untranslatable('malformed match');
-    const input = translateExpression(args[0]);
+    // Matching on a PREFIX is how a style picks a road shield's colour from its ref - the first
+    // letter says which network it is. CartoCSS has no substring, so each label becomes the same
+    // regex `==` uses; without it every branch fell through and every country took the fallback.
+    const sliced = sliceSource(args[0]);
+    if (sliced !== null) notes?.push(`slice(${sliced.of}, 0, ${sliced.length}) matched as a regex prefix`);
+    const input = sliced === null ? translateExpression(args[0]) : null;
     let out = translateExpression(args[args.length - 1]);
     for (let i = args.length - 3; i >= 1; i -= 2) {
         const labels = Array.isArray(args[i]) ? (args[i] as Json[]) : [args[i]];
-        const test = labels.map((l) => `${input} = ${translateExpression(l)}`).join(' || ');
+        const test = labels.map((l) => (sliced !== null
+            ? prefixLabel(sliced, l)
+            : `${input} = ${translateExpression(l)}`)).join(' || ');
         out = `((${test}) ? ${translateExpression(args[i + 1])} : ${out})`;
     }
     return out;

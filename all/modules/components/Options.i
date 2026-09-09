@@ -108,6 +108,7 @@
 %std_exceptions(massif::Options::setPanBounds)
 %ignore massif::Options::Options;
 %ignore massif::Options::getProjectionSurface;
+%ignore massif::Options::getTileTransformer;
 %ignore massif::Options::getSkyBitmap;
 %ignore massif::Options::getAdjustedInternalPanBounds;
 %ignore massif::Options::OnChangeListener;

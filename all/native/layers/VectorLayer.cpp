@@ -367,7 +367,9 @@ namespace massif {
     
     std::shared_ptr<ProjectionSurface> VectorLayer::getElementProjectionSurface(const std::shared_ptr<ProjectionSurface>& baseProjectionSurface) const {
         std::shared_ptr<Options> options = getOptions();
-        if (!options || !baseProjectionSurface) {
+        // PLANAR only: TerrainProjectionSurface picks through ElevationManager::intersectRay, which
+        // marches the height field in the planar frame and answers nonsense on a sphere.
+        if (!options || !baseProjectionSurface || options->getRenderProjectionMode() != RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
             return baseProjectionSurface;
         }
         std::shared_ptr<TerrainOptions> terrainOptions = options->getTerrainOptions();

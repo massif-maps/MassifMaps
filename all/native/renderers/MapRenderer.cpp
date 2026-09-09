@@ -1018,10 +1018,16 @@ namespace massif {
 
             // Terrain: extend view distances by the terrain height range and keep
             // the camera above the terrain surface.
+            // PLANAR only: everything below reads focusPos.xy and cameraPos.y as INTERNAL
+            // coordinates, which they are on a plane and are not on a sphere, where they are a
+            // point in 3D. Lifting the focus by a height looked up at a sphere's x/y is what makes
+            // the focus point and the zoom go wrong there. See docs/internals/rendering/18-globe.md.
             std::shared_ptr<ElevationManager> elevationManager;
-            if (auto terrainOptions = _options->getTerrainOptions()) {
-                if (terrainOptions->isEnabled()) {
-                    elevationManager = terrainOptions->getElevationManager();
+            if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+                if (auto terrainOptions = _options->getTerrainOptions()) {
+                    if (terrainOptions->isEnabled()) {
+                        elevationManager = terrainOptions->getElevationManager();
+                    }
                 }
             }
             if (elevationManager) {
@@ -1553,7 +1559,12 @@ namespace massif {
     }
 
     bool MapRenderer::updateTerrainFlatten(float deltaSeconds) {
-        std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
+        // PLANAR only: AutoFlatten::parallax compares raw world lengths, and the globe's world is
+        // twice the plane's scale, so every parallax there reads double (18-globe.md).
+        std::shared_ptr<TerrainOptions> terrainOptions;
+        if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+            terrainOptions = _options->getTerrainOptions();
+        }
         if (!terrainOptions || !terrainOptions->isEnabled()) {
             return false;
         }

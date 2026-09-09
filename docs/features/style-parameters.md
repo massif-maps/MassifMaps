@@ -85,7 +85,8 @@ decoder.setStyleParameter("poi_colors", "{\"restaurant\":\"#c0392b\",\"cafe\":\"
 
 `get(table, key)` takes a member by name from an object or an element by index from an array, and is
 unset when the key is missing — so the third argument is what you usually want. `getStyleParameter`
-returns a table as JSON.
+returns a table as JSON, and a table default is carried as JSON through the compiled Mapnik XML too,
+so a style precompiled with `css2xml` declares its tables like any other parameter.
 
 ## What a change costs
 

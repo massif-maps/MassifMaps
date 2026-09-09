@@ -63,7 +63,7 @@ namespace massif::mvt {
             pugi::xml_node styleParamNode = styleParamsNode.append_child("StyleParameter");
             styleParamNode.append_attribute("name").set_value(styleParam.getName().c_str());
             styleParamNode.append_attribute("type").set_value(generateTypeString(styleParam.getDefaultValue()).c_str());
-            styleParamNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(styleParam.getDefaultValue()).c_str());
+            styleParamNode.append_attribute("value").set_value(generateValueString(styleParam.getDefaultValue()).c_str());
             if (styleParam.selectsFeatures()) {
                 styleParamNode.append_attribute("selects").set_value(true);
             }
@@ -71,7 +71,7 @@ namespace massif::mvt {
             for (auto it2 = styleParam.getEnumMap().begin(); it2 != styleParam.getEnumMap().end(); it2++) {
                 pugi::xml_node valueNode = styleParamNode.append_child("Value");
                 valueNode.append_attribute("id").set_value(it2->first.c_str());
-                valueNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(it2->second).c_str());
+                valueNode.append_attribute("value").set_value(generateValueString(it2->second).c_str());
             }
         }
 
@@ -194,5 +194,10 @@ namespace massif::mvt {
             _logger->write(Logger::Severity::WARNING, "Unsupported value type");
         }
         return typeString;
+    }
+
+    std::string MapGenerator::generateValueString(const Value& value) const {
+        // A table has no scalar reading, so it is written as the JSON the parser reads back.
+        return isContainerValue(value) ? valueToJSON(value) : ValueConverter<std::string>::convert(value);
     }
 }

@@ -2200,6 +2200,18 @@ const VARIABLE_ANCHORS = new Set([
 ]);
 
 /**
+ * The two spellings are OPPOSITES. MapBox names the part of the TEXT nearest the anchor, so
+ * `bottom` puts the text ABOVE the point; the SDK names the SIDE the text is laid out on
+ * (`vt::LabelAnchor`, "which side of its anchor a label's text is laid out on"), so `bottom` puts it
+ * BELOW. Carried across name-for-name, every anchored label sat on the wrong side of its icon - and
+ * it read as correct in one pane at a time, since the two errors cancel when only one is looked at.
+ */
+function oppositeAnchor(anchor: string): string {
+    const flip: Record<string, string> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+    return anchor.split('-').map((part) => flip[part] ?? part).join('');
+}
+
+/**
  * MapBox tries each of `text-variable-anchor` in turn and keeps the first side the label fits on,
  * falling back to the icon alone when `text-optional` allows it. `ShieldSymbolizer` does the same
  * thing from the same list, so the four properties that describe it map straight across - all of
@@ -2228,7 +2240,7 @@ function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage, opti
             coverage.drop('text-variable-anchor', 'unknown anchor in the list', layer.id);
         }
         if (anchors.length) {
-            out.push(`shield-anchors: '${anchors.map((a) => a.replace('-', '')).join(',')}';`);
+            out.push(`shield-anchors: '${anchors.map(oppositeAnchor).join(',')}';`);
             coverage.emit('shield-anchors');
         }
     }

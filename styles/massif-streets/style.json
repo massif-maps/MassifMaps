@@ -2348,12 +2348,13 @@
         "text-max-width": 9,
         "text-padding": 2,
         "text-variable-anchor": [
-          "bottom",
-          "right",
-          "left"
+          "top",
+          "left",
+          "right"
         ],
         "text-radial-offset": 1.0,
-        "text-optional": true
+        "text-optional": true,
+        "text-justify": "auto"
       },
       "paint": {
         "text-color": "hsl(203, 7%, 40%)",
@@ -2424,12 +2425,13 @@
         "text-max-width": 9,
         "text-padding": 2,
         "text-variable-anchor": [
-          "bottom",
-          "right",
-          "left"
+          "top",
+          "left",
+          "right"
         ],
         "text-radial-offset": 1.0,
-        "text-optional": true
+        "text-optional": true,
+        "text-justify": "auto"
       },
       "paint": {
         "text-color": "hsl(203, 7%, 40%)",
@@ -2492,12 +2494,13 @@
         "text-max-width": 9,
         "text-padding": 2,
         "text-variable-anchor": [
-          "bottom",
-          "right",
-          "left"
+          "top",
+          "left",
+          "right"
         ],
         "text-radial-offset": 1.0,
-        "text-optional": true
+        "text-optional": true,
+        "text-justify": "auto"
       },
       "paint": {
         "text-color": "hsl(203, 7%, 40%)",

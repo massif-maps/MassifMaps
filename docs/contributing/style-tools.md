@@ -1283,6 +1283,23 @@ text-placement-priority: (11200000 - (0 + [rank]));
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
 
+## Folding a casing and ordering roads do not mix
+
+`--fold-casings` puts the casing in the fill rule, which is right while the road is ONE rule: the
+renderer draws a `line-border` from the same buffer, one draw before the fill. The sort-key
+expansion above makes seven rules of it, and each then draws its own casing — over the fill of the
+road beside it, which is the one thing a casing LAYER never did. It is the only difference left
+between a converted Massif Streets and the maplibre render of its source.
+
+So the fold SKIPS a pair whose fill states a `line-sort-key`, and reports it. Those roads convert
+as seven casing rules followed by seven fill rules: every casing before every fill, mapbox's order.
+It costs a second pass over the road geometry — measured at +0.64 ms of the `layers` section on the
+Crosscall, against the folded rules it replaces.
+
+Making the casing ONE unsplit rule instead of seven looks like a free win and is not: measured at
+2.5M geometry indices a frame against 5.2k, and 44 ms a frame against 32. Unexplained; do not
+retry it without a bench.
+
 ## A zoom stop is relative to a tile size
 
 The SDK's zoom number sits `log2(512 / TileDrawSize)` levels above MapBox's — a level at the default

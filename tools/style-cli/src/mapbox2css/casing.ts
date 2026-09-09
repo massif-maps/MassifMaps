@@ -49,14 +49,24 @@ function pairs(casing: MapboxLayer, fill: MapboxLayer): boolean {
  * Rewrites the fill of every foldable pair to carry `line-border-*`, and hides the casing. The
  * array keeps its length and order: callers index the original `style.layers` by position.
  */
-export function foldCasings(layers: MapboxLayer[]): { layers: MapboxLayer[]; folded: FoldedCasing[] } {
+export function foldCasings(layers: MapboxLayer[]): { layers: MapboxLayer[]; folded: FoldedCasing[]; skipped: FoldedCasing[] } {
     const out = layers.slice();
     const folded: FoldedCasing[] = [];
+    const skipped: FoldedCasing[] = [];
     const taken = new Set<number>();
     for (let i = 0; i < out.length; i++) {
         if (taken.has(i)) continue;
         for (let j = i + 1; j < out.length; j++) {
             if (taken.has(j) || !pairs(out[i], out[j])) continue;
+            // A sort key turns the fill into one rule per key value, and a folded casing then draws
+            // per class - over the fill of the road beside it, which is the very thing the casing
+            // LAYER avoided. Left unfolded, so the casings stay one rule under all of them.
+            if (out[j].layout?.['line-sort-key'] !== undefined) {
+                skipped.push({ casing: out[i].id, fill: out[j].id });
+                taken.add(i);
+                taken.add(j);
+                break;
+            }
             const casing = (out[i].paint ?? {}) as Record<string, Json>;
             const fill = (out[j].paint ?? {}) as Record<string, Json>;
             out[j] = { ...out[j], paint: { ...fill,
@@ -72,5 +82,5 @@ export function foldCasings(layers: MapboxLayer[]): { layers: MapboxLayer[]; fol
             break;
         }
     }
-    return { layers: out, folded };
+    return { layers: out, folded, skipped };
 }

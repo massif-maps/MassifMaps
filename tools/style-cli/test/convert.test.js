@@ -16,6 +16,7 @@ useMemorySpriteHost();
 /** These tests assert on the translated literals, so they read the style before the palette
   * pass moves them out - see variables.test.js for the hoisting itself. */
 const NO_PALETTE = { variables: false };
+const NO_PALETTE_FOLD = { variables: false, foldCasings: true };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const style = JSON.parse(readFileSync(join(HERE, 'fixtures', 'style.json'), 'utf8'));
@@ -188,4 +189,28 @@ test("a mapbox:// sprite names an API URL, since nothing can fetch that scheme",
     assert.equal(resolveSpriteUrl('mapbox://sprites/mapbox/standard/7ixcpyhbhz67em71mmpln1klo'),
         'https://api.mapbox.com/styles/v1/mapbox/standard/sprite');
     assert.equal(resolveSpriteUrl('https://example.com/sprite'), 'https://example.com/sprite');
+});
+
+test('--fold-casings leaves a pair alone when the fill orders its own features', () => {
+    const pair = { layers: [
+        { id: 'road-casing', type: 'line', source: 'osm', 'source-layer': 'transportation',
+          paint: { 'line-color': '#c08a3e', 'line-width': 8 } },
+        { id: 'road-fill', type: 'line', source: 'osm', 'source-layer': 'transportation',
+          paint: { 'line-color': '#ffffff', 'line-width': 5 } },
+    ] };
+    // No sort key: the pair folds, and one rule draws the casing from the fill's own buffer.
+    assert.match(convert(pair, table, NO_PALETTE_FOLD).mss, /line-border-width: \(\(8 - 5\) \/ 2\);/);
+
+    // With one, the fill becomes a rule per class and a folded casing would draw over the road
+    // beside it, so the fold is skipped and the casing keeps its own rules - all before the fills.
+    pair.layers[1].layout = { 'line-sort-key': ['match', ['get', 'class'], 'motorway', 2, 1] };
+    const ordered = convert(pair, table, NO_PALETTE_FOLD).mss;
+    assert.ok(!ordered.includes('line-border-width'));
+    // Whatever each side expands into, every casing rule comes before every fill rule - which is
+    // the ordering a mapbox casing LAYER gives, and the whole point of not folding here.
+    const rules = ordered.split('\n').filter((l) => l.startsWith('#transportation'));
+    const lastCasing = rules.findLastIndex((r) => r.includes('::road_casing'));
+    const firstFill = rules.findIndex((r) => r.includes('::road_fill'));
+    assert.ok(lastCasing >= 0 && firstFill >= 0);
+    assert.ok(lastCasing < firstFill, 'a casing rule is emitted after a fill rule');
 });

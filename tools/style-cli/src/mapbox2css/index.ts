@@ -411,7 +411,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         return { ...folded, layout } as MapboxLayer;
     });
     if (options.foldCasings) {
-        const { layers: merged, folded } = foldCasings(layers);
+        const { layers: merged, folded, skipped } = foldCasings(layers);
+        if (skipped.length > 0) {
+            coverage.approximate(`${skipped.length} casing layer(s) left unfolded because their fill ` +
+                `states a line-sort-key (${skipped.map((f) => f.fill).join(', ')}); folded, the casing ` +
+                'would draw per class and land on the fill of the road beside it');
+        }
         layers.splice(0, layers.length, ...merged);
         if (folded.length > 0) {
             coverage.approximate(`${folded.length} casing layer(s) folded into their fill as line-border-* ` +

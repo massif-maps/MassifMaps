@@ -4,8 +4,8 @@ The MapLibre style JSON is the **source of truth**. The CartoCSS the SDK reads i
 with `massif-style mapbox2css --fold-casings --tile-draw-size 512 --fonts fonts`, and is never hand-edited; anything CartoCSS can
 express and MapLibre cannot goes in a hand-owned overlay beside the generated file.
 
-**Stage: road shields.** Roads, water and landcover are drawn as context so a shield has something
-to sit on — they are not the final design.
+**Stage: labels.** Road shields, road names and POI names are the drawn part; roads, water,
+landcover and buildings are context for them, not the final design.
 
 ```sh
 node ../../tools/style-sprite/build.mjs sprite-src sprite sprite   # after touching sprite-src/
@@ -102,6 +102,13 @@ INSIDE its filter, which is the one thing not taken: a filter that reads the zoo
 same gate is **one layer per class**, ordered least important first so the motorway's name is placed
 first and wins the collision.
 
+**POIs are the one thing Standard could not lend.** Its `poi-label` is built on `filterrank`,
+`sizerank` and `maki` — Mapbox's own tileset fields, none of which OpenMapTiles has — so its density
+gate, its size steps and its icon names all resolve to nothing here. OMT offers `rank` and that is
+all, so the POI layers follow **Liberty**'s three rank bands instead: `rank < 7` from z15, `7–20`
+from z16, `>= 20` from z17, one bracketed pair of tests each. Liberty's italic face for them is
+taken as well — it is the one thing on the map that is not a road, and it should not read like one.
+
 ## Where this style departs from the references
 
 The preview compares against OpenFreeMap Liberty and Mapbox Standard, and most of what differs
@@ -120,9 +127,10 @@ We want the POI. A shield repeats along its road and can be read a hundred metre
 is one place and is either drawn or lost. So **the POI layers go BELOW the shield layers** in
 `style.json` — later in the array is a higher index, a higher priority, and placement first.
 
-Not implemented: this style has no POI layers yet. It is written down here because the ordering is
-invisible in the output — nothing in the generated CartoCSS says "this was deliberate" — and the
-natural thing to do when adding POIs is to copy Liberty's order and inherit its answer.
+The POI layers are last in `style.json`, so the generated `text-placement-priority` runs 2.2M–2.4M
+against the shields' 1.6M–2.1M. The ordering is invisible in the output — nothing in the CartoCSS
+says "this was deliberate" — and the natural thing to do is to copy Liberty's order and inherit its
+answer.
 
 ## Written so the CartoCSS brackets
 
@@ -152,6 +160,10 @@ domain. Everything else here is drawn for this project. No MapTiler or Mapbox st
 - `glyphs` points at OpenFreeMap's font server, which is what MapLibre reads. The SDK side no
   longer needs it: `fonts/NotoSans-Bold.ttf` ships with the style and `--fonts fonts` wires it
   through `project.json`.
+- **A POI is a name with no icon.** The sprite holds shields and nothing else, and both references
+  mark a POI with a glyph from an icon set — Liberty names one per OMT `class`/`subclass`, Standard
+  one per `maki`. Until that set is drawn, the label carries the point alone, so the transit POIs
+  Liberty colours blue and offsets beside their icon are not split out here either.
 - The country's colour needs `iso_a2` on `transportation_name`, and neither tileset carries it, so
   every plate is still drawn neutral in the preview — see
   [what the style needs from the tileset](../../docs/contributing/tileset-asks.md). The branches

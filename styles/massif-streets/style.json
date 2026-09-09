@@ -3,7 +3,7 @@
   "name": "Massif Streets",
   "metadata": {
     "massif:schema": "openmaptiles",
-    "massif:stage": "road shields - roads are drawn as context, not as the final design"
+    "massif:stage": "roads, buildings and labels - drawn as context, not as the final design"
   },
   "sources": {
     "openmaptiles": {
@@ -2593,6 +2593,140 @@
       },
       "paint": {
         "text-color": "#4a463d"
+      }
+    },
+    {
+      "id": "poi-minor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          20
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 11,
+        "text-max-width": 9,
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "poi-mid",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          7
+        ],
+        [
+          "<",
+          [
+            "get",
+            "rank"
+          ],
+          20
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "poi-major",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "<",
+          [
+            "get",
+            "rank"
+          ],
+          7
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
       }
     }
   ]

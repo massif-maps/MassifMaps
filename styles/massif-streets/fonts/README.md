@@ -41,7 +41,5 @@ a four-glyph harfbuzz test stub, not a usable face. Noto is © Google, under the
 License 1.1 (<https://openfontlicense.org>).
 
 Keep this directory to the faces the style NAMES. Everything here is carried by every app that
-ships the style, and the web preview fetches it on load. The italic is the one face here ahead of
-its use: no layer names it yet, and it is carried so that the POI labels this style still owes have
-a face to land on instead of falling back to the regular one, the way the shields did before the
-bold shipped.
+ships the style, and the web preview fetches it on load. The bold draws the shields, the italic the
+POI labels.

@@ -55,8 +55,10 @@
     const show = () => {
       try {
         const [lon, lat] = pane.camera.focusPos;
+        // Reported as maplibre's BEARING, the negative of the SDK's rotation (see massif.mjs), so
+        // the four readouts can be compared straight across.
         readout.textContent = `z ${pane.camera.zoom.toFixed(2)}  ${lon.toFixed(5)}, ` +
-          `${lat.toFixed(5)}  rot ${pane.camera.rotation.toFixed(1)}  ` +
+          `${lat.toFixed(5)}  rot ${(-pane.camera.rotation).toFixed(1)}  ` +
           `tilt ${(90 - pane.camera.tilt).toFixed(1)}`;
       } catch (error) {
         readout.textContent = String(error && error.message || error);

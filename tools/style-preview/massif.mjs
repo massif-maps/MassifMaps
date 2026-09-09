@@ -80,8 +80,11 @@ export async function createMassifPane(canvas, base, source, camera, onError = (
         module,
         massif,
         camera: cam,
-        // positional, the way the demo calls it: position, zoom, rotation, tilt, climbHeight
+        // positional, the way the demo calls it: position, zoom, rotation, tilt, climbHeight.
+        // The two rotations are NEGATIVES of each other: maplibre's bearing 90 puts EAST up, the
+        // SDK's rotation 90 puts WEST up (BaseMapView::getRotation). Panes fed the raw bearing
+        // turned opposite ways.
         moveTo: ({ center, zoom, bearing = 0, pitch = 0 }) =>
-            massif.call(cam.handle, 'moveTo', [center, zoom, bearing, 90 - pitch, 0]),
+            massif.call(cam.handle, 'moveTo', [center, zoom, -bearing, 90 - pitch, 0]),
     };
 }

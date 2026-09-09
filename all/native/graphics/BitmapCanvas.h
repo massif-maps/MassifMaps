@@ -77,6 +77,7 @@ namespace massif {
         class AndroidImpl;
         class IOSImpl;
         class UWPImpl;
+        class WebImpl;
         
         std::unique_ptr<Impl> _impl;
     };

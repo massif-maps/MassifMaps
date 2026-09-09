@@ -474,14 +474,15 @@ public class DemoMap {
         compositeStatus = status.length() > 0 ? "slots: " + status : "slots: none";
         Log.i(TAG, compositeStatus + " | style layers: " + declared);
         if (missing) {
-            // A COMPILED Mapnik XML style (what a packaged osm.zip / osm folder usually contains)
-            // cannot declare these slots at all: the XML symbolizer set has no hillshade/raster
-            // config symbolizer, only CartoCSS has. Either ship the style as a CartoCSS PROJECT
-            // (project.json "layers" + '#hillshade { hillshade-... }' in the .mss, which
-            // DirAssetPackage reads straight from the folder), or use the inline style to test.
-            Log.w(TAG, "a slot is missing: the style declares no layer with that name. Compiled "
-                    + "Mapnik XML styles cannot declare hillshade/satellite slots - use a CartoCSS "
-                    + "project style (project.json + .mss) or switch the panel style to 'inline'");
+            // The style simply does not name that layer. A COMPILED Mapnik XML style carries these
+            // slots perfectly well - SymbolizerParser/SymbolizerGenerator both handle
+            // HillshadeConfigSymbolizer and ContourConfigSymbolizer, and css2xml emits them - so
+            // the fix is to ADD the layer, not to abandon the compiled style: put the name in the
+            // project.json "layers" array and give it a '#name { hillshade-... }' block, then
+            // recompile. A slot whose block sets no property at all resolves as invisible.
+            Log.w(TAG, "a slot is missing: the style declares no layer with that name. Add it to "
+                    + "the project.json \"layers\" array and give it a '#name { ... }' config block "
+                    + "(compiled Mapnik XML supports these too), or switch the panel style to 'inline'");
         }
     }
 

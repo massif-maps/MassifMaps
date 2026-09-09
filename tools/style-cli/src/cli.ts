@@ -4,7 +4,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { VARIABLES_FILE, convert } from './mapbox2css/index.js';
-import { loadSprites } from './mapbox2css/sprite.js';
+import { nodeSpriteHost } from './mapbox2css/node-host.js';
+import { loadSprites, setSpriteHost } from './mapbox2css/sprite.js';
 import type { Json, MapboxStyle, PropertyTable } from './mapbox2css/types.js';
 import { WasmMissing, runWasm, wasmAvailable } from './wasm.js';
 
@@ -92,6 +93,10 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             Needs --live-light
       --building-height-ramp  grow the extrusions in over a third of a zoom level where the
                             style states no fill-extrusion-vertical-scale of its own
+      --ao-follows-height   fade the ground AO on the same ramp that lays the buildings down as
+                            the camera tilts over, so a flattened city does not keep a dark ring
+                            around every footprint. Off by default: whether the contact shadow
+                            outlives the walls is the style's call, not the renderer's
       --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
                             marker-sdf; loses the zoom-driven size and the halo
       --fold-casings        fold a casing layer into the fill it runs under, as one
@@ -281,6 +286,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         haloEmissive: flags.has('halo-emissive') ? Number(flags.get('halo-emissive')) : undefined,
         geometryEmissive: flags.has('geometry-emissive') ? Number(flags.get('geometry-emissive')) : undefined,
         buildingHeightRamp: flags.has('building-height-ramp'),
+        aoFollowsHeight: flags.has('ao-follows-height'),
         config: parseConfig(args),
         presets: flags.has('no-presets') ? [] : undefined,
         flattenSdf: flags.has('sdf-flatten'),
@@ -345,6 +351,8 @@ async function mapbox2css(args: string[]): Promise<number> {
 }
 
 async function main(argv: string[]): Promise<number> {
+    // The slicer reads and writes through a host so it can also run in a browser; here it is node.
+    setSpriteHost(nodeSpriteHost);
     const [command, ...args] = argv;
     if (!command || command === '--help' || command === '-h' || command === 'help') {
         process.stdout.write(USAGE);

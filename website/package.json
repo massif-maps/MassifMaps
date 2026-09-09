@@ -5,7 +5,10 @@
   "description": "Documentation site for Massif Maps",
   "scripts": {
     "docusaurus": "docusaurus",
+    "prepare-site": "node scripts/prepare.mjs",
+    "prestart": "npm run prepare-site",
     "start": "docusaurus start",
+    "prebuild": "npm run prepare-site",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",

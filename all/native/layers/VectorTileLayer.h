@@ -98,7 +98,10 @@ namespace massif {
     
         /**
          * Returns the current display order of the buildings.
-         * @return The display order of the buildigns. Default is VECTOR_TILE_RENDER_ORDER_LAYER.
+         * @return The display order of the buildings. Default is VECTOR_TILE_RENDER_ORDER_LAST.
+         *
+         * LAST draws over the flat labels too, so a label that must clear a building is a BILLBOARD
+         * one - that pass runs after the buildings, and moving this order is not the mechanism.
          */
         VectorTileRenderOrder::VectorTileRenderOrder getBuildingRenderOrder() const;
         /**

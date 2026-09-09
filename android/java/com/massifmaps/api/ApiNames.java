@@ -110,6 +110,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> BASE_URL = MassifObject.key("baseURL");
     /** Returns whether the part of the curve below the horizon is drawn. */
     public static final MassifObject.Key<Boolean> BELOW_HORIZON_VISIBLE = MassifObject.key("belowHorizonVisible");
+    /** Returns the endianness of output format. */
+    public static final MassifObject.Key<Boolean> BIG_ENDIAN = MassifObject.key("bigEndian");
     /** Returns the billboard/label terrain occlusion state. */
     public static final MassifObject.Key<Boolean> BILLBOARD_OCCLUSION_ENABLED = MassifObject.key("billboardOcclusionEnabled");
     /** Returns the billboard/label terrain occlusion tolerance. */
@@ -171,6 +173,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> CLICK_HANDLER_LAYER_FILTER = MassifObject.key("clickHandlerLayerFilter");
     /** Returns the click info. */
     public static final MassifObject.Key<String> CLICK_INFO = MassifObject.key("clickInfo");
+    /** Returns how far a pointer may travel before a press stops counting as a click. */
+    public static final MassifObject.Key<Double> CLICK_MOVING_TOLERANCE = MassifObject.key("clickMovingTolerance");
     /** Returns the click position. */
     public static final MassifObject.Key<String> CLICK_POS = MassifObject.key("clickPos");
     /** Returns the click radius of the curve. */
@@ -608,6 +612,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> POSTCODE = MassifObject.key("postcode");
     /** Returns the state of the preloading flag of this layer. */
     public static final MassifObject.Key<Boolean> PRELOADING = MassifObject.key("preloading");
+    public static final MassifObject.Key<Long> PRELOADING_TILE_COUNT = MassifObject.key("preloadingTileCount");
     /** Returns wether to prevent duplicate elements */
     public static final MassifObject.Key<Boolean> PREVENT_DUPLICATES = MassifObject.key("preventDuplicates");
     public static final MassifObject.Key<String> PROFILE = MassifObject.key("profile");
@@ -950,6 +955,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> VIEW_STATE = MassifObject.key("viewState");
     /** Returns the visibility of the object. */
     public static final MassifObject.Key<Boolean> VISIBLE = MassifObject.key("visible");
+    /** How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. */
+    public static final MassifObject.Key<Long> VISIBLE_TILE_COUNT = MassifObject.key("visibleTileCount");
     /** Returns the visible zoom range of this layer. */
     public static final MassifObject.Key<String> VISIBLE_ZOOM_RANGE = MassifObject.key("visibleZoomRange");
     /** Returns the width of the bitmap. */
@@ -970,14 +977,19 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> ZOOM_GESTURES = MassifObject.key("zoomGestures");
     /** Gets the current zoom level bias for this layer. */
     public static final MassifObject.Key<Double> ZOOM_LEVEL_BIAS = MassifObject.key("zoomLevelBias");
+    /** Returns how many zoom levels the camera is offset from the tile-size convention. */
+    public static final MassifObject.Key<Double> ZOOM_OFFSET = MassifObject.key("zoomOffset");
     /** Returns the zoom range constraint. */
     public static final MassifObject.Key<String> ZOOM_RANGE = MassifObject.key("zoomRange");
 
     // --- methods ---------------------------------------------------------
 
     public static final String METHOD_ADD = "add";
+    public static final String METHOD_ADD_EXTERNAL_DATA_SOURCE = "addExternalDataSource";
+    public static final String METHOD_ADD_FALLBACK_FONT = "addFallbackFont";
     public static final String METHOD_ADD_FEATURE = "addFeature";
     public static final String METHOD_ADD_LOCALE = "addLocale";
+    public static final String METHOD_ADD_VECTOR_DATA_SOURCE = "addVectorDataSource";
     public static final String METHOD_CALCULATE_ADDRESSES = "calculateAddresses";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
     public static final String METHOD_CLEAR = "clear";
@@ -990,6 +1002,8 @@ public final class ApiNames {
     public static final String METHOD_GET = "get";
     public static final String METHOD_GET_ELEVATION = "getElevation";
     public static final String METHOD_GET_ELEVATIONS = "getElevations";
+    public static final String METHOD_GET_EXTERNAL_CHILD_LAYER = "getExternalChildLayer";
+    public static final String METHOD_GET_EXTERNAL_DATA_SOURCE_NAMES = "getExternalDataSourceNames";
     public static final String METHOD_GET_FEATURE = "getFeature";
     public static final String METHOD_GET_INSTRUCTION = "getInstruction";
     public static final String METHOD_GET_META_DATA_ELEMENT = "getMetaDataElement";
@@ -1002,15 +1016,19 @@ public final class ApiNames {
     public static final String METHOD_MOVE_TO = "moveTo";
     public static final String METHOD_REFRESH = "refresh";
     public static final String METHOD_REMOVE = "remove";
+    public static final String METHOD_REMOVE_EXTERNAL_DATA_SOURCE = "removeExternalDataSource";
     public static final String METHOD_REMOVE_FEATURE = "removeFeature";
     public static final String METHOD_SCREEN_TO_MAP = "screenToMap";
     public static final String METHOD_SET = "set";
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
+    public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_MAX_OVERZOOM_LEVEL = "setExternalDataSourceMaxOverzoomLevel";
+    public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_ZOOM_LEVEL_BIAS = "setExternalDataSourceZoomLevelBias";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
+    public static final String METHOD_SET_SUN_POSITION_FROM_TIME = "setSunPositionFromTime";
     public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";
     public static final String METHOD_STOP_ALL_DOWNLOADS = "stopAllDownloads";
     public static final String METHOD_STOP_FLIGHT = "stopFlight";
@@ -1083,6 +1101,7 @@ public final class ApiNames {
     public static final String TYPE_SEARCH_VECTORTILE = "vectortile";
     public static final String TYPE_SOURCE_ASSETS = "assets";
     public static final String TYPE_SOURCE_COMBINED = "combined";
+    public static final String TYPE_SOURCE_CONTOUR = "contour";
     public static final String TYPE_SOURCE_GEOJSON = "geojson";
     public static final String TYPE_SOURCE_HTTP = "http";
     public static final String TYPE_SOURCE_LOCAL = "local";

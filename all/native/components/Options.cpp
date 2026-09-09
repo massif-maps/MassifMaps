@@ -23,10 +23,12 @@ namespace massif {
         _renderProjectionMode(RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR),
         _debugTileBorders(false),
         _clickTypeDetection(true),
+        _clickMovingTolerance(DEFAULT_CLICK_MOVING_TOLERANCE),
         _doubleClickDetection(true),
         _longClickDuration(DEFAULT_LONG_CLICK_DURATION),
         _doubleClickMaxDuration(DEFAULT_DOUBLE_CLICK_MAX_DURATION),
         _tileDrawSize(256),
+        _zoomOffset(0.0f),
         // 0.5, not tangram's 1.0: half a nominal tile of screen area before the next zoom level is
         // used. Every bench and example screenshot in this repo was made with it.
         // docs/internals/rendering/02-tiles-lod.md.
@@ -199,6 +201,22 @@ namespace massif {
         }
         notifyOptionChanged("ClickTypeDetection");
     }
+
+    float Options::getClickMovingTolerance() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _clickMovingTolerance;
+    }
+
+    void Options::setClickMovingTolerance(float tolerance) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_clickMovingTolerance == tolerance) {
+                return;
+            }
+            _clickMovingTolerance = tolerance;
+        }
+        notifyOptionChanged("ClickMovingTolerance");
+    }
     
     bool Options::isDoubleClickDetection() const {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -262,6 +280,22 @@ namespace massif {
             _tileDrawSize = tileDrawSize;
         }
         notifyOptionChanged("TileDrawSize");
+    }
+
+    float Options::getZoomOffset() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _zoomOffset;
+    }
+
+    void Options::setZoomOffset(float offset) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_zoomOffset == offset) {
+                return;
+            }
+            _zoomOffset = offset;
+        }
+        notifyOptionChanged("ZoomOffset");
     }
 
     float Options::getTileLODFactor() const {
@@ -1091,6 +1125,7 @@ namespace massif {
     const Color Options::DEFAULT_AMBIENT_LIGHT_COLOR = Color(112, 112, 112, 255);
     const Color Options::DEFAULT_MAIN_LIGHT_COLOR = Color(143, 143, 143, 255);
     const MapVec Options::DEFAULT_MAIN_LIGHT_DIR = MapVec(0.35, 0.35, -0.87);
+    const float Options::DEFAULT_CLICK_MOVING_TOLERANCE = 32.0f;
 
     std::shared_ptr<Bitmap> Options::_DefaultBackgroundBitmap;
     

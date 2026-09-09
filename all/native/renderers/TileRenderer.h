@@ -172,7 +172,11 @@ namespace massif {
         bool onDrawFrame(float deltaSeconds, const ViewState& viewState);
         bool onDrawFrame3D(float deltaSeconds, const ViewState& viewState);
     
-        bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState);
+        /**
+         * Places this layer's labels. `finished` is cleared when the culler's slice ran out before
+         * this layer's labels did, so the caller knows to come back and resume the cycle.
+         */
+        bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
 
         // `spanReferenceTiles`: fetched unseen for a stranded bridge's chord, unioned by the
         // renderer and never drawn - see TileLayer::collectSpanReferenceTiles.
@@ -313,6 +317,7 @@ namespace massif {
         bool _terrainPaintEnabled = false; // this renderer shades the DEM instead of drawing tiles
         bool _terrainPaintFullDetail = true; // shade from the DEM's own max zoom, not the mesh's level
         bool prepareFrameUnsafe(float deltaSeconds, const ViewState& viewState); // caller holds _mutex
+        void pushTerrainDrapeState(); // caller holds _mutex
 
         bool _framePrepared = false;   // startFrame already ran this frame (cross-layer drape ordering)
         bool _framePrepareResult = false;
@@ -322,6 +327,9 @@ namespace massif {
         int _maxVertexTextureUnits = -1; // lazily queried GL capability (-1 = not queried yet)
         std::shared_ptr<ElevationTextureCache> _elevationTextureCache;
         unsigned int _elevationVersion = 0;
+        // The vt renderer + elevation source the extrusion provider was last pushed for: setting it
+        // invalidates every extrusion base, so it may only be pushed when one of the two changes.
+        std::pair<const void*, const void*> _extrusionProviderKey { nullptr, nullptr };
         std::optional<std::chrono::steady_clock::time_point> _lastSurfaceResetTime;
         std::shared_ptr<LabelOcclusionState> _labelOcclusionState;
 

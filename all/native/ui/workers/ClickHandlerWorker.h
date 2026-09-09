@@ -50,7 +50,6 @@ namespace massif {
         static const std::chrono::milliseconds DUAL_CLICK_END_DURATION;
         
         static const float DOUBLE_CLICK_TOLERANCE_INCHES;
-        static const float MOVING_TOLERANCE_INCHES;
         
         void run();
         

@@ -1,0 +1,296 @@
+.shell {
+  display: flex;
+  height: calc(100vh - var(--ifm-navbar-height));
+  min-height: 30rem;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #202020;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The map handles its own gestures; without this a drag scrolls the page instead. */
+  touch-action: none;
+}
+
+.overlay {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--ifm-global-radius);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font: 0.75rem/1.5 var(--ifm-font-family-monospace);
+  white-space: pre;
+  pointer-events: none;
+}
+
+.viewButtons {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 55%;
+  gap: 0.4rem;
+}
+
+.viewButtons button {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--ifm-global-radius);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.viewButtons button:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.viewButtons button.toggleOn {
+  background: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary-light);
+}
+
+.status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #e8e8e8;
+  text-align: center;
+}
+
+.status code {
+  color: #ffd479;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 26rem;
+  max-width: 45vw;
+  border-left: 1px solid var(--ifm-toc-border-color);
+  background: var(--ifm-background-surface-color);
+  overflow-y: auto;
+}
+
+.panelSection {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+}
+
+.panelSection h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.tab {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tabActive {
+  border-color: var(--ifm-color-primary);
+  background: var(--ifm-color-primary);
+  color: var(--ifm-color-primary-contrast-foreground, #fff);
+}
+
+.field {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.field input,
+.field select,
+.editor {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-size: 0.85rem;
+}
+
+.editor {
+  min-height: 18rem;
+  resize: vertical;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.note {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.error {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-contrast-foreground);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 996px) {
+  .shell {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .stage {
+    height: 60vh;
+  }
+
+  .panel {
+    flex: 1 1 auto;
+    max-width: none;
+    border-left: none;
+    border-top: 1px solid var(--ifm-toc-border-color);
+  }
+}
+
+/* Place search, over the map rather than in the panel: it is a map control, not a style setting. */
+.search {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  /* Half the stage at most: the view buttons sit at the other end of the same line. */
+  width: min(20rem, calc(50% - 1.5rem));
+  z-index: 1;
+}
+
+.search form {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-size: 0.85rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.search form button {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-color-primary);
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.results {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 16rem;
+  overflow-y: auto;
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.results li + li {
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.results button {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.results button:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.results span {
+  display: block;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.75rem;
+}
+
+.searchError {
+  margin: 0.35rem 0 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--ifm-global-radius);
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.checkbox {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.checkbox input {
+  margin: 0;
+}

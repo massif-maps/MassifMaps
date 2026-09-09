@@ -282,8 +282,8 @@ void testMoreStructs() {
     TEST_CHECK(StructCodec::decode(StructCodec::encode(curve), decodedCurve) &&
                decodedCurve.size() == 2 && decodedCurve[0] == curve[0] && decodedCurve[1] == curve[1],
                "a light curve round-trips");
-    TEST_CHECK(StructCodec::encode(curve).find("\"ambientColor\":\"#ff001438\"") != std::string::npos,
-               "and a stop's colours are written as #aarrggbb, which is what a style spells");
+    TEST_CHECK(StructCodec::encode(curve).find("\"ambientColor\":\"#001438ff\"") != std::string::npos,
+               "and a stop's colours are written as #rrggbbaa, which is what a style spells");
     // Lenient on the way IN, so an app may write any of the spellings it already uses elsewhere.
     LightStop stop;
     TEST_CHECK(StructCodec::decode("{\"sunAltitude\":10,\"ambientColor\":\"#abc\"}", stop) &&

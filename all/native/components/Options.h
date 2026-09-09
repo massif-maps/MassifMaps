@@ -270,6 +270,19 @@ namespace massif {
          * @param enabled The new state of the click type detection flag.
          */
         void setClickTypeDetection(bool enabled);
+
+        /**
+         * Returns how far a pointer may travel before a press stops counting as a click.
+         * @return The tolerance in density-independent pixels (dp). The default is 32.
+         */
+        float getClickMovingTolerance() const;
+        /**
+         * Sets how far a pointer may travel before a press stops counting as a click and the map
+         * starts panning. The default, 32 dp, is a finger-sized threshold; a mouse wants far less
+         * (maplibre uses 3 px), which is why a desktop or web host lowers it.
+         * @param tolerance The new tolerance in density-independent pixels (dp).
+         */
+        void setClickMovingTolerance(float tolerance);
     
         /**
          * Returns the double click detection state.
@@ -317,6 +330,22 @@ namespace massif {
          * @param tileDrawSize The new tile size in density-independent pixels (dp).
          */
         void setTileDrawSize(int tileDrawSize);
+
+        /**
+         * Returns how many zoom levels the camera is offset from the tile-size convention.
+         * @return The zoom offset in levels. The default is 0.
+         */
+        float getZoomOffset() const;
+        /**
+         * Sets how many zoom levels the camera is offset from the tile-size convention.
+         *
+         * The SDK calibrates on a 256-pixel tile, maplibre and mapbox-gl on a 512-pixel one, so an
+         * offset of 1 adopts theirs. It RENUMBERS and nothing else: label and line sizes do not
+         * move with it, which is why it is not just a bigger TileDrawSize. Changing it changes what
+         * getZoom() reports, so a stored camera and a visibleZoomRange move with it.
+         * @param offset The new zoom offset in levels. The default is 0.
+         */
+        void setZoomOffset(float offset);
 
         /**
          * Returns the factor on the screen size a tile may cover before it is refined.
@@ -875,6 +904,8 @@ namespace massif {
         static const Color DEFAULT_AMBIENT_LIGHT_COLOR;
         static const Color DEFAULT_MAIN_LIGHT_COLOR;
         static const MapVec DEFAULT_MAIN_LIGHT_DIR;
+        // 0.2 inch at 160 dpi, the finger-sized threshold this has always used.
+        static const float DEFAULT_CLICK_MOVING_TOLERANCE;
         
         void notifyOptionChanged(const std::string& optionName);
         
@@ -886,11 +917,13 @@ namespace massif {
     
         bool _debugTileBorders;
         bool _clickTypeDetection;
+        float _clickMovingTolerance;
         bool _doubleClickDetection;
         float _longClickDuration;
         float _doubleClickMaxDuration;
     
         int _tileDrawSize;
+        float _zoomOffset;
         float _tileLODFactor;
         float _tileLODMaxZoomLevelsOnScreen;
         float _tileLODTileCountRatio;

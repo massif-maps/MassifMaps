@@ -159,9 +159,10 @@ Through the facade it is one JSON property, `light.dayCycleLightStops`, a list o
    "sunColor": "#ff8a00", "sunIntensity": 0.6 }]
 ```
 
-Colours are written back as `#aarrggbb` and read leniently — `#rgb`, `#rrggbb`, `#aarrggbb`, or the
-plain ARGB number every other colour property carries. A stop with no `sunAltitude` is refused
-rather than defaulted; it would have no place on the curve.
+Colours are written back as `#rrggbbaa` and read leniently — `#rgb`, `#rgba`, `#rrggbb`,
+`#rrggbbaa`, or a plain ARGB number, the same spellings every colour property takes, and the same
+ones `mvt::parseCSSColor` gives a style sheet. A stop with no `sunAltitude` is refused rather than
+defaulted; it would have no place on the curve.
 
 The `day-cycle-light` gallery example is this, on two converted styles and two curves.
 
@@ -1038,6 +1039,24 @@ until a zoom out and back in**.
 - **The lighting resolve order.** `TileRenderer::onDrawFrame` resolves the lighting, and the drape
   bake runs *before* it, so on the first frame at a camera the intensity was still 0.
   `prepareFrameUnsafe` now pushes it, next to the view state it already pushed for the same reason.
+
+**Making the shadow follow the height is the STYLE's call, not the renderer's.** A building lies
+down under `building-height-scale` (the zoom ramp) and `building-height-view-scale` (the camera
+lying over), and a contact shadow left at full strength under a flattened city reads as a dark ring
+around every footprint - a stain rather than contact. The fix is one factor on `building-ao-intensity`,
+and it belongs in the style: both are `FloatFunctionProperty` expressions re-read every frame against
+the view (`VectorTileLayer::collectStyleEnvironment` evaluates them with the current `viewState`), so
+neither costs a re-decode, and a style that wants the shadow to outlive the walls simply leaves the
+factor out. `mapbox2css --ao-follows-height` emits it - opt-in, off by default:
+
+```
+building-ao-intensity: [param::building_ao] * (<the zoom ramp>) * (1 - ([param::building_tilt_drop] * 0.01) * linear([view::tilt], (80, 0), (90, 1)));
+```
+
+Coupling it inside `GLTileRenderer` was tried first and reverted - it forced the policy on every
+style with no way to decline. Note the AO GROUND RADIUS cannot follow: the capsule quad is
+tesselated at the style's radius in metres, so an expression over the view only takes effect on a
+re-decode. Intensity is the part that moves per frame.
 
 **The shadow is in the stack signature, not only the per-tile fingerprint**
 (`TileLayer::drapeStackSignature`). A drape tile is fingerprinted from render tiles *of its own

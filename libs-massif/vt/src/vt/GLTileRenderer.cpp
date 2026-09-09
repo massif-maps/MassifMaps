@@ -1,6 +1,7 @@
 #include "GLTileRenderer.h"
 #include "SpanGeometry.h"
 #include "SpanDrapeLight.h"
+#include "ExtrusionFloor.h"
 #include "GLTileRendererShaders.h"
 #include "Color.h"
 #include "TileGeometryIterator.h"
@@ -9,6 +10,7 @@
 #include "LabelCuller.h"
 #include "RenderStats.h"
 
+#include <array>
 #include <cassert>
 #include <unordered_map>
 #include <algorithm>
@@ -977,12 +979,14 @@ namespace massif::vt {
         // A counter rather than the labels' per-tile list: setVertexBase is a no-op when the height
         // has not moved, so a needless re-resolve costs the elevation queries and uploads nothing.
         _extrusionBaseVersion.fetch_add(1, std::memory_order_relaxed);
+        VT_STAT_INC(extrusionVersionBumps);
     }
 
     void GLTileRenderer::invalidateExtrusionBases(const std::vector<TileId>& tileIds) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _pendingExtrusionBaseTiles.insert(_pendingExtrusionBaseTiles.end(), tileIds.begin(), tileIds.end());
+        VT_STAT_ADD(extrusionPendingTiles, static_cast<long long>(tileIds.size()));
     }
 
     void GLTileRenderer::updateTerrainSkirts() {
@@ -1452,6 +1456,7 @@ namespace massif::vt {
                             bool span = !geometry->getSpanRecords().empty();
                             if (span || (affected && geometry->getType() == TileGeometry::Type::POLYGON3D)) {
                                 geometry->setBaseResolved(false);
+                                VT_STAT_INC(extrusionBasesCleared);
                             }
                         }
                     }
@@ -1791,14 +1796,19 @@ namespace massif::vt {
         return false;
     }
 
-    void GLTileRenderer::cullLabels(LabelCuller& culler) {
+    bool GLTileRenderer::cullLabels(LabelCuller& culler) {
         std::vector<std::shared_ptr<Label>> labels;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             labels = _labels;
         }
 
-        culler.process(labels, _mutex);
+        culler.process(labels, _mutex, _labelCullCursor);
+        if (_labelCullCursor >= labels.size()) {
+            _labelCullCursor = 0;
+            return true;
+        }
+        return false;
     }
     
     bool GLTileRenderer::findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const {
@@ -4021,14 +4031,18 @@ namespace massif::vt {
             return true; // not an extrusion, or no elevation at all - the ground is the base
         }
         unsigned int version = _extrusionBaseVersion.load(std::memory_order_relaxed);
+        VT_STAT_INC(extrusionResolveCalls);
         if (geometry->isBaseResolved() && geometry->getBaseElevationVersion() == version) {
+            VT_STAT_INC(extrusionResolveHits);
             return true;
         }
+        VT_STAT_CLOCK(resolveClock);
         // Nothing to resolve against yet: leave the sentinel and retry next frame. Asked of the
         // TARGET tile, which is what the draw binds from. NOT a reason to skip the draw - the shader
         // falls back to the per-vertex ground, wrong on a slope but visible.
         const std::pair<bool, TerrainTexture>& terrain = resolveTerrainTexture(targetTileId);
         if (!terrain.first) {
+            VT_STAT_INC(extrusionResolveUnresolved);
             return false;
         }
         float metersToInternal = terrain.second.metersToInternal;
@@ -4043,23 +4057,85 @@ namespace massif::vt {
         cglib::mat3x3<double> tileMatrix = calculateTileMatrix2D(sourceTileId, 1.0f);
         std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(sourceTileId);
         std::size_t vertexCount = vertexGeometry.size() / params.vertexSize;
-        // Two passes: the anchors first, one cheap query each, and nothing is written unless every
-        // one answered - then the floors. Interleaved, a geometry with one anchor still waiting redid
-        // every floor query each frame. Accumulated per ANCHOR, since a building's parts share one.
-        struct Anchor {
-            cglib::vec2<float> pos;
+        // The footprints come from the VERTEX data alone, so they are found once and kept. A DEM
+        // arrival re-samples the ground; it used to re-walk every vertex of every building in view,
+        // which on a pan was 3 M vertices a second (performance-log 26).
+        if (geometry->getBaseRuns().empty()) {
+            buildExtrusionBaseFootprints(geometry, params, vertexGeometry, vertexCount);
+        }
+        const std::vector<TileGeometry::BaseAnchor>& anchors = geometry->getBaseAnchors();
+        const std::vector<TileGeometry::BaseRun>& runs = geometry->getBaseRuns();
+        VT_STAT_ADD(extrusionResolveVertices, static_cast<long long>(vertexCount));
+
+        // The anchor rides in the texcoord slot, at the coord scale (see packGeometry). Tile matrix
+        // and shader agree only on UNFLIPPED tile coords - the transformer flipped y when the anchor
+        // was stored, and polygon3DVsh flips it back for exactly this reason.
+        auto sampleGround = [&](const cglib::vec2<float>& tilePos, bool smoothed, double& out) {
+            cglib::vec2<double> at = cglib::transform_point(cglib::vec2<double>(tilePos(0), 1.0 - tilePos(1)), tileMatrix);
+            VT_STAT_INC(extrusionElevQueries);
+            return _extrusionElevationProvider(cglib::vec3<double>(at(0), at(1), 0), sourceTileId.zoom, smoothed, out);
+        };
+
+        std::vector<double> anchorBases(anchors.size(), 0.0);
+        for (std::size_t a = 0; a < anchors.size(); a++) {
+            const TileGeometry::BaseAnchor& anchor = anchors[a];
+            // The SMOOTHED field, so the pieces of one building agree to centimetres without seeing
+            // each other. A footprint whose DEM has not decoded keeps the sentinel and retries -
+            // writing the provider's 0 buries the prism.
             double base = 0;
-            double maxGround = 0;
-            double maxHeightZ = 0;
-            bool haveGround = false;
-        };
-        struct Run {
-            std::size_t begin, end;
-            std::size_t anchorIndex;
-        };
-        std::vector<Anchor> anchors;
+            if (!sampleGround(anchor.pos, true, base)) {
+                VT_STAT_INC(extrusionResolveUnresolved);
+                VT_STAT_SPLIT(extrusionResolveNs, resolveClock);
+                return false; // still drawn, on the per-vertex ground, until the elevation lands
+            }
+            double tileUnitsPerMeter = tileTransformer->calculateHeight(anchor.pos, 1.0f);
+            if (anchor.haveSupports && tileUnitsPerMeter > 0) {
+                cglib::vec2<double> anchorPos = cglib::transform_point(cglib::vec2<double>(anchor.pos(0), 1.0 - anchor.pos(1)), tileMatrix);
+                double metersToZ = metersToInternal * std::cosh(2.0 * 3.14159265358979323846 * anchorPos(1));
+                // mapbox's floor, over the SUPPORT POINTS rather than every rising vertex: a
+                // building keeps 2 m above the highest drawn ground under it, so a part whose
+                // smoothed anchor sits under its own street is a building and not a hole.
+                double maxGround = 0;
+                bool haveGround = false;
+                for (int d = 0; d < ExtrusionFloor::SUPPORT_DIRECTIONS; d++) {
+                    bool repeat = false;
+                    for (int e = 0; e < d && !repeat; e++) { // a small footprint extremises several directions at one vertex
+                        repeat = anchor.supports[e](0) == anchor.supports[d](0) && anchor.supports[e](1) == anchor.supports[d](1);
+                    }
+                    if (repeat) {
+                        continue;
+                    }
+                    double ground = 0;
+                    if (sampleGround(anchor.supports[d], false, ground)) {
+                        maxGround = haveGround ? std::max(maxGround, ground) : ground;
+                        haveGround = true;
+                    }
+                }
+                if (haveGround) {
+                    double maxHeightZ = anchor.maxHeightUnits / static_cast<double>(params.heightScale) / tileUnitsPerMeter * metersToZ;
+                    base = std::max(base, maxGround + 2.0 * metersToZ - maxHeightZ);
+                }
+            }
+            anchorBases[a] = base;
+        }
+        for (const TileGeometry::BaseRun& run : runs) {
+            float base = static_cast<float>(anchorBases[run.anchorIndex]);
+            for (std::uint32_t k = run.begin; k < run.end; k++) {
+                geometry->setVertexBase(k, base);
+            }
+        }
+        geometry->setBaseResolved(true);
+        geometry->setBaseElevationVersion(version);
+        VT_STAT_SPLIT(extrusionResolveNs, resolveClock);
+        return true;
+    }
+
+    void GLTileRenderer::buildExtrusionBaseFootprints(const std::shared_ptr<TileGeometry>& geometry, const TileGeometry::VertexGeometryLayoutParameters& params, const VertexArray<std::uint8_t>& vertexGeometry, std::size_t vertexCount) const {
+        std::vector<TileGeometry::BaseAnchor> anchors;
+        std::vector<TileGeometry::BaseRun> runs;
         std::map<std::pair<std::int32_t, std::int32_t>, std::size_t> anchorIndices;
-        std::vector<Run> runs;
+        std::vector<std::array<float, ExtrusionFloor::SUPPORT_DIRECTIONS> > supportScores;
+        bool haveFootprint = params.heightOffset >= 0 && params.coordOffset >= 0 && params.coordScale > 0;
         for (std::size_t i = 0; i < vertexCount; ) {
             const std::int16_t* texCoordPtr = reinterpret_cast<const std::int16_t*>(vertexGeometry.data() + i * params.vertexSize + params.texCoordOffset);
             std::int32_t u = texCoordPtr[0];
@@ -4071,74 +4147,43 @@ namespace massif::vt {
                     break;
                 }
             }
-            // The anchor is the footprint's centroid, over the SMOOTHED field so the pieces of one
-            // building agree to centimetres without seeing each other. A footprint whose DEM has not
-            // decoded keeps the sentinel - writing the provider's 0 buries the prism.
             auto anchorIt = anchorIndices.find(std::make_pair(u, v));
             if (anchorIt == anchorIndices.end()) {
-                Anchor anchor;
+                TileGeometry::BaseAnchor anchor;
                 anchor.pos = cglib::vec2<float>(u / params.texCoordScale, v / params.texCoordScale);
-                cglib::vec2<double> internalPos = cglib::transform_point(cglib::vec2<double>(anchor.pos(0), 1.0 - anchor.pos(1)), tileMatrix);
-                if (!_extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), sourceTileId.zoom, true, anchor.base)) {
-                    return false; // still drawn, on the per-vertex ground, until the elevation lands
-                }
+                anchor.supports.fill(anchor.pos);
                 anchorIt = anchorIndices.emplace(std::make_pair(u, v), anchors.size()).first;
                 anchors.push_back(anchor);
+                supportScores.emplace_back();
             }
-            runs.push_back(Run { i, j, anchorIt->second });
-            i = j;
-        }
-        // mapbox's floor (fill_extrusion.vertex.glsl): a building keeps at least 2 m above the drawn
-        // ground, so a part whose smoothed anchor sits under its own street is not a hole. Theirs is
-        // per VERTEX; ours is per BUILDING, or a low roof follows the lidar down every bump.
-        if (params.heightOffset >= 0 && params.coordOffset >= 0 && params.coordScale > 0) {
-            for (const Run& run : runs) {
-                Anchor& anchor = anchors[run.anchorIndex];
-                double tileUnitsPerMeter = tileTransformer->calculateHeight(anchor.pos, 1.0f);
-                if (tileUnitsPerMeter <= 0) {
-                    continue;
-                }
-                cglib::vec2<double> anchorPos = cglib::transform_point(cglib::vec2<double>(anchor.pos(0), 1.0 - anchor.pos(1)), tileMatrix);
-                double metersToZ = metersToInternal * std::cosh(2.0 * 3.14159265358979323846 * anchorPos(1));
-                std::int16_t lastX = 0, lastY = 0;
-                bool haveLast = false;
-                for (std::size_t k = run.begin; k < run.end; k++) {
+            // Accumulated over every run this anchor owns: a building the source split into parts
+            // is ONE prism, and each part sees only its own vertices.
+            if (haveFootprint) {
+                TileGeometry::BaseAnchor& anchor = anchors[anchorIt->second];
+                std::array<float, ExtrusionFloor::SUPPORT_DIRECTIONS>& scores = supportScores[anchorIt->second];
+                for (std::size_t k = i; k < j; k++) {
                     const std::uint8_t* vertex = vertexGeometry.data() + k * params.vertexSize;
                     std::int16_t heightUnits = reinterpret_cast<const std::int16_t*>(vertex + params.heightOffset)[0];
                     if (heightUnits <= 0) {
-                        continue;
+                        continue; // a wall's foot, not the footprint outline the roof is carried on
                     }
-                    anchor.maxHeightZ = std::max(anchor.maxHeightZ, heightUnits / static_cast<double>(params.heightScale) / tileUnitsPerMeter * metersToZ);
+                    anchor.maxHeightUnits = std::max(anchor.maxHeightUnits, static_cast<float>(heightUnits));
                     const std::int16_t* coord = reinterpret_cast<const std::int16_t*>(vertex + params.coordOffset);
-                    if (haveLast && coord[0] == lastX && coord[1] == lastY) {
-                        continue;
+                    cglib::vec2<float> at(coord[0] / params.coordScale, coord[1] / params.coordScale);
+                    for (int d = 0; d < ExtrusionFloor::SUPPORT_DIRECTIONS; d++) {
+                        float score = ExtrusionFloor::supportScore(d, at(0), at(1));
+                        if (!anchor.haveSupports || score > scores[d]) {
+                            scores[d] = score;
+                            anchor.supports[d] = at;
+                        }
                     }
-                    lastX = coord[0];
-                    lastY = coord[1];
-                    haveLast = true;
-                    cglib::vec2<double> at = cglib::transform_point(cglib::vec2<double>(coord[0] / static_cast<double>(params.coordScale), 1.0 - coord[1] / static_cast<double>(params.coordScale)), tileMatrix);
-                    double ground = 0;
-                    if (_extrusionElevationProvider(cglib::vec3<double>(at(0), at(1), 0), sourceTileId.zoom, false, ground)) {
-                        double floorBase = ground + 2.0 * metersToZ;
-                        anchor.maxGround = anchor.haveGround ? std::max(anchor.maxGround, floorBase) : floorBase;
-                        anchor.haveGround = true;
-                    }
+                    anchor.haveSupports = true;
                 }
             }
+            runs.push_back(TileGeometry::BaseRun { static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j), static_cast<std::uint32_t>(anchorIt->second) });
+            i = j;
         }
-        for (const Run& run : runs) {
-            const Anchor& anchor = anchors[run.anchorIndex];
-            double base = anchor.base;
-            if (anchor.haveGround) {
-                base = std::max(base, anchor.maxGround - anchor.maxHeightZ);
-            }
-            for (std::size_t k = run.begin; k < run.end; k++) {
-                geometry->setVertexBase(k, static_cast<float>(base));
-            }
-        }
-        geometry->setBaseResolved(true);
-        geometry->setBaseElevationVersion(version);
-        return true;
+        geometry->setBaseFootprints(std::move(anchors), std::move(runs));
     }
 
     void GLTileRenderer::markPendingLabelsDirty() {
@@ -6043,6 +6088,13 @@ namespace massif::vt {
         if (blend * opacity <= 0) {
             return;
         }
+        // Buildings scaled to nothing by the style (building-height-scale, or the view scale at the
+        // top of its ramp): every wall is a zero-area triangle, and the roof lands on the ground it
+        // would z-fight. The whole pass draws nothing, so it is not submitted.
+        if (geometry->getType() == TileGeometry::Type::POLYGON3D
+            && buildingHeightScale(blend, !geometry->getSpanRecords().empty()) <= 0.0f) {
+            return;
+        }
 
         VT_STAT_CLOCK(statClock);
         VT_STAT_SPLIT(geomProbeNs, statClock);
@@ -6466,14 +6518,32 @@ namespace massif::vt {
         }
     }
 
+    GLuint GLTileRenderer::findGeometryVAO(const CompiledGeometry& compiledGeometry, GLuint program) {
+        for (const std::pair<GLuint, GLuint>& programVAO : compiledGeometry.geometryVAOs) {
+            if (programVAO.first == program) {
+                return programVAO.second;
+            }
+        }
+        return 0;
+    }
+
     void GLTileRenderer::bindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry) {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
         bool lit = _lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D;
 
-        if (compiledGeometry.geometryVAO != 0) {
-            glBindVertexArray(compiledGeometry.geometryVAO);
+        GLuint geometryVAO = findGeometryVAO(compiledGeometry, shaderProgram.program);
+        bool freshVAO = false;
+        if (geometryVAO == 0) {
+            glGenVertexArrays(1, &geometryVAO);
+            if (geometryVAO != 0) {
+                compiledGeometry.geometryVAOs.emplace_back(shaderProgram.program, geometryVAO);
+                freshVAO = true;
+            }
         }
-        if (compiledGeometry.geometryVAO == 0 || compiledGeometry.geometryVAOProgram != shaderProgram.program) {
+        if (geometryVAO != 0) {
+            glBindVertexArray(geometryVAO);
+        }
+        if (geometryVAO == 0 || freshVAO) {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
 
@@ -6522,7 +6592,7 @@ namespace massif::vt {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
         bool lit = _lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D;
 
-        if (compiledGeometry.geometryVAO != 0) {
+        if (findGeometryVAO(compiledGeometry, shaderProgram.program) != 0) {
             glBindVertexArray(0);
         } else {
 
@@ -6557,12 +6627,11 @@ namespace massif::vt {
             disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
         }
 
-        if (compiledGeometry.geometryVAO == 0 || compiledGeometry.geometryVAOProgram != shaderProgram.program) {
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-            compiledGeometry.geometryVAOProgram = (compiledGeometry.geometryVAO != 0 ? shaderProgram.program : 0);
-        }
+        // ALWAYS, whether a VAO carried the draw or not: the compile path binds the geometry's
+        // buffers on VAO 0, and a name left there outlives the geometry - the next renderer to draw
+        // from VAO 0 then indexes a deleted buffer.
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
     void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap) {
@@ -7225,16 +7294,16 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::createCompiledGeometry(CompiledGeometry& compiledGeometry) {
-        glGenVertexArrays(1, &compiledGeometry.geometryVAO);
         glGenBuffers(1, &compiledGeometry.vertexGeometryVBO);
         glGenBuffers(1, &compiledGeometry.indicesVBO);
     }
     
     void GLTileRenderer::deleteCompiledGeometry(CompiledGeometry& compiledGeometry) {
-        if (compiledGeometry.geometryVAO != 0) {
-            glDeleteVertexArrays(1, &compiledGeometry.geometryVAO);
-            compiledGeometry.geometryVAO = 0;
+        for (const std::pair<GLuint, GLuint>& programVAO : compiledGeometry.geometryVAOs) {
+            GLuint geometryVAO = programVAO.second;
+            glDeleteVertexArrays(1, &geometryVAO);
         }
+        compiledGeometry.geometryVAOs.clear();
         if (compiledGeometry.vertexGeometryVBO != 0) {
             glDeleteBuffers(1, &compiledGeometry.vertexGeometryVBO);
             compiledGeometry.vertexGeometryVBO = 0;

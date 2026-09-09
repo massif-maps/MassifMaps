@@ -58,6 +58,7 @@ namespace massif {
         else {
             _wakeupTime = std::min(_wakeupTime, wakeupTime);
         }
+        _wakeupTime = std::max(_wakeupTime, _nextAllowedTime);
         _pendingWakeup = true;
         _condition.notify_one();
     }
@@ -110,13 +111,37 @@ namespace massif {
         }
     }
     
+    // mapbox and maplibre both slice placement at 2 ms and resume next frame
+    // (placement_algorithms/default.ts, pauseable_placement.ts). A slice is soft: the check is every
+    // 32 labels, so one can overshoot by that much.
+    static const double PLACEMENT_BUDGET_MS = 2.0;
+    // ...and they get their pacing from the frame. This thread has no frame to hang off, so the
+    // duty-cycle gate below is what paces it instead.
+    // A cycle this cheap is run whole, unsliced: mapbox does the same through
+    // isFullPlacementRequested / fadeDuration == 0, maplibre through _forceFullPlacement. Looking
+    // DOWN a cycle is ~10 ms, and slicing it made the culler cost MORE, not less - the ceiling is
+    // only worth paying for when there is something to ration.
+    static const double FULL_PLACEMENT_MS = 10.0;
+    // The ceiling itself, and the only thing that actually enforces it. A cycle's SIZE cannot bound
+    // a RATE: once placement got cheap enough to run whole, it simply ran more often, and 8 ms at
+    // 15 passes a second is 120 ms/s again. So after spending C ms, the next pass waits
+    // C * (1000/TARGET - 1), holding placement to TARGET ms of every second whatever the tilt, the
+    // cycle size or how often the camera asks. It is a cap, not a quota - a still map spends none.
+    static const double PLACEMENT_TARGET_MS_PER_SECOND = 90.0;
+
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
         if (!mapRenderer) {
             return false;
         }
 
-        ViewState viewState = mapRenderer->getViewState();
+        // A cycle in progress keeps the view it was opened against: its collision grid is half
+        // built for that screen, and resuming against a moved camera would place the rest of the
+        // labels against it. mapbox freezes the transform for a cycle for the same reason.
+        if (!_cycleActive) {
+            _cycleViewState = mapRenderer->getViewState();
+        }
+        const ViewState& viewState = _cycleViewState;
         std::vector<std::shared_ptr<Layer>> layers = mapRenderer->getLayers()->getAll();
 
         // A composite layer draws its style-layer groups and its vector slots through internal
@@ -126,7 +151,15 @@ namespace massif {
             layer->collectLabelLayers(labelLayers);
         }
 
-        vt::LabelCuller culler(Const::WORLD_SIZE);
+        // The culler outlives a pass: it carries the cycle's collision grid, and clearing it
+        // mid-cycle would let the second half of the labels reuse slots the first half took.
+        if (!_culler) {
+            _culler = std::make_unique<vt::LabelCuller>(Const::WORLD_SIZE);
+        }
+        vt::LabelCuller& culler = *_culler;
+        if (!_cycleActive) {
+            culler.reset();
+        }
         // Internal units per metre at the view's own latitude, so a label style's max-distance in
         // metres compares against world-space distances. Mercator stretches by 1/cos(latitude),
         // which at 45 degrees is a factor of 1.4.
@@ -135,29 +168,65 @@ namespace massif {
             double coshLatitude = std::cosh(latitude);
             culler.setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE * coshLatitude);
         }
+        // Placement is rationed like mapbox's and maplibre's: a slice of wall clock per pass, then
+        // resume next pass from where each layer stopped. Labels not reached keep the visibility
+        // they had, so the map never shows a half-placed screen. A cycle that fit in one pass last
+        // time is not rationed at all - see FULL_PLACEMENT_MS.
+        bool sliced = _lastCycleMs > FULL_PLACEMENT_MS;
+        culler.beginSlice(sliced ? PLACEMENT_BUDGET_MS : 0.0);
+        std::chrono::steady_clock::time_point passStart = std::chrono::steady_clock::now();
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
         bool changed = false;
+        bool finished = true;
         if (reversedOrder) {
             for (auto it = labelLayers.rbegin(); it != labelLayers.rend(); it++) {
-                if ((*it)->_tileRenderer->cullLabels(culler, viewState)) {
+                if ((*it)->_tileRenderer->cullLabels(culler, viewState, finished)) {
                     changed = true;
                 }
             }
         } else {
             for (auto it = labelLayers.begin(); it != labelLayers.end(); it++) {
-                if ((*it)->_tileRenderer->cullLabels(culler, viewState)) {
+                if ((*it)->_tileRenderer->cullLabels(culler, viewState, finished)) {
                     changed = true;
                 }
             }
         }
-        
 
         if (changed) {
             mapRenderer->requestRedraw();
         }
 
+        double passMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - passStart).count();
+        _cycleMs += passMs;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            double gapMs = passMs * (1000.0 / PLACEMENT_TARGET_MS_PER_SECOND - 1.0);
+            _nextAllowedTime = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double, std::milli>(gapMs));
+        }
+
+        // Only the cycle asks for the pass that continues it - nothing else knows one is owed, and
+        // a still map stops waking this thread once the labels have settled.
+        _cycleActive = !finished;
+        if (_cycleActive) {
+            scheduleContinuation();
+        } else {
+            // What the NEXT cycle decides on. Measured over the whole cycle, so a sliced one that
+            // has become cheap - the camera tilted back down - drops the rationing again.
+            _lastCycleMs = _cycleMs;
+            _cycleMs = 0;
+        }
+
         return true;
+    }
+
+    void VTLabelPlacementWorker::scheduleContinuation() {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _pendingWakeup = true;
+        _wakeupTime = std::max(_nextAllowedTime, std::chrono::steady_clock::now());
+        _idle = false;
+        _condition.notify_one();
     }
 
 }

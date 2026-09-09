@@ -14,6 +14,7 @@
 #include "TileLayer.h"
 #include "TileTransformer.h"
 #include "Styles.h"
+#include "ExtrusionAnchors.h"
 #include "PolygonTesselator.h"
 #include "VertexArray.h"
 
@@ -76,10 +77,10 @@ namespace massif::vt {
         // mapbox's fill-extrusion-rounded-roof.
         void setPolygon3DRoundedRoof(bool rounded) { _polygon3DRoundedRoof = rounded; }
         void setPolygonClipBox(const cglib::bbox2<float>& clipBox);
-        // The point each extruded footprint reads its ground at, keyed by the id the processor is called
-        // with. Every piece of one building shares an entry, so they stand at one elevation; a footprint
-        // the table does not name falls back to its own centroid.
-        void setPolygon3DAnchors(std::shared_ptr<const std::unordered_map<long long, cglib::vec2<float>>> anchors) { _polygon3DAnchors = std::move(anchors); }
+        // The point each extruded footprint reads its ground at, under the id the processor is called
+        // with - one entry per footprint, since a merged source draws hundreds under one id. Every
+        // piece of one building shares an anchor; a footprint the table does not name keeps its own.
+        void setPolygon3DAnchors(std::shared_ptr<const std::unordered_map<long long, std::vector<ExtrusionAnchor>>> anchors) { _polygon3DAnchors = std::move(anchors); }
 
         void addBackground(const std::shared_ptr<TileBackground>& background);
         void addBitmap(const std::shared_ptr<TileBitmap>& bitmap);
@@ -213,7 +214,7 @@ namespace massif::vt {
         // The current extrusion's footprint centroid, carried by every one of its vertices. The
         // renderer resolves the ground there once, on the CPU (GLTileRenderer::resolveExtrusionBases).
         cglib::vec2<float> _polygon3DCentroid = cglib::vec2<float>(0, 0);
-        std::shared_ptr<const std::unordered_map<long long, cglib::vec2<float>>> _polygon3DAnchors;
+        std::shared_ptr<const std::unordered_map<long long, std::vector<ExtrusionAnchor>>> _polygon3DAnchors;
         const cglib::vec2<float>* _polygon3DAnchor = nullptr; // the current footprint's entry, if it has one
         // How far any anchor of this layer lies from the tile, so packGeometry can fit the coord
         // scale to it: a palace's centroid is tiles away from the z20 piece drawing it.

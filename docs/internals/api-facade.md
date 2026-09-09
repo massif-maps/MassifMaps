@@ -152,10 +152,37 @@ lands at 632; the default profile skips 45 and lands at 659.
 Both tables are emitted sorted, so a lookup is a binary search over static data — no `std::map`, no
 allocation, nothing built at load time.
 
+A `COLOR` property is an ARGB **number** — `-65536`, or `0xffff0000 | 0` from JavaScript. Writing
+`"#ff0000"` to one is accepted and reads as 0, a transparent colour: the string form belongs to the
+struct codec (`lighting.sunColor`), not to a property. Fog is where this bites, because a
+transparent fog draws nothing and looks exactly like a fog that was never attached.
+
 ```cpp
 const ClassEntry*    cls  = findClass("massif::FogOptions");
 const PropertyEntry* prop = findProperty(cls, "rangeStart");
 ```
+
+### A colour, in every spelling
+
+A `COLOR` property, a `Color` spec key and a `Color` constructor argument all decode through
+`StructCodec::decodeColor`, the same one a struct field like `lighting.sunColor` uses. The hex
+forms are **`mvt::parseCSSColor`'s**, so a colour means the same thing in a style sheet and in the
+facade: `"#rgb"`, `"#rgba"`, `"#rrggbb"`, `"#rrggbbaa"` — **alpha last**, as in CSS.
+
+```js
+map.set("fog.color", "#b8c6d8ff");
+map.set("fog.color", 4290299608);   // the same colour
+```
+
+A **number** stays ARGB (`0xAARRGGBB`) — that is what `Color` is built from and what `getARGB`
+reads back, and it is also what a number spelled as text (`"4290299608"`) means. Only the `#` forms
+are CSS-ordered.
+
+Anything else is **refused** and the property keeps what it had. Two things used to go wrong here:
+a COLOR took a number only, so a hex string went through `asLong()` and landed as 0 — a fully
+transparent colour, which on `fog.color` renders exactly like no fog and reads exactly like a
+property never set; and the eight-digit form the codec did take was `#aarrggbb`, the reverse of the
+style sheet's, so one spelling meant two colours inside one SDK.
 
 ### The concrete class, not the declared one
 

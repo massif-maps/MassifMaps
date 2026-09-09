@@ -1873,3 +1873,261 @@ window (`logcat -c; sleep 10; grep -c 'Loading MapTile'; grep -c 'cullUpd='`) to
 a busy frame; a per-thread `/proc/<pid>/task/*/stat` snapshot told a hang from a load spike (every
 thread sleeping, frames still coming); `PROF SPIKE` sections named the frame's cost. Screenshots
 were counted by exact colour before any was looked at.
+
+## 25. Every building's base re-resolved every frame (2026-09-08)
+
+Crosscall `1cba1468`, master `4db525f7`, profile APK (`-PprofileRender`, RelWithDebInfo, arm64),
+bench default camera (Grenoble z16.22 tilt 26), 8 swipes, idle windows dropped.
+
+The ladder said terrain and extrusions were each cheap and the pair ruinous:
+
+| config | fps | frame avg | layers3D CPU | `pass3D geometryMs` per second |
+|---|---|---|---|---|
+| 2D (terrain off) | 20.5 | 30.4 ms | 2.7 ms | – |
+| 3D terrain, no buildings | 18.1 | 44.1 ms | 2.4 ms | 3 |
+| buildings, terrain OFF | 11.8 | 60.3 ms | 5.5 ms | 14 |
+| terrain + buildings | 9.4 | 112.5 ms | 75.1 ms | 750 |
+| ...+ shadows | 8.4 | 128.8 ms | 86.9 ms | 885 |
+
+A probe in `GLTileRenderer::resolveExtrusionBases` found **zero cache hits**: 200 re-resolves,
+2.5 M vertices and **1.3 M elevation queries a second**, with `_extrusionBaseVersion` bumped ~30
+times a second. All of the bumps came from `setExtrusionElevationProvider`, which
+`TileRenderer::onDrawFrame` pushed unconditionally every frame — and the setter invalidates every
+extrusion base, since it cannot compare two `std::function`s.
+
+Pushing it only when the vt renderer or the elevation source behind it changes:
+
+| config | before | after |
+|---|---|---|
+| terrain + buildings | 9.4 fps, layers3D 75.1 ms | **13.3 fps**, layers3D **8.3 ms** |
+| ...+ shadows | 8.4 fps, layers3D 86.9 ms | **13.4 fps**, layers3D **9.1 ms** |
+
+At rest the probe then reads `hits=294 misses=0`, and the ground queries fall to zero.
+
+**What is next, in order.** `drape` is now the largest block on both (GPU 32-38 ms), and the
+shadow pass costs nearly nothing next to it. `sky` is the swap-buffer wait, not work.
+
+## 26. The building floor, asked of every vertex on every DEM arrival (2026-09-08)
+
+Crosscall `1cba1468`, profile APK, the `day-cycle-light` example at Paris (2.3376/48.8600) z16.5
+tilt 50, 8 swipes 1.5 s apart, windows over 1600 ms dropped. Entry 25's camera was Grenoble; this
+is the one that was slow.
+
+**Entry 25's "what is next" was wrong.** `drape` read 97.8 ms a frame, but drape BAKES were
+18–22 ms a *second* — `applyTerrainShadows` runs inside the drape section, and what it costs is the
+shadow caster pass re-resolving extrusion bases. A `shadow 0` A/B shows it does not remove that work,
+only move it, which is why shadows had measured free before:
+
+| same script, shadow knob only | `1.0` | `0` |
+|---|---|---|
+| frame avg | 203.3 ms | 75.3 ms |
+| `drape` / `layers3D` | 97.8 / 64.1 | 5.4 / 25.8 |
+| `resolveExtrusionBases` | **407 ms/s** | 123 ms/s |
+| drape bakes | 18 ms/s | 22 ms/s |
+
+A new probe (`RenderStats: extrusionBases`) put **407 ms of every 693 ms of frame time in
+`resolveExtrusionBases`** — 59%. Not the invalidation entry 25 fixed (`bumps=0`), and not a stalled
+DEM (`unresolved=0`): 3–12 DEM tiles land a second, each clears ~30 geometries, and each re-resolve
+re-walked ~18k vertices asking the elevation source at ~14k of them. 2.3 M queries a second.
+
+**The floor was the cost.** The base is the max drawn ground under a building, and it was taken over
+every rising vertex. Two changes, both of them things the reference renderers already do:
+
+- The footprints depend on the vertex data alone, so they are found by ONE walk and kept
+  (`TileGeometry::setBaseFootprints`). mapbox does not re-walk vertices on a DEM arrival either.
+- The max is taken over **eight support points** of the footprint (`vt::ExtrusionFloor`), not every
+  vertex. Nine queries a building, not fourteen thousand.
+
+| Paris pan, `shadow 1.0` | before | after |
+|---|---|---|
+| frame avg | 203.3 ms | **65.0 / 65.5 ms** (2 runs) |
+| worst frame | 1013 ms | 224 / 246 ms |
+| `drape` | 97.8 | **15.8** |
+| `layers3D` | 64.1 | **10.4** |
+| `resolveExtrusionBases` | 407 ms/s | **28 ms/s** |
+
+At matched vertex counts in the same pan: 210 367 → 4 788 elevation queries (−98%), 97.0 → 18.0 ms.
+
+**What a bounding box would have cost.** 04-terrain.md records mapbox's corner-sampled
+`flatElevation` lift being reverted — a corner beside the Seine landed on the Tuileries terrace and
+lifted a wing 5 m. Support points are footprint VERTICES, so the max is over a subset of the old
+one: it can under-lift a building, never lift one it should not.
+
+**Not established: a visual A/B.** Grenoble city, hour pinned, 150 s settle — HEAD vs the new model
+diffs at mean 8.35, and two runs of the SAME binary diff at 9.36. The scene does not converge to a
+repeatable frame at this camera, so the screenshot cannot resolve the two models either way. The
+argument above is structural, not measured.
+
+**What is next.** `sky` — the swap-buffer wait, not work — is now 18–29 ms, so the frame waits on
+the GPU rather than the CPU. `drape` (15.8) and `layers3D` (10.4) are the remaining CPU blocks, and
+`tileSetChange refreshMs` is down from 0.7–1.0 s/s to 65–82 ms/s without being touched.
+
+## 27. Tilt costs 2.8x the frame, and it is not more content (2026-09-08)
+
+Crosscall `1cba1468`, profile APK, `day-cycle-light` at Paris z16.5, pan bench, `shadow 1.0`, after
+entry 26. 90 is nadir, so LOWER tilt means more horizon.
+
+| tilt | frame avg | worst | drape | layers | layers3D | prelude | cullMs/s |
+|---|---|---|---|---|---|---|---|
+| 80 | 46.8 | 126 | 8.3 | 4.2 | 6.1 | 1.1 | 59 |
+| 60 | 48.5 | 134 | 9.3 | 4.7 | 7.4 | 1.1 | – |
+| 45 | 78.7 | 411 | 19.3 | 10.8 | 12.9 | 3.8 | – |
+| 30 | 129.2 | 464 | 33.4 | 19.9 | 18.8 | 16.6 | 668 |
+
+**Per frame, tilt 30 draws LESS**: 219 vs 224 draws, 28 vs 31 render tiles, 8.4 vs 10.1 M indices,
+~95 vs ~140 extrusion geometries. So it is not more content, and not more buildings. What scales is
+everything sized by the tile SET rather than by the draws — the set grows toward the horizon while
+what is drawn stays capped by the LOD:
+
+| per interval | tilt 80 | tilt 30 |
+|---|---|---|
+| live labels | 950 | 5001 |
+| `cullMs` | 59 | 668 |
+| `lineLayouts` | 933 | 14 852 |
+| `tileSetChange refreshMs` / of which `labelMapsMs` | 43 / 33 | 271 / 178 |
+| `dem live` textures | 32 | 128 |
+| `perDraw compile` / `vboMisses` | 7.2 us / 70 | 29.2 us / 202 |
+
+**What the references do** (full notes in [06-labels](rendering/06-labels.mdx)): none of the three
+narrows the symbol tile set — mapbox and maplibre feed symbols from a SUPERSET of the render set.
+They bound the cost three other ways: an always-on per-symbol distance cut in camera-relative units,
+a 2 ms per-frame placement budget with resume cursors, and (tangram only) an intra-tile collision
+pre-filter on the tile worker that kills losers permanently.
+
+**Ported first: the distance cut** (`vt::LabelDistance`, maplibre's 0.6 = 5x camera-to-centre).
+
+| tilt | frame avg before | after | `distCut` |
+|---|---|---|---|
+| 80 | 46.8 | 49.3 | **0** |
+| 30 | 129.2 | 90.0 / 97.1 | **29%** |
+
+At tilt 80 it fires on nothing at all, which is the safety property: looking down, the view never
+reaches 5x the centre distance. At tilt 30 it drops 29% of labels before they cost a placement.
+
+**It does not reach the bar.** `cullMs` is 341-613, against a target of **under 100 at any tilt**,
+and `labelsLive` is unchanged at 5003 — the cut bounds the cost of PLACING labels, not the number
+built. The count is tangram's mechanism, and the hard guarantee is the 2 ms budget (6 passes a
+second x 2 ms = 12 ms/s by construction). Both still to do.
+
+**Also unresolved:** `setVisibleTiles` holds the renderer mutex across `buildLabelMaps` and is
+reached from `TileLayer::loadData`, i.e. the cull worker — RenderStats.h claims it "runs inside the
+layer draw pass", which does not match that call chain. The GL thread's own measured wait for the
+mutex (`renderLabels`) is 0.0 ms/s at both tilts, so there is no lock stall to fix today.
+
+## 28. Rationing label placement, so the culler has a ceiling (2026-09-08)
+
+Crosscall `1cba1468`, `day-cycle-light` at Paris z16.5, pan bench, `shadow 1.0`, after entry 27.
+The objective was set as a ceiling rather than a saving: **`cullMs` under 100 ms a second at any
+tilt.**
+
+**Which phase to slice.** Splitting `LabelCuller::process` three ways settled it — the cost is
+`updatePlacement` plus the variant envelopes, at ~14.6 us per label:
+
+| interval (tilt 30) | cullMs | collect | sort | insert |
+|---|---|---|---|---|
+| 1 | 468.6 | 419.2 | 9.8 | 38.9 |
+| 2 | 398.8 | 295.0 | 5.8 | 93.8 |
+| 3 | 576.4 | 544.3 | 11.3 | 20.3 |
+
+Collect is ~90%, and it runs BEFORE the sort, so cutting it short costs no ordering among the
+labels that are collected. Layer granularity was no use: the style has one label layer, so a whole
+pass is one `process` call.
+
+**The port.** mapbox and maplibre both slice placement at 2 ms and resume next frame from a cursor
+(`placement_algorithms/default.ts:42`, `pauseable_placement.ts:98`), publishing nothing until the
+cycle commits. Ours: a per-layer cursor on `GLTileRenderer`, a culler that outlives the pass so its
+collision grid persists, and the view FROZEN for the cycle — resuming against a moved camera would
+collide the second half of the labels against a grid built for a different screen.
+
+**The pacing is half the guarantee.** Both references get theirs from the frame; this worker has no
+frame, so an unfinished cycle would resume as fast as the CPU allows. Budget B with delay D costs
+about `1000B/(B+D)` ms a second — B=2, D=25 gives 74.
+
+| tilt 30 | frame avg | cullMs (worst) | passes/s |
+|---|---|---|---|
+| entry 27 baseline | 129.2 | 668 | 5-9 |
+| + distance cut | 90.0 / 97.1 | 341-613 | 5-9 |
+| + budget | **78.7** | **98.2** | 29-42 |
+
+| tilt 80 | frame avg | cullMs (worst) |
+|---|---|---|
+| baseline | 46.8 | 59 |
+| + both, always sliced | 42.6 | 74.8 |
+| + slice only when needed | **43.9** | **60.6** |
+
+**Slicing is not free, so it is not unconditional.** Always slicing made the culler cost MORE at
+high tilt (59 -> 75 ms/s): each slice re-sorts and re-inserts its own subset, and the pacing
+stretches one cheap cycle over many passes. The fix is the bypass both references already have
+(mapbox `isFullPlacementRequested` / `fadeDuration == 0`, maplibre `_forceFullPlacement`), made
+self-tuning rather than tilt-aware: measure each cycle, and ration the next one only if the last did
+not fit in `FULL_PLACEMENT_MS` (10 ms). Looking down, a cycle is ~10 ms and runs whole; pitched, it
+is 60-100 ms and gets rationed. Tilting back down drops the rationing again on the next cycle.
+
+Final, both under the 100 ms objective: **tilt 30 worst 94.0, tilt 80 worst 60.6**, frame avg
+78.7 -> 73.9 and 42.6 -> 43.9.
+
+The one cost that remains is that the placement SELECTION changes while rationed, because a label
+collected in an early slice claims its grid slot before a higher-priority label in a later one —
+mapbox has the same property and accepts it. At rest the frame is well placed, with no overlap or
+clutter; it simply names a different set of POIs.
+
+**Still open:** `labelsLive` is untouched at ~5000, so `buildLabelMaps` (178 ms/s at tilt 30) is
+unaffected. That is tangram's mechanism — an intra-tile collision on the tile worker at
+style-zoom + 2, plus a per-tile cap — and it is the remaining one of the three.
+
+## 29. Where the placement work really went, and why a cycle's size cannot bound its rate (2026-09-08)
+
+Crosscall `1cba1468`, `day-cycle-light` at Paris z16.5, pan bench, `shadow 1.0`, after entry 28.
+The plan was tangram's intra-tile prefilter. Measuring first killed that plan and found two better
+things.
+
+**The fate of a considered label**, tilt 30, representative interval:
+
+| | count |
+|---|---|
+| considered | 2400 |
+| cut by distance | 411 |
+| invalid after `updatePlacement` | 943 |
+| reached the sort | 1046 |
+| **ended up visible** | **13** |
+
+Full placement work on ~2400 labels a second to draw ~30. And the placement counters say the same:
+`placeUpd` 23 995/s, of which `reNull` 9 078 and `reHidden` 11 208 against `reVisible` **13**, with
+`search` at **12 295/s** (763 at tilt 80).
+
+**Tangram's prefilter is the wrong tool here.** It collides a tile against itself at style-zoom + 2
+and caps at 4096 labels a tile. We carry ~40 labels a tile, so the cap can never fire and 40 labels
+in a tile drawn 4x larger rarely collide. Not built.
+
+**What was actually wrong.** `Label::updatePlacement` already rejects on the frustum before
+searching, and that reject is documented as most of a frame's placement work - but a frustum does
+not bound DISTANCE, and pitched toward the horizon it reaches kilometres. Worse, entry 27's
+perspective cut could not help: it lives in the culler and reads the label's PLACEMENT, which the
+9 078 unplaced labels a second do not have, so they bypassed it entirely. Applying the same cut
+next to the frustum reject, off the geometry bbox, stops the search instead of hiding its result:
+
+| tilt 30, per second | before | after |
+|---|---|---|
+| `search` | 12 295 | **~250** |
+| `placeUpd` | 23 995 | **~600** |
+
+**Then `cullMs` went UP, to 122-131.** Entry 28's `FULL_PLACEMENT_MS` rule runs a cycle whole when
+it is cheap - and placement had just become cheap, so cycles ran unsliced at the full pass rate.
+8 ms at 15 passes a second is 120 ms/s. **A cycle's SIZE cannot bound a RATE**, which is what the
+objective is about.
+
+Replaced by a duty-cycle gate, which is the objective expressed directly: after a pass costing C ms,
+no pass may start for `C * (1000/TARGET - 1)` ms, holding placement to TARGET (90) ms of every
+second whatever the tilt, the cycle size, or how often the camera asks. It is a cap, not a quota -
+a still map spends none of it.
+
+| | cullMs worst | frame avg |
+|---|---|---|
+| tilt 30 | 94.0 -> **61.8** | 73.9 -> **71.3** |
+| tilt 80 | 60.6 -> **57.3** | 43.9 -> **43.5** |
+
+At rest the frame is richer, not poorer: the near and mid field name more POIs than before and the
+horizon road shields are gone, which is the clutter the cut is for.
+
+**Where the tilt ladder stands now**, against 129.2 ms and 668 ms/s at the start of entry 27:
+frame avg 71.3 at tilt 30 and 43.5 at tilt 80, `cullMs` under 62 at both.

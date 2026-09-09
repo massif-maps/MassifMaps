@@ -25,17 +25,21 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/CartoCSSParser.cpp"
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Expression.cpp"
   "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Predicate.cpp"
+  # No dependencies at all, so the font-name parser costs nothing to link here.
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/FontNames.cpp"
 )
 
 add_executable(style_tests
   StyleTest.cpp
   LayerConfigTest.cpp
   CartoCSSParseTest.cpp
+  CSSColorTest.cpp
   StyleParameterFoldTest.cpp
   ExpressionRoundTripTest.cpp
   InterpolateExpressionTest.cpp
   DataDrivenPropertyTest.cpp
   ViewStatePropertyTest.cpp
+  FontNamesTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

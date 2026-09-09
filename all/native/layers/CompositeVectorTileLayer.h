@@ -99,6 +99,18 @@ namespace massif {
          * @return The registered external source names.
          */
         std::vector<std::string> getExternalDataSourceNames() const;
+        /**
+         * Returns the child layer a slot is drawn by - a RasterTileLayer, a HillshadeRasterTileLayer
+         * or a VectorTileLayer, depending on the source type. This is the way to reach a setting the
+         * config symbolizer does not carry: a HillshadeRasterTileLayer's NormalMapLightingShader is
+         * generated GLSL rather than a style property, and applyConfig never writes it, so a shader
+         * set through this survives the per-frame config pass.
+         *
+         * The child is owned by this layer - do not add it to a map.
+         * @param name The source name.
+         * @return The child layer, or null if no source is registered under that name.
+         */
+        std::shared_ptr<Layer> getExternalChildLayer(const std::string& name) const;
 
         /**
          * Returns whether single-pass segmented rendering is enabled (Milestone 6, optional).

@@ -453,7 +453,8 @@ namespace massif::vt {
         void renderLabels(bool labels2D, bool labels3D);
         bool endFrame();
 
-        void cullLabels(LabelCuller& culler);
+        /** Returns false when the culler's slice ran out before this layer's labels did. */
+        bool cullLabels(LabelCuller& culler);
 
         bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
         bool findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, bool geom2D, bool geom3D, std::vector<GeometryIntersectionInfo>& results) const;
@@ -534,13 +535,12 @@ namespace massif::vt {
         struct CompiledGeometry {
             GLuint vertexGeometryVBO;
             GLuint indicesVBO;
-            GLuint geometryVAO;
-            // The program whose ATTRIBUTE LOCATIONS the VAO's pointers were set up for, or 0. A VAO
-            // records pointers per attribute INDEX, and the same geometry is drawn by more than one
-            // program whose locations need not match.
-            mutable GLuint geometryVAOProgram;
+            // ONE VAO PER PROGRAM, built on first use. A VAO records pointers per attribute INDEX,
+            // and the same geometry is drawn by more than one program whose locations need not
+            // match - re-specifying a single VAO for a second program draws garbage on Adreno.
+            mutable std::vector<std::pair<GLuint, GLuint>> geometryVAOs; // program -> VAO
 
-            CompiledGeometry() : vertexGeometryVBO(0), indicesVBO(0), geometryVAO(0), geometryVAOProgram(0) { }
+            CompiledGeometry() : vertexGeometryVBO(0), indicesVBO(0) { }
         };
 
         struct CompiledLabelBatch {
@@ -742,6 +742,7 @@ namespace massif::vt {
          * instead loses the building outright, and any wrong-but-plausible base buries it.
          */
         bool resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const;
+        void buildExtrusionBaseFootprints(const std::shared_ptr<TileGeometry>& geometry, const TileGeometry::VertexGeometryLayoutParameters& params, const VertexArray<std::uint8_t>& vertexGeometry, std::size_t vertexCount) const;
         /**
          * The DECK height over a point standing on a span, for anything anchored to the ground
          * that belongs to the bridge rather than to the terrain under it - a road name, a POI, a
@@ -805,6 +806,7 @@ namespace massif::vt {
         void setupGeometryCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry, const GeometryDrawMode& mode);
         // The vertex attribute layout of one compiled geometry. Bound as a VAO where the geometry
         // has one, attribute by attribute otherwise - which is also what the unbind undoes.
+        static GLuint findGeometryVAO(const CompiledGeometry& compiledGeometry, GLuint program);
         void bindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
         void unbindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
@@ -1019,6 +1021,7 @@ namespace massif::vt {
         std::array<std::shared_ptr<PassLabels>, 2> _passLabels; // for 'ground' labels and for 'billboard' labels
         std::array<std::shared_ptr<PassLabels>, 2> _visiblePassLabels;  // for 'ground' labels and for 'billboard' labels
         std::vector<std::shared_ptr<Label>> _labels;
+        std::size_t _labelCullCursor = 0; // how far the current placement cycle got through _labels
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
         std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;

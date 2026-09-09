@@ -11,22 +11,28 @@
 #include "api/GeometryMethods.h"
 #include "api/RoutingMethods.h"
 #include "api/Methods.h"
+#include "api/PropertyTable.h"
 #include "api/StructCodec.h"
+#include "core/BinaryData.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
 #include "core/Variant.h"
 #include "components/Layers.h"
+#include "components/LightOptions.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
 #include "datasources/MultiTileDataSource.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileData.h"
+#include "layers/CompositeVectorTileLayer.h"
 #include "layers/HillshadeRasterTileLayer.h"
 #include "layers/Layer.h"
 #include "layers/TileLayer.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "vectortiles/VectorTileDecoder.h"
 #include "utils/Log.h"
+
+#include <typeinfo>
 
 #ifdef _MASSIF_SEARCH_SUPPORT
 #include "search/FeatureCollectionSearchService.h"
@@ -171,6 +177,25 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /**
+         * addFallbackFont(dataHandle) - a font for the glyphs the style names but the build has no
+         * face for. A `data` handle, because a spec has no way to say "these bytes", and without it
+         * a spec-built decoder loses the labels of every converted MapBox style.
+         */
+        Result addFallbackFont(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto font = std::static_pointer_cast<BinaryData>(
+                context.getObject(handle, "massif::BinaryData"));
+            if (!font) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<MBVectorTileDecoder*>(obj)->addFallbackFont(font);
+            return RESULT_OK;
+        }
+
         Result getStyleParameter(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
             std::string name;
             if (!args.getString(0, name)) {
@@ -178,6 +203,26 @@ namespace massif { namespace api {
             }
             result = PropertyValue::ofString(
                 static_cast<MBVectorTileDecoder*>(obj)->getStyleParameter(name));
+            return RESULT_OK;
+        }
+
+        /**
+         * setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude).
+         *
+         * The SDK's own solar model, the one shadows and sky were tuned against - a binding would
+         * otherwise carry its own. The place matters as much as the time; pass the map centre.
+         */
+        Result setSunPositionFromTime(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long year = 0, month = 0, day = 0, hour = 0, minute = 0;
+            double latitude = 0, longitude = 0;
+            if (!args.getLong(0, year) || !args.getLong(1, month) || !args.getLong(2, day) ||
+                !args.getLong(3, hour) || !args.getLong(4, minute) ||
+                !args.getDouble(5, latitude) || !args.getDouble(6, longitude)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<LightOptions*>(obj)->setSunPositionFromTime(
+                static_cast<int>(year), static_cast<int>(month), static_cast<int>(day),
+                static_cast<int>(hour), static_cast<int>(minute), latitude, longitude);
             return RESULT_OK;
         }
 
@@ -467,6 +512,142 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /**
+         * The external sources of a CompositeVectorTileLayer.
+         *
+         * Methods rather than spec keys: a slot is wired to a source the app usually SHARES - the
+         * DEM a hillshade slot draws is the same one it queries elevations from - and it is added
+         * and removed at run time as the style and the loaded packages change.
+         */
+        Result addExternalDataSource(Context& context, void* obj, const CallArgs& args,
+                                     PropertyValue&) {
+            std::string name;
+            Handle handle = NULL_HANDLE;
+            long long type = 0;
+            if (!args.getString(0, name) || !args.getHandle(1, handle) || !args.getLong(2, type)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto source = std::static_pointer_cast<TileDataSource>(
+                context.getObject(handle, "massif::TileDataSource"));
+            if (!source) {
+                return RESULT_BAD_HANDLE;
+            }
+            try {
+                static_cast<CompositeVectorTileLayer*>(obj)->addExternalDataSource(
+                    name, source,
+                    static_cast<CompositeSourceType::CompositeSourceType>(type));
+            } catch (const std::exception& ex) {
+                Log::Errorf("api addExternalDataSource: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        Result addVectorDataSource(Context& context, void* obj, const CallArgs& args,
+                                   PropertyValue&) {
+            std::string name;
+            Handle handle = NULL_HANDLE;
+            if (!args.getString(0, name) || !args.getHandle(1, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto source = std::static_pointer_cast<TileDataSource>(
+                context.getObject(handle, "massif::TileDataSource"));
+            if (!source) {
+                return RESULT_BAD_HANDLE;
+            }
+            try {
+                static_cast<CompositeVectorTileLayer*>(obj)->addVectorDataSource(name, source);
+            } catch (const std::exception& ex) {
+                Log::Errorf("api addVectorDataSource: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        Result removeExternalDataSource(Context&, void* obj, const CallArgs& args,
+                                        PropertyValue& result) {
+            std::string name;
+            if (!args.getString(0, name)) {
+                return RESULT_BAD_SPEC;
+            }
+            result = PropertyValue::ofBool(
+                static_cast<CompositeVectorTileLayer*>(obj)->removeExternalDataSource(name));
+            return RESULT_OK;
+        }
+
+        /** getExternalDataSourceNames() -> the registered slot names, as a JSON array. */
+        Result getExternalDataSourceNames(Context&, void* obj, const CallArgs&,
+                                          PropertyValue& result) {
+            std::vector<Variant> names;
+            for (const std::string& name :
+                 static_cast<CompositeVectorTileLayer*>(obj)->getExternalDataSourceNames()) {
+                names.push_back(Variant(name));
+            }
+            result = PropertyValue::ofString(StructCodec::encode(Variant(names)));
+            result.type = PT_VARIANT;
+            return RESULT_OK;
+        }
+
+        Result setExternalDataSourceZoomLevelBias(Context&, void* obj, const CallArgs& args,
+                                                  PropertyValue&) {
+            std::string name;
+            double bias = 0.0;
+            if (!args.getString(0, name) || !args.getDouble(1, bias)) {
+                return RESULT_BAD_SPEC;
+            }
+            try {
+                static_cast<CompositeVectorTileLayer*>(obj)->setExternalDataSourceZoomLevelBias(
+                    name, static_cast<float>(bias));
+            } catch (const std::exception& ex) {
+                Log::Errorf("api setExternalDataSourceZoomLevelBias: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        Result setExternalDataSourceMaxOverzoomLevel(Context&, void* obj, const CallArgs& args,
+                                                     PropertyValue&) {
+            std::string name;
+            long long level = 0;
+            if (!args.getString(0, name) || !args.getLong(1, level)) {
+                return RESULT_BAD_SPEC;
+            }
+            try {
+                static_cast<CompositeVectorTileLayer*>(obj)->setExternalDataSourceMaxOverzoomLevel(
+                    name, static_cast<int>(level));
+            } catch (const std::exception& ex) {
+                Log::Errorf("api setExternalDataSourceMaxOverzoomLevel: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        /**
+         * getExternalChildLayer(name) -> the layer drawing that slot.
+         *
+         * The one setting a style cannot carry: a HillshadeRasterTileLayer's custom
+         * NormalMapLightingShader is generated GLSL, not a config symbolizer property.
+         *
+         * Registered under its CONCRETE class, not the declared one: a handle registered as
+         * `massif::Layer` resolves only Layer's own properties, and the whole point of reaching
+         * the child is the hillshade properties below that. An unregistered name is RESULT_FAILED,
+         * the same as every other object-returning method with nothing to hand back.
+         */
+        Result getExternalChildLayer(Context& context, void* obj, const CallArgs& args,
+                                     PropertyValue& result) {
+            std::string name;
+            if (!args.getString(0, name)) {
+                return RESULT_BAD_SPEC;
+            }
+            std::shared_ptr<Layer> child =
+                static_cast<CompositeVectorTileLayer*>(obj)->getExternalChildLayer(name);
+            if (!child) {
+                return RESULT_FAILED;
+            }
+            return objectResult(context, child, concreteClass(typeid(*child), "massif::Layer"),
+                                result);
+        }
+
 #ifdef _MASSIF_SEARCH_SUPPORT
 
         /**
@@ -523,6 +704,8 @@ namespace massif { namespace api {
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameter", &setStyleParameter);
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameters", &setStyleParameters);
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
+        registerMethod("massif::MBVectorTileDecoder", "addFallbackFont", &addFallbackFont);
+        registerMethod("massif::LightOptions", "setSunPositionFromTime", &setSunPositionFromTime);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);
         registerMethod("massif::Layers", "add", &addLayer);
@@ -542,6 +725,20 @@ namespace massif { namespace api {
         registerMethod("massif::GeoJSONVectorTileDataSource", "addFeature", &addGeoJSONFeature);
         registerMethod("massif::GeoJSONVectorTileDataSource", "updateFeature", &updateGeoJSONFeature);
         registerMethod("massif::GeoJSONVectorTileDataSource", "removeFeature", &removeGeoJSONFeature);
+        registerMethod("massif::CompositeVectorTileLayer", "addExternalDataSource",
+                       &addExternalDataSource);
+        registerMethod("massif::CompositeVectorTileLayer", "addVectorDataSource",
+                       &addVectorDataSource);
+        registerMethod("massif::CompositeVectorTileLayer", "removeExternalDataSource",
+                       &removeExternalDataSource);
+        registerMethod("massif::CompositeVectorTileLayer", "getExternalDataSourceNames",
+                       &getExternalDataSourceNames);
+        registerMethod("massif::CompositeVectorTileLayer", "setExternalDataSourceZoomLevelBias",
+                       &setExternalDataSourceZoomLevelBias);
+        registerMethod("massif::CompositeVectorTileLayer", "setExternalDataSourceMaxOverzoomLevel",
+                       &setExternalDataSourceMaxOverzoomLevel);
+        registerMethod("massif::CompositeVectorTileLayer", "getExternalChildLayer",
+                       &getExternalChildLayer);
         registerGeometryMethods();
         registerCameraMethods();
 #ifdef _MASSIF_SEARCH_SUPPORT

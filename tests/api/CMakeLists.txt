@@ -200,6 +200,9 @@ add_executable(api_tests
   MetaDataTest.cpp
   BagTest.cpp
   FogSkyTest.cpp
+  # FogOptions is the class the colour-spelling bug bit, and the only COLOR property the reduced
+  # table carries - so this needs nothing the list above does not already link.
+  ColorValueTest.cpp
   SpecKeyTest.cpp
   # Reads the two schemas below, links nothing of its own.
   SpecSchemaTest.cpp
@@ -213,6 +216,8 @@ add_executable(api_tests
   DrapeStandInTest.cpp
   # Same: DrapeTuning.h is the bake resolution arithmetic and nothing else.
   DrapeTuningTest.cpp
+  # Same: ZoomConvention.h is what a zoom number means - camera distance and nominal tile.
+  ZoomConventionTest.cpp
   # Same: ShadowCasterRing.h is the caster ring's zoom bound and nothing else.
   ShadowCasterRingTest.cpp
   # Same: TesselationBounds.h is the extent the surface refinement covers and nothing else.

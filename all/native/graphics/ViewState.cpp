@@ -3,6 +3,7 @@
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
 #include "terrain/CameraClearance.h"
+#include "graphics/ZoomConvention.h"
 #include "utils/Const.h"
 #include "utils/GeneralUtils.h"
 #include "utils/Log.h"
@@ -52,6 +53,7 @@ namespace massif {
         _tanHalfFOVX(0.0f),
         _cosHalfFOVXY(0.0f),
         _tileDrawSize(0),
+        _zoomOffset(0.0f),
         _dpToPX(0),
         _dpi(0),
         _unitToPXCoef(0),
@@ -110,6 +112,15 @@ namespace massif {
         }
         return CameraClearance::maxZoom(_zoom, _focusPos(2), _cameraPos(2), _terrainCameraZ,
                                         getOrbitDistance(_zoomRange.getMax()), _terrainClearanceFloor);
+    }
+
+    float ViewState::getRenderZoom() const {
+        return static_cast<float>(ZoomConvention::renderZoom(_zoom, _zoomOffset));
+    }
+
+    double ViewState::calculateZoom0Distance(double tanHalfFOVY) const {
+        return ZoomConvention::zoom0Distance(_height, Const::WORLD_SIZE, _tileDrawSize, _zoomOffset,
+                                             tanHalfFOVY, _dpi / Const::UNSCALED_DPI);
     }
 
     double ViewState::getOrbitDistance(float zoom) const {
@@ -533,12 +544,14 @@ namespace massif {
         std::shared_ptr<ProjectionSurface> projectionSurface = options.getProjectionSurface();
         int FOVY = options.getFieldOfViewY();
         int tileDrawSize = options.getTileDrawSize();
+        float zoomOffset = options.getZoomOffset();
         float dpi = options.getDPI();
         MapRange zoomRange = options.getZoomRange();
         bool restrictedPanning = options.isRestrictedPanning();
-        if (projectionSurface != _projectionSurface || FOVY != _fovY || tileDrawSize != _tileDrawSize || dpi != _dpi || zoomRange != _zoomRange || restrictedPanning != _restrictedPanning || _screenSizeChanged) {
+        if (projectionSurface != _projectionSurface || FOVY != _fovY || tileDrawSize != _tileDrawSize || zoomOffset != _zoomOffset || dpi != _dpi || zoomRange != _zoomRange || restrictedPanning != _restrictedPanning || _screenSizeChanged) {
             _fovY = FOVY;
             _tileDrawSize = tileDrawSize;
+            _zoomOffset = zoomOffset;
             _dpToPX = dpi / Const::UNSCALED_DPI;
             _dpi = dpi;
             _screenSizeChanged = false;
@@ -550,11 +563,15 @@ namespace massif {
             _tanHalfFOVX = _aspectRatio * _tanHalfFOVY;
             _cosHalfFOVXY = std::cos(std::atan(_tanHalfFOVX)) * _cosHalfFOVY;
 
-            _zoom0Distance = static_cast<float>(_height * 0.5 * Const::WORLD_SIZE / (tileDrawSize * _tanHalfFOVY * (_dpi / Const::UNSCALED_DPI)));
+            _zoom0Distance = static_cast<float>(calculateZoom0Distance(_tanHalfFOVY));
             _minZoom = zoomRange.getMin();
             _zoomRange = zoomRange;
             _restrictedPanning = restrictedPanning;
 
+            // tileDrawSize, NOT the zoom-offset tile size: this is the basis the renderer turns a
+            // style's widths and text sizes into screen pixels with, and those are absolute sizes.
+            // Letting it follow the offset would make "adopt maplibre's zoom" mean "draw every
+            // label and line twice as wide", which is the coupling the offset exists to break.
             _normalizedResolution = 2 * tileDrawSize * (_dpi / Const::UNSCALED_DPI);
 
             // Recalculate camera orientation on projection change
@@ -730,7 +747,7 @@ namespace massif {
     void ViewState::calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible, float& skyHorizonNDC) const {
         float halfFOVY = options.getFieldOfViewY() * 0.5f;
         float tanHalfFOVY = std::tan(static_cast<float>(halfFOVY * Const::DEG_TO_RAD));
-        float zoom0Distance = _height * 0.5 * Const::WORLD_SIZE / (_tileDrawSize * tanHalfFOVY * (_dpi / Const::UNSCALED_DPI));
+        float zoom0Distance = static_cast<float>(calculateZoom0Distance(tanHalfFOVY));
         float initialZ = std::pow(2.0f, -_zoom) * zoom0Distance / 64.0f;
         // The direction the camera actually looks along, which above the horizon is not the
         // direction of the focus point (calculateLookatMat).

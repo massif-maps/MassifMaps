@@ -150,6 +150,19 @@ namespace massif::vt {
         static inline std::atomic<long long> drapeBakeNs{0};
         static inline std::atomic<long long> geometrySkips{0};   // renderTileGeometry calls that set up and then bailed out (invisible)
 
+        // resolveExtrusionBases: a miss re-walks every vertex of the geometry, so what matters is
+        // how often the cached answer is NOT taken, and how much of that is a resolve abandoned
+        // part-way because a DEM had not decoded (which repeats every frame until it does).
+        static inline std::atomic<long long> extrusionResolveCalls{0};
+        static inline std::atomic<long long> extrusionResolveHits{0};     // cached, same base version
+        static inline std::atomic<long long> extrusionResolveUnresolved{0}; // walked, then gave up
+        static inline std::atomic<long long> extrusionResolveVertices{0}; // vertices walked on a miss
+        static inline std::atomic<long long> extrusionElevQueries{0};
+        static inline std::atomic<long long> extrusionResolveNs{0};
+        static inline std::atomic<long long> extrusionVersionBumps{0};   // global invalidations (every geometry)
+        static inline std::atomic<long long> extrusionPendingTiles{0};   // elevation tiles queued for a targeted re-resolve
+        static inline std::atomic<long long> extrusionBasesCleared{0};   // geometries marked stale by those tiles
+
         // Elevation texture pipeline (the SDK's ElevationTextureCache). Extra DEM detail multiplies the
         // tiles by four a level, and these say which end pays for it: the encode worker, the per-frame
         // upload budget, or simply more distinct textures to bind.
@@ -194,6 +207,18 @@ namespace massif::vt {
         // label's several sides costs anything. It runs on the placement worker, never on the GL thread,
         // so no frame section shows it.
         static inline std::atomic<long long> cullerNs{0};
+        // Labels the perspective cut dropped before they cost a placement - the horizon band.
+        static inline std::atomic<long long> cullerDistanceCut{0};
+        static inline std::atomic<long long> cullerConsidered{0};
+        // LabelCuller::process by phase - which one a time budget would have to slice.
+        static inline std::atomic<long long> cullerCollectNs{0}; // updatePlacement + variant envelopes, per label
+        static inline std::atomic<long long> cullerSortNs{0};
+        static inline std::atomic<long long> cullerInsertNs{0};  // greedy grid insertion, per label
+        // What becomes of a considered label: cut by distance, thrown out by updatePlacement as
+        // off-screen/unplaceable, or carried into the sort - and of those, how many end up drawn.
+        static inline std::atomic<long long> cullerInvalid{0};
+        static inline std::atomic<long long> cullerSorted{0};
+        static inline std::atomic<long long> cullerVisible{0};
     };
 }
 

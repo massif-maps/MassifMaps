@@ -19,6 +19,9 @@
 #elif defined(__ANDROID__)
 #define MASSIF_HTTP_SOCKET_IMPL AndroidImpl
 #include "network/HTTPClientAndroidImpl.h"
+#elif defined(__EMSCRIPTEN__)
+#define MASSIF_HTTP_SOCKET_IMPL EmscriptenImpl
+#include "network/HTTPClientEmscriptenImpl.h"
 #else
 #define MASSIF_HTTP_SOCKET_IMPL PionImpl
 #include "HTTPClientPionImpl.h"
@@ -117,7 +120,13 @@ namespace massif {
             // Read Content-Range
             if (statusCode == 206) {
                 auto it = response.headers.find("Content-Range");
-                if (it != response.headers.end()) {
+                if (it == response.headers.end()) {
+                    // A browser hides Content-Range from the page unless the server opts in with
+                    // Access-Control-Expose-Headers, and most tile hosts do not - so the offset
+                    // cannot be checked there. The server still honoured the Range, and refusing
+                    // it makes every PMTiles archive unreadable on the web.
+                    contentOffset = offset;
+                } else {
                     std::cmatch what;
                     if (std::regex_match(it->second.c_str(), what, std::regex("bytes ([0-9]+)-.*"))) {
                         contentOffset = boost::lexical_cast<std::uint64_t>(what[1]);

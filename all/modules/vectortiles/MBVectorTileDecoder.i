@@ -30,6 +30,10 @@
 !method(massif::MBVectorTileDecoder, getStyleParameter, arg(name, string), returns(string))
 // Several at once. The `styleParameters` property is the list of NAMES the style declares.
 !method(massif::MBVectorTileDecoder, setStyleParameters, arg(params, json), returns(void))
+// The bytes of a font for glyphs the style names but the build has no face for. A `data` handle,
+// because a spec has no way to say "these bytes" - and without it a decoder built from a spec
+// loses the labels of every converted MapBox style, which all name DIN Pro.
+!method(massif::MBVectorTileDecoder, addFallbackFont, arg(font, handle), returns(void))
 // And as a property bag, which is what an app writes: set(style, "params.water_color", "#0af").
 // setStyleParameter answers whether the style declares the parameter, so an undeclared one is
 // refused rather than dropped.

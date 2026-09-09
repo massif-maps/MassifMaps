@@ -78,8 +78,8 @@ namespace {
 }
 
 namespace massif::vt {
-    std::unordered_map<long long, cglib::vec2<float>> buildExtrusionAnchors(const std::vector<ExtrusionFootprint>& footprints, const cglib::bbox2<float>& sourceBox) {
-        std::unordered_map<long long, cglib::vec2<float>> anchors;
+    std::unordered_map<long long, std::vector<ExtrusionAnchor>> buildExtrusionAnchors(const std::vector<ExtrusionFootprint>& footprints, const cglib::bbox2<float>& sourceBox) {
+        std::unordered_map<long long, std::vector<ExtrusionAnchor>> anchors;
         if (footprints.empty()) {
             return anchors;
         }
@@ -89,15 +89,9 @@ namespace massif::vt {
         std::iota(parent.begin(), parent.end(), std::size_t(0));
 
         std::unordered_map<PointKey, std::size_t, PointKeyHash> vertexOwner;
-        std::unordered_map<long long, std::size_t> buildingOwner, localOwner;
+        std::unordered_map<long long, std::size_t> buildingOwner;
         for (std::size_t i = 0; i < footprints.size(); i++) {
             const ExtrusionFootprint& footprint = footprints[i];
-            // One multi-polygon feature is one building, however far apart its polygons lie: the
-            // symbolizer draws them all under the one id, so they get the one anchor either way.
-            auto localResult = localOwner.emplace(footprint.localId, i);
-            if (!localResult.second) {
-                unite(parent, localResult.first->second, i);
-            }
             for (const std::vector<cglib::vec2<float>>& ring : footprint.rings) {
                 for (const cglib::vec2<float>& p : ring) {
                     auto result = vertexOwner.emplace(pointKey(p), i);
@@ -168,10 +162,46 @@ namespace massif::vt {
 
         for (std::size_t i = 0; i < footprints.size(); i++) {
             auto it = groupAnchors.find(findRoot(parent, i));
-            if (it != groupAnchors.end()) {
-                anchors[footprints[i].localId] = it->second;
+            if (it == groupAnchors.end() || footprints[i].rings.empty()) {
+                continue;
             }
+            const std::vector<cglib::vec2<float>>& ring = footprints[i].rings.front();
+            cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
+            for (const cglib::vec2<float>& p : ring) {
+                bounds.add(p);
+            }
+            anchors[footprints[i].localId].push_back(ExtrusionAnchor { bounds, it->second });
         }
         return anchors;
+    }
+
+    const ExtrusionAnchor* findExtrusionAnchor(const std::vector<ExtrusionAnchor>& anchors, const std::vector<cglib::vec2<float>>& ring) {
+        if (anchors.size() == 1) {
+            return &anchors.front(); // the ordinary case: one building, one feature
+        }
+        if (ring.empty()) {
+            return nullptr;
+        }
+        cglib::vec2<double> acc(0, 0);
+        for (const cglib::vec2<float>& p : ring) {
+            acc = acc + cglib::vec2<double>(p(0), p(1));
+        }
+        cglib::vec2<float> centroid(static_cast<float>(acc(0) / ring.size()), static_cast<float>(acc(1) / ring.size()));
+        // The SMALLEST bounds holding it: a courtyard building sits inside a bigger one's box, and
+        // the tighter box is the footprint that was actually drawn.
+        const ExtrusionAnchor* best = nullptr;
+        float bestArea = 0;
+        for (const ExtrusionAnchor& candidate : anchors) {
+            if (!candidate.bounds.inside(centroid)) {
+                continue;
+            }
+            cglib::vec2<float> size = candidate.bounds.size();
+            float area = size(0) * size(1);
+            if (!best || area < bestArea) {
+                best = &candidate;
+                bestArea = area;
+            }
+        }
+        return best;
     }
 }

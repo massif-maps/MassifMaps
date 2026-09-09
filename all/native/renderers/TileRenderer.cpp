@@ -224,6 +224,52 @@ namespace massif {
         _horizontalLayerOffset += offset;
     }
     
+    /**
+     * The three pieces of state GLTileRenderer::renderDrapedSurface refuses to draw without. Pushed
+     * from prepareFrame as well as onDrawFrame because MapRenderer draws the shared ground BEFORE
+     * this layer's onDrawFrame runs: on the first frame of a 2D->3D switch every surface bailed and
+     * the frame had no ground at all - the sky through it, buildings still there.
+     * Caller must hold _mutex.
+     */
+    void TileRenderer::pushTerrainDrapeState() {
+        std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>());
+        if (!tileRenderer) {
+            return;
+        }
+        bool terrainMode = false;
+        std::shared_ptr<TerrainOptions> activeTerrainOptions;
+        if (auto options = _options.lock()) {
+            if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+                if (auto terrainOptions = options->getTerrainOptions()) {
+                    if (terrainOptions->isActive()) {
+                        terrainMode = true;
+                        activeTerrainOptions = terrainOptions;
+                    }
+                }
+            }
+        }
+        // An ALREADY BUILT cache only: creating one, and its per-frame begin, stay in onDrawFrame,
+        // which runs later in the same frame and pushes the authoritative values over these.
+        std::shared_ptr<ElevationTextureCache> elevationTextureCache;
+        if (terrainMode) {
+            elevationTextureCache = _elevationTextureCache;
+        }
+        vt::GLTileRenderer::TerrainTextureProvider terrainTextureProvider;
+        if (elevationTextureCache) {
+            terrainTextureProvider = [elevationTextureCache](const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
+                return elevationTextureCache->getTexture(tileId, terrainTexture);
+            };
+        }
+        float terrainDepthBias = 0.0f;
+        if (terrainMode && !terrainTextureProvider) {
+            terrainDepthBias = activeTerrainOptions->getDepthBias() * 0.1f;
+        }
+        tileRenderer->setTerrainTextureProvider(terrainTextureProvider);
+        tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
+        tileRenderer->setTerrainRegularGrid(terrainMode && (bool) terrainTextureProvider,
+                                            activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
+    }
+
     bool TileRenderer::prepareFrame(float deltaSeconds, const ViewState& viewState) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -266,7 +312,7 @@ namespace massif {
         // the view state - so without this the ground lags the buildings by exactly one frame during
         // a pan and snaps into place when the motion stops.
         cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
-        vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         prepareViewState.planarProjection = isPlanarProjectionMode();
         prepareViewState.lightBrightness = _resolvedBrightness;
         tileRenderer->setViewState(prepareViewState);
@@ -275,6 +321,7 @@ namespace massif {
         tileRenderer->setBackgroundEmissive(_backgroundEmissive);
         tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
+        pushTerrainDrapeState();
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
         }
@@ -776,7 +823,7 @@ namespace massif {
         }
 
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
-        vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.planarProjection = isPlanarProjectionMode(); // labels rescale by view depth, so neither terrain elevation nor a tilt blows up their screen size
         vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
@@ -905,7 +952,7 @@ namespace massif {
                     // mesh's level cap. A dial, not a flag - each level back is 4x the working set.
                     //   adb shell setprop debug.massif.paintdetail 0|1|2   (2 = the source's own level)
                     _elevationTextureCache->setDetailLevels(_terrainPaintEnabled && _terrainPaintFullDetail ? terrainPaintDetailLevels() : 0);
-                    _elevationTextureCache->beginFrame();
+                    _elevationTextureCache->beginFrame(viewState.getZoom());
                     std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache;
                     terrainTextureProvider = [elevationTextureCache](const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
                         return elevationTextureCache->getTexture(tileId, terrainTexture);
@@ -938,18 +985,30 @@ namespace massif {
             // An extrusion BAKES its ground into its vertices, so it cannot accept "0 means no
             // data", and it reads the TEXTURE cache rather than the grid LRU - a grid is routinely
             // evicted while its texture keeps rendering. vt hands over normalized coordinates.
-            if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
-                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, bool smooth, double& height) {
-                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, smooth, height);
-                });
-            } else {
-                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, bool, double& height) {
-                    return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
-                });
+            // ...and only when the source behind it changed: pushed every frame, it re-resolved
+            // every building's base every frame (1.3 M elevation queries a second on the device).
+            std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache;
+            std::pair<const void*, const void*> providerKey(tileRenderer.get(), elevationTextureCache
+                ? static_cast<const void*>(elevationTextureCache.get())
+                : static_cast<const void*>(elevationManager.get()));
+            if (_extrusionProviderKey != providerKey) {
+                _extrusionProviderKey = providerKey;
+                if (elevationTextureCache) {
+                    tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, bool smooth, double& height) {
+                        return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, smooth, height);
+                    });
+                } else {
+                    tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, bool, double& height) {
+                        return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
+                    });
+                }
             }
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
-            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
+            if (_extrusionProviderKey.first || _extrusionProviderKey.second) {
+                _extrusionProviderKey = { nullptr, nullptr };
+                tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)>());
+            }
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());
@@ -1178,7 +1237,7 @@ namespace massif {
         return owed;
     }
 
-    bool TileRenderer::cullLabels(vt::LabelCuller& culler, const ViewState& viewState) {
+    bool TileRenderer::cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished) {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         cglib::mat4x4<double> modelViewMat;
         {
@@ -1193,7 +1252,7 @@ namespace massif {
         if (!tileRenderer) {
             return false;
         }
-        vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(),
+        vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
         cullViewState.lightBrightness = _resolvedBrightness;
@@ -1201,11 +1260,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         culler.setViewState(cullViewState);
 
         try {
-            tileRenderer->cullLabels(culler);
+            finished = tileRenderer->cullLabels(culler) && finished;
         }
         catch (const std::exception& ex) {
             Log::Errorf("TileRenderer::cullLabels: Culling failed: %s", ex.what());
-            return false;
+            return false; // and 'finished' is left alone - retrying a layer that threw will not help
         }
         return true;
     }
@@ -1329,7 +1388,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
     Color TileRenderer::evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness) {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
-        vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(),
+        vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.lightBrightness = brightness;
         return Color(colorFunc(vtViewState).value());
@@ -1343,7 +1402,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
     float TileRenderer::evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness) {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat();
-        vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.lightBrightness = brightness;
         return floatFunc(vtViewState);
     }

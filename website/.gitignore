@@ -10,6 +10,13 @@
 # Generated API reference (produced by scripts/docs/gen-api-*.sh in CI)
 /static/api
 
+# Copied from web/demo by scripts/prepare.mjs, so there is one copy of it in the repo
+/static/coi-serviceworker.js
+
+# The wasm the /preview page runs: built by scripts/build-web.py --website, or downloaded from the
+# web-preview workflow's artefact. Too big to track, and it must match the SDK it was built from.
+/static/preview
+
 # Misc
 .DS_Store
 .env.local

@@ -8,6 +8,8 @@
 #include "projections/ProjectionSurface.h"
 #include "projections/PlanarProjectionSurface.h"
 #include "projections/SphericalProjectionSurface.h"
+
+#include <vt/TileTransformer.h>
 #include "utils/Const.h"
 #include "utils/Log.h"
 #include "utils/GeneralUtils.h"
@@ -69,6 +71,7 @@ namespace massif {
         _focusPointOffset(0, 0),
         _baseProjection(std::make_shared<EPSG3857>()),
         _projectionSurface(std::make_shared<PlanarProjectionSurface>()),
+        _tileTransformer(std::make_shared<vt::DefaultTileTransformer>(static_cast<float>(Const::WORLD_SIZE))),
         _envelopeThreadPool(envelopeThreadPool),
         _tileThreadPool(tileThreadPool),
         _layersLabelsProcessedInReverseOrder(true),
@@ -160,10 +163,12 @@ namespace massif {
             switch (renderProjectionMode) {
             case RenderProjectionMode::RENDER_PROJECTION_MODE_SPHERICAL:
                 _projectionSurface = std::make_shared<SphericalProjectionSurface>();
+                _tileTransformer = std::make_shared<vt::SphericalTileTransformer>(static_cast<float>(Const::WORLD_SIZE / Const::PI));
                 break;
             case RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR:
             default:
                 _projectionSurface = std::make_shared<PlanarProjectionSurface>();
+                _tileTransformer = std::make_shared<vt::DefaultTileTransformer>(static_cast<float>(Const::WORLD_SIZE));
                 break;
             }
         }
@@ -929,6 +934,11 @@ namespace massif {
     std::shared_ptr<ProjectionSurface> Options::getProjectionSurface() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _projectionSurface;
+    }
+
+    std::shared_ptr<vt::TileTransformer> Options::getTileTransformer() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _tileTransformer;
     }
 
     std::shared_ptr<TerrainOptions> Options::getTerrainOptions() const {

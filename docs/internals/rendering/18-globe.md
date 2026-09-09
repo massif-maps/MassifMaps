@@ -105,9 +105,21 @@ suite before the one that depends on it.
    construction; and a spherical height is radial, so setting `uElevationScale.y/z` to zero makes
    the shader's existing `cosh` equal 1 and the scale formula needs no spherical case at all.
 
-   Still to do: `TerrainRenderer` builds a unit-square grid with a z displacement and an affine tile
-   matrix, in four separate copies of the planar tile math, and has to consume the layer's
-   `TileTransformer` instead. Only when that lands do the five conditions come out.
+   The CPU half is started. `Options` now owns the BASE tile transformer alongside the projection
+   surface it already owned, on the same lifecycle, so `TileLayer` and `TerrainRenderer` read one
+   object instead of each deciding the projection for themselves. `TerrainRenderer` takes it and
+   builds its mesh and tile matrix through it, dropping its mesh cache when it changes. The plane is
+   untouched by construction: the mesh keeps its literal `(x, y, localZ)` and its
+   `(1 << zoom) / WORLD_SIZE` height factor, and only the spherical branch is new.
+
+   Three things in `TerrainRenderer` are still planar, and the five conditions stay closed until
+   they are not:
+   - `calculateVisibleTiles` builds its tile bounding box and LOD centre from internal coordinates.
+   - `ensureSurfaceAttribs` derives its normals from the local height field, which assumes the
+     tile-local frame's axes are the world's.
+   - **Skirts.** They extrude by replacing a vertex's z, which is the same encoding the shader
+     cannot invert on a curved surface. This is the one that needs a design rather than a port: the
+     drop has to travel in its own attribute.
 4. **Picking and the camera.** `ElevationManager::intersectRay`, `CameraClearance` and
    `AutoFlatten::parallax` are all expressed along the Z axis.
 5. **Space.** `Options::setZoomRange` clamps the minimum to `0`, so there is no zoom at which the

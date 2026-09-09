@@ -25,6 +25,7 @@
 namespace massif {
     class Bitmap;
     class ElevationManager;
+    namespace vt { class TileTransformer; }
     class ElevationTileGrid;
     class TerrainOptions;
     class FrameBuffer;
@@ -50,6 +51,17 @@ namespace massif {
     public:
         TerrainRenderer();
         virtual ~TerrainRenderer();
+
+        /**
+         * The surface the mesh is built on - the plane or the globe. Set from Options before any
+         * render call; the meshes are dropped when it changes, because their vertices carry the
+         * shape. See docs/internals/rendering/18-globe.md.
+         */
+        void setTileTransformer(const std::shared_ptr<vt::TileTransformer>& tileTransformer);
+
+    private:
+        static double sphericalLocalPerInternal(const MapTile& tile, double internalY);
+    public:
 
         /**
          * Renders terrain depth into the currently bound framebuffer. Color writes are
@@ -196,6 +208,7 @@ namespace massif {
         // huge value for sky pixels and for pixels outside the buffer.
         static float sampleDepthW(const TerrainDepthBuffer& depthData, int x, int y);
 
+        std::shared_ptr<vt::TileTransformer> _tileTransformer;
         std::shared_ptr<FrameBuffer> _frameBuffer;
         std::shared_ptr<Shader> _shader;
         std::shared_ptr<Shader> _colorShader;

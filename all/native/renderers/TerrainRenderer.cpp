@@ -12,6 +12,8 @@
 #include "renderers/utils/Texture.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/ElevationTileGrid.h"
+
+#include <vt/TileTransformer.h>
 #include "utils/Const.h"
 #include "utils/Log.h"
 
@@ -859,6 +861,13 @@ namespace massif {
         int rowSize = gridSize + 1;
         mesh->gridSize = gridSize;
 
+        // The mesh is built in the transformer's tile-local frame, so its vertices carry the shape
+        // of the surface. Its (x, y) is the vt LOCAL frame, whose y runs opposite to the tile's -
+        // hence the 1 - y when asking the transformer about a node.
+        vt::TileId vtTileId(tile.getZoom(), tile.getX(), tile.getY());
+        std::shared_ptr<const vt::TileTransformer::VertexTransformer> vertexTransformer = _tileTransformer->createTileVertexTransformer(vtTileId);
+        bool spherical = _tileTransformer->isSpherical();
+
         mesh->vertices.reserve((rowSize * rowSize + 8 * rowSize) * 3); // grid + skirt vertices
         double minLocalZ = 0;
         for (int gy = 0; gy <= gridSize; gy++) {
@@ -870,12 +879,25 @@ namespace massif {
                 double localZ = 0;
                 if (grid) {
                     double meters = grid->sampleNodeHeight(internalX, internalY); // the drawn surface, which this depth stands in for
-                    localZ = meters * exaggeration * elevationManager->getDisplayScale(internalY) * localFromInternal;
+                    // The height in INTERNAL units is the same on either surface (18-globe.md);
+                    // only the internal-to-tile-local factor differs, and the plane's is written
+                    // out rather than derived so its depth mesh keeps the values it had.
+                    double internalZ = meters * exaggeration * elevationManager->getDisplayScale(internalY);
+                    localZ = internalZ * (spherical ? sphericalLocalPerInternal(tile, internalY) : localFromInternal);
                 }
                 minLocalZ = std::min(minLocalZ, localZ);
-                mesh->vertices.push_back(static_cast<float>(x));
-                mesh->vertices.push_back(static_cast<float>(y));
-                mesh->vertices.push_back(static_cast<float>(localZ));
+                if (spherical) {
+                    cglib::vec2<float> tilePos(static_cast<float>(x), static_cast<float>(1.0 - y));
+                    cglib::vec3<float> point = vertexTransformer->calculatePoint(tilePos);
+                    cglib::vec3<float> normal = cglib::unit(vertexTransformer->calculateNormal(tilePos));
+                    mesh->vertices.push_back(static_cast<float>(point(0) + normal(0) * localZ));
+                    mesh->vertices.push_back(static_cast<float>(point(1) + normal(1) * localZ));
+                    mesh->vertices.push_back(static_cast<float>(point(2) + normal(2) * localZ));
+                } else {
+                    mesh->vertices.push_back(static_cast<float>(x));
+                    mesh->vertices.push_back(static_cast<float>(y));
+                    mesh->vertices.push_back(static_cast<float>(localZ));
+                }
             }
         }
 
@@ -927,19 +949,27 @@ namespace massif {
         return mesh;
     }
 
+    double TerrainRenderer::sphericalLocalPerInternal(const MapTile& tile, double internalY) {
+        // internal -> metres is the Mercator stretch; metres -> spherical tile-local is
+        // calculateHeight's 2 * PI convention, which carries no stretch of its own. On the plane
+        // the two cancel to (1 << zoom) / WORLD_SIZE, which is why only this case needs writing.
+        double sinLatitude = std::tanh(internalY * 2 * Const::PI / Const::WORLD_SIZE);
+        double cosLatitude = std::sqrt(std::max(1.0e-6, 1.0 - sinLatitude * sinLatitude));
+        return cosLatitude * (1 << tile.getZoom()) * 2 * Const::PI / Const::WORLD_SIZE;
+    }
+
+    void TerrainRenderer::setTileTransformer(const std::shared_ptr<vt::TileTransformer>& tileTransformer) {
+        if (_tileTransformer == tileTransformer) {
+            return;
+        }
+        // The vertices carry the shape, so a cached mesh built on the other surface is wrong.
+        _tileTransformer = tileTransformer;
+        _meshCache.clear();
+    }
+
     cglib::mat4x4<double> TerrainRenderer::calculateTileMatrix(const MapTile& tile) const {
-        int tileMask = (1 << tile.getZoom()) - 1;
-        double zoomScale = 1.0 / (1 << tile.getZoom());
-        double s = zoomScale * Const::WORLD_SIZE;
-        cglib::mat4x4<double> m = cglib::mat4x4<double>::zero();
-        m(0, 0) = s;
-        m(1, 1) = s;
-        m(2, 2) = s;
-        m(0, 3) = (tile.getX() * zoomScale - 0.5) * Const::WORLD_SIZE;
-        m(1, 3) = ((tileMask - tile.getY()) * zoomScale - 0.5) * Const::WORLD_SIZE;
-        m(2, 3) = 0;
-        m(3, 3) = 1;
-        return m;
+        // The transformer's own tile frame: a uniform scale and the tile origin, curved or flat.
+        return _tileTransformer->calculateTileMatrix(vt::TileId(tile.getZoom(), tile.getX(), tile.getY()), 1.0f);
     }
 
     const std::string TerrainRenderer::TERRAIN_DEPTH_VERTEX_SHADER = R"GLSL(

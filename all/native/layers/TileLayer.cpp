@@ -1329,32 +1329,21 @@ namespace massif {
 
     void TileLayer::resetTileTransformer() {
         std::shared_ptr<vt::TileTransformer> tileTransformer;
-        bool spherical = false;
-        if (auto options = getOptions()) {
-            spherical = options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_SPHERICAL;
-        }
         std::shared_ptr<vt::TileTransformer> base;
-        if (spherical) {
-            base = std::make_shared<vt::SphericalTileTransformer>(static_cast<float>(Const::WORLD_SIZE / Const::PI));
-        } else {
-            base = std::make_shared<vt::DefaultTileTransformer>(static_cast<float>(Const::WORLD_SIZE));
-        }
-        // Terrain DECORATES the base, so the globe could carry it - but the displacement itself is
-        // still planar (the drape shader and TerrainRenderer's mesh), so the globe would draw a
-        // flat surface with displaced content on it. The condition goes when those two do; see
-        // docs/internals/rendering/18-globe.md.
-        if (!spherical) {
-            if (auto options = getOptions()) {
-                if (auto terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isDecodeActive()) {
-                        // MUST match what calculateDrawData compares against: these decide the
-                        // tesselation the cached tiles were built with, so a mismatch leaves tiles
-                        // decoded for the other mode in place forever.
-                        bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
-                        tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
-                    }
+        if (auto options = getOptions()) {
+            base = options->getTileTransformer();
+            if (auto terrainOptions = options->getTerrainOptions()) {
+                if (terrainOptions->isDecodeActive()) {
+                    // MUST match what calculateDrawData compares against: these decide the
+                    // tesselation the cached tiles were built with, so a mismatch leaves tiles
+                    // decoded for the other mode in place forever.
+                    bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
+                    tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
                 }
             }
+        }
+        if (!base) {
+            base = std::make_shared<vt::DefaultTileTransformer>(static_cast<float>(Const::WORLD_SIZE));
         }
         if (!tileTransformer) {
             tileTransformer = base;

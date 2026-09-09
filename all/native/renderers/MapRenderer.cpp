@@ -1285,6 +1285,7 @@ namespace massif {
             if (terrainOptions && terrainOptions->isActive()) {
                 if (!_terrainRenderer) {
                     _terrainRenderer = std::make_unique<TerrainRenderer>();
+                    _terrainRenderer->setTileTransformer(_options->getTileTransformer());
                 }
                 // Full mesh resolution: an effect drawing lines from this depth would otherwise
                 // draw the coarse depth mesh's own triangulation.
@@ -2408,6 +2409,12 @@ namespace massif {
             if (auto terrainOptions = _options->getTerrainOptions()) {
                 if (terrainOptions->isActive()) {
                     terrainMode = true;
+                    // Every frame, not just at creation: a projection switch replaces the
+                    // transformer without replacing the renderer, and a cached mesh carries the
+                    // shape of the surface it was built on. The setter is a no-op when unchanged.
+                    if (_terrainRenderer) {
+                        _terrainRenderer->setTileTransformer(_options->getTileTransformer());
+                    }
                     // Elevation arrives on a loading thread and every consumer reads it from
                     // inside a frame, so the tiles that land after the last one are never
                     // applied: the map sits on a half-displaced mesh until the next gesture.
@@ -2445,6 +2452,7 @@ namespace massif {
                     {
                         if (!_terrainRenderer) {
                             _terrainRenderer = std::make_unique<TerrainRenderer>();
+                    _terrainRenderer->setTileTransformer(_options->getTileTransformer());
                         }
                         bool keepDepth = !depthWriteAssigned;
                         bool backgroundRendered = false;
@@ -2489,6 +2497,7 @@ namespace massif {
                         // Pixel-exact terrain depth buffer for label/billboard occlusion tests
                         if (!_terrainRenderer) {
                             _terrainRenderer = std::make_unique<TerrainRenderer>();
+                    _terrainRenderer->setTileTransformer(_options->getTileTransformer());
                         }
                         _terrainRenderer->updateDepthBuffer(viewState, terrainOptions, _glResourceManager);
                         if (_terrainRenderer->isDepthBufferStale()) {

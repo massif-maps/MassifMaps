@@ -25,6 +25,7 @@ namespace massif {
     class CancelableThreadPool;
     class Projection;
     class ProjectionSurface;
+    namespace vt { class TileTransformer; }
     
     namespace RenderProjectionMode {
         /**
@@ -817,6 +818,13 @@ namespace massif {
          * @return The projection surface.
          */
         std::shared_ptr<ProjectionSurface> getProjectionSurface() const;
+        /**
+         * Returns the BASE tile transformer for the current render projection - the plane or the
+         * globe, never terrain. A layer that displaces by elevation decorates this one.
+         * Internal, not exposed in the public API.
+         * @return The base tile transformer.
+         */
+        std::shared_ptr<vt::TileTransformer> getTileTransformer() const;
 
         /**
          * Returns the terrain options. May be null if no terrain is configured.
@@ -981,6 +989,7 @@ namespace massif {
         std::shared_ptr<Projection> _renderProjection;
 
         std::shared_ptr<ProjectionSurface> _projectionSurface;
+        std::shared_ptr<vt::TileTransformer> _tileTransformer;
 
         std::shared_ptr<TerrainOptions> _terrainOptions;
         std::shared_ptr<TerrainOptions::OnChangeListener> _terrainOptionsListener;

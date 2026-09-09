@@ -200,6 +200,14 @@ namespace massif {
         return names;
     }
 
+    std::shared_ptr<Layer> CompositeVectorTileLayer::getExternalChildLayer(const std::string& name) const {
+        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        if (const ExternalSource* source = findExternalSource(name)) {
+            return source->childLayer;
+        }
+        return std::shared_ptr<Layer>();
+    }
+
     void CompositeVectorTileLayer::setZoomLevelBias(float bias) {
         VectorTileLayer::setZoomLevelBias(bias);
 

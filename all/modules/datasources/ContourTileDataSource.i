@@ -23,6 +23,11 @@
 
 !polymorphic_shared_ptr(massif::ContourTileDataSource, datasources.ContourTileDataSource)
 
+// `source` rather than `dataSource`, to read like every other wrapping source spec (merged-mbvt,
+// ordered, persistent-cache). The elevation decoder is deliberately NOT a spec key: it is resolved
+// from the wrapped source's `dem_encoding` metadata, the same place a hillshade layer reads it.
+!spec(massif::ContourTileDataSource, source, contour, alias(source, dataSource))
+
 %attributestring(massif::ContourTileDataSource, std::string, LayerName, getLayerName, setLayerName)
 %attribute(massif::ContourTileDataSource, float, BaseInterval, getBaseInterval, setBaseInterval)
 %attribute(massif::ContourTileDataSource, int, Resolution, getResolution, setResolution)

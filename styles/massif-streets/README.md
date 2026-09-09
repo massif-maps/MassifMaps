@@ -116,28 +116,42 @@ with eight that do not line up mapped by hand — `rail` for `railway`, `toilet`
 rather than a ninety-branch table, which the converter resolves through one style parameter per
 sprite. A class with no drawing simply draws its label, which is what Liberty does too.
 
+**Colour says what a POI is FOR**, not what it is: transit blue `#2e5a80`, anything green and
+outdoors `#4a7a3a`, care and emergency `#a33a3a`, everything else the ordinary `#666666`. The map
+answers "can I get there", "is it a park", "is it help" before it answers "which shop is this". The
+sheet is baked, so the drawings are re-cut in their group's colour rather than tinted per feature;
+the LABEL takes the same colour from a `match` on `class`, which converts to a ternary chain — no
+`when()`, but a per-feature chain all the same, and the one place this style pays for a colour.
+
+**The name takes whichever side of the icon is free, and the icon stays when no side fits.**
+`text-variable-anchor: [bottom, top, right, left]` with `text-optional: true`, which the converter
+maps to `shield-anchors` and `shield-text-optional` — the same model on both sides. A crowded corner
+keeps the icon and drops only the name, instead of losing the place entirely.
+
 ## Where this style departs from the references
 
 The preview compares against OpenFreeMap Liberty and Mapbox Standard, and most of what differs
 between them and us is a bug on our side. This list is the opposite: the places where we have
 looked at what they do and **decided against it**. Add to it rather than quietly re-converging.
 
-### A POI wins a collision against a road shield
+### A road NAME outranks a POI, and a POI outranks a shield
 
-Both references give it to the shield. Symbol placement runs in REVERSE layer order — maplibre's
-`pauseable_placement.ts` walks the style's layers from the last to the first, and whoever is placed
-first claims the slot — so Liberty's shields (layers 98–100) beat its POIs (91–94). The SDK does the
-same by the opposite arithmetic: the converter numbers `text-placement-priority` up with the layer
-index and `LabelCuller` sorts it down, so the later layer still wins.
+Symbol placement runs in REVERSE layer order — maplibre's `pauseable_placement.ts` walks the style's
+layers from the last to the first, and whoever is placed first claims the slot. The SDK reaches the
+same answer by the opposite arithmetic: the converter numbers `text-placement-priority` up with the
+layer index and `LabelCuller` sorts it down, so the later layer still wins.
 
-We want the POI. A shield repeats along its road and can be read a hundred metres further on; a POI
-is one place and is either drawn or lost. So **the POI layers go BELOW the shield layers** in
-`style.json` — later in the array is a higher index, a higher priority, and placement first.
+The label layers are therefore ordered **least important first**: shields, then POIs, then road
+names. Generated priorities run 1.1M–1.6M for the shields, 1.7M–1.9M for the POIs, 2.0M–2.4M for the
+names.
 
-The POI layers are last in `style.json`, so the generated `text-placement-priority` runs 2.2M–2.4M
-against the shields' 1.6M–2.1M. The ordering is invisible in the output — nothing in the CartoCSS
-says "this was deliberate" — and the natural thing to do is to copy Liberty's order and inherit its
-answer.
+Both references order it the other way — Liberty's shields (layers 98–100) beat its POIs (91–94),
+and neither lets a name beat either. Ours is by rank of what is lost: a shield repeats along its
+road and can be read a hundred metres further on; a POI is one place; a **street name is the only
+label that street will ever have**, and a street whose name a café keeps taking is unusable.
+
+The ordering is invisible in the output — nothing in the CartoCSS says "this was deliberate" — and
+the natural thing to do when adding a layer is to copy Liberty's order and inherit its answer.
 
 ## Written so the CartoCSS brackets
 

@@ -770,308 +770,6 @@
       }
     },
     {
-      "id": "road-label-service",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 15,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "service"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          6.5,
-          18,
-          13
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 25%)",
-        "text-halo-color": "hsl(0, 0%, 95%)",
-        "text-halo-width": 1
-      }
-    },
-    {
-      "id": "road-label-minor",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 13,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "minor"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          8,
-          18,
-          14
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 25%)",
-        "text-halo-color": "hsl(0, 0%, 95%)",
-        "text-halo-width": 1
-      }
-    },
-    {
-      "id": "road-label-tertiary",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 13,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "tertiary"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          9,
-          18,
-          16
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 25%)",
-        "text-halo-color": "hsl(0, 0%, 95%)",
-        "text-halo-width": 1
-      }
-    },
-    {
-      "id": "road-label-primary",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 12,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "primary",
-            "secondary"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          9,
-          18,
-          16
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 25%)",
-        "text-halo-color": "hsl(0, 0%, 95%)",
-        "text-halo-width": 1
-      }
-    },
-    {
-      "id": "road-label-major",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 10,
-      "filter": [
-        "in",
-        [
-          "get",
-          "class"
-        ],
-        [
-          "literal",
-          [
-            "motorway",
-            "trunk"
-          ]
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "text-field": [
-          "coalesce",
-          [
-            "get",
-            "name"
-          ],
-          [
-            "get",
-            "name_int"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          9,
-          18,
-          16
-        ],
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.15,
-        "text-max-angle": 30,
-        "text-padding": 1,
-        "text-pitch-alignment": "viewport"
-      },
-      "paint": {
-        "text-color": "hsl(0, 0%, 25%)",
-        "text-halo-color": "hsl(0, 0%, 95%)",
-        "text-halo-width": 1
-      }
-    },
-    {
       "id": "road-shield-us-interstate",
       "type": "symbol",
       "source": "openmaptiles",
@@ -2649,14 +2347,80 @@
         "text-size": 11,
         "text-max-width": 9,
         "text-padding": 2,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          0.7
-        ]
+        "text-variable-anchor": [
+          "bottom",
+          "top",
+          "right",
+          "left"
+        ],
+        "text-radial-offset": 1.0,
+        "text-optional": true
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 40%)",
+        "text-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "aerialway",
+            "airfield",
+            "airport",
+            "bus",
+            "ferry",
+            "harbor",
+            "heliport",
+            "railway",
+            "railway_light",
+            "railway_metro"
+          ],
+          "#2e5a80",
+          [
+            "american_football",
+            "attraction",
+            "baseball",
+            "basketball",
+            "beach",
+            "campsite",
+            "cemetery",
+            "cricket",
+            "dog_park",
+            "garden",
+            "golf",
+            "mountain",
+            "park",
+            "picnic_site",
+            "pitch",
+            "playground",
+            "skiing",
+            "soccer",
+            "stadium",
+            "swimming",
+            "tennis",
+            "viewpoint",
+            "volcano",
+            "water",
+            "waterfall",
+            "wetland",
+            "zoo"
+          ],
+          "#4a7a3a",
+          [
+            "dentist",
+            "doctors",
+            "drinking_water",
+            "fire_station",
+            "hospital",
+            "pharmacy",
+            "police",
+            "shelter",
+            "toilets",
+            "veterinary"
+          ],
+          "#a33a3a",
+          "#666666"
+        ],
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
       }
@@ -2723,14 +2487,80 @@
         "text-size": 12,
         "text-max-width": 9,
         "text-padding": 2,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          0.7
-        ]
+        "text-variable-anchor": [
+          "bottom",
+          "top",
+          "right",
+          "left"
+        ],
+        "text-radial-offset": 1.0,
+        "text-optional": true
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 40%)",
+        "text-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "aerialway",
+            "airfield",
+            "airport",
+            "bus",
+            "ferry",
+            "harbor",
+            "heliport",
+            "railway",
+            "railway_light",
+            "railway_metro"
+          ],
+          "#2e5a80",
+          [
+            "american_football",
+            "attraction",
+            "baseball",
+            "basketball",
+            "beach",
+            "campsite",
+            "cemetery",
+            "cricket",
+            "dog_park",
+            "garden",
+            "golf",
+            "mountain",
+            "park",
+            "picnic_site",
+            "pitch",
+            "playground",
+            "skiing",
+            "soccer",
+            "stadium",
+            "swimming",
+            "tennis",
+            "viewpoint",
+            "volcano",
+            "water",
+            "waterfall",
+            "wetland",
+            "zoo"
+          ],
+          "#4a7a3a",
+          [
+            "dentist",
+            "doctors",
+            "drinking_water",
+            "fire_station",
+            "hospital",
+            "pharmacy",
+            "police",
+            "shelter",
+            "toilets",
+            "veterinary"
+          ],
+          "#a33a3a",
+          "#666666"
+        ],
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
       }
@@ -2789,14 +2619,382 @@
         "text-size": 12,
         "text-max-width": 9,
         "text-padding": 2,
-        "text-anchor": "top",
-        "text-offset": [
-          0,
-          0.7
-        ]
+        "text-variable-anchor": [
+          "bottom",
+          "top",
+          "right",
+          "left"
+        ],
+        "text-radial-offset": 1.0,
+        "text-optional": true
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 40%)",
+        "text-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "aerialway",
+            "airfield",
+            "airport",
+            "bus",
+            "ferry",
+            "harbor",
+            "heliport",
+            "railway",
+            "railway_light",
+            "railway_metro"
+          ],
+          "#2e5a80",
+          [
+            "american_football",
+            "attraction",
+            "baseball",
+            "basketball",
+            "beach",
+            "campsite",
+            "cemetery",
+            "cricket",
+            "dog_park",
+            "garden",
+            "golf",
+            "mountain",
+            "park",
+            "picnic_site",
+            "pitch",
+            "playground",
+            "skiing",
+            "soccer",
+            "stadium",
+            "swimming",
+            "tennis",
+            "viewpoint",
+            "volcano",
+            "water",
+            "waterfall",
+            "wetland",
+            "zoo"
+          ],
+          "#4a7a3a",
+          [
+            "dentist",
+            "doctors",
+            "drinking_water",
+            "fire_station",
+            "hospital",
+            "pharmacy",
+            "police",
+            "shelter",
+            "toilets",
+            "veterinary"
+          ],
+          "#a33a3a",
+          "#666666"
+        ],
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-service",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "service"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          6.5,
+          18,
+          13
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-minor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "minor"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          8,
+          18,
+          14
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-tertiary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "tertiary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-primary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "primary",
+            "secondary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-major",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 10,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
         "text-halo-color": "hsl(0, 0%, 95%)",
         "text-halo-width": 1
       }

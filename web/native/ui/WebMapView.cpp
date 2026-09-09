@@ -27,9 +27,10 @@ namespace massif {
         const float NO_COORDINATE = -1.0f;
 
         // maplibre-gl-js: handler/mouse.ts and scroll_zoom.ts. Degrees per CSS pixel, zoom per
-        // wheel unit. Both NEGATED - it turns the camera's bearing where rotate() turns the map,
-        // and its pitch is 0 where this tilt is 90.
-        const float ROTATE_SPEED = -0.8f;
+        // wheel unit. Only the PITCH is negated: maplibre's pitch is 0 where this tilt is 90, so a
+        // drag that raises one lowers the other. Rotation needs no flip - rotate() turns the map the
+        // way a bearing delta does, and negating it had a drag turning the map the wrong way.
+        const float ROTATE_SPEED = 0.8f;
         const float PITCH_SPEED = 0.5f;
         const double WHEEL_ZOOM_RATE = 1.0 / 450.0;
         const double TRACKPAD_ZOOM_RATE = 1.0 / 100.0;

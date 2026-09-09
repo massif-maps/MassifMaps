@@ -239,12 +239,10 @@ namespace massif {
         bool terrainMode = false;
         std::shared_ptr<TerrainOptions> activeTerrainOptions;
         if (auto options = _options.lock()) {
-            if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-                if (auto terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isActive()) {
-                        terrainMode = true;
-                        activeTerrainOptions = terrainOptions;
-                    }
+            if (auto terrainOptions = options->getTerrainOptions()) {
+                if (terrainOptions->isActive()) {
+                    terrainMode = true;
+                    activeTerrainOptions = terrainOptions;
                 }
             }
         }
@@ -843,7 +841,7 @@ namespace massif {
         float terrainDepthBias = 0.0f;
         std::shared_ptr<TerrainOptions> activeTerrainOptions;
         if (auto options = _options.lock()) {
-            if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+            {
                 if (auto terrainOptions = options->getTerrainOptions()) {
                     if (terrainOptions->isActive()) {
                         terrainMode = true;

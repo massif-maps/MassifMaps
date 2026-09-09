@@ -48,18 +48,23 @@ Standard is the better-drawn of the two references for road furniture, so its nu
 lifting rather than inventing. Its zoom stops are on the 512 px tile, which is the convention this
 style is authored in, so they transfer as written.
 
-**Rail, taken.** `road-rail` + `road-rail-tracks`, the two-layer idiom: a `line-gap-width` pair for
-the rails themselves (gap 0 at z15 opening to 20 at z22, each rail 0.5 → 2 px), and over it a wide
-line worn almost entirely away by a very short dash — 2 → 32 px carrying `[0.05, 0.5]` — which is
-what draws the sleepers. Ours filters OpenMapTiles' `class = 'rail'` where Standard has
-`major_rail`/`minor_rail`. **Trams are not drawn yet**: OMT files them under `class = 'transit'`,
-and a second pair for them is owed — they usually want to be thinner than heavy rail anyway.
+**Rail and trams.** `road-rail` + `road-rail-tracks`, the two-layer idiom: a `line-gap-width` pair
+for the rails themselves (gap 0 at z15 opening to 20 at z22, each rail 0.5 → 2 px), and over it a
+wide line worn almost entirely away by a very short dash — 2 → 32 px carrying `[0.05, 0.5]` — which
+is what draws the sleepers. Standard covers `major_rail` and `minor_rail` in one layer;
+OpenMapTiles splits them into `class = 'rail'` and `class = 'transit'` (trams, subways, light rail),
+so this is **two pairs with an `==` each** rather than one pair over an `in`. That keeps both
+bracketing, and lets a tram be tuned thinner later without touching heavy rail — today they are
+identical, which is what Standard does.
 
-**Road widths, still to take.** Ours are narrower than Standard's everywhere except motorway, and
-the hierarchy is compressed differently: Standard keeps minor roads much closer to the trunk widths.
-Interpolated to z14 (`exponential 1.5` between its z12 and z18 stops):
+The **rails draw wherever the tiles carry them**; only the sleepers wait, for z13 and their own
+opacity fade. A hairline rail at low zoom is the line being on the map at all, which is the point.
 
-| class | Standard @z14 | ours @z14 |
+**Road widths.** Standard's `roads` ramp, mapped onto OMT class names — its `street`/`street_limited`
+is our `minor`, and everything it does not name (our `service`) takes its fallback. Ours used to be
+narrower than Standard's everywhere except motorway, with the hierarchy compressed differently:
+
+| class | Standard @z14 | ours, before |
 |---|---|---|
 | motorway | 6.42 | 6.5 |
 | primary | 6.01 | 4.8 |
@@ -67,9 +72,12 @@ Interpolated to z14 (`exponential 1.5` between its z12 and z18 stops):
 | tertiary | 5.06 | 3.2 |
 | minor / street | 2.85 | 2.0 |
 
-Standard also draws its casing as a near-hairline — a constant 1 px at z14 growing only to 2 by z22,
-as a `line-gap-width` outline — where ours scales with the road. Changing either is a look decision,
-not a bug fix, which is why the numbers are recorded here rather than applied.
+The casing came with it, because the two do not separate. Standard draws a near-hairline **outside**
+the fill — a `line-gap-width` outline of 1 px at z14 growing only to 2 by z22 — and only from
+**z15**. Ours was a wider line *under* the fill, from z5. Taking the widths without the casing is
+what looks wrong: at z12 Standard's minor road is half a pixel, and the old casing would have drawn
+2.5 px of outline around it, so the street would have read as a grey line with a white thread in it.
+Below z15 a road is now its fill alone.
 
 ## Where this style departs from the references
 

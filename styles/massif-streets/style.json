@@ -79,7 +79,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 5,
+      "minzoom": 15,
       "filter": [
         "in",
         [
@@ -136,6 +136,100 @@
           "#c9a24a",
           "#c3bfb4"
         ],
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary"
+            ],
+            0.8,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            3.2,
+            "primary",
+            3,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            2.2,
+            "minor",
+            0.5,
+            0
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            30,
+            "primary",
+            28,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            26,
+            "minor",
+            20,
+            10
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            300,
+            "primary",
+            280,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            260,
+            "minor",
+            200,
+            100
+          ]
+        ],
         "line-width": [
           "interpolate",
           [
@@ -145,17 +239,6 @@
           [
             "zoom"
           ],
-          5,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            1.6,
-            0.6
-          ],
           14,
           [
             "match",
@@ -163,37 +246,16 @@
               "get",
               "class"
             ],
-            "motorway",
-            9,
-            "trunk",
-            8,
-            "primary",
-            7,
-            "secondary",
-            6,
-            "tertiary",
-            5,
-            3.5
-          ],
-          18,
-          [
-            "match",
             [
-              "get",
-              "class"
+              "motorway",
+              "trunk",
+              "primary"
             ],
-            "motorway",
-            34,
-            "trunk",
-            30,
-            "primary",
-            26,
-            "secondary",
-            22,
-            "tertiary",
-            18,
-            13
-          ]
+            1,
+            0.8
+          ],
+          22,
+          2
         ]
       }
     },
@@ -202,7 +264,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 5,
+      "minzoom": 3,
       "filter": [
         "in",
         [
@@ -270,35 +332,43 @@
           [
             "zoom"
           ],
-          5,
+          3,
           [
             "match",
             [
               "get",
               "class"
             ],
-            "motorway",
+            [
+              "motorway",
+              "trunk",
+              "primary"
+            ],
             0.8,
-            0.2
+            0
           ],
-          14,
+          12,
           [
             "match",
             [
               "get",
               "class"
             ],
-            "motorway",
-            6.5,
-            "trunk",
-            5.5,
-            "primary",
-            4.8,
-            "secondary",
-            4,
-            "tertiary",
+            [
+              "motorway",
+              "trunk"
+            ],
             3.2,
-            2
+            "primary",
+            3,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            2.2,
+            "minor",
+            0.5,
+            0
           ],
           18,
           [
@@ -307,17 +377,44 @@
               "get",
               "class"
             ],
-            "motorway",
-            29,
-            "trunk",
-            25,
+            [
+              "motorway",
+              "trunk"
+            ],
+            30,
             "primary",
-            21,
-            "secondary",
-            17,
-            "tertiary",
-            14,
+            28,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            26,
+            "minor",
+            20,
             10
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            300,
+            "primary",
+            280,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            260,
+            "minor",
+            200,
+            100
           ]
         ]
       }
@@ -327,7 +424,6 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 13,
       "filter": [
         "==",
         [
@@ -384,6 +480,132 @@
           "class"
         ],
         "rail"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          2,
+          18,
+          6,
+          20,
+          16,
+          22,
+          32
+        ],
+        "line-dasharray": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "literal",
+            [
+              0.1,
+              15
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              0.1,
+              1
+            ]
+          ],
+          18,
+          [
+            "literal",
+            [
+              0.05,
+              0.5
+            ]
+          ]
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13.75,
+          0,
+          14,
+          1
+        ]
+      }
+    },
+    {
+      "id": "tram",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "transit"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          16,
+          1,
+          18,
+          2,
+          22,
+          20
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.5,
+          22,
+          2
+        ]
+      }
+    },
+    {
+      "id": "tram-tracks",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "transit"
       ],
       "paint": {
         "line-color": "#a6a6a6",

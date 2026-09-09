@@ -2334,7 +2334,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -2521,7 +2521,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -2709,7 +2709,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -2885,7 +2885,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -3069,7 +3069,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -3251,7 +3251,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -3435,7 +3435,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -3610,7 +3610,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -3783,7 +3783,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -3955,7 +3955,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -4131,7 +4131,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -4307,7 +4307,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -4481,7 +4481,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [
@@ -4653,7 +4653,7 @@
             "class"
           ]
         ],
-        "icon-size": 0.6,
+        "icon-size": 0.4,
         "text-field": [
           "coalesce",
           [

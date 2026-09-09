@@ -146,6 +146,18 @@ rule reads `[param::poi-icon-fill-[class]]`. Retinting the map is editing the pr
 is stated per layer and identical on all of them on purpose: a table needs a field to key on, and a
 constant per layer has none.
 
+**A glyph is drawn at 48 px because it becomes a distance field.** The split hands the SDK an SDF,
+and a thin drawing - a bicycle's wheels, a doctor's figure - resolves at 32 px to a field that barely
+clears the 0.5 threshold and loses it when the icon is drawn smaller: the disc arrived with nothing
+on it. `icon-size` is 0.4 to match, so the icon is the same 19 px it was.
+
+**The transit shapes reach MapLibre and not the SDK.** `railway` is drawn as a square badge,
+`railway_light` as a squircle and `railway_metro` as a roundel whose ring is the mark. MapLibre draws
+the artwork, so the reference pane has them. The SDK takes ONE plate geometry per RULE and this style
+names its icon per feature, so the radius is a median over the whole sheet — every transit stop draws
+the POI disc. `iconExpression` says as much where it takes the sample. A class that wants its own
+shape needs its own layer with a CONSTANT `icon-image`; that is the follow-up.
+
 **Every class a layer names has a drawing.** With the disc coming from the rule and only the glyph
 from the sheet, a class with no drawing now draws an EMPTY disc where it used to draw nothing, so the
 two lists have to be kept in step.

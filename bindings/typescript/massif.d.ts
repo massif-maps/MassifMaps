@@ -7598,6 +7598,33 @@ export interface SourceSpec_combined {
   zoomLevel?: number;
 }
 
+export interface SourceSpec_contour {
+  type: "contour";
+  /** Returns the base contour interval in meters. */
+  baseInterval?: number;
+  /** Returns the contour interval used for label stubs. */
+  labelInterval?: number;
+  /** Returns whether only short label stubs are generated instead of full contour lines. */
+  labelStubsEnabled?: boolean;
+  /** Returns the name of the generated vector tile layer. */
+  layerName?: string;
+  /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+  maxOverzoomLevel?: number;
+  /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+  metaData?: Record<string, Json>;
+  /** Returns the minimum zoom at which contour geometry is generated. */
+  minVisibleZoom?: number;
+  /** Returns the target grid resolution used for contour tracing. */
+  resolution?: number;
+  /** Returns whether seamless tile edges are enabled. */
+  seamlessEdgesEnabled?: boolean;
+  /** Returns the simplification tolerance in tile pixels. */
+  simplifyTolerance?: number;
+  source?: SourceSpec | string;
+  /** Returns the terrain options whose elevation manager the label stubs read. */
+  terrainOptions?: Handle<"massif::TerrainOptions">;
+}
+
 export interface SourceSpec_geojson {
   type: "geojson";
   /** Returns the default layer buffer in tile pixels. */
@@ -7730,7 +7757,7 @@ export interface SourceSpec_pmtiles {
   path?: string;
 }
 
-export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_maptiler | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_merged_mbvt | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache | SourceSpec_pmtiles;
+export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_contour | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_maptiler | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_merged_mbvt | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache | SourceSpec_pmtiles;
 
 export interface StyleSpec_mbvt {
   type: "mbvt";
@@ -7886,8 +7913,15 @@ export interface MethodTypes {
   "massif::CompiledStyleSet": {
   };
   "massif::CompositeVectorTileLayer": {
+    addExternalDataSource: (name: string, dataSource: Handle, type: number) => void;
+    addVectorDataSource: (name: string, dataSource: Handle) => void;
     clearTileCaches: (all: boolean) => void;
+    getExternalChildLayer: (name: string) => Handle<"massif::Layer">;
+    getExternalDataSourceNames: () => Json;
     refresh: () => void;
+    removeExternalDataSource: (name: string) => boolean;
+    setExternalDataSourceMaxOverzoomLevel: (name: string, level: number) => void;
+    setExternalDataSourceZoomLevelBias: (name: string, bias: number) => void;
   };
   "massif::ContourTileDataSource": {
     getMetaDataElement: (key: string) => Json;

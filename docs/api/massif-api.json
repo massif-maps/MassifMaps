@@ -2025,7 +2025,107 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CompositeVectorTileLayer",
+          "name": "addExternalDataSource",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "dataSource",
+              "type": "handle"
+            },
+            {
+              "name": "type",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CompositeVectorTileLayer",
+          "name": "addVectorDataSource",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "dataSource",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CompositeVectorTileLayer",
+          "name": "getExternalChildLayer",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            }
+          ],
+          "returns": "object",
+          "returnClass": "massif::Layer"
+        },
+        {
+          "cppClass": "massif::CompositeVectorTileLayer",
+          "name": "getExternalDataSourceNames",
+          "args": [],
+          "returns": "json",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CompositeVectorTileLayer",
+          "name": "removeExternalDataSource",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            }
+          ],
+          "returns": "bool",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CompositeVectorTileLayer",
+          "name": "setExternalDataSourceMaxOverzoomLevel",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "level",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CompositeVectorTileLayer",
+          "name": "setExternalDataSourceZoomLevelBias",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "bias",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::ContourTileDataSource": {
@@ -10996,7 +11096,7 @@
               [
                 "VALUE",
                 "color",
-                "massif::Color(static_cast<int>(intAt(spec, \"color\", 0)))",
+                "colorAt(spec, \"color\", 0)",
                 null
               ]
             ],
@@ -11302,6 +11402,29 @@
               "source",
               "source2",
               "zoomLevel"
+            ]
+          ]
+        ]
+      ],
+      [
+        "contour",
+        "massif__ContourTileDataSource",
+        [
+          [
+            1,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ]
+            ],
+            [
+              "source"
+            ],
+            [
+              "source"
             ]
           ]
         ]
@@ -11891,6 +12014,7 @@
     "massif::CombinedTileDataSource": "source",
     "massif::CompiledStyleSet": "styleset",
     "massif::CompositeVectorTileLayer": "layer",
+    "massif::ContourTileDataSource": "source",
     "massif::CustomRasterTileLayer": "layer",
     "massif::DirAssetPackage": "assets",
     "massif::Feature": "feature",
@@ -13077,6 +13201,27 @@
             "childKind": null,
             "childClass": null,
             "required": false
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::ContourTileDataSource",
+      "kind": "source",
+      "type": "contour",
+      "aliases": {
+        "dataSource": "source"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
           }
         ]
       ]

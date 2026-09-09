@@ -985,9 +985,11 @@ public final class ApiNames {
     // --- methods ---------------------------------------------------------
 
     public static final String METHOD_ADD = "add";
+    public static final String METHOD_ADD_EXTERNAL_DATA_SOURCE = "addExternalDataSource";
     public static final String METHOD_ADD_FALLBACK_FONT = "addFallbackFont";
     public static final String METHOD_ADD_FEATURE = "addFeature";
     public static final String METHOD_ADD_LOCALE = "addLocale";
+    public static final String METHOD_ADD_VECTOR_DATA_SOURCE = "addVectorDataSource";
     public static final String METHOD_CALCULATE_ADDRESSES = "calculateAddresses";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
     public static final String METHOD_CLEAR = "clear";
@@ -1000,6 +1002,8 @@ public final class ApiNames {
     public static final String METHOD_GET = "get";
     public static final String METHOD_GET_ELEVATION = "getElevation";
     public static final String METHOD_GET_ELEVATIONS = "getElevations";
+    public static final String METHOD_GET_EXTERNAL_CHILD_LAYER = "getExternalChildLayer";
+    public static final String METHOD_GET_EXTERNAL_DATA_SOURCE_NAMES = "getExternalDataSourceNames";
     public static final String METHOD_GET_FEATURE = "getFeature";
     public static final String METHOD_GET_INSTRUCTION = "getInstruction";
     public static final String METHOD_GET_META_DATA_ELEMENT = "getMetaDataElement";
@@ -1012,11 +1016,14 @@ public final class ApiNames {
     public static final String METHOD_MOVE_TO = "moveTo";
     public static final String METHOD_REFRESH = "refresh";
     public static final String METHOD_REMOVE = "remove";
+    public static final String METHOD_REMOVE_EXTERNAL_DATA_SOURCE = "removeExternalDataSource";
     public static final String METHOD_REMOVE_FEATURE = "removeFeature";
     public static final String METHOD_SCREEN_TO_MAP = "screenToMap";
     public static final String METHOD_SET = "set";
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
+    public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_MAX_OVERZOOM_LEVEL = "setExternalDataSourceMaxOverzoomLevel";
+    public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_ZOOM_LEVEL_BIAS = "setExternalDataSourceZoomLevelBias";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
@@ -1094,6 +1101,7 @@ public final class ApiNames {
     public static final String TYPE_SEARCH_VECTORTILE = "vectortile";
     public static final String TYPE_SOURCE_ASSETS = "assets";
     public static final String TYPE_SOURCE_COMBINED = "combined";
+    public static final String TYPE_SOURCE_CONTOUR = "contour";
     public static final String TYPE_SOURCE_GEOJSON = "geojson";
     public static final String TYPE_SOURCE_HTTP = "http";
     public static final String TYPE_SOURCE_LOCAL = "local";

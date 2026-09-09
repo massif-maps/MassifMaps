@@ -4028,6 +4028,7 @@ namespace massif::vt {
             // a zoom level spans 2pi of Mercator radians on both axes, y counted from the south.
             double tileCount = static_cast<double>(1 << tileId.zoom);
             double tileSizeRadians = 6.283185307179586 / tileCount;
+            glUniform1f(shaderProgram.uniforms[U_DRAPEBAKE], _drapeMVPOverride ? 1.0f : 0.0f);
             glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERETILEUV],
                 static_cast<float>((tileId.x / tileCount - 0.5) * 6.283185307179586),
                 static_cast<float>(((tileCount - 1 - tileId.y) / tileCount - 0.5) * 6.283185307179586),
@@ -4918,7 +4919,9 @@ namespace massif::vt {
                     renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
                     bakedPrimitives++;
                 }
-                drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
+                // The sphere positions a vertex through the tile uv setupTerrainUniforms uploaded,
+                // which is the layer's TARGET tile - the source-local square is the plane's.
+                drapeOrtho = calculateDrapeMVPMatrix(_transformer && _transformer->isSpherical() ? renderLayer.targetTileId : renderLayer.sourceTileId, targetTileId);
                 if (clipZoom) {
                     drapeOrtho = *clipZoom * drapeOrtho;
                 }
@@ -5112,8 +5115,8 @@ namespace massif::vt {
         if (drapeTexture == 0) {
             return -1;
         }
-        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
-            return -2; // the shared grid the drape UV depends on is not active
+        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
+            return -2; // the drape UV needs the grid's tile-local xy, or the sphere's own inversion
         }
         // renderTileSurfaceDrape reads the texture from the map; swap the external one in for the
         // duration of the draw so the two paths share one surface implementation.
@@ -5139,7 +5142,7 @@ namespace massif::vt {
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
+        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
             return -2;
         }
         // Stand-in for a tile whose drape texture is not baked yet: the SAME surface mesh, in the
@@ -6171,6 +6174,7 @@ namespace massif::vt {
         // Flat drape pass: draw the fill into the per-tile drape texture with NO terrain
         // displacement, NO depth bias, and a tile-local orthographic MVP (set by the caller).
         bool flatDrape = (_drapeMVPOverride != nullptr);
+        bool sphericalDrape = flatDrape && _transformer && _transformer->isSpherical(); // positions itself in the tile, in the shader
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider && !flatDrape;
         // Every piece of tile content drawn in the 3D scene receives shadows. It used to mean the
         // extrusions alone, since everything 2D was baked into the drape; with only the FILLS draped,
@@ -6181,7 +6185,9 @@ namespace massif::vt {
         // beside a lit, shadowed ground. Extrusions light by their own model.
         bool terrainLit = terrainVTF && !_shadowCasterViewProj && _terrainLighting.enabled && geometry->getType() != TileGeometry::Type::POLYGON3D;
         unsigned int lightFlag = terrainLit ? GEOMETRY_LIGHT_FLAG : 0;
-        unsigned int terrainFlag = flatDrape ? 0 : ((_terrainMode ? TERRAIN_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
+        unsigned int terrainFlag = flatDrape
+            ? (sphericalDrape ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0)
+            : ((_terrainMode ? TERRAIN_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
         const ShaderProgram* shaderProgramPtr = nullptr;
         switch (geometry->getType()) {
         case TileGeometry::Type::POINT:
@@ -6232,7 +6238,7 @@ namespace massif::vt {
         }
         VT_STAT_SPLIT(geomProgramNs, statClock);
 
-        setupGeometryCommonUniforms(shaderProgram, sourceTileId, targetTileId, geometry, GeometryDrawMode { flatDrape, terrainVTF, shadowReceiver, terrainLit, terrainFlag });
+        setupGeometryCommonUniforms(shaderProgram, sourceTileId, targetTileId, geometry, GeometryDrawMode { flatDrape, sphericalDrape, terrainVTF, shadowReceiver, terrainLit, terrainFlag });
         VT_STAT_SPLIT(geomTerrainNs, statClock);
 
         // An extrusion may sit out the tile's fade: a style that ramps its own opacity over zoom -
@@ -6522,8 +6528,10 @@ namespace massif::vt {
             mvpMatrix = cglib::mat4x4<float>::convert((*_shadowCasterViewProj) * calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
         } else if (mode.flatDrape) {
             // fill coords * (1/coordScale) = tile-local [0,1]; the override maps [0,1] -> clip.
+            // On a sphere the shader hands over the tile unit itself (drapeBakeClip), so the
+            // override is the whole matrix there.
             cglib::mat4x4<float> local = cglib::scale4_matrix(cglib::vec3<float>(1.0f / vertexGeomLayoutParams.coordScale, 1.0f / vertexGeomLayoutParams.coordScale, 1.0f));
-            mvpMatrix = (*_drapeMVPOverride) * local;
+            mvpMatrix = mode.sphericalDrape ? *_drapeMVPOverride : (*_drapeMVPOverride) * local;
         } else {
             mvpMatrix = calculateTileMVPMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
         }
@@ -6535,7 +6543,7 @@ namespace massif::vt {
             // renders depth from the light and must not be biased towards the camera).
             glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
         }
-        if (mode.terrainVTF) {
+        if (mode.terrainVTF || mode.sphericalDrape) {
             // The elevation TEXTURE is the TARGET tile's - the surface this content stands on - while
             // the vertex FRAME is the SOURCE tile's, the vertices being source-local. Swapped, content
             // sat at a different DEM level than its ground and slid during a pan.

@@ -797,6 +797,7 @@ namespace massif::vt {
         // handed to the uniform setup, so the program flags and the uniforms cannot disagree.
         struct GeometryDrawMode {
             bool flatDrape = false;
+            bool sphericalDrape = false; // a bake on a sphere: the shader places the vertex in the tile
             bool terrainVTF = false;
             bool shadowReceiver = false;
             bool terrainLit = false;

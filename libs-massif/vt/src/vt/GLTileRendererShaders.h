@@ -75,6 +75,7 @@ namespace massif::vt {
         U_TERRAINSPHERESCALE,
         U_TERRAINSPHERENODEUV,
         U_TERRAINSPHERETILEUV,
+        U_DRAPEBAKE,
         U_ELEVATIONNODETEXELSIZE,
         U_TERRAINEDGECOARSENING,
         U_LAYERDEPTHOFFSET,
@@ -259,6 +260,7 @@ namespace massif::vt {
         { "uTerrainSphereScale",   U_TERRAINSPHERESCALE },
         { "uTerrainSphereNodeUV",  U_TERRAINSPHERENODEUV },
         { "uTerrainSphereTileUV",  U_TERRAINSPHERETILEUV },
+        { "uDrapeBake",            U_DRAPEBAKE },
         { "uElevationNodeTexelSize", U_ELEVATIONNODETEXELSIZE },
         { "uTerrainEdgeCoarsening", U_TERRAINEDGECOARSENING },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
@@ -525,6 +527,8 @@ namespace massif::vt {
         // The TARGET tile's own unit square, from Mercator RADIANS: unit = (merc - xy) * zw. Same
         // reason as above - uTileUnitScale's affine form reads a curved xy on a sphere.
         uniform highp vec4 uTerrainSphereTileUV;
+        // 1 while baking the drape: the target is the tile's unit square, not the world.
+        uniform highp float uDrapeBake;
         #endif
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
         // The NODE texture: the same DEM box-filtered to the surface lattice, one texel per mesh node.
@@ -579,6 +583,12 @@ namespace massif::vt {
             highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereTileUV.xy;
             merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
             return merc * uTerrainSphereTileUV.zw;
+        }
+        // The bake draws a vertex by WHERE IN THE TILE it is - its curved world position means
+        // nothing to a bake target that IS the tile's unit square. The matrix comes in because
+        // each shader declares its own.
+        highp vec4 drapeBakeClip(highp mat4 mvp, highp vec3 pos) {
+            return mvp * vec4(terrainSphereTileUnit(pos), 0.0, 1.0);
         }
         #endif
         vec3 applyTerrain(vec3 pos) {
@@ -1133,7 +1143,11 @@ namespace massif::vt {
             // The regular-grid surface vertex xy is the tile-local [0,1] parametrization;
             // it is exactly the uv the tile's fills were baked into the drape texture with.
             // If fills appear vertically mirrored on device, flip to vec2(x, 1.0 - y).
+        #ifdef TERRAIN_SPHERICAL
+            vDrapeUV = uDrapeUVTransform.xy + terrainSphereTileUnit(aVertexPosition) * uDrapeUVTransform.zw;
+        #else
             vDrapeUV = uDrapeUVTransform.xy + aVertexPosition.xy * uDrapeUVTransform.zw;
+        #endif
         #endif
         #ifdef LIGHTING_VSH
             vColor = applyLighting(vec4(1.0, 1.0, 1.0, 1.0), aVertexNormal);
@@ -2098,6 +2112,11 @@ namespace massif::vt {
             } else {
                 gl_Position = applyDepthBias(uMVPMatrix * vec4(edgePos, 1.0));
             }
+        #ifdef TERRAIN_SPHERICAL
+            if (uDrapeBake != 0.0) {
+                gl_Position = drapeBakeClip(uMVPMatrix, pos + delta);
+            }
+        #endif
         #else
             // sample the terrain at the extruded position, so wide lines follow the slope
             vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
@@ -2248,6 +2267,11 @@ namespace massif::vt {
         #endif
             applyShadowPos(terrainPos);
             gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos, 1.0));
+        #ifdef TERRAIN_SPHERICAL
+            if (uDrapeBake != 0.0) {
+                gl_Position = drapeBakeClip(uMVPMatrix, pos);
+            }
+        #endif
         }
     )GLSL";
 

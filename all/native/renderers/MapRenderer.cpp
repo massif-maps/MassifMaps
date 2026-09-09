@@ -2614,14 +2614,7 @@ namespace massif {
                 }
             }
             if (auto terrainOptions = _options->getTerrainOptions()) {
-                // The RTT drape bakes through a matrix that maps the tile's UNIT SQUARE to the
-                // bake target, and on a globe a vertex is a curved position instead - every tile
-                // bakes blank, so the ground is never drawn and there is no 3D terrain at all.
-                // The globe takes the shared ground, which displaces in the vertex stage and is the
-                // path that replaces this one anyway (docs/internals/rendering/18-globe.md).
-                bool drapeFills = terrainOptions->isDrapeFillsEnabled()
-                               && _options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR;
-                if (drapeFills) {
+                if (terrainOptions->isDrapeFillsEnabled()) {
                     // Layers report their own drapeable tile layers, so a composite layer can
                     // contribute its children (hillshade/raster slots, style-layer groups) in
                     // draw order rather than only its own group-0 renderer.

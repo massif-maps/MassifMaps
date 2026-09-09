@@ -27,9 +27,8 @@ globe and add elevation to it, and every condition that used to refuse terrain o
 `RENDER_PROJECTION_MODE_PLANAR` no longer appears in `MapRenderer` or `VectorLayer` at all.
 
 **Seen on emulator-5554** at Mont Blanc (z11 tilt 40, z13 tilt 60): 2D content, the sky, the limb,
-the terrain relief and its contours. **The planar A/B is still owed** - none of this has been
-checked against the shipping map, and the regular-grid path it uses is what the globe now steps
-around.
+the terrain relief, its fills and its contours. **A planar run of the same build is unchanged** at
+the same camera - but the shipping map deserves a closer A/B than one frame.
 
 ## What the two surfaces share
 
@@ -189,18 +188,41 @@ neighbour's vertex landing outside, and the last tile of a row.
 The clip is worth keeping rather than switching off on a sphere: heights would now agree between
 two tiles drawing the same road, but a semi-transparent line drawn twice still blends twice.
 
+### The fills: the globe drapes now, through the same inversion
+
+Fills came out SHREDDED - torn edges with the ground colour through them - because a fill is carried
+at source density on purpose (tangram's model: not subdivided, the depth slack pays for the chord)
+and on the globe it had no drape to be baked into. `MapRenderer` refused the RTT drape there because
+the bake maps a tile's UNIT SQUARE onto the bake target and a sphere vertex is a curved position, so
+every tile baked blank.
+
+That is the same problem the line clip had, and it takes the same answer: `drapeBakeClip` positions
+a baked vertex by `terrainSphereTileUnit`, and the surface samples the result with the same unit
+instead of its vertex xy. GEOMETRY only - backgrounds and rasters bake through
+`buildCompiledFlatSurfaces`, a flat quad whose xy already IS the unit square. A spherical bake
+therefore keeps its TERRAIN program (that is where the sphere helpers live) and takes the drape
+matrix whole, without the coordScale the planar path folds in, and the geometry ortho is built from
+the layer's TARGET tile, the one its sphere uv was uploaded for.
+
+`drapeFills` is no longer forced off on the globe, in `MapRenderer` and in
+`TileLayer::resetTileTransformer` alike - the two MUST agree or tiles stay tesselated for the other
+mode.
+
 ### What the device says
 
-emulator-5554, Mont Blanc, the local French tiles, z11 tilt 40 and z13: **the relief is there, the
-quads are gone and the contours are back**, following the terrain in perspective.
+emulator-5554, Mont Blanc, the local French tiles, z11 tilt 40: **the relief, the fills, the water
+and the contours all land**, in perspective, with no shredding. A planar run of the same build is
+unchanged.
 
-Still wrong, and the next thing: **polygon fills are shredded** - torn edges with the ground colour
-through them, which is content sinking below the surface and being depth-rejected. The planar
-no-drape A/B at the same camera (`--es drape false`) is clean, so this is spherical, not the
-shared-ground content path in general. A fill is carried at SOURCE DENSITY on purpose (tangram's
-model - it is not subdivided, and the depth slack pays for the chord), so the first suspect is that
-slack: `TERRAIN_DEPTH_CLIP_SLACK` and `_terrainDrawClearance` are in WORLD units, and the spherical
-world is TWICE the planar scale (see "the two traps" above).
+Open, in what is visibly left:
+
+- **the ground reads grey** where the plane has it near-white, so something in the drape's clear
+  colour or the terrain lighting differs on the sphere;
+- **no labels**. They are not draped - they are screen-space, anchored through the elevation - so
+  this is its own path and its own bug.
+
+Two further gaps seen at the same time, both already on the list rather than new: the camera sits
+INSIDE the mountain at z13 (camera clearance is planar-only, step 4), and picking is still planar.
 
 Two further gaps seen at the same time, both already on the list rather than new: the camera sits
 INSIDE the mountain at z13 (camera clearance is planar-only, step 4), and there is no RTT drape on

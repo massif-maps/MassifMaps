@@ -1,18 +1,17 @@
 ---
 title: Globe mode
-description: What spherical render projection shares with the planar one, the two scale traps between them, and why 3D terrain, shadows and the sky do not reach the globe yet.
+description: What spherical render projection shares with the planar one, the two scale traps between them, and what still has to be seen on a device.
 sidebar_position: 18
 ---
 
 # Globe mode
 
 `Options.setRenderProjectionMode(RENDER_PROJECTION_MODE_SPHERICAL)` draws the map on a sphere
-instead of the Mercator plane. It arrived with CARTO's `feature/globe` and has been carried,
-unexercised, ever since: 2D tiled content, vector elements, the camera and the sky work; **3D
-terrain and terrain shadows do not**.
+instead of the Mercator plane. It arrived with CARTO's `feature/globe` and was carried unexercised
+for years. 2D tiled content, vector elements, the camera, the sky and now 3D terrain all reach it;
+**terrain shadows, picking on terrain, and the camera rules over terrain do not**.
 
-This page is the shared conventions and the traps. What is missing and in what order it is being
-fixed is at the bottom.
+This page is the shared conventions and the traps. What is missing is at the bottom.
 
 ## Two hierarchies decide the shape of the world
 
@@ -22,12 +21,12 @@ fixed is at the bottom.
 | `vt::TileTransformer` — tiled content | `DefaultTileTransformer` | `SphericalTileTransformer` | `TerrainTileTransformer` |
 
 Terrain **decorates** a base rather than replacing it: both terrain classes take the plane or the
-globe and add elevation to it. So globe and terrain are no longer exclusive by construction — but
-they are still exclusive by policy, because the displacement itself is planar. Terrain is refused
-on a globe in `TileLayer::resetTileTransformer` and `VectorLayer::getElementProjectionSurface`, and
-`MapRenderer` gates the flatten rule, the depth pre-pass, the camera clearance and the terrain
-surface on `RENDER_PROJECTION_MODE_PLANAR`. Those five conditions go together, once the two
-displacement sites below are surface-aware.
+globe and add elevation to it, and every condition that used to refuse terrain on a globe is gone.
+`RENDER_PROJECTION_MODE_PLANAR` no longer appears in `MapRenderer` or `VectorLayer` at all.
+
+**None of it has been seen on a device.** Everything below is host-tested arithmetic and a shader
+that has never been compiled. The first device check is the real gate: 3D terrain at a globe camera,
+plus a planar A/B to confirm none of this moved the shipping map.
 
 ## What the two surfaces share
 
@@ -85,8 +84,7 @@ suite before the one that depends on it.
    for the same reason.
 2. ~~**Terrain as a decorator.**~~ Done. `TerrainProjectionSurface` and `TerrainTileTransformer`
    now take a BASE surface / transformer and add elevation to it, instead of deriving from the
-   plane and inlining planar tile math. The structural exclusion is gone; both call sites still
-   refuse a spherical base by an explicit condition, because the displacement below is planar.
+   plane and inlining planar tile math.
 
    Two things this turned up. The tile transformer barely displaces anything: since the GPU-draping
    commit, `calculateLocalHeight` returns 0 and tile geometry is built FLAT, so the composition
@@ -94,7 +92,7 @@ suite before the one that depends on it.
    is only subdivision and a bbox grown by the elevation range. And `TerrainProjectionSurface` now
    takes the light `ElevationProvider` interface rather than `ElevationManager`, which is what lets
    `tests/api/TerrainSurfaceTest.cpp` drive it from a synthetic height field.
-3. **The terrain surface itself.** Half done.
+3. ~~**The terrain surface itself.**~~ Done.
 
    The GPU half is in, behind a `TERRAIN_SPHERICAL` define set centrally in `buildShaderProgram`
    so it is part of the program cache key. `applyTerrain` now displaces along the surface normal
@@ -105,21 +103,18 @@ suite before the one that depends on it.
    construction; and a spherical height is radial, so setting `uElevationScale.y/z` to zero makes
    the shader's existing `cosh` equal 1 and the scale formula needs no spherical case at all.
 
-   The CPU half is started. `Options` now owns the BASE tile transformer alongside the projection
+   The CPU half is done too. `Options` now owns the BASE tile transformer alongside the projection
    surface it already owned, on the same lifecycle, so `TileLayer` and `TerrainRenderer` read one
    object instead of each deciding the projection for themselves. `TerrainRenderer` takes it and
-   builds its mesh and tile matrix through it, dropping its mesh cache when it changes. The plane is
-   untouched by construction: the mesh keeps its literal `(x, y, localZ)` and its
-   `(1 << zoom) / WORLD_SIZE` height factor, and only the spherical branch is new.
+   builds its mesh, tile matrix, tile bounding box and LOD centre through it, dropping its mesh
+   cache when it changes. The plane is untouched by construction: the mesh keeps its literal
+   `(x, y, localZ)` and its `(1 << zoom) / WORLD_SIZE` height factor, its bounding box is the same
+   flat box the transformer reproduces, and only the spherical branches are new.
 
-   Three things in `TerrainRenderer` are still planar, and the five conditions stay closed until
-   they are not:
-   - `calculateVisibleTiles` builds its tile bounding box and LOD centre from internal coordinates.
-   - `ensureSurfaceAttribs` derives its normals from the local height field, which assumes the
-     tile-local frame's axes are the world's.
-   - **Skirts.** They extrude by replacing a vertex's z, which is the same encoding the shader
-     cannot invert on a curved surface. This is the one that needs a design rather than a port: the
-     drop has to travel in its own attribute.
+   Two things had to change shape rather than be ported. `ensureSurfaceAttribs` read a node's height
+   back out of the vertex `z`, which on a sphere is a curved coordinate and not a height, so the
+   mesh now keeps its node heights and rotates the slope normal into the local east/north/up frame.
+   And **skirts** no longer fold their drop into the vertex `z` on a globe — see below.
 4. **Picking and the camera.** `ElevationManager::intersectRay`, `CameraClearance` and
    `AutoFlatten::parallax` are all expressed along the Z axis.
 5. **Space.** `Options::setZoomRange` clamps the minimum to `0`, so there is no zoom at which the
@@ -131,12 +126,15 @@ Spans, bridges and 3D extrusions are **not** in that list. They carry their own 
 machinery built around a flat frame ([3D bridges](17-bridges.md)) and will be wrong on the globe
 until they are done separately.
 
-## Two things the spherical shader path does not do
+## Two things worth knowing about the spherical shader path
 
-**Skirts are passed through undisplaced.** A skirt's drop is encoded by REPLACING `pos.z` with
-`-1000000 - drop`, so on a curved surface the vertex's own position is gone and the sphere point
-cannot be recovered. Nothing builds a spherical skirt today; whatever does needs to carry the drop
-in its own attribute instead.
+**A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the
+vertex `z` as `-1000000 - drop`, which costs nothing; on a sphere that would destroy the curved
+position the shader displaces from, so it travels as `aVertexSkirt` instead. `TileSurface`'s layout
+was already data-driven — every attribute is present exactly when its array is non-empty — so the
+planar vertex keeps its size, its offsets and its encoding, and the globe pays one float per vertex.
+`TerrainRenderer`'s mesh has its own skirts and its own shader, so it needs no attribute: it hangs
+them off the base surface point along its normal, which reduces to `(x, y, skirtZ)` on a plane.
 
 **The lattice clamp is off on a globe.** It locates a surface cell from tile-local xy, which is the
 one thing that stops meaning "position in the tile" there. Draped geometry then takes the plain

@@ -1019,11 +1019,9 @@ namespace massif {
             // Terrain: extend view distances by the terrain height range and keep
             // the camera above the terrain surface.
             std::shared_ptr<ElevationManager> elevationManager;
-            if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-                if (auto terrainOptions = _options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled()) {
-                        elevationManager = terrainOptions->getElevationManager();
-                    }
+            if (auto terrainOptions = _options->getTerrainOptions()) {
+                if (terrainOptions->isEnabled()) {
+                    elevationManager = terrainOptions->getElevationManager();
                 }
             }
             if (elevationManager) {
@@ -1278,10 +1276,7 @@ namespace massif {
         // Optional terrain depth pre-pass (renders into its own FBO and restores the binding)
         GLuint terrainDepthTex = 0;
         if (effect->isTerrainDepthRequired()) {
-            std::shared_ptr<TerrainOptions> terrainOptions;
-            if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-                terrainOptions = _options->getTerrainOptions();
-            }
+            std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
             if (terrainOptions && terrainOptions->isActive()) {
                 if (!_terrainRenderer) {
                     _terrainRenderer = std::make_unique<TerrainRenderer>();
@@ -1558,10 +1553,7 @@ namespace massif {
     }
 
     bool MapRenderer::updateTerrainFlatten(float deltaSeconds) {
-        std::shared_ptr<TerrainOptions> terrainOptions;
-        if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-            terrainOptions = _options->getTerrainOptions();
-        }
+        std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
         if (!terrainOptions || !terrainOptions->isEnabled()) {
             return false;
         }
@@ -2405,7 +2397,7 @@ namespace massif {
         // surfaces, so the depth is bit-exact with the rendered terrain and nothing mesh-mismatches.
         // With no tile layer at all, an approximate depth pre-pass stands in.
         bool terrainMode = false;
-        if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+        {
             if (auto terrainOptions = _options->getTerrainOptions()) {
                 if (terrainOptions->isActive()) {
                     terrainMode = true;

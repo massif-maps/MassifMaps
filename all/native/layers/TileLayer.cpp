@@ -778,11 +778,14 @@ namespace massif {
         _maxVisibleDistance = 0;
         {
             StyleEnvironment env;
-            if (auto options = getOptions()) {
+            std::shared_ptr<Options> options = getOptions();
+            if (options) {
                 _maxVisibleDistance = cullState->getViewState().calculateViewDistance(*options);
             }
             if (getStyleEnvironment(cullState->getViewState(), env) && env.terrainMaxVisibleDistance && *env.terrainMaxVisibleDistance > 0) {
-                _maxVisibleDistance = std::max(_maxVisibleDistance, *env.terrainMaxVisibleDistance * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE);
+                // Metres to WORLD units, which is the surface's own world - twice as wide on a globe.
+                double worldWidth = (options && options->getProjectionSurface() ? options->getProjectionSurface()->getWorldWidth() : static_cast<double>(Const::WORLD_SIZE));
+                _maxVisibleDistance = std::max(_maxVisibleDistance, *env.terrainMaxVisibleDistance * worldWidth / Const::EARTH_CIRCUMFERENCE);
             }
         }
 
@@ -791,7 +794,13 @@ namespace massif {
         if (_terrainMinTileZoom > 0 && _maxVisibleDistance > 0) {
             // Tiles across the covered ground, worst case (a square of side 2 * distance):
             //     (2 * distance / tileWidth)^2 <= budget,   tileWidth = WORLD_SIZE / 2^zoom
-            double maxTileZoom = std::log2(Const::WORLD_SIZE * std::sqrt(static_cast<double>(TERRAIN_COVER_TILE_BUDGET)) / (2 * _maxVisibleDistance));
+            double coverWorldWidth = static_cast<double>(Const::WORLD_SIZE);
+            if (auto budgetOptions = getOptions()) {
+                if (auto surface = budgetOptions->getProjectionSurface()) {
+                    coverWorldWidth = surface->getWorldWidth(); // a tile is this wide over 2^zoom, on either surface
+                }
+            }
+            double maxTileZoom = std::log2(coverWorldWidth * std::sqrt(static_cast<double>(TERRAIN_COVER_TILE_BUDGET)) / (2 * _maxVisibleDistance));
             int budgetMinTileZoom = static_cast<int>(std::floor(maxTileZoom));
             if (budgetMinTileZoom < _terrainMinTileZoom) {
                 if (_terrainMinTileZoom - budgetMinTileZoom > 1) {
@@ -915,15 +924,19 @@ namespace massif {
         }
         double screenArea = std::numeric_limits<double>::infinity();
         {
-            static const cglib::vec3<double> CORNERS[4] = {
-                cglib::vec3<double>(0, 0, 0), cglib::vec3<double>(1, 0, 0),
-                cglib::vec3<double>(1, 1, 0), cglib::vec3<double>(0, 1, 0)
+            // The tile's own corners, through the vertex transformer: tile-local xy is the unit
+            // square only on a plane, and on a sphere the matrix alone sent them off the surface -
+            // the projected area was then meaningless and tiles refined far too late.
+            static const cglib::vec2<float> CORNERS[4] = {
+                cglib::vec2<float>(0, 0), cglib::vec2<float>(1, 0),
+                cglib::vec2<float>(1, 1), cglib::vec2<float>(0, 1)
             };
+            std::shared_ptr<const vt::TileTransformer::VertexTransformer> vertexTransformer = tileTransformer->createTileVertexTransformer(vtTileId);
             cglib::vec2<double> screenPos[4];
             bool projected = true;
             for (int i = 0; i < 4; i++) {
-                cglib::vec3<double> worldPos = cglib::transform_point(CORNERS[i], tileMat);
-                worldPos(2) += lodElevation;
+                cglib::vec3<double> worldPos = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(CORNERS[i])), tileMat);
+                worldPos = tileTransformer->calculateElevatedPos(worldPos, lodElevation);
                 cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(worldPos(0), worldPos(1), worldPos(2), 1.0), mvpMat);
                 if (!(clipPos(3) > 0)) {
                     projected = false;
@@ -942,9 +955,11 @@ namespace massif {
                 // The area already carries one power of cos(incidence); maplibre's rule wants p of
                 // them, so the exponent applied here is p - 1 and 0 leaves the area rule alone.
                 if (_lodCosThetaExponent != 0) {
-                    cglib::vec3<double> toTile = tileCenter + cglib::vec3<double>(0, 0, lodElevation) - viewState.getCameraPos();
-                    double dist = cglib::length(toTile);
-                    double cosTheta = dist > 0 ? std::abs(toTile(2)) / dist : 1.0;
+                    // Against the tile's own UP, which is the z axis only on a plane.
+                    cglib::vec3<double> up = cglib::vec3<double>::convert(vertexTransformer->calculateNormal(cglib::vec2<float>(0.5f, 0.5f)));
+                    cglib::vec3<double> toTile = tileTransformer->calculateElevatedPos(tileCenter, lodElevation) - viewState.getCameraPos();
+                    double dist = cglib::length(toTile) * cglib::length(up);
+                    double cosTheta = dist > 0 ? std::abs(cglib::dot_product(toTile, up)) / dist : 1.0;
                     if (cosTheta > 0) {
                         screenArea *= std::pow(cosTheta, _lodCosThetaExponent);
                     }

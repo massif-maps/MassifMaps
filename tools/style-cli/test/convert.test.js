@@ -214,3 +214,16 @@ test('--fold-casings leaves a pair alone when the fill orders its own features',
     assert.ok(lastCasing >= 0 && firstFill >= 0);
     assert.ok(lastCasing < firstFill, 'a casing rule is emitted after a fill rule');
 });
+
+test('a style carries its own fonts, and project.json names them for whoever ships it', () => {
+    // The decoder scans <style>/fonts/ and needs no list; a project served over HTTP cannot be
+    // listed, which is what the list is for. It is the only way a face reaches the web build.
+    const layers = [{ id: 'l', type: 'symbol', 'source-layer': 'place',
+        layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'] } }];
+    const withFonts = convert({ layers }, table,
+        { ...NO_PALETTE, fonts: ['NotoSans-Bold.ttf'] }).project;
+    assert.deepEqual(JSON.parse(withFonts).fonts, ['NotoSans-Bold.ttf']);
+
+    // A style that carries none says nothing rather than an empty list.
+    assert.ok(!('fonts' in JSON.parse(convert({ layers }, table, NO_PALETTE).project)));
+});

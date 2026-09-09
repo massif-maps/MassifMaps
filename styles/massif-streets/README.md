@@ -1,7 +1,7 @@
 # Massif Streets
 
 The MapLibre style JSON is the **source of truth**. The CartoCSS the SDK reads is generated from it
-with `massif-style mapbox2css --fold-casings --tile-draw-size 512`, and is never hand-edited; anything CartoCSS can
+with `massif-style mapbox2css --fold-casings --tile-draw-size 512 --fonts fonts`, and is never hand-edited; anything CartoCSS can
 express and MapLibre cannot goes in a hand-owned overlay beside the generated file.
 
 **Stage: road shields.** Roads, water and landcover are drawn as context so a shield has something

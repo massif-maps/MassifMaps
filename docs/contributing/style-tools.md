@@ -1300,6 +1300,21 @@ Making the casing ONE unsplit rule instead of seven looks like a free win and is
 2.5M geometry indices a frame against 5.2k, and 44 ms a frame against 32. Unexplained; do not
 retry it without a bench.
 
+## A style carries its own fonts
+
+`--fonts DIR` copies the faces in DIR into the project's `fonts/` and names them in project.json.
+The decoder registers a style's own fonts AHEAD of the system ones and finds them by scanning
+`<style>/fonts/`, so it needs no list — the list is for whoever has to carry the project, and the
+web preview reads it to know what to fetch, since a project served over HTTP cannot be listed.
+
+This is the only way a face reaches the **web** build, which has no system fonts at all: without it
+`shield-face-name: 'Noto Sans Bold'` fell back to whatever the build preloaded and shields came out
+regular. Preloading the face instead costs every page load — see `web/fonts/README.md`.
+
+Carry a SUBSET. A shield draws a `ref`, so printable ASCII is 132 glyphs and 14 KB against the full
+face's 569. Keep the name table (`pyftsubset --name-IDs="*"`): a face is resolved by the name in its
+own table, and a subset that drops it stops answering to the name the style asks for.
+
 ## A zoom stop is relative to a tile size
 
 The SDK's zoom number sits `log2(512 / TileDrawSize)` levels above MapBox's — a level at the default

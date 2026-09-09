@@ -158,6 +158,11 @@ export interface ConvertOptions {
     /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
     labelSpacing?: number;
     /**
+     * File names of the fonts copied into the project's `fonts/` directory, recorded in
+     * project.json. The decoder registers every font it finds there, ahead of the system ones.
+     */
+    fonts?: string[];
+    /**
      * The Options::TileDrawSize the converted style will be DRAWN at, in dp. Every zoom stop and
      * zoom predicate is shifted by `log2(512 / tileDrawSize)`, because that is how far the SDK's
      * zoom number sits from MapBox's. The default 256 is the SDK's; pass 512 for an app that
@@ -827,10 +832,19 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // bottom-to-top, so the project list is the draw order reversed.
     const projectLayers = projectEntries(drawOrder).reverse();
     const styles = variables ? [VARIABLES_FILE, 'style.mss'] : ['style.mss'];
+    // `fonts` is for whoever has to CARRY the project - the decoder finds them by scanning the
+    // package for <style>/fonts/ and needs no list, but a project served over HTTP cannot be
+    // listed, so the preview reads this to know what to fetch.
+    const fonts = options.fonts ?? [];
     const project = JSON.stringify(
-        options.styleParams!.size > 0
-            ? { styles, layers: projectLayers, styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
-            : { styles, layers: projectLayers },
+        {
+            styles,
+            layers: projectLayers,
+            ...(fonts.length > 0 ? { fonts } : {}),
+            ...(options.styleParams!.size > 0
+                ? { styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
+                : {}),
+        },
         null, 2) + '\n';
 
     // Only what DIFFERS from the shared table: a preset project extends project.json, and

@@ -25,7 +25,10 @@ async function projectFiles(base) {
     for (const text of texts) {
         for (const match of text.matchAll(IMAGE_PATH)) images.add(match[0]);
     }
-    return ['project.json', ...styles, ...images];
+    // The fonts the project carries. The decoder finds them by scanning the package for
+    // <style>/fonts/, but a project served over HTTP cannot be listed, so project.json names them.
+    const fonts = (project.fonts ?? []).map((name) => `fonts/${name}`);
+    return ['project.json', ...styles, ...images, ...fonts];
 }
 
 /**

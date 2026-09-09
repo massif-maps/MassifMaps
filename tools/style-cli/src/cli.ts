@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -99,6 +99,9 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             line-border-* rule. Halves those rules and their geometry,
                             and MOVES the casing: it then draws per class instead of
                             under every fill
+      --fonts DIR           copy the .ttf/.otf faces in DIR into the project's fonts/ and list
+                            them in project.json. The decoder registers a style's own fonts ahead
+                            of the system ones, which is how a face reaches a build that has none
       --tile-draw-size N    the Options::TileDrawSize the style will be drawn at, in dp.
                             Shifts every zoom stop by log2(512 / N); the default 256 is
                             the SDK's own, 512 an app on maplibre's convention
@@ -139,7 +142,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'tile-draw-size', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
+const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'tile-draw-size', 'fonts', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -277,6 +280,14 @@ async function mapbox2css(args: string[]): Promise<number> {
         }
     }
 
+    // A style CARRIES its fonts: the decoder registers everything under <style>/fonts/ ahead of the
+    // system ones, which is the only way a face reaches a build with no system fonts at all - the
+    // web one. Only the faces a style actually names are worth carrying; they are preloaded nowhere.
+    const fontDir = flags.get('fonts');
+    const fontFiles = fontDir
+        ? readdirSync(fontDir).filter((name) => /\.(?:ttf|otf|ttc)$/i.test(name)).sort()
+        : [];
+
     const { mss, project, coverage, variables, presets, defaultPreset, presetOverrides } = convert(style, loadPropertyTable(), {
         sprites,
         variables: !flags.has('no-variables'),
@@ -291,6 +302,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         foldCasings: flags.has('fold-casings'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
         tileDrawSize: Number(flags.get('tile-draw-size') ?? 256),
+        fonts: fontFiles,
         shieldAnchors: shieldAnchors?.join(','),
         iconFont,
         schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,
@@ -307,6 +319,10 @@ async function mapbox2css(args: string[]): Promise<number> {
     mkdirSync(outDir, { recursive: true });
     writeFileSync(join(outDir, 'style.mss'), mss);
     writeFileSync(join(outDir, 'project.json'), project);
+    if (fontDir && fontFiles.length > 0) {
+        mkdirSync(join(outDir, 'fonts'), { recursive: true });
+        for (const name of fontFiles) copyFileSync(join(fontDir, name), join(outDir, 'fonts', name));
+    }
     if (variables) writeFileSync(join(outDir, VARIABLES_FILE), variables);
     // One palette per other light preset, plus the project that picks it. Same style.mss.
     const overrides = presetOverrides ?? new Map<string, Record<string, unknown>>();

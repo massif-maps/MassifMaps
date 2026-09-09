@@ -41,7 +41,7 @@ converter wrote from it**, rendered by the SDK's own web build. Four panes, two 
 left against right is what the tiles carry, top against bottom is what survives the conversion.
 
 ```sh
-massif-style mapbox2css style.json carto --fold-casings --tile-draw-size 512   # from the project's folder
+massif-style mapbox2css style.json carto --fold-casings --tile-draw-size 512 --fonts fonts   # from the project's folder
 gh run download <run-id> --repo massif-maps/MassifMaps    # the web-preview artefact
 cp web-preview/massif-demo.* web/demo/
 ```

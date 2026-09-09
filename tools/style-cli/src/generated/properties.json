@@ -1205,6 +1205,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-collision-padding",
+      "mapnik": "collision-padding",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "shield-comp-op",
       "mapnik": "comp-op",
       "symbolizer": "shield",
@@ -1971,6 +1981,16 @@
       "kind": "bool",
       "type": "BoolProperty",
       "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-collision-padding",
+      "mapnik": "collision-padding",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
       "live": false,
       "baked": false
     },

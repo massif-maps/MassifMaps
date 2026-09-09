@@ -612,7 +612,9 @@ namespace massif::vt {
             return false;
         }
 
-        float padding = buffer * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
+        // The style's own collision padding rides with the caller's buffer: mapbox's text-padding
+        // and icon-padding grow the box the COLLISION test uses, never the glyphs.
+        float padding = (buffer + _style->collisionPadding) * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
         if (_style->orientation == LabelOrientation::CALLOUT && size > 0) {
@@ -703,7 +705,9 @@ namespace massif::vt {
             return false;
         }
 
-        float padding = buffer * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
+        // The style's own collision padding rides with the caller's buffer: mapbox's text-padding
+        // and icon-padding grow the box the COLLISION test uses, never the glyphs.
+        float padding = (buffer + _style->collisionPadding) * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
         float glyphScale = (size > 0 ? 1.0f / size : 0.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);

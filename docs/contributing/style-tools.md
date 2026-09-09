@@ -749,17 +749,24 @@ branch cap below is what a review of that should start from.
 ## How far apart labels stay
 
 MapBox pads a label's collision box by `text-padding` on **every side** — 2 px on any layer that
-states nothing — so two labels end up at least twice that apart. The culler's `minimum-distance` is
-the single buffer between a pair, hence `2 ×` the padding. It used to be dropped as "no CartoCSS
-equivalent", which it is not.
+states nothing — and tests the grown boxes against each other. That is `text-collision-padding` /
+`shield-collision-padding`, which the label folds into the culler's own buffer
+(`Label::calculateEnvelope`): the box grows, the glyphs do not. `--label-spacing N` scales it for a
+map that wants thinning beyond what the style asks; 1 is the style's own value.
 
-`--label-spacing N` scales that gap for a map that wants thinning beyond what the style asks;
-1 is the style's own value.
+It used to arrive as `text-min-distance`, which is **a different thing** and was wrong twice over:
 
-A **line-placed** label is left out of that default. When no minimum is stated the decoder floors it
-at the label's own size, which is what stops a repeat of the same name being drawn twice where two
-tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
-explicit `text-padding` still wins.
+- `minimum-distance` only separates labels of the same GROUP, and for a line-placed label the group
+  is the TEXT HASH (`ShieldSymbolizer`). So it held two `D 1508` shields apart and did nothing at all
+  between a `D 1508` and a `D 5` — which is what a tilted view shows worst, since it packs a lot of
+  far-field map into a thin band.
+- An unstated `minimum-distance` is also what makes the decoder floor the repeat at the label's own
+  size, so a line-placed label could not be given one without disabling that floor. It was skipped
+  there for exactly that reason, leaving line labels unpadded.
+
+`collision-padding` has neither problem: it is per label, applies between any two, and leaves the
+repeat floor alone. An icon-only layer still drops `icon-padding` — that is a marker, which carries
+no collision box of its own.
 
 ## Rendering a converted style: match the TILES to the style
 

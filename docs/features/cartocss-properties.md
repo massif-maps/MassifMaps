@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-233 properties across 12 symbolizers.
+235 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 61 of 233.
+Live-capable properties: 61 of 235.
 
 ## `building`
 
@@ -204,6 +204,7 @@ Live-capable properties: 61 of 233.
 | `shield-background-radius` | `background-radius` | float | `0.0` |  |  |
 | `shield-character-spacing` | `character-spacing` | float | `0.0` |  |  |
 | `shield-clip` | `clip` | bool | `false` |  |  |
+| `shield-collision-padding` | `collision-padding` | float | `0.0` |  |  |
 | `shield-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `shield-dx` | `shield-dx` | float | `0.0` |  |  |
 | `shield-dy` | `shield-dy` | float | `0.0` |  |  |
@@ -286,6 +287,7 @@ Live-capable properties: 61 of 233.
 | `text-callout-step` | `callout-step` | float | `0.0` |  |  |
 | `text-character-spacing` | `character-spacing` | float | `0.0` |  |  |
 | `text-clip` | `clip` | bool | `false` |  |  |
+| `text-collision-padding` | `collision-padding` | float | `0.0` |  |  |
 | `text-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `text-dx` | `dx` | float | `0.0` |  |  |
 | `text-dy` | `dy` | float | `0.0` |  |  |

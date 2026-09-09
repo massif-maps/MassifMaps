@@ -263,6 +263,9 @@ namespace massif::vt {
     };
 
     struct TextLabelStyle final {
+        // mapbox text-padding / icon-padding: screen pixels grown around the label's box for the
+        // COLLISION test alone. Not in the constructor - its signature is long enough.
+        float collisionPadding = 0.0f;
         LabelOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;

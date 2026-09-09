@@ -207,6 +207,7 @@ What the converted CartoCSS loses, seen side by side in [the preview](../../docs
 - **Shields, thinned.** `shield-min-distance` is set from `shield-spacing` — 350 px here — because
   the decoder restarts spacing per feature, so the culler is what stops a road cut into many ways
   carrying a shield on each ([style-tools](../../docs/contributing/style-tools.md), "How far apart
-  labels stay"). Since the culler started grouping per REF rather than per shield layer the density
+  labels stay"). That one groups per REF, so it says nothing about two DIFFERENT shields; what keeps
+  those apart is `text-padding`, which now reaches the decoder as a collision padding. The density
   tracks MapLibre closely at z13–z14; the panes are framed differently, so it has not been counted
-  exactly.
+  exactly, and a tilted view has not been compared at all.

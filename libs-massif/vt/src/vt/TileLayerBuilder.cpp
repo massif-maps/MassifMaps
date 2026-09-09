@@ -744,6 +744,7 @@ namespace massif::vt {
             TileLabel::Style::Plate iconPlate = resolvePlate(style.iconPlate);
             auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
             labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
+            labelStyle->collisionPadding = style.collisionPadding;
             labelStyle->iconHaloColorFunc = style.iconHaloColorFunc;
             labelStyle->iconHaloRadiusFunc = style.iconHaloRadiusFunc;
             labelStyle->iconRefSize = formatter.getFontSize();

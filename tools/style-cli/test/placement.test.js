@@ -145,13 +145,16 @@ test('a font list wrapped in literal keeps its face name', () => {
     assert.match(out, /text-face-name: 'Roboto Condensed Regular';/);
 });
 
-test('text-padding becomes a collision gap, and --label-spacing scales it', () => {
-    // MapBox pads the box on every side, so a pair ends up 2x apart; minimum-distance is the one
-    // buffer between them. Dropping it entirely was why a converted style drew far more labels.
-    assert.match(mss({ 'text-padding': 3 }), /text-min-distance: \(2 \* 3\);/);
-    assert.match(mss({}), /text-min-distance: 4;/); // MapBox's default padding is 2
+test('text-padding becomes a collision padding, and --label-spacing scales it', () => {
+    // Both grow the box on every side, so it is one for one. It used to arrive as a
+    // minimum-distance, which only separates labels of the same GROUP - so two DIFFERENT labels
+    // were held apart by nothing, and a line-placed one could not be padded at all without
+    // disabling the repeat floor the decoder keys off an unstated minimum-distance.
+    assert.match(mss({ 'text-padding': 3 }), /text-collision-padding: \(1 \* 3\);/);
+    assert.match(mss({}), /text-collision-padding: 2;/); // MapBox's default padding is 2
+    assert.match(mss({ 'symbol-placement': 'line', 'text-padding': 3 }), /text-collision-padding: \(1 \* 3\);/);
     const thinned = convert({ layers: [symbolLayer({ 'text-padding': 3 })] }, TABLE, { ...NO_PALETTE, labelSpacing: 3 }).mss;
-    assert.match(thinned, /text-min-distance: \(6 \* 3\);/);
+    assert.match(thinned, /text-collision-padding: \(3 \* 3\);/);
 });
 
 test('a line label repeats every 250 px, because that is MapBox\'s default and CartoCSS\'s is one', () => {

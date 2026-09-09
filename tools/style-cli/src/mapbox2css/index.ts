@@ -1452,23 +1452,19 @@ function layerDeclarations(
             continue;
         }
 
-        // MapBox pads a label's collision box by text-padding on EVERY side, so two labels end up
-        // at least twice that apart; the culler's minimum-distance is one buffer between the pair.
-        // Dropping it was why a converted style drew far more labels than MapTiler does.
-        if (name === 'text-padding') {
-            // Not on a line-placed label, for the same reason the default below skips one: an
-            // unstated minimum lets the decoder floor it at the label's own size, which is what
-            // stops one road shield being drawn twice where two tiles cut the same road. MapBox's
-            // 2 px is a collision pad, not a repeat distance, and writing it here disabled that
-            // floor - two D 1508 shields a few pixels apart.
-            if (followsLine(layer)) {
-                coverage.drop('text-padding', 'a line-placed label keeps the decoder\'s own repeat floor', layer.id);
-                continue;
-            }
+        // MapBox grows a label's collision box by text-padding on every side and tests the grown
+        // boxes against each other, which is what `collision-padding` is. It used to arrive as a
+        // minimum-distance, which is a different thing - that one only separates labels of the same
+        // GROUP (the text hash), so two different road shields were held apart by nothing, and it
+        // doubles as the repeat floor, so a line-placed label could not be given one at all.
+        if ((name === 'text-padding' || name === 'icon-padding')
+                && (symbolizer === 'text' || symbolizer === 'shield')) {
             const translated = tryTranslate(value, name, layer.id, coverage);
             if (translated === null) continue;
-            out.push(`text-min-distance: (${labelGap(options)} * ${translated});`);
-            coverage.emit('text-min-distance');
+            const property = symbolizer === 'shield' ? 'shield-collision-padding' : 'text-collision-padding';
+            if (out.some((declaration) => declaration.startsWith(`${property}:`))) continue; // icon-padding after text-padding
+            out.push(`${property}: (${collisionPad(options)} * ${translated});`);
+            coverage.emit(property);
             continue;
         }
 
@@ -1627,13 +1623,13 @@ function layerDeclarations(
         }
     }
 
-    // text-padding is 2 px on every layer that states nothing, and the culler's default is 0. A
-    // line-placed label is left out: when no minimum distance is stated the decoder floors it at
-    // the label's own size, which is what stops a repeat of the same name being drawn twice where
-    // two tiles cut the same road (TextSymbolizer, text-spacing). Writing 4 px there disabled that.
-    if (symbolizer === 'text' && !followsLine(layer) && !out.some((d) => d.startsWith('text-min-distance:'))) {
-        out.push(`text-min-distance: ${labelGap(options) * DEFAULT_TEXT_PADDING};`);
-        coverage.emit('text-min-distance');
+    // text-padding is 2 px on every MapBox layer that states nothing, and the culler's own floor is
+    // one label unit. A line-placed label gets it too now: it pads the collision box, where the old
+    // minimum-distance would have disabled the repeat floor the decoder needs.
+    const padded = symbolizer === 'shield' ? 'shield-collision-padding' : 'text-collision-padding';
+    if ((symbolizer === 'text' || symbolizer === 'shield') && !out.some((d) => d.startsWith(`${padded}:`))) {
+        out.push(`${padded}: ${collisionPad(options) * DEFAULT_TEXT_PADDING};`);
+        coverage.emit(padded);
     }
 
     // MapBox repeats a line label every 250 px whether or not the layer says so; CartoCSS's spacing
@@ -3254,13 +3250,12 @@ function placementPriority(layer: MapboxLayer, layerIndex: number, coverage: Cov
 }
 
 /**
- * What one unit of MapBox's text-padding is worth as a minimum-distance. MapBox pads a label's
- * collision box on EVERY side, so two labels end up at least twice the padding apart, while
- * minimum-distance is the one buffer between the pair - hence the 2. --label-spacing scales it for
- * a map that wants thinning beyond what the style asks for.
+ * What one unit of MapBox's text-padding is worth as a collision padding: one for one, since both
+ * grow the box on every side. --label-spacing scales it for a map that wants thinning beyond what
+ * the style asks for.
  */
-function labelGap(options: ConvertOptions): number {
-    return 2 * (options.labelSpacing ?? 1);
+function collisionPad(options: ConvertOptions): number {
+    return options.labelSpacing ?? 1;
 }
 
 /** MapBox defaults for a layer that never states them. */

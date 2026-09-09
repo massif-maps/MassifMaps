@@ -10,6 +10,7 @@ add_executable(vt_tests
   VtTest.cpp
   PlateBitmapTest.cpp
   LineLabelTest.cpp
+  CollisionPaddingTest.cpp
   ExtrusionCornerTest.cpp
   ExtrusionBevelTest.cpp
   LineJoinTest.cpp

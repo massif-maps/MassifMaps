@@ -41,6 +41,7 @@ namespace massif::mvt {
             bindProperty("dy", &_dy);
             bindProperty("placement-priority", &_placementPriority);
             bindProperty("minimum-distance", &_minimumDistance);
+            bindProperty("collision-padding", &_collisionPadding);
             bindProperty("max-distance", &_maxDistance);
             bindProperty("occlusion-opacity", &_occlusionOpacity);
             bindProperty("callout-screen-anchor", &_calloutScreenAnchor);
@@ -126,6 +127,9 @@ namespace massif::mvt {
         FloatProperty _dy = FloatProperty(0.0f);
         FloatProperty _placementPriority = FloatProperty(0.0f);
         FloatProperty _minimumDistance = FloatProperty(0.0f);
+        // mapbox text-padding / icon-padding: pixels grown around this label's box for the
+        // collision test alone, so two labels stay apart without either being drawn bigger.
+        FloatProperty _collisionPadding = FloatProperty(0.0f);
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Negative = unset, i.e. the layer's own default stands.
         FloatProperty _occlusionOpacity = FloatProperty(-1.0f);

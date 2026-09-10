@@ -34,6 +34,9 @@ namespace massif::vt {
         void invalidateCaches(const std::vector<TileId>& tileIds);
 
         std::vector<std::shared_ptr<TileSurface>> buildTileSurface(const TileId& tileId) const;
+        // Whether buildTileSurface would answer from the cache. A caller that must not tesselate
+        // inside its frame (the shadow caster's ring) asks this first.
+        bool isTileSurfaceCached(const TileId& tileId) const { return _tileSurfaceCache.count(tileId) > 0; }
 
         // Builds a single shared unit-grid surface in tile-local [0,1] coordinates. Unlike
         // buildTileSurface it carries no per-tile world placement - it is drawn with each tile's own MVP

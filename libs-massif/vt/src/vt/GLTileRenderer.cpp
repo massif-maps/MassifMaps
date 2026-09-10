@@ -81,6 +81,9 @@ namespace massif::vt {
     // mapbox's noShadowCutoff (src/render/draw_fill_extrusion.ts, terrain branch): the opacity
     // below which a FADING extrusion stops casting rather than casting at full strength.
     static constexpr float SHADOW_NO_CAST_OPACITY_CUTOFF = 0.65f;
+    // New tile surfaces a globe's ground caster may TESSELATE per pass. ~5 ms each on an emulator,
+    // and the light box sweeps a hundred of them in whenever the sun moves.
+    static constexpr int SHADOW_CASTER_SURFACE_BUDGET = 2;
     // maplibre covering_tiles.ts / mercator_utils.ts, verbatim: the tallest feature a tile is
     // assumed to carry, the angle above the horizon at which the culling box starts to grow to
     // hold it, and the horizon itself.
@@ -584,12 +587,19 @@ namespace massif::vt {
         double marginX = (r - l) / std::max(1, mapSize), marginY = (t - b) / std::max(1, mapSize);
         for (const TileId& tileId : casterTileIds) {
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
-            // On a globe a tile is a patch of a ball, so its world box comes from the transformer
-            // and the caster slab grows it in EVERY direction - the slab is radial there.
+            // On a globe a tile is a patch of a ball, so its world box comes from the transformer and
+            // the slab is an offset along the tile's OWN radial - grown in all three axes instead,
+            // one tile's box covered a dozen and the caster set tripled (18-globe.md).
             cglib::bbox3<double> sphereBox = (spherical ? _transformer->calculateTileBBox(tileId) : cglib::bbox3<double>());
             if (spherical) {
-                sphereBox.min -= cglib::vec3<double>(1, 1, 1) * std::max(0.0, -casterMinZ);
-                sphereBox.max += cglib::vec3<double>(1, 1, 1) * std::max(0.0, casterMaxZ);
+                cglib::vec3<double> up = (sphereBox.min + sphereBox.max) * 0.5;
+                double upLen = cglib::length(up);
+                up = (upLen > 0 ? up * (1.0 / upLen) : cglib::vec3<double>(0, 0, 1));
+                for (int axis = 0; axis < 3; axis++) {
+                    double lo = casterMinZ * up(axis), hi = casterMaxZ * up(axis);
+                    sphereBox.min(axis) += std::min(lo, hi);
+                    sphereBox.max(axis) += std::max(lo, hi);
+                }
             }
             double tileL = 0, tileR = 0, tileB = 0, tileT = 0, tileN = 0, tileF = 0;
             for (int corner = 0; corner < 8; corner++) {
@@ -715,7 +725,14 @@ namespace massif::vt {
             const ShaderProgram& shaderProgram = buildShaderProgram("shadowcaster", backgroundVsh, shadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, TERRAIN_VTF_FLAG);
             useProgram(shaderProgram);
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+            // A caster tile is usually OFF SCREEN, so its surface is not the one the visible pass
+            // built and tesselating it costs milliseconds. Rationed: the light box sweeps a new ring
+            // in as the sun moves, and building all of it took the frame to 1.6 s (18-globe.md).
+            int surfaceBudget = SHADOW_CASTER_SURFACE_BUDGET;
             for (const TileId& tileId : tileIds) {
+                if (!_tileSurfaceBuilder.isTileSurfaceCached(tileId) && surfaceBudget-- <= 0) {
+                    continue;
+                }
                 if (!setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, false)) {
                     _shadowCastersMissingElevation++;
                     continue;

@@ -397,6 +397,30 @@ against a real emulator cost and the globe cannot use it anyway.
 Measured on emulator-5554, terrain-3d at Zermatt: shadow strength 0 vs 1 moves 19-40% of the ground
 pixels on the globe, against 17-29% for the planar control. Before the second fix it moved 0.0%.
 
+**The caster cull, a third time.** "Grown radially by that slab" was written as an isotropic grow —
+the tile's box pushed out by the slab on ALL THREE axes. A z16 tile is 20 world units wide at Paris
+and the slab is 26, so one tile's box covered a dozen and the cull kept everything. It only showed
+when the SUN MOVED, which is when the light box is refitted every frame: dragging `day-cycle-light`'s
+hour slider on the globe took the caster set to 350 tiles against a 29-tile cover, the shadow pass to
+200-1175 ms and the frame to 264-1648 ms, against 45-140 ms for the planar control. The map froze for
+seconds at a time and jumped several hours of palette between frames, which is what "the ground
+flashes to change colours" was. The offset is now along the tile's own radial, per axis
+(`min(casterMinZ·u, casterMaxZ·u)` and its max), which is exactly what the plane does with its z
+slab. Same drag afterwards: shadow pass 14-22 ms, frame 20-90 ms, every frame different. Shadow
+strength 0 vs 1 at the Louvre, hour 10, still moves 1.8-13.9% of the pixels against the planar
+control's 0.8-4.9%, so nothing was culled away that used to cast.
+
+**And a fourth: the caster pass TESSELATED inside the frame.** The cull fix alone did not settle it -
+some drags still froze - and the counter said why: a caster tile is usually OFF SCREEN, so the ground
+caster's `buildCompiledTileSurfaces` missed the surface cache and built one, `102` and `212` real
+tesselations in a single pass at ~5 ms each. The plane never pays this because its ground caster is
+the ONE shared regular-grid mesh drawn with each tile's MVP; a sphere's tile-local xy is a curved
+position, so it cannot use a shared grid and needs a mesh per tile. New tesselations are now rationed
+to `SHADOW_CASTER_SURFACE_BUDGET` per pass and the rest of the ring is drawn from what is already
+cached, which fills in over the following frames - the same shape as the drape bake's budget. Same
+drag again: caster pass 21-24 ms with 0 builds, every frame under 81 ms, no plateau anywhere in the
+recording. Shadow strength 0 vs 1 still moves 2.4-5.0% against the planar control's 0.8-4.9%.
+
 ### The light was in the wrong frame, so every building was lit from the pole
 
 A lighting shader — including an application's own — is written against the MAP's frame: `normal.z`

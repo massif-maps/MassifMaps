@@ -2530,7 +2530,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -2670,7 +2669,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -2690,7 +2688,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -2954,21 +2951,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -3511,7 +3522,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -3651,7 +3661,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -3671,7 +3680,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -3935,21 +3943,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -4492,7 +4514,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -4632,7 +4653,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -4652,7 +4672,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -4916,21 +4935,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -5468,7 +5501,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -5608,7 +5640,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -5628,7 +5659,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -5892,21 +5922,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -6456,7 +6500,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -6596,7 +6639,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -6616,7 +6658,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -6880,21 +6921,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -7434,7 +7489,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -7574,7 +7628,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -7594,7 +7647,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -7858,21 +7910,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -8407,7 +8473,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -8547,7 +8612,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -8567,7 +8631,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -8831,21 +8894,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -9382,7 +9459,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -9522,7 +9598,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -9542,7 +9617,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -9806,21 +9880,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -10359,7 +10447,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -10499,7 +10586,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -10519,7 +10605,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -10783,21 +10868,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -11342,7 +11441,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -11482,7 +11580,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -11502,7 +11599,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -11766,21 +11862,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -12327,7 +12437,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -12467,7 +12576,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -12487,7 +12595,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -12751,21 +12858,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -13303,7 +13424,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -13443,7 +13563,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -13463,7 +13582,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -13727,21 +13845,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -14276,7 +14408,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -14416,7 +14547,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -14436,7 +14566,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -14700,21 +14829,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -15253,7 +15396,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -15393,7 +15535,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -15413,7 +15554,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -15677,21 +15817,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -16238,7 +16392,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -16378,7 +16531,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -16398,7 +16550,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -16662,21 +16813,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -17211,7 +17376,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -17351,7 +17515,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -17371,7 +17534,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -17635,21 +17797,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -18185,7 +18361,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -18325,7 +18500,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -18345,7 +18519,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -18609,21 +18782,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -19162,7 +19349,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -19302,7 +19488,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -19322,7 +19507,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -19586,21 +19770,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -20141,7 +20339,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -20281,7 +20478,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -20301,7 +20497,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -20565,21 +20760,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }
@@ -21116,7 +21325,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -21256,7 +21464,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -21276,7 +21483,6 @@
                   [
                     "bench",
                     "drinking_water",
-                    "information",
                     "picnic_site",
                     "shelter",
                     "telephone",
@@ -21540,21 +21746,35 @@
                     "get",
                     "class"
                   ],
-                  [
-                    "railway"
-                  ],
-                  5,
-                  [
-                    "railway_light"
-                  ],
-                  11,
-                  [
-                    "airfield",
-                    "airport",
-                    "heliport"
-                  ],
+                  "airfield",
                   8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
                   21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
                 ]
               }
             }

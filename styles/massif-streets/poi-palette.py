@@ -50,7 +50,7 @@ CLASSES = {
 # Street furniture, not a place: the glyph stands on the map with no disc under it, which is what
 # Standard's backgroundPointOfInterestLabels=none does for the whole map. Matched on class AND
 # subclass, because OpenMapTiles carries a bench or a tree as a subclass of something coarser.
-NO_BACKGROUND = ['bench', 'drinking_water', 'information', 'picnic_site', 'shelter', 'telephone',
+NO_BACKGROUND = ['bench', 'drinking_water', 'picnic_site', 'shelter', 'telephone',
                  'toilets', 'tree', 'waste_basket']
 
 # A subclass that belongs to another category than its class. Liberty reads `subclass` for the ICON
@@ -67,6 +67,18 @@ SUBCLASS = {
 HALO_NIGHT = 'hsl(0, 0%, 5%)'
 HALO_DAY = 'hsl(0, 0%, 100%)'
 HALO_WIDTH = 1.25
+
+# The plate's corner radius, and the ring around it. The ring used to be measured off the artwork -
+# one sheet of identical discs, so every shape got the same 3 - and a badge with square corners
+# carries far more ring than a circle at the same width. Stated per shape instead.
+SHAPE = {
+    'railway': {'radius': 5, 'border': 1.5},
+    'railway_light': {'radius': 11, 'border': 2},
+    'airfield': {'radius': 8, 'border': 1.75},
+    'airport': {'radius': 8, 'border': 1.75},
+    'heliport': {'radius': 8, 'border': 1.75},
+}
+DEFAULT_SHAPE = {'radius': 21, 'border': 3}
 
 CLASS_TO_CATEGORY = {c: cat for cat, cs in CLASSES.items() for c in cs}
 
@@ -89,6 +101,16 @@ def stops(cat):
 
 def disc_match(furniture=None):
     return flat_match(lambda cat: CATEGORY[cat]['disc'], CATEGORY['default']['disc'], furniture)
+
+
+def shape_match(key):
+    """One flat match on class again, so both fold into a project.json table."""
+    out = ['match', ['get', 'class']]
+    for cls in sorted(SHAPE):
+        out.append(cls)
+        out.append(SHAPE[cls][key])
+    out.append(DEFAULT_SHAPE[key])
+    return out
 
 
 def day_color():
@@ -171,6 +193,8 @@ def main():
             # A glyph with no disc under it is drawn in the category colour, not white on it.
             params['icon'] = flat_match(lambda cat: 'hsl(0, 0%, 100%)', 'hsl(0, 0%, 100%)',
                                         furniture=disc_match())
+            params['radius'] = shape_match('radius')
+            params['background-stroke-width'] = shape_match('border')
         touched += 1
 
     out = json.dumps(style, indent=2, ensure_ascii=False)

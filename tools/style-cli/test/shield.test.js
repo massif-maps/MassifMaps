@@ -203,6 +203,26 @@ test('a recolourable icon is split into a glyph field and the disc it sat on', (
     assert.ok(centre > 127.5 && corner < 127.5, 'inside the glyph, outside at the corner');
 });
 
+test('a stated ring width wins over the one measured off the artwork', () => {
+    // The ring is measured off the drawing, and a sheet of identical discs therefore rings every
+    // shape at the same width - which reads as a heavy frame on a badge with square corners and a
+    // thin ring on a full circle. `background-stroke-width` states it, exactly as `radius` states
+    // the corner it is drawn around.
+    const out = convert({ layers: [symbol(
+        {
+            'text-field': '{name}',
+            'icon-image': ['image', ['get', 'maki'], { params: {
+                background: '#ff0000', 'background-stroke': '#00ff00',
+                'background-stroke-width': 2, radius: 4,
+            } }],
+        },
+        {})] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: compositeSheet(), outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(out, /shield-icon-background-border-width: 2;/, 'stated, not the measured 1');
+    assert.match(out, /shield-icon-background-radius: 4;/, 'and the corner it states too');
+});
+
 test('a plate with no border colour draws no border, rather than the default black one', () => {
     // shield-icon-background-border-fill defaults to BLACK and LabelPlateStyle::hasBorder is
     // colour-AND-width, so a width on its own drew an opaque black ring round the artwork - a peak's

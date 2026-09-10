@@ -404,9 +404,13 @@ when the SUN MOVED, which is when the light box is refitted every frame: draggin
 hour slider on the globe took the caster set to 350 tiles against a 29-tile cover, the shadow pass to
 200-1175 ms and the frame to 264-1648 ms, against 45-140 ms for the planar control. The map froze for
 seconds at a time and jumped several hours of palette between frames, which is what "the ground
-flashes to change colours" was. The offset is now along the tile's own radial, per axis
-(`min(casterMinZ·u, casterMaxZ·u)` and its max), which is exactly what the plane does with its z
-slab. Same drag afterwards: shadow pass 14-22 ms, frame 20-90 ms, every frame different. Shadow
+flashes to change colours" was. The offset is now along the tile's own radial — and against the
+PATCH, not against an axis-aligned box of it: a tile at Paris is tilted 49°, so its world AABB is
+far bigger than the tile, and bounding that kept 76-99 / 154-239 tiles per cascade where sampling
+the patch itself (4 corners + the centre, which carries the bulge, each raised and lowered along its
+own radial) keeps 59-60 / 90-92, against the planar control's 38 / 55. That is the plane's z-slab
+hull exactly, one dimension over. Same drag afterwards: shadow pass 14-22 ms, frame 20-90 ms, every
+frame different. Shadow
 strength 0 vs 1 at the Louvre, hour 10, still moves 1.8-13.9% of the pixels against the planar
 control's 0.8-4.9%, so nothing was culled away that used to cast.
 

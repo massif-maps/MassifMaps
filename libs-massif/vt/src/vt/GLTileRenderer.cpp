@@ -587,41 +587,41 @@ namespace massif::vt {
         double marginX = (r - l) / std::max(1, mapSize), marginY = (t - b) / std::max(1, mapSize);
         for (const TileId& tileId : casterTileIds) {
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
-            // On a globe a tile is a patch of a ball, so its world box comes from the transformer and
-            // the slab is an offset along the tile's OWN radial - grown in all three axes instead,
-            // one tile's box covered a dozen and the caster set tripled (18-globe.md).
-            cglib::bbox3<double> sphereBox = (spherical ? _transformer->calculateTileBBox(tileId) : cglib::bbox3<double>());
-            if (spherical) {
-                cglib::vec3<double> up = (sphereBox.min + sphereBox.max) * 0.5;
-                double upLen = cglib::length(up);
-                up = (upLen > 0 ? up * (1.0 / upLen) : cglib::vec3<double>(0, 0, 1));
-                for (int axis = 0; axis < 3; axis++) {
-                    double lo = casterMinZ * up(axis), hi = casterMaxZ * up(axis);
-                    sphereBox.min(axis) += std::min(lo, hi);
-                    sphereBox.max(axis) += std::max(lo, hi);
-                }
-            }
             double tileL = 0, tileR = 0, tileB = 0, tileT = 0, tileN = 0, tileF = 0;
-            for (int corner = 0; corner < 8; corner++) {
-                cglib::vec4<double> local(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0);
-                cglib::vec4<double> world = cglib::transform(local, tileMatrix);
-                if (spherical) {
-                    world = cglib::vec4<double>(corner & 1 ? sphereBox.max(0) : sphereBox.min(0),
-                                                corner & 2 ? sphereBox.max(1) : sphereBox.min(1),
-                                                corner & 4 ? sphereBox.max(2) : sphereBox.min(2), 1.0);
-                } else {
-                    // The CASTER slab, not this cascade's narrowed one: a mountain outside the cascade's
-                    // own ground still casts into it, and a slab it does not reach leaves the near plane
-                    // in front of it - the caster is clipped and its shadow missing.
-                    world(2) = (corner & 4 ? casterMaxZ : casterMinZ);
-                }
-                cglib::vec4<double> p = cglib::transform(world, lightView);
-                if (corner == 0) {
+            bool firstPoint = true;
+            auto addPoint = [&](const cglib::vec3<double>& world) {
+                cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(world(0), world(1), world(2), 1.0), lightView);
+                if (firstPoint) {
                     tileL = tileR = p(0); tileB = tileT = p(1); tileN = tileF = -p(2);
+                    firstPoint = false;
                 } else {
                     tileL = std::min(tileL, p(0)); tileR = std::max(tileR, p(0));
                     tileB = std::min(tileB, p(1)); tileT = std::max(tileT, p(1));
                     tileN = std::min(tileN, -p(2)); tileF = std::max(tileF, -p(2));
+                }
+            };
+            if (spherical) {
+                // The tile's own patch of the ball, raised and lowered along each sample's OWN radial:
+                // the sphere's equivalent of the plane's z slab below. The centre carries the bulge a
+                // four-corner hull would cut off. An axis-aligned box of all this kept 4x the tiles.
+                static const cglib::vec2<float> PATCH_UVS[5] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 0.5f, 0.5f } };
+                std::shared_ptr<const TileTransformer::VertexTransformer> vertexTransformer = _transformer->createTileVertexTransformer(tileId);
+                for (const cglib::vec2<float>& uv : PATCH_UVS) {
+                    cglib::vec3<double> ground = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(uv)), tileMatrix);
+                    double groundLen = cglib::length(ground);
+                    cglib::vec3<double> up = (groundLen > 0 ? ground * (1.0 / groundLen) : cglib::vec3<double>(0, 0, 1));
+                    addPoint(ground + up * casterMinZ);
+                    addPoint(ground + up * casterMaxZ);
+                }
+            } else {
+                for (int corner = 0; corner < 8; corner++) {
+                    cglib::vec4<double> local(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0);
+                    cglib::vec4<double> world = cglib::transform(local, tileMatrix);
+                    // The CASTER slab, not this cascade's narrowed one: a mountain outside the cascade's
+                    // own ground still casts into it, and a slab it does not reach leaves the near plane
+                    // in front of it - the caster is clipped and its shadow missing.
+                    world(2) = (corner & 4 ? casterMaxZ : casterMinZ);
+                    addPoint(cglib::vec3<double>(world(0), world(1), world(2)));
                 }
             }
             // Light-space xy is constant along a light ray, so a tile whose xy misses the box cannot

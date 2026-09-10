@@ -122,6 +122,33 @@ namespace {
     }
 
     /*
+     * ... but an INTERNAL unit is not, and that is what the camera's zoom is calibrated in. Mercator
+     * stretches its own coordinates by 1/cos(latitude) and the sphere does not, so the same internal
+     * length covers cos(latitude) as much of the globe's world. Calibrating on the equator alone put
+     * the globe's camera 1/cos too far - zoom 16 over Paris framed 1.52x the ground the plane did.
+     */
+    void testTheLocalScaleCarriesTheMercatorStretch() {
+        PlanarProjectionSurface planar;
+        SphericalProjectionSurface spherical;
+        MapPos equator = internalOf(0, 0);
+        MapPos paris = internalOf(2.3376, 48.86);
+
+        TEST_CHECK(nearly(planar.calculateLocalScale(planar.calculatePosition(equator)), 1.0) &&
+                   nearly(planar.calculateLocalScale(planar.calculatePosition(paris)), 1.0),
+                   "the plane's world IS its internal space, at every latitude");
+        TEST_CHECK(nearly(spherical.calculateLocalScale(spherical.calculatePosition(equator)), 2.0, 1.0e-6),
+                   "the globe's equator is the 2x the world width already says");
+        TEST_CHECK(nearly(spherical.calculateLocalScale(spherical.calculatePosition(paris)),
+                          2.0 * std::cos(48.86 * Const::DEG_TO_RAD), 1.0e-6),
+                   "and a parallel is cos(latitude) of it - the factor Mercator carries and a sphere does not");
+
+        // Height must not change it: a camera above the ground is still over the same parallel.
+        TEST_CHECK(nearly(spherical.calculateLocalScale(spherical.calculatePosition(internalOf(2.3376, 48.86, 500000))),
+                          spherical.calculateLocalScale(spherical.calculatePosition(paris)), 1.0e-6),
+                   "and raising the point off the surface leaves it alone");
+    }
+
+    /*
      * The other trap, and a live one: calculateNormal returns InternalToSpherical, whose length is
      * 1 + height - NOT a unit vector once the position is off the surface. ViewState's
      * getFocusPosNormal hands that straight to SolidRenderer and BackgroundRenderer as a light
@@ -283,6 +310,7 @@ void testSphericalSurface() {
     testInternalCoordinatesAreStillMercator();
     testHeightMeansTheSameMetresOnBothSurfaces();
     testTheSphericalWorldIsTwiceThePlanarScale();
+    testTheLocalScaleCarriesTheMercatorStretch();
     testTheNormalIsOnlyUnitLengthOnTheSurface();
     testTheLocalFrameIsOrthogonalAndEastNorthUp();
     testAHitBehindTheCameraIsReportedAsAHit();

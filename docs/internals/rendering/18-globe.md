@@ -10,9 +10,8 @@ sidebar_position: 18
 instead of the Mercator plane. It arrived with CARTO's `feature/globe` and was carried unexercised
 for years. 2D tiled content, vector elements, the camera and the sky reach it and look right on a
 device. **3D terrain draws on it too** - the relief, its content, its lighting, its shadows and the
-2D/3D switch, after the fixes below. What is NOT at parity yet: the camera frames a wider view than
-the plane does at the same zoom, and 3D buildings on a globe with no terrain attached are still lit
-in the sphere's frame.
+2D/3D switch, after the fixes below, and the same zoom frames the same ground on both. What is NOT
+at parity yet: 3D buildings on a globe with no terrain attached are still lit in the sphere's frame.
 
 This page is the shared conventions and the traps. What is missing is at the bottom.
 
@@ -311,6 +310,36 @@ The fallback now bisects on the height above the terrain - positive at the camer
 slope - which needs nothing but the base surface and the height field, so it serves any base.
 `tests/api/TerrainSurfaceTest.cpp` pins it: a ray straight down over a 300-unit plateau stops 600
 WORLD units early, the 2x again.
+
+### The same zoom framed 1/cos(latitude) more ground on the globe
+
+Two lengths look alike and are not. A **world** length is uniformly twice the plane's on the globe —
+that is the trap at the top of this page, and `calculateDistance` and the local frame both carry it.
+An **internal** length is not: Mercator stretches its own coordinates by `1/cos(latitude)` and a
+sphere has none of that, so one internal unit covers `2 cos(latitude)` of the globe's world and a
+flat 2 only at the equator.
+
+The camera's zoom is calibrated in internal units, on `getWorldWidth()` — the equator. So the globe's
+camera sat `1/cos(latitude)` too far: **zoom 16 over Paris framed 1.52x the ground planar zoom 16
+did**, and 1.44x at Zermatt. It also read as "buildings are taller on the globe", which it is not —
+the extrusion geometry is 1:1 on both surfaces. To frame the same view you zoomed further in, and
+`building-height-scale` ramps on the zoom NUMBER, so the buildings rose.
+
+`ProjectionSurface::calculateLocalScale` is that per-position number (1 on a plane at every
+latitude, `2 cos(latitude)` on a sphere), `ViewState::worldPerInternal` answers it at the FOCUS, and
+the calibration follows it — mapbox-gl's globe model, matching Mercator at the centre latitude.
+Because the distance a zoom means now moves with the focus, `calculateViewState` re-derives
+`_zoom0Distance` and re-places the camera whenever it shifts by more than 0.01%; a plane returns the
+same number every time and never enters that branch.
+
+**The ramp.** Straight `cos(latitude)` would put a world view at the +-85 clamp eleven times too
+close. The local scale therefore fades back to the equatorial one as the planet fills the frame,
+measured as the ORBIT against the planet's own radius — full local within one radius, fully
+equatorial past four. A zoom threshold would have been a screen height and a DPI in disguise.
+
+Pinned by `tests/api/SphericalSurfaceTest.cpp`; device-checked at the Louvre, where globe zoom 16
+now lands on the planar zoom-16 frame street for street, and at zoom 3 over latitude 65, where the
+limb still frames the planet.
 
 ### A tile LOD that measured a quad with no area, so the globe never refined
 

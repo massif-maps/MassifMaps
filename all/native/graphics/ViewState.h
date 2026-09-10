@@ -71,7 +71,11 @@ namespace massif {
          * projection surface, so it is a radial move on a globe and a z move on a plane.
          */
         void setFocusHeight(double internalZ);
-        /** World units per internal unit: 1 on the plane, 2 on the globe (its equator is 2x). */
+        /**
+         * World units per internal unit AT THE FOCUS: 1 on the plane, and on the globe
+         * `2 * cos(latitude)` ramping back to 2 as the planet fills the view. The camera calibrates
+         * on it, so the same zoom frames the same ground on either surface.
+         */
         double worldPerInternal() const;
 
         /**
@@ -485,6 +489,7 @@ namespace massif {
          * One function because it is computed in two places, and a zoom convention that holds in
          * only one of them is worse than none.
          */
+        double localWorldPerInternal(const std::shared_ptr<ProjectionSurface>& projectionSurface) const;
         double calculateZoom0Distance(double tanHalfFOVY, const std::shared_ptr<ProjectionSurface>& projectionSurface) const;
         MapPos calculateMapBoundsCenter(const Options& options, const MapBounds& mapBounds) const;
    

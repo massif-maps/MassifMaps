@@ -10,6 +10,17 @@ namespace massif {
         return 2 * Const::PI * SPHERE_SIZE; // = 2 * WORLD_SIZE, the sphere being WORLD_SIZE / PI across
     }
 
+    double SphericalProjectionSurface::calculateLocalScale(const cglib::vec3<double>& pos) const {
+        double len = cglib::length(pos);
+        double equator = getWorldWidth() / Const::WORLD_SIZE;
+        if (!(len > 0)) {
+            return equator;
+        }
+        // An internal unit is a fixed slice of the equator; the parallel it lands on is cos(lat)
+        // as long. Mercator carries the reciprocal in its own coordinates and a sphere does not.
+        return equator * std::sqrt(pos(0) * pos(0) + pos(1) * pos(1)) / len;
+    }
+
     MapPos SphericalProjectionSurface::calculateMapPos(const cglib::vec3<double>& pos) const {
         return SphericalToInternal(pos * (1.0 / SPHERE_SIZE));
     }

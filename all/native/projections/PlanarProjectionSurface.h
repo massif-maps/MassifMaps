@@ -20,6 +20,7 @@ namespace massif {
         PlanarProjectionSurface();
         
         virtual double getWorldWidth() const;
+        virtual double calculateLocalScale(const cglib::vec3<double>& pos) const;
 
         virtual MapPos calculateMapPos(const cglib::vec3<double>& pos) const;
         virtual MapVec calculateMapVec(const cglib::vec3<double>& pos, const cglib::vec3<double>& vec) const;

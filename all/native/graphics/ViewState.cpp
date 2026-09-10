@@ -128,9 +128,28 @@ namespace massif {
         // everything a zoom level too large, and the camera inside the relief by zoom 12.
         // The surface comes in rather than off the member: on the frame the projection CHANGES the
         // member is still the old one, and reading it there made the globe jump a zoom on startup.
-        double worldWidth = (projectionSurface ? projectionSurface->getWorldWidth() : Const::WORLD_SIZE);
-        return ZoomConvention::zoom0Distance(_height, worldWidth, _tileDrawSize, _zoomOffset,
+        return ZoomConvention::zoom0Distance(_height, Const::WORLD_SIZE * localWorldPerInternal(projectionSurface), _tileDrawSize, _zoomOffset,
                                              tanHalfFOVY, _dpi / Const::UNSCALED_DPI);
+    }
+
+    double ViewState::localWorldPerInternal(const std::shared_ptr<ProjectionSurface>& projectionSurface) const {
+        if (!projectionSurface) {
+            return 1.0;
+        }
+        double equator = projectionSurface->getWorldWidth() / Const::WORLD_SIZE;
+        double local = projectionSurface->calculateLocalScale(_focusPos);
+        if (!(local > 0) || local == equator) {
+            return equator; // a plane answers the same scale everywhere and never reaches the ramp
+        }
+        // The LOCAL scale is what makes a zoom frame the same ground as the plane's, but only while
+        // the view is a patch. Ramp back to the equatorial one as the planet fills the frame, or a
+        // cos(85 deg) camera at world view sits 11x too close. The ramp is the ORBIT against the
+        // planet's own radius - a zoom threshold would be a screen size and a DPI in disguise.
+        double radius = projectionSurface->getWorldWidth() / (2 * Const::PI);
+        double orbit = ZoomConvention::zoom0Distance(_height, projectionSurface->getWorldWidth(), _tileDrawSize, _zoomOffset,
+                                                     _tanHalfFOVY, _dpi / Const::UNSCALED_DPI) / std::pow(2.0, static_cast<double>(_zoom));
+        double t = (radius > 0 ? std::max(0.0, std::min(1.0, (4 * radius - orbit) / (3 * radius))) : 1.0);
+        return equator + (local - equator) * t;
     }
 
     double ViewState::getOrbitDistance(float zoom) const {
@@ -185,7 +204,7 @@ namespace massif {
     }
 
     double ViewState::worldPerInternal() const {
-        return (_projectionSurface ? _projectionSurface->getWorldWidth() / Const::WORLD_SIZE : 1.0);
+        return localWorldPerInternal(_projectionSurface);
     }
 
     const cglib::vec3<double>& ViewState::getUpVec() const {
@@ -642,6 +661,19 @@ namespace massif {
             }
 
             _cameraChanged = true;
+        }
+
+        // The calibration follows the FOCUS on a globe (see localWorldPerInternal), so the distance
+        // a zoom means changes as the map is panned in latitude. A plane answers the same number
+        // every time and never enters this.
+        if (_projectionSurface && _zoom0Distance > 0) {
+            double zoom0Distance = calculateZoom0Distance(_tanHalfFOVY, _projectionSurface);
+            if (zoom0Distance > 0 && std::abs(zoom0Distance - _zoom0Distance) > _zoom0Distance * 1.0e-4) {
+                _zoom0Distance = static_cast<float>(zoom0Distance);
+                double length = _zoom0Distance / std::pow(2.0, static_cast<double>(_zoom));
+                _cameraPos = _focusPos + cglib::unit(_cameraPos - _focusPos) * length;
+                _cameraChanged = true;
+            }
         }
 
         if (_cameraChanged) {

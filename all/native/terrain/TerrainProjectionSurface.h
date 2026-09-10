@@ -36,6 +36,7 @@ namespace massif {
 
         // The base's: terrain changes the height of a point, not the width of the world.
         virtual double getWorldWidth() const { return _base->getWorldWidth(); }
+        virtual double calculateLocalScale(const cglib::vec3<double>& pos) const { return _base->calculateLocalScale(pos); }
 
         virtual MapPos calculateMapPos(const cglib::vec3<double>& pos) const;
         virtual MapVec calculateMapVec(const cglib::vec3<double>& pos, const cglib::vec3<double>& vec) const;

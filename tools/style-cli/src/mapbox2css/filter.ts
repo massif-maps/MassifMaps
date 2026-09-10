@@ -210,12 +210,21 @@ function translateBracketed(filter: Json[]): string | null {
     return null;
 }
 
-/** `["get", k]`, `["geometry-type"]` and `["id"]` as the field a bracketed predicate names. */
+/**
+ * `["get", k]`, `["geometry-type"]`, `["id"]` and a LIVE config as the field a bracketed predicate
+ * names.
+ *
+ * A config left live (see convert's liveConfig) is a style parameter, and one in a filter is what
+ * lets a style carry two layer sets and switch between them: the decoder pre-evaluates a parameter
+ * comparison with no feature in hand (PredicatePreEvaluator), so the losing set is pruned whole
+ * rather than tested per feature. Left to the generic path it became a when(), which prunes nothing.
+ */
 function expressionKey(node: Json): string | null {
     if (!Array.isArray(node)) return null;
     if (node[0] === 'get' && node.length === 2 && typeof node[1] === 'string') return node[1];
     if (node[0] === 'geometry-type' && node.length === 1) return 'mapnik::geometry_type';
     if (node[0] === 'id' && node.length === 1) return 'mapnik::feature_id';
+    if (node[0] === 'config' && node.length >= 2 && typeof node[1] === 'string') return `param::${node[1]}`;
     return null;
 }
 

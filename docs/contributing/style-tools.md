@@ -457,6 +457,34 @@ the real blocks before anything else runs:
 The converter then treats them exactly as if Standard had stated them. Converting a real MapBox
 style is unaffected: it states these in `paint`, where they are legal for it.
 
+`massif:filter` is the same hatch for a TEST maplibre refuses. It is ANDed onto the layer's own
+filter, and the one test that needs it is a live config — see below.
+
+### A config the style keeps LIVE, and a filter that reads it
+
+Every `["config", name]` is normally folded to a constant before translation (see *Standard's
+config*, above): CartoCSS has no `let`/`to-hsla`, so a colour left reading its config converts to
+nothing at all. A style can exempt one by name:
+
+```json
+{ "metadata": { "massif:live-config": ["poiRanking"] },
+  "schema": { "poiRanking": { "default": "category", "values": ["category", "rank"] } } }
+```
+
+The name is then left alone by the fold, reaches CartoCSS as `[param::poiRanking]`, and its `schema`
+entry is declared verbatim in `project.json` — default and enum both — so an app sets it at runtime.
+
+**In a filter it BRACKETS.** `["==", ["config", "poiRanking"], "rank"]` becomes
+`['param::poiRanking' = 'rank']`, and `PredicatePreEvaluator` decides a style-parameter comparison
+with no feature in hand, so the decoder prunes the losing rules whole instead of testing the mode
+per feature. That is what lets a style carry two layer sets and switch between them; setting the
+parameter is a re-decode rather than a repaint, which is what a mode switch is anyway.
+
+Maplibre rejects `["config", …]` in a filter outright — it is legal only inside an imported
+fragment — so the test goes in `massif:filter` and the source style stays one maplibre can draw. A
+layer that belongs only to the non-default mode says `"visibility": "none"` and turns itself back on
+with `"massif:layout": { "visibility": "visible" }`.
+
 ### …and their opacity is the style's, as a parameter
 
 `fill-extrusion-opacity` becomes `building-fill-opacity: [param::building_opacity]`, with the

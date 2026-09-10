@@ -12,7 +12,8 @@ export interface MapboxLayer {
     paint?: Record<string, Json>;
     /**
      * The style spec's own escape hatch, ignored by every renderer. `massif:paint` and
-     * `massif:layout` inside it are merged over the real ones - see applyMassifExtras.
+     * `massif:layout` inside it are merged over the real ones, `massif:filter` is ANDed onto the
+     * real filter - see applyMassifExtras.
      */
     metadata?: Json;
     /**

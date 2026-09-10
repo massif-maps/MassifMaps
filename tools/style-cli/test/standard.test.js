@@ -638,3 +638,56 @@ test('the baked path leaves an extrusion alone, colour and emissive both', () =>
     assert.ok(!/building-emissive-strength/.test(mss), 'baked styles state no emissive');
     assert.match(mss, /building-fill: #ddd;/, 'and the colour is left exactly as authored');
 });
+
+/** Two POI layer sets, one switch: the style's own way of offering a second ranking. */
+const MODE = (value) => ['==', ['config', 'poiRanking'], value];
+
+const RANKED = {
+    metadata: { 'massif:live-config': ['poiRanking'] },
+    schema: { poiRanking: { default: 'category', values: ['category', 'rank'] } },
+    layers: [
+        // The switch lives in metadata, not in the filter: maplibre rejects ["config", …] there
+        // outright, and the source style has to stay one it can draw.
+        { id: 'poi-rank', type: 'symbol', 'source-layer': 'poi', minzoom: 15,
+            filter: ['>=', ['get', 'rank'], 7],
+            layout: { 'text-field': ['get', 'name'], visibility: 'none' },
+            metadata: { 'massif:filter': MODE('rank'), 'massif:layout': { visibility: 'visible' } } },
+        { id: 'poi-shop', type: 'symbol', 'source-layer': 'poi', minzoom: 17,
+            filter: ['in', ['get', 'class'], ['literal', ['bakery', 'grocery']]],
+            layout: { 'text-field': ['get', 'name'] },
+            metadata: { 'massif:filter': MODE('category') } },
+    ],
+};
+
+test('a config the style keeps live becomes a style parameter, enum and all', () => {
+    const { project } = convert(RANKED, TABLE, { variables: false });
+    assert.deepEqual(JSON.parse(project).styleparameters.poiRanking,
+        { default: 'category', values: { category: 'category', rank: 'rank' } });
+});
+
+test('a live config in a filter BRACKETS, so the losing layer set is pruned whole', () => {
+    // Left to the generic path it was a when(), which prunes nothing: every feature would test the
+    // mode it already lost, in both sets, at every zoom.
+    const { mss } = convert(RANKED, TABLE, { variables: false });
+    assert.match(mss, /\[rank >= 7\]\['param::poiRanking' = 'rank'\]/);
+    assert.ok(!mss.includes('when('), 'a mode switch costs no per-feature test');
+});
+
+test('the mode test rides along on a class split instead of blocking it', () => {
+    const { mss } = convert(RANKED, TABLE, { variables: false });
+    assert.match(mss, /\[class = 'bakery'\]\['param::poiRanking' = 'category'\]/);
+    assert.match(mss, /\[class = 'grocery'\]\['param::poiRanking' = 'category'\]/);
+});
+
+test('a config nothing keeps live is still folded to a constant', () => {
+    const { mss } = convert({ ...RANKED, metadata: {} }, TABLE, { variables: false });
+    assert.ok(!mss.includes('param::poiRanking'), 'folded away');
+    assert.ok(!mss.includes('poi_rank'), 'and the layer its default loses is dropped');
+});
+
+test('a layer maplibre must skip is turned back on for the converter', () => {
+    // The rank set has no switch to follow in maplibre, so the source style hides it there and says
+    // so in massif:layout - the same escape hatch the GL v3 paint properties go through.
+    const { mss } = convert(RANKED, TABLE, { variables: false });
+    assert.match(mss, /::poi_rank \{/);
+});

@@ -240,9 +240,14 @@ export function expandSetFilter(layer: MapboxLayer): MapboxLayer[] {
     return [layer];
 }
 
-/** Is this filter the single `==` the split just pinned, with nothing else left beside it? */
+/**
+ * Is the residue of the split FREE? The `==` it pinned on its own, or beside tests that bracket -
+ * a mode switch on a style parameter, say. Those cost one more predicate per rule and no per-feature
+ * work, which is not the blow-up the cap guards against.
+ */
 function isOnlyTest(filter: Json | undefined): boolean {
-    return Array.isArray(filter) && filter[0] === '==';
+    if (!Array.isArray(filter)) return false;
+    return filter[0] === '==' || (filter[0] === 'all' && brackets(filter));
 }
 
 function brackets(filter: Json | undefined): boolean {

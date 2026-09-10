@@ -11,7 +11,7 @@ import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSo
 import { narrowLayer } from './narrow.js';
 import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
-import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
+import { LIGHT_PRESET, importOnly, liveConfig, presetsOf, resolveConfig, sceneBrightness } from './config.js';
 import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer, toHsla } from './fold.js';
 import { applyLighting, emissiveDefault, emissiveForLayerType, emissiveProperty, groundRadiance, lightingFactor } from './emissive.js';
 import type { SceneLights } from './emissive.js';
@@ -370,6 +370,16 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const configValues = new Map<string, Json>(
         [...parameters].map(([name, spec]) => [name, spec.default]));
     for (const [name, value] of Object.entries(options.config ?? {})) configValues.set(name, value);
+    for (const name of liveConfig(style)) {
+        const spec = parameters.get(name);
+        if (!spec) {
+            coverage.approximate(`config "${name}" is asked to stay live but the style never reads it`);
+            continue;
+        }
+        configValues.delete(name);
+        options.styleParams!.set(name, spec.values ? { default: spec.default, values: spec.values } : spec.default);
+        coverage.note(`config "${name}" stays a style parameter, settable on a running map`);
+    }
     if (configValues.size > 0) {
         coverage.approximate(`${configValues.size} config values baked in` +
             (configValues.has(LIGHT_PRESET) ? ` (${LIGHT_PRESET} = ${String(configValues.get(LIGHT_PRESET))})` : ''));
@@ -1060,7 +1070,8 @@ function flattenExtrusionOpacity(layer: MapboxLayer): { layer: MapboxLayer; opac
 const OPACITY_PARAM = 'building_opacity';
 
 /**
- * A layer's `metadata["massif:paint"]` / `["massif:layout"]`, merged over its real paint and layout.
+ * A layer's `metadata["massif:paint"]` / `["massif:layout"]`, merged over its real paint and layout,
+ * and `["massif:filter"]`, ANDed onto its real filter.
  *
  * A hand-written source style has to stay a VALID MapLibre style - the preview draws it with
  * maplibre beside the SDK, and that comparison is the whole point of the file. But half of what is
@@ -1072,22 +1083,32 @@ const OPACITY_PARAM = 'building_opacity';
  * property maplibre will not accept goes there, and this lifts it back out for the converter, which
  * then treats it exactly as if Standard had stated it. Converting a real MapBox style is unaffected:
  * it states these in paint, where they are legal for it.
+ *
+ * `massif:filter` is the same escape hatch for a test maplibre refuses outright - `["config", …]`
+ * is one, legal only inside an imported fragment and rejected in a filter anywhere - so a style
+ * that carries a second layer set behind a runtime switch keeps drawing its DEFAULT set in the
+ * reference pane, which is what a comparison wants.
  */
 function applyMassifExtras(layer: MapboxLayer): MapboxLayer {
     const metadata = layer.metadata;
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return layer;
     const paint = (metadata as Record<string, Json>)['massif:paint'];
     const layout = (metadata as Record<string, Json>)['massif:layout'];
+    const filter = (metadata as Record<string, Json>)['massif:filter'];
     const object = (value: Json | undefined) =>
         (value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, Json> : null);
     const extraPaint = object(paint);
     const extraLayout = object(layout);
-    if (!extraPaint && !extraLayout) return layer;
+    const extraFilter = Array.isArray(filter) ? filter as Json : null;
+    if (!extraPaint && !extraLayout && !extraFilter) return layer;
     return {
         ...layer,
         paint: extraPaint ? { ...layer.paint, ...extraPaint } : layer.paint,
         layout: extraLayout ? { ...layer.layout, ...extraLayout } : layer.layout,
-    };
+        filter: extraFilter
+            ? (layer.filter === undefined ? extraFilter : ['all', layer.filter as Json, extraFilter])
+            : layer.filter,
+    } as MapboxLayer;
 }
 
 function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean): string[] {

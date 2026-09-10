@@ -21,6 +21,9 @@ void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 void testSpanResolver();
 void testCollisionPadding();
+void testLabelAnchorAlign();
+void testLabelRadialOffset();
+void testLabelEdgeOffset();
 
 int main() {
     testPlateBitmap();
@@ -38,6 +41,9 @@ int main() {
     testSpanDrapeLight();
     testSpanResolver();
     testCollisionPadding();
+    testLabelAnchorAlign();
+    testLabelRadialOffset();
+    testLabelEdgeOffset();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -474,6 +474,12 @@ Everything below rests on that split — the icon stays on the feature, only the
   gap pushed away from the icon. Across that axis it is **centred on the anchor** — a name above the
   icon has to sit over it, and the formatter's own alignment is derived from the sign of `dx`, which
   means nothing once `dx` is a gap.
+- **`shield-text-radial-offset` places it mapbox's way instead**, which is what a converted mapbox
+  style wants: the distance runs from the **anchor** to the near edge of the text, on the side's own
+  axis and **zero across it**, a corner taking it on the diagonal (`evaluateVariableOffset`,
+  `variable_text_anchor.ts`). Read as `dx` instead, the same style came out with the icon's
+  half-width added to every side gap, and with a name centred under its icon sitting one `dx` to the
+  right of it. The model lives in `LabelVariants.h` and is pinned by `tests/vt/LabelAnchorAlignTest.cpp`.
 - `shield-text-optional` appends a last variant that draws the icon alone. That is mapbox's
   `text-optional`; here it costs one more variant, not a second label. It does **not** need
   `shield-anchors` — a list of one placement plus the icon-only fallback is a valid list, and it is
@@ -487,6 +493,7 @@ Everything below rests on that split — the icon stays on the feature, only the
   zooming in makes room nothing notices. The pass is **postponed** rather than queued
   (`VTLabelPlacementWorker::postpone`), so a zoom gesture places once when it settles instead of
   re-deciding at every step — placing mid-gesture is what made labels fade in and straight back out.
+
 
 **Which labels keep their text.** The culler sorts by priority → `wasVisible` → layer index → size →
 opacity and inserts greedily, so a label sorted earlier claims its side first;

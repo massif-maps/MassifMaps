@@ -792,6 +792,7 @@ namespace massif::css {
         { "shield-dy", "shield-dy" },
         { "shield-unlock-image", "unlock-image" },
         { "shield-anchors", "anchors" },
+        { "shield-text-radial-offset", "text-radial-offset" },
         { "shield-text-optional", "text-optional" },
         { "shield-icon-name", "icon-name" },
         { "shield-icon-face-name", "icon-face-name" },

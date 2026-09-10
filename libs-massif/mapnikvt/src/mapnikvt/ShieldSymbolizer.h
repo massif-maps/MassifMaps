@@ -23,6 +23,7 @@ namespace massif::mvt {
             bindProperty("shield-dy", &_shieldDy);
             bindProperty("unlock-image", &_unlockImage);
             bindProperty("anchors", &_anchors);
+            bindProperty("text-radial-offset", &_textRadialOffset);
             bindProperty("text-optional", &_textOptional);
             bindProperty("icon-name", &_iconText);
             bindProperty("icon-face-name", &_iconFaceName);
@@ -69,6 +70,9 @@ namespace massif::mvt {
         FloatProperty _shieldDx = FloatProperty(0.0f);
         FloatProperty _shieldDy = FloatProperty(0.0f);
         StringProperty _anchors = StringProperty("");
+        // mapbox 'text-radial-offset', in pixels: anchor to the near edge of the text, on the chosen
+        // side's axis and nothing across it. 0 leaves the placement to dx/dy and the icon's edge.
+        FloatProperty _textRadialOffset = FloatProperty(0.0f);
         BoolProperty _textOptional = BoolProperty(false);
         StringProperty _iconText = StringProperty("");
         StringProperty _iconFaceName = StringProperty("");

@@ -1705,6 +1705,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-text-radial-offset",
+      "mapnik": "text-radial-offset",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "shield-text-transform",
       "mapnik": "text-transform",
       "symbolizer": "shield",

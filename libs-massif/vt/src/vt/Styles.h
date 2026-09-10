@@ -309,8 +309,13 @@ namespace massif::vt {
         LabelPlateStyle iconPlate; // behind the icon run, which stays on the anchor
         // Sides the text may be laid out on, in preference order (empty = one fixed layout). The icon
         // does not move; the text is placed against its edge on the chosen side, and dx/dy are MIRRORED
-        // with it, so an offset pushing the text away from the icon does so on every side.
+        // with it, so an offset pushing the text away from the icon does so on every side. Unless the
+        // style states textRadialOffset, which places it mapbox's way instead.
         std::vector<LabelAnchor> anchors;
+        // mapbox's 'text-radial-offset': the distance from the ANCHOR to the near edge of the text,
+        // in pixels, taken on the chosen side's own axis and zero across it. Stated, it replaces
+        // dx/dy and the icon's edge above - which is how mapbox places a variable anchor.
+        float textRadialOffset = 0.0f;
         // A last resort of drawing the icon alone when no side is free, rather than dropping the
         // whole label (mapbox 'text-optional'). Needs an icon to be of any use.
         bool textOptional;

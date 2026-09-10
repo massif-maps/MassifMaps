@@ -2292,14 +2292,16 @@ function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage, opti
         coverage.drop('text-optional', 'only a literal true is carried', layer.id);
     }
 
-    // The gap between icon and text, which the SDK mirrors per side - so it is stated once, as dx,
-    // whichever side wins. Only read when no text-offset states it, as MapBox does.
+    // Carried as MapBox's own property, not as dx: it is measured from the ANCHOR to the near edge
+    // of the text, on the chosen side's axis and nothing across it (evaluateVariableOffset). Read as
+    // dx the SDK added the icon's half-width to every side gap, and slid a name centred under its
+    // icon one dx to the right. Only read when no text-offset states it, as MapBox does.
     const radial = layout['text-radial-offset'];
     if (typeof radial === 'number' && radial !== 0 && layout['text-offset'] === undefined) {
         const gap = ems(radial, layer, coverage, 'text-radial-offset');
         if (gap !== null) {
-            out.push(`shield-text-dx: ${gap};`);
-            coverage.emit('shield-text-dx');
+            out.push(`shield-text-radial-offset: ${gap};`);
+            coverage.emit('shield-text-radial-offset');
         }
     } else if (radial !== undefined && typeof radial !== 'number') {
         coverage.drop('text-radial-offset', 'only a literal offset is carried', layer.id);

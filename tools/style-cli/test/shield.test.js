@@ -473,9 +473,9 @@ test('a variable anchor becomes the shield anchor list, with its gap and its fal
 
     assert.match(out, /shield-anchors: 'left,right,bottom,top';/);
     assert.match(out, /shield-text-optional: true;/);
-    // The gap is stated once as dx - the SDK mirrors it onto whichever side wins - in pixels of
-    // the text size, not ems.
-    assert.match(out, /shield-text-dx: 6;/);
+    // MapBox's own property, in pixels of the text size rather than ems: the distance runs from the
+    // ANCHOR to the near edge of the text on whichever side wins, not from the icon's edge.
+    assert.match(out, /shield-text-radial-offset: 6;/);
     assert.match(out, /shield-text-horizontal-alignment: 'auto';/);
     assert.ok(!/text-justify|text-optional +[^:]/.test(coverage.report()));
 });

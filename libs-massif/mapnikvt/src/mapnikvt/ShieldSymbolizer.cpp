@@ -206,6 +206,7 @@ namespace massif::mvt {
 
 
         std::vector<vt::LabelAnchor> anchors = parseAnchors(_anchors.getValue(exprContext));
+        float textRadialOffset = _textRadialOffset.getValue(exprContext) * fontScale;
         vt::LabelLineAlign textLineAlign = parseLineAlign(_textHorizontalAlignment.getValue(exprContext));
         vt::LabelPlateStyle textPlate = getPlateStyle(symbolizerContext, exprContext);
         vt::LabelPlateStyle iconPlate;
@@ -344,7 +345,7 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, collisionPadding, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, iconOpacityFunc, textLineAlign, textPlate, iconPlate, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, collisionPadding, maxDistance, anchors, textRadialOffset, textOptional, iconGlyphs, iconColorFunc, iconOpacityFunc, textLineAlign, textPlate, iconPlate, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, imageScale, backgroundOffset, backgroundImage, maxDistance,
                                      std::optional<vt::ColorFunction>(), rankFunc);
             style.collisionPadding = collisionPadding;
@@ -356,6 +357,7 @@ namespace massif::mvt {
             style.iconRefScale = imageScale;
             style.backgroundSdf = sdfMode;
             style.anchors = anchors;
+            style.textRadialOffset = textRadialOffset;
             style.textOptional = textOptional;
             style.iconGlyphs = iconGlyphs;
             style.iconColorFunc = iconColorFunc;

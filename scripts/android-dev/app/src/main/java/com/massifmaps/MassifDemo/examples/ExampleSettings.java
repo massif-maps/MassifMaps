@@ -80,6 +80,10 @@ public final class ExampleSettings {
         { Kind.SLIDER, Group.FOG, "verticalRangeEnd",   "vertical end",    0f,  8000f },
 
         { null, "Terrain", Boolean.FALSE },
+        // The globe. Here because the terrain is what it is most worth flipping against, and a
+        // switch re-derives the camera - the example keeps its place, not its exact framing.
+        { Kind.CHOICE, Group.OPTIONS, "renderProjectionMode", "projection",
+          new String[] { "RENDER_PROJECTION_MODE_PLANAR", "RENDER_PROJECTION_MODE_SPHERICAL" } },
         { Kind.TOGGLE, Group.TERRAIN, "enabled",   "3D terrain" },
         { Kind.TOGGLE, Group.TERRAIN, "flattened", "flat (2D)" },
         // The auto 2D/3D switch, both halves at once: it fires past a tilt, or once the terrain's

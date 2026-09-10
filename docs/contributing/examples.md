@@ -88,6 +88,9 @@ Two things it does that a row table alone would not:
   terrain is not built: it needs an elevation source only the example can name.
 - **`auto 2D/3D on tilt` is one control over both halves** of the auto-flatten rule
   (`autoFlattenTilt`, `autoFlattenParallax`); off writes 0 to each, on puts back what they held.
+- **`projection` under Terrain puts the running example on the globe** and back, without a
+  relaunch — the same thing `--es globe true` does at launch (`docs/internals/rendering/18-globe.md`).
+  Switching re-derives the camera, so the place is kept and the exact framing is not.
 
 `--es ui false` hides it with the rest of the chrome, so screenshots are unchanged. The `CONFIG`
 broadcast (`examples/ExampleLive.java`) reaches most of the same options from adb, under the

@@ -421,6 +421,45 @@ namespace {
         TEST_CHECK(worstAbsolute * 1024 > 2.0, "the absolute form is out by drape TEXELS by zoom 18");
         TEST_CHECK(worstRelative * 1024 < 0.01, "the relative one holds a hundredth of a texel at every zoom");
     }
+
+    /*
+     * An extrusion reads the ground at ONE point per building. TileLayerBuilder stores that point
+     * and GLTileRenderer::resolveExtrusionBases reads it back through SpanResolver::tileMatrix2D,
+     * which is a FLAT tile matrix - so what is stored has to be the tile's unit square, y flipped.
+     * calculatePoint IS that on a plane, and a curved position on a globe: every building then read
+     * its base kilometres away, a different distance per tile, which steps at every tile border and
+     * grows with the tile. Hence the flip written out rather than taken from the transformer.
+     */
+    void testTheExtrusionAnchorIsTheTileSquareAndNotACurvedPoint() {
+        const double PI = 3.1415926535897932;
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / PI));
+        DefaultTileTransformer plane(static_cast<float>(WORLD_SIZE));
+        const TileId tileId(16, 33202, 22546); // Paris
+
+        std::shared_ptr<const TileTransformer::VertexTransformer> sphereVertex = sphere.createTileVertexTransformer(tileId);
+        std::shared_ptr<const TileTransformer::VertexTransformer> planeVertex = plane.createTileVertexTransformer(tileId);
+
+        bool planarUnchanged = true;
+        double worstCurved = 0, worstFlat = 0;
+        for (int j = 0; j <= 4; j++) {
+            for (int i = 0; i <= 4; i++) {
+                cglib::vec2<float> uv(i / 4.0f, j / 4.0f);
+                cglib::vec2<float> flat(uv(0), 1.0f - uv(1)); // what TileLayerBuilder stores now
+
+                // resolveExtrusionBases un-flips: (x, 1 - y) has to come back to the uv it was built at.
+                cglib::vec3<float> curved = sphereVertex->calculatePoint(uv);
+                worstCurved = std::max(worstCurved, static_cast<double>(std::max(std::fabs(curved(0) - uv(0)), std::fabs((1.0f - curved(1)) - uv(1)))));
+                worstFlat = std::max(worstFlat, static_cast<double>(std::max(std::fabs(flat(0) - uv(0)), std::fabs((1.0f - flat(1)) - uv(1)))));
+
+                // ...and on a plane the flip IS calculatePoint, so nothing about the plane moves.
+                cglib::vec3<float> planar = planeVertex->calculatePoint(uv);
+                planarUnchanged = planarUnchanged && planar(0) == flat(0) && planar(1) == flat(1);
+            }
+        }
+        TEST_CHECK(worstFlat == 0.0, "the flipped unit square round-trips to the tile uv, exactly");
+        TEST_CHECK(worstCurved > 1.0, "the curved point is whole TILES away from it");
+        TEST_CHECK(planarUnchanged, "and on a plane the two are the same point, so nothing there changes");
+    }
 }
 
 void testSphericalTerrain() {
@@ -432,4 +471,5 @@ void testSphericalTerrain() {
     testTheExtrusionBaseRisesWithItsGround();
     testTheGroundLatticeIsNotLeftToTheCurvatureSplit();
     testTheShaderInversionSurvivesFloatPrecision();
+    testTheExtrusionAnchorIsTheTileSquareAndNotACurvedPoint();
 }

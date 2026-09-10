@@ -1841,11 +1841,11 @@ namespace massif::vt {
                 }
                 centroid = centroid * (1.0f / pointsList[0].size());
             }
-            // Through the transformer, like the coords beside it: calculatePoint FLIPS Y, and
-            // GLTileRenderer::resolveExtrusionBases reads this back to know where to ask for the
-            // ground. Stored unflipped it asks at a mirrored position - a different hill entirely.
-            cglib::vec3<float> anchor = _transformer->calculatePoint(centroid);
-            _polygon3DCentroid = cglib::vec2<float>(anchor(0), anchor(1));
+            // The tile's UNIT SQUARE with y flipped, which is what resolveExtrusionBases reads back
+            // to know where to ask for the ground - stored unflipped it asks at a mirrored position.
+            // Not calculatePoint: that is this on a plane and a CURVED point on a globe (18-globe.md).
+            cglib::vec2<float> anchor(centroid(0), 1.0f - centroid(1));
+            _polygon3DCentroid = anchor;
             _polygon3DAnchorExtent = std::max(_polygon3DAnchorExtent, std::max(std::abs(anchor(0)), std::abs(anchor(1))));
         }
         // Edge radius: the wall stops short of the roof and a bevel band bridges the two, the roof ring

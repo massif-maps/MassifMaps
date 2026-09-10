@@ -559,6 +559,31 @@ The error is now flat across zoom, which is the signature worth checking if this
 
 `baseUp = normalize(terrainSpherePoint(pos))` is left alone: a direction needs no more than fp32.
 
+### Every building read its base kilometres from where it stood
+
+The one still standing after the fp32 fix: buildings stepped at tile borders, and the step grew as
+the integer zoom dropped.
+
+An extrusion is a rigid prism at ONE elevation, so `TileLayerBuilder` stores the point its base is
+read at and `GLTileRenderer::resolveExtrusionBases` reads it back through `SpanResolver::tileMatrix2D`
+— a **flat** tile matrix, tile unit square to normalised Mercator. What was stored was
+`_transformer->calculatePoint(centroid)`, which on a plane is exactly `(u, 1 - v)` and on a globe is
+a **curved position in the tile's own frame**. Measured at Paris, distance from the tile square:
+
+| zoom | 14 | 16 | 17 |
+|---|---|---|---|
+| planar | 0 | 0 | 0 |
+| spherical | 4.28 tiles (10.5 km) | 4.28 tiles (2.6 km) | 4.28 tiles (1.3 km) |
+
+A constant offset in TILE units, so it is a different world position for every tile — two halves of
+one building read two different hills — and the metres scale with the tile, which is why the gap
+grew as the zoom fell. The anchor rule in `ExtrusionAnchors.h` was doing its job: both sides agreed
+on the anchor, then both looked it up somewhere else.
+
+Stored as the flip written out, `(u, 1 - v)`. On a plane that is bit-for-bit what `calculatePoint`
+returned, so nothing planar moves; `calculateHeight` reads the same slot and its own `pos(1)` term
+is unchanged too.
+
 ## Two things worth knowing about the spherical shader path
 
 **A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the

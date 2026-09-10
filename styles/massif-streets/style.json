@@ -3,7 +3,10 @@
   "name": "Massif Streets",
   "metadata": {
     "massif:schema": "openmaptiles",
-    "massif:stage": "roads, buildings and labels - drawn as context, not as the final design"
+    "massif:stage": "roads, buildings and labels - drawn as context, not as the final design",
+    "massif:live-config": [
+      "poiRanking"
+    ]
   },
   "sources": {
     "openmaptiles": {
@@ -2294,6 +2297,637 @@
       }
     },
     {
+      "id": "poi-rank-r20",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          20
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "rank"
+        ]
+      }
+    },
+    {
+      "id": "poi-rank-r7",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          7
+        ],
+        [
+          "<",
+          [
+            "get",
+            "rank"
+          ],
+          20
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "rank"
+        ]
+      }
+    },
+    {
+      "id": "poi-rank-r1",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          1
+        ],
+        [
+          "<",
+          [
+            "get",
+            "rank"
+          ],
+          7
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "rank"
+        ]
+      }
+    },
+    {
       "id": "poi-waste",
       "type": "symbol",
       "source": "openmaptiles",
@@ -2489,7 +3123,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -2701,7 +3343,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -2903,7 +3553,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -3100,7 +3758,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -3299,7 +3965,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -3500,7 +4174,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -3707,7 +4389,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -3916,7 +4606,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -4116,7 +4814,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -4313,7 +5019,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -4514,7 +5228,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -4723,7 +5445,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -4920,7 +5650,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -5118,7 +5856,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -5319,7 +6065,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -5522,7 +6276,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -5721,7 +6483,15 @@
               }
             }
           ]
-        }
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
       }
     },
     {
@@ -6026,5 +6796,14 @@
         "text-halo-width": 1
       }
     }
-  ]
+  ],
+  "schema": {
+    "poiRanking": {
+      "default": "category",
+      "values": [
+        "category",
+        "rank"
+      ]
+    }
+  }
 }

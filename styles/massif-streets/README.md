@@ -121,6 +121,19 @@ So:
 MapTiler's own zooms were tried first and put a gallery two levels before the tram stop that gets you
 to it. Seventeen layers, ordered least important first, so a station still wins a collision.
 
+**...and that gate is a SWITCH, not the only way in.** `poiRanking` is a style parameter — `category`
+by default, `rank` for the source's own ranking and nothing else: OpenFreeMap Liberty's ladder,
+rank 1–6 at z15, 7–19 at z16, the rest at z17, three layers and no class named anywhere. Setting it
+is a re-decode rather than a repaint (a parameter in a FILTER is), which is what a mode switch is.
+
+Two things make it cost nothing when it is not used. The switch is a bracketed predicate
+(`['param::poiRanking' = 'rank']`), so the decoder pre-evaluates it with no feature in hand and
+prunes the losing set of layers WHOLE — a `when()` there would have tested the mode per feature, in
+both sets, at every zoom. And it lives in `metadata.massif:filter`, not in the filter: maplibre
+rejects `["config", …]` in a filter outright, so the reference pane goes on drawing the default
+mode, which is what a comparison wants. The rank layers say `visibility: none` for the same reason
+and turn themselves back on through `massif:layout`.
+
 Liberty's italic face for them is taken as well — it is the one thing on the
 map that is not a road, and it should not read like one.
 

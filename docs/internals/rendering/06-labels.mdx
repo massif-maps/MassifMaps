@@ -188,6 +188,12 @@ there is no label to merge them.
 they project closer together in the far field. The screen-space guarantee is `text-min-distance`,
 which gives the label a group id the culler enforces in pixels.
 
+**A line label's group is its TEXT**, so the distance thins repeats of one name and leaves a
+different name alone; only a point label shares one group with every other. `shield-min-distance`
+used to fall in the second case whatever its placement, which made it a distance between DIFFERENT
+roads: a style setting it to its own `shield-spacing` — what `mapbox2css` writes, so that a road cut
+into many ways is not shielded on each — lost most of its shields instead.
+
 **A candidate stretch of line is measured in the plane its run will be laid out in**, and the same
 measure both ranks the candidates and decides whether the run fits (`findClippedLinePlacement`). A
 screen run has to be compared on screen — a line running away from a tilted camera is worth a
@@ -468,6 +474,12 @@ Everything below rests on that split — the icon stays on the feature, only the
   gap pushed away from the icon. Across that axis it is **centred on the anchor** — a name above the
   icon has to sit over it, and the formatter's own alignment is derived from the sign of `dx`, which
   means nothing once `dx` is a gap.
+- **`shield-text-radial-offset` places it mapbox's way instead**, which is what a converted mapbox
+  style wants: the distance runs from the **anchor** to the near edge of the text, on the side's own
+  axis and **zero across it**, a corner taking it on the diagonal (`evaluateVariableOffset`,
+  `variable_text_anchor.ts`). Read as `dx` instead, the same style came out with the icon's
+  half-width added to every side gap, and with a name centred under its icon sitting one `dx` to the
+  right of it. The model lives in `LabelVariants.h` and is pinned by `tests/vt/LabelAnchorAlignTest.cpp`.
 - `shield-text-optional` appends a last variant that draws the icon alone. That is mapbox's
   `text-optional`; here it costs one more variant, not a second label. It does **not** need
   `shield-anchors` — a list of one placement plus the icon-only fallback is a valid list, and it is
@@ -481,6 +493,122 @@ Everything below rests on that split — the icon stays on the feature, only the
   zooming in makes room nothing notices. The pass is **postponed** rather than queued
   (`VTLabelPlacementWorker::postpone`), so a zoom gesture places once when it settles instead of
   re-deciding at every step — placing mid-gesture is what made labels fade in and straight back out.
+- **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
+  which is maplibre's `Placement.stillRecent`: it will not begin a placement before
+  `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran
+  several a second while a label's fade takes a whole second at the default blending speed — the
+  label never reached full opacity before the next pass could drop it. Measured on the Grenoble
+  preview at z16/tilt 80: 10–14 labels flipped on and off per pass, 4–13 of them mid-screen, none of
+  them losing a placement (`offInvalid=0`) — they lost a collision to a label that had just arrived.
+
+  A/B over the same six-step pan, timing every pass:
+
+  | | passes / pan step | shortest gap | median gap | gaps &lt; 200 ms |
+  |---|---|---|---|---|
+  | interval 0 | 10.7 | 0 ms | 73 ms | 48 of 62 |
+  | interval 1000 | 4.5 | 999 ms | 1005 ms | **0 of 25** |
+
+  `_lastPassTime` is stamped when a pass **starts**, under the lock that claims it. Stamped when it
+  ended instead, a `schedule()` arriving while the pass ran read the previous pass's time, found the
+  interval already spent, and fired again the moment it finished — 202 ms between passes, measured.
+
+  The interval and the fade are ONE duration: 300 ms, which is maplibre's `fadeDuration` and now
+  `TileRenderer`'s default label blending speed (1/0.3 per second). A second of fade was long enough
+  that a name was still arriving when it had reached the middle of the screen.
+
+### A label is placed BEFORE it reaches the screen
+
+maplibre pads the collision viewport by `viewportPadding = 100` px (`collision_index.ts`) and sizes
+its grid `width + 2 × padding`, so a symbol is placed while it is still outside. Its own comment: the
+padding exists "so that the bulk of the changes occur offscreen… increases label stability, but it's
+expensive". A symbol placed there gets `JointPlacement::skipFade`, and `OpacityState` starts it at
+opacity **1** instead of 0 — "if a subsequent viewport change brings them into view, they'll be fully
+visible right away".
+
+Both halves are ported. `ViewState::labelFrustum` is the frustum grown by `labelPadding` pixels, and
+it is what `Label::updatePlacement` places against — the frustum tests AND the clip planes the point
+and line searches use. Missing that last part is the whole difference: the padded frustum admitted
+the label, then `findClippedPointPlacement` clipped it against the plain one and produced nothing, so
+the band measured 0 labels until the clip planes were switched too. `LabelCuller::isOffscreen` then
+hands anything placed outside the true viewport full opacity, and `getGridIndex` spans the padded
+viewport so those labels get their own cells instead of clamping into the border ones.
+
+**The band shrinks with tilt, which maplibre's does not.** 100 screen pixels at the horizon are
+kilometres of map and thousands of labels; at top-down they are 100 pixels of map. `labelPadding` is
+therefore `100 × sin(tilt)`, floored at 20 — tilt 90 is straight down here, so `sin(tilt)` IS the
+foreshortening of the ground plane, and the band stays roughly constant in WORLD terms. Measured
+live: `padding=100.0` top-down, `padding=50.0` at pitch 60, and 1–4 labels per pass taking the
+skip-fade path.
+
+**The band is worth nothing without the tiles that fill it.** A label cannot be placed early if it
+does not exist, and it does not exist until its tile reaches the renderer. `TileLayer` sorted every
+leaf tile into two buckets — inside the plain frustum it is a *visible* tile, otherwise a
+*preloading* one, and preloading is **off by default** — so the first Label for the ground scrolling
+in was built the frame its tile touched the viewport edge, on screen, at opacity 0.
+
+There is now a third bucket between them: outside the viewport but inside
+`ViewState::getLabelFrustum()`, the same band the culler places against, built from the same
+`vt::ViewState::paddedProjectionMatrix`. Those tiles are fetched and handed over whatever
+`isPreloading()` says.
+
+**They are handed over for their labels only.** `GLTileRenderer::setVisibleTiles` takes a second
+map: it joins `labelTiles`, so `buildLabelMaps` sees it, and it never reaches `tileIds` — no tile
+surface, no render tile. `TileRenderer::refreshTiles` splits the draw datas on `isPreloadingTile()`,
+which is exactly "the visTile was outside the view frustum", so the preloading ring stops being
+drawn too. Skipping that split cost **4.3% of the frame rate** (below).
+
+Measured on the style preview (Grenoble, z16, top-down, 381×444 pane), counting every label that
+becomes visible *on screen* while still undrawn, bucketed by what it was on the previous pass:
+
+| | without the band tiles | with them |
+|---|---|---|
+| passes with an on-screen entry | 85 | **0** |
+| entries: never existed / had no placement / lost a collision | 165 / 81 / 33 | 0 / 0 / 0 |
+| pan distance | 600 px | 230 px |
+
+Normalised, ~46 undrawn entries per 100 px of pan against 0. The pan was very slow (the harness
+throttles timers), which is the condition that most favours the baseline: tiles had unlimited time
+to arrive and it still lost.
+
+**What the band costs, in tiles.** Counted at rest, same pane, camera jumped rather than panned:
+
+| camera (SDK tilt) | visible | label | preloading |
+|---|---|---|---|
+| z16, tilt 90, centred on a tile | 4 | 0 | 0 |
+| z16, tilt 90, straddling two | 2 | 0 | 4 |
+| z16, tilt 30, straddling | 12 | **1** | 5 |
+| z13.5, tilt 30, straddling | 16 | 0 | 6 |
+| z13.5, tilt 90, straddling | 2 | 0 | 2 |
+
+**At rest the band costs 0–1 tiles.** It fills only while the viewport crosses a tile edge, and
+during the pan above it held 2–3 against 2–4 visible. Those are tiles the pan is about to need
+anyway, so the fetch is pulled *forward* rather than added; the only wasted work is a camera that
+enters the band and turns back. The upper bound is geometric: 100 px on each side of a ~888 px
+viewport is ~1.2× the visible ground at top-down, and less when tilted, since `labelPadding` scales
+with `sin(tilt)` (tilt 30 above: padding 50, one extra tile on twelve).
+
+**What it costs on the device, and why the labels-only split is the whole point.** Crosscall
+`1cba1468`, `-PnativeConfig=Release -PabiFilters=arm64-v8a -PprofileRender`, default bench camera
+(Grenoble z16.22 tilt 26), 8 swipes, three interleaved pairs from prebuilt APKs, idle windows
+(>1600 ms) dropped. Two series, each against its own baseline — the device drifts between series, so
+only within-series pairs mean anything.
+
+| | band tiles drawn | band tiles labels-only |
+|---|---|---|
+| fps vs its baseline | 18.7 vs **19.5** (−4.3%, 3/3 same sign) | 18.9 vs **18.8** (+0.4%, mixed sign) |
+| `renderTiles` /s | **+14.9%** | −3.2% |
+| `geomDraws` /s | +2.6% | −10.3% |
+| `bakes` /s | +3.0% | −16.9% |
+| `live` labels | +61% | +88% |
+| `labelMapsMs` /s | +37% | +24% (2.8 → 3.5) |
+| `cullMs` /s | +5% | +3% (2.4 → 2.5) |
+
+**The labels are nearly free; the drawing was the cost.** Twice as many live labels move `cullMs` by
+0.1 ms/s and `labelMapsMs` by 0.7 ms/s against a 53 ms frame. Drawing the band cost 15% more render
+tiles that are, by construction, off screen — which showed up as `drape` +1.7 ms, `prelude` +0.5,
+`cover` +0.4 per frame. Routing them to `buildLabelMaps` alone takes the whole regression back, and
+`renderTiles` ends up slightly *below* baseline because the preloading ring stopped being drawn with
+them.
 
 **Which labels keep their text.** The culler sorts by priority → `wasVisible` → layer index → size →
 opacity and inserts greedily, so a label sorted earlier claims its side first;

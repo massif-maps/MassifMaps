@@ -103,3 +103,27 @@ test('text-name still reads fields, because the text is evaluated per feature', 
     assert.match(mss, /text-name: \[name\];/);
     assert.equal(mss.split('\n').filter((l) => l.startsWith('#place')).length, 1);
 });
+
+test('line-sort-key becomes one attachment per value, lowest drawn first', () => {
+    // CartoCSS draws a rule's features in the order the tile lists them, so the key has to become
+    // rule ORDER: without it a residential road paints over the motorway it crosses.
+    const blocks = convert({ layers: [{
+        id: 'road', type: 'line', source: 'osm', 'source-layer': 'transportation',
+        layout: { 'line-sort-key': ['match', ['get', 'class'], 'motorway', 3, 'primary', 2, 1] },
+        paint: { 'line-color': '#ffffff' },
+    }] }, TABLE, NO_PALETTE).mss.split('\n').filter((l) => l.startsWith('#transportation'));
+
+    assert.equal(blocks.length, 3);
+    // Ascending, so the LAST rule drawn is the highest key - the motorway, on top.
+    assert.ok(!blocks[0].includes("[class = 'motorway']") && !blocks[0].includes("[class = 'primary']"));
+    assert.match(blocks[1], /\[class = 'primary'\]/);
+    assert.match(blocks[2], /\[class = 'motorway'\]/);
+});
+
+test('a sort key that is not a match over the feature leaves the layer whole', () => {
+    const blocks = convert({ layers: [{
+        id: 'road', type: 'line', source: 'osm', 'source-layer': 'transportation',
+        layout: { 'line-sort-key': ['get', 'rank'] }, paint: { 'line-color': '#ffffff' },
+    }] }, TABLE, NO_PALETTE).mss.split('\n').filter((l) => l.startsWith('#transportation'));
+    assert.equal(blocks.length, 1);
+});

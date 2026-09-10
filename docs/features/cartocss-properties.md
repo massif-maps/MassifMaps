@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-239 properties across 12 symbolizers.
+242 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 61 of 239.
+Live-capable properties: 61 of 242.
 
 ## `building`
 
@@ -206,6 +206,7 @@ Live-capable properties: 61 of 239.
 | `shield-background-width` | `background-width` | float | `0.0` |  |  |
 | `shield-character-spacing` | `character-spacing` | float | `0.0` |  |  |
 | `shield-clip` | `clip` | bool | `false` |  |  |
+| `shield-collision-padding` | `collision-padding` | float | `0.0` |  |  |
 | `shield-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `shield-dx` | `shield-dx` | float | `0.0` |  |  |
 | `shield-dy` | `shield-dy` | float | `0.0` |  |  |
@@ -257,6 +258,7 @@ Live-capable properties: 61 of 239.
 | `shield-text-horizontal-alignment` | `text-horizontal-alignment` | string |  |  |  |
 | `shield-text-opacity` | `opacity` | float | `1.0` | yes |  |
 | `shield-text-optional` | `text-optional` | bool | `false` |  |  |
+| `shield-text-radial-offset` | `text-radial-offset` | float | `0.0` |  |  |
 | `shield-text-transform` | `text-transform` | value | `none` |  |  |
 | `shield-unlock-image` | `unlock-image` | bool | `false` |  |  |
 | `shield-vertical-alignment` | `vertical-alignment` | value | `auto` |  |  |
@@ -292,6 +294,7 @@ Live-capable properties: 61 of 239.
 | `text-callout-step` | `callout-step` | float | `0.0` |  |  |
 | `text-character-spacing` | `character-spacing` | float | `0.0` |  |  |
 | `text-clip` | `clip` | bool | `false` |  |  |
+| `text-collision-padding` | `collision-padding` | float | `0.0` |  |  |
 | `text-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `text-dx` | `dx` | float | `0.0` |  |  |
 | `text-dy` | `dy` | float | `0.0` |  |  |

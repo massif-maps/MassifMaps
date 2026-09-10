@@ -165,6 +165,19 @@ to compensate. And a **style's zoom stops** do not move: they are evaluated at t
 (`mapnikvt/TileReader.cpp`), which the offset leaves alone, so a converted MapBox style is no more
 and no less aligned than before.
 
+### TileDrawSize picks the tile, it does not magnify the style
+
+The other way to adopt maplibre's convention is `TileDrawSize = 512`, which renumbers the camera
+*and* moves the tile the layer picks - z13 tiles at view 13.2, as maplibre fetches them, where the
+offset alone leaves the SDK on z14. It used to double every label and line with them: vt sizes a
+style in fractions of the tile it was DECODED against, that was fixed at 256, and the tile was then
+painted 512 dp wide. Measured in the preview grid at z13.51: a residential casing of 2.68 style px
+drew 5.36 CSS px against maplibre's 2.68.
+
+`VectorTileLayer` now hands `TileDrawSize` to the decoder beside the pixel scale, so a style pixel
+is a dp whichever size is set. Both are read when the layer JOINS the map - set them before adding
+it, and a later change reaches the camera but not the style.
+
 Method: `screenToMap` at two points a known number of DEVICE pixels apart (the centre of the
 drawing buffer maps exactly to `focusPos`, which is how the convention was confirmed), divided by
 `devicePixelRatio`. Do not pan and read `focusPos` - kinetic pan keeps gliding after mouseup and

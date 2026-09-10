@@ -1,0 +1,6809 @@
+{
+  "version": 8,
+  "name": "Massif Streets",
+  "metadata": {
+    "massif:schema": "openmaptiles",
+    "massif:stage": "roads, buildings and labels - drawn as context, not as the final design",
+    "massif:live-config": [
+      "poiRanking"
+    ]
+  },
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://tiles.openfreemap.org/planet"
+    }
+  },
+  "sprite": "sprite/sprite",
+  "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f7f5f0"
+      }
+    },
+    {
+      "id": "landcover",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "wood",
+            "grass",
+            "farmland"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "wood",
+          "#dfe7d5",
+          "grass",
+          "#e7edda",
+          "#efeee2"
+        ],
+        "fill-opacity": 0.8
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "filter": [
+        "!=",
+        [
+          "get",
+          "brunnel"
+        ],
+        "tunnel"
+      ],
+      "paint": {
+        "fill-color": "#a8ccdf"
+      }
+    },
+    {
+      "id": "road-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 3,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary",
+            "minor",
+            "service"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "#c08a3e",
+          "trunk",
+          "#c9a24a",
+          "#c3bfb4"
+        ],
+        "line-gap-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary"
+            ],
+            0.8,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            3.2,
+            "primary",
+            3,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            2.2,
+            "minor",
+            0.5,
+            0
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            30,
+            "primary",
+            28,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            26,
+            "minor",
+            20,
+            10
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            300,
+            "primary",
+            280,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            260,
+            "minor",
+            200,
+            100
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary"
+            ],
+            0.5,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary"
+            ],
+            0.8,
+            "minor",
+            0.5,
+            0
+          ],
+          14,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary"
+            ],
+            1,
+            0.8
+          ],
+          22,
+          2
+        ]
+      }
+    },
+    {
+      "id": "road-fill",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 3,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary",
+            "minor",
+            "service"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          7,
+          "trunk",
+          6,
+          "primary",
+          5,
+          "secondary",
+          4,
+          "tertiary",
+          3,
+          "minor",
+          2,
+          1
+        ]
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "motorway",
+          "#f5c98a",
+          "trunk",
+          "#fadfa4",
+          "primary",
+          "#fdf0c4",
+          "#ffffff"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk",
+              "primary"
+            ],
+            0.8,
+            0
+          ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            3.2,
+            "primary",
+            3,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            2.2,
+            "minor",
+            0.5,
+            0
+          ],
+          18,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            30,
+            "primary",
+            28,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            26,
+            "minor",
+            20,
+            10
+          ],
+          22,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            300,
+            "primary",
+            280,
+            [
+              "secondary",
+              "tertiary"
+            ],
+            260,
+            "minor",
+            200,
+            100
+          ]
+        ]
+      }
+    },
+    {
+      "id": "rail",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "rail"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          16,
+          1,
+          18,
+          2,
+          22,
+          20
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.5,
+          22,
+          2
+        ]
+      }
+    },
+    {
+      "id": "rail-tracks",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "rail"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          2,
+          18,
+          6,
+          20,
+          16,
+          22,
+          32
+        ],
+        "line-dasharray": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "literal",
+            [
+              0.1,
+              15
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              0.1,
+              1
+            ]
+          ],
+          18,
+          [
+            "literal",
+            [
+              0.05,
+              0.5
+            ]
+          ]
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13.75,
+          0,
+          14,
+          1
+        ]
+      }
+    },
+    {
+      "id": "tram",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "transit"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-gap-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          16,
+          1,
+          18,
+          2,
+          22,
+          20
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          0.5,
+          22,
+          2
+        ]
+      }
+    },
+    {
+      "id": "tram-tracks",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "transit"
+      ],
+      "paint": {
+        "line-color": "#a6a6a6",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.5
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          2,
+          18,
+          6,
+          20,
+          16,
+          22,
+          32
+        ],
+        "line-dasharray": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "literal",
+            [
+              0.1,
+              15
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              0.1,
+              1
+            ]
+          ],
+          18,
+          [
+            "literal",
+            [
+              0.05,
+              0.5
+            ]
+          ]
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13.75,
+          0,
+          14,
+          1
+        ]
+      }
+    },
+    {
+      "id": "building",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 14,
+      "maxzoom": 15,
+      "paint": {
+        "fill-color": "hsl(40, 43%, 93%)",
+        "fill-outline-color": "hsl(40, 25%, 85%)"
+      }
+    },
+    {
+      "id": "building-3d",
+      "type": "fill-extrusion",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-extrusion-color": "hsl(30, 43%, 93%)",
+        "fill-extrusion-height": [
+          "get",
+          "render_height"
+        ],
+        "fill-extrusion-base": [
+          "get",
+          "render_min_height"
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-extrusion-vertical-scale": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            15,
+            0,
+            15.3,
+            1
+          ],
+          "fill-extrusion-ambient-occlusion-intensity": 0.15,
+          "fill-extrusion-ambient-occlusion-ground-radius": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            17,
+            0,
+            17.8,
+            8
+          ]
+        },
+        "massif:layout": {
+          "fill-extrusion-edge-radius": 0.4
+        }
+      }
+    },
+    {
+      "id": "road-shield-us-interstate",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-interstate"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 350,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-us-interstate",
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#ffffff"
+      }
+    },
+    {
+      "id": "road-shield-us-highway",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "us-highway"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 350,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-us-highway",
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#1a1a1a"
+      }
+    },
+    {
+      "id": "road-shield-plate-major",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "network"
+            ],
+            [
+              "literal",
+              [
+                "us-interstate",
+                "us-highway"
+              ]
+            ]
+          ]
+        ],
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "motorway",
+              "trunk"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 350,
+        "symbol-avoid-edges": true,
+        "icon-image": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "network"
+            ],
+            "e-road"
+          ],
+          "shield-plate-green",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "iso_a2"
+              ],
+              ""
+            ],
+            "FR",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-red",
+              "D",
+              "shield-plate-yellow",
+              "M",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "DE",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-blue",
+              "B",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "GB",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "M",
+              "shield-plate-blue",
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "NL",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "CH",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-green",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "IT",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "ES",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-blue",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "shield-plate-neutral"
+          ]
+        ],
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          1,
+          3,
+          1,
+          3
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "network"
+              ],
+              "e-road"
+            ],
+            "shield-plate-green",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "iso_a2"
+                ],
+                ""
+              ],
+              "FR",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-red",
+                "D",
+                "shield-plate-yellow",
+                "M",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "DE",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-blue",
+                "B",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "GB",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "M",
+                "shield-plate-blue",
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "NL",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "CH",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-green",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "IT",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "ES",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-blue",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "shield-plate-neutral"
+            ]
+          ],
+          [
+            "shield-plate-yellow",
+            "shield-plate-neutral"
+          ],
+          "#2b2400",
+          "#ffffff"
+        ]
+      }
+    },
+    {
+      "id": "road-shield-plate-primary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 11,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "network"
+            ],
+            [
+              "literal",
+              [
+                "us-interstate",
+                "us-highway"
+              ]
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "primary"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 350,
+        "symbol-avoid-edges": true,
+        "icon-image": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "network"
+            ],
+            "e-road"
+          ],
+          "shield-plate-green",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "iso_a2"
+              ],
+              ""
+            ],
+            "FR",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-red",
+              "D",
+              "shield-plate-yellow",
+              "M",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "DE",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-blue",
+              "B",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "GB",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "M",
+              "shield-plate-blue",
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "NL",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "CH",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-green",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "IT",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "ES",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-blue",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "shield-plate-neutral"
+          ]
+        ],
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          1,
+          3,
+          1,
+          3
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "network"
+              ],
+              "e-road"
+            ],
+            "shield-plate-green",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "iso_a2"
+                ],
+                ""
+              ],
+              "FR",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-red",
+                "D",
+                "shield-plate-yellow",
+                "M",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "DE",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-blue",
+                "B",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "GB",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "M",
+                "shield-plate-blue",
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "NL",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "CH",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-green",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "IT",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "ES",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-blue",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "shield-plate-neutral"
+            ]
+          ],
+          [
+            "shield-plate-yellow",
+            "shield-plate-neutral"
+          ],
+          "#2b2400",
+          "#ffffff"
+        ]
+      }
+    },
+    {
+      "id": "road-shield-plate",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "network"
+            ],
+            [
+              "literal",
+              [
+                "us-interstate",
+                "us-highway"
+              ]
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "literal",
+              [
+                "motorway",
+                "trunk",
+                "primary"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 350,
+        "symbol-avoid-edges": true,
+        "icon-image": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "network"
+            ],
+            "e-road"
+          ],
+          "shield-plate-green",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "iso_a2"
+              ],
+              ""
+            ],
+            "FR",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-red",
+              "D",
+              "shield-plate-yellow",
+              "M",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "DE",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-blue",
+              "B",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "GB",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "M",
+              "shield-plate-blue",
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "NL",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-red",
+              "N",
+              "shield-plate-yellow",
+              "shield-plate-neutral"
+            ],
+            "CH",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-green",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "IT",
+            [
+              "match",
+              [
+                "upcase",
+                [
+                  "slice",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "ref"
+                    ],
+                    ""
+                  ],
+                  0,
+                  1
+                ]
+              ],
+              "A",
+              "shield-plate-green",
+              "shield-plate-neutral"
+            ],
+            "ES",
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              "motorway",
+              "shield-plate-blue",
+              "trunk",
+              "shield-plate-blue",
+              "shield-plate-neutral"
+            ],
+            "shield-plate-neutral"
+          ]
+        ],
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          1,
+          3,
+          1,
+          3
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "network"
+              ],
+              "e-road"
+            ],
+            "shield-plate-green",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "iso_a2"
+                ],
+                ""
+              ],
+              "FR",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-red",
+                "D",
+                "shield-plate-yellow",
+                "M",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "DE",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-blue",
+                "B",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "GB",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "M",
+                "shield-plate-blue",
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "NL",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-red",
+                "N",
+                "shield-plate-yellow",
+                "shield-plate-neutral"
+              ],
+              "CH",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-green",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "IT",
+              [
+                "match",
+                [
+                  "upcase",
+                  [
+                    "slice",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "ref"
+                      ],
+                      ""
+                    ],
+                    0,
+                    1
+                  ]
+                ],
+                "A",
+                "shield-plate-green",
+                "shield-plate-neutral"
+              ],
+              "ES",
+              [
+                "match",
+                [
+                  "get",
+                  "class"
+                ],
+                "motorway",
+                "shield-plate-blue",
+                "trunk",
+                "shield-plate-blue",
+                "shield-plate-neutral"
+              ],
+              "shield-plate-neutral"
+            ]
+          ],
+          [
+            "shield-plate-yellow",
+            "shield-plate-neutral"
+          ],
+          "#2b2400",
+          "#ffffff"
+        ]
+      }
+    },
+    {
+      "id": "road-exit-shield",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "has",
+          "ref"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "junction"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 250,
+        "symbol-avoid-edges": true,
+        "icon-image": "shield-plate-neutral",
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          1,
+          3,
+          1,
+          3
+        ],
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 9,
+        "text-rotation-alignment": "viewport",
+        "icon-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#4a463d"
+      }
+    },
+    {
+      "id": "poi-rank-r20",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          20
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "rank"
+        ]
+      }
+    },
+    {
+      "id": "poi-rank-r7",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          7
+        ],
+        [
+          "<",
+          [
+            "get",
+            "rank"
+          ],
+          20
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "rank"
+        ]
+      }
+    },
+    {
+      "id": "poi-rank-r1",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          ">=",
+          [
+            "get",
+            "rank"
+          ],
+          1
+        ],
+        [
+          "<",
+          [
+            "get",
+            "rank"
+          ],
+          7
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ],
+          "visibility": "visible"
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "rank"
+        ]
+      }
+    },
+    {
+      "id": "poi-waste",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 18,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "drinking_water",
+            "toilets",
+            "waste_basket"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-shop",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "alcohol_shop",
+            "bakery",
+            "beer",
+            "butcher",
+            "clothing_store",
+            "florist",
+            "furniture",
+            "gift",
+            "grocery",
+            "hairdresser",
+            "ice_cream",
+            "laundry",
+            "nightclub",
+            "shop",
+            "sushi",
+            "telephone"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-amenity",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "bicycle",
+            "bicycle_rental",
+            "car",
+            "fuel",
+            "parking",
+            "parking_garage"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-bus",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "bus"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-attraction",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "amusement_park",
+            "aquarium",
+            "attraction"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-cultural",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "art_gallery",
+            "castle",
+            "monument",
+            "museum",
+            "ruins"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-sport",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "american_football",
+            "baseball",
+            "basketball",
+            "cricket",
+            "golf",
+            "pitch",
+            "skiing",
+            "soccer",
+            "stadium",
+            "swimming",
+            "tennis"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-outdoor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "beach",
+            "dog_park",
+            "garden",
+            "mountain",
+            "park",
+            "playground",
+            "ranger_station",
+            "viewpoint",
+            "volcano",
+            "water",
+            "waterfall",
+            "wetland",
+            "zoo"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-food",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "bar",
+            "cafe",
+            "fast_food",
+            "restaurant"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-cemetery",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "cemetery"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-lodging",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "alpine_hut",
+            "campsite",
+            "lodging",
+            "picnic_site",
+            "shelter"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-public",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "atm",
+            "bank",
+            "cinema",
+            "embassy",
+            "fire_station",
+            "information",
+            "library",
+            "music",
+            "police",
+            "post",
+            "prison",
+            "theatre",
+            "town_hall"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-worship",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "place_of_worship"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-education",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "college",
+            "school"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-health",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "dentist",
+            "doctors",
+            "hospital",
+            "pharmacy",
+            "veterinary"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-transit",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "aerialway",
+            "ferry",
+            "harbor",
+            "lighthouse",
+            "railway",
+            "railway_light",
+            "railway_metro"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "poi-airport",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "airfield",
+            "airport",
+            "heliport"
+          ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(203, 7%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "aerialway",
+                    "airfield",
+                    "airport",
+                    "bus",
+                    "ferry",
+                    "harbor",
+                    "heliport",
+                    "lighthouse",
+                    "railway",
+                    "railway_light",
+                    "railway_metro"
+                  ],
+                  "hsl(225, 60%, 58%)",
+                  [
+                    "amusement_park",
+                    "aquarium",
+                    "art_gallery",
+                    "attraction",
+                    "castle",
+                    "monument",
+                    "museum",
+                    "ruins"
+                  ],
+                  "hsl(35, 70%, 45%)",
+                  [
+                    "american_football",
+                    "baseball",
+                    "basketball",
+                    "beach",
+                    "cricket",
+                    "dog_park",
+                    "garden",
+                    "golf",
+                    "mountain",
+                    "park",
+                    "pitch",
+                    "playground",
+                    "ranger_station",
+                    "skiing",
+                    "soccer",
+                    "stadium",
+                    "swimming",
+                    "tennis",
+                    "viewpoint",
+                    "volcano",
+                    "water",
+                    "waterfall",
+                    "wetland",
+                    "zoo"
+                  ],
+                  "hsl(126, 42%, 38%)",
+                  [
+                    "dentist",
+                    "doctors",
+                    "hospital",
+                    "pharmacy",
+                    "veterinary"
+                  ],
+                  "hsl(0, 58%, 50%)",
+                  "hsl(203, 10%, 45%)"
+                ],
+                "background-stroke": "hsl(0, 0%, 100%)",
+                "icon": "hsl(0, 0%, 100%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "railway"
+                  ],
+                  5,
+                  [
+                    "railway_light"
+                  ],
+                  11,
+                  [
+                    "airfield",
+                    "airport",
+                    "heliport"
+                  ],
+                  8,
+                  21
+                ]
+              }
+            }
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "road-label-service",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "service"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          6.5,
+          18,
+          13
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-minor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "minor"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          8,
+          18,
+          14
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-tertiary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "tertiary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-primary",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 12,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "primary",
+            "secondary"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-label-major",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 10,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk"
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          18,
+          16
+        ],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.15,
+        "text-max-angle": 30,
+        "text-padding": 1,
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 25%)",
+        "text-halo-color": "hsl(0, 0%, 95%)",
+        "text-halo-width": 1
+      }
+    }
+  ],
+  "schema": {
+    "poiRanking": {
+      "default": "category",
+      "values": [
+        "category",
+        "rank"
+      ]
+    }
+  }
+}

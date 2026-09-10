@@ -285,7 +285,7 @@ test('a format run keeps its text and drops the per-section styling', () => {
     const label = (field) => convert({ layers: [{ id: 'poi', type: 'symbol', 'source-layer': 'poi_label',
         layout: { 'text-field': field } }] }, TABLE, { variables: false }).mss;
     assert.match(label(['format', ['coalesce', ['get', 'name_en'], ['get', 'name']], {}]),
-        /text-name: \(\[name_en\]\) \?\? \(\[name\]\);/);
+        /text-name: \(\(\[name_en\]\) \?\? \(\[name\]\)\);/);
     assert.match(label(['format', ['get', 'a'], {}, ' ', {}, ['get', 'b'], {}]),
         /text-name: concat\(concat\(\[a\], ' '\), \[b\]\);/);
 });
@@ -303,6 +303,34 @@ test('buildings get a style parameter, so an app can drop the 3D pass', () => {
     assert.match(mss, /#building\['param::buildings'>0\]::b2d \{/);
     assert.match(mss, /#building\['param::buildings'>1\]::b3d \{/);
     assert.equal(JSON.parse(project).styleparameters.buildings, 2, 'defaults to what the source drew');
+});
+
+test("an extrusion's opacity is the STYLE's, carried as a parameter", () => {
+    // maplibre draws Liberty's buildings at 0.8, which blends a fifth of the pale background back
+    // through every wall - a good part of why ours read darker. Forcing it to 1 threw that away.
+    const { mss, project } = convert({ layers: [
+        { id: 'b3d', type: 'fill-extrusion', 'source-layer': 'building',
+            paint: { 'fill-extrusion-color': '#ddd', 'fill-extrusion-height': 10,
+                'fill-extrusion-opacity': 0.8 } },
+    ] }, TABLE, { variables: false });
+
+    assert.match(mss, /building-fill-opacity: \[param::building_opacity\];/);
+    assert.equal(JSON.parse(project).styleparameters.building_opacity, 0.8);
+});
+
+test('a ramped opacity still flattens, and its last stop is what the parameter holds', () => {
+    // Standard fades an extrusion in by ramping opacity alongside the height. The shadow map is
+    // drawn at the building's FULL cast whatever its alpha, so a half-transparent wall shows the
+    // shadow it is itself casting - the height ramp alone is the better fade.
+    const { mss, project } = convert({ layers: [
+        { id: 'b3d', type: 'fill-extrusion', 'source-layer': 'building',
+            paint: { 'fill-extrusion-color': '#ddd', 'fill-extrusion-height': 10,
+                'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.3, 1] } },
+    ] }, TABLE, { variables: false });
+
+    assert.match(mss, /building-fill-opacity: \[param::building_opacity\];/);
+    assert.equal(JSON.parse(project).styleparameters.building_opacity, 1,
+        'a converted Standard is left opaque, as it was before the parameter existed');
 });
 
 test('a style with no buildings declares no such parameter', () => {
@@ -609,4 +637,57 @@ test('the baked path leaves an extrusion alone, colour and emissive both', () =>
     const { mss } = convert(EXTRUSION(0.6), TABLE, { variables: false });
     assert.ok(!/building-emissive-strength/.test(mss), 'baked styles state no emissive');
     assert.match(mss, /building-fill: #ddd;/, 'and the colour is left exactly as authored');
+});
+
+/** Two POI layer sets, one switch: the style's own way of offering a second ranking. */
+const MODE = (value) => ['==', ['config', 'poiRanking'], value];
+
+const RANKED = {
+    metadata: { 'massif:live-config': ['poiRanking'] },
+    schema: { poiRanking: { default: 'category', values: ['category', 'rank'] } },
+    layers: [
+        // The switch lives in metadata, not in the filter: maplibre rejects ["config", …] there
+        // outright, and the source style has to stay one it can draw.
+        { id: 'poi-rank', type: 'symbol', 'source-layer': 'poi', minzoom: 15,
+            filter: ['>=', ['get', 'rank'], 7],
+            layout: { 'text-field': ['get', 'name'], visibility: 'none' },
+            metadata: { 'massif:filter': MODE('rank'), 'massif:layout': { visibility: 'visible' } } },
+        { id: 'poi-shop', type: 'symbol', 'source-layer': 'poi', minzoom: 17,
+            filter: ['in', ['get', 'class'], ['literal', ['bakery', 'grocery']]],
+            layout: { 'text-field': ['get', 'name'] },
+            metadata: { 'massif:filter': MODE('category') } },
+    ],
+};
+
+test('a config the style keeps live becomes a style parameter, enum and all', () => {
+    const { project } = convert(RANKED, TABLE, { variables: false });
+    assert.deepEqual(JSON.parse(project).styleparameters.poiRanking,
+        { default: 'category', values: { category: 'category', rank: 'rank' } });
+});
+
+test('a live config in a filter BRACKETS, so the losing layer set is pruned whole', () => {
+    // Left to the generic path it was a when(), which prunes nothing: every feature would test the
+    // mode it already lost, in both sets, at every zoom.
+    const { mss } = convert(RANKED, TABLE, { variables: false });
+    assert.match(mss, /\[rank >= 7\]\['param::poiRanking' = 'rank'\]/);
+    assert.ok(!mss.includes('when('), 'a mode switch costs no per-feature test');
+});
+
+test('the mode test rides along on a class split instead of blocking it', () => {
+    const { mss } = convert(RANKED, TABLE, { variables: false });
+    assert.match(mss, /\[class = 'bakery'\]\['param::poiRanking' = 'category'\]/);
+    assert.match(mss, /\[class = 'grocery'\]\['param::poiRanking' = 'category'\]/);
+});
+
+test('a config nothing keeps live is still folded to a constant', () => {
+    const { mss } = convert({ ...RANKED, metadata: {} }, TABLE, { variables: false });
+    assert.ok(!mss.includes('param::poiRanking'), 'folded away');
+    assert.ok(!mss.includes('poi_rank'), 'and the layer its default loses is dropped');
+});
+
+test('a layer maplibre must skip is turned back on for the converter', () => {
+    // The rank set has no switch to follow in maplibre, so the source style hides it there and says
+    // so in massif:layout - the same escape hatch the GL v3 paint properties go through.
+    const { mss } = convert(RANKED, TABLE, { variables: false });
+    assert.match(mss, /::poi_rank \{/);
 });

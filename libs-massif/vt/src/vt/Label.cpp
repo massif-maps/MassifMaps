@@ -219,15 +219,22 @@ namespace massif::vt {
             return;
         }
 
+        // The ENDS are kept where they are, and only the interior is averaged. A centroid lies inside
+        // its own window, so averaging the first and last ones pulled the line in by half a window at
+        // each end - and the window is a fraction of the TEXT, so a longer run shortened the very line
+        // it then had to fit on (buildLineVertexData, `runLength > total`). MapBox smooths nothing and
+        // measures the whole line, so a street name it places was being dropped here.
         std::vector<std::size_t> sourceIndices;
-        cglib::vec3<double> sum = vertices.front();
-        std::size_t count = 1;
+        smoothedVertices.push_back(vertices.front());
+        sourceIndices.push_back(0);
+        cglib::vec3<double> sum(0, 0, 0);
+        std::size_t count = 0;
         double length = 0;
-        for (std::size_t i = 1; i < vertices.size(); i++) {
+        for (std::size_t i = 1; i + 1 < vertices.size(); i++) {
             length += cglib::length(vertices[i] - vertices[i - 1]);
             sum += vertices[i];
             count++;
-            if (length >= minEdgeLength || i + 1 == vertices.size()) {
+            if (length >= minEdgeLength) {
                 smoothedVertices.push_back(sum * (1.0 / count));
                 sourceIndices.push_back(i);
                 sum = cglib::vec3<double>(0, 0, 0);
@@ -235,11 +242,8 @@ namespace massif::vt {
                 length = 0;
             }
         }
-        if (smoothedVertices.size() < 2) {
-            smoothedVertices = vertices;
-            smoothedIndex = index;
-            return;
-        }
+        smoothedVertices.push_back(vertices.back());
+        sourceIndices.push_back(vertices.size() - 1);
 
         // The anchor lies on source segment [index, index + 1]. Each smoothed vertex averages one
         // window of source vertices ending at sourceIndices[i], so the anchor belongs to the first
@@ -507,7 +511,7 @@ namespace massif::vt {
             // A line placement is only worth keeping while the glyph run can be laid out on it: the run
             // follows the PROJECTED line, and a stretch that carried the text a moment ago can be
             // foreshortened to half of it while another piece of the line could carry it.
-            if (viewState.frustum.inside(bbox) && (!isLineRun() || _lineLayoutValid)) {
+            if (viewState.labelFrustum.inside(bbox) && (!isLineRun() || _lineLayoutValid)) {
                 return false;
             }
         }
@@ -538,10 +542,11 @@ namespace massif::vt {
         // So the same perspective cut the culler applies is applied here, where it can stop a search
         // rather than merely hide the result: the culler's copy reads the PLACEMENT, which an
         // unplaced label does not have, so it could not see these at all (performance-log 29).
+        // The frustum tested is the PADDED one, so a label just outside the viewport is still placed.
         cglib::bbox3<double> geometryBBox = calculateGeometryBBox(viewState);
         bool beyondCutoff = viewState.focusDistance > 0 &&
             LabelDistance::perspectiveRatio(viewState.focusDistance, cglib::length(geometryBBox.center() - viewState.origin)) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF;
-        if (beyondCutoff || !viewState.frustum.inside(geometryBBox)) {
+        if (beyondCutoff || !viewState.labelFrustum.inside(geometryBBox)) {
             _cachedFlippedPlacement.reset();
             if (!_placement) {
                 return false; // already unplaced, nothing changed - do not reset the opacity
@@ -618,7 +623,9 @@ namespace massif::vt {
             return false;
         }
 
-        float padding = buffer * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
+        // The style's own collision padding rides with the caller's buffer: mapbox's text-padding
+        // and icon-padding grow the box the COLLISION test uses, never the glyphs.
+        float padding = (buffer + _style->collisionPadding) * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
         if (_style->orientation == LabelOrientation::CALLOUT && size > 0) {
@@ -709,7 +716,9 @@ namespace massif::vt {
             return false;
         }
 
-        float padding = buffer * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
+        // The style's own collision padding rides with the caller's buffer: mapbox's text-padding
+        // and icon-padding grow the box the COLLISION test uses, never the glyphs.
+        float padding = (buffer + _style->collisionPadding) * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
         float glyphScale = (size > 0 ? 1.0f / size : 0.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
@@ -851,7 +860,7 @@ namespace massif::vt {
         if (haloStyleIndex >= 0 || iconHaloStyleIndex >= 0) {
             for (const cglib::vec4<std::int8_t>& attrib : _cachedAttribs) {
                 int glyphHaloIndex = (attrib(0) == 2 ? iconHaloStyleIndex : haloStyleIndex);
-                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphHaloIndex < 0 ? 0 : glyphHaloIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
+                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphHaloIndex < 0 ? 0 : glyphHaloIndex), attrib(1), runOpacity(attrib), billboardMode));
             }
             
             std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
@@ -880,7 +889,7 @@ namespace massif::vt {
             else if (attrib(0) == 2 && iconStyleIndex >= 0) {
                 glyphStyleIndex = iconStyleIndex;
             }
-            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphStyleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
+            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphStyleIndex), attrib(1), runOpacity(attrib), billboardMode));
         }
         
         std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
@@ -900,6 +909,12 @@ namespace massif::vt {
 
         VT_STAT_SPLIT(labelAttribNs, labelClock);
         return valid;
+    }
+
+    // Which opacity a cached glyph draws at: attrib(0) is the run buildPointVertexData stamped -
+    // 2 is the icon, 0 and 1 are the text and its secondary - and the text has its own.
+    std::int8_t Label::runOpacity(const cglib::vec4<std::int8_t>& attrib) const {
+        return static_cast<std::int8_t>((attrib(0) == 2 ? _opacity : _textOpacity) * 127.0f);
     }
 
     void Label::buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
@@ -963,13 +978,13 @@ namespace massif::vt {
             // The quad is the plate's outer shape, border included - the cell was built that way.
             cglib::bbox2<float> plateBox = calculatePlateBox(*layer.box, plate.style, plate.borderWidth, scale, pixelScale);
             std::int8_t mode = static_cast<std::int8_t>(plate.drawsBorder() ? GlyphMap::GlyphMode::PLATE : GlyphMap::GlyphMode::BITMAP);
-            appendPlate(plateBox, *plate.glyph, plate.radius * pixelScale, layer.styleIndex, mode, cameraAxes, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
+            appendPlate(plateBox, *plate.glyph, plate.radius * pixelScale, layer.styleIndex, mode, cameraAxes, layer.box == &_textBBox, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
         }
     }
 
     // 'plateBox' and 'radius' are already in the label's own units (screen pixels times the label
     // scale), like the glyph offsets around them.
-    void Label::appendPlate(const cglib::bbox2<float>& plateBox, const GlyphMap::Glyph& glyph, float radius, int styleIndex, std::int8_t glyphMode, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    void Label::appendPlate(const cglib::bbox2<float>& plateBox, const GlyphMap::Glyph& glyph, float radius, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         // The cell is barely wider than its corner radius, so it is cut into NINE: corners keep the
         // radius, edges stretch along one axis, the centre fills. Stretching the whole cell flattens
         // every arc into an ellipse.
@@ -1019,7 +1034,7 @@ namespace massif::vt {
                 std::int16_t sv0 = static_cast<std::int16_t>(row.t0), sv1 = static_cast<std::int16_t>(row.t1);
                 texCoords.append(cglib::vec2<std::int16_t>(su0, sv0), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su0, sv1));
 
-                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>(_opacity * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
+                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 const cglib::vec2<float> corners[4] = {
@@ -1748,7 +1763,7 @@ namespace massif::vt {
                     size = -bbox.min(0) / viewState.aspect;
                     break;
                 }
-                double dist = viewState.frustum.plane_distance(plane, tilePoint.position);
+                double dist = viewState.labelFrustum.plane_distance(plane, tilePoint.position);
                 if (dist < -size * _style->scale * viewState.zoomScale) {
                     inside = false;
                     break;
@@ -1829,9 +1844,9 @@ namespace massif::vt {
 
                 std::pair<std::size_t, double> t0t = t1;
                 std::pair<std::size_t, double> t1t = t0;
-                double prevDist = viewState.frustum.plane_distance(plane, tileLine.vertices[t0.first]);
+                double prevDist = viewState.labelFrustum.plane_distance(plane, tileLine.vertices[t0.first]);
                 for (std::size_t i = t0.first; i <= t1.first; i++) {
-                    double nextDist = viewState.frustum.plane_distance(plane, tileLine.vertices[i + 1]);
+                    double nextDist = viewState.labelFrustum.plane_distance(plane, tileLine.vertices[i + 1]);
                     if (nextDist > 0) {
                         if (prevDist < 0) {
                             t0t = std::min(t0t, std::pair<std::size_t, double>(i, 1 - nextDist / (nextDist - prevDist)));
@@ -1906,7 +1921,7 @@ namespace massif::vt {
         // Split vertices list into relatively straight segments
         for (const TileLine& tileLine : tileLines) {
             cglib::bbox3<double> bbox = cglib::bbox3<double>::make_union(tileLine.vertices.begin(), tileLine.vertices.end());
-            if (!viewState.frustum.inside(bbox)) {
+            if (!viewState.labelFrustum.inside(bbox)) {
                 continue;
             }
 

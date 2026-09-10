@@ -10,6 +10,7 @@
 #include "TextFormatter.h"
 #include "Color.h"
 #include "LabelPlateBitmap.h"
+#include "LabelVariants.h"
 #include "ExtrusionCorner.h"
 
 #include <cmath>
@@ -31,86 +32,6 @@ namespace {
     // a near-reversal and needles out past any shorter segment, and no build-time value can bound it -
     // the miter is a SCREEN quantity while the segment is in tile units. 1 holds at every zoom.
     static const float INNER_MITER_LIMIT = 1.0f;
-
-    // The pen walk Label::buildPointVertexData does. 'textPart' selects which half of the run is
-    // measured: the icon glyphs come first, and the first CR pseudo-glyph resets the pen onto the
-    // text's own origin.
-    static cglib::bbox2<float> measureGlyphRun(const std::vector<massif::vt::Font::Glyph>& glyphs, bool textPart) {
-        cglib::bbox2<float> bbox = cglib::bbox2<float>::smallest();
-        cglib::vec2<float> pen(0, 0);
-        bool text = false;
-        for (const massif::vt::Font::Glyph& glyph : glyphs) {
-            if (glyph.codePoint == massif::vt::Font::CR_CODEPOINT) {
-                pen = cglib::vec2<float>(0, 0);
-                text = true;
-            }
-            else if (text == textPart) {
-                bbox.add(pen + glyph.offset);
-                bbox.add(pen + glyph.offset + glyph.size);
-            }
-            pen += glyph.advance;
-        }
-        return bbox;
-    }
-
-    // Justification of the lines of a wrapped name on a given side. AUTO follows the side; an
-    // explicit value is mirrored on the left, so "flush against the icon" means the same on both.
-    static float resolveLineAlign(massif::vt::LabelLineAlign align, const cglib::vec2<float>& dir) {
-        if (align == massif::vt::LabelLineAlign::AUTO) {
-            return (dir(0) > 0 ? -1.0f : dir(0) < 0 ? 1.0f : 0.0f);
-        }
-        float base = (align == massif::vt::LabelLineAlign::LEFT ? -1.0f : align == massif::vt::LabelLineAlign::RIGHT ? 1.0f : 0.0f);
-        return (dir(0) < 0 ? -base : base);
-    }
-
-    // One text layout per side the style allows. The glyph run is the same every time, only its pen
-    // origin moves. Along the side's axis the text sits against the icon's edge with dx/dy as a gap;
-    // across it the text is centred on the anchor, since the formatter's alignment follows dx's sign.
-    static std::vector<massif::vt::TileLabel::Variant> buildLabelVariants(const std::vector<massif::vt::LabelAnchor>& anchors, massif::vt::LabelLineAlign lineAlign, bool textOptional, bool hasIcon, const std::vector<massif::vt::Font::Glyph>& glyphs, const cglib::vec2<float>& iconExtent, const cglib::vec2<float>& styleOffset) {
-        std::vector<massif::vt::TileLabel::Variant> variants;
-        // 'text-optional' is a layout list on its own: no side to try, but still the icon alone as
-        // a last resort. Most mapbox styles set it WITHOUT a variable anchor, and returning here on
-        // an empty anchor list dropped their POI icons with the names the culler could not fit.
-        bool iconAlone = textOptional && hasIcon;
-        if (anchors.empty() && !iconAlone) {
-            return variants;
-        }
-
-        cglib::bbox2<float> textBBox = measureGlyphRun(glyphs, true);
-        if (textBBox.min(0) > textBBox.max(0)) {
-            return variants; // no text to move, and none to make optional either
-        }
-        // The box as it would be with no dx/dy, so that the offset can be re-applied per side.
-        cglib::vec2<float> boxMin = textBBox.min - styleOffset;
-        cglib::vec2<float> boxMax = textBBox.max - styleOffset;
-
-        variants.reserve(anchors.size() + 1);
-        for (massif::vt::LabelAnchor anchor : anchors) {
-            cglib::vec2<float> dir = massif::vt::labelAnchorDirection(anchor);
-            cglib::vec2<float> desired(0, 0);
-            for (int i = 0; i < 2; i++) {
-                float gap = std::abs(styleOffset(i));
-                if (dir(i) > 0) {
-                    desired(i) = iconExtent(i) - boxMin(i) + gap;
-                }
-                else if (dir(i) < 0) {
-                    desired(i) = -iconExtent(i) - boxMax(i) - gap;
-                }
-                else {
-                    desired(i) = -(boxMin(i) + boxMax(i)) * 0.5f + styleOffset(i);
-                }
-            }
-            variants.emplace_back(desired - styleOffset, true, resolveLineAlign(lineAlign, dir));
-        }
-        if (anchors.empty()) {
-            // The style's own layout, spelled as a variant so the icon-only one can follow it.
-            variants.emplace_back(cglib::vec2<float>(0, 0), true, resolveLineAlign(lineAlign, cglib::vec2<float>(0, 0)));
-        }
-        if (iconAlone) {
-            variants.emplace_back(cglib::vec2<float>(0, 0), false);
-        }
-        return variants;
-    }
 
     static float calculateScale(const massif::vt::VertexArray<float>& values, const massif::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
@@ -710,7 +631,7 @@ namespace massif::vt {
             || _labelStyle->calloutLineWidth != style.calloutLineWidth
             || _labelStyle->textPlate.style != style.textPlate
             || _labelStyle->iconPlate.style != style.iconPlate
-            || _labelStyle->textLineAlign != resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0))
+            || _labelStyle->textLineAlign != massif::vt::resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0))
             || _labelStyle->emissiveFunc != style.emissiveFunc
             || _labelStyle->haloEmissiveFunc != style.haloEmissiveFunc;
 
@@ -746,8 +667,9 @@ namespace massif::vt {
             };
             TileLabel::Style::Plate textPlate = resolvePlate(style.textPlate);
             TileLabel::Style::Plate iconPlate = resolvePlate(style.iconPlate);
-            auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
+            auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, massif::vt::resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
             labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
+            labelStyle->collisionPadding = style.collisionPadding;
             labelStyle->iconHaloColorFunc = style.iconHaloColorFunc;
             labelStyle->iconHaloRadiusFunc = style.iconHaloRadiusFunc;
             labelStyle->iconRefSize = formatter.getFontSize();
@@ -783,7 +705,7 @@ namespace massif::vt {
         // its own offset, so this is measured around the anchor and not around the run's origin.
         cglib::vec2<float> iconExtent(0, 0);
         if (!style.anchors.empty() && !iconGlyphs.empty()) {
-            cglib::bbox2<float> iconBBox = measureGlyphRun(iconGlyphs, false);
+            cglib::bbox2<float> iconBBox = massif::vt::measureGlyphRun(iconGlyphs, false);
             if (iconBBox.min(0) <= iconBBox.max(0)) {
                 iconExtent = cglib::vec2<float>(std::max(std::abs(iconBBox.min(0)), std::abs(iconBBox.max(0))),
                                                 std::max(std::abs(iconBBox.min(1)), std::abs(iconBBox.max(1))));
@@ -792,9 +714,10 @@ namespace massif::vt {
         // dx/dy in the units the glyph run carries them (the formatter divides by the font size).
         float invFontSize = (formatter.getFontSize() != 0 ? 1.0f / formatter.getFontSize() : 0.0f);
         cglib::vec2<float> styleOffset = formatter.getOptions().offset * invFontSize;
+        float radialOffset = style.textRadialOffset * invFontSize;
         bool hasIcon = !iconGlyphs.empty();
 
-        return [style, font, formatter, iconGlyphs, iconExtent, styleOffset, hasIcon, this](long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex) {
+        return [style, font, formatter, iconGlyphs, iconExtent, styleOffset, radialOffset, hasIcon, this](long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex) {
             if (!text.empty() || !iconGlyphs.empty()) {
                 std::vector<Font::Glyph> glyphs;
                 if (!text.empty()) {
@@ -802,7 +725,7 @@ namespace massif::vt {
                 }
                 glyphs.insert(glyphs.begin(), iconGlyphs.begin(), iconGlyphs.end());
 
-                std::vector<TileLabel::Variant> variants = buildLabelVariants(style.anchors, style.textLineAlign, style.textOptional, hasIcon, glyphs, iconExtent, styleOffset);
+                std::vector<TileLabel::Variant> variants = massif::vt::buildLabelVariants(style.anchors, style.textLineAlign, style.textOptional, hasIcon, glyphs, iconExtent, styleOffset, radialOffset);
 
                 std::optional<cglib::vec2<float>> labelPosition;
                 if (position) {

@@ -23,6 +23,13 @@ void testExtrusionEmissive();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 void testSpanResolver();
+void testCollisionPadding();
+void testLabelAnchorAlign();
+void testLabelPadding();
+void testLabelBandTiles();
+void testLabelTextOpacity();
+void testLabelRadialOffset();
+void testLabelEdgeOffset();
 
 int main() {
     testPlateBitmap();
@@ -42,6 +49,13 @@ int main() {
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
     testSpanResolver();
+    testCollisionPadding();
+    testLabelAnchorAlign();
+    testLabelPadding();
+    testLabelBandTiles();
+    testLabelTextOpacity();
+    testLabelRadialOffset();
+    testLabelEdgeOffset();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

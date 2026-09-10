@@ -248,6 +248,13 @@ namespace massif {
         static const std::string LIGHTING_SHADER_3D;
         static const std::string LIGHTING_SHADER_NORMALMAP;
 
+        // MapLibre's light defaults, from its own style spec (mbgl LightPosition/LightIntensity in
+        // light_impl.hpp): spherical (radial 1.15, azimuth 210, polar 30) through
+        // sphericalToCartesian, intensity 0.5, and fill-extrusion-vertical-gradient on.
+        static const cglib::vec3<float> ML_LIGHT_POS;
+        static constexpr float ML_LIGHT_INTENSITY = 0.5f;
+        static constexpr float ML_VERTICAL_GRADIENT = 1.0f;
+
         std::weak_ptr<MapRenderer> _mapRenderer;
         std::weak_ptr<Options> _options;
         StyleEnvironment _styleEnvironment;
@@ -296,6 +303,8 @@ namespace massif {
         float _buildingAmbient = 0.35f;
         float _buildingVerticalGradient = 0.65f;
         float _buildingRoofShade = 1.0f;
+        // Light the walls maplibre's way rather than mapbox's - set for a style that lights nothing.
+        bool _buildingLightingMapLibre = false;
         // The style's extrusion height multiplier, and whether a tile's fade-in raises its
         // buildings with it (off: no source style asks for that animation).
         float _buildingHeightScale = 1.0f;
@@ -334,6 +343,8 @@ namespace massif {
         std::shared_ptr<LabelOcclusionState> _labelOcclusionState;
 
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _tiles;
+        // Offscreen tiles: their labels are placed, their geometry is never drawn. See refreshTiles.
+        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _labelOnlyTiles;
         std::vector<std::shared_ptr<const vt::Tile> > _spanReferenceTiles;
         
         mutable std::mutex _mutex;

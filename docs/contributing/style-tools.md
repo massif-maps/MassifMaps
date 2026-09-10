@@ -432,6 +432,76 @@ It defaults to `2`, so a converted style keeps drawing what its source drew unti
 otherwise — and an app that cannot afford the 3D pass on a given device turns it off with one
 parameter instead of editing the CartoCSS. A style with no buildings declares nothing.
 
+### A property MapLibre will not accept goes in `metadata`
+
+A hand-written source style has to stay a **valid MapLibre style** — the preview draws it with
+maplibre beside the SDK, and that comparison is the point of the file. But a good deal of what is
+worth taking from Mapbox Standard is GL v3 only: `fill-extrusion-edge-radius`, `-vertical-scale`,
+`-ambient-occlusion-intensity`, `-ambient-occlusion-ground-radius`, `-rounded-roof`. Written into
+`paint`, maplibre rejects the whole style and the reference pane goes blank — it does not skip the
+property, it refuses the file.
+
+`metadata` is the style spec's own escape hatch: arbitrary, and ignored by every renderer. So those
+go there, under `massif:paint` and `massif:layout`, and `applyMassifExtras` merges them back over
+the real blocks before anything else runs:
+
+```json
+{ "id": "building-3d", "type": "fill-extrusion",
+  "paint": { "fill-extrusion-height": ["get", "render_height"] },
+  "metadata": {
+    "massif:layout": { "fill-extrusion-edge-radius": 0.4 },
+    "massif:paint": { "fill-extrusion-ambient-occlusion-intensity": 0.15 }
+  } }
+```
+
+The converter then treats them exactly as if Standard had stated them. Converting a real MapBox
+style is unaffected: it states these in `paint`, where they are legal for it.
+
+`massif:filter` is the same hatch for a TEST maplibre refuses. It is ANDed onto the layer's own
+filter, and the one test that needs it is a live config — see below.
+
+### A config the style keeps LIVE, and a filter that reads it
+
+Every `["config", name]` is normally folded to a constant before translation (see *Standard's
+config*, above): CartoCSS has no `let`/`to-hsla`, so a colour left reading its config converts to
+nothing at all. A style can exempt one by name:
+
+```json
+{ "metadata": { "massif:live-config": ["poiRanking"] },
+  "schema": { "poiRanking": { "default": "category", "values": ["category", "rank"] } } }
+```
+
+The name is then left alone by the fold, reaches CartoCSS as `[param::poiRanking]`, and its `schema`
+entry is declared verbatim in `project.json` — default and enum both — so an app sets it at runtime.
+
+**In a filter it BRACKETS.** `["==", ["config", "poiRanking"], "rank"]` becomes
+`['param::poiRanking' = 'rank']`, and `PredicatePreEvaluator` decides a style-parameter comparison
+with no feature in hand, so the decoder prunes the losing rules whole instead of testing the mode
+per feature. That is what lets a style carry two layer sets and switch between them; setting the
+parameter is a re-decode rather than a repaint, which is what a mode switch is anyway.
+
+Maplibre rejects `["config", …]` in a filter outright — it is legal only inside an imported
+fragment — so the test goes in `massif:filter` and the source style stays one maplibre can draw. A
+layer that belongs only to the non-default mode says `"visibility": "none"` and turns itself back on
+with `"massif:layout": { "visibility": "visible" }`.
+
+### …and their opacity is the style's, as a parameter
+
+`fill-extrusion-opacity` becomes `building-fill-opacity: [param::building_opacity]`, with the
+style's own value as the default. It used to be forced to **1**, because the 3D pass draws with
+blending off and MapTiler's `0.4` turned a city into a wash of half-buildings showing through each
+other. But forcing it also threw away what the style meant: maplibre draws OpenFreeMap Liberty's
+buildings at `0.8`, blending a fifth of the pale background back through every wall, and that is a
+good part of why ours read darker than the browser's.
+
+A ramped opacity still flattens to one number — Standard fades an extrusion in by ramping it
+alongside the height, and the shadow map is drawn from the building's **full** cast whatever its
+alpha, so a half-transparent wall shows the shadow it is itself casting. The height ramp alone is
+the better fade. Standard's ramp ends at 1, so a converted Standard is opaque exactly as before.
+
+One parameter covers every extrusion in the style. A style asking for two different alphas keeps the
+first and the coverage report says so; no source style does this.
+
 ## A recolourable icon: the glyph is a field, the disc is a plate
 
 Mapbox Standard names its POI and transit icons `["image", <name>, { params: { background,
@@ -707,17 +777,24 @@ branch cap below is what a review of that should start from.
 ## How far apart labels stay
 
 MapBox pads a label's collision box by `text-padding` on **every side** — 2 px on any layer that
-states nothing — so two labels end up at least twice that apart. The culler's `minimum-distance` is
-the single buffer between a pair, hence `2 ×` the padding. It used to be dropped as "no CartoCSS
-equivalent", which it is not.
+states nothing — and tests the grown boxes against each other. That is `text-collision-padding` /
+`shield-collision-padding`, which the label folds into the culler's own buffer
+(`Label::calculateEnvelope`): the box grows, the glyphs do not. `--label-spacing N` scales it for a
+map that wants thinning beyond what the style asks; 1 is the style's own value.
 
-`--label-spacing N` scales that gap for a map that wants thinning beyond what the style asks;
-1 is the style's own value.
+It used to arrive as `text-min-distance`, which is **a different thing** and was wrong twice over:
 
-A **line-placed** label is left out of that default. When no minimum is stated the decoder floors it
-at the label's own size, which is what stops a repeat of the same name being drawn twice where two
-tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
-explicit `text-padding` still wins.
+- `minimum-distance` only separates labels of the same GROUP, and for a line-placed label the group
+  is the TEXT HASH (`ShieldSymbolizer`). So it held two `D 1508` shields apart and did nothing at all
+  between a `D 1508` and a `D 5` — which is what a tilted view shows worst, since it packs a lot of
+  far-field map into a thin band.
+- An unstated `minimum-distance` is also what makes the decoder floor the repeat at the label's own
+  size, so a line-placed label could not be given one without disabling that floor. It was skipped
+  there for exactly that reason, leaving line labels unpadded.
+
+`collision-padding` has neither problem: it is per label, applies between any two, and leaves the
+repeat floor alone. An icon-only layer still drops `icon-padding` — that is a marker, which carries
+no collision box of its own.
 
 ## Rendering a converted style: match the TILES to the style
 
@@ -789,6 +866,26 @@ takes ONE pattern where MapBox takes a ramp. Two rules follow from that:
   cycleway dashes came out two and a half times too long with gaps to match. The `match`/`case`
   fallback is the width nearly every feature has; a piste is the exception, and one pattern cannot
   serve both.
+
+### A PLAIN dash over a ramped width becomes one rule per zoom band
+
+The rules above pick the one zoom to read the width at. When the style *ramps the dash*, that zoom
+is the pattern's own stop and the answer is already targeted. When the dash is a plain literal there
+is no such zoom, and one scale has to cover the whole width ramp — which it cannot. Liberty's rail
+hatching is `[0.2, 8]` over a width running 3 px at z15 to 8 px at z20: scaled at 5.5 it drew
+**1.8× too long at z15** and 0.7× too short at z20, which reads as "the dashes are twice the size".
+
+`splitDashByZoom` cuts such a layer into one attachment per band, each scaling its dash by the width
+in the MIDDLE of its own band. Bands are cut where the width **doubles** (`ceil(log2(ratio))`,
+capped at 4), so the worst error inside one is √2 rather than the ramp's whole range — the hatching
+becomes `0.75,30` below z18 and `1.25,49.96` above, against a single `1.1,44`.
+
+Three things keep it from doing harm. It measures from the first stop whose width is **positive** —
+that hatching ramp starts `(14.5, 0)`, and below it there is no width to be in proportion to — and
+no further than the last stop, above which the width is flat and a band would read the same number
+twice. The outer bands keep the layer's own `minzoom`/`maxzoom`, so banding never narrows what is
+drawn. And band edges are whole zooms, because `zoomPredicates` floors the min and ceils the max: a
+fractional edge would round outwards on both sides and draw the seam twice.
 
 ## The light, not the colours: how a preset gets dark
 
@@ -1231,6 +1328,89 @@ as a filter it is just the or-chain, and a one-label match is an equality that b
 Measured on MapTiler topo-v4: **389 `when()` down to 191**, all 91 `? true : false` wrappers gone,
 declarations byte-identical, and 0.06% of pixels different at La Clusaz z14.5 (label jitter).
 
+### What makes a `when()` cost more than a rule
+
+The compiler, not just the decoder. `PredicateContainsChecker` and `PredicateIntersectsChecker`
+(`libs-massif/cartocss/src/cartocss/PredicateUtils.h`) compare two `OpPredicate`s and can say one
+implies or contradicts the other, so contradictory rules are dropped and redundant tests fold away.
+Against a `WhenPredicate` they return `boost::indeterminate` — every rule survives, and the whole
+expression is evaluated per feature at decode. So `when()` is a last resort, and where a style
+forces one, change the STYLE.
+
+### Narrowing: a rule that pins a field should say so once
+
+`narrow.ts` reads a layer's own filter for what it proves — `field = value`, `field ≠ value`, and
+the closed set an `in` states — and then restates both the filter and every property value against
+it. Three things fall out:
+
+- **A closed set minus its exclusions is an equality.** The fallback branch of an expanded `match`
+  arrives as "one of these seven, and none of the other six", which is `[class = 'service']`.
+- **The set test and the negations drop**, because the equality that replaces them implies each.
+  Only equalities may retire a clause: the exclusions were read off those very clauses, so letting
+  them judge had every `[subclass != 'junction']` prove itself and vanish.
+- **`match` and `case` in a VALUE take their branch.** A `line-width` that was a three-stop
+  exponential with a six-deep class ternary at each stop becomes
+  `exponential(1.5, [view::zoom], (5, 0.6), (14, 3.5), (18, 13))` — no feature read at all.
+
+`coalesce` is seen through, since a missing field already compares unequal
+(`mapnikvt/Predicate.cpp`: `NEQ` on a type mismatch is `MismatchResult = true`, `EQ` is false) — but
+**not** when a value compared against it is one of the guard's own defaults, where
+`coalesce(f, '') = ''` is true for a missing field and `f = ''` is not.
+
+### Splitting a set filter, and when it backfires
+
+A positive set test is a disjunction, so it has no bracketed form; a NEGATED one is a conjunction
+and brackets one test per value. `expandSetFilter` turns the positive case into one attachment per
+value, on either of two grounds: the paint branches on that field, so each attachment folds down to
+a constant — or the set is the WHOLE filter, so each attachment is one bracketed test and nothing
+else. The second was added because a layer that paints one way over a class list is common and left
+a `when()` behind for no gain: across the six reference styles it is 442 → **426** `when()` for
+1176 → 1257 rules, and it takes Massif Streets to zero.
+
+A set of more than `MAX_VARIANTS` values normally stays whole, since splitting copies the rest of
+the filter into every attachment. Where the set IS the whole filter there is no rest, so the cap
+rises to `MAX_SET_VALUES` — one bracketed rule per value and nothing copied, which is what a POI
+category of sixteen classes needs.
+
+Both grounds are still subject to the REST of the filter bracketing. Splitting copies that rest into
+every attachment, so without the gate the one `when()` it removes comes back N times: MapTiler
+topo-v4 went 142 → **239** before the gate, 134 after.
+
+### A palette in project.json, not in the rule
+
+`"metadata": { "massif:params": ["text-color"] }` on a layer turns that property's `match` on one
+field into a style-parameter LOOKUP — `[param::poi-fill-[class]]`, one parameter per label, the
+`match`'s fallback left in the rule for `??` to land on. The palette is then editable in
+`project.json` without touching the generated stylesheet, and a sixty-branch ternary the decoder
+walked per feature becomes one lookup.
+
+**Opt-in per property**, because only the author knows which is which: a table is worth it for a
+palette meant to be tuned and not for the two-branch colour ramp on a road. `metadata` is ignored by
+every renderer, so a layer asking for it stays a valid MapLibre style, and every other converted
+style is byte-identical. `["icon-image"]` covers a recolourable icon's own params — the disc, its
+ring and the glyph — so an icon palette lands in the same place as the label's.
+
+### A set test's labels are constants, and a geometry name is a NUMBER
+
+`mapnik::geometry_type` is a `long long` (`mapnikvt/ExpressionContext.cpp`), so comparing it against
+`'LineString'` is a type mismatch — which `EQ` answers **false** (`Predicate.cpp`,
+`ComparisonOperator`). A bracketed test always mapped the name to its code; the or-chain the set
+tests fell back to did not, so `when(([mapnik::geometry_type] = 'LineString' || … = 'Polygon'))` was
+false for every feature and **the rule never drew**: 20 rules in OpenFreeMap Liberty and 11 in
+MapTiler streets-v4, which is why Liberty's minor roads rendered as a dark casing with no fill.
+
+`setTest` now recognises a set test in every spelling a style writes one in — `["match", input,
+labels, true, false]`, the same with the operands reversed (its negation), and
+`["in", input, ["literal", labels]]` — and runs the labels through the same constant translation a
+bracketed test uses. Two consequences beyond the fix: several labels can name ONE constant
+(`LineString` and `MultiLineString` are both type 2), and collapsed to one the test brackets; and a
+reversed match is a conjunction, so it brackets one `!=` per value instead of a `? false : true`
+ternary.
+
+Across the reference styles, `when()` before → after: mapbox-standard 221 → 135, MapTiler
+openstreetmap 119 → 52, streets-v4 220 → 191, outdoor-v4 152 → 133, topo-v4 142 → 128, ofm-liberty
+73 → 28. **927 → 667 in total, and all 66 dead geometry comparisons gone.**
+
 ## A fill's outline
 
 `fill-outline-color` has no polygon property to land on, so it becomes a second symbolizer — a line
@@ -1282,6 +1462,124 @@ text-placement-priority: (11200000 - (0 + [rank]));
 `layerIndex × 100000`, minus the sort key (MapBox places the lowest first, the culler takes the
 highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
 capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
+
+## Folding a casing and ordering roads do not mix
+
+`--fold-casings` puts the casing in the fill rule, which is right while the road is ONE rule: the
+renderer draws a `line-border` from the same buffer, one draw before the fill. The sort-key
+expansion above makes seven rules of it, and each then draws its own casing — over the fill of the
+road beside it, which is the one thing a casing LAYER never did. It is the only difference left
+between a converted Massif Streets and the maplibre render of its source.
+
+So the fold SKIPS a pair whose fill states a `line-sort-key`, and reports it. Those roads convert
+as seven casing rules followed by seven fill rules: every casing before every fill, mapbox's order.
+It costs a second pass over the road geometry — measured at +0.64 ms of the `layers` section on the
+Crosscall, against the folded rules it replaces.
+
+Making the casing ONE unsplit rule instead of seven looks like a free win and is not: measured at
+2.5M geometry indices a frame against 5.2k, and 44 ms a frame against 32. Unexplained; do not
+retry it without a bench.
+
+## A zoom test in a FILTER is decided per tile
+
+`ExpressionContext::getVariable` answers `view::zoom` with the tile's own zoom plus 0.5 when there
+is no view state - which is where a FILTER is evaluated, at decode. So a zoom gate in a filter
+behaves as maplibre's does, decided once per tile: `>= 13` is off for a z12 tile and on for a z13
+one. In a VALUE the same variable is the live camera zoom, re-read per frame.
+
+Massif Streets gates its road shields that way, bringing the classes in over several levels. It has
+to: the converter drops `symbol-avoid-edges`, so a tertiary ref that maplibre never placed - too
+short a stub of road, or one crossing a tile edge - drew at z12 here.
+
+Pick the thresholds against the class the TILE reports, not the one the road has when you look it
+up: OpenMapTiles promotes a road's class as the zoom drops. `D 106B` is `minor` in the z14 tile and
+`secondary` in the z12 one, so a gate letting `secondary` through at z11 still drew it - and gating
+`secondary` at all is nearly free, because by z12 everything worth drawing has been promoted into
+it.
+
+Write it as one LAYER PER BAND, not as an `any` of zoom-and-class branches. A layer's `minzoom`
+becomes `[zoom >= n]`, which the compiler decides per tile and can prune - so at z9 the later bands
+do not exist. The `any` is a `when()` every feature is dragged through at every zoom, and it cannot
+bracket. Massif Streets' three plate layers each exclude the classes an earlier band already drew,
+which is what stops a motorway shield being placed twice from z13.
+
+## `??` binds looser than a comparison
+
+CartoCSSParser puts `??` in term0, with `&&` and `||`; the comparisons are in term1 and bind
+TIGHTER. So `[x] ?? '' = 'y'` parses as `[x] ?? ('' = 'y')` - the coalesce of a field with a
+boolean, which is truthy for any feature that carries the field at all.
+
+Emitted bare, that made every filter written over a possibly-absent field pass EVERYTHING, silently:
+motorway exits (`subclass = 'junction'`) drew as road shields, and the guard excluding US networks
+became `!([network] ?? false || ...)`, false for every road that had a network - so on a source
+carrying `network` no road shield drew at all, while the same style was fine on a source without it.
+
+A coalesce is therefore parenthesised WHOLE, not just per operand.
+
+## A prefix is a regex, in a match as well as an ==
+
+A style picks a road shield's colour from the first letter of its ref - `A` is an autoroute, `D` a
+departmental road - written `["match", ["upcase", ["slice", ref, 0, 1]], "A", ..., "D", ...]`.
+CartoCSS has no substring, but `=~` is a full `std::regex_match` (`Predicate::applyOp`), so a prefix
+is `A.*`. `==` and `in` already took that path; `match` did not, and threw on its own input - which
+dropped the plate colour for every country and left every shield on the neutral plate.
+
+`upcase` folds onto the WHOLE string rather than the slice: `uppercase([ref]) =~ 'A.*'` says the
+same thing about a prefix, and leaves a shape the regex can take. A label that is not a string of
+the slice's own length can never match and becomes `false`.
+
+## A plate's border is measured off the raster, ramp included
+
+`describeFlatPlate` reads a shield plate's fill, border and radius off the artwork, so the SDK can
+draw it with no sprite at all. The border is the run of border-coloured texels the middle row
+crosses, and that run starts at the OPAQUE box - which excludes the stroke's outermost texels,
+because a stroke is antialiased against nothing and they fall under `FLAT_ALPHA`.
+
+So the walk started inside the stroke: a 1.3 px stroke rendered at @2x spans 2.75 texels (one at
+alpha 192, two solid) and measured 2, a border a fifth thin against what maplibre draws from the
+same sprite. The alpha of those outer texels IS their coverage, and is added back.
+
+The inner edge needs no equivalent: a stroke meets the fill it covers at full alpha, and the
+colour step there is sharp.
+
+## A style carries its own fonts
+
+`--fonts DIR` copies the faces in DIR into the project's `fonts/` and names them in project.json.
+The decoder registers a style's own fonts AHEAD of the system ones and finds them by scanning
+`<style>/fonts/`, so it needs no list — the list is for whoever has to carry the project, and the
+web preview reads it to know what to fetch, since a project served over HTTP cannot be listed.
+
+This is the only way a face reaches the **web** build, which has no system fonts at all: without it
+`shield-face-name: 'Noto Sans Bold'` fell back to whatever the build preloaded and shields came out
+regular. Preloading the face instead costs every page load — see `web/fonts/README.md`.
+
+Carry a SUBSET. A shield draws a `ref`, so printable ASCII is 132 glyphs and 14 KB against the full
+face's 569. Keep the name table (`pyftsubset --name-IDs="*"`): a face is resolved by the name in its
+own table, and a subset that drops it stops answering to the name the style asks for.
+
+## A zoom stop is relative to a tile size
+
+The SDK's zoom number sits `log2(512 / TileDrawSize)` levels above MapBox's — a level at the default
+256, none at all for an app that adopted maplibre's 512. Every zoom stop and every zoom predicate
+carries that shift, so `--tile-draw-size` has to state what the style will be DRAWN at.
+
+Converted at 256 and drawn at 512, a trunk casing measured 5.2 px where maplibre gave 7.6 at the
+same camera: the whole style renders a level behind, which reads as roads that are simply too thin
+rather than as a zoom error.
+
+## Which road is drawn on top
+
+`line-sort-key` has no such trick available: a CartoCSS rule draws its features in the order the
+TILE lists them, and nothing in a declaration can reorder them. It becomes rule **order** instead —
+one attachment per key value, emitted lowest first, so the highest is drawn last (`expandSortKey`,
+split.ts). A road style that states the key once for every class is 7 rules where it was 1.
+
+Without it a residential road painted over the motorway it crosses wherever the tile happened to
+carry it later, which maplibre never shows because it honours the key natively.
+
+Only a `match`/`case` over the feature with numeric outcomes expands; anything else is reported as
+approximated and the layer keeps tile order. The cap is `MAX_VARIANTS`, shared with the resource
+splitting above.
 
 ## An icon and its text are ONE label
 

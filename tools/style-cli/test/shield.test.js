@@ -293,7 +293,7 @@ test('a style that states its own variable anchors keeps them, flag or not', () 
     TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' },
         shieldAnchors: 'right,left' }).mss;
 
-    assert.match(out, /shield-anchors: 'top,bottomleft';/);
+    assert.match(out, /shield-anchors: 'bottom,topright';/);
     assert.ok(!out.includes("shield-anchors: 'right,left'"));
 });
 
@@ -461,7 +461,8 @@ test('a shield whose text cannot be translated draws nothing, not an empty box',
 
 test('a variable anchor becomes the shield anchor list, with its gap and its fallback', () => {
     // MapBox tries each side until the label fits and keeps the icon alone when none does.
-    // ShieldSymbolizer takes the same list, so the four properties describing it map straight over.
+    // ShieldSymbolizer takes the same list, but the two SPELLINGS are opposites: MapBox names the
+    // part of the text nearest the anchor, the SDK the side the text goes on, so each name flips.
     const index = { pin: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } };
     const sprites = new Map([['default', { index, image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) } }]]);
     const { mss: out, coverage } = convert({ layers: [symbol({
@@ -470,23 +471,23 @@ test('a variable anchor becomes the shield anchor list, with its gap and its fal
         'text-optional': true, 'text-radial-offset': 0.5, 'text-justify': 'auto',
     })] }, TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } });
 
-    assert.match(out, /shield-anchors: 'right,left,top,bottom';/);
+    assert.match(out, /shield-anchors: 'left,right,bottom,top';/);
     assert.match(out, /shield-text-optional: true;/);
-    // The gap is stated once as dx - the SDK mirrors it onto whichever side wins - in pixels of
-    // the text size, not ems.
-    assert.match(out, /shield-text-dx: 6;/);
+    // MapBox's own property, in pixels of the text size rather than ems: the distance runs from the
+    // ANCHOR to the near edge of the text on whichever side wins, not from the icon's edge.
+    assert.match(out, /shield-text-radial-offset: 6;/);
     assert.match(out, /shield-text-horizontal-alignment: 'auto';/);
     assert.ok(!/text-justify|text-optional +[^:]/.test(coverage.report()));
 });
 
-test('a corner anchor loses its hyphen, which is how the SDK spells it', () => {
+test('a corner anchor loses its hyphen and flips, which is how the SDK spells it', () => {
     const index = { pin: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } };
     const sprites = new Map([['default', { index, image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) } }]]);
     const out = convert({ layers: [symbol({
         'text-field': '{name}', 'icon-image': 'pin',
         'text-variable-anchor': ['top-left', 'bottom-right'],
     })] }, TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
-    assert.match(out, /shield-anchors: 'topleft,bottomright';/);
+    assert.match(out, /shield-anchors: 'bottomright,topleft';/);
 });
 
 test('an anchor property on a layer with no icon says so, rather than reading as unmapped', () => {

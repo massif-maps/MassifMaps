@@ -1,4 +1,6 @@
 import type { Coverage } from './coverage.js';
+import { translateFilter } from './filter.js';
+import { closedSets, narrowLayer } from './narrow.js';
 import type { Json, MapboxLayer } from './types.js';
 
 /**
@@ -33,6 +35,8 @@ function mustNotReadFeature(name: string): boolean {
 
 /** A layer splitting into more than this many attachments is left whole - the compile cost is real. */
 const MAX_VARIANTS = 8;
+/** ...and how many a set that IS the whole filter may have: one rule each, nothing copied. */
+const MAX_SET_VALUES = 24;
 
 interface Branch {
     /** The MapBox filter selecting this branch, null when it is the fallback and stands alone. */
@@ -170,6 +174,112 @@ export function splitLayer(layer: MapboxLayer, coverage: Coverage): MapboxLayer[
     }
 
     return variants.map((variant) => resolveRemaining(variant, layer.id, coverage));
+}
+
+/**
+ * `line-sort-key` orders features WITHIN one layer; CartoCSS has no equivalent, because a rule
+ * draws its features in the order the tile lists them. Expanded into one attachment per key value,
+ * LOWEST first, so the highest class is drawn last: without it a residential road painted over the
+ * motorway it crosses wherever the tile happened to carry it later.
+ *
+ * The branch filters are mutually exclusive by construction (see `exclusive`), so reordering them
+ * changes only which is drawn on top.
+ */
+export function expandSortKey(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
+    const key = layer.layout?.[SORT_KEY] as Json | undefined;
+    if (key === undefined) return [layer];
+
+    const branches = branchesOf(key);
+    const values = branches?.map((branch) => branch.value);
+    if (!branches || !values!.every((value) => typeof value === 'number')) {
+        coverage.approximate(`${SORT_KEY} on "${layer.id}" is not a match over the feature, so its ` +
+            'features keep the order the tile lists them in');
+        return [layer];
+    }
+    if (branches.length > MAX_VARIANTS) {
+        coverage.approximate(`${SORT_KEY} on "${layer.id}" has ${branches.length} values, past the ` +
+            `${MAX_VARIANTS}-attachment cap, so its features keep the order the tile lists them in`);
+        return [layer];
+    }
+
+    return [...branches]
+        .sort((a, b) => (a.value as number) - (b.value as number))
+        .map((branch) => withValue(layer, SORT_KEY, branch.value, branch.when));
+}
+
+const SORT_KEY = 'line-sort-key';
+
+/**
+ * A layer whose filter pins a field to a set AND whose paint branches on that same field, as one
+ * attachment per value. The set test cannot bracket - it is a disjunction - so left whole it is a
+ * when() the decoder evaluates per feature, and the paint chain re-tests the field it just passed.
+ * Split, each attachment is one bracketed test and a constant (narrow.ts does the folding).
+ *
+ * Also when the set is the WHOLE filter, even though nothing branches on it: there each attachment
+ * carries one bracketed test and nothing else, so the split trades a when() for N rules that the
+ * decoder can prune - which is the trade the styles want.
+ */
+export function expandSetFilter(layer: MapboxLayer): MapboxLayer[] {
+    for (const { field, values } of closedSets(layer.filter as Json | undefined)) {
+        if (values.length > MAX_SET_VALUES) continue;
+        const expanded = values.map((value) => narrowLayer({
+            ...layer,
+            filter: mergeFilter(layer.filter, ['==', field, value] as unknown as Json),
+        }));
+        const whole = expanded.every((variant) => isOnlyTest(variant.filter));
+        // The cap is there to stop a cartesian blow-up when the REST of the filter is copied into
+        // every attachment. Where the set is the whole filter there is no rest, so the only cost is
+        // one bracketed rule per value - which is what a category of sixteen poi classes needs.
+        if (values.length > MAX_VARIANTS && !whole) continue;
+        if (!branchesOn(layer, field) && !whole) continue;
+        // Splitting COPIES the rest of the filter into every attachment, so it only pays when that
+        // rest brackets: otherwise the one when() it removes comes back N times. Measured on
+        // MapTiler topo-v4, which is full of layers testing a class set AND something else.
+        if (expanded.every((variant) => brackets(variant.filter as Json | undefined))) return expanded;
+    }
+    return [layer];
+}
+
+/**
+ * Is the residue of the split FREE? The `==` it pinned on its own, or beside tests that bracket -
+ * a mode switch on a style parameter, say. Those cost one more predicate per rule and no per-feature
+ * work, which is not the blow-up the cap guards against.
+ */
+function isOnlyTest(filter: Json | undefined): boolean {
+    if (!Array.isArray(filter)) return false;
+    return filter[0] === '==' || (filter[0] === 'all' && brackets(filter));
+}
+
+function brackets(filter: Json | undefined): boolean {
+    if (filter === undefined || filter === null) return true;
+    try {
+        return !translateFilter(filter).some((predicate) => predicate.startsWith('when('));
+    } catch {
+        return false;
+    }
+}
+
+/** Does any paint or layout value pick a branch by this field? */
+function branchesOn(layer: MapboxLayer, field: string): boolean {
+    return Object.values({ ...layer.layout, ...layer.paint })
+        .some((value) => selectsOn(value as Json, field));
+}
+
+function selectsOn(value: Json, field: string): boolean {
+    if (!Array.isArray(value)) return false;
+    if (value[0] === 'match' && readsField(value[1] as Json, field)) return true;
+    if (value[0] === 'case') {
+        for (let i = 1; i + 1 < value.length; i += 2) {
+            if (readsField(value[i] as Json, field)) return true;
+        }
+    }
+    return value.some((item) => selectsOn(item as Json, field));
+}
+
+function readsField(value: Json, field: string): boolean {
+    if (!Array.isArray(value)) return false;
+    if (value[0] === 'get' && value[1] === field) return true;
+    return value.some((item) => readsField(item as Json, field));
 }
 
 /**

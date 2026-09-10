@@ -27,10 +27,13 @@ namespace massif {
         const float NO_COORDINATE = -1.0f;
 
         // maplibre-gl-js: handler/mouse.ts and scroll_zoom.ts. Degrees per CSS pixel, zoom per
-        // wheel unit. Both NEGATED - it turns the camera's bearing where rotate() turns the map,
-        // and its pitch is 0 where this tilt is 90.
-        const float ROTATE_SPEED = -0.8f;
+        // wheel unit. The PITCH is negated - maplibre's pitch is 0 where this tilt is 90 - and the
+        // rotation's sign is decided per drag by which side of the centre it is on (applyDragRotate).
+        const float ROTATE_SPEED = 0.8f;
         const float PITCH_SPEED = 0.5f;
+        // maplibre's minPixelCenterThreshold: nearer than this to the centre, the angle a pointer
+        // sweeps about it is too ill-conditioned to steer by.
+        const float ROTATE_CENTER_THRESHOLD = 100.0f;
         const double WHEEL_ZOOM_RATE = 1.0 / 450.0;
         const double TRACKPAD_ZOOM_RATE = 1.0 / 100.0;
         const double MAX_SCALE_PER_WHEEL_EVENT = 2.0;
@@ -204,10 +207,32 @@ namespace massif {
     }
 
     void WebMapView::applyDragRotate(float x, float y, double pixelRatio) {
-        // Degrees per CSS pixel, which is what maplibre's speeds are in - dividing the device-pixel
-        // delta back out keeps a drag turning the map by the same amount on a 2x display.
-        rotate(static_cast<float>((x - _lastPointerX) / pixelRatio) * ROTATE_SPEED, 0);
-        tilt(static_cast<float>((y - _lastPointerY) / pixelRatio) * PITCH_SPEED, 0);
+        // Everything here is in CSS pixels, which is what maplibre's speeds and thresholds are in.
+        float lastX = static_cast<float>(_lastPointerX / pixelRatio), lastY = static_cast<float>(_lastPointerY / pixelRatio);
+        float curX = static_cast<float>(x / pixelRatio), curY = static_cast<float>(y / pixelRatio);
+        float centerX = static_cast<float>(_width / (2 * pixelRatio)), centerY = static_cast<float>(_height / (2 * pixelRatio));
+
+        // maplibre's generateMouseRotationHandler. Away from the centre the map turns by the ANGLE
+        // the pointer sweeps AROUND it, so the ground under the cursor stays under the cursor - a
+        // flat degrees-per-pixel rate cannot do that. The previous point is taken at the CURRENT y,
+        // as maplibre does, since the vertical part of the drag is the pitch's.
+        float rotation;
+        if (std::abs(centerY - lastY) > ROTATE_CENTER_THRESHOLD) {
+            // The signed angle from the previous vector to the current one, screen y down - the same
+            // formula and the same sign as the two-finger gesture (TouchHandler::dualPointerPan).
+            float prevX = lastX - centerX, prevY = curY - centerY;
+            float vecX = curX - centerX, vecY = curY - centerY;
+            double cross = static_cast<double>(prevX) * vecY - static_cast<double>(prevY) * vecX;
+            double dot = static_cast<double>(prevX) * vecX + static_cast<double>(prevY) * vecY;
+            rotation = static_cast<float>(std::atan2(cross, dot) * Const::RAD_TO_DEG);
+        } else {
+            // Too near the centre for that angle to be stable, so degrees per pixel - reading the
+            // other way round above the centre, which is where the swept angle would reverse too.
+            rotation = (curX - lastX) * ROTATE_SPEED * (curY < centerY ? 1.0f : -1.0f);
+        }
+
+        rotate(rotation, 0);
+        tilt((curY - lastY) * PITCH_SPEED, 0);
         _lastPointerX = x;
         _lastPointerY = y;
     }

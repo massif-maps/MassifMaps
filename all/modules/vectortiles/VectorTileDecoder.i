@@ -30,6 +30,7 @@
 %ignore massif::VectorTileDecoder::getMapSettings;
 %ignore massif::VectorTileDecoder::getSymbolizerContextSettings;
 %ignore massif::VectorTileDecoder::setPixelScale;
+%ignore massif::VectorTileDecoder::setTileSize;
 %ignore massif::VectorTileDecoder::OnChangeListener;
 %ignore massif::VectorTileDecoder::registerOnChangeListener;
 %ignore massif::VectorTileDecoder::unregisterOnChangeListener;

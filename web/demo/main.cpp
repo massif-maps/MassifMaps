@@ -5,6 +5,8 @@
  *   ?lon=2.35&lat=48.86&zoom=12
  *   ?source=https://tile.openstreetmap.org/{z}/{x}/{y}.png          raster (inferred)
  *   ?source=https://.../{z}/{x}/{y}.mvt&css=<url-encoded CartoCSS>  vector
+ *   ?minzoom=0&maxzoom=14                                           what the tileset actually holds
+ *   ?tiledrawsize=512&tilelodfactor=1                               pick tiles as a web map does
  *
  * The style is passed in rather than fetched: main() runs on the browser's main thread, where a
  * synchronous fetch is illegal. The JavaScript binding over the facade C ABI is what will replace
@@ -99,8 +101,30 @@ int main() {
         return 1;
     }
 
+    // Before any layer: a layer reads the display scale and the tile draw size when it joins the
+    // map, so a change made after it is added reaches the camera but not the style.
+    //
+    // A zoom NUMBER means a different distance here than in a web map: the SDK calibrates on a
+    // 256-pixel tile and maplibre on a 512-pixel one, so the same number is a level apart. Pass 1
+    // to read the query string's zoom as a web map would - see ZoomConvention.h. A tiledrawsize of
+    // 512 adopts the same convention for the TILE the layer picks, which the offset does not touch.
+    _MapView->getOptions()->setZoomOffset(static_cast<float>(queryNumber("zoomoffset", 0)));
+    _MapView->getOptions()->setTileDrawSize(static_cast<int>(queryNumber("tiledrawsize", 256)));
+    // And the SDK refines a full level finer than tangram and mapbox do: a tilelodfactor of 1 is
+    // their rule verbatim, where the default 0.5 is what draws a level deeper at the same camera.
+    _MapView->getOptions()->setTileLODFactor(static_cast<float>(queryNumber("tilelodfactor", 0.5)));
+    const double dpi = queryNumber("dpi", 0);
+    if (dpi > 0) {
+        _MapView->getOptions()->setDPI(static_cast<float>(dpi));
+    }
+
     std::string source = queryParam("source", DEFAULT_SOURCE);
-    auto dataSource = std::make_shared<massif::HTTPTileDataSource>(0, 19, source);
+    // A tileset that stops at z14 - every OpenMapTiles build does - draws NOTHING deeper unless
+    // the source is told, because the layer asks for a tile that was never made instead of
+    // overzooming the last one it has.
+    int minZoom = static_cast<int>(queryNumber("minzoom", 0));
+    int maxZoom = static_cast<int>(queryNumber("maxzoom", 19));
+    auto dataSource = std::make_shared<massif::HTTPTileDataSource>(minZoom, maxZoom, source);
 
     if (isRasterSource(source)) {
         _MapView->getLayers()->add(std::make_shared<massif::RasterTileLayer>(dataSource));
@@ -128,7 +152,12 @@ int main() {
                 decoder->addFallbackFont(data);
             }
         }
-        _MapView->getLayers()->add(std::make_shared<massif::VectorTileLayer>(dataSource, decoder));
+        auto vectorLayer = std::make_shared<massif::VectorTileLayer>(dataSource, decoder);
+        // A cased road cross-fades badly: the fill is near the background colour, so early in the
+        // fade only the casing reads and the road looks like an outline waiting to be filled.
+        // 0 is what maplibre does - vector geometry appears, only rasters fade.
+        vectorLayer->setLayerBlendingSpeed(static_cast<float>(queryNumber("blendspeed", 1)));
+        _MapView->getLayers()->add(vectorLayer);
     }
 
     // ?terrain=<DEM url> turns on real 3D terrain. Mapterhorn's planet archive is Terrarium-coded

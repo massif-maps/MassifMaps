@@ -122,6 +122,11 @@ namespace massif {
         // fades over is decode-time geometry, not a uniform - see TileLayerBuilder::packGradientT.
         float buildingVerticalGradient = 0.0f;
         float buildingRoofShade = 1.0f;
+        // Light the extrusions the way MAPLIBRE does rather than the way mapbox does. Set when
+        // nothing - style, options or day cycle - lights the map, which is every plain converted
+        // style: what its author saw is maplibre's fill-extrusion model, and the two do not agree
+        // about facades. See TileRenderer::LIGHTING_SHADER_3D.
+        bool buildingLightingMapLibre = false;
         // Every extrusion's height, multiplied - mapbox's fill-extrusion-vertical-scale.
         float buildingHeightScale = 1.0f;
         // Drawn only - the shadow caster ignores it (see mvt::Map::Settings).

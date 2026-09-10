@@ -169,6 +169,7 @@ namespace massif::mvt {
             bitmapSize = static_cast<float>(std::max(backgroundImage->bitmap->width, backgroundImage->bitmap->height)) * imageScale;
         }
         float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale * pixelScale;
+        float collisionPadding = _collisionPadding.getValue(exprContext) * fontScale * pixelScale;
         float maxDistance = _maxDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         vt::FloatFunction rankFunc = _rank.getFunction(exprContext);
@@ -205,6 +206,7 @@ namespace massif::mvt {
 
 
         std::vector<vt::LabelAnchor> anchors = parseAnchors(_anchors.getValue(exprContext));
+        float textRadialOffset = _textRadialOffset.getValue(exprContext) * fontScale;
         vt::LabelLineAlign textLineAlign = parseLineAlign(_textHorizontalAlignment.getValue(exprContext));
         vt::LabelPlateStyle textPlate = getPlateStyle(symbolizerContext, exprContext);
         vt::LabelPlateStyle iconPlate;
@@ -259,9 +261,17 @@ namespace massif::mvt {
 
         float textSize = bitmapSize < 0 ? (repeatAlongLine ? calculateTextSize(textFormatter.getFont(), text, textFormatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
+        // Same as TextSymbolizer: 'spacing' is walked per TILE, so two anchors can land a few pixels
+        // apart across a border and only the culler can see it. The label's own size is the floor.
+        if (repeatAlongLine && spacing > 0 && !_minimumDistance.isDefined()) {
+            minimumDistance = sizeStatic * fontScale;
+        }
         long long groupId = (allowOverlap ? -1 : 0);
         if (!allowOverlap && minimumDistance > 0) {
-            groupId = 1;
+            // Per TEXT along a line, as TextSymbolizer groups its repeats: one group for every
+            // shield in the style made 'shield-min-distance' a distance between DIFFERENT roads,
+            // and a style stating its symbol spacing there lost most of its shields.
+            groupId = (repeatAlongLine ? (hash & 0x7fffffffU) : 1);
         }
 
         cglib::vec2<float> backgroundOffset(0, 0);
@@ -336,9 +346,10 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, iconOpacityFunc, textLineAlign, textPlate, iconPlate, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, collisionPadding, maxDistance, anchors, textRadialOffset, textOptional, iconGlyphs, iconColorFunc, iconOpacityFunc, textLineAlign, textPlate, iconPlate, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, imageScale, backgroundOffset, backgroundImage, maxDistance,
                                      std::optional<vt::ColorFunction>(), rankFunc);
+            style.collisionPadding = collisionPadding;
             style.emissiveFunc = emissiveFunc;
             style.haloEmissiveFunc = haloEmissiveFunc;
             style.iconHaloColorFunc = iconHaloColorFunc;
@@ -347,6 +358,7 @@ namespace massif::mvt {
             style.iconRefScale = imageScale;
             style.backgroundSdf = sdfMode;
             style.anchors = anchors;
+            style.textRadialOffset = textRadialOffset;
             style.textOptional = textOptional;
             style.iconGlyphs = iconGlyphs;
             style.iconColorFunc = iconColorFunc;

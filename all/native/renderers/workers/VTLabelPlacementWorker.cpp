@@ -9,6 +9,7 @@
 
 #include <vt/LabelCuller.h>
 
+#include <algorithm>
 #include <cmath>
 
 namespace massif {
@@ -18,6 +19,7 @@ namespace massif {
         _idle(false),
         _pendingWakeup(false),
         _wakeupTime(std::chrono::steady_clock::now() + std::chrono::hours(24)),
+        _lastPassTime(std::chrono::steady_clock::now() - std::chrono::hours(24)),
         _mapRenderer(),
         _condition(),
         _mutex()
@@ -51,6 +53,8 @@ namespace massif {
 
         std::lock_guard<std::mutex> lock(_mutex);
         std::chrono::steady_clock::time_point wakeupTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayTime);
+        // Never before the last pass has finished fading - see MIN_PLACEMENT_INTERVAL.
+        wakeupTime = std::max(wakeupTime, _lastPassTime + std::chrono::milliseconds(MIN_PLACEMENT_INTERVAL));
         _idle = false;
         if (postpone) {
             _wakeupTime = (_pendingWakeup ? std::max(_wakeupTime, wakeupTime) : wakeupTime);
@@ -96,6 +100,11 @@ namespace massif {
                     run = true;
                     _pendingWakeup = false;
                     _wakeupTime = currentTime + std::chrono::hours(24);
+                    // Stamped when the pass STARTS, under the same lock that claims it. Stamped on
+                    // the way out instead, a schedule() arriving while the pass ran read the
+                    // PREVIOUS pass's time, found the interval already spent and fired again as
+                    // soon as this one finished - measured at 202 ms between passes.
+                    _lastPassTime = currentTime;
                 }
 
                 if (!run) {
@@ -111,6 +120,12 @@ namespace massif {
         }
     }
     
+    // maplibre will not BEGIN a placement before commitTime + fadeDuration (Placement.stillRecent),
+    // so a label never re-places while the previous one is still fading. This is that gate; the
+    // duty cycle below is the separate, cost-based one. TileRenderer's default label blending speed
+    // is the same 300 ms.
+    const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 300;
+
     // mapbox and maplibre both slice placement at 2 ms and resume next frame
     // (placement_algorithms/default.ts, pauseable_placement.ts). A slice is soft: the check is every
     // 32 labels, so one can overshoot by that much.

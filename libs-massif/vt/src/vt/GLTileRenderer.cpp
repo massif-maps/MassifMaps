@@ -1112,7 +1112,7 @@ namespace massif::vt {
         return _colorFuncCache.emplace(key, std::make_pair(func.function(), value)).first->second.second;
     }
     
-    void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles) {
+    void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles) {
         using TilePair = std::pair<TileId, std::shared_ptr<const Tile>>;
 
         // Clear the 'visible' label list for now (used only for culling)
@@ -1124,19 +1124,26 @@ namespace massif::vt {
         // Build visible tile list for labels. Also build tile surfaces.
         std::set<TileId> tileIds;
         std::vector<std::shared_ptr<const Tile>> labelTiles;
+        auto addLabelTile = [&labelTiles](const std::shared_ptr<const Tile>& tile) {
+            if (!tile) {
+                return;
+            }
+            // Keep only unique tiles and order them by tile zoom level.
+            // This will fix flickering when multiple tiles from different zoom levels redefine same label.
+            auto it = std::lower_bound(labelTiles.begin(), labelTiles.end(), tile, [](const std::shared_ptr<const Tile>& tile1, const std::shared_ptr<const Tile>& tile2) {
+                return std::make_pair(tile2->getTileId(), tile2) < std::make_pair(tile1->getTileId(), tile1);
+            });
+            if (it == labelTiles.end() || *it != tile) {
+                labelTiles.insert(it, tile);
+            }
+        };
         for (TilePair tilePair : tiles) {
             tileIds.insert(tilePair.first);
-            
-            if (tilePair.second) {
-                // Keep only unique tiles and order them by tile zoom level.
-                // This will fix flickering when multiple tiles from different zoom levels redefine same label.
-                auto it = std::lower_bound(labelTiles.begin(), labelTiles.end(), tilePair.second, [](const std::shared_ptr<const Tile>& tile1, const std::shared_ptr<const Tile>& tile2) {
-                    return std::make_pair(tile2->getTileId(), tile2) < std::make_pair(tile1->getTileId(), tile1);
-                });
-                if (it == labelTiles.end() || *it != tilePair.second) {
-                    labelTiles.insert(it, tilePair.second);
-                }
-            }
+            addLabelTile(tilePair.second);
+        }
+        // Labels only: no tileId, so no surface and no render tile - see setVisibleTiles' comment.
+        for (TilePair tilePair : labelOnlyTiles) {
+            addLabelTile(tilePair.second);
         }
 
         // All other operations must be synchronized
@@ -2636,11 +2643,13 @@ namespace massif::vt {
                 else if (label) {
                     newLabel->setVisible(label->isVisible());
                     newLabel->setOpacity(label->getOpacity());
+                    newLabel->setTextOpacity(label->getTextOpacity());
                     newLabel->snapPlacement(*label);
                 }
                 else {
                     newLabel->setVisible(false);
                     newLabel->setOpacity(0);
+                    newLabel->setTextOpacity(0);
                 }
                 newLabel->setActive(true);
                 label = newLabel;
@@ -2703,7 +2712,8 @@ namespace massif::vt {
                     occluded = _labelOcclusionTest(center);
                 }
             }
-            if (label->isVisible() && label->isActive() && !occluded) {
+            bool shown = label->isVisible() && label->isActive() && !occluded;
+            if (shown) {
                 float opacity = std::min(1.0f, label->getOpacity() + dOpacity);
                 label->setOpacity(opacity);
                 refresh = (opacity < 1.0f) || refresh;
@@ -2711,6 +2721,19 @@ namespace massif::vt {
             else {
                 float opacity = std::max(0.0f, label->getOpacity() - dOpacity);
                 label->setOpacity(opacity);
+                refresh = (opacity > 0.0f) || refresh;
+            }
+            // The text carries its own, so a name dropped for the icon-only variant fades out while
+            // its icon stays put - see Label::getTextOpacity. With no icon the two are the same
+            // animation, since drawsText() is then always true.
+            if (shown && label->drawsText()) {
+                float opacity = std::min(1.0f, label->getTextOpacity() + dOpacity);
+                label->setTextOpacity(opacity);
+                refresh = (opacity < 1.0f) || refresh;
+            }
+            else {
+                float opacity = std::max(0.0f, label->getTextOpacity() - dOpacity);
+                label->setTextOpacity(opacity);
                 refresh = (opacity > 0.0f) || refresh;
             }
         }

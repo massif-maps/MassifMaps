@@ -1,17 +1,18 @@
 import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteContourFilter } from './contour.js';
 import { foldCasings } from './casing.js';
 import { Coverage } from './coverage.js';
-import { Untranslatable, ZOOM_INPUT, expandTokens, translateExpression } from './expression.js';
+import { Untranslatable, expandTokens, setTileDrawSize, translateExpression, zoomInput } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
-import { type ExtractedIcon, type IconPlate, type SpriteSet, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
+import { type ExtractedIcon, type FlatPlate, type IconPlate, type SpriteSet, describeFlatPlate, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
 import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
-import { collapseBranches, splitLayer } from './split.js';
+import { narrowLayer } from './narrow.js';
+import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
-import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
-import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer } from './fold.js';
+import { LIGHT_PRESET, importOnly, liveConfig, presetsOf, resolveConfig, sceneBrightness } from './config.js';
+import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer, toHsla } from './fold.js';
 import { applyLighting, emissiveDefault, emissiveForLayerType, emissiveProperty, groundRadiance, lightingFactor } from './emissive.js';
 import type { SceneLights } from './emissive.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
@@ -157,6 +158,18 @@ export interface ConvertOptions {
     foldCasings?: boolean;
     /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
     labelSpacing?: number;
+    /**
+     * File names of the fonts copied into the project's `fonts/` directory, recorded in
+     * project.json. The decoder registers every font it finds there, ahead of the system ones.
+     */
+    fonts?: string[];
+    /**
+     * The Options::TileDrawSize the converted style will be DRAWN at, in dp. Every zoom stop and
+     * zoom predicate is shifted by `log2(512 / tileDrawSize)`, because that is how far the SDK's
+     * zoom number sits from MapBox's. The default 256 is the SDK's; pass 512 for an app that
+     * adopted maplibre's convention, or its roads come out a level thin.
+     */
+    tileDrawSize?: number;
     /**
      * Sides a shield's TEXT may take, for a style that states no `text-variable-anchor` of its own -
      * MapBox Standard states none anywhere. The layer also gets `shield-text-optional`, so a POI
@@ -330,6 +343,9 @@ const EMISSIVE_NO_DEFAULT = new Set(['building-emissive-strength']);
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
     options = { ...options, styleParams: options.styleParams ?? new Map() };
+    // Module state, so it has to be set on every call and not only the first - the tests convert
+    // many styles in one process.
+    setTileDrawSize(options.tileDrawSize ?? 256);
     const coverage = new Coverage();
     const allowed = new Map<string, CartoProperty>(table.properties.map((p) => [p.cartocss, p]));
 
@@ -360,6 +376,16 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const configValues = new Map<string, Json>(
         [...parameters].map(([name, spec]) => [name, spec.default]));
     for (const [name, value] of Object.entries(options.config ?? {})) configValues.set(name, value);
+    for (const name of liveConfig(style)) {
+        const spec = parameters.get(name);
+        if (!spec) {
+            coverage.approximate(`config "${name}" is asked to stay live but the style never reads it`);
+            continue;
+        }
+        configValues.delete(name);
+        options.styleParams!.set(name, spec.values ? { default: spec.default, values: spec.values } : spec.default);
+        coverage.note(`config "${name}" stays a style parameter, settable on a running map`);
+    }
     if (configValues.size > 0) {
         coverage.approximate(`${configValues.size} config values baked in` +
             (configValues.has(LIGHT_PRESET) ? ` (${LIGHT_PRESET} = ${String(configValues.get(LIGHT_PRESET))})` : ''));
@@ -399,7 +425,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         const gate = buildings3DGate(layer);
         if (gate) buildings3D.set(layer.id, gate);
     }
-    const layers = (style.layers ?? []).map((layer) => {
+    const layers = (style.layers ?? []).map((raw) => {
+        const layer = applyMassifExtras(raw);
         const folded = foldLayer(layer, values, scene);
         if (!buildings3D.has(layer.id)) return folded;
         // The `buildings` parameter carries the switch now, so the visibility must not.
@@ -407,7 +434,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         return { ...folded, layout } as MapboxLayer;
     });
     if (options.foldCasings) {
-        const { layers: merged, folded } = foldCasings(layers);
+        const { layers: merged, folded, skipped } = foldCasings(layers);
+        if (skipped.length > 0) {
+            coverage.approximate(`${skipped.length} casing layer(s) left unfolded because their fill ` +
+                `states a line-sort-key (${skipped.map((f) => f.fill).join(', ')}); folded, the casing ` +
+                'would draw per class and land on the fill of the road beside it');
+        }
         layers.splice(0, layers.length, ...merged);
         if (folded.length > 0) {
             coverage.approximate(`${folded.length} casing layer(s) folded into their fill as line-border-* ` +
@@ -515,8 +547,13 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 ? (rewriteContourFields(schemaLayer as unknown as Json, options.contour) as unknown as MapboxLayer)
                 : schemaLayer;
 
-            // A field-driven paint value becomes one attachment per branch - see split.ts.
-            const variants = splitLayer(isContourLayer(layer) ? retargeted : schemaLayer, coverage);
+            // A field-driven paint value becomes one attachment per branch, and a line-sort-key one
+            // per key value in draw order - see split.ts.
+            const variants = expandSortKey(isContourLayer(layer) ? retargeted : schemaLayer, coverage)
+                .flatMap(expandSetFilter)
+                .flatMap((ordered) => splitLayer(ordered, coverage))
+                .flatMap((ordered) => splitDashByZoom(ordered, coverage))
+                .map(narrowLayer);
             variants.forEach((variant, branch) => {
                 const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
                 emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, target, symbolizer, index);
@@ -654,8 +691,24 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
         const paramised = paramiseValues(layer, options, coverage);
-        const source = symbolizer === 'building' ? flattenExtrusionOpacity(paramised.layer, coverage) : paramised.layer;
-        let declarations = layerDeclarations(source, symbolizer, allowed, coverage, options, layerIndex);
+        const extrusion = symbolizer === 'building'
+            ? flattenExtrusionOpacity(paramised.layer) : { layer: paramised.layer, opacity: null };
+        let declarations = layerDeclarations(extrusion.layer, symbolizer, allowed, coverage, options, layerIndex);
+        // The style's own opacity, as a parameter rather than a literal - see flattenExtrusionOpacity.
+        if (extrusion.opacity !== null) {
+            const stated = options.styleParams!.get(OPACITY_PARAM);
+            // One parameter for every extrusion, so a style asking for two different alphas gets the
+            // first of them everywhere. No source style does; say so rather than pick silently.
+            if (typeof stated === 'number' && stated !== extrusion.opacity) {
+                coverage.approximate(`"${layer.id}" asks for fill-extrusion-opacity ${extrusion.opacity} `
+                    + `where another extrusion asks for ${stated}: both draw at ${stated}, the `
+                    + `${OPACITY_PARAM} parameter being one knob for all of them`);
+            } else {
+                options.styleParams!.set(OPACITY_PARAM, extrusion.opacity);
+            }
+            declarations = declarations.map((declaration) => (declaration.startsWith('building-fill-opacity:')
+                ? `building-fill-opacity: [param::${OPACITY_PARAM}];` : declaration));
+        }
         if (paramised.subs.size > 0) {
             declarations = declarations.map((declaration) => {
                 for (const [sentinel, lookup] of paramised.subs) declaration = declaration.split(sentinel).join(lookup);
@@ -816,10 +869,19 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // bottom-to-top, so the project list is the draw order reversed.
     const projectLayers = projectEntries(drawOrder).reverse();
     const styles = variables ? [VARIABLES_FILE, 'style.mss'] : ['style.mss'];
+    // `fonts` is for whoever has to CARRY the project - the decoder finds them by scanning the
+    // package for <style>/fonts/ and needs no list, but a project served over HTTP cannot be
+    // listed, so the preview reads this to know what to fetch.
+    const fonts = options.fonts ?? [];
     const project = JSON.stringify(
-        options.styleParams!.size > 0
-            ? { styles, layers: projectLayers, styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
-            : { styles, layers: projectLayers },
+        {
+            styles,
+            layers: projectLayers,
+            ...(fonts.length > 0 ? { fonts } : {}),
+            ...(options.styleParams!.size > 0
+                ? { styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
+                : {}),
+        },
         null, 2) + '\n';
 
     // Only what DIFFERS from the shared table: a preset project extends project.json, and
@@ -979,33 +1041,80 @@ function rampLikeGroundAO(intensity: Json, layer: MapboxLayer): Json {
 }
 
 /**
- * A 3D building's OPACITY, taken as a constant.
+ * A 3D building's OPACITY, taken as a constant and carried as a STYLE PARAMETER.
  *
  * Standard fades an extrusion in by ramping `fill-extrusion-opacity` alongside its height. We draw
  * the shadow map from the buildings at their FULL cast whatever their alpha, so during the fade the
  * shadows are already at full strength and visible straight THROUGH the half-transparent walls that
  * cast them. The height ramp alone is the better fade: a building grows out of the ground opaque,
- * and its shadow grows with it.
+ * and its shadow grows with it. So the ramp is flattened to one number.
+ *
+ * That number is the style's, not ours. It used to be forced to 1 - the 3D pass draws with blending
+ * off, and MapTiler's 0.4 turned a city into a wash of half-buildings showing through each other -
+ * but forcing it also threw away what the style meant by it: maplibre draws Liberty's buildings at
+ * 0.8, which blends a fifth of the pale background back through every wall and is a good part of
+ * why ours read darker than the browser's. A parameter states the style's value and lets an app
+ * take it back to 1 as a redraw rather than a re-decode.
  */
-function flattenExtrusionOpacity(layer: MapboxLayer, coverage?: Coverage): MapboxLayer {
+function flattenExtrusionOpacity(layer: MapboxLayer): { layer: MapboxLayer; opacity: number | null } {
     const opacity = layer.paint?.['fill-extrusion-opacity'];
     let value: Json | undefined = opacity as Json | undefined;
     if (Array.isArray(opacity) && opacity[0] === 'interpolate') {
         const constant = representativeConstant(opacity as Json);
-        if (constant === null) return layer;
+        if (constant === null) return { layer, opacity: null };
         value = constant;
     }
-    // A TRANSLUCENT extrusion is not something this renderer can draw. Its 3D pass runs with
-    // blending off and depth writes on - one opaque surface per pixel - so a fractional alpha is
-    // not composited, it is written straight into the frame: MapTiler's 0.4 turned a city into a
-    // wash of half-buildings showing through each other. Opaque is the closer answer of the two.
-    if (typeof value === 'number' && value < 1) {
-        coverage?.approximate(`fill-extrusion-opacity ${value} on "${layer.id}" drawn opaque: `
-            + 'the 3D pass has no translucent path, and a fractional alpha reads as a wash');
-        value = 1;
-    }
-    if (value === opacity || value === undefined) return layer;
-    return { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': value } };
+    if (typeof value !== 'number') return { layer, opacity: null };
+    const clamped = Math.min(1, Math.max(0, value));
+    return {
+        layer: value === opacity ? layer : { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': clamped } },
+        opacity: clamped,
+    };
+}
+
+/** The style parameter a converted extrusion's opacity is carried as. */
+const OPACITY_PARAM = 'building_opacity';
+
+/**
+ * A layer's `metadata["massif:paint"]` / `["massif:layout"]`, merged over its real paint and layout,
+ * and `["massif:filter"]`, ANDed onto its real filter.
+ *
+ * A hand-written source style has to stay a VALID MapLibre style - the preview draws it with
+ * maplibre beside the SDK, and that comparison is the whole point of the file. But half of what is
+ * worth taking from Mapbox Standard is GL v3 only: `fill-extrusion-edge-radius`,
+ * `-vertical-scale`, `-ambient-occlusion-*`. Written into paint, maplibre rejects the style and the
+ * reference pane goes blank.
+ *
+ * `metadata` is the style spec's own escape hatch - arbitrary, and ignored by every renderer. So a
+ * property maplibre will not accept goes there, and this lifts it back out for the converter, which
+ * then treats it exactly as if Standard had stated it. Converting a real MapBox style is unaffected:
+ * it states these in paint, where they are legal for it.
+ *
+ * `massif:filter` is the same escape hatch for a test maplibre refuses outright - `["config", …]`
+ * is one, legal only inside an imported fragment and rejected in a filter anywhere - so a style
+ * that carries a second layer set behind a runtime switch keeps drawing its DEFAULT set in the
+ * reference pane, which is what a comparison wants.
+ */
+function applyMassifExtras(layer: MapboxLayer): MapboxLayer {
+    const metadata = layer.metadata;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return layer;
+    const paint = (metadata as Record<string, Json>)['massif:paint'];
+    const layout = (metadata as Record<string, Json>)['massif:layout'];
+    const filter = (metadata as Record<string, Json>)['massif:filter'];
+    const object = (value: Json | undefined) =>
+        (value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, Json> : null);
+    const extraPaint = object(paint);
+    const extraLayout = object(layout);
+    const extraFilter = Array.isArray(filter) ? filter as Json : null;
+    if (!extraPaint && !extraLayout && !extraFilter) return layer;
+    return {
+        ...layer,
+        paint: extraPaint ? { ...layer.paint, ...extraPaint } : layer.paint,
+        layout: extraLayout ? { ...layer.layout, ...extraLayout } : layer.layout,
+        filter: extraFilter
+            ? (layer.filter === undefined ? extraFilter : ['all', layer.filter as Json, extraFilter])
+            : layer.filter,
+    } as MapboxLayer;
 }
 
 function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean, aoFollowsHeight?: boolean): string[] {
@@ -1041,7 +1150,7 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
     if (ramp && !seen.has('building-height-scale')) {
         const minZoom = typeof layer.minzoom === 'number' ? layer.minzoom : 15;
         seen.add('building-height-scale');
-        out.push(`building-height-scale: linear(${ZOOM_INPUT}, (${round(minZoom)}, 0), (${round(minZoom + 0.3)}, 1));`);
+        out.push(`building-height-scale: linear(${zoomInput()}, (${round(minZoom)}, 0), (${round(minZoom + 0.3)}, 1));`);
         coverage.emit('building-height-scale');
     }
     return out;
@@ -1235,13 +1344,16 @@ function layerDeclarations(
     // beside the text-* ones rather than replacing them - unless the icon is a road shield, whose
     // sprite is picked per feature and is drawn as a plate behind the text instead.
     const isShield = layer.type === 'symbol' && isShieldLayer(layer);
+    const plates = layer.type === 'symbol' && !isShield ? flatPlateShield(layer, options) : null;
     const iconDeclarations = layer.type === 'model'
         ? canopyDeclarations(layer, coverage)
         : layer.type !== 'symbol'
             ? []
             : isShield
                 ? plateDeclarations(layer, coverage)
-                : markerDeclarations(layer, coverage, options);
+                : plates
+                    ? flatPlateDeclarations(layer, plates, options, coverage)
+                    : markerDeclarations(layer, coverage, options);
 
     if (symbolizer === 'text') {
         out.push(`text-placement: '${resolvePlacement(layer, 'text')}';`);
@@ -1358,6 +1470,7 @@ function layerDeclarations(
 
         // MapBox places the LOWEST sort key first; CartoCSS's culler takes the highest priority.
         if (name === 'symbol-sort-key') continue; // folded into the layer's priority below
+        if (name === 'line-sort-key') continue; // became this attachment's place in the order - see split.ts
 
         // MapBox's text-opacity fades the WHOLE label; CartoCSS's fades only the fill, and the halo
         // keeps its own. A style that hides a label with `step(zoom, 0, …, 13, 1)` was leaving the
@@ -1371,23 +1484,19 @@ function layerDeclarations(
             continue;
         }
 
-        // MapBox pads a label's collision box by text-padding on EVERY side, so two labels end up
-        // at least twice that apart; the culler's minimum-distance is one buffer between the pair.
-        // Dropping it was why a converted style drew far more labels than MapTiler does.
-        if (name === 'text-padding') {
-            // Not on a line-placed label, for the same reason the default below skips one: an
-            // unstated minimum lets the decoder floor it at the label's own size, which is what
-            // stops one road shield being drawn twice where two tiles cut the same road. MapBox's
-            // 2 px is a collision pad, not a repeat distance, and writing it here disabled that
-            // floor - two D 1508 shields a few pixels apart.
-            if (followsLine(layer)) {
-                coverage.drop('text-padding', 'a line-placed label keeps the decoder\'s own repeat floor', layer.id);
-                continue;
-            }
+        // MapBox grows a label's collision box by text-padding on every side and tests the grown
+        // boxes against each other, which is what `collision-padding` is. It used to arrive as a
+        // minimum-distance, which is a different thing - that one only separates labels of the same
+        // GROUP (the text hash), so two different road shields were held apart by nothing, and it
+        // doubles as the repeat floor, so a line-placed label could not be given one at all.
+        if ((name === 'text-padding' || name === 'icon-padding')
+                && (symbolizer === 'text' || symbolizer === 'shield')) {
             const translated = tryTranslate(value, name, layer.id, coverage);
             if (translated === null) continue;
-            out.push(`text-min-distance: (${labelGap(options)} * ${translated});`);
-            coverage.emit('text-min-distance');
+            const property = symbolizer === 'shield' ? 'shield-collision-padding' : 'text-collision-padding';
+            if (out.some((declaration) => declaration.startsWith(`${property}:`))) continue; // icon-padding after text-padding
+            out.push(`${property}: (${collisionPad(options)} * ${translated});`);
+            coverage.emit(property);
             continue;
         }
 
@@ -1454,8 +1563,11 @@ function layerDeclarations(
             // At the zoom the pattern is CHOSEN at, not the mean of the width's stops: Standard's
             // steps ramp to 80 px by z22, so the mean is 43 and its 0.2 dash came out at 8.6 px
             // where gl-js draws under 2 - coarse bands instead of fine treads.
-            const scale = (zoom === null ? null : rampAt(width, zoom)) ?? representativeScale(width, 1);
-            if (typeof width !== 'number') {
+            // A banded attachment reads the width in the middle of its OWN band; see splitDashByZoom.
+            const banded = layer.dashZoom === undefined ? null : rampAt(width, layer.dashZoom);
+            const scale = banded ?? (zoom === null ? null : rampAt(width, zoom))
+                ?? representativeScale(width, 1);
+            if (typeof width !== 'number' && banded === null) {
                 coverage.approximate(`line-dasharray scaled by ${round(scale)}, a zoom-driven ` +
                     'line-width read at one zoom: CartoCSS takes one dash pattern, not a ramp');
             }
@@ -1514,13 +1626,26 @@ function layerDeclarations(
 
         const target = table[name];
         if (!target) {
-            coverage.drop(name, KNOWN_GAPS[name] ?? 'not mapped', layer.id);
+            // An extrusion's LOOK is a Map setting here, and buildingMapSettings has already taken
+            // it (see BUILDING_MAP_SETTINGS). Reporting it dropped as well says a bevel or an
+            // ambient occlusion was thrown away when it is in the Map block.
+            if (!(symbolizer === 'building' && name in BUILDING_MAP_SETTINGS)) {
+                coverage.drop(name, KNOWN_GAPS[name] ?? 'not mapped', layer.id);
+            }
             continue;
         }
         if (!allowed.has(target)) {
             // The table above claims a property the decoder does not bind - a bug here, not in the
             // source style. Say so rather than blaming the style.
             coverage.drop(name, `maps to "${target}", absent from the generated allowlist`, layer.id);
+            continue;
+        }
+
+        // A per-category palette belongs in project.json, not baked into the rule.
+        const paramTable = fieldParamTable(value, layer, name, target, coverage, options);
+        if (paramTable !== null) {
+            out.push(`${target}: ${paramTable};`);
+            coverage.emit(target);
             continue;
         }
 
@@ -1538,13 +1663,13 @@ function layerDeclarations(
         }
     }
 
-    // text-padding is 2 px on every layer that states nothing, and the culler's default is 0. A
-    // line-placed label is left out: when no minimum distance is stated the decoder floors it at
-    // the label's own size, which is what stops a repeat of the same name being drawn twice where
-    // two tiles cut the same road (TextSymbolizer, text-spacing). Writing 4 px there disabled that.
-    if (symbolizer === 'text' && !followsLine(layer) && !out.some((d) => d.startsWith('text-min-distance:'))) {
-        out.push(`text-min-distance: ${labelGap(options) * DEFAULT_TEXT_PADDING};`);
-        coverage.emit('text-min-distance');
+    // text-padding is 2 px on every MapBox layer that states nothing, and the culler's own floor is
+    // one label unit. A line-placed label gets it too now: it pads the collision box, where the old
+    // minimum-distance would have disabled the repeat floor the decoder needs.
+    const padded = symbolizer === 'shield' ? 'shield-collision-padding' : 'text-collision-padding';
+    if ((symbolizer === 'text' || symbolizer === 'shield') && !out.some((d) => d.startsWith(`${padded}:`))) {
+        out.push(`${padded}: ${collisionPad(options) * DEFAULT_TEXT_PADDING};`);
+        coverage.emit(padded);
     }
 
     // MapBox repeats a line label every 250 px whether or not the layer says so; CartoCSS's spacing
@@ -1621,7 +1746,8 @@ function layerDeclarations(
  * border falls exactly where the artwork's ring was. All three colours are style properties here,
  * so they are evaluated per feature, which is what gets a POI its class colour back.
  */
-function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage): string[] {
+function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage,
+                               options: ConvertOptions): string[] {
     const params = layer.layout?.[ICON_PARAMS] as Record<string, Json> | undefined;
     if (!icon.plate || !params) return [];
     const out: string[] = [];
@@ -1630,7 +1756,10 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     const scoped = (value: string) => (icon.plateWhen ? `(${icon.plateWhen} ? ${value} : transparent)` : value);
     const colour = (name: string, target: string, gate = false): boolean => {
         if (params[name] === undefined) return false;
-        const translated = tryTranslate(params[name], `icon-image params.${name}`, layer.id, coverage);
+        // `"massif:params": ["icon-image"]` puts the icon's own palette in project.json too, so the
+        // disc, its ring and the glyph are tuned in the same place as the label's colour.
+        const translated = fieldParamTable(params[name], layer, 'icon-image', target, coverage, options)
+            ?? tryTranslate(params[name], `icon-image params.${name}`, layer.id, coverage);
         if (translated === null) return false;
         out.push(`${target}: ${gate ? scoped(translated) : translated};`);
         coverage.emit(target);
@@ -1640,11 +1769,17 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     // The glyph, unless the layer states an icon-color of its own - that one is already out.
     if (layer.paint?.['icon-color'] === undefined) colour('icon', 'shield-icon-fill');
     colour('background', 'shield-icon-background-fill', true);
+    // A shape the STYLE states wins over the one measured off the drawing. Radius alone spells every
+    // plate there is - half the box is a circle, a few pixels a rounded square, 0 a rectangle - so a
+    // transit badge needs no artwork of its own, and one sheet of discs covers the lot. Measured
+    // otherwise, which is what a Standard sheet of real roundels wants.
+    if (!colour('radius', 'shield-icon-background-radius')) {
+        out.push(`shield-icon-background-radius: ${round(icon.plate.radius)};`);
+        coverage.emit('shield-icon-background-radius');
+    }
     // Both paddings default to a text plate's, which would grow the disc off its own artwork.
-    out.push(`shield-icon-background-radius: ${round(icon.plate.radius)};`,
-        'shield-icon-background-padding-x: 0;',
+    out.push('shield-icon-background-padding-x: 0;',
         'shield-icon-background-padding-y: 0;');
-    coverage.emit('shield-icon-background-radius');
     coverage.emit('shield-icon-background-padding-x');
     coverage.emit('shield-icon-background-padding-y');
     // Only with a colour to draw it in. `icon-background-border-fill` defaults to BLACK, and
@@ -1682,6 +1817,167 @@ function plateDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
     coverage.emit('text-background-radius');
     coverage.note(`"${layer.id}": shield sprite drawn as a text background plate, so the ` +
         'country-specific artwork is lost but the ref stays readable');
+    return out;
+}
+
+/** MapBox's own default when a layer states no icon-text-fit-padding. */
+const DEFAULT_FIT_PADDING = [0, 0, 0, 0];
+
+/**
+ * Rebuild an icon-image expression with every image NAME replaced by whatever `of` returns for it.
+ * Null when a name could be built rather than chosen - a `concat` of a field - because then the set
+ * of images the layer can draw is not knowable here.
+ */
+function mapImageNames(image: Json, of: (name: string) => Json | null): Json | null {
+    if (typeof image === 'string') return of(image);
+    if (!Array.isArray(image)) return null;
+    const head = image[0];
+    const rebuild = (indices: number[]): Json | null => {
+        const out = [...image] as Json[];
+        for (const i of indices) {
+            const mapped = mapImageNames(image[i] as Json, of);
+            if (mapped === null) return null;
+            out[i] = mapped;
+        }
+        return out;
+    };
+    if (head === 'image' || head === 'to-string') return mapImageNames(image[1] as Json, of);
+    if (head === 'coalesce') return rebuild(image.map((_, i) => i).slice(1));
+    if (head === 'case' && image.length >= 4 && image.length % 2 === 0) {
+        const branches = [];
+        for (let i = 2; i < image.length; i += 2) branches.push(i);
+        return rebuild([...branches, image.length - 1]);
+    }
+    if (head === 'match' && image.length >= 5 && image.length % 2 === 1) {
+        const branches = [];
+        for (let i = 3; i < image.length; i += 2) branches.push(i);
+        return rebuild([...branches, image.length - 1]);
+    }
+    return null;
+}
+
+/**
+ * The plate's colour per feature, as the ternary that picked its image - with the leaf image name
+ * replaced by the colour read off that artwork.
+ *
+ * A branch whose CONDITION has no CartoCSS form is skipped rather than fatal, the same way the
+ * sprite path treats one: MapTiler picks a shield on `slice(ref, 2, 3)` in places, and dropping the
+ * whole expression for it would cost every road its plate where dropping the branch costs one
+ * country its colour.
+ */
+function plateTernary(image: Json, colourOf: (name: string) => string, onSkip: () => void): string | null {
+    const leaf = (node: Json): string | null => {
+        if (typeof node === 'string') return colourOf(node);
+        if (Array.isArray(node) && node.length === 2
+            && (node[0] === 'image' || node[0] === 'string' || node[0] === 'to-string')) {
+            return leaf(node[1] as Json);
+        }
+        return null;
+    };
+
+    const build = (node: Json): string | null => {
+        const direct = leaf(node);
+        if (direct !== null) return direct;
+        if (!Array.isArray(node)) return null;
+
+        const pairs: Array<[Json, Json]> = [];
+        if (node[0] === 'case' && node.length >= 4 && node.length % 2 === 0) {
+            for (let i = 1; i < node.length - 1; i += 2) pairs.push([node[i] as Json, node[i + 1] as Json]);
+        } else if (node[0] === 'match' && node.length >= 5 && node.length % 2 === 1) {
+            const input = node[1] as Json;
+            for (let i = 2; i < node.length - 1; i += 2) {
+                const labels = Array.isArray(node[i]) ? node[i] as Json[] : [node[i] as Json];
+                const test = labels.length === 1
+                    ? ['==', input, labels[0]]
+                    : ['any', ...labels.map((l) => ['==', input, l])];
+                pairs.push([test as unknown as Json, node[i + 1] as Json]);
+            }
+        } else {
+            return null;
+        }
+
+        let expr = build(node[node.length - 1] as Json);
+        if (expr === null) return null;
+        for (const [condition, value] of [...pairs].reverse()) {
+            const colour = build(value);
+            let test: string | null = null;
+            try {
+                test = colour === null ? null : translateExpression(condition);
+            } catch {
+                test = null;
+            }
+            if (test === null) {
+                onSkip();
+                continue;
+            }
+            expr = `((${test}) ? ${colour} : ${expr})`;
+        }
+        return expr;
+    };
+    return build(image);
+}
+
+/**
+ * A shield whose every image is a flat plate - see describeFlatPlate. The SDK draws that without a
+ * bitmap at all, so the artwork is read for its colours and thrown away; only a shield whose
+ * outline carries meaning (a US interstate) keeps its sprite.
+ */
+function flatPlateShield(layer: MapboxLayer, options: ConvertOptions): FlatPlate[] | null {
+    const layout = layer.layout ?? {};
+    const fit = layout['icon-text-fit'];
+    if (!options.sprites || layout['text-field'] === undefined) return null;
+    // The image has to BE the text's background, not something beside it.
+    if (fit === undefined || fit === 'none') return null;
+    const plates: FlatPlate[] = [];
+    const image = layout['icon-image'] as Json;
+    const mapped = mapImageNames(image, (name) => {
+        const plate = describeFlatPlate(options.sprites!.sheets, name);
+        if (!plate) return null;
+        plates.push(plate);
+        return name;
+    });
+    if (mapped === null || plates.length === 0) return null;
+    // A shape this builder cannot write out keeps its sprite rather than losing its colour.
+    return plateTernary(image, () => '#000000', () => {}) === null ? null : plates;
+}
+
+/**
+ * A flat plate as the label's own background: the colours come from the artwork, per feature,
+ * through the same expression that picked the image.
+ */
+function flatPlateDeclarations(layer: MapboxLayer, plates: FlatPlate[], options: ConvertOptions,
+        coverage: Coverage): string[] {
+    const sheets = options.sprites!.sheets;
+    const image = (layer.layout ?? {})['icon-image'] as Json;
+    const colourOf = (pick: (plate: FlatPlate) => string) =>
+        plateTernary(image, (name) => pick(describeFlatPlate(sheets, name)!), () => {
+            coverage.approximate(`one plate branch on "${layer.id}" has no CartoCSS form and is ` +
+                'skipped: those features take the next branch that matches');
+        });
+
+    const out = [`text-background-fill: ${colourOf((p) => p.fill)};`];
+    coverage.emit('text-background-fill');
+    if (plates.some((p) => p.borderWidth > 0)) {
+        out.push(`text-background-border-fill: ${colourOf((p) => p.border)};`);
+        out.push(`text-background-border-width: ${round(Math.max(...plates.map((p) => p.borderWidth)))};`);
+        coverage.emit('text-background-border-fill');
+        coverage.emit('text-background-border-width');
+    }
+    out.push(`text-background-radius: ${round(Math.max(...plates.map((p) => p.radius)))};`);
+    coverage.emit('text-background-radius');
+
+    // MapBox grows the image to the text and pads by icon-text-fit-padding; the plate is grown by
+    // the decoder, so the same numbers become its padding. [top, right, bottom, left].
+    const fit = ((layer.layout ?? {})['icon-text-fit-padding'] ?? DEFAULT_FIT_PADDING) as number[];
+    out.push(`text-background-padding-x: ${round((fit[1] + fit[3]) / 2)};`);
+    out.push(`text-background-padding-y: ${round((fit[0] + fit[2]) / 2)};`);
+    coverage.emit('text-background-padding-x');
+    coverage.emit('text-background-padding-y');
+    coverage.emit('icon-text-fit');
+    coverage.emit('icon-text-fit-padding');
+    coverage.emit('icon-image');
+    coverage.note(`"${layer.id}": every image is a flat plate, so the colours are read off the ` +
+        'artwork and the label draws its own background - no sprite ships');
     return out;
 }
 
@@ -1733,7 +2029,7 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
         // mapbox and now separate here.
         emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
         emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
-        out.push(...iconPlateDeclarations(layer, icon, coverage));
+        out.push(...iconPlateDeclarations(layer, icon, coverage, options));
     } else if (layer.layout?.[RECOLOURABLE_ICON] === true) {
         // A recolourable sprite whose artwork is NOT a disc with a glyph on it (extractIconPlate
         // took it apart where it is): the sheet ships one flat render with the icon's own default
@@ -1791,6 +2087,82 @@ function dashPattern(value: Json): { pattern: number[]; zoom: number | null } | 
     const pattern = dashing.length ? dashing[dashing.length - 1] : patterns[0];
     return { pattern, zoom: stopZoomOf(value, pattern) };
 }
+
+/**
+ * A dashed line whose WIDTH ramps over zoom, as one attachment per zoom band.
+ *
+ * A MapBox dash length is a multiple of the line width, and CartoCSS takes ONE pattern of PIXELS per
+ * rule - the decoder rasterises it into a bitmap keyed by the literal string, so it cannot be a
+ * function of anything. A single rule is therefore only right at one zoom: Liberty's rail hatching
+ * ramps its width 3 -> 8 between z15 and z20, and the one scale we could pick drew the dash 1.8x too
+ * long at the bottom of that range and 0.7x too short at the top.
+ *
+ * Banded, each attachment scales its dash by the width in the MIDDLE of its own band, and the bands
+ * are cut where the width DOUBLES - so the worst error inside one is a factor of sqrt(2) instead of
+ * the whole ramp. The outer edges keep the layer's own zoom range, so nothing stops being drawn.
+ *
+ * It lives here rather than in split.ts because it needs `dashPattern` and `rampAt`, and moving
+ * those would cost an import cycle for one caller.
+ */
+function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
+    const dash = layer.paint?.['line-dasharray'];
+    const width = layer.paint?.['line-width'];
+    if (dash === undefined || layer.dashZoom !== undefined || !Array.isArray(width)) return [layer];
+    const pattern = dashPattern(dash as Json);
+    // A dash the style RAMPS states the zoom its pattern begins at, and reading the width there is
+    // already the targeted answer - Standard's treads depend on it. Banding is for the plain
+    // literal dash, which has no zoom of its own to be read at.
+    if (pattern === null || pattern.zoom !== null) return [layer];
+
+    // From the first stop that is actually DRAWN, not the first stop: a ramp starting at width 0 -
+    // Liberty's rail hatchings start (14.5, 0) - has nothing to keep the dash in proportion to
+    // below it. And no further than the last stop, above which the width is flat and a band would
+    // read the same number twice.
+    const stops = rampStops(width as Json);
+    const lo = Math.floor(Math.max(layer.minzoom ?? 0, stops.find(([, w]) => w > 0)?.[0] ?? 0));
+    const hi = Math.ceil(Math.min(layer.maxzoom ?? 24, stops[stops.length - 1]?.[0] ?? 24, 24));
+    const wLo = rampAt(width as Json, lo);
+    const wHi = rampAt(width as Json, hi);
+    if (hi - lo < 2 || !wLo || !wHi || wLo <= 0 || wHi <= 0) return [layer];
+
+    // Cut where the width DOUBLES, rounding up: a band spanning a 2x range is at worst sqrt(2) out
+    // in the middle, which is the error this is willing to keep.
+    const ratio = Math.max(wHi / wLo, wLo / wHi);
+    const bandCount = Math.min(MAX_DASH_BANDS, hi - lo, Math.ceil(Math.log2(ratio)));
+    if (bandCount < 2) return [layer];
+
+    const step = Math.max(1, Math.round((hi - lo) / bandCount));
+    const bands: MapboxLayer[] = [];
+    for (let from = lo; from < hi; from += step) {
+        const to = Math.min(hi, from + step);
+        bands.push({
+            ...layer,
+            // The ends keep whatever the layer stated, so banding never narrows what it draws.
+            minzoom: from === lo ? layer.minzoom : from,
+            maxzoom: to >= hi ? layer.maxzoom : to,
+            dashZoom: (from + to) / 2,
+        });
+    }
+    if (bands.length < 2) return [layer];
+    coverage.approximate(`line-dasharray on "${layer.id}" split into ${bands.length} zoom bands: a `
+        + 'dash is a multiple of the line width and CartoCSS takes one pattern per rule, so a '
+        + 'ramped width needs a rule per band to stay in proportion');
+    return bands;
+}
+
+/** A zoom ramp's `(zoom, value)` stops, in order. Empty for anything that is not one. */
+function rampStops(expr: Json): Array<[number, number]> {
+    if (!Array.isArray(expr) || (expr[0] !== 'interpolate' && expr[0] !== 'step')) return [];
+    const stops: Array<[number, number]> = [];
+    for (let i = 3; i + 1 < expr.length; i += 2) {
+        const value = stopNumber(expr[i + 1] as Json);
+        if (typeof expr[i] === 'number' && value !== null) stops.push([expr[i] as number, value]);
+    }
+    return stops;
+}
+
+/** Past this the rule count costs more than the dash proportions are worth. */
+const MAX_DASH_BANDS = 4;
 
 /** The zoom a `step` ramp switches to this pattern at, so the line width can be read there. */
 function stopZoomOf(value: Json, pattern: number[]): number | null {
@@ -1878,6 +2250,18 @@ const VARIABLE_ANCHORS = new Set([
 ]);
 
 /**
+ * The two spellings are OPPOSITES. MapBox names the part of the TEXT nearest the anchor, so
+ * `bottom` puts the text ABOVE the point; the SDK names the SIDE the text is laid out on
+ * (`vt::LabelAnchor`, "which side of its anchor a label's text is laid out on"), so `bottom` puts it
+ * BELOW. Carried across name-for-name, every anchored label sat on the wrong side of its icon - and
+ * it read as correct in one pane at a time, since the two errors cancel when only one is looked at.
+ */
+function oppositeAnchor(anchor: string): string {
+    const flip: Record<string, string> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+    return anchor.split('-').map((part) => flip[part] ?? part).join('');
+}
+
+/**
  * MapBox tries each of `text-variable-anchor` in turn and keeps the first side the label fits on,
  * falling back to the icon alone when `text-optional` allows it. `ShieldSymbolizer` does the same
  * thing from the same list, so the four properties that describe it map straight across - all of
@@ -1906,7 +2290,7 @@ function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage, opti
             coverage.drop('text-variable-anchor', 'unknown anchor in the list', layer.id);
         }
         if (anchors.length) {
-            out.push(`shield-anchors: '${anchors.map((a) => a.replace('-', '')).join(',')}';`);
+            out.push(`shield-anchors: '${anchors.map(oppositeAnchor).join(',')}';`);
             coverage.emit('shield-anchors');
         }
     }
@@ -1919,14 +2303,16 @@ function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage, opti
         coverage.drop('text-optional', 'only a literal true is carried', layer.id);
     }
 
-    // The gap between icon and text, which the SDK mirrors per side - so it is stated once, as dx,
-    // whichever side wins. Only read when no text-offset states it, as MapBox does.
+    // Carried as MapBox's own property, not as dx: it is measured from the ANCHOR to the near edge
+    // of the text, on the chosen side's axis and nothing across it (evaluateVariableOffset). Read as
+    // dx the SDK added the icon's half-width to every side gap, and slid a name centred under its
+    // icon one dx to the right. Only read when no text-offset states it, as MapBox does.
     const radial = layout['text-radial-offset'];
     if (typeof radial === 'number' && radial !== 0 && layout['text-offset'] === undefined) {
         const gap = ems(radial, layer, coverage, 'text-radial-offset');
         if (gap !== null) {
-            out.push(`shield-text-dx: ${gap};`);
-            coverage.emit('shield-text-dx');
+            out.push(`shield-text-radial-offset: ${gap};`);
+            coverage.emit('shield-text-radial-offset');
         }
     } else if (radial !== undefined && typeof radial !== 'number') {
         coverage.drop('text-radial-offset', 'only a literal offset is carried', layer.id);
@@ -2928,13 +3314,12 @@ function placementPriority(layer: MapboxLayer, layerIndex: number, coverage: Cov
 }
 
 /**
- * What one unit of MapBox's text-padding is worth as a minimum-distance. MapBox pads a label's
- * collision box on EVERY side, so two labels end up at least twice the padding apart, while
- * minimum-distance is the one buffer between the pair - hence the 2. --label-spacing scales it for
- * a map that wants thinning beyond what the style asks for.
+ * What one unit of MapBox's text-padding is worth as a collision padding: one for one, since both
+ * grow the box on every side. --label-spacing scales it for a map that wants thinning beyond what
+ * the style asks for.
  */
-function labelGap(options: ConvertOptions): number {
-    return 2 * (options.labelSpacing ?? 1);
+function collisionPad(options: ConvertOptions): number {
+    return options.labelSpacing ?? 1;
 }
 
 /** MapBox defaults for a layer that never states them. */
@@ -3001,6 +3386,78 @@ function emitTranslated(
 }
 
 /** The translated form of a layer property, counting the drop itself when it has none. */
+/**
+ * A `match` on ONE field whose branches are all constants, written as a style-parameter LOOKUP keyed
+ * by that field - `[param::poi-fill-bus]`, one parameter per label - instead of the ternary chain
+ * the decoder would otherwise walk per feature.
+ *
+ * Two things come with it. A category palette becomes EDITABLE in project.json without touching the
+ * generated stylesheet, which is where a style's colours want to live; and sixty string comparisons
+ * per POI become one lookup. The fallback stays in the rule, so a class the table does not name
+ * still draws - `??` is what a parameter miss falls through on, as the icon table already relies on.
+ *
+ * OPT-IN, per property, through the style's own metadata:
+ *
+ *     "metadata": { "massif:params": ["text-color"] }
+ *
+ * which keeps the layer a valid MapLibre style (metadata is ignored by every renderer) and leaves
+ * every other converted style byte-identical. A table is worth it for a palette the author means to
+ * tune and not for the two-branch colour ramp on a road, and only the author knows which is which.
+ */
+function fieldParamTable(value: Json, layer: MapboxLayer, property: string, target: string,
+                         coverage: Coverage, options: ConvertOptions): string | null {
+    if (!options.styleParams || !Array.isArray(value) || value[0] !== 'match') return null;
+    const asked = (layer.metadata as Record<string, Json> | undefined)?.['massif:params'];
+    if (!Array.isArray(asked) || !asked.includes(property)) return null;
+    if (value.length < 5 || value.length % 2 === 0) return null;
+    const input = value[1] as Json;
+    if (!Array.isArray(input) || input[0] !== 'get' || typeof input[1] !== 'string') return null;
+    const field = input[1];
+
+    const entries: Array<[string, Json]> = [];
+    for (let i = 2; i + 1 < value.length; i += 2) {
+        const labels = Array.isArray(value[i]) ? value[i] as Json[] : [value[i] as Json];
+        const branch = value[i + 1] as Json;
+        if (typeof branch !== 'string' && typeof branch !== 'number') return null;
+        for (const label of labels) {
+            if (typeof label !== 'string' || !/^[A-Za-z0-9_]+$/.test(label)) return null;
+            entries.push([label, branch]);
+        }
+    }
+
+    const rest = value[value.length - 1] as Json;
+    if (typeof rest !== 'string' && typeof rest !== 'number') return null;
+    const fallback = tryTranslate(rest, property, layer.id, coverage);
+    if (fallback === null) return null;
+
+    const slug = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}`;
+    for (const [label, branch] of entries) options.styleParams.set(`${slug}-${label}`, paramValue(branch));
+    coverage.note(`"${layer.id}": ${property} is a ${entries.length}-entry table in project.json ` +
+        `(${slug}-*), read per feature by [${field}]`);
+    return `(([param::${slug}-[${field}]]) ?? ${fallback})`;
+}
+
+/**
+ * A parameter value as the DECODER will read it. A colour goes in as hex: a style parameter is a
+ * plain string that `parseColor` has to read at runtime, and its grammar knows `#rrggbb`, `rgb()`
+ * and the CSS names but NOT `hsl()` - which the CartoCSS compiler does know, so an hsl() literal in
+ * a rule is fine and the same literal in a parameter silently lost every POI its colour.
+ */
+function paramValue(branch: Json): Json {
+    if (typeof branch !== 'string') return branch;
+    const hsla = toHsla(branch);
+    if (!hsla) return branch;
+    const [h, s, l, a] = hsla;
+    if (a < 1) return branch; // an alpha has no hex spelling here; rgba() parses, so leave it
+    const c = (1 - Math.abs(2 * l / 100 - 1)) * (s / 100);
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l / 100 - c / 2;
+    const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+        : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    const hex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
 function name(property: string, layer: MapboxLayer, coverage: Coverage): string | null {
     const value = layer.paint?.[property] ?? layer.layout?.[property];
     if (value === undefined) return null;

@@ -12,6 +12,7 @@
 #include <cmath>
 #include <limits>
 #include <cglib/mat.h>
+#include <vt/ViewState.h>
 
 namespace massif {
 
@@ -366,6 +367,10 @@ namespace massif {
     const cglib::frustum3<double>& ViewState::getFrustum() const {
         return _frustum;
     }
+
+    const cglib::frustum3<double>& ViewState::getLabelFrustum() const {
+        return _labelFrustum;
+    }
     
     int ViewState::getScreenWidth() const {
         return _width;
@@ -633,6 +638,12 @@ namespace massif {
             // Double precision mvp matrix and frustum
             _modelviewProjectionMat = _projectionMat * _modelviewMat;
             _frustum = cglib::gl_projection_frustum(_modelviewProjectionMat);
+
+            // A label is placed in a band that reaches past the viewport, so the tiles filling that
+            // band have to be culled in too - a label cannot be placed early if its tile is absent.
+            float labelPadding = vt::ViewState::calculateLabelPadding(_tilt);
+            cglib::mat4x4<double> labelProjectionMat = vt::ViewState::paddedProjectionMatrix(_projectionMat, labelPadding, getAspectRatio(), _normalizedResolution);
+            _labelFrustum = cglib::gl_projection_frustum(labelProjectionMat * _modelviewMat);
 
             // Rte modleview matrix only requires float precision
             _rteModelviewMat = cglib::mat4x4<float>::convert(_modelviewMat);

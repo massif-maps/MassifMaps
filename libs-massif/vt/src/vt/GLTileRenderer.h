@@ -436,10 +436,13 @@ namespace massif::vt {
         void setClickHandlerLayerFilter(const std::optional<std::regex>& filter);
         void setViewState(const ViewState& viewState);
         void setLineAntialiasScale(float scale);
+        // `labelOnlyTiles`: tiles outside the view frustum, in the label band or the preloading
+        // ring. Their labels are built and placed - which is what lets one arrive at full opacity
+        // instead of fading in on screen - and their geometry is never drawn.
         // `spanReferenceTiles`: tiles fetched UNSEEN for the chord of a stranded bridge piece
         // (collectUnresolvedSpanEnds). They join the span unions and nothing else - not drawn,
         // no labels - so a reference that overlaps the view does not double its geometry.
-        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles = {});
+        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles = {}, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles = {});
         void teleportVisibleTiles(int dx, int dy);
 
         void initializeRenderer();

@@ -12,7 +12,7 @@ Scope: from the camera to a decoded `vt::Tile`. The GL side is [03-vt-renderer.m
 
 ```
 CullWorker (per layer, background)
-  └─ TileLayer::calculateVisibleTiles          visible + preloading tile lists
+  └─ TileLayer::calculateVisibleTiles          visible + label + preloading tile lists
        └─ TileLayer::buildFetchTiles           what is missing from the caches
             └─ tile loading pool: data source → decoder → vt::Tile
                  └─ TileRenderer / GLTileRenderer::setVisibleTiles  (render tiles, labels)
@@ -308,7 +308,18 @@ reasonable can be ruinous multiplied together, and an app has no way to see that
   arrived just as fast, and for a source that generates tiles (traced contours) each preview was a full
   pass thrown away seconds later. It is **−1** now: wanted tiles first, preview after.
 - Preloading tiles are those inside an enlarged frustum (`PRELOADING_TILE_SCALE`) but not visible;
-  they are fetched at lower priority so panning does not start from nothing.
+  they are fetched at lower priority so panning does not start from nothing. Preloading is **off by
+  default**, so by default nothing outside the viewport reached the renderer at all.
+- **Label tiles** are the third bucket, between the two: outside the viewport but inside
+  `ViewState::getLabelFrustum()`, the band the label culler places against. They are fetched and
+  handed over whatever `isPreloading()` says, because a label that does not exist cannot be placed
+  before it scrolls in — the measured A/B is in
+  [06-labels.mdx](06-labels.mdx#a-label-is-placed-before-it-reaches-the-screen).
+- **A tile outside the frustum is handed over for its labels, never for its geometry.**
+  `TileRenderer::refreshTiles` splits the draw datas on `isPreloadingTile()` — true for the label
+  bucket and the preloading ring alike — and `GLTileRenderer::setVisibleTiles` takes that half as
+  `labelOnlyTiles`: it joins `buildLabelMaps` and skips `buildTileSurfaces`/`buildRenderTiles`.
+  Drawing them instead cost 4.3% of the frame rate on the Crosscall for pixels nobody sees.
 - Tiles live in the layer's memory cache plus an optional persistent cache
   (`PersistentCacheTileDataSource`). The persistent cache is why a device re-run is not a cold run —
   `pm clear` is the only reliable reset ([10-performance.md](10-performance.md)).

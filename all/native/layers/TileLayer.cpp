@@ -268,6 +268,7 @@ namespace massif {
         _maxStandInLevel(MAX_STAND_IN_DEPTH),
         _maxUnderzoomLevel(MAX_CHILD_SEARCH_DEPTH),
         _visibleTiles(),
+        _labelTiles(),
         _preloadingTiles(),
         _utfGridTiles(),
         _tileCullState(),
@@ -437,6 +438,10 @@ namespace massif {
         // Find replacements for visible tiles, create fetch list
         std::vector<FetchTileInfo> fetchTileList;
         buildFetchTiles(_visibleTiles, false, fetchTileList);
+        // Not gated on _preloading: these are the tiles the label band reaches into, and a label
+        // there is the difference between arriving drawn and fading in mid-screen. They are cached
+        // and handed over like preloading tiles, so nothing else about them is special.
+        buildFetchTiles(_labelTiles, true, fetchTileList);
         if (_preloading) {
             buildFetchTiles(_preloadingTiles, true, fetchTileList);
         }
@@ -726,8 +731,9 @@ namespace massif {
     }
 
     void TileLayer::calculateVisibleTiles(const std::shared_ptr<CullState>& cullState) {
-        // Remove last visible and preloading tiles
+        // Remove last visible, label and preloading tiles
         _visibleTiles.clear();
+        _labelTiles.clear();
         _preloadingTiles.clear();
 
         // Read first: everything below that turns a camera zoom into a tile zoom needs it.
@@ -857,6 +863,7 @@ namespace massif {
         }
         
         sortTiles(_visibleTiles, cullState->getViewState(), false);
+        sortTiles(_labelTiles, cullState->getViewState(), true);
         sortTiles(_preloadingTiles, cullState->getViewState(), true);
     }
 
@@ -974,6 +981,8 @@ namespace massif {
             // Add the tile to visible tiles, sort by the distnace to the camera
             if (inVisibleFrustum) {
                 _visibleTiles.push_back(tile);
+            } else if (viewState.getLabelFrustum().inside(tileBounds)) {
+                _labelTiles.push_back(tile);
             } else {
                 _preloadingTiles.push_back(tile);
             }

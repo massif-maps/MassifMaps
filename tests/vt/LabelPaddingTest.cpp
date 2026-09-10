@@ -69,3 +69,29 @@ void testLabelPadding() {
     TEST_CHECK(reachAlongX(horizon.labelFrustum) > reachAlongX(horizon.frustum),
                "and the floor still reaches past the viewport");
 }
+
+/*
+ * The band is only worth its cost if the TILES filling it are culled in: a label cannot be placed
+ * early when its tile is not there yet. TileLayer::calculateVisibleTilesRecursive branches on
+ * exactly the two tests below - graphics/ViewState builds its label frustum from this same matrix.
+ */
+void testLabelBandTiles() {
+    ViewState down = buildViewState(90.0f, 1000.0f);
+    double plain = reachAlongX(down.frustum);
+    double padded = reachAlongX(down.labelFrustum);
+
+    // A tile-sized box wholly in the band: the plain frustum drops it, the label one keeps it.
+    cglib::bbox3<double> banded(cglib::vec3<double>(plain + 1, -1, 0), cglib::vec3<double>(padded - 1, 1, 0));
+    TEST_CHECK(!down.frustum.inside(banded), "a tile past the viewport edge is not a visible tile");
+    TEST_CHECK(down.labelFrustum.inside(banded), "but it is a label tile, so its labels get built");
+
+    // Past the band it is neither, or the band would not bound anything.
+    cglib::bbox3<double> beyond(cglib::vec3<double>(padded + 1, -1, 0), cglib::vec3<double>(padded + 10, 1, 0));
+    TEST_CHECK(!down.labelFrustum.inside(beyond), "past the band a tile is preloading at best");
+
+    // The static the tile culler calls is the one the label frustum is built from - no second band.
+    cglib::mat4x4<double> matrix = ViewState::paddedProjectionMatrix(down.projectionMatrix, down.labelPadding, down.aspect, down.resolution);
+    cglib::frustum3<double> rebuilt = cglib::gl_projection_frustum(matrix * down.cameraMatrix);
+    TEST_CHECK(std::abs(reachAlongX(rebuilt) - padded) / padded < 1e-9,
+               "and a caller rebuilding it from the static gets the same reach");
+}

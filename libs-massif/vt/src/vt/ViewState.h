@@ -80,18 +80,23 @@ namespace massif::vt {
             return std::max(MIN_LABEL_PADDING, MAX_LABEL_PADDING * scale);
         }
 
-    private:
         // Clip space is [-1, 1] over the viewport, so fitting `padding` more pixels on each side is
-        // a shrink of x and y by viewport / (viewport + 2 * padding).
-        cglib::mat4x4<double> paddedProjectionMatrix() const {
+        // a shrink of x and y by viewport / (viewport + 2 * padding). Static because the tile culler
+        // needs the same band to decide which tiles must be there for those labels to exist.
+        static cglib::mat4x4<double> paddedProjectionMatrix(const cglib::mat4x4<double>& projectionMatrix, float padding, float aspect, float resolution) {
             float width = resolution * aspect, height = resolution;
-            if (!(labelPadding > 0) || !(width > 0) || !(height > 0)) {
+            if (!(padding > 0) || !(width > 0) || !(height > 0)) {
                 return projectionMatrix;
             }
             cglib::mat4x4<double> scale = cglib::mat4x4<double>::identity();
-            scale(0, 0) = width / (width + 2 * labelPadding);
-            scale(1, 1) = height / (height + 2 * labelPadding);
+            scale(0, 0) = width / (width + 2 * padding);
+            scale(1, 1) = height / (height + 2 * padding);
             return scale * projectionMatrix;
+        }
+
+    private:
+        cglib::mat4x4<double> paddedProjectionMatrix() const {
+            return paddedProjectionMatrix(projectionMatrix, labelPadding, aspect, resolution);
         }
     };
 }

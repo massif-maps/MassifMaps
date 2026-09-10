@@ -362,7 +362,13 @@ namespace massif {
          * @return The view frustum.
          */
         const cglib::frustum3<double>& getFrustum() const;
-    
+        /**
+         * Returns the view frustum grown by the label padding band, the one tiles must reach for
+         * their labels to be placed before they scroll in. See vt::ViewState::labelPadding.
+         * @return The label view frustum.
+         */
+        const cglib::frustum3<double>& getLabelFrustum() const;
+
         /**
          * Returns the screen width.
          * @return The current screen width.
@@ -547,7 +553,8 @@ namespace massif {
         cglib::mat4x4<float> _rteSkyProjectionMat;
 
         cglib::frustum3<double> _frustum;
-    
+        cglib::frustum3<double> _labelFrustum;
+
         int _horizontalLayerOffsetDir;
     };
     

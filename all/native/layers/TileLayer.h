@@ -593,6 +593,9 @@ class ProjectionSurface;
         bool _terrainOverzoomTargets = false; // terrain mode: target tiles may exceed the data source max zoom (overzoom-fed)
 
         std::vector<MapTile> _visibleTiles;
+        // Outside the viewport but inside the label band (ViewState::getLabelFrustum): fetched and
+        // handed to the renderer whatever isPreloading() says, purely so their labels exist in time.
+        std::vector<MapTile> _labelTiles;
         std::vector<MapTile> _preloadingTiles;
         // STICKY: a reference tile is kept once named. Rebuilt from scratch each cull, a tile no
         // longer named dropped out, its pieces vanished, the ends they had resolved came back and

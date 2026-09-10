@@ -1223,12 +1223,17 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_SPLIT(refreshTilesLockNs, refreshClock);
 
-        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles;
+        // A preloading draw data is a tile OUTSIDE the view frustum - the label band or the
+        // preloading ring. Its labels are wanted, so that they are placed before they scroll in;
+        // its geometry is not, and drawing it was 15% of the render tiles for nothing.
+        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles, labelOnlyTiles;
         for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
-            tiles[drawData->getVTTileId()] = drawData->getVTTile();
+            auto& target = (drawData->isPreloadingTile() ? labelOnlyTiles : tiles);
+            target[drawData->getVTTileId()] = drawData->getVTTile();
         }
 
-        bool changed = (tiles != _tiles) || (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
+        bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) ||
+                       (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
         if (!changed) {
             return false;
         }
@@ -1238,10 +1243,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 if (_horizontalLayerOffset != 0) {
                     tileRenderer->teleportVisibleTiles((int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE), 0);
                 }
-                tileRenderer->setVisibleTiles(tiles, spanReferenceTiles);
+                tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles);
             }
         }
         _tiles = std::move(tiles);
+        _labelOnlyTiles = std::move(labelOnlyTiles);
         _spanReferenceTiles = spanReferenceTiles;
         _horizontalLayerOffset = 0;
         // The changed path only - the unchanged one returns above and costs nothing. INCLUDES
@@ -1544,7 +1550,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         _vtRenderer = glResourceManager->create<VTRenderer>(_tileTransformer);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
-            tileRenderer->setVisibleTiles(_tiles);
+            tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles);
             // These tiles were handed over before this renderer existed, so their placement pass
             // found no GL renderer and did nothing. On a still camera nothing asks again, which left
             // a labels-only layer invisible until the user panned.

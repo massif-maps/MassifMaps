@@ -335,6 +335,8 @@ namespace massif {
         std::shared_ptr<LabelOcclusionState> _labelOcclusionState;
 
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _tiles;
+        // Offscreen tiles: their labels are placed, their geometry is never drawn. See refreshTiles.
+        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _labelOnlyTiles;
         std::vector<std::shared_ptr<const vt::Tile> > _spanReferenceTiles;
         
         mutable std::mutex _mutex;

@@ -540,6 +540,76 @@ foreshortening of the ground plane, and the band stays roughly constant in WORLD
 live: `padding=100.0` top-down, `padding=50.0` at pitch 60, and 1–4 labels per pass taking the
 skip-fade path.
 
+**The band is worth nothing without the tiles that fill it.** A label cannot be placed early if it
+does not exist, and it does not exist until its tile reaches the renderer. `TileLayer` sorted every
+leaf tile into two buckets — inside the plain frustum it is a *visible* tile, otherwise a
+*preloading* one, and preloading is **off by default** — so the first Label for the ground scrolling
+in was built the frame its tile touched the viewport edge, on screen, at opacity 0.
+
+There is now a third bucket between them: outside the viewport but inside
+`ViewState::getLabelFrustum()`, the same band the culler places against, built from the same
+`vt::ViewState::paddedProjectionMatrix`. Those tiles are fetched and handed over whatever
+`isPreloading()` says.
+
+**They are handed over for their labels only.** `GLTileRenderer::setVisibleTiles` takes a second
+map: it joins `labelTiles`, so `buildLabelMaps` sees it, and it never reaches `tileIds` — no tile
+surface, no render tile. `TileRenderer::refreshTiles` splits the draw datas on `isPreloadingTile()`,
+which is exactly "the visTile was outside the view frustum", so the preloading ring stops being
+drawn too. Skipping that split cost **4.3% of the frame rate** (below).
+
+Measured on the style preview (Grenoble, z16, top-down, 381×444 pane), counting every label that
+becomes visible *on screen* while still undrawn, bucketed by what it was on the previous pass:
+
+| | without the band tiles | with them |
+|---|---|---|
+| passes with an on-screen entry | 85 | **0** |
+| entries: never existed / had no placement / lost a collision | 165 / 81 / 33 | 0 / 0 / 0 |
+| pan distance | 600 px | 230 px |
+
+Normalised, ~46 undrawn entries per 100 px of pan against 0. The pan was very slow (the harness
+throttles timers), which is the condition that most favours the baseline: tiles had unlimited time
+to arrive and it still lost.
+
+**What the band costs, in tiles.** Counted at rest, same pane, camera jumped rather than panned:
+
+| camera (SDK tilt) | visible | label | preloading |
+|---|---|---|---|
+| z16, tilt 90, centred on a tile | 4 | 0 | 0 |
+| z16, tilt 90, straddling two | 2 | 0 | 4 |
+| z16, tilt 30, straddling | 12 | **1** | 5 |
+| z13.5, tilt 30, straddling | 16 | 0 | 6 |
+| z13.5, tilt 90, straddling | 2 | 0 | 2 |
+
+**At rest the band costs 0–1 tiles.** It fills only while the viewport crosses a tile edge, and
+during the pan above it held 2–3 against 2–4 visible. Those are tiles the pan is about to need
+anyway, so the fetch is pulled *forward* rather than added; the only wasted work is a camera that
+enters the band and turns back. The upper bound is geometric: 100 px on each side of a ~888 px
+viewport is ~1.2× the visible ground at top-down, and less when tilted, since `labelPadding` scales
+with `sin(tilt)` (tilt 30 above: padding 50, one extra tile on twelve).
+
+**What it costs on the device, and why the labels-only split is the whole point.** Crosscall
+`1cba1468`, `-PnativeConfig=Release -PabiFilters=arm64-v8a -PprofileRender`, default bench camera
+(Grenoble z16.22 tilt 26), 8 swipes, three interleaved pairs from prebuilt APKs, idle windows
+(>1600 ms) dropped. Two series, each against its own baseline — the device drifts between series, so
+only within-series pairs mean anything.
+
+| | band tiles drawn | band tiles labels-only |
+|---|---|---|
+| fps vs its baseline | 18.7 vs **19.5** (−4.3%, 3/3 same sign) | 18.9 vs **18.8** (+0.4%, mixed sign) |
+| `renderTiles` /s | **+14.9%** | −3.2% |
+| `geomDraws` /s | +2.6% | −10.3% |
+| `bakes` /s | +3.0% | −16.9% |
+| `live` labels | +61% | +88% |
+| `labelMapsMs` /s | +37% | +24% (2.8 → 3.5) |
+| `cullMs` /s | +5% | +3% (2.4 → 2.5) |
+
+**The labels are nearly free; the drawing was the cost.** Twice as many live labels move `cullMs` by
+0.1 ms/s and `labelMapsMs` by 0.7 ms/s against a 53 ms frame. Drawing the band cost 15% more render
+tiles that are, by construction, off screen — which showed up as `drape` +1.7 ms, `prelude` +0.5,
+`cover` +0.4 per frame. Routing them to `buildLabelMaps` alone takes the whole regression back, and
+`renderTiles` ends up slightly *below* baseline because the preloading ring stopped being drawn with
+them.
+
 **Which labels keep their text.** The culler sorts by priority → `wasVisible` → layer index → size →
 opacity and inserts greedily, so a label sorted earlier claims its side first;
 `shield-placement-priority` is the knob for "these names matter more than those", and a bigger

@@ -14,6 +14,7 @@ add_executable(vt_tests
   CollisionPaddingTest.cpp
   LabelAnchorAlignTest.cpp
   LabelPaddingTest.cpp
+  LabelPerspectiveTest.cpp
   ExtrusionCornerTest.cpp
   ExtrusionBevelTest.cpp
   LineJoinTest.cpp

@@ -62,6 +62,7 @@ namespace massif {
         // when it had reached the middle of the screen, and it is the same duration
         // VTLabelPlacementWorker holds the next placement pass off for.
         _labelBlendingSpeed(1.0f / 0.3f),
+        _labelPerspectiveScaling(0.5f),
         _labelOrder(0),
         _buildingOrder(1),
         _rasterFilterMode(vt::RasterFilterMode::BILINEAR),
@@ -131,6 +132,11 @@ namespace massif {
     void TileRenderer::setLabelBlendingSpeed(float speed) {
         std::lock_guard<std::mutex> lock(_mutex);
         _labelBlendingSpeed = speed;
+    }
+
+    void TileRenderer::setLabelPerspectiveScaling(float scaling) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _labelPerspectiveScaling = scaling;
     }
 
     void TileRenderer::setLabelOrder(int order) {
@@ -318,6 +324,7 @@ namespace massif {
         cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         prepareViewState.planarProjection = isPlanarProjectionMode();
+        prepareViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         prepareViewState.lightBrightness = _resolvedBrightness;
         tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
@@ -829,6 +836,7 @@ namespace massif {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.planarProjection = isPlanarProjectionMode(); // labels rescale by view depth, so neither terrain elevation nor a tilt blows up their screen size
+        vtViewState.labelPerspectiveScaling = _labelPerspectiveScaling; // how much of that rescale is given back, so a distant label shrinks like maplibre's
         vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
         tileRenderer->setViewState(vtViewState);
@@ -1260,6 +1268,7 @@ namespace massif {
         vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
+        cullViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
         culler.setViewState(cullViewState);

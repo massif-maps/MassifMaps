@@ -152,6 +152,20 @@ namespace massif {
         void setLabelBlendingSpeed(float speed);
 
         /**
+         * Returns how much of the perspective divide a label keeps as it recedes from the camera.
+         * @return The label perspective scaling, 0 to 1. Default is 0.5.
+         */
+        float getLabelPerspectiveScaling() const;
+        /**
+         * Sets how much of the perspective divide a label keeps as it recedes from the camera.
+         * At 0 a label holds a constant on-screen size at any distance. At 0.5, mapbox's and
+         * maplibre's own value, a distant label shrinks at half the rate the projection would
+         * shrink it. At 1 it shrinks with the map. Callout labels always hold their size.
+         * @param scaling The new scaling, clamped to 0 to 1. Default is 0.5.
+         */
+        void setLabelPerspectiveScaling(float scaling);
+
+        /**
          * Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names.
          * @return The renderer layer filter. Default is empty string, which means no filter is used.
          */
@@ -302,6 +316,7 @@ namespace massif {
         std::atomic<float> _clickRadius;
         std::atomic<float> _layerBlendingSpeed;
         std::atomic<float> _labelBlendingSpeed;
+        std::atomic<float> _labelPerspectiveScaling;
         std::string _rendererLayerFilter;
         std::string _clickHandlerLayerFilter;
 

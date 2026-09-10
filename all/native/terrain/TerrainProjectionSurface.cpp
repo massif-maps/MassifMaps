@@ -73,12 +73,36 @@ namespace massif {
 
     bool TerrainProjectionSurface::calculateHitPoint(const cglib::ray3<double>& ray, double height, double& t) const {
         // ElevationManager::intersectRay marches the height field in the PLANAR frame, so it only
-        // answers for a planar base; on a globe base the fallback below is what picking gets until
-        // the manager learns the surface (18-globe.md).
+        // answers for a planar base.
         if (_elevationManager->intersectRay(ray, t)) {
             return true;
         }
-        return _base->calculateHitPoint(ray, height, t);
+        double baseT = 0;
+        if (!_base->calculateHitPoint(ray, height, baseT)) {
+            return false;
+        }
+        // On a globe base, bisect on the height above the terrain instead - it is positive at the
+        // camera and negative where the base hit sits under a slope. Without it a pan anchored on
+        // the sea-level point and the map slid out from under the finger (18-globe.md).
+        auto heightOverTerrain = [this, &ray, height](double t) {
+            MapPos mapPos = _base->calculateMapPos(ray(t));
+            return mapPos.getZ() - _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY()) - height;
+        };
+        double t0 = 0, t1 = baseT;
+        if (!(heightOverTerrain(t1) < 0)) {
+            t = baseT;
+            return true;
+        }
+        for (int i = 0; i < 24; i++) {
+            double tM = (t0 + t1) * 0.5;
+            if (heightOverTerrain(tM) < 0) {
+                t1 = tM;
+            } else {
+                t0 = tM;
+            }
+        }
+        t = t1;
+        return true;
     }
 
     cglib::mat4x4<double> TerrainProjectionSurface::calculateLocalFrameMatrix(const cglib::vec3<double>& pos) const {

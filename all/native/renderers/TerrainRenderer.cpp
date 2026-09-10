@@ -10,6 +10,7 @@
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/TerrainDepthWorker.h"
 #include "renderers/utils/Texture.h"
+#include "projections/ProjectionSurface.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/ElevationTileGrid.h"
 
@@ -845,7 +846,10 @@ namespace massif {
         const cglib::mat4x4<double>& mvpMat = viewState.getModelviewProjectionMat();
         double tileW = lodCenter(0) * mvpMat(3, 0) + lodCenter(1) * mvpMat(3, 1) + lodCenter(2) * mvpMat(3, 2) + mvpMat(3, 3);
         double zoomDistance = tileW * std::pow(2.0, static_cast<double>(tile.getZoom()));
-        bool subDivide = zoomDistance < Const::WORLD_SIZE * Const::SQRT_2;
+        // The SURFACE's world: tileW is a world length, and the globe's world is twice the plane's,
+        // so a planar threshold here stopped the pre-pass mesh a level short (18-globe.md).
+        double worldWidth = (viewState.getProjectionSurface() ? viewState.getProjectionSurface()->getWorldWidth() : static_cast<double>(Const::WORLD_SIZE));
+        bool subDivide = zoomDistance < worldWidth * Const::SQRT_2;
 
         // No point in subdividing beyond the resolution of the elevation data + mesh grid
         int maxUsefulZoom = Const::MAX_SUPPORTED_ZOOM_LEVEL;

@@ -207,6 +207,14 @@ namespace {
         elevation->hit = true;
         TEST_CHECK(terrain.calculateHitPoint(down, 0, t) && t == 0.25,
                    "and a terrain hit wins outright");
+
+        // A ray straight down over a 300-unit plateau stops 300 units of ALTITUDE early - and one
+        // internal height unit is two world units on the sphere, so the ray is 600 world units short.
+        auto plateau = std::make_shared<RampProvider>();
+        plateau->height = 300.0;
+        TerrainProjectionSurface overPlateau(base, plateau);
+        TEST_CHECK(overPlateau.calculateHitPoint(down, 0, t) && nearly(t, 1000.0 - 600.0, 1.0e-4),
+                   "and with no marcher the globe's hit is refined onto the terrain, not left at sea level");
     }
 
     void testTheVersionIsCapturedForTheRebuildCheck() {

@@ -273,6 +273,10 @@ surface's own world width.
 in WORLD units compared against a planar constant. Anything that feels off by exactly 2x, or by one
 zoom level, on the globe is worth looking at with that in mind.
 
+`TerrainRenderer::calculateVisibleTiles` was the fourth: its depth pre-pass mesh subdivides while
+`tileW * 2^zoom < WORLD_SIZE * SQRT_2`, and `tileW` is a world length, so on the globe the mesh
+stopped a level short of the plane's everywhere. It takes the surface's own world width now.
+
 ### The extrusions: drawn all along, and discarded by their own tile clip
 
 3D buildings were missing on the globe while the same style drew them on the plane. They were being
@@ -292,6 +296,18 @@ did not. Three planar assumptions, all in the extrusion path:
   take, so a building's base rides the ground its walls stand on.
 
 Verified at the Louvre, `zoom 17 tilt 60`: extrusions, streets and labels match the planar frame.
+
+### Picking and panning fell through to sea level
+
+`ElevationManager::intersectRay` marches the height field in the PLANAR frame, so on a globe base it
+answers nothing and `TerrainProjectionSurface::calculateHitPoint` handed the question to the sphere
+at height 0. Every gesture anchored on sea level rather than on the ground under the finger, which
+is felt as the map sliding out from under a pan.
+
+The fallback now bisects on the height above the terrain - positive at the camera, negative under a
+slope - which needs nothing but the base surface and the height field, so it serves any base.
+`tests/api/TerrainSurfaceTest.cpp` pins it: a ray straight down over a 300-unit plateau stops 600
+WORLD units early, the 2x again.
 
 ## Two things worth knowing about the spherical shader path
 

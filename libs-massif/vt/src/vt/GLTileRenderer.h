@@ -715,6 +715,8 @@ namespace massif::vt {
         void updateTerrainSkirts();
         const std::pair<bool, TerrainTexture>& resolveTerrainTexture(const TileId& tileId) const;
         bool terrainGridSurfaces() const;
+        double sphereWorldRadius() const;
+        void setupSphericalUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
         bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface = false);
         // The tile set the terrain SURFACES are drawn from this frame, which is not the renderer's own
         // visible tiles as soon as a cover is handed in. Edge stitching has to follow the DRAWN cover,
@@ -908,6 +910,7 @@ namespace massif::vt {
         cglib::vec4<float> _drapeMaskUVTransform; // ... and target-tile units -> that mask's units
         const cglib::mat4x4<double>* _shadowCasterViewProj = nullptr; // set during the shadow caster pass
         const cglib::mat4x4<float>* _drapeMVPOverride = nullptr; // when set, renderTileGeometry draws flat into the drape FBO
+        std::array<GLfloat, 9> _sphereLightingFrame = { 1, 0, 0, 0, 1, 0, 0, 0, 1 }; // world -> the view's east/north/up
         bool _debugWireframe = false;
         bool _debugTileBorders = false;
         GLuint _tileBorderVBO = 0;               // the tile outline, in tile-local coordinates

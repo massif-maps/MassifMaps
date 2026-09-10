@@ -523,6 +523,43 @@ namespace massif::vt {
         // uniform referenced without being declared fails the compile.
         uniform highp vec2 uTileUnitScale;
         uniform highp vec2 uTileUnitOffset;
+        #ifdef TERRAIN_SPHERICAL
+        // The unit-sphere point under a vertex: p = origin + pos * scale. Both come off the vertex
+        // frame matrix, which is diagonal-plus-translate in either projection. OUTSIDE the terrain
+        // block: a globe curves its geometry whether or not a DEM is loaded (18-globe.md).
+        uniform highp vec3 uTerrainSphereOrigin;
+        uniform highp vec3 uTerrainSphereScale;
+        // The TARGET tile's own unit square, from Mercator RADIANS: unit = (merc - xy) * zw.
+        // uTileUnitScale's affine form reads a curved xy on a sphere.
+        uniform highp vec4 uTerrainSphereTileUV;
+        // 1 while baking the drape: the target is the tile's unit square, not the world.
+        uniform highp float uDrapeBake;
+        // The unit-sphere point under a vertex, which is both the surface normal and the way back
+        // to Mercator. Reversing SphericalTileTransformer::tileToSpherical.
+        highp vec3 terrainSpherePoint(vec3 pos) {
+            return uTerrainSphereOrigin + pos * uTerrainSphereScale;
+        }
+        // Unit sphere -> internal Mercator, matching SphericalProjectionSurface::SphericalToInternal.
+        // WORLD_SIZE / 2pi is folded into the uv uniforms, so this returns radians.
+        highp vec2 terrainSphereToMercator(highp vec3 p) {
+            highp float len = length(p);
+            highp float rz = clamp(p.z / len, -0.999999, 0.999999);
+            return vec2(atan(p.y, p.x), 0.5 * log((1.0 + rz) / (1.0 - rz)));
+        }
+        // Where a vertex sits in the TARGET tile, for the line clip. Same antimeridian wrap as the
+        // node uv: atan gives the longitude modulo 2pi and a tile never spans it.
+        highp vec2 terrainSphereTileUnit(highp vec3 pos) {
+            highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereTileUV.xy;
+            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
+            return merc * uTerrainSphereTileUV.zw;
+        }
+        // The bake draws a vertex by WHERE IN THE TILE it is - its curved world position means
+        // nothing to a bake target that IS the tile's unit square. The matrix comes in because
+        // each shader declares its own.
+        highp vec4 drapeBakeClip(highp mat4 mvp, highp vec3 pos) {
+            return mvp * vec4(terrainSphereTileUnit(pos), 0.0, 1.0);
+        }
+        #endif
         #ifdef TERRAIN
         uniform highp sampler2D uElevationTexture;
         uniform highp vec4 uElevationUV;     // elevation texture uv = uv.xy + pos.xy * uv.zw
@@ -534,20 +571,11 @@ namespace massif::vt {
         #ifdef TERRAIN_SPHERICAL
         // How far this vertex hangs below the surface: 0 everywhere but a skirt's bottom ring.
         attribute highp float aVertexSkirt;
-        // The unit-sphere point under a vertex: p = origin + pos * scale. Both come off the vertex
-        // frame matrix, which is diagonal-plus-translate in either projection.
-        uniform highp vec3 uTerrainSphereOrigin;
-        uniform highp vec3 uTerrainSphereScale;
         // DEM node uv from INTERNAL Mercator coordinates: uv = (internal - xy) * zw. Tile-local xy
         // is a curved position on a sphere, so uElevationNodeUV's affine form cannot be used.
         uniform highp vec4 uTerrainSphereNodeUV;
-        // The TARGET tile's own unit square, from Mercator RADIANS: unit = (merc - xy) * zw. Same
-        // reason as above - uTileUnitScale's affine form reads a curved xy on a sphere.
-        uniform highp vec4 uTerrainSphereTileUV;
         // The same, for the FULL elevation texture the fragment stage shades from.
         uniform highp vec4 uTerrainSphereElevUV;
-        // 1 while baking the drape: the target is the tile's unit square, not the world.
-        uniform highp float uDrapeBake;
         #endif
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
         // The NODE texture: the same DEM box-filtered to the surface lattice, one texel per mesh node.
@@ -584,18 +612,6 @@ namespace massif::vt {
         }
         #endif
         #ifdef TERRAIN_SPHERICAL
-        // The unit-sphere point under a vertex, which is both the surface normal and the way back
-        // to Mercator. Reversing SphericalTileTransformer::tileToSpherical.
-        highp vec3 terrainSpherePoint(vec3 pos) {
-            return uTerrainSphereOrigin + pos * uTerrainSphereScale;
-        }
-        // Unit sphere -> internal Mercator, matching SphericalProjectionSurface::SphericalToInternal.
-        // WORLD_SIZE / 2pi is folded into uTerrainSphereNodeUV, so this returns radians.
-        highp vec2 terrainSphereToMercator(highp vec3 p) {
-            highp float len = length(p);
-            highp float rz = clamp(p.z / len, -0.999999, 0.999999);
-            return vec2(atan(p.y, p.x), 0.5 * log((1.0 + rz) / (1.0 - rz)));
-        }
         // The FULL elevation texture's uv, the same inversion the node one takes. The fragment
         // stage shades and shadows from this texture, and its affine planar form read a curved
         // xy as a flat one (18-globe.md).
@@ -603,19 +619,6 @@ namespace massif::vt {
             highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereElevUV.xy;
             merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
             return merc * uTerrainSphereElevUV.zw;
-        }
-        // Where a vertex sits in the TARGET tile, for the line clip. Same antimeridian wrap as the
-        // node uv: atan gives the longitude modulo 2pi and a tile never spans it.
-        highp vec2 terrainSphereTileUnit(highp vec3 pos) {
-            highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereTileUV.xy;
-            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
-            return merc * uTerrainSphereTileUV.zw;
-        }
-        // The bake draws a vertex by WHERE IN THE TILE it is - its curved world position means
-        // nothing to a bake target that IS the tile's unit square. The matrix comes in because
-        // each shader declares its own.
-        highp vec4 drapeBakeClip(highp mat4 mvp, highp vec3 pos) {
-            return mvp * vec4(terrainSphereTileUnit(pos), 0.0, 1.0);
         }
         #endif
         vec3 applyTerrain(vec3 pos) {
@@ -2550,9 +2553,11 @@ namespace massif::vt {
             // The tile clip below, taken BEFORE the extrusion moves the vertex: on a sphere a
             // vertex xy is not its tile position, and the clip discarded every wall (18-globe.md).
             highp vec2 sphereTileUnit = terrainSphereTileUnit(pos);
+        #ifdef TERRAIN
             if ((aVertexHeight > 0.0 || uFloatingBase > 0.5) && aVertexBase > -1.0e29) {
                 basePos = pos + baseUp * (aVertexBase * uBaseScale + uElevationScale.w);
             }
+        #endif
         #else
             float groundZ = groundPos.z;
             float baseZ = groundZ;

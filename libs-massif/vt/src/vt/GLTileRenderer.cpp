@@ -1167,6 +1167,19 @@ namespace massif::vt {
         _tileMatrixCache.clear();
         _tileMVPMatrixCache.clear();
         _terrainTextureCache.clear();
+        // The view's own east/north/up, columns in GL order (see useProgram). A geometry normal is
+        // the SPHERE's on a globe and every lighting shader wants the map's frame (18-globe.md).
+        cglib::vec3<double> up = _viewState.origin;
+        double len = cglib::length(up);
+        up = (len > 0 ? up * (1.0 / len) : cglib::vec3<double>(0, 0, 1));
+        double h = std::sqrt(up(0) * up(0) + up(1) * up(1));
+        cglib::vec3<double> east = (h > 1.0e-9 ? cglib::vec3<double>(-up(1) / h, up(0) / h, 0) : cglib::vec3<double>(1, 0, 0));
+        cglib::vec3<double> north = cglib::vector_product(up, east);
+        _sphereLightingFrame = {
+            static_cast<GLfloat>(east(0)), static_cast<GLfloat>(east(1)), static_cast<GLfloat>(east(2)),
+            static_cast<GLfloat>(north(0)), static_cast<GLfloat>(north(1)), static_cast<GLfloat>(north(2)),
+            static_cast<GLfloat>(up(0)), static_cast<GLfloat>(up(1)), static_cast<GLfloat>(up(2))
+        };
         VT_STAT_INC(viewStateChanges);
     }
 
@@ -2317,6 +2330,11 @@ namespace massif::vt {
         if (_lastUsedProgram != shaderProgram.program) {
             _lastUsedProgram = shaderProgram.program;
             glUseProgram(shaderProgram.program);
+        }
+        if (_transformer && _transformer->isSpherical()) {
+            // World -> the view's east/north/up, which every lighting shader is written against. A
+            // view constant, but a uniform belongs to its program, so it rides the bind.
+            glUniformMatrix3fv(shaderProgram.uniforms[U_LIGHTINGFRAME], 1, GL_FALSE, _sphereLightingFrame.data());
         }
     }
 
@@ -3956,6 +3974,40 @@ namespace massif::vt {
         return _terrainTextureCache.emplace(tileId, resolved).first->second;
     }
 
+    double GLTileRenderer::sphereWorldRadius() const {
+        // The zoom-0 tile matrix diagonal IS the transformer's scale, which for a sphere is its
+        // radius in world units. Read that way so no constant is duplicated here.
+        double radius = _transformer->calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
+        return radius > 0 ? radius : 1.0;
+    }
+
+    void GLTileRenderer::setupSphericalUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix) {
+        if (!_transformer->isSpherical()) {
+            return;
+        }
+        // The unit-sphere point under a vertex, off the frame matrix's own diagonal and translation,
+        // so the shader needs no knowledge of the tile.
+        double sphereRadius = sphereWorldRadius();
+        glUniform3f(shaderProgram.uniforms[U_TERRAINSPHEREORIGIN],
+            static_cast<float>(vertexFrameMatrix(0, 3) / sphereRadius),
+            static_cast<float>(vertexFrameMatrix(1, 3) / sphereRadius),
+            static_cast<float>(vertexFrameMatrix(2, 3) / sphereRadius));
+        glUniform3f(shaderProgram.uniforms[U_TERRAINSPHERESCALE],
+            static_cast<float>(vertexFrameMatrix(0, 0) / sphereRadius),
+            static_cast<float>(vertexFrameMatrix(1, 1) / sphereRadius),
+            static_cast<float>(vertexFrameMatrix(2, 2) / sphereRadius));
+        // The TARGET tile the clip tests against. Pure tile arithmetic: a zoom level spans 2pi of
+        // Mercator radians on both axes, y counted from the south.
+        double tileCount = static_cast<double>(1 << tileId.zoom);
+        double tileSizeRadians = 6.283185307179586 / tileCount;
+        glUniform1f(shaderProgram.uniforms[U_DRAPEBAKE], _drapeMVPOverride ? 1.0f : 0.0f);
+        glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERETILEUV],
+            static_cast<float>((tileId.x / tileCount - 0.5) * 6.283185307179586),
+            static_cast<float>(((tileCount - 1 - tileId.y) / tileCount - 0.5) * 6.283185307179586),
+            static_cast<float>(1.0 / tileSizeRadians),
+            static_cast<float>(1.0 / tileSizeRadians));
+    }
+
     bool GLTileRenderer::setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface) {
         // GPU draping: bind the tile's elevation texture and the transforms taking vertex xy to
         // elevation uv and to the mercator latitude. The clip-constant slack grows linearly with
@@ -4012,22 +4064,8 @@ namespace massif::vt {
         glUniform2f(shaderProgram.uniforms[U_TILEUNITSCALE], static_cast<float>(unitScaleX), static_cast<float>(unitScaleY));
         glUniform2f(shaderProgram.uniforms[U_TILEUNITOFFSET], static_cast<float>(unitOffsetX), static_cast<float>(unitOffsetY));
 
-        if (_transformer->isSpherical()) {
-            // Set before the no-elevation bail-out below: a tile drawn flat is still lit, and a
-            // stale frame there would light it from somewhere else than its neighbours.
-            cglib::vec3<double> up = _viewState.origin;
-            double len = cglib::length(up);
-            up = (len > 0 ? up * (1.0 / len) : cglib::vec3<double>(0, 0, 1));
-            double h = std::sqrt(up(0) * up(0) + up(1) * up(1));
-            cglib::vec3<double> east = (h > 1.0e-9 ? cglib::vec3<double>(-up(1) / h, up(0) / h, 0) : cglib::vec3<double>(1, 0, 0));
-            cglib::vec3<double> north = cglib::vector_product(up, east);
-            GLfloat frame[9] = {
-                static_cast<GLfloat>(east(0)), static_cast<GLfloat>(east(1)), static_cast<GLfloat>(east(2)),
-                static_cast<GLfloat>(north(0)), static_cast<GLfloat>(north(1)), static_cast<GLfloat>(north(2)),
-                static_cast<GLfloat>(up(0)), static_cast<GLfloat>(up(1)), static_cast<GLfloat>(up(2))
-            };
-            glUniformMatrix3fv(shaderProgram.uniforms[U_LIGHTINGFRAME], 1, GL_FALSE, frame);
-        }
+        // Before the no-elevation bail-out below: a tile drawn flat still curves and is still lit.
+        setupSphericalUniforms(shaderProgram, tileId, vertexFrameMatrix);
 
         const std::pair<bool, TerrainTexture>& resolved = resolveTerrainTexture(tileId);
         bool valid = resolved.first;
@@ -4105,25 +4143,9 @@ namespace massif::vt {
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
         }
         if (_transformer->isSpherical()) {
-            // The unit-sphere point under a vertex, off the frame matrix's own diagonal and
-            // translation, so the shader needs no knowledge of the tile.
-            // The zoom-0 tile matrix diagonal IS the transformer's scale, which for a sphere is its
-            // radius in world units. Read that way so no constant is duplicated here.
-            double sphereRadius = _transformer->calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
-            if (!(sphereRadius > 0)) {
-                sphereRadius = 1.0;
-            }
-            glUniform3f(shaderProgram.uniforms[U_TERRAINSPHEREORIGIN],
-                static_cast<float>(vertexFrameMatrix(0, 3) / sphereRadius),
-                static_cast<float>(vertexFrameMatrix(1, 3) / sphereRadius),
-                static_cast<float>(vertexFrameMatrix(2, 3) / sphereRadius));
-            glUniform3f(shaderProgram.uniforms[U_TERRAINSPHERESCALE],
-                static_cast<float>(vertexFrameMatrix(0, 0) / sphereRadius),
-                static_cast<float>(vertexFrameMatrix(1, 1) / sphereRadius),
-                static_cast<float>(vertexFrameMatrix(2, 2) / sphereRadius));
             // The DEM node uv from Mercator RADIANS, which is what the shader's inverse produces:
             // internal = radians * WORLD_SIZE / 2pi, so that factor is folded in here.
-            double internalPerRadian = sphereRadius * 0.5;
+            double internalPerRadian = sphereWorldRadius() * 0.5;
             glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERENODEUV],
                 static_cast<float>(nodeOrigin(0) / internalPerRadian),
                 static_cast<float>(nodeOrigin(1) / internalPerRadian),
@@ -4135,16 +4157,6 @@ namespace massif::vt {
                 static_cast<float>(terrainTexture.internalOrigin(1) / internalPerRadian),
                 static_cast<float>(internalPerRadian * invSizeX),
                 static_cast<float>(internalPerRadian * invSizeY));
-            // The same for the TARGET tile, which the line clip tests against. Pure tile arithmetic:
-            // a zoom level spans 2pi of Mercator radians on both axes, y counted from the south.
-            double tileCount = static_cast<double>(1 << tileId.zoom);
-            double tileSizeRadians = 6.283185307179586 / tileCount;
-            glUniform1f(shaderProgram.uniforms[U_DRAPEBAKE], _drapeMVPOverride ? 1.0f : 0.0f);
-            glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERETILEUV],
-                static_cast<float>((tileId.x / tileCount - 0.5) * 6.283185307179586),
-                static_cast<float>(((tileCount - 1 - tileId.y) / tileCount - 0.5) * 6.283185307179586),
-                static_cast<float>(1.0 / tileSizeRadians),
-                static_cast<float>(1.0 / tileSizeRadians));
         }
 
         double frameScaleZ = (vertexFrameMatrix(2, 2) != 0 ? vertexFrameMatrix(2, 2) : 1.0);
@@ -6669,6 +6681,10 @@ namespace massif::vt {
             // the vertex FRAME is the SOURCE tile's, the vertices being source-local. Swapped, content
             // sat at a different DEM level than its ground and slid during a pan.
             setupTerrainUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
+        } else {
+            // A globe curves its vertices with no terrain at all, and the tile clip has to follow -
+            // it read a curved xy as a flat one and discarded every extrusion (18-globe.md).
+            setupSphericalUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
         }
         if (mode.shadowReceiver) {
             cglib::mat4x4<double> shadowFrame = calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
@@ -7071,9 +7087,9 @@ namespace massif::vt {
         // cache key is built so the key still distinguishes a program that fell back to 1.00.
         flags |= ESSL3_FLAG;
 
-        // Same reason, and in the same place so the key separates the two surfaces: a terrain
-        // program displaces along z on the plane and along the surface normal on a globe.
-        if ((flags & TERRAIN_VTF_FLAG) && _transformer && _transformer->isSpherical()) {
+        // Same reason, and in the same place so the key separates the two surfaces: a globe curves
+        // every vertex, with or without a DEM, so this does NOT wait for the terrain flag.
+        if (_transformer && _transformer->isSpherical()) {
             flags |= TERRAIN_SPHERICAL_FLAG;
         }
 

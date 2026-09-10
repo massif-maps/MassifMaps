@@ -10,8 +10,8 @@ sidebar_position: 18
 instead of the Mercator plane. It arrived with CARTO's `feature/globe` and was carried unexercised
 for years. 2D tiled content, vector elements, the camera and the sky reach it and look right on a
 device. **3D terrain draws on it too** - the relief, its content, its lighting, its shadows and the
-2D/3D switch, after the fixes below, and the same zoom frames the same ground on both. What is NOT
-at parity yet: 3D buildings on a globe with no terrain attached are still lit in the sphere's frame.
+2D/3D switch, after the fixes below, and the same zoom frames the same ground on both. 3D buildings
+match the plane with the terrain on or off, at the same height and in the same light.
 
 This page is the shared conventions and the traps. What is missing is at the bottom.
 
@@ -418,9 +418,24 @@ affine planar form `uElevationUV.xy + pos.xy * uElevationUV.zw`, the exact mista
 path already had a spherical inversion for. Shading and shadowing read the DEM at the wrong texels.
 `uTerrainSphereElevUV` is that inversion for the FULL elevation texture, next to the node one.
 
-Not covered: a globe with 3D buildings and NO terrain. `TERRAIN_SPHERICAL` is only compiled in when
-`TERRAIN_VTF_FLAG` is, and bit 31 of the shader flag word is the last one — a separate spherical
-flag needs a wider `flags` type first.
+### A globe with no terrain drew no buildings at all
+
+`TERRAIN_SPHERICAL` used to be compiled in only alongside `TERRAIN_VTF_FLAG`, on the assumption that
+nothing curves a vertex except the DEM displacement. Two things do. `polygon3DFsh` discards any
+fragment outside `[0, 1)` of its target tile, and `polygon3DVsh` fed that clip
+`aVertexPosition.xy` — which is a curved position on a sphere and not a tile coordinate, so with the
+terrain off **every extrusion was discarded**: the map drew its roads, its water and its labels and
+not one building. The same gate is why buildings on a terrain-less globe were lit in the sphere's
+frame rather than the map's.
+
+No new flag bit was needed — bit 31 already was the spherical one, it was just being withheld. It is
+now set whenever the transformer is spherical, and the shader block splits in two: the geometry
+helpers (`terrainSpherePoint`, `terrainSphereToMercator`, `terrainSphereTileUnit`, `drapeBakeClip`
+and the three uniforms behind them) moved OUT of `#ifdef TERRAIN`, while everything that reads the
+elevation texture — `aVertexSkirt`, the node/elev uv inversions — stayed inside it. On the C++ side
+`setupSphericalUniforms` is the part of `setupTerrainUniforms` that a terrain-less draw also needs,
+and `useProgram` uploads `uLightingFrame` on every bind, since a program that never touches the
+terrain path still has to light its normals in the view's frame.
 
 ### Buildings stood 1/cos(latitude) too tall on a globe with terrain
 

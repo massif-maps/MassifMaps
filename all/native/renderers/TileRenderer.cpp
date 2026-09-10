@@ -315,6 +315,9 @@ namespace massif {
         // Const::WORLD_SIZE: the globe's own world is twice as wide, or labels come out half size.
         prepareViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         prepareViewState.lightBrightness = _resolvedBrightness;
+        // Missing here, vt fell back to the camera's height above the z=0 PLANE - right on a plane,
+        // and on a globe the camera's world z, which sized every label at the 0.05 floor.
+        prepareViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
         tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
         tileRenderer->setRadiance(_resolvedRadiance);

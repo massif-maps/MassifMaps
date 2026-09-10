@@ -327,6 +327,20 @@ The rule now samples the patch on a 3x3 grid and sums its four cells when the tr
 spherical. That is the same number on a plane, so `steps = 2` there keeps the old four-corner
 arithmetic exactly.
 
+### Labels sized by the camera's height above a plane that is not there
+
+`Label::calculateTerrainScaleFactor` keeps a label the same size on screen by dividing the view
+depth by the camera-to-focus distance. When `ViewState::focusDistance` is 0 it falls back to
+`origin(2) / -viewDir(2)` — the camera's height above the z=0 PLANE. That is the right number on a
+planar map and the camera's world z on a globe, which at Zermatt is thousands of kilometres: every
+label came out at the 0.05 scale floor. They were placed, culled and drawn — 1989 of them in the
+pass — and invisible.
+
+The 0 came from `TileRenderer`'s `prepareViewState`, the state installed before the cross-layer
+drape, which set `zoomScale` and `lightBrightness` but never `focusDistance`. It does now. Labels on
+a planar map at a high tilt change size slightly with it, and that is the correction: the fallback
+measured the height above SEA LEVEL, not the distance to a focus sitting on the terrain.
+
 ### Shadows: a light box that could not be fitted, and two passes that never drew
 
 Two independent things had to change, and finding the second cost a build cycle because the first

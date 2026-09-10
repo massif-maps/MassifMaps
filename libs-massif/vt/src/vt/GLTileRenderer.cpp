@@ -4153,9 +4153,11 @@ namespace massif::vt {
         // 1/frameScaleZ folded into uElevationScale.x for heights that come from the texture.
         if (_transformer->isSpherical() && terrainTexture.metersToInternal > 0) {
             // ...and on a sphere that scale is the radial one, not the frame's z: internal z through
-            // metres, so a building's base rides the same displacement its ground does (18-globe.md).
+            // metres, so a building's base rides the same displacement its ground does. The cosh is
+            // the stretch metersToInternal leaves out - the plane takes it per vertex (18-globe.md).
+            double mercY = 6.283185307179586 * ((tileId.y + 0.5) / (1 << tileId.zoom) - 0.5);
             glUniform1f(shaderProgram.uniforms[U_BASESCALE],
-                static_cast<float>(sphericalMetersToFrame(*_transformer, tileId, vertexFrameMatrix) / terrainTexture.metersToInternal));
+                static_cast<float>(sphericalMetersToFrame(*_transformer, tileId, vertexFrameMatrix) / (terrainTexture.metersToInternal * std::cosh(mercY))));
         } else {
             glUniform1f(shaderProgram.uniforms[U_BASESCALE], static_cast<float>(1.0 / frameScaleZ));
         }

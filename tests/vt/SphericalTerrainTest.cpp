@@ -10,13 +10,13 @@
  * is no flat reference frame to notice it in.
  *
  * NOT covered here: that any of it draws. The displacement direction, the skirt pass-through and
- * the disabled lattice clamp are all device checks, and nothing exercises this path yet - terrain
- * is still refused on a globe. See docs/internals/rendering/18-globe.md.
+ * the disabled lattice clamp are all device checks. See docs/internals/rendering/18-globe.md.
  */
 
 #include "vt/TileSurface.h"
 #include "vt/TileSurfaceBuilder.h"
 #include "vt/TileTransformer.h"
+#include "vt/TerrainElevationScale.h"
 
 #include <cmath>
 #include <memory>
@@ -272,6 +272,42 @@ namespace {
         double expected = 1000.0 * (1 << 5) / EARTH_CIRCUMFERENCE * 2 * 3.1415926535897932;
         TEST_CHECK(nearly(atEquator, expected, 1.0e-6), "the spherical height is calculateHeight's own 2 * PI convention");
     }
+
+    /**
+     * uBaseScale on a sphere. An extrusion's base arrives in INTERNAL z units, which carry
+     * Mercator's 1/cos(latitude) stretch, and terrainTexture.metersToInternal is the EQUATOR value -
+     * so the conversion owes a cosh the planar path takes per vertex through vElevCosh. Without it
+     * a building's base rose 1.52x the ground under it at Paris and its walls stretched.
+     */
+    void testTheExtrusionBaseRisesWithItsGround() {
+        const double PI = 3.1415926535897932;
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / PI));
+        const TileId tileId(14, 8300, 5636); // Paris
+
+        // The tile-centre latitude, DefaultTileTransformer::calculateHeight's own formula.
+        double mercY = 2 * PI * ((tileId.y + 0.5) / (1 << tileId.zoom) - 0.5);
+        double latitude = PI * 0.5 - 2 * std::atan(std::exp(mercY));
+        TEST_CHECK(nearly(std::cosh(mercY), 1.0 / std::cos(latitude), 1.0e-9),
+                   "the cosh of the tile-centre mercator y IS the 1/cos(latitude) stretch");
+        TEST_CHECK(std::cosh(mercY) > 1.4, "and at Paris it is worth ~1.5, not a rounding term");
+
+        // The two conversions the shader adds together: the ground's, straight from metres, and the
+        // base's, through the internal z units the CPU resolved it in.
+        cglib::mat4x4<double> frame = sphere.calculateTileMatrix(tileId, 1.0f);
+        double metersToFrame = sphericalMetersToFrame(sphere, tileId, frame);
+        double metersToInternalEquator = WORLD_SIZE / EARTH_CIRCUMFERENCE;
+        double baseScale = metersToFrame / (metersToInternalEquator * std::cosh(mercY));
+
+        double elevation = 35.0; // metres, about what Paris stands at
+        double baseInternal = elevation * metersToInternalEquator / std::cos(latitude);
+        TEST_CHECK(nearly(baseInternal * baseScale, elevation * metersToFrame, 1.0e-9),
+                   "a base of N metres lands exactly where a ground of N metres does");
+
+        // Which the equator-only divisor did not: that is the bug, and its size.
+        double wrongScale = metersToFrame / metersToInternalEquator;
+        TEST_CHECK(nearly(baseInternal * wrongScale, elevation * metersToFrame * std::cosh(mercY), 1.0e-9),
+                   "without the cosh it lands 1/cos(latitude) too high");
+    }
 }
 
 void testSphericalTerrain() {
@@ -280,4 +316,5 @@ void testSphericalTerrain() {
     testNeighbouringTilesSampleTheSharedEdgeIdentically();
     testTheSkirtAttributeIsGlobeOnly();
     testSphericalHeightHasNoLatitudeStretch();
+    testTheExtrusionBaseRisesWithItsGround();
 }

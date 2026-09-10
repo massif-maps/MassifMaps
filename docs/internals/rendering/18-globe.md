@@ -422,6 +422,25 @@ Not covered: a globe with 3D buildings and NO terrain. `TERRAIN_SPHERICAL` is on
 `TERRAIN_VTF_FLAG` is, and bit 31 of the shader flag word is the last one — a separate spherical
 flag needs a wider `flags` type first.
 
+### Buildings stood 1/cos(latitude) too tall on a globe with terrain
+
+The report was "buildings are taller in globe mode", and the measurements said the opposite: at the
+Louvre, world units per metre of height matched world units per metre of ground on BOTH surfaces
+(planar `0.0397833` against `32` world per tile-u at z15; spherical `0.0523307` against `42.0929`,
+the same ratio), and the camera sat at 446.4 m on the plane against 446.6 m on the globe at the same
+zoom and tilt. Geometry and camera were identical; only the picture was not.
+
+The difference was the extrusion BASE. A building's base is resolved on the CPU
+(`ElevationTextureCache::getDisplayHeight`) in internal z units, and those carry Mercator's own
+`1/cos(latitude)` stretch. `uBaseScale` converts them back through metres, and the divisor it used —
+`terrainTexture.metersToInternal` — is documented as the value *at the equator*: the planar shader
+recovers the rest per vertex through `vElevCosh`, and the radial spherical path has no `vElevCosh`
+to recover it with. So the base rose `1/cos(48.86°) = 1.52×` the ground under it while the wall's
+bottom ring stayed on that ground, and the walls stretched — about +18 m at Paris, which reads as
+"one storey became three". `uBaseScale` now divides by `metersToInternal * cosh(mercatorY)` at the
+tile centre. Verified on emulator-5554, `day-cycle-light` at the Louvre, z17.2 tilt 45: globe and
+plane now draw the same block at the same height.
+
 ### The 2D/3D switch was turned off on the globe, and the map went blank
 
 `MapRenderer::updateTerrainFlatten` bailed out on any non-planar projection, because

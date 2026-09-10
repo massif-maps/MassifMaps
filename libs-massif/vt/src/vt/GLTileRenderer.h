@@ -713,7 +713,6 @@ namespace massif::vt {
         void setCompOp(CompOp compOp);
         void blendScreenTexture(float opacity, GLuint texture);
         void updateTerrainSkirts();
-        void updateSurfaceGridResolution();
         const std::pair<bool, TerrainTexture>& resolveTerrainTexture(const TileId& tileId) const;
         bool terrainGridSurfaces() const;
         double sphereWorldRadius() const;
@@ -872,7 +871,6 @@ namespace massif::vt {
         float _terrainDrawDepthBias = 0.0f;      // per-draw NDC (w-scaled) depth bias while rendering 2D layers (GPU draping mode)
         float _terrainDrawDepthClipUnits = 0.0f; // per-draw clip-constant slack units (distance-growing; see setupTerrainUniforms)
         bool _terrainSkirtsEnabled = false;
-        int _surfaceGridResolution = 0; // spherical tile surfaces only; 0 = the curvature tesselation
         bool _terrainRegularGrid = false;        // tangram's model: one shared grid surface per tile + painter-order depth (no occluder, no slack)
         int _terrainRegularGridResolution = 0;   // resolution of the currently built shared grid
         bool _terrainEdgeStitching = false;      // snap grid surface edges to a coarser neighbour's lattice

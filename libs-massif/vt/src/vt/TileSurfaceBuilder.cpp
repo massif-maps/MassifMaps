@@ -30,13 +30,6 @@ namespace massif::vt {
         }
     }
 
-    void TileSurfaceBuilder::setGridResolution(int resolution) {
-        if (resolution != _gridResolution) {
-            _tileSurfaceCache.clear();
-            _gridResolution = resolution;
-        }
-    }
-
     void TileSurfaceBuilder::invalidateCaches() {
         _tileSurfaceCache.clear();
     }
@@ -131,9 +124,6 @@ namespace massif::vt {
         }
         else if (tileId.y >= (1 << tileId.zoom)) {
             buildPoleGeometry(1, vertexIds[2], coords2D, coords3D, texCoords, normals, binormals, skirtDrops, indices);
-        }
-        else if (_gridResolution > 0) {
-            buildTileGridGeometry(tileId, coords2D, coords3D, texCoords, normals, binormals, indices);
         }
         else {
             buildTileGeometry(tileId, vertexIds, coords2D, coords3D, texCoords, normals, binormals, skirtDrops, indices);
@@ -270,39 +260,6 @@ namespace massif::vt {
                     prevTop = top;
                     prevBottom = bottom;
                 }
-            }
-        }
-    }
-
-    void TileSurfaceBuilder::buildTileGridGeometry(const TileId& tileId, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const {
-        // Keep the vertex count within the uint16 index range: (res + 1)^2 <= 65535.
-        int res = std::max(1, std::min(254, _gridResolution));
-
-        cglib::mat4x4<double> matrix = _transformer->calculateTileMatrix(tileId, 1.0f);
-        std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(tileId);
-
-        // The lattice IS the plane's shared grid, laid out per tile because only the CPU can place a
-        // curved vertex: the sphere point is O(1) and the tile a millionth of it, so the subtraction
-        // that makes it local has to happen in double (18-globe.md).
-        float invRes = 1.0f / static_cast<float>(res);
-        for (int j = 0; j <= res; j++) {
-            for (int i = 0; i <= res; i++) {
-                cglib::vec2<float> uv(i * invRes, j * invRes);
-                cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(uv)), matrix);
-
-                coords2D.append(uv);
-                texCoords.append(uv);
-                coords3D.append(cglib::vec3<float>::convert(pos - _origin));
-                normals.append(transformer->calculateNormal(uv));
-                binormals.append(cglib::unit(transformer->calculateVector(uv, cglib::vec2<float>(0, 1))));
-            }
-        }
-        int stride = res + 1;
-        for (int j = 0; j < res; j++) {
-            for (int i = 0; i < res; i++) {
-                std::size_t a = static_cast<std::size_t>(j * stride + i);
-                indices.append(a, a + 1, a + stride + 1);
-                indices.append(a, a + stride + 1, a + stride);
             }
         }
     }

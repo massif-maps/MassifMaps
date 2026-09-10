@@ -503,26 +503,6 @@ no delta yet and so moves nothing, and `updateTerrainFlatten` returned without a
 whenever neither the ratio nor the decode had changed. On a map that only redraws on demand the
 switch froze mid-`RAMPING` — asked for, never arriving. It now requests the redraw while ramping.
 
-### The ground lattice was left to a curvature test that never fired
-
-The plane draws every ground tile with one shared 64×64 grid. The globe cannot — a spherical tile
-matrix will not curve a flat unit square — so it takes the per-tile surfaces, whose subdivision came
-from `SphericalTileTransformer`'s `DEFAULT_DIVIDE_THRESHOLD`, `EARTH_CIRCUMFERENCE / 64` ≈ 626 km.
-A zoom-14 tile is 2.4 km. **From zoom 6 up nothing was ever split**, and a ground tile was two
-triangles. `TerrainTileTransformer` does subdivide on top of that, but only when the DEM tile is
-already cached, only when its relief exceeds 1 mm, and not at all in area source-density mode — so
-the mesh the plane has unconditionally was, on the globe, three gates deep.
-
-`TileSurfaceBuilder::setGridResolution` lays the tile out on the plane's own lattice instead, at the
-same `TerrainOptions::MeshResolution`, whenever the globe has terrain
-(`GLTileRenderer::updateSurfaceGridResolution`). Positions are still built per tile on the CPU, in
-double, relative to the render origin: a shared grid curved in the vertex shader is not available
-here, because the sphere point is O(1) and fp32 cannot hold the tile inside it — the same limit the
-section below is about. maplibre floors the equivalent number at 32 for the same reason
-(`vertical_perspective_projection.ts`, *"visibly warped at high zooms"*).
-
-This is a mesh-density fix, not the cause of the three artefacts below.
-
 ### The drape swam and every tile border broke, because fp32 cannot hold a sphere point
 
 Three symptoms, reported together: the drape "shaky" and terraced, a visible break along every tile
@@ -615,6 +595,16 @@ one thing that stops meaning "position in the tile" there. Draped geometry then 
 node sample, which is what the adaptive path already does.
 
 ## What could be better
+
+- **A globe ground tile is TWO triangles from zoom 6 up.** `SphericalTileTransformer`'s curvature
+  threshold is `EARTH_CIRCUMFERENCE / 64` (626 km) and a zoom-14 tile is 2.4 km, so it never splits;
+  `TerrainTileTransformer` subdivides on top, but only with the DEM cached, only above 1 mm of
+  relief, and never in area source-density mode. The plane has its shared 64x64 grid unconditionally.
+  Laying the same lattice per tile was tried and **reverted**: with 4225 vertices instead of 4, every
+  bad DEM node sample becomes a spike that drags its drape into a long streak, and low-zoom France
+  striped over. The lattice is not the bug — it is what makes the sampling bug visible 1000x more
+  often — so the sampling has to be fixed first. maplibre floors the same number at 32
+  (`vertical_perspective_projection.ts`, *"visibly warped at high zooms"*).
 
 - The 2× scale difference is a latent bug generator. It would be better expressed as an explicit
   "world units per metre" on `ProjectionSurface` than left for each caller to rediscover.

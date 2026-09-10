@@ -308,6 +308,55 @@ namespace {
         TEST_CHECK(nearly(baseInternal * wrongScale, elevation * metersToFrame * std::cosh(mercY), 1.0e-9),
                    "without the cosh it lands 1/cos(latitude) too high");
     }
+
+    /**
+     * A globe ground tile was TWO triangles at every zoom from 6 up, so the terrain that displaces
+     * it was sampled at the tile's four corners and the drape stretched across the chord between
+     * them. The curvature tesselation only splits an edge longer than 1/64 of the equator; the
+     * lattice is what the plane has had all along. maplibre floors the same number at 32
+     * (vertical_perspective_projection.ts, "visibly warped at high zooms").
+     */
+    void testTheGroundLatticeIsNotLeftToTheCurvatureSplit() {
+        const double PI = 3.1415926535897932;
+        const double radius = WORLD_SIZE / PI;
+        auto sphere = std::make_shared<SphericalTileTransformer>(static_cast<float>(radius));
+        const TileId tileId(14, 8300, 5636); // Paris
+
+        auto positions = [](const std::shared_ptr<TileSurface>& surface) {
+            const TileSurface::VertexGeometryLayoutParameters& layout = surface->getVertexGeometryLayoutParameters();
+            std::vector<cglib::vec3<double>> points;
+            for (std::size_t offset = layout.coordOffset; offset + 12 <= surface->getVertexGeometry().size(); offset += layout.vertexSize) {
+                const float* coord = reinterpret_cast<const float*>(&surface->getVertexGeometry()[offset]);
+                points.emplace_back(coord[0], coord[1], coord[2]);
+            }
+            return points;
+        };
+
+        TileSurfaceBuilder plain(sphere);
+        std::vector<std::shared_ptr<TileSurface>> plainSurfaces = plain.buildTileSurface(tileId);
+        TEST_CHECK(plainSurfaces.size() == 1 && plainSurfaces[0]->getIndicesCount() == 6,
+                   "without a lattice the whole tile is two triangles");
+        TEST_CHECK(positions(plainSurfaces[0]).size() <= 6, "its vertices are corners - nothing inside the tile");
+
+        TileSurfaceBuilder grid(sphere);
+        grid.setGridResolution(64);
+        std::vector<std::shared_ptr<TileSurface>> gridSurfaces = grid.buildTileSurface(tileId);
+        unsigned int indices = 0;
+        for (const std::shared_ptr<TileSurface>& surface : gridSurfaces) {
+            indices += surface->getIndicesCount();
+        }
+        TEST_CHECK(indices == 64 * 64 * 2 * 3, "the lattice is the plane's own: 64 cells per side");
+
+        // And every one of its vertices is ON the ball - the point of building them on the CPU.
+        double worst = 0;
+        for (const std::shared_ptr<TileSurface>& surface : gridSurfaces) {
+            for (const cglib::vec3<double>& point : positions(surface)) {
+                worst = std::max(worst, std::fabs(cglib::length(point) - radius));
+            }
+        }
+        TEST_CHECK(worst < radius * 1.0e-6, "every lattice vertex sits on the sphere, not on a chord");
+    }
+
 }
 
 void testSphericalTerrain() {
@@ -317,4 +366,5 @@ void testSphericalTerrain() {
     testTheSkirtAttributeIsGlobeOnly();
     testSphericalHeightHasNoLatitudeStretch();
     testTheExtrusionBaseRisesWithItsGround();
+    testTheGroundLatticeIsNotLeftToTheCurvatureSplit();
 }

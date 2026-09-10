@@ -128,6 +128,7 @@ namespace massif::vt {
         _terrainMode = enabled;
         _terrainDepthBias = depthBias;
         updateTerrainSkirts();
+        updateSurfaceGridResolution();
     }
 
     void GLTileRenderer::setTerrainRegularGrid(bool enabled, int resolution) {
@@ -144,6 +145,7 @@ namespace massif::vt {
         if (wasEnabled != enabled) {
             buildTerrainEdgeCoarsening(); // stitching only exists in regular grid mode
         }
+        updateSurfaceGridResolution();
     }
 
     void GLTileRenderer::setTerrainLayerOrdinalBase(int base) {
@@ -1023,6 +1025,7 @@ namespace massif::vt {
 
         _terrainTextureProvider = std::move(provider);
         updateTerrainSkirts();
+        updateSurfaceGridResolution();
     }
 
     void GLTileRenderer::setDebugTileBorders(bool enabled) {
@@ -1114,6 +1117,19 @@ namespace massif::vt {
             _terrainSkirtsEnabled = skirts;
             _tileSurfaceBuilder.setTerrainSkirts(skirts);
             _tileSurfaceMap.clear();
+        }
+    }
+
+    void GLTileRenderer::updateSurfaceGridResolution() {
+        // A globe gets the plane's lattice per tile: the curvature tesselation only splits an edge
+        // longer than 1/64 of the equator, so from z6 up a ground tile was TWO triangles and the
+        // terrain it is displaced by was sampled at its corners (18-globe.md).
+        bool spherical = _transformer && _transformer->isSpherical();
+        int resolution = (spherical && _terrainRegularGrid && _terrainMode && _terrainTextureProvider ? _terrainRegularGridResolution : 0);
+        if (resolution != _surfaceGridResolution) {
+            _surfaceGridResolution = resolution;
+            _tileSurfaceBuilder.setGridResolution(resolution);
+            _tileSurfaceMap.clear(); // the compiled VBOs are released in endFrame
         }
     }
 

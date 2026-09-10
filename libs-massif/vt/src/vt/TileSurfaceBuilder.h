@@ -28,6 +28,9 @@ namespace massif::vt {
         void setOrigin(const cglib::vec3<double>& origin);
         void setVisibleTiles(const std::set<TileId>& tileIds);
         void setTerrainSkirts(bool terrainSkirts);
+        // Cells per side a tile surface is laid out on, 0 for the curvature-driven tesselation.
+        // The globe's answer to the plane's shared regular grid - see 18-globe.md.
+        void setGridResolution(int resolution);
         void invalidateCaches();
         // Drops only the cached surfaces overlapping one of the given tiles (in either
         // direction - an elevation tile may be coarser or finer than the surface tile).
@@ -51,6 +54,7 @@ namespace massif::vt {
         static constexpr float SKIRT_DEPTH = 0.02f; // skirt extrusion depth, relative to the tile size
 
         void buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<float>& skirtDrops, VertexArray<std::size_t>& indices) const;
+        void buildTileGridGeometry(const TileId& tileId, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const;
         void buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<float>& skirtDrops, VertexArray<std::size_t>& indices) const;
 
         void packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& skirtDrops, const VertexArray<std::size_t>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const;
@@ -60,6 +64,7 @@ namespace massif::vt {
         std::map<TileId, TileNeighbours> _tileSplitNeighbours;
         cglib::vec3<double> _origin = cglib::vec3<double>(0, 0, 0);
         bool _terrainSkirts = false;
+        int _gridResolution = 0;
 
         mutable std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceCache;
 

@@ -503,6 +503,26 @@ no delta yet and so moves nothing, and `updateTerrainFlatten` returned without a
 whenever neither the ratio nor the decode had changed. On a map that only redraws on demand the
 switch froze mid-`RAMPING` — asked for, never arriving. It now requests the redraw while ramping.
 
+### The ground lattice was left to a curvature test that never fired
+
+The plane draws every ground tile with one shared 64×64 grid. The globe cannot — a spherical tile
+matrix will not curve a flat unit square — so it takes the per-tile surfaces, whose subdivision came
+from `SphericalTileTransformer`'s `DEFAULT_DIVIDE_THRESHOLD`, `EARTH_CIRCUMFERENCE / 64` ≈ 626 km.
+A zoom-14 tile is 2.4 km. **From zoom 6 up nothing was ever split**, and a ground tile was two
+triangles. `TerrainTileTransformer` does subdivide on top of that, but only when the DEM tile is
+already cached, only when its relief exceeds 1 mm, and not at all in area source-density mode — so
+the mesh the plane has unconditionally was, on the globe, three gates deep.
+
+`TileSurfaceBuilder::setGridResolution` lays the tile out on the plane's own lattice instead, at the
+same `TerrainOptions::MeshResolution`, whenever the globe has terrain
+(`GLTileRenderer::updateSurfaceGridResolution`). Positions are still built per tile on the CPU, in
+double, relative to the render origin: a shared grid curved in the vertex shader is not available
+here, because the sphere point is O(1) and fp32 cannot hold the tile inside it — the same limit the
+section below is about. maplibre floors the equivalent number at 32 for the same reason
+(`vertical_perspective_projection.ts`, *"visibly warped at high zooms"*).
+
+This is a mesh-density fix, not the cause of the three artefacts below.
+
 ## Two things worth knowing about the spherical shader path
 
 **A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the

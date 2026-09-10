@@ -2315,23 +2315,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -3305,23 +3309,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -4295,23 +4303,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -5281,23 +5293,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -6278,23 +6294,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -7265,23 +7285,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -8247,23 +8271,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -9231,23 +9259,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -10217,23 +10249,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -11209,23 +11245,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -12203,23 +12243,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -13188,23 +13232,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -14170,23 +14218,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -15156,23 +15208,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -16150,23 +16206,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -17132,23 +17192,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -18115,23 +18179,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -19101,23 +19169,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -20089,23 +20161,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [
@@ -21073,23 +21149,27 @@
       ],
       "layout": {
         "icon-image": [
-          "match",
+          "concat",
           [
-            "get",
-            "subclass"
+            "match",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "florist",
+              "furniture"
+            ],
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ]
           ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
+          "-poi"
         ],
         "icon-size": 0.4,
         "text-field": [

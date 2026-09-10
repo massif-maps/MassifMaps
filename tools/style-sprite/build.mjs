@@ -24,6 +24,36 @@ function render(svg, ratio) {
     return PNG.sync.read(Buffer.from(r.render().asPng()));
 }
 
+// Every POI drawing is the same white disc with a grey ring, and the glyph one flat grey on it.
+// Matched exactly, so a drawing that stops being that shape fails loudly instead of shipping a
+// sprite with two discs on it.
+const POI_DISC = /<circle cx="24" cy="24" r="22\.5" fill="#ffffff" stroke="#9a9a9a" stroke-width="3"\/>\n\s*/;
+const POI_GLYPH_FILL = 'fill="#333333"';
+
+/**
+ * Draw the disc a POI class stands on into its sprite, in the colour and shape the style would
+ * give it.
+ *
+ * The SDK colours it per feature through `["image", …, {params}]` and never needs this; MapLibre
+ * has no such expression, so without it the reference pane draws a neutral disc under everything
+ * and a disc under a park bench. The palette is written by a style's own poi-palette.py, which is
+ * also what states those params - one table, so the two rows cannot drift.
+ *
+ * It is a SECOND sprite, `<class>-poi`, and the neutral drawing stays. mapbox2css splits the
+ * neutral one into a glyph field and the plate the SDK recolours, and that split needs a flat
+ * neutral disc to measure: baking the colour in place cost every POI its plate.
+ */
+function bakePoi(id, svg, palette) {
+    const p = palette.classes[id] ?? palette.default;
+    if (!POI_DISC.test(svg)) throw new Error(`${id}: no disc to bake - has the artwork changed?`);
+    // Radius 21 is the full circle the drawing already is, and less is a rounded square of the same
+    // box: one number spells every badge, exactly as it does on the SDK side.
+    const rx = ((p.radius / 21) * 22.5).toFixed(2).replace(/\.?0+$/, '');
+    const disc = p.disc === null ? '' : `<rect x="1.5" y="1.5" width="45" height="45" rx="${rx}" `
+        + `fill="${p.disc}" stroke="${palette.ring}" stroke-width="${p.border}"/>\n  `;
+    return svg.replace(POI_DISC, disc).replace(POI_GLYPH_FILL, `fill="${p.glyph}"`);
+}
+
 /** One drawing, one sprite per colour: `<id>-<variant>`, with `__TOKEN__` replaced in the SVG. */
 function expand(id, svg, manifest) {
     const variants = (manifest.variants || {})[id];
@@ -84,11 +114,19 @@ function build(srcDir, outDir, name) {
     if (!files.length) throw new Error(`no SVG in ${srcDir}`);
     mkdirSync(outDir, { recursive: true });
 
+    let palette = null;
+    try {
+        palette = JSON.parse(readFileSync(join(srcDir, 'poi-palette.json'), 'utf8'));
+    } catch { /* a sheet without POIs needs none */ }
+
     for (const ratio of RATIOS) {
         const images = files.flatMap((f) => {
             const source = basename(f, '.svg');
             const svg = readFileSync(join(srcDir, f), 'utf8');
-            return expand(source, svg, manifest).map((v) => ({
+            const drawings = palette && f.startsWith('poi/')
+                ? [{ id: source, svg }, { id: `${source}-poi`, svg: bakePoi(source, svg, palette), from: source }]
+                : expand(source, svg, manifest);
+            return drawings.map((v) => ({
                 id: v.id,
                 meta: manifest.icons[v.from || v.id] || {},
                 png: render(Buffer.from(v.svg), ratio),

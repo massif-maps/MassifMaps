@@ -3925,6 +3925,23 @@ namespace massif::vt {
         glUniform2f(shaderProgram.uniforms[U_TILEUNITSCALE], static_cast<float>(unitScaleX), static_cast<float>(unitScaleY));
         glUniform2f(shaderProgram.uniforms[U_TILEUNITOFFSET], static_cast<float>(unitOffsetX), static_cast<float>(unitOffsetY));
 
+        if (_transformer->isSpherical()) {
+            // Set before the no-elevation bail-out below: a tile drawn flat is still lit, and a
+            // stale frame there would light it from somewhere else than its neighbours.
+            cglib::vec3<double> up = _viewState.origin;
+            double len = cglib::length(up);
+            up = (len > 0 ? up * (1.0 / len) : cglib::vec3<double>(0, 0, 1));
+            double h = std::sqrt(up(0) * up(0) + up(1) * up(1));
+            cglib::vec3<double> east = (h > 1.0e-9 ? cglib::vec3<double>(-up(1) / h, up(0) / h, 0) : cglib::vec3<double>(1, 0, 0));
+            cglib::vec3<double> north = cglib::vector_product(up, east);
+            GLfloat frame[9] = {
+                static_cast<GLfloat>(east(0)), static_cast<GLfloat>(east(1)), static_cast<GLfloat>(east(2)),
+                static_cast<GLfloat>(north(0)), static_cast<GLfloat>(north(1)), static_cast<GLfloat>(north(2)),
+                static_cast<GLfloat>(up(0)), static_cast<GLfloat>(up(1)), static_cast<GLfloat>(up(2))
+            };
+            glUniformMatrix3fv(shaderProgram.uniforms[U_LIGHTINGFRAME], 1, GL_FALSE, frame);
+        }
+
         const std::pair<bool, TerrainTexture>& resolved = resolveTerrainTexture(tileId);
         bool valid = resolved.first;
         const TerrainTexture& terrainTexture = resolved.second;
@@ -4025,6 +4042,12 @@ namespace massif::vt {
                 static_cast<float>(nodeOrigin(1) / internalPerRadian),
                 static_cast<float>(internalPerRadian * invNodeSizeX),
                 static_cast<float>(internalPerRadian * invNodeSizeY));
+            // The same for the FULL texture, which the fragment stage shades and shadows from.
+            glUniform4f(shaderProgram.uniforms[U_TERRAINSPHEREELEVUV],
+                static_cast<float>(terrainTexture.internalOrigin(0) / internalPerRadian),
+                static_cast<float>(terrainTexture.internalOrigin(1) / internalPerRadian),
+                static_cast<float>(internalPerRadian * invSizeX),
+                static_cast<float>(internalPerRadian * invSizeY));
             // The same for the TARGET tile, which the line clip tests against. Pure tile arithmetic:
             // a zoom level spans 2pi of Mercator radians on both axes, y counted from the south.
             double tileCount = static_cast<double>(1 << tileId.zoom);

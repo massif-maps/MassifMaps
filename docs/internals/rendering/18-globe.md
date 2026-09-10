@@ -311,6 +311,31 @@ slope - which needs nothing but the base surface and the height field, so it ser
 `tests/api/TerrainSurfaceTest.cpp` pins it: a ray straight down over a 300-unit plateau stops 600
 WORLD units early, the 2x again.
 
+### The light was in the wrong frame, so every building was lit from the pole
+
+A lighting shader — including an application's own — is written against the MAP's frame: `normal.z`
+is "how much this face points up", `uSunDir.z` is the sun's height, and `applyLighting3D` uses both
+apart from the `N.L` term. On a globe a geometry normal is the SPHERE's: at Paris a roof points at
+`(0.43, 0.02, 0.75)`, not at `(0, 0, 1)`, and `LIGHTING_SHADER_3D` read that as a wall facing north.
+Buildings came out dark and flat while the ground around them looked right.
+
+The renderer now hands the shaders `uLightingFrame`, the rotation from the sphere's world into the
+VIEW's own east/north/up, and every normal passes through it before it reaches a lighting function
+(`lightingNormal` in the vertex stage, `groundLightNormal` for the DEM slope in the fragment one).
+The sun uniform is untouched, which is what makes this the terminator model rather than a per-tile
+copy of the planar picture: one fixed direction in space, matching the plane exactly at the focus
+and falling off towards the limb. It re-anchors when the view moves — an app that wants a
+terminator pinned to a date and a place has to say so, and there is no property for that yet.
+
+The ground had a second bug in the same area: `setTerrainLightVaryings` built `vElevUV` with the
+affine planar form `uElevationUV.xy + pos.xy * uElevationUV.zw`, the exact mistake the displacement
+path already had a spherical inversion for. Shading and shadowing read the DEM at the wrong texels.
+`uTerrainSphereElevUV` is that inversion for the FULL elevation texture, next to the node one.
+
+Not covered: a globe with 3D buildings and NO terrain. `TERRAIN_SPHERICAL` is only compiled in when
+`TERRAIN_VTF_FLAG` is, and bit 31 of the shader flag word is the last one — a separate spherical
+flag needs a wider `flags` type first.
+
 ### The 2D/3D switch was turned off on the globe, and the map went blank
 
 `MapRenderer::updateTerrainFlatten` bailed out on any non-planar projection, because

@@ -58,6 +58,7 @@ public final class ExampleLive extends BroadcastReceiver {
         knob("textOcclusion", "terrain", "textOcclusionOpacity");
         knob("occlusionTolerance", "terrain", "billboardOcclusionTolerance");
         // tiles and LOD
+        knob("projection", "options", "renderProjectionMode");
         knob("styleZoomLift", "options", "tileStyleZoomLift");
         knob("lodFactor", "options", "tileLODFactor");
         knob("lodLevels", "options", "tileLODMaxZoomLevelsOnScreen");

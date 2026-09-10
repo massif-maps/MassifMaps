@@ -84,6 +84,9 @@ namespace massif::vt {
     // New tile surfaces a globe's ground caster may TESSELATE per pass. ~5 ms each on an emulator,
     // and the light box sweeps a hundred of them in whenever the sun moves.
     static constexpr int SHADOW_CASTER_SURFACE_BUDGET = 2;
+    // Steps the scene light is quantised to before it reaches a drape tile's fingerprint. Every step
+    // it crosses re-bakes the whole cover, so this is how often the ground repaints over a day.
+    static constexpr float DRAPE_LIGHT_STEPS = 16.0f;
     // maplibre covering_tiles.ts / mercator_utils.ts, verbatim: the tallest feature a tile is
     // assumed to carry, the angle above the horizon at which the culling box starts to grow to
     // hold it, and the horizon itself.
@@ -5676,11 +5679,11 @@ namespace massif::vt {
         };
         // The scene light is baked in with the colours, so moving the sun makes every cached drape
         // stale - otherwise changing the hour moved the buildings and left the ground as it was.
-        // QUANTISED to 64 steps per channel, so a day cycle re-bakes a few dozen times in all.
+        // QUANTISED, so a day cycle re-bakes a bounded number of times (see DRAPE_LIGHT_STEPS).
         for (int i = 0; i < 3; i++) {
-            combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * 64.0f) * (i + 1));
+            combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * DRAPE_LIGHT_STEPS) * (i + 1));
         }
-        combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * 64.0f) * 4);
+        combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * DRAPE_LIGHT_STEPS) * 4);
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
             const RenderTileLayer& renderLayer = it->second;
             // The contact shadows count too: they are baked INTO the drape, but the extrusions that

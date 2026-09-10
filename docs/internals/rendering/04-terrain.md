@@ -451,9 +451,21 @@ that interpolates — is baked in at whatever zoom the tile was first baked at, 
 a new tile level happened to bring new textures. A road stepped once per integer level instead of
 growing with the zoom.
 
-The zoom now goes into the fingerprint quantised (`DrapeTuning::bakeZoomTerm`), at the same quarter
-of a level the label re-placement uses: four bakes per zoom level, spread over frames by the bake
-budget above. The term follows the camera **only once it settles** — mapbox does the same, their
+**The scene LIGHT is content too**, for the same reason: it is baked in with the colours, so moving
+the sun has to make the cover stale or the buildings follow the hour and the ground does not. It is
+quantised to `DRAPE_LIGHT_STEPS` per channel — **16**, not the 64 it started at. Every step the sun
+crosses re-bakes the whole cover, and at 64 a day-cycle drag crossed one every few frames: the
+ground repainted continuously, always a few frames behind the buildings. Sixteen steps is still
+finer than a drape tile's own colour resolution and re-bakes a quarter as often.
+
+The count ration on that class is gone **at rest**. One stale tile per frame is right while the
+camera moves, but a light step marks the whole cover at once with the camera still, and a count
+repaints it tile by tile in front of the user — the ground visibly trailing the sky. At rest the
+60 ms wall-clock ceiling rations it instead, which is what it was written for.
+
+The zoom goes into the fingerprint quantised the same way (`DrapeTuning::bakeZoomTerm`), at the same
+quarter of a level the label re-placement uses: four bakes per zoom level, spread over frames by the
+bake budget above. The term follows the camera **only once it settles** — mapbox does the same, their
 drape does not re-render during a pinch — because re-baking mid-gesture spends a bake per tile per
 step on a picture that is about to change again. The frame the term moves in has to be asked for
 explicitly (`requestRedraw`); nothing else was going to draw it.

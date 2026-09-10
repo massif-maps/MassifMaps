@@ -3403,8 +3403,10 @@ namespace massif {
                     bakeSome(partialTiles, DRAPE_BAKE_BUDGET_PARTIAL);
                     // One stale tile per frame is the right ration while the camera moves. On a map at
                     // REST it is a livelock: only the bakes themselves ask for frames, so a backlog
-                    // drains over half a minute. At rest the wall-clock budget rations it instead.
-                    bakeSome(staleTiles, bakeCameraMoving ? DRAPE_BAKE_BUDGET_STALE : DRAPE_BAKE_BUDGET_BLANK);
+                    // drains over half a minute. At rest the wall-clock budget rations it instead -
+                    // and with NO count ceiling, because there the whole cover goes stale at once (the
+                    // sun crossing a light step) and a count repaints the ground in front of the user.
+                    bakeSome(staleTiles, bakeCameraMoving ? DRAPE_BAKE_BUDGET_STALE : static_cast<int>(staleTiles.size()));
 
                     // Baking is rationed over several frames, so it only finishes if those frames
                     // happen - and nothing else asks for them once the map goes idle. Keep asking

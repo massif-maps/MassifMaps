@@ -550,8 +550,18 @@ the longitude as `atan2` of the cross and dot of `o` with `o+d`, both expanded t
 small-argument `atanh` takes its series: `log(1+x)` at `x = 1e-4` throws away four of the seven
 digits. Every uv uniform (`uTerrainSphereTileUV`, `uTerrainSphereNodeUV`, `uTerrainSphereElevUV`)
 now carries its origin **relative to the frame origin**, computed in double on the CPU
-(`GLTileRenderer::sphereFrameMercator`), so no O(1) quantity reaches the shader at all — which is
-also why none of them wraps the antimeridian any more; `wrapRadians` does it once, on the CPU.
+(`GLTileRenderer::sphereFrameMercator`), so no O(1) quantity reaches the shader at all.
+
+**The antimeridian wrap stays.** It was dropped with this change, on the argument that a relative
+form has nothing to wrap, and that was wrong: the longitude comes out of `atan`, so it is the true
+offset *modulo 2pi*, and a coarse STAND-IN frame — an ancestor serving a finer target while it
+loads — sits up to a world away in longitude. Measured on a zoom-1 frame, whose origin is at
+longitude 180: the true offset reaches 337 degrees and **63 of 81 vertices wrap**. Without the wrap
+their uv lands a whole world outside the texture, which CLAMP smears into stripes across the tile —
+low zoom only, and it clears itself as soon as the stand-in resolves to a nearer tile. The uv
+uniform is measured from the same frame and wrapped the same way, so the difference is right modulo
+2pi and `terrainSphereRelative` brings the small answer back. Both terms are small, so the wrap
+costs nothing in precision.
 
 The error is now flat across zoom, which is the signature worth checking if this ever regresses.
 `testTheShaderInversionSurvivesFloatPrecision` pins both forms; the older

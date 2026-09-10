@@ -564,9 +564,18 @@ namespace massif::vt {
             highp float dLon = atan(o.x * d.y - o.y * d.x, o.x * (o.x + d.x) + o.y * (o.y + d.y));
             return vec2(dLon, dMercY);
         }
+        // A vertex's offset from an origin the uv uniforms carry, both measured from the frame's.
+        // atan gives the longitude modulo 2pi, and a COARSE stand-in frame sits up to a world away
+        // in longitude - 63 of 81 vertices of a zoom-1 frame wrap. The answer is small either way,
+        // so the wrap costs nothing and without it the ground smeared at low zoom (18-globe.md).
+        highp vec2 terrainSphereRelative(highp vec3 pos, highp vec2 origin) {
+            highp vec2 merc = terrainSphereMercatorDelta(pos) - origin;
+            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
+            return merc;
+        }
         // Where a vertex sits in the TARGET tile, for the line clip.
         highp vec2 terrainSphereTileUnit(highp vec3 pos) {
-            return (terrainSphereMercatorDelta(pos) - uTerrainSphereTileUV.xy) * uTerrainSphereTileUV.zw;
+            return terrainSphereRelative(pos, uTerrainSphereTileUV.xy) * uTerrainSphereTileUV.zw;
         }
         // The bake draws a vertex by WHERE IN THE TILE it is - its curved world position means
         // nothing to a bake target that IS the tile's unit square. The matrix comes in because
@@ -631,12 +640,12 @@ namespace massif::vt {
         // stage shades and shadows from this texture, and its affine planar form read a curved
         // xy as a flat one (18-globe.md).
         highp vec2 terrainSphereElevUV(highp vec3 pos) {
-            return (terrainSphereMercatorDelta(pos) - uTerrainSphereElevUV.xy) * uTerrainSphereElevUV.zw;
+            return terrainSphereRelative(pos, uTerrainSphereElevUV.xy) * uTerrainSphereElevUV.zw;
         }
         #endif
         vec3 applyTerrain(vec3 pos) {
         #ifdef TERRAIN_SPHERICAL
-            highp vec2 uv = (terrainSphereMercatorDelta(pos) - uTerrainSphereNodeUV.xy) * uTerrainSphereNodeUV.zw;
+            highp vec2 uv = terrainSphereRelative(pos, uTerrainSphereNodeUV.xy) * uTerrainSphereNodeUV.zw;
         #else
             highp vec2 uv = uElevationNodeUV.xy + pos.xy * uElevationNodeUV.zw;
         #endif

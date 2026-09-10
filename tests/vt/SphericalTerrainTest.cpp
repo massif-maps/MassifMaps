@@ -460,6 +460,58 @@ namespace {
         TEST_CHECK(worstCurved > 1.0, "the curved point is whole TILES away from it");
         TEST_CHECK(planarUnchanged, "and on a plane the two are the same point, so nothing there changes");
     }
+
+    /*
+     * The antimeridian wrap the relative form still needs. terrainSphereMercatorDelta's longitude
+     * comes from atan, so it is the true offset modulo 2pi - and a COARSE STAND-IN frame (an
+     * ancestor serving a finer target while it loads) sits up to a world away in longitude, so most
+     * of its vertices wrap. The uv uniform is measured from the same frame and wrapped the same
+     * way, so their difference is right modulo 2pi and the small answer comes back by wrapping it.
+     * Dropped once, on the argument that a relative form has nothing to wrap: the ground smeared
+     * across whole tiles at low zoom, because the uv landed a world outside the texture.
+     */
+    void testACoarseFrameStillNeedsTheAntimeridianWrap() {
+        const double PI = 3.1415926535897932;
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / PI));
+        double sphereRadius = sphere.calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
+        const TileId frameTileId(1, 0, 0); // origin at longitude 180, which every vertex is far from
+
+        cglib::mat4x4<double> frame = sphere.calculateTileMatrix(frameTileId, 1.0f);
+        cglib::vec3<float> o(static_cast<float>(frame(0, 3) / sphereRadius), static_cast<float>(frame(1, 3) / sphereRadius), static_cast<float>(frame(2, 3) / sphereRadius));
+        cglib::vec3<float> scale(static_cast<float>(frame(0, 0) / sphereRadius), static_cast<float>(frame(1, 1) / sphereRadius), static_cast<float>(frame(2, 2) / sphereRadius));
+        double frameLon = std::atan2(frame(1, 3), frame(0, 3));
+
+        std::shared_ptr<const TileTransformer::VertexTransformer> vertexTransformer = sphere.createTileVertexTransformer(frameTileId);
+        int wrapped = 0, total = 0;
+        double worstUnwrapped = 0, worstWrapped = 0;
+        for (int j = 0; j <= 8; j++) {
+            for (int i = 0; i <= 8; i++) {
+                cglib::vec3<float> pos = vertexTransformer->calculatePoint(cglib::vec2<float>(i / 8.0f, j / 8.0f));
+                cglib::vec3<float> d(pos(0) * scale(0), pos(1) * scale(1), pos(2) * scale(2));
+
+                double trueDelta = std::atan2(static_cast<double>(o(1) + d(1)), static_cast<double>(o(0) + d(0))) - frameLon;
+                float dLon = std::atan2(o(0) * d(1) - o(1) * d(0), o(0) * (o(0) + d(0)) + o(1) * (o(1) + d(1)));
+
+                // terrainSphereRelative, against an origin ON the frame - so the answer IS trueDelta.
+                float merc = dLon - 0.0f;
+                merc -= 6.283185307179586f * std::floor(merc * 0.15915494309189535f + 0.5f);
+                double target = trueDelta - 6.283185307179586 * std::floor(trueDelta * 0.15915494309189535 + 0.5);
+
+                total++;
+                if (std::fabs(dLon - trueDelta) > 1.0) {
+                    wrapped++;
+                }
+                worstUnwrapped = std::max(worstUnwrapped, std::fabs(dLon - trueDelta));
+                // A vertex exactly half a world away wraps either way, and one does at u = 0.5 here.
+                if (std::fabs(std::fabs(target) - PI) > 1.0e-3) {
+                    worstWrapped = std::max(worstWrapped, std::fabs(merc - target));
+                }
+            }
+        }
+        TEST_CHECK(wrapped * 2 > total, "most vertices of a coarse frame come back a whole world out");
+        TEST_CHECK(worstUnwrapped > 5.0, "and the raw offset is out by 2pi, not by a rounding term");
+        TEST_CHECK(worstWrapped < 1.0e-5, "the wrap puts every one of them back");
+    }
 }
 
 void testSphericalTerrain() {
@@ -472,4 +524,5 @@ void testSphericalTerrain() {
     testTheGroundLatticeIsNotLeftToTheCurvatureSplit();
     testTheShaderInversionSurvivesFloatPrecision();
     testTheExtrusionAnchorIsTheTileSquareAndNotACurvedPoint();
+    testACoarseFrameStillNeedsTheAntimeridianWrap();
 }

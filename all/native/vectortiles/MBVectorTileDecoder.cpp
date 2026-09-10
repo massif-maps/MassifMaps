@@ -117,10 +117,6 @@ namespace massif {
             return picojson::value();
         }
 
-        bool isContainerValue(const mvt::Value& value) {
-            return std::get_if<std::shared_ptr<const mvt::ValueObject>>(&value) || std::get_if<std::shared_ptr<const mvt::ValueArray>>(&value);
-        }
-
         // Compiled maps, shared between decoders: compiling a style is 0.5-0.7 s for a 23-layer
         // project, paid again by every layer built from it. A compiled map is read-only and a
         // decoder's own values live in its parameter store, so sharing one is safe.

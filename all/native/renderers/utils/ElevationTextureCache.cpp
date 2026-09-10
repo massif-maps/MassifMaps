@@ -150,6 +150,9 @@ namespace massif {
         // ancestors are accepted too - real DEM data instead of a duplicated edge texel.
         bool seamless = _elevationManager->isSeamlessTileEdgesEnabled();
         const MapTile& gridTile = grid->getTile();
+        // The far ground of a tilted view, whose border is worth a fraction of a pixel: its fetch
+        // is not worth delaying the ground under the camera.
+        bool farFromView = static_cast<float>(gridTile.getZoom()) < _viewZoom - NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW;
         int gridMask = (1 << gridTile.getZoom()) - 1;
         BorderQuality qualities = NO_BORDERS;
         int slot = 0;
@@ -161,7 +164,7 @@ namespace massif {
             }
             MapTile neighbourTile((gridTile.getX() + dx) & gridMask, ny, gridTile.getZoom(), 0);
             std::shared_ptr<ElevationTileGrid> neighbour = _elevationManager->getDataTileGrid(neighbourTile, ElevationManager::LoadMode::CACHED_ONLY);
-            if (!neighbour || !(neighbour->getTile() == neighbourTile)) {
+            if ((!neighbour || !(neighbour->getTile() == neighbourTile)) && !farFromView) {
                 // Border texels want the real neighbour, but after every tile's own level: a missing
                 // neighbour costs one texel of accuracy, a missing own level displaces the whole
                 // tile. Diagonals only fill the corner texel, so they come last.
@@ -590,7 +593,8 @@ namespace massif {
         }
     }
 
-    void ElevationTextureCache::beginFrame() {
+    void ElevationTextureCache::beginFrame(float viewZoom) {
+        _viewZoom = viewZoom;
         // Textures encoded since the last frame go up now, ahead of the draws that sample them,
         // and border refinements are patched into the ones already there.
         uploadReadyTextures();

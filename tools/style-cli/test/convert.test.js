@@ -33,6 +33,37 @@ test('background becomes the Map block', () => {
     assert.match(mss, /\n\s+background-color: #f0f0f0;\n/);
 });
 
+test('--ao-follows-height fades the ground AO on the ramp that lays the buildings down', () => {
+    // The contact shadow belongs to the building standing in it: left at full strength under a
+    // flattened city it reads as a dark ring around every footprint. Asserted here because it is a
+    // STYLE decision - the renderer must not force it - so the converter is what has to emit it.
+    const withAO = JSON.parse(JSON.stringify(style));
+    const buildings = withAO.layers.find((layer) => layer.type === 'fill-extrusion');
+    buildings.paint['fill-extrusion-ambient-occlusion-intensity'] = 0.3;
+
+    // OFF by default: the shadow keeps the style's own value at every tilt.
+    const plain = convert(withAO, table, NO_PALETTE).mss;
+    const plainLine = plain.split('\n').find((l) => l.includes('building-ao-intensity:'));
+    assert.ok(plainLine, 'the converter emits building-ao-intensity');
+    assert.doesNotMatch(plainLine, /building_tilt_drop/);
+
+    const { mss } = convert(withAO, table, { ...NO_PALETTE, aoFollowsHeight: true });
+    const line = mss.split('\n').find((l) => l.includes('building-ao-intensity:'));
+    assert.ok(line, 'the converter emits building-ao-intensity');
+    // The live off switch, the style's own value, and the tilt ramp - all three, multiplied.
+    assert.match(line, /\[param::building_ao\]/);
+    assert.match(line, /\[param::building_tilt_drop\] \* 0\.01/);
+    assert.match(line, /linear\(\[view::tilt\], \(80, 0\), \(90, 1\)\)/);
+    // The same ramp the DRAWN height takes, so the two cannot drift apart. This fixture does not
+    // reach the branch that emits the height scale, so the cross-check runs only when it is there.
+    const ramp = /1 - \(\[param::building_tilt_drop\] \* 0\.01\) \* linear\(\[view::tilt\], \(80, 0\), \(90, 1\)\)/;
+    assert.match(line, ramp);
+    const height = mss.split('\n').find((l) => l.includes('building-height-view-scale:'));
+    if (height) {
+        assert.match(height, ramp);
+    }
+});
+
 test('each MapBox layer becomes an attachment on its source-layer', () => {
     const { mss } = run();
     assert.match(mss, /#transportation\[zoom >= 7\]\[zoom < 21\].*::road_casing \{/);

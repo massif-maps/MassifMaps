@@ -76,7 +76,7 @@ namespace massif::mvt {
         const std::shared_ptr<const Filter> _trueFilter;
         // Per LAYER for the life of this reader, which is one tile: the anchor pass reads the whole
         // layer, and a layer two extruding styles draw would otherwise read it twice.
-        mutable std::map<const Layer*, std::shared_ptr<const std::unordered_map<long long, cglib::vec2<float>>>> _extrusionAnchors;
+        mutable std::map<const Layer*, std::shared_ptr<const std::unordered_map<long long, std::vector<vt::ExtrusionAnchor>>>> _extrusionAnchors;
     };
 }
 

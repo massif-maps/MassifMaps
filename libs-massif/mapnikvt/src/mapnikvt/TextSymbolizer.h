@@ -64,6 +64,8 @@ namespace massif::mvt {
             bindProperty("background-radius", &_backgroundRadius);
             bindProperty("background-padding-x", &_backgroundPaddingX);
             bindProperty("background-padding-y", &_backgroundPaddingY);
+            bindProperty("background-width", &_backgroundWidth);
+            bindProperty("background-height", &_backgroundHeight);
             bindProperty("background-border-fill", &_backgroundBorderFill);
             bindProperty("background-border-opacity", &_backgroundBorderOpacity);
             bindProperty("background-border-width", &_backgroundBorderWidth);
@@ -170,6 +172,9 @@ namespace massif::mvt {
         FloatProperty _backgroundRadius = FloatProperty(0.0f);
         FloatProperty _backgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _backgroundPaddingY = FloatProperty(2.0f);
+        // A fixed outer size, which the padding cannot give: it is measured from content that varies.
+        FloatProperty _backgroundWidth = FloatProperty(0.0f);
+        FloatProperty _backgroundHeight = FloatProperty(0.0f);
         // A border around the plate: one more plate behind it, that much larger on every side.
         ColorProperty _backgroundBorderFill = ColorProperty("#000000");
         FloatProperty _backgroundBorderOpacity = FloatProperty(1.0f);

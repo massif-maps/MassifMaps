@@ -108,6 +108,9 @@ namespace massif::vt {
         Color color;
         float radius = 0.0f;
         cglib::vec2<float> padding = cglib::vec2<float>(0, 0);
+        // A fixed OUTER size per axis, border included; 0 leaves that axis sized by what the plate
+        // sits behind. Padding cannot hold a size: it is measured from content that varies.
+        cglib::vec2<float> size = cglib::vec2<float>(0, 0);
         Color borderColor;
         float borderWidth = 0.0f;
 
@@ -116,10 +119,35 @@ namespace massif::vt {
         bool enabled() const { return hasFill() || hasBorder(); }
 
         bool operator == (const LabelPlateStyle& other) const {
-            return color == other.color && radius == other.radius && padding == other.padding && borderColor == other.borderColor && borderWidth == other.borderWidth;
+            return color == other.color && radius == other.radius && padding == other.padding && size == other.size && borderColor == other.borderColor && borderWidth == other.borderWidth;
         }
         bool operator != (const LabelPlateStyle& other) const { return !(*this == other); }
     };
+
+    /**
+     * The box a plate covers: the content grown by the padding and the border it is drawn with.
+     * Both the culler and the geometry go through this, or the label would collide on one box and
+     * draw as another.
+     *
+     * 'contentBox' is in glyph units and comes back multiplied by 'boxScale'; 'pixelScale' converts
+     * a pixel value to those same units. 'borderWidth' is the plate's own, snapped to its cell.
+     */
+    inline cglib::bbox2<float> calculatePlateBox(const cglib::bbox2<float>& contentBox, const LabelPlateStyle& style, float borderWidth, float boxScale, float pixelScale) {
+        float mins[2], maxs[2];
+        for (int axis = 0; axis < 2; axis++) {
+            float low = contentBox.min(axis) * boxScale, high = contentBox.max(axis) * boxScale;
+            if (style.size(axis) > 0) {
+                float half = style.size(axis) * pixelScale * 0.5f, centre = (low + high) * 0.5f;
+                mins[axis] = centre - half;
+                maxs[axis] = centre + half;
+            } else {
+                float grow = (style.padding(axis) + borderWidth) * pixelScale;
+                mins[axis] = low - grow;
+                maxs[axis] = high + grow;
+            }
+        }
+        return cglib::bbox2<float>(cglib::vec2<float>(mins[0], mins[1]), cglib::vec2<float>(maxs[0], maxs[1]));
+    }
 
     struct PointStyle final {
         CompOp compOp;

@@ -181,11 +181,15 @@ namespace {
             !env.buildingLightIntensity && !env.buildingAmbient && !env.buildingVerticalGradient
             && !env.sunIntensity && !env.sunAltitude && !env.sunAzimuth && !env.ambientIntensity
             && !(lightOptions && (lightOptions->isSunIntensityStated() || lightOptions->isDayCycleLightsEnabled()));
+
+        // Both are style EXPRESSIONS over the view, so a curve that overshoots its own range hands
+        // over a negative scale - and a negative height extrudes the building DOWN through the
+        // ground it stands on. Zero is a legitimate answer; below zero never is.
         if (env.buildingHeightScale) {
-            lighting.buildingHeightScale = *env.buildingHeightScale;
+            lighting.buildingHeightScale = std::max(0.0f, *env.buildingHeightScale);
         }
         if (env.buildingHeightViewScale) {
-            lighting.buildingHeightViewScale = *env.buildingHeightViewScale;
+            lighting.buildingHeightViewScale = std::max(0.0f, *env.buildingHeightViewScale);
         }
         if (env.buildingGrowOnAppear) {
             lighting.buildingGrowOnAppear = *env.buildingGrowOnAppear;

@@ -774,6 +774,80 @@ Metres are converted with the mercator stretch at the view's own latitude
 a style author writes in metres. Tangram has no equivalent: their only control is the same per-tile
 zoom filter.
 
+### ...and a cut that is always on, in camera-relative units
+
+`text-max-distance` is opt-in, so a style that does not set it caps nothing — measured at Paris
+z16.5, tilting from 80 to 30 took live labels from 950 to 5001 and the culler from 59 to 668 ms a
+second ([performance log 27](../performance-log.md)). Both GL-JS renderers cut unconditionally
+instead, and not in metres:
+
+| | constant | cuts past |
+|---|---|---|
+| mapbox `minPerspectiveRatio` | 0.55 | 10 × camera-to-centre |
+| maplibre `perspectiveRatioCutoff` | 0.6 | 5 × camera-to-centre |
+
+`vt::LabelDistance` ports maplibre's, the tighter of the two, as
+`ratio = 0.5 + 0.5 · (cameraToCentre / distance)`. **The unit is the point.** Camera-to-centre
+shrinks with zoom and grows with pitch, so one constant holds everywhere; a metre cap cuts a city
+block at z18 and nothing at all at z10. Measured: at tilt 80 it cuts **nothing** (the view never
+reaches 5× the centre distance looking down, so it costs nothing and removes nothing), at tilt 30 it
+drops **29%** of labels before they cost a placement.
+
+It runs *before* `updatePlacement` and the variant envelopes on purpose — those are the per-label
+cost, and the horizon band is where most of the labels are. It bounds the cost of placing labels,
+**not the number of them**: `labelsLive` is unchanged, because the labels are still built by
+`buildLabelMaps` upstream. Tangram is the one that attacks the count, by colliding each tile against
+itself on the tile worker at style-zoom + 2 and marking the losers `State::dead` for good
+(`LabelCollider::process`, plus a hard 4096-label cap per tile) — neither GL-JS renderer has that.
+
+### The pass itself is rationed
+
+The cut bounds what each label costs; the budget bounds what a pass costs. Splitting
+`LabelCuller::process` shows where to cut: **collect** (`updatePlacement` + the variant envelopes)
+is ~90% of it at ~14.6 us a label, the sort ~2%, the grid insertion the rest. Collect runs *before*
+the sort, so stopping it short costs no ordering among the labels that were collected.
+
+`beginSlice(ms)` opens a wall-clock budget shared by every `process` call in a pass; each layer
+keeps a cursor (`GLTileRenderer::_labelCullCursor`) and resumes there next pass. This is mapbox's
+`PauseablePlacement` — 2 ms, three cursors, nothing published until the cycle commits. Two things
+have to hold across a cycle, and both bit in the writing:
+
+- **the collision grid persists**, or the second half of the labels reuse slots the first half took;
+- **the view is frozen**, or the second half is collided against a grid built for another screen.
+
+The pacing is the other half of the guarantee, and it is a **duty-cycle gate** rather than a fixed
+delay: after a pass costing `C` ms, no pass may start for `C · (1000/TARGET − 1)` ms. That holds
+placement to `TARGET` (90) ms of every second whatever the tilt, the cycle size, or how often the
+camera asks — a cap, not a quota, so a still map spends none of it. A fixed delay was tried first
+and does not work: it bounds one cycle, and once placement got cheap enough to run whole it simply
+ran more often, back to 120 ms/s ([performance log 29](../performance-log.md)). Measured worst cases
+are 62 ms/s at tilt 30 and 57 at tilt 80, against a 100 ms objective.
+
+The cut is applied in TWO places, and the second is the one that matters. In the culler it can only
+HIDE a label, and it reads the label's placement - which an unplaced label does not have, so the
+~9000 unplaced labels a second bypassed it. In `Label::updatePlacement`, next to the existing
+frustum reject and measured off the geometry bbox, it stops the placement SEARCH instead: 12 295
+searches a second became ~250 ([performance log 29](../performance-log.md)). A frustum does not
+bound distance; pitched at the horizon it reaches kilometres.
+
+**Rationing is only worth it when there is something to ration.** Slicing a cheap cycle costs more
+than it saves — each slice re-sorts and re-inserts its own subset, and the pacing stretches it over
+many passes; applied unconditionally it took the culler from 59 to 75 ms/s at high tilt. Both
+references have a bypass (mapbox `isFullPlacementRequested` / `fadeDuration == 0`, maplibre
+`_forceFullPlacement`); ours is self-tuning rather than tilt-aware — a cycle is timed, and the next
+one is rationed only if the last exceeded `FULL_PLACEMENT_MS`. Looking down, a cycle is ~10 ms and
+runs whole; pitched, it is 60-100 ms and gets sliced.
+
+What it costs while rationed: a cycle takes several hundred ms, so labels settle behind a fast
+camera rather than with it (they keep their previous visibility meanwhile, so nothing flickers), and
+the placement SELECTION shifts, since an early slice claims grid slots before a later,
+higher-priority one. mapbox has the same property.
+
+**Geometry gets no such cut, in any of the three.** The cutoff lives only in `symbol/collision_index.ts`
+and the only thing that reads a collision index is symbol placement; fills, lines and extrusions
+never go near it. Distant buildings keep drawing at any pitch. The asymmetry is the whole point —
+a building shrinks with perspective and a glyph does not.
+
 ## Font names (fork-specific)
 
 A face name is a **CSS-like list**, most preferred first, and an entry may say which platform it is

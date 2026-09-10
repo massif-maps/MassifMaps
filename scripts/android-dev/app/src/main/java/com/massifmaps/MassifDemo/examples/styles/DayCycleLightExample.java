@@ -17,7 +17,11 @@ import com.massifmaps.api.Position;
     title = "Light the map by the hour",
     description = "One palette, no night theme: the scene light is read off a curve of "
                 + "`LightStop`s, and every colour on the map - 2D fills, labels, 3D walls - is "
-                + "derived from it. Swap the curve and the whole map changes character.",
+                + "derived from it. Swap the curve and the whole map changes character. The "
+                + "buildings follow the CAMERA as well as the hour: they rise over z15 and lie "
+                + "down when you zoom out (`building-height-scale`), sink towards the ground as "
+                + "the tilt approaches 90 (`building-height-view-scale`), and the map drops to a "
+                + "flat 2D render at the top of that tilt.",
     section = Sections.STYLES,
     order = 20)
 public class DayCycleLightExample extends MapExample {
@@ -129,12 +133,25 @@ public class DayCycleLightExample extends MapExample {
     private static final float[] PRESET_HOURS = { 6.8f, 12f, 17.4f, 22f };
     private int preset = 2;
 
+    /** The SDK's own thresholds, written out because the toggle switches between them and off. */
+    private static final double AUTO_FLATTEN_TILT = 88.0;
+    private static final double AUTO_FLATTEN_PARALLAX = 2.0;
+
+    /**
+     * Both style projects declare this parameter; only Mapbox Standard's Map block reads it. At 80
+     * a building keeps a fifth of its height at tilt 90 - still legible as a building, where the
+     * project's own default of 90 reads as flat once the camera is that far over.
+     */
+    private static final float[] TILT_DROPS = { 80f, 0f, 50f };
+    private int tiltDropStep;
+
     private ExampleHost host;
     private int style;
     private int formula;
     private float hour = START_HOUR;
     private float sunAltitude;
     private float sunAzimuth;
+    private float tiltDrop = TILT_DROPS[0];
 
     @Override
     public void onStart(ExampleHost host) {
@@ -145,11 +162,6 @@ public class DayCycleLightExample extends MapExample {
         // to start there. Without it every scripted run opens at dusk and only a hand on the
         // slider gets it anywhere else.
         hour = host.option("hour", START_HOUR);
-
-        // Keep a TILTED far field uniform. The LOD area test drops a tile a level for distance and
-        // again for the grazing angle; a low levels-on-screen decays the second term more slowly,
-        // so the horizon band stops jumping between levels as the camera turns.
-        map.options().set("tileLODMaxZoomLevelsOnScreen", 6.0);
 
         buildLayer(map);
 
@@ -168,9 +180,12 @@ public class DayCycleLightExample extends MapExample {
                     // Picks the elevation decoder per tile; without it the SDK assumes mapbox
                     // encoding and terrarium heights come out in the hundreds of kilometres.
                     .set("metaData", Spec.object().set("dem_encoding", "terrarium")))))
-           // The style stands the bridge decks on their chord (deck3d); the SDK keeps 3D bridges
-           // off until asked, so this example asks.
-           .apply(Spec.object().set("exaggeration", 1).set("cameraClearance", 40).set("bridges3DEnabled", true));
+           // 3D bridges (terrain.bridges3DEnabled) stay OFF here: still experimental.
+           // The auto 2D/3D thresholds are the SDK's defaults, set out loud because the toggle
+           // below is what an app turns them off with.
+           .apply(Spec.object().set("exaggeration", 1).set("cameraClearance", 40)
+               .set("autoFlattenTilt", AUTO_FLATTEN_TILT)
+               .set("autoFlattenParallax", AUTO_FLATTEN_PARALLAX));
 
         // The curve is only read while this is on; off, the style's and the app's own sun colours
         // stand, which is what every map did before the curve existed.
@@ -234,7 +249,34 @@ public class DayCycleLightExample extends MapExample {
                 DayCycleLightExample.this.host.caption(describe());
             }
         });
-        host.caption("Two styles, two formulas: the hour picks the light, the curve picks the look.");
+        // How far the buildings sink as the camera lies down, in PERCENT of their height at tilt
+        // 90. A button, not a slider: the control row scrolls, and a horizontal drag there
+        // fights the scroll. Three values tell the story.
+        host.button("Tilt drop", new Runnable() {
+            @Override
+            public void run() {
+                tiltDropStep = (tiltDropStep + 1) % TILT_DROPS.length;
+                tiltDrop = TILT_DROPS[tiltDropStep];
+                applyTiltDrop();
+                DayCycleLightExample.this.host.caption(String.format(java.util.Locale.US,
+                    "Buildings drop %.0f%% of their height by tilt 90.", tiltDrop));
+            }
+        });
+        // Off holds the map in 3D at any tilt: the thresholds are a pair, and a 0 disables its own
+        // half of the rule (see TerrainOptions.setAutoFlattenParallax).
+        host.toggle("Auto 2D/3D", true, new ExampleHost.OnToggle() {
+            @Override
+            public void onToggle(boolean on) {
+                DayCycleLightExample.this.host.map().terrain().apply(Spec.object()
+                    .set("autoFlattenTilt", on ? AUTO_FLATTEN_TILT : 0.0)
+                    .set("autoFlattenParallax", on ? AUTO_FLATTEN_PARALLAX : 0.0));
+                DayCycleLightExample.this.host.caption(on
+                    ? "Auto 2D/3D on: tilt past 88° and the map renders flat."
+                    : "Auto 2D/3D off: the map stays 3D all the way to 90°.");
+            }
+        });
+        host.caption("Two styles, two formulas: the hour picks the light, the curve picks the look. "
+                   + "Zoom out past z15, or tilt to 90, and the buildings lie down.");
     }
 
     /**
@@ -268,6 +310,16 @@ public class DayCycleLightExample extends MapExample {
                     .set("assets", Spec.of("zip")
                         .set("data", Spec.of("url")
                             .set("url", "assets://styles/" + STYLES[style][1] + ".zip"))))));
+        applyTiltDrop(); // a rebuilt layer is a fresh decoder, back on the style's own default
+    }
+
+    /**
+     * A style PARAMETER, not an SDK option: the drop is spelled out in the style's Map block and
+     * this only picks the value it reads. Applied through the layer's decoder, so it is a redraw.
+     */
+    private void applyTiltDrop() {
+        host.map().layer("basemap").call("tileDecoder.setStyleParameter",
+            "building_tilt_drop", String.valueOf((int) tiltDrop)).close();
     }
 
     /**

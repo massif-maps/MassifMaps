@@ -200,6 +200,14 @@ namespace massif {
         return names;
     }
 
+    std::shared_ptr<Layer> CompositeVectorTileLayer::getExternalChildLayer(const std::string& name) const {
+        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        if (const ExternalSource* source = findExternalSource(name)) {
+            return source->childLayer;
+        }
+        return std::shared_ptr<Layer>();
+    }
+
     void CompositeVectorTileLayer::setZoomLevelBias(float bias) {
         VectorTileLayer::setZoomLevelBias(bias);
 
@@ -748,6 +756,11 @@ namespace massif {
             if (item.kind == DRAW_ITEM_VT_GROUP) {
                 childLayer = item.groupLayer;
             } else if (const ExternalSource* source = findExternalSource(item.slot)) {
+                // Hidden children are not baked either - the drape runs BEFORE the frame, so one
+                // skipped only in renderComposite would still appear in the terrain texture.
+                if (!source->childLayer || !source->childLayer->isVisible()) {
+                    continue;
+                }
                 // Raster/hillshade children are gated by their config symbolizer as in
                 // renderComposite, or one the style hides at this zoom is baked into the terrain
                 // texture. The config is applied here too, because the bake runs BEFORE it.
@@ -781,7 +794,11 @@ namespace massif {
             if (item.kind == DRAW_ITEM_VT_GROUP) {
                 childLayer = item.groupLayer;
             } else if (const ExternalSource* source = findExternalSource(item.slot)) {
-                childLayer = source->childLayer;
+                // A hidden child places no labels: the contour elevations would otherwise stay on
+                // screen, and keep winning culler slots from labels that ARE drawn.
+                if (source->childLayer && source->childLayer->isVisible()) {
+                    childLayer = source->childLayer;
+                }
             }
             if (childLayer) {
                 childLayer->collectLabelLayers(labelLayers);
@@ -811,11 +828,15 @@ namespace massif {
             if (!source || !source->childLayer) {
                 continue;
             }
-            bool visible = true;
-            // Raster/hillshade children are gated by their config symbolizer's zoom/param:: visibility.
-            // Vector children have no config symbolizer (they are styled by normal line/text rules,
-            // which the child's own decode already zoom-filters), so they always draw.
-            if (source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
+            // The child's OWN visibility, first and for every type. Layer::setVisible has to mean
+            // what it says on a child too: hiding one only stops it LOADING (TileLayer::loadData
+            // returns early), so without this a hidden child keeps drawing the tiles it already
+            // had - it disappears when the camera moves and not when it is switched off.
+            bool visible = source->childLayer->isVisible();
+            // Raster/hillshade children are gated by their config symbolizer's zoom/param:: visibility
+            // as well. Vector children have no config symbolizer (they are styled by normal line/text
+            // rules, which the child's own decode already zoom-filters).
+            if (visible && source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
                 mvt::ResolvedLayerConfig config = decoder->resolveLayerConfig(item.slot, viewState.getZoom());
                 applyConfig(*source, config, viewState);
                 visible = config.visible;

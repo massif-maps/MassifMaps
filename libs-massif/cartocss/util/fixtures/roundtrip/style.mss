@@ -59,10 +59,10 @@ Map {
   raster-filter-mode: bicubic;
 }
 
-/* expression operators the generator emits */
+/* expression operators the generator emits, table parameters read with get/has/length */
 #transportation {
-  line-color: @road;
-  line-width: [width] ?? 2;
+  line-color: has([param::class_colors], [class]) ? get([param::class_colors], [class], @road) : @road;
+  line-width: [width] ?? get([param::class_widths], length([param::class_widths]) - 1, 2);
   line-opacity: ([class] & 1) ^ 2;
   line-offset: min([a], 4) + max([b], 2);
   line-cap: round;
@@ -83,4 +83,17 @@ Map {
   text-size: [param::selected_id] = [id] ? 14 : 11;
   text-fill: #333333;
   text-placement: line;
+}
+
+/* the label plate, sized rather than padded */
+#transportation::shield {
+  shield-name: [ref];
+  shield-face-name: 'DIN Pro Regular';
+  shield-file: url(marker.svg);
+  shield-background-fill: #ffffff;
+  shield-background-width: 22;
+  shield-background-height: 22;
+  shield-icon-background-fill: #e04020;
+  shield-icon-background-width: 18;
+  shield-icon-background-height: 18;
 }

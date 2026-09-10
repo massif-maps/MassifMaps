@@ -12,6 +12,7 @@
 #include "StrokeMap.h"
 #include "VertexArray.h"
 #include "Styles.h"
+#include "ExtrusionFloor.h"
 
 #include <atomic>
 #include <cstdint>
@@ -211,6 +212,32 @@ namespace massif::vt {
         unsigned int getBaseElevationVersion() const { return _baseElevationVersion; }
         void setBaseElevationVersion(unsigned int version) { _baseElevationVersion = version; }
 
+        /**
+         * One footprint as the base pass reads it: where it samples the ground, the few footprint
+         * vertices the floor under it is read at, and its tallest vertex in raw height units.
+         */
+        struct BaseAnchor {
+            cglib::vec2<float> pos;
+            std::array<cglib::vec2<float>, ExtrusionFloor::SUPPORT_DIRECTIONS> supports;
+            float maxHeightUnits = 0;
+            bool haveSupports = false;
+        };
+        /** A consecutive block of vertices sharing one anchor. */
+        struct BaseRun {
+            std::uint32_t begin = 0, end = 0, anchorIndex = 0;
+        };
+        /**
+         * The footprints, found by ONE walk of the vertex data and kept for the geometry's life:
+         * they depend on the vertices alone, so a DEM arrival re-samples the ground without
+         * re-walking anything. See GLTileRenderer::resolveExtrusionBases.
+         */
+        const std::vector<BaseAnchor>& getBaseAnchors() const { return _baseAnchors; }
+        const std::vector<BaseRun>& getBaseRuns() const { return _baseRuns; }
+        void setBaseFootprints(std::vector<BaseAnchor> anchors, std::vector<BaseRun> runs) {
+            _baseAnchors = std::move(anchors);
+            _baseRuns = std::move(runs);
+        }
+
         /** The span pieces of this tile, empty for anything that is not a SPAN/UNDERGROUND line. */
         const std::vector<SpanRecord>& getSpanRecords() const { return _spanRecords; }
         void setSpanRecords(std::vector<SpanRecord> spanRecords) {
@@ -305,6 +332,8 @@ namespace massif::vt {
         bool _baseResolved = false;          // extrusions: the CPU ground pass has run at least once
         unsigned int _baseElevationVersion = 0; // ...against this elevation data version
         unsigned int _baseSpanVersion = 0;   // ...and this cross-tile span union version
+        std::vector<BaseAnchor> _baseAnchors; // the footprints, found once from the vertex data
+        std::vector<BaseRun> _baseRuns;
         std::vector<SpanRecord> _spanRecords; // span lines: one entry per feature piece
         std::vector<SpanChordRef> _spanRecordChords; // ...and the chord each last resolved on in this tile
 

@@ -40,6 +40,7 @@ add_executable(style_tests
   DataDrivenPropertyTest.cpp
   ViewStatePropertyTest.cpp
   FontNamesTest.cpp
+  ValueJSONTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE
@@ -56,6 +57,8 @@ target_include_directories(style_tests PRIVATE
   "${SDK_BASE_DIR}/libs-external/utf8/source"
   "${SDK_BASE_DIR}/libs-external/boost"
   "${SDK_BASE_DIR}/libs-external/picojson"
+  # rapidjson, for the JSON a table style parameter is carried as (Value.cpp).
+  "${SDK_BASE_DIR}/libs-external/rapidjson/include"
   "${SDK_BASE_DIR}/libs-external/tinyformat")
 
 add_test(NAME style COMMAND style_tests)

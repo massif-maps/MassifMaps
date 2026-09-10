@@ -1,4 +1,5 @@
 #include "Label.h"
+#include "LabelDistance.h"
 #include "RenderStats.h"
 
 #include <algorithm>
@@ -149,10 +150,10 @@ namespace massif::vt {
                 return;
             }
             // borderWidth is the plate's own, snapped to the cell it was built from, and 0 when
-            // there is no border - the same value the quad is grown by.
-            cglib::vec2<float> grow = (plate.style.padding + cglib::vec2<float>(plate.borderWidth, plate.borderWidth)) * glyphScale;
-            bbox.add(part.min - grow);
-            bbox.add(part.max + grow);
+            // there is no border - the same box the quad is built on.
+            cglib::bbox2<float> plateBox = calculatePlateBox(part, plate.style, plate.borderWidth, 1.0f, glyphScale);
+            bbox.add(plateBox.min);
+            bbox.add(plateBox.max);
         };
         expand(textBBox, _style->textPlate);
         expand(_iconBBox, _style->iconPlate);
@@ -535,7 +536,17 @@ namespace massif::vt {
         // Nothing of this label is in view, and the loaded tile set reaches well past the viewport, so
         // this is most of a frame's placement work. DROPPED rather than kept: an invalid label is what
         // excludes it from the culler, and an off-screen one would claim border cells.
-        if (!viewState.labelFrustum.inside(calculateGeometryBBox(viewState))) {
+        //
+        // The frustum alone does not bound DISTANCE - pitched toward the horizon it reaches
+        // kilometres, and 12k searches a second ran for labels that were never going to be drawn.
+        // So the same perspective cut the culler applies is applied here, where it can stop a search
+        // rather than merely hide the result: the culler's copy reads the PLACEMENT, which an
+        // unplaced label does not have, so it could not see these at all (performance-log 29).
+        // The frustum tested is the PADDED one, so a label just outside the viewport is still placed.
+        cglib::bbox3<double> geometryBBox = calculateGeometryBBox(viewState);
+        bool beyondCutoff = viewState.focusDistance > 0 &&
+            LabelDistance::perspectiveRatio(viewState.focusDistance, cglib::length(geometryBBox.center() - viewState.origin)) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF;
+        if (beyondCutoff || !viewState.labelFrustum.inside(geometryBBox)) {
             _cachedFlippedPlacement.reset();
             if (!_placement) {
                 return false; // already unplaced, nothing changed - do not reset the opacity
@@ -965,20 +976,20 @@ namespace massif::vt {
                 continue;
             }
             // The quad is the plate's outer shape, border included - the cell was built that way.
-            cglib::vec2<float> grow = (plate.style.padding + cglib::vec2<float>(plate.borderWidth, plate.borderWidth)) * pixelScale;
+            cglib::bbox2<float> plateBox = calculatePlateBox(*layer.box, plate.style, plate.borderWidth, scale, pixelScale);
             std::int8_t mode = static_cast<std::int8_t>(plate.drawsBorder() ? GlyphMap::GlyphMode::PLATE : GlyphMap::GlyphMode::BITMAP);
-            appendPlate(*layer.box, *plate.glyph, plate.radius * pixelScale, grow, scale, layer.styleIndex, mode, cameraAxes, layer.box == &_textBBox, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
+            appendPlate(plateBox, *plate.glyph, plate.radius * pixelScale, layer.styleIndex, mode, cameraAxes, layer.box == &_textBBox, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
         }
     }
 
-    // 'radius' and 'grow' are already in the label's own units (screen pixels times the label
+    // 'plateBox' and 'radius' are already in the label's own units (screen pixels times the label
     // scale), like the glyph offsets around them.
-    void Label::appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
-        // The plate covers the box plus what it is grown by, in glyph units. The cell is barely wider
-        // than its corner radius, so it is cut into NINE: corners keep the radius, edges stretch along
-        // one axis, the centre fills. Stretching the whole cell flattens every arc into an ellipse.
-        float x0 = box.min(0) * scale - grow(0), x1 = box.max(0) * scale + grow(0);
-        float y0 = box.min(1) * scale - grow(1), y1 = box.max(1) * scale + grow(1);
+    void Label::appendPlate(const cglib::bbox2<float>& plateBox, const GlyphMap::Glyph& glyph, float radius, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+        // The cell is barely wider than its corner radius, so it is cut into NINE: corners keep the
+        // radius, edges stretch along one axis, the centre fills. Stretching the whole cell flattens
+        // every arc into an ellipse.
+        float x0 = plateBox.min(0), x1 = plateBox.max(0);
+        float y0 = plateBox.min(1), y1 = plateBox.max(1);
         float capX = std::max(0.0f, std::min(radius, (x1 - x0) * 0.5f));
         float capY = std::max(0.0f, std::min(radius, (y1 - y0) * 0.5f));
 

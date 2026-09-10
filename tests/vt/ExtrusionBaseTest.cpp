@@ -107,10 +107,29 @@ void testExtrusionBase() {
     TEST_CHECK(geometry->isBaseResolved() && geometry->getBaseElevationVersion() == 7,
                "a resolved extrusion records the elevation version it was resolved against");
 
+    // The footprints are found by ONE walk of the vertex data and kept. They depend on the vertices
+    // alone, so a DEM arrival re-samples five points per building instead of re-walking every
+    // vertex of every building in view - which was 3 M vertices a second on a pan.
+    TEST_CHECK(geometry->getBaseRuns().empty(), "an extrusion starts with no footprints found");
+    std::vector<TileGeometry::BaseAnchor> anchors(1);
+    anchors[0].pos = cglib::vec2<float>(0.5f, 0.5f);
+    anchors[0].supports.fill(cglib::vec2<float>(0.25f, 0.75f));
+    anchors[0].maxHeightUnits = 120.0f;
+    anchors[0].haveSupports = true;
+    std::vector<TileGeometry::BaseRun> runs { TileGeometry::BaseRun { 0, 4, 0 } };
+    geometry->setBaseFootprints(std::move(anchors), std::move(runs));
+    TEST_CHECK(geometry->getBaseRuns().size() == 1 && geometry->getBaseRuns()[0].end == 4,
+               "and keeps the run once it has walked for it");
+    TEST_CHECK(geometry->getBaseAnchors()[0].supports[0](1) == 0.75f &&
+               geometry->getBaseAnchors()[0].maxHeightUnits == 120.0f,
+               "with the points the floor is read at and the tallest vertex it is measured against");
+
     // The vertex data is what the base pass rewrites every time a DEM tile lands, so releasing it
     // after the first upload - which is what a geometry with no patchable slot does - would leave
     // nothing to patch.
     geometry->releaseVertexArrays();
     TEST_CHECK(!geometry->getVertexGeometry().empty(), "a base slot pins the vertex data");
     TEST_CHECK(readBase(geometry, 3) == -7.5f, "so the bases survive it");
+    TEST_CHECK(geometry->getBaseRuns().size() == 1,
+               "and so do the footprints - re-finding them is the walk this cache exists to avoid");
 }

@@ -7,12 +7,15 @@
 int failures = 0;
 
 void testPlateBitmap();
+void testPlateBox();
 void testLineLabel();
 void testExtrusionCorner();
 void testExtrusionRingOrientation();
 void testExtrusionBevel();
 void testLineJoinReach();
 void testExtrusionBase();
+void testExtrusionFloor();
+void testLabelDistance();
 void testSpanGeometry();
 void testShadowCasterClip();
 void testExtrusionAnchor();
@@ -30,12 +33,15 @@ void testLabelEdgeOffset();
 
 int main() {
     testPlateBitmap();
+    testPlateBox();
     testLineLabel();
     testExtrusionCorner();
     testExtrusionRingOrientation();
     testExtrusionBevel();
     testLineJoinReach();
     testExtrusionBase();
+    testExtrusionFloor();
+    testLabelDistance();
     testSpanGeometry();
     testShadowCasterClip();
     testExtrusionAnchor();

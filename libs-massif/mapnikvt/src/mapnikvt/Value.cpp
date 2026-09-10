@@ -1,7 +1,78 @@
 #include "Value.h"
 #include "ValueConverter.h"
 
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
 namespace massif::mvt {
+    namespace {
+        Value convertJSON(const rapidjson::Value& json) {
+            if (json.IsString()) {
+                return Value(std::string(json.GetString(), json.GetStringLength()));
+            }
+            if (json.IsBool()) {
+                return Value(json.GetBool());
+            }
+            if (json.IsInt64()) {
+                return Value(static_cast<long long>(json.GetInt64()));
+            }
+            if (json.IsNumber()) {
+                return Value(json.GetDouble());
+            }
+            if (json.IsObject()) {
+                std::map<std::string, Value> members;
+                for (auto it = json.MemberBegin(); it != json.MemberEnd(); it++) {
+                    members[std::string(it->name.GetString(), it->name.GetStringLength())] = convertJSON(it->value);
+                }
+                return Value(std::make_shared<const ValueObject>(std::move(members)));
+            }
+            if (json.IsArray()) {
+                std::vector<Value> elements;
+                for (auto it = json.Begin(); it != json.End(); it++) {
+                    elements.push_back(convertJSON(*it));
+                }
+                return Value(std::make_shared<const ValueArray>(std::move(elements)));
+            }
+            return Value();
+        }
+
+        rapidjson::Value convertValue(const Value& value, rapidjson::Document::AllocatorType& allocator) {
+            if (auto boolVal = std::get_if<bool>(&value)) {
+                return rapidjson::Value(*boolVal);
+            }
+            if (auto longVal = std::get_if<long long>(&value)) {
+                return rapidjson::Value(static_cast<std::int64_t>(*longVal));
+            }
+            if (auto doubleVal = std::get_if<double>(&value)) {
+                return rapidjson::Value(*doubleVal);
+            }
+            if (auto stringVal = std::get_if<std::string>(&value)) {
+                return rapidjson::Value(stringVal->data(), static_cast<rapidjson::SizeType>(stringVal->size()), allocator);
+            }
+            if (auto objectVal = std::get_if<std::shared_ptr<const ValueObject>>(&value)) {
+                rapidjson::Value json(rapidjson::kObjectType);
+                if (*objectVal) {
+                    for (auto it = (*objectVal)->members.begin(); it != (*objectVal)->members.end(); it++) {
+                        rapidjson::Value name(it->first.data(), static_cast<rapidjson::SizeType>(it->first.size()), allocator);
+                        json.AddMember(name, convertValue(it->second, allocator), allocator);
+                    }
+                }
+                return json;
+            }
+            if (auto arrayVal = std::get_if<std::shared_ptr<const ValueArray>>(&value)) {
+                rapidjson::Value json(rapidjson::kArrayType);
+                if (*arrayVal) {
+                    for (auto it = (*arrayVal)->elements.begin(); it != (*arrayVal)->elements.end(); it++) {
+                        json.PushBack(convertValue(*it, allocator), allocator);
+                    }
+                }
+                return json;
+            }
+            return rapidjson::Value();
+        }
+    }
+
     Value getValueElement(const Value& container, const Value& key) {
         if (auto object = std::get_if<std::shared_ptr<const ValueObject>>(&container)) {
             if (*object) {
@@ -60,6 +131,27 @@ namespace massif::mvt {
             return mix(OFFSET ^ 5, &ptr, sizeof(ptr));
         }
         return OFFSET ^ 1; // unset
+    }
+
+    bool isContainerValue(const Value& value) {
+        return std::get_if<std::shared_ptr<const ValueObject>>(&value) || std::get_if<std::shared_ptr<const ValueArray>>(&value);
+    }
+
+    std::string valueToJSON(const Value& value) {
+        rapidjson::Document doc;
+        rapidjson::Value json = convertValue(value, doc.GetAllocator());
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        json.Accept(writer);
+        return std::string(buffer.GetString(), buffer.GetSize());
+    }
+
+    Value valueFromJSON(const std::string& json) {
+        rapidjson::Document doc;
+        if (doc.Parse(json.c_str()).HasParseError()) {
+            return Value();
+        }
+        return convertJSON(doc);
     }
 
     long long getValueSize(const Value& container) {

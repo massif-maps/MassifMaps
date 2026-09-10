@@ -500,10 +500,14 @@ namespace massif::vt {
             }
             std::size_t i0 = _coords.size();
             _polygon3DAnchor = nullptr;
-            if (_polygon3DAnchors) {
+            if (_polygon3DAnchors && !verticesList.empty()) {
                 auto anchorIt = _polygon3DAnchors->find(id);
                 if (anchorIt != _polygon3DAnchors->end()) {
-                    _polygon3DAnchor = &anchorIt->second;
+                    // By the ring, not by the id alone: one feature carries many footprints when the
+                    // source merged them, and each has its own anchor.
+                    if (const ExtrusionAnchor* anchor = findExtrusionAnchor(anchorIt->second, verticesList.front())) {
+                        _polygon3DAnchor = &anchor->anchor;
+                    }
                 }
             }
             tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);

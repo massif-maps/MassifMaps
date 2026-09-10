@@ -22,6 +22,7 @@ void testSpanDrapeLight();
 void testSpanResolver();
 void testCollisionPadding();
 void testLabelAnchorAlign();
+void testLabelPadding();
 void testLabelRadialOffset();
 void testLabelEdgeOffset();
 
@@ -42,6 +43,7 @@ int main() {
     testSpanResolver();
     testCollisionPadding();
     testLabelAnchorAlign();
+    testLabelPadding();
     testLabelRadialOffset();
     testLabelEdgeOffset();
 

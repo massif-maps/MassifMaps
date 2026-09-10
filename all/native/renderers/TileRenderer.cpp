@@ -57,7 +57,11 @@ namespace massif {
         _vtRenderer(),
         _interactionMode(false),
         _layerBlendingSpeed(1.0f),
-        _labelBlendingSpeed(1.0f),
+        // Labels fade in 1/speed seconds, so this is maplibre's fadeDuration of 300 ms
+        // (Style::_updatePlacement). A full second was long enough that a name was still fading in
+        // when it had reached the middle of the screen, and it is the same duration
+        // VTLabelPlacementWorker holds the next placement pass off for.
+        _labelBlendingSpeed(1.0f / 0.3f),
         _labelOrder(0),
         _buildingOrder(1),
         _rasterFilterMode(vt::RasterFilterMode::BILINEAR),

@@ -119,8 +119,8 @@ namespace massif {
         }
     }
     
-    // 1 second is the fade at TileRenderer's default label blending speed - see the header.
-    const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 1000;
+    // The fade at TileRenderer's default label blending speed, which is maplibre's fadeDuration.
+    const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 300;
 
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();

@@ -510,7 +510,7 @@ namespace massif::vt {
             // A line placement is only worth keeping while the glyph run can be laid out on it: the run
             // follows the PROJECTED line, and a stretch that carried the text a moment ago can be
             // foreshortened to half of it while another piece of the line could carry it.
-            if (viewState.frustum.inside(bbox) && (!isLineRun() || _lineLayoutValid)) {
+            if (viewState.labelFrustum.inside(bbox) && (!isLineRun() || _lineLayoutValid)) {
                 return false;
             }
         }
@@ -535,7 +535,7 @@ namespace massif::vt {
         // Nothing of this label is in view, and the loaded tile set reaches well past the viewport, so
         // this is most of a frame's placement work. DROPPED rather than kept: an invalid label is what
         // excludes it from the culler, and an off-screen one would claim border cells.
-        if (!viewState.frustum.inside(calculateGeometryBBox(viewState))) {
+        if (!viewState.labelFrustum.inside(calculateGeometryBBox(viewState))) {
             _cachedFlippedPlacement.reset();
             if (!_placement) {
                 return false; // already unplaced, nothing changed - do not reset the opacity
@@ -1746,7 +1746,7 @@ namespace massif::vt {
                     size = -bbox.min(0) / viewState.aspect;
                     break;
                 }
-                double dist = viewState.frustum.plane_distance(plane, tilePoint.position);
+                double dist = viewState.labelFrustum.plane_distance(plane, tilePoint.position);
                 if (dist < -size * _style->scale * viewState.zoomScale) {
                     inside = false;
                     break;
@@ -1827,9 +1827,9 @@ namespace massif::vt {
 
                 std::pair<std::size_t, double> t0t = t1;
                 std::pair<std::size_t, double> t1t = t0;
-                double prevDist = viewState.frustum.plane_distance(plane, tileLine.vertices[t0.first]);
+                double prevDist = viewState.labelFrustum.plane_distance(plane, tileLine.vertices[t0.first]);
                 for (std::size_t i = t0.first; i <= t1.first; i++) {
-                    double nextDist = viewState.frustum.plane_distance(plane, tileLine.vertices[i + 1]);
+                    double nextDist = viewState.labelFrustum.plane_distance(plane, tileLine.vertices[i + 1]);
                     if (nextDist > 0) {
                         if (prevDist < 0) {
                             t0t = std::min(t0t, std::pair<std::size_t, double>(i, 1 - nextDist / (nextDist - prevDist)));
@@ -1904,7 +1904,7 @@ namespace massif::vt {
         // Split vertices list into relatively straight segments
         for (const TileLine& tileLine : tileLines) {
             cglib::bbox3<double> bbox = cglib::bbox3<double>::make_union(tileLine.vertices.begin(), tileLine.vertices.end());
-            if (!viewState.frustum.inside(bbox)) {
+            if (!viewState.labelFrustum.inside(bbox)) {
                 continue;
             }
 

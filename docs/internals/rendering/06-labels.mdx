@@ -512,6 +512,34 @@ Everything below rests on that split — the icon stays on the feature, only the
   ended instead, a `schedule()` arriving while the pass ran read the previous pass's time, found the
   interval already spent, and fired again the moment it finished — 202 ms between passes, measured.
 
+  The interval and the fade are ONE duration: 300 ms, which is maplibre's `fadeDuration` and now
+  `TileRenderer`'s default label blending speed (1/0.3 per second). A second of fade was long enough
+  that a name was still arriving when it had reached the middle of the screen.
+
+### A label is placed BEFORE it reaches the screen
+
+maplibre pads the collision viewport by `viewportPadding = 100` px (`collision_index.ts`) and sizes
+its grid `width + 2 × padding`, so a symbol is placed while it is still outside. Its own comment: the
+padding exists "so that the bulk of the changes occur offscreen… increases label stability, but it's
+expensive". A symbol placed there gets `JointPlacement::skipFade`, and `OpacityState` starts it at
+opacity **1** instead of 0 — "if a subsequent viewport change brings them into view, they'll be fully
+visible right away".
+
+Both halves are ported. `ViewState::labelFrustum` is the frustum grown by `labelPadding` pixels, and
+it is what `Label::updatePlacement` places against — the frustum tests AND the clip planes the point
+and line searches use. Missing that last part is the whole difference: the padded frustum admitted
+the label, then `findClippedPointPlacement` clipped it against the plain one and produced nothing, so
+the band measured 0 labels until the clip planes were switched too. `LabelCuller::isOffscreen` then
+hands anything placed outside the true viewport full opacity, and `getGridIndex` spans the padded
+viewport so those labels get their own cells instead of clamping into the border ones.
+
+**The band shrinks with tilt, which maplibre's does not.** 100 screen pixels at the horizon are
+kilometres of map and thousands of labels; at top-down they are 100 pixels of map. `labelPadding` is
+therefore `100 × sin(tilt)`, floored at 20 — tilt 90 is straight down here, so `sin(tilt)` IS the
+foreshortening of the ground plane, and the band stays roughly constant in WORLD terms. Measured
+live: `padding=100.0` top-down, `padding=50.0` at pitch 60, and 1–4 labels per pass taking the
+skip-fade path.
+
 **Which labels keep their text.** The culler sorts by priority → `wasVisible` → layer index → size →
 opacity and inserts greedily, so a label sorted earlier claims its side first;
 `shield-placement-priority` is the knob for "these names matter more than those", and a bigger

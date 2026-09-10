@@ -55,7 +55,8 @@ namespace massif {
          * several a second and no label ever finished its fade; measured on the Grenoble preview,
          * 10-14 labels flipped on and off per pass with the flips landing mid-screen.
          *
-         * 1 second is the fade at the default label blending speed (TileRenderer, 1.0/s).
+         * 300 ms is the fade at the default label blending speed (TileRenderer), and maplibre's
+         * own fadeDuration.
          */
         static const int MIN_PLACEMENT_INTERVAL;
 

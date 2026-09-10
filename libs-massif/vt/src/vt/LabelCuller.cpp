@@ -277,6 +277,9 @@ namespace massif::vt {
                     groupMap[groupId].push_back(&labelInfo);
                 }
             }
+            if (visible && isOffscreen(labelInfo.cullRecord)) {
+                label->setOpacity(1.0f); // see isOffscreen - it arrives already drawn
+            }
             if (visible != label->isVisible()) {
                 label->setVisible(visible);
                 VT_STAT_INC(cullerVisibilityFlips);
@@ -287,10 +290,27 @@ namespace massif::vt {
         return changed;
     }
 
+    // The grid spans the PADDED viewport, not the screen: a label is now placed up to labelPadding
+    // pixels outside it (ViewState), and a grid that stopped at the screen edge would clamp every
+    // one of those into the border cells and let them collide with everything drawn there.
     cglib::vec2<int> LabelCuller::getGridIndex(const cglib::vec2<float>& pos) const {
-        int x = std::max(0, std::min(GRID_RESOLUTION_X - 1, static_cast<int>(GRID_RESOLUTION_X * pos(0) / _viewState.resolution / _viewState.aspect)));
-        int y = std::max(0, std::min(GRID_RESOLUTION_Y - 1, static_cast<int>(GRID_RESOLUTION_Y * pos(1) / _viewState.resolution)));
+        float padding = _viewState.labelPadding;
+        float width = _viewState.resolution * _viewState.aspect + 2 * padding;
+        float height = _viewState.resolution + 2 * padding;
+        int x = std::max(0, std::min(GRID_RESOLUTION_X - 1, static_cast<int>(GRID_RESOLUTION_X * (pos(0) + padding) / width)));
+        int y = std::max(0, std::min(GRID_RESOLUTION_Y - 1, static_cast<int>(GRID_RESOLUTION_Y * (pos(1) + padding) / height)));
         return cglib::vec2<int>(x, y);
+    }
+
+    // Entirely outside the REAL viewport, though inside the padded one it was placed against. This
+    // is maplibre's JointPlacement::skipFade: "Because these symbols aren't onscreen yet, we can
+    // skip the fade in animation, and if a subsequent viewport change brings them into view, they'll
+    // be fully visible right away." Without it a label starts its fade at the edge and is still
+    // fading when it has reached the middle of the screen.
+    bool LabelCuller::isOffscreen(const CullRecord& cullRecord) const {
+        float width = _viewState.resolution * _viewState.aspect, height = _viewState.resolution;
+        return cullRecord.bounds.max(0) < 0 || cullRecord.bounds.min(0) > width ||
+               cullRecord.bounds.max(1) < 0 || cullRecord.bounds.min(1) > height;
     }
 
     void LabelCuller::clearGrid() {

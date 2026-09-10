@@ -9,6 +9,7 @@
 
 #include <vt/LabelCuller.h>
 
+#include <algorithm>
 #include <cmath>
 
 namespace massif {
@@ -18,6 +19,7 @@ namespace massif {
         _idle(false),
         _pendingWakeup(false),
         _wakeupTime(std::chrono::steady_clock::now() + std::chrono::hours(24)),
+        _lastPassTime(std::chrono::steady_clock::now() - std::chrono::hours(24)),
         _mapRenderer(),
         _condition(),
         _mutex()
@@ -51,6 +53,8 @@ namespace massif {
 
         std::lock_guard<std::mutex> lock(_mutex);
         std::chrono::steady_clock::time_point wakeupTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayTime);
+        // Never before the last pass has finished fading - see MIN_PLACEMENT_INTERVAL.
+        wakeupTime = std::max(wakeupTime, _lastPassTime + std::chrono::milliseconds(MIN_PLACEMENT_INTERVAL));
         _idle = false;
         if (postpone) {
             _wakeupTime = (_pendingWakeup ? std::max(_wakeupTime, wakeupTime) : wakeupTime);
@@ -95,6 +99,11 @@ namespace massif {
                     run = true;
                     _pendingWakeup = false;
                     _wakeupTime = currentTime + std::chrono::hours(24);
+                    // Stamped when the pass STARTS, under the same lock that claims it. Stamped on
+                    // the way out instead, a schedule() arriving while the pass ran read the
+                    // PREVIOUS pass's time, found the interval already spent and fired again as
+                    // soon as this one finished - measured at 202 ms between passes.
+                    _lastPassTime = currentTime;
                 }
 
                 if (!run) {
@@ -110,6 +119,9 @@ namespace massif {
         }
     }
     
+    // 1 second is the fade at TileRenderer's default label blending speed - see the header.
+    const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 1000;
+
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
         if (!mapRenderer) {

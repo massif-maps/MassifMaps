@@ -493,7 +493,24 @@ Everything below rests on that split — the icon stays on the feature, only the
   zooming in makes room nothing notices. The pass is **postponed** rather than queued
   (`VTLabelPlacementWorker::postpone`), so a zoom gesture places once when it settles instead of
   re-deciding at every step — placing mid-gesture is what made labels fade in and straight back out.
+- **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
+  which is maplibre's `Placement.stillRecent`: it will not begin a placement before
+  `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran
+  several a second while a label's fade takes a whole second at the default blending speed — the
+  label never reached full opacity before the next pass could drop it. Measured on the Grenoble
+  preview at z16/tilt 80: 10–14 labels flipped on and off per pass, 4–13 of them mid-screen, none of
+  them losing a placement (`offInvalid=0`) — they lost a collision to a label that had just arrived.
 
+  A/B over the same six-step pan, timing every pass:
+
+  | | passes / pan step | shortest gap | median gap | gaps &lt; 200 ms |
+  |---|---|---|---|---|
+  | interval 0 | 10.7 | 0 ms | 73 ms | 48 of 62 |
+  | interval 1000 | 4.5 | 999 ms | 1005 ms | **0 of 25** |
+
+  `_lastPassTime` is stamped when a pass **starts**, under the lock that claims it. Stamped when it
+  ended instead, a `schedule()` arriving while the pass ran read the previous pass's time, found the
+  interval already spent, and fired again the moment it finished — 202 ms between passes, measured.
 
 **Which labels keep their text.** The culler sorts by priority → `wasVisible` → layer index → size →
 opacity and inserts greedily, so a label sorted earlier claims its side first;

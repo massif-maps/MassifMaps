@@ -29,6 +29,7 @@ import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.MassifDemo.examples.ExampleSettings;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.components.PanningMode;
+import com.massifmaps.components.RenderProjectionMode;
 import com.massifmaps.api.Position;
 import com.massifmaps.projections.EPSG4326;
 import com.massifmaps.ui.MapEventListener;
@@ -181,6 +182,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                 if (closed) {
                     return;
                 }
+                applyProjectionOverride();
                 applyCameraOverrides();
                 logCamera();
                 ui.post(new Runnable() {
@@ -213,6 +215,24 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         super.onDestroy();
     }
 
+
+    /**
+     * Draw the example on the GLOBE instead of the plane, so the sphere gets exercised against
+     * real content without every example having to know about it (18-globe.md):
+     *
+     *   am start -n .../.ExampleActivity --es example day-cycle-light --es globe true
+     */
+    private void applyProjectionOverride() {
+        Bundle extras = getIntent() != null ? getIntent().getExtras() : null;
+        if (extras == null || !extras.containsKey("globe") || mapView == null) {
+            return;
+        }
+        // On this thread, not posted: switching the surface re-derives the camera, so it has to
+        // land BEFORE applyCameraOverrides rather than race it.
+        mapView.getOptions().setRenderProjectionMode("true".equals(extras.getString("globe"))
+                ? RenderProjectionMode.RENDER_PROJECTION_MODE_SPHERICAL
+                : RenderProjectionMode.RENDER_PROJECTION_MODE_PLANAR);
+    }
 
     /**
      * Camera overrides from the intent, applied AFTER the example has set its own.

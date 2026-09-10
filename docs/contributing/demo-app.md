@@ -13,7 +13,7 @@ routes here rather than carrying it, because none of it is needed to answer an o
 | Activity | What it is |
 |---|---|
 | `.MainActivity` | the **example gallery** — one file per example, on the facade API. Not for debugging. See [examples.md](examples.md) |
-| `.ExampleActivity` | runs one example: `--es example <id>`, plus `--es ui false` and `--es lon/lat/zoom/tilt/rotation` |
+| `.ExampleActivity` | runs one example: `--es example <id>`, plus `--es ui false`, `--es globe true` and `--es lon/lat/zoom/tilt/rotation` |
 | `.BenchActivity` | the **composable debugging/measurement map** — every layer switch, every intent extra, `DemoLive` |
 
 A debugging run names `.BenchActivity` explicitly; `am start` with no activity opens the gallery.

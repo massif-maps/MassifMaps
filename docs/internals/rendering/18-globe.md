@@ -340,7 +340,9 @@ node sample, which is what the adaptive path already does.
 
 ## Trying it
 
-The demo has a `globe` checkbox under **BASE MAP**, and `--es globe true` at launch. Terrain is on
+Any gallery example runs on the globe with `--es globe true` on `.ExampleActivity`, which is how the
+sphere gets exercised against real content (`day-cycle-light` covers terrain, shadows and buildings
+at once). The demo has a `globe` checkbox under **BASE MAP**, and `--es globe true` at launch. Terrain is on
 there like anywhere else; `BenchActivity` overrides `--es zoom` and `--es tilt`, so drive the camera
 by hand with `--es ui true` - and terrain's `minZoom` is 5, below which `0 ground draws` is correct
 and says nothing.

@@ -1,0 +1,1047 @@
+{
+  "targets": 211,
+  "svg": 164,
+  "letters": 17,
+  "composites": 21,
+  "missing": 9,
+  "icons": [
+    {
+      "name": "airfield",
+      "set": "maki",
+      "icon": "airfield"
+    },
+    {
+      "name": "airport",
+      "set": "maki",
+      "icon": "airport"
+    },
+    {
+      "name": "alcohol-shop",
+      "set": "maki",
+      "icon": "alcohol-shop"
+    },
+    {
+      "name": "american-football",
+      "set": "maki",
+      "icon": "american-football"
+    },
+    {
+      "name": "amusement-park",
+      "set": "maki",
+      "icon": "amusement-park"
+    },
+    {
+      "name": "aquarium",
+      "set": "maki",
+      "icon": "aquarium"
+    },
+    {
+      "name": "area-security",
+      "set": "temaki",
+      "icon": "checkpoint",
+      "approx": "same shape as `security`"
+    },
+    {
+      "name": "art-gallery",
+      "set": "maki",
+      "icon": "art-gallery"
+    },
+    {
+      "name": "atm",
+      "set": "temaki",
+      "icon": "atm"
+    },
+    {
+      "name": "attraction",
+      "set": "maki",
+      "icon": "attraction"
+    },
+    {
+      "name": "bakery",
+      "set": "maki",
+      "icon": "bakery"
+    },
+    {
+      "name": "bank",
+      "set": "maki",
+      "icon": "bank"
+    },
+    {
+      "name": "bar",
+      "set": "maki",
+      "icon": "bar"
+    },
+    {
+      "name": "baseball",
+      "set": "maki",
+      "icon": "baseball"
+    },
+    {
+      "name": "basketball",
+      "set": "maki",
+      "icon": "basketball"
+    },
+    {
+      "name": "beach",
+      "set": "maki",
+      "icon": "beach"
+    },
+    {
+      "name": "beer",
+      "set": "maki",
+      "icon": "beer"
+    },
+    {
+      "name": "bicycle",
+      "set": "maki",
+      "icon": "bicycle"
+    },
+    {
+      "name": "bicycle-share",
+      "set": "maki",
+      "icon": "bicycle-share"
+    },
+    {
+      "name": "bowling-alley",
+      "set": "maki",
+      "icon": "bowling-alley"
+    },
+    {
+      "name": "bridge",
+      "set": "maki",
+      "icon": "bridge"
+    },
+    {
+      "name": "bus",
+      "set": "maki",
+      "icon": "bus"
+    },
+    {
+      "name": "cafe",
+      "set": "maki",
+      "icon": "cafe"
+    },
+    {
+      "name": "campsite",
+      "set": "maki",
+      "icon": "campsite"
+    },
+    {
+      "name": "car",
+      "set": "maki",
+      "icon": "car"
+    },
+    {
+      "name": "car-rental",
+      "set": "maki",
+      "icon": "car-rental"
+    },
+    {
+      "name": "car-repair",
+      "set": "maki",
+      "icon": "car-repair"
+    },
+    {
+      "name": "casino",
+      "set": "maki",
+      "icon": "casino"
+    },
+    {
+      "name": "castle",
+      "set": "maki",
+      "icon": "castle"
+    },
+    {
+      "name": "cemetery",
+      "set": "maki",
+      "icon": "cemetery"
+    },
+    {
+      "name": "charging-station",
+      "set": "maki",
+      "icon": "charging-station"
+    },
+    {
+      "name": "cinema",
+      "set": "maki",
+      "icon": "cinema"
+    },
+    {
+      "name": "cliff",
+      "set": "temaki",
+      "icon": "cliff_falling_rocks",
+      "approx": "carries falling rocks, which maki's cliff does not"
+    },
+    {
+      "name": "clothing-store",
+      "set": "maki",
+      "icon": "clothing-store"
+    },
+    {
+      "name": "college",
+      "set": "maki",
+      "icon": "college"
+    },
+    {
+      "name": "communications-tower",
+      "set": "maki",
+      "icon": "communications-tower"
+    },
+    {
+      "name": "confectionery",
+      "set": "maki",
+      "icon": "confectionery"
+    },
+    {
+      "name": "convenience",
+      "set": "maki",
+      "icon": "convenience"
+    },
+    {
+      "name": "delhi-metro",
+      "set": "local",
+      "icon": "delhi-metro"
+    },
+    {
+      "name": "dentist",
+      "set": "maki",
+      "icon": "dentist"
+    },
+    {
+      "name": "doctor",
+      "set": "maki",
+      "icon": "doctor"
+    },
+    {
+      "name": "dog-park",
+      "set": "maki",
+      "icon": "dog-park"
+    },
+    {
+      "name": "drinking-water",
+      "set": "maki",
+      "icon": "drinking-water"
+    },
+    {
+      "name": "elevator",
+      "set": "maki",
+      "icon": "elevator"
+    },
+    {
+      "name": "embassy",
+      "set": "maki",
+      "icon": "embassy"
+    },
+    {
+      "name": "entrance",
+      "set": "maki",
+      "icon": "entrance"
+    },
+    {
+      "name": "external_door",
+      "set": "maki",
+      "icon": "entrance",
+      "approx": "a doorway, not a building's outer door"
+    },
+    {
+      "name": "farm",
+      "set": "maki",
+      "icon": "farm"
+    },
+    {
+      "name": "fast-food",
+      "set": "maki",
+      "icon": "fast-food"
+    },
+    {
+      "name": "ferry",
+      "set": "maki",
+      "icon": "ferry"
+    },
+    {
+      "name": "fire-station",
+      "set": "maki",
+      "icon": "fire-station"
+    },
+    {
+      "name": "fitness-centre",
+      "set": "maki",
+      "icon": "fitness-centre"
+    },
+    {
+      "name": "fuel",
+      "set": "maki",
+      "icon": "fuel"
+    },
+    {
+      "name": "furniture",
+      "set": "maki",
+      "icon": "furniture"
+    },
+    {
+      "name": "garden",
+      "set": "maki",
+      "icon": "garden"
+    },
+    {
+      "name": "gate",
+      "set": "maki",
+      "icon": "gate"
+    },
+    {
+      "name": "gate-label",
+      "set": "maki",
+      "icon": "gate"
+    },
+    {
+      "name": "gb-national-rail",
+      "set": "local",
+      "icon": "gb-national-rail"
+    },
+    {
+      "name": "globe",
+      "set": "maki",
+      "icon": "globe"
+    },
+    {
+      "name": "golf",
+      "set": "maki",
+      "icon": "golf"
+    },
+    {
+      "name": "grocery",
+      "set": "maki",
+      "icon": "grocery"
+    },
+    {
+      "name": "harbor",
+      "set": "maki",
+      "icon": "harbor"
+    },
+    {
+      "name": "hardware",
+      "set": "maki",
+      "icon": "hardware"
+    },
+    {
+      "name": "heliport",
+      "set": "maki",
+      "icon": "heliport"
+    },
+    {
+      "name": "highway-rest-area",
+      "set": "maki",
+      "icon": "highway-rest-area"
+    },
+    {
+      "name": "historic",
+      "set": "maki",
+      "icon": "historic"
+    },
+    {
+      "name": "horse-riding",
+      "set": "maki",
+      "icon": "horse-riding"
+    },
+    {
+      "name": "hospital",
+      "set": "maki",
+      "icon": "hospital"
+    },
+    {
+      "name": "hot-spring",
+      "set": "maki",
+      "icon": "hot-spring"
+    },
+    {
+      "name": "ice-cream",
+      "set": "maki",
+      "icon": "ice-cream"
+    },
+    {
+      "name": "industry",
+      "set": "maki",
+      "icon": "industry"
+    },
+    {
+      "name": "information",
+      "set": "maki",
+      "icon": "information"
+    },
+    {
+      "name": "inter_building_door",
+      "set": "maki",
+      "icon": "entrance-alt1",
+      "approx": "a doorway, not a between-buildings one"
+    },
+    {
+      "name": "intersection",
+      "set": "temaki",
+      "icon": "junction"
+    },
+    {
+      "name": "jewelry-store",
+      "set": "maki",
+      "icon": "jewelry-store"
+    },
+    {
+      "name": "landmark",
+      "set": "maki",
+      "icon": "landmark"
+    },
+    {
+      "name": "laundry",
+      "set": "maki",
+      "icon": "laundry"
+    },
+    {
+      "name": "library",
+      "set": "maki",
+      "icon": "library"
+    },
+    {
+      "name": "lift-gate",
+      "set": "maki",
+      "icon": "lift-gate"
+    },
+    {
+      "name": "lighthouse",
+      "set": "maki",
+      "icon": "lighthouse"
+    },
+    {
+      "name": "lodging",
+      "set": "maki",
+      "icon": "lodging"
+    },
+    {
+      "name": "london-dlr",
+      "set": "local",
+      "icon": "london-dlr"
+    },
+    {
+      "name": "london-overground",
+      "set": "local",
+      "icon": "london-overground"
+    },
+    {
+      "name": "london-tfl-rail",
+      "set": "local",
+      "icon": "london-tfl-rail"
+    },
+    {
+      "name": "london-underground",
+      "set": "local",
+      "icon": "london-underground"
+    },
+    {
+      "name": "marker",
+      "set": "maki",
+      "icon": "marker"
+    },
+    {
+      "name": "mobile-phone",
+      "set": "maki",
+      "icon": "mobile-phone"
+    },
+    {
+      "name": "monument",
+      "set": "maki",
+      "icon": "monument"
+    },
+    {
+      "name": "mountain",
+      "set": "maki",
+      "icon": "mountain"
+    },
+    {
+      "name": "museum",
+      "set": "maki",
+      "icon": "museum"
+    },
+    {
+      "name": "music",
+      "set": "maki",
+      "icon": "music"
+    },
+    {
+      "name": "new-york-subway",
+      "set": "local",
+      "icon": "new-york-subway"
+    },
+    {
+      "name": "observation-tower",
+      "set": "maki",
+      "icon": "observation-tower"
+    },
+    {
+      "name": "optician",
+      "set": "maki",
+      "icon": "optician"
+    },
+    {
+      "name": "osaka-subway",
+      "set": "local",
+      "icon": "osaka-subway"
+    },
+    {
+      "name": "paris-transilien",
+      "set": "local",
+      "icon": "paris-transilien"
+    },
+    {
+      "name": "park",
+      "set": "maki",
+      "icon": "park"
+    },
+    {
+      "name": "parking",
+      "set": "maki",
+      "icon": "parking"
+    },
+    {
+      "name": "parking-garage",
+      "set": "maki",
+      "icon": "parking-garage"
+    },
+    {
+      "name": "parking-paid",
+      "set": "maki",
+      "icon": "parking-paid"
+    },
+    {
+      "name": "pharmacy",
+      "set": "maki",
+      "icon": "pharmacy"
+    },
+    {
+      "name": "philadelphia-septa",
+      "set": "local",
+      "icon": "philadelphia-septa"
+    },
+    {
+      "name": "picnic-site",
+      "set": "maki",
+      "icon": "picnic-site"
+    },
+    {
+      "name": "pitch",
+      "set": "maki",
+      "icon": "pitch"
+    },
+    {
+      "name": "place-of-worship",
+      "set": "maki",
+      "icon": "place-of-worship"
+    },
+    {
+      "name": "playground",
+      "set": "maki",
+      "icon": "playground"
+    },
+    {
+      "name": "police",
+      "set": "maki",
+      "icon": "police"
+    },
+    {
+      "name": "post",
+      "set": "maki",
+      "icon": "post"
+    },
+    {
+      "name": "prison",
+      "set": "maki",
+      "icon": "prison"
+    },
+    {
+      "name": "racetrack",
+      "set": "maki",
+      "icon": "racetrack"
+    },
+    {
+      "name": "racetrack-boat",
+      "set": "maki",
+      "icon": "racetrack-boat"
+    },
+    {
+      "name": "racetrack-cycling",
+      "set": "maki",
+      "icon": "racetrack-cycling"
+    },
+    {
+      "name": "racetrack-horse",
+      "set": "maki",
+      "icon": "racetrack-horse"
+    },
+    {
+      "name": "rail",
+      "set": "maki",
+      "icon": "rail"
+    },
+    {
+      "name": "rail-light",
+      "set": "maki",
+      "icon": "rail-light"
+    },
+    {
+      "name": "rail-metro",
+      "set": "maki",
+      "icon": "rail-metro"
+    },
+    {
+      "name": "ranger-station",
+      "set": "maki",
+      "icon": "ranger-station"
+    },
+    {
+      "name": "religious-buddhist",
+      "set": "maki",
+      "icon": "religious-buddhist"
+    },
+    {
+      "name": "religious-christian",
+      "set": "maki",
+      "icon": "religious-christian"
+    },
+    {
+      "name": "religious-jewish",
+      "set": "maki",
+      "icon": "religious-jewish"
+    },
+    {
+      "name": "religious-muslim",
+      "set": "maki",
+      "icon": "religious-muslim"
+    },
+    {
+      "name": "religious-shinto",
+      "set": "maki",
+      "icon": "religious-shinto"
+    },
+    {
+      "name": "restaurant",
+      "set": "maki",
+      "icon": "restaurant"
+    },
+    {
+      "name": "restaurant-bbq",
+      "set": "maki",
+      "icon": "restaurant-bbq"
+    },
+    {
+      "name": "restaurant-casual",
+      "set": "maki",
+      "icon": "restaurant"
+    },
+    {
+      "name": "restaurant-noodle",
+      "set": "maki",
+      "icon": "restaurant-noodle"
+    },
+    {
+      "name": "restaurant-pizza",
+      "set": "maki",
+      "icon": "restaurant-pizza"
+    },
+    {
+      "name": "restaurant-seafood",
+      "set": "maki",
+      "icon": "restaurant-seafood"
+    },
+    {
+      "name": "ride-share",
+      "set": "temaki",
+      "icon": "car_pool"
+    },
+    {
+      "name": "road-accident",
+      "set": "maki",
+      "icon": "road-accident"
+    },
+    {
+      "name": "road-closure",
+      "set": "maki",
+      "icon": "roadblock"
+    },
+    {
+      "name": "rocket",
+      "set": "maki",
+      "icon": "rocket"
+    },
+    {
+      "name": "san-francisco-bart",
+      "set": "local",
+      "icon": "san-francisco-bart"
+    },
+    {
+      "name": "school",
+      "set": "maki",
+      "icon": "school"
+    },
+    {
+      "name": "security",
+      "set": "temaki",
+      "icon": "checkpoint",
+      "approx": "a checkpoint stands in for a security post"
+    },
+    {
+      "name": "shoe",
+      "set": "maki",
+      "icon": "shoe"
+    },
+    {
+      "name": "shop",
+      "set": "maki",
+      "icon": "shop"
+    },
+    {
+      "name": "skateboard",
+      "set": "maki",
+      "icon": "skateboard"
+    },
+    {
+      "name": "skiing",
+      "set": "maki",
+      "icon": "skiing"
+    },
+    {
+      "name": "slipway",
+      "set": "maki",
+      "icon": "slipway"
+    },
+    {
+      "name": "stadium",
+      "set": "maki",
+      "icon": "stadium"
+    },
+    {
+      "name": "suitcase",
+      "set": "maki",
+      "icon": "suitcase"
+    },
+    {
+      "name": "swimming",
+      "set": "maki",
+      "icon": "swimming"
+    },
+    {
+      "name": "table-tennis",
+      "set": "maki",
+      "icon": "table-tennis"
+    },
+    {
+      "name": "taipei-metro",
+      "set": "local",
+      "icon": "taipei-metro"
+    },
+    {
+      "name": "taxi",
+      "set": "maki",
+      "icon": "taxi"
+    },
+    {
+      "name": "tennis",
+      "set": "maki",
+      "icon": "tennis"
+    },
+    {
+      "name": "terminal",
+      "set": "maki",
+      "icon": "terminal"
+    },
+    {
+      "name": "theatre",
+      "set": "maki",
+      "icon": "theatre"
+    },
+    {
+      "name": "toilet",
+      "set": "maki",
+      "icon": "toilet"
+    },
+    {
+      "name": "tokyo-metro",
+      "set": "local",
+      "icon": "tokyo-metro"
+    },
+    {
+      "name": "toll",
+      "set": "maki",
+      "icon": "toll"
+    },
+    {
+      "name": "town-hall",
+      "set": "maki",
+      "icon": "town-hall"
+    },
+    {
+      "name": "traffic-signal",
+      "set": "temaki",
+      "icon": "traffic_signals"
+    },
+    {
+      "name": "tunnel",
+      "set": "maki",
+      "icon": "tunnel"
+    },
+    {
+      "name": "veterinary",
+      "set": "maki",
+      "icon": "veterinary"
+    },
+    {
+      "name": "viewpoint",
+      "set": "maki",
+      "icon": "viewpoint"
+    },
+    {
+      "name": "volcano",
+      "set": "maki",
+      "icon": "volcano"
+    },
+    {
+      "name": "volleyball",
+      "set": "maki",
+      "icon": "volleyball"
+    },
+    {
+      "name": "watch",
+      "set": "maki",
+      "icon": "watch"
+    },
+    {
+      "name": "waterfall",
+      "set": "maki",
+      "icon": "waterfall"
+    },
+    {
+      "name": "watermill",
+      "set": "maki",
+      "icon": "watermill"
+    },
+    {
+      "name": "windmill",
+      "set": "maki",
+      "icon": "windmill"
+    },
+    {
+      "name": "zoo",
+      "set": "maki",
+      "icon": "zoo"
+    }
+  ],
+  "lettersMap": {
+    "paris-metro": "M",
+    "paris-rer": "RER",
+    "barcelona-metro": "M",
+    "madrid-metro": "M",
+    "milan-metro": "M",
+    "mexico-city-metro": "M",
+    "washington-metro": "M",
+    "de-u-bahn": "U",
+    "vienna-u-bahn": "U",
+    "de-s-bahn": "S",
+    "boston-t": "T",
+    "stockholm-metro": "T",
+    "oslo-metro": "T",
+    "moscow-metro": "М",
+    "kiev-metro": "М",
+    "singapore-mrt": "MRT",
+    "hong-kong-mtr": "MTR"
+  },
+  "composed": [
+    {
+      "name": "de-s-bahn.de-u-bahn",
+      "parts": [
+        "de-s-bahn",
+        "de-u-bahn"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-dlr",
+      "parts": [
+        "gb-national-rail",
+        "london-dlr"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-dlr.london-overground.london-tfl-rail.london-underground",
+      "parts": [
+        "gb-national-rail",
+        "london-dlr",
+        "london-overground",
+        "london-tfl-rail",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-dlr.london-overground.london-underground",
+      "parts": [
+        "gb-national-rail",
+        "london-dlr",
+        "london-overground",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-dlr.london-underground",
+      "parts": [
+        "gb-national-rail",
+        "london-dlr",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-overground",
+      "parts": [
+        "gb-national-rail",
+        "london-overground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-overground.london-tfl-rail.london-underground",
+      "parts": [
+        "gb-national-rail",
+        "london-overground",
+        "london-tfl-rail",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-overground.london-underground",
+      "parts": [
+        "gb-national-rail",
+        "london-overground",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-tfl-rail",
+      "parts": [
+        "gb-national-rail",
+        "london-tfl-rail"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-tfl-rail.london-overground",
+      "parts": [
+        "gb-national-rail",
+        "london-tfl-rail",
+        "london-overground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-tfl-rail.london-underground",
+      "parts": [
+        "gb-national-rail",
+        "london-tfl-rail",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "gb-national-rail.london-underground",
+      "parts": [
+        "gb-national-rail",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "london-dlr.london-tfl-rail",
+      "parts": [
+        "london-dlr",
+        "london-tfl-rail"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "london-dlr.london-tfl-rail.london-underground",
+      "parts": [
+        "london-dlr",
+        "london-tfl-rail",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "london-dlr.london-underground",
+      "parts": [
+        "london-dlr",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "london-overground.london-tfl-rail",
+      "parts": [
+        "london-overground",
+        "london-tfl-rail"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "london-overground.london-tfl-rail.london-underground",
+      "parts": [
+        "london-overground",
+        "london-tfl-rail",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "london-overground.london-underground",
+      "parts": [
+        "london-overground",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "london-tfl-rail.london-underground",
+      "parts": [
+        "london-tfl-rail",
+        "london-underground"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "paris-metro.paris-rer",
+      "parts": [
+        "paris-metro",
+        "paris-rer"
+      ],
+      "blockedBy": []
+    },
+    {
+      "name": "paris-rer.paris-transilien",
+      "parts": [
+        "paris-rer",
+        "paris-transilien"
+      ],
+      "blockedBy": []
+    }
+  ],
+  "missingNames": [
+    "airport-check-in",
+    "chongqing-rail-transit",
+    "escalator",
+    "highway-services",
+    "lounge",
+    "ramp",
+    "stairs",
+    "toilet-female",
+    "toilet-male"
+  ]
+}

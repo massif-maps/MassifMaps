@@ -9,9 +9,10 @@ sidebar_position: 18
 `Options.setRenderProjectionMode(RENDER_PROJECTION_MODE_SPHERICAL)` draws the map on a sphere
 instead of the Mercator plane. It arrived with CARTO's `feature/globe` and was carried unexercised
 for years. 2D tiled content, vector elements, the camera and the sky reach it and look right on a
-device. **3D terrain draws on it too** - the relief and its content, after the three fixes below;
-polygon fills are still shredded, which is the open one. Terrain shadows, picking on terrain and the
-camera rules over terrain are deliberately still planar-only.
+device. **3D terrain draws on it too** - the relief, its content, its lighting, its shadows and the
+2D/3D switch, after the fixes below. What is NOT at parity yet: the camera frames a wider view than
+the plane does at the same zoom, and 3D buildings on a globe with no terrain attached are still lit
+in the sphere's frame.
 
 This page is the shared conventions and the traps. What is missing is at the bottom.
 
@@ -310,6 +311,33 @@ The fallback now bisects on the height above the terrain - positive at the camer
 slope - which needs nothing but the base surface and the height field, so it serves any base.
 `tests/api/TerrainSurfaceTest.cpp` pins it: a ray straight down over a 300-unit plateau stops 600
 WORLD units early, the 2x again.
+
+### Shadows: a light box that could not be fitted, and two passes that never drew
+
+Two independent things had to change, and finding the second cost a build cycle because the first
+one *looked* fixed.
+
+**The fit.** `GLTileRenderer::calculateShadowViewProj` built an axis-aligned world RECTANGLE from
+the drawn tiles' corners plus a world-Z slab, and took the sun as a world vector. None of that means
+anything on a ball. The spherical path drops the rectangle entirely — it only ever trimmed a box
+that comes from the view frustum's bounding sphere anyway, which is projection-free — rotates the
+sun from the map's east/north/up into the world with the same view anchor `uLightingFrame` uses,
+converts the height slab from internal to world units, and culls casters against
+`TileTransformer::calculateTileBBox` grown radially by that slab. `texelMeters` came out at
+21.50 m / 62.11 m on both surfaces at the same camera, which is the check that the sides are right:
+the globe's box is twice as wide in world units and its metre is twice as long.
+
+**The passes.** `renderShadowCasters` and `renderTerrainShadowMask` both opened with
+`terrainGridSurfaces()`, which is false on a globe — the shared regular-grid VBO is planar-only.
+So the caster pass drew nothing, the mask pass drew nothing, and the mask was left cleared to
+white: every fragment fully lit, and the shadow strength had no effect on the picture at all. The
+guard now asks for terrain alone; the mask goes through `renderTileSurfaceFill`, which already
+picks between the shared grid and a globe's per-tile surfaces, and the caster ground pass gained
+the same second branch. The grid's one-bind-for-every-tile fast path is untouched — it was written
+against a real emulator cost and the globe cannot use it anyway.
+
+Measured on emulator-5554, terrain-3d at Zermatt: shadow strength 0 vs 1 moves 19-40% of the ground
+pixels on the globe, against 17-29% for the planar control. Before the second fix it moved 0.0%.
 
 ### The light was in the wrong frame, so every building was lit from the pole
 

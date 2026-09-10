@@ -699,7 +699,8 @@ namespace massif::vt {
         #ifdef TERRAIN_SPHERICAL
             vElevUV = terrainSphereElevUV(pos);
             vSphereUp = normalize(terrainSpherePoint(pos));
-            vElevCosh = 1.0; // radial height, so no Mercator stretch - as applyTerrain has it
+            highp float sphereMY = terrainSphereToMercator(terrainSpherePoint(pos)).y;
+            vElevCosh = 0.5 * (exp(sphereMY) + exp(-sphereMY));
         #else
             vElevUV = uElevationUV.xy + pos.xy * uElevationUV.zw;
             highp float slopeMY = uElevationScale.y + pos.y * uElevationScale.z;
@@ -1159,7 +1160,8 @@ namespace massif::vt {
         #ifdef TERRAIN_SPHERICAL
             vElevUV = terrainSphereElevUV(pos);
             vSphereUp = normalize(terrainSpherePoint(pos));
-            vElevCosh = 1.0; // radial height, so no Mercator stretch - as applyTerrain has it
+            highp float sphereMY = terrainSphereToMercator(terrainSpherePoint(pos)).y;
+            vElevCosh = 0.5 * (exp(sphereMY) + exp(-sphereMY));
         #else
             vElevUV = uElevationUV.xy + pos.xy * uElevationUV.zw;
             highp float lightMY = uElevationScale.y + pos.y * uElevationScale.z;
@@ -1644,7 +1646,8 @@ namespace massif::vt {
         void main(void) {
         #ifdef TERRAIN_SPHERICAL
             vElevUV = terrainSphereElevUV(aVertexPosition);
-            vElevCosh = 1.0; // radial height, so no Mercator stretch - as applyTerrain has it
+            highp float sphereMY = terrainSphereToMercator(terrainSpherePoint(aVertexPosition)).y;
+            vElevCosh = 0.5 * (exp(sphereMY) + exp(-sphereMY));
             vSphereUp = normalize(terrainSpherePoint(aVertexPosition));
         #else
             vElevUV = uElevationUV.xy + aVertexPosition.xy * uElevationUV.zw;

@@ -330,28 +330,35 @@ namespace massif::vt {
             texelMeters = -1; // diagnostic: which fit bail-out fired
             return false;
         }
+        // A globe has no world rectangle of ground and no world Z to slab: its tiles wrap a ball
+        // and their up is radial. Everything the rectangle buys - the sphere trim and the
+        // per-cascade slab - is a refinement of a box that comes from the view frustum anyway, so
+        // the spherical path simply skips it (18-globe.md).
+        bool spherical = _transformer->isSpherical();
         // World-space box of the shadowed ground. The height range comes from the elevation
         // texture's metres-to-internal factor: a fixed metric slab is meaningless in internal
         // units, which change scale with the projection.
         double minX = 0, minY = 0, maxX = 0, maxY = 0;
         bool first = true;
-        for (const TileId& tileId : tileIds) {
-            cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
-            for (int corner = 0; corner < 4; corner++) {
-                cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0), tileMatrix);
-                if (first) {
-                    minX = maxX = p(0);
-                    minY = maxY = p(1);
-                    first = false;
-                } else {
-                    minX = std::min(minX, p(0)); maxX = std::max(maxX, p(0));
-                    minY = std::min(minY, p(1)); maxY = std::max(maxY, p(1));
+        if (!spherical) {
+            for (const TileId& tileId : tileIds) {
+                cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
+                for (int corner = 0; corner < 4; corner++) {
+                    cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0), tileMatrix);
+                    if (first) {
+                        minX = maxX = p(0);
+                        minY = maxY = p(1);
+                        first = false;
+                    } else {
+                        minX = std::min(minX, p(0)); maxX = std::max(maxX, p(0));
+                        minY = std::min(minY, p(1)); maxY = std::max(maxY, p(1));
+                    }
                 }
             }
-        }
-        if (first || maxX <= minX || maxY <= minY) {
-            texelMeters = -2; // diagnostic: which fit bail-out fired
-            return false;
+            if (first || maxX <= minX || maxY <= minY) {
+                texelMeters = -2; // diagnostic: which fit bail-out fired
+                return false;
+            }
         }
         // ANY tile with an elevation texture will do - the metres-to-internal factor is a property
         // of the projection, not of the tile. Asking only tileIds.front() made the whole shadow pass
@@ -427,11 +434,13 @@ namespace massif::vt {
             sphereCenter = _viewState.origin + viewDir * centerDepth;
             // The slab narrowing and the caster prefilter below work on a world rectangle; the
             // sphere's own bounds are that rectangle, intersected with the drawn tiles.
-            double trimMinX = std::max(minX, sphereCenter(0) - sphereRadius), trimMaxX = std::min(maxX, sphereCenter(0) + sphereRadius);
-            double trimMinY = std::max(minY, sphereCenter(1) - sphereRadius), trimMaxY = std::min(maxY, sphereCenter(1) + sphereRadius);
-            if (trimMaxX > trimMinX && trimMaxY > trimMinY) {
-                minX = trimMinX; maxX = trimMaxX;
-                minY = trimMinY; maxY = trimMaxY;
+            if (!spherical) {
+                double trimMinX = std::max(minX, sphereCenter(0) - sphereRadius), trimMaxX = std::min(maxX, sphereCenter(0) + sphereRadius);
+                double trimMinY = std::max(minY, sphereCenter(1) - sphereRadius), trimMaxY = std::min(maxY, sphereCenter(1) + sphereRadius);
+                if (trimMaxX > trimMinX && trimMaxY > trimMinY) {
+                    minX = trimMinX; maxX = trimMaxX;
+                    minY = trimMinY; maxY = trimMaxY;
+                }
             }
         }
 
@@ -440,7 +449,7 @@ namespace massif::vt {
         // ends up with the same coarse texels.
         double casterMinZ = minZ, casterMaxZ = maxZ; // the slab the CASTERS live in, before it is
                                                      // narrowed to this cascade's own ground
-        if (tileHeights.size() == tileIds.size()) {
+        if (tileHeights.size() == tileIds.size() && !spherical) {
             double localMinZ = 0, localMaxZ = 0;
             bool localFirst = true;
             for (std::size_t i = 0; i < tileIds.size(); i++) {
@@ -491,10 +500,40 @@ namespace massif::vt {
             casterMaxZ += standingHeadroom;
         }
 
+        // WORLD units from here down. On a globe a height is radial and its scale is not the frame's
+        // z, so the slab arrives in internal units and has to be converted before it meets a camera
+        // distance (18-globe.md).
+        double worldPerMeter = metersToInternal;
+        if (spherical) {
+            const TileId& scaleTile = tileIds.front();
+            worldPerMeter = _transformer->createTileVertexTransformer(scaleTile)->calculateHeight(cglib::vec2<float>(0.5f, 0.5f), 1.0f)
+                          * calculateTileMatrix(scaleTile, 1.0f)(2, 2);
+            if (!(worldPerMeter > 0)) {
+                texelMeters = -3; // diagnostic: which fit bail-out fired
+                return false;
+            }
+            double worldPerInternal = worldPerMeter / metersToInternal;
+            minZ *= worldPerInternal; maxZ *= worldPerInternal;
+            casterMinZ *= worldPerInternal; casterMaxZ *= worldPerInternal;
+        }
+
+        // The sun arrives in the map's east/north/up. That IS the world frame on a plane; on a globe
+        // it is the view's local one, the same anchor uLightingFrame uses, so the light box and the
+        // shading agree about where the sun is.
         cglib::vec3<double> dir = cglib::unit(cglib::vec3<double>(sunDir(0), sunDir(1), sunDir(2)));
-        if (dir(2) < 0.05) {
+        double sunUp = dir(2);
+        if (sunUp < 0.05) {
             texelMeters = -6; // diagnostic: which fit bail-out fired
             return false; // sun at or below the horizon: nothing is meaningfully lit
+        }
+        if (spherical) {
+            cglib::vec3<double> anchorUp = _viewState.origin;
+            double anchorLen = cglib::length(anchorUp);
+            anchorUp = (anchorLen > 0 ? anchorUp * (1.0 / anchorLen) : cglib::vec3<double>(0, 0, 1));
+            double h = std::sqrt(anchorUp(0) * anchorUp(0) + anchorUp(1) * anchorUp(1));
+            cglib::vec3<double> east = (h > 1.0e-9 ? cglib::vec3<double>(-anchorUp(1) / h, anchorUp(0) / h, 0) : cglib::vec3<double>(1, 0, 0));
+            cglib::vec3<double> north = cglib::vector_product(anchorUp, east);
+            dir = cglib::unit(east * dir(0) + north * dir(1) + anchorUp * dir(2));
         }
         cglib::vec3<double> up = std::abs(dir(2)) > 0.99 ? cglib::vec3<double>(0, 1, 0) : cglib::vec3<double>(0, 0, 1);
         // The light view is a pure ROTATION about the world origin, not a look-at on the box centre:
@@ -511,7 +550,7 @@ namespace massif::vt {
         // DEPTH is bounded by the SAME bounding sphere the sides are, plus the room a caster needs
         // above it - mapbox's lightMatrixNearZ / lightMatrixFarZ. Seeded from the drawn rectangle
         // instead, the range reached 3.0e7 m over Paris, which 24 bits cannot separate.
-        double casterHeadroom = (casterMaxZ - casterMinZ) / std::max(0.05, dir(2));
+        double casterHeadroom = (casterMaxZ - casterMinZ) / std::max(0.05, sunUp);
         double centerDepth = -lightCenter(2);
         double n = centerDepth - sphereRadius - casterHeadroom;
         double f = centerDepth + sphereRadius + casterHeadroom;
@@ -545,14 +584,27 @@ namespace massif::vt {
         double marginX = (r - l) / std::max(1, mapSize), marginY = (t - b) / std::max(1, mapSize);
         for (const TileId& tileId : casterTileIds) {
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
+            // On a globe a tile is a patch of a ball, so its world box comes from the transformer
+            // and the caster slab grows it in EVERY direction - the slab is radial there.
+            cglib::bbox3<double> sphereBox = (spherical ? _transformer->calculateTileBBox(tileId) : cglib::bbox3<double>());
+            if (spherical) {
+                sphereBox.min -= cglib::vec3<double>(1, 1, 1) * std::max(0.0, -casterMinZ);
+                sphereBox.max += cglib::vec3<double>(1, 1, 1) * std::max(0.0, casterMaxZ);
+            }
             double tileL = 0, tileR = 0, tileB = 0, tileT = 0, tileN = 0, tileF = 0;
             for (int corner = 0; corner < 8; corner++) {
                 cglib::vec4<double> local(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0);
                 cglib::vec4<double> world = cglib::transform(local, tileMatrix);
-                // The CASTER slab, not this cascade's narrowed one: a mountain outside the cascade's
-                // own ground still casts into it, and a slab it does not reach leaves the near plane
-                // in front of it - the caster is clipped and its shadow missing.
-                world(2) = (corner & 4 ? casterMaxZ : casterMinZ);
+                if (spherical) {
+                    world = cglib::vec4<double>(corner & 1 ? sphereBox.max(0) : sphereBox.min(0),
+                                                corner & 2 ? sphereBox.max(1) : sphereBox.min(1),
+                                                corner & 4 ? sphereBox.max(2) : sphereBox.min(2), 1.0);
+                } else {
+                    // The CASTER slab, not this cascade's narrowed one: a mountain outside the cascade's
+                    // own ground still casts into it, and a slab it does not reach leaves the near plane
+                    // in front of it - the caster is clipped and its shadow missing.
+                    world(2) = (corner & 4 ? casterMaxZ : casterMinZ);
+                }
                 cglib::vec4<double> p = cglib::transform(world, lightView);
                 if (corner == 0) {
                     tileL = tileR = p(0); tileB = tileT = p(1); tileN = tileF = -p(2);
@@ -575,11 +627,11 @@ namespace massif::vt {
         // The depth the box spans, in metres. The shader's bias is a fraction of the NORMALISED
         // depth, so a constant one grows in world terms as the box does - the caller divides its
         // metric bias by this to cancel that.
-        depthRangeMeters = (f - n) / metersToInternal;
+        depthRangeMeters = (f - n) / worldPerMeter;
         // The ground one shadow texel covers, in metres: the number that decides whether a shadow
         // edge reads as an edge or as a staircase. Reported so the caller can log it instead of
         // guessing from the picture.
-        texelMeters = std::max(r - l, t - b) / std::max(1, mapSize) / metersToInternal;
+        texelMeters = std::max(r - l, t - b) / std::max(1, mapSize) / worldPerMeter;
         return true;
     }
 
@@ -648,14 +700,47 @@ namespace massif::vt {
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
+        if (!(_terrainMode && _terrainTextureProvider)) {
             return 0;
         }
         int draws = 0;
         // ONE program and ONE vertex buffer for every tile's ground: the grid surface is shared,
         // so binding it per tile was a hundred redundant state changes per pass - and on a
         // translated GL (emulator, ANGLE) the call count, not the triangle count, is the cost.
-        if (castGround) {
+        if (castGround && !terrainGridSurfaces()) {
+            // A globe has no shared grid: each tile carries its own curved surface, the same pair
+            // renderTileSurfaceFill picks between (18-globe.md).
+            cglib::mat4x4<double> surfaceFrame = cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
+            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(lightViewProj * surfaceFrame);
+            const ShaderProgram& shaderProgram = buildShaderProgram("shadowcaster", backgroundVsh, shadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, TERRAIN_VTF_FLAG);
+            useProgram(shaderProgram);
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+            for (const TileId& tileId : tileIds) {
+                if (!setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, false)) {
+                    _shadowCastersMissingElevation++;
+                    continue;
+                }
+                for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+                    const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
+                    const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
+
+                    glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
+                    enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
+                    bindSurfaceSkirtAttrib(shaderProgram, vertexGeomLayoutParams);
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
+                    glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+                    VT_STAT_INC(surfaceDraws);
+                    VT_STAT_INC(surfShadowDraws);
+                    VT_STAT_ADD(surfaceIndices, tileSurface->getIndicesCount());
+                    draws++;
+
+                    disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                    glBindBuffer(GL_ARRAY_BUFFER, 0);
+                }
+            }
+            checkGLError();
+        } else if (castGround) {
             for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTerrainGridSurfaces()) {
                 const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
                 const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
@@ -2204,7 +2289,9 @@ namespace massif::vt {
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        if (!(terrainGridSurfaces() && _terrainMode && _terrainTextureProvider)) {
+        // The fill path below serves the shared grid and a globe's per-tile surfaces alike, so this
+        // asks only for terrain - not for the grid (18-globe.md).
+        if (!(_terrainMode && _terrainTextureProvider)) {
             return 0;
         }
         if (_terrainShadowTexture == 0 || _terrainShadowStrength <= 0.0f || !_terrainLighting.enabled) {

@@ -191,3 +191,38 @@ void testLabelAnchorAlign() {
     TEST_CHECK(std::abs(rightMin - 2.0f) < 0.01f && std::abs(rightMax - 4.0f) < 0.01f,
                "left of the icon both lines end at the block's right edge");
 }
+
+/**
+ * maplibre's JointOpacityState carries one OpacityState for the text and one for the icon, so a
+ * name can fade while its icon stays put. Ours is Label::getTextOpacity, and this pins that the
+ * glyphs of each run really do carry their own alpha into the vertex attributes.
+ */
+void testLabelTextOpacity() {
+    ViewState viewState = buildViewState();
+    std::vector<Font::Glyph> glyphs = buildIconAndText();
+    glyphs[0].icon = true; // the run before the first line break is the icon's
+
+    auto style = std::make_shared<TileLabel::Style>(LabelOrientation::BILLBOARD_2D, ColorFunction(Color(1, 1, 1, 1)), FloatFunction(1.0f), ColorFunction(Color()), FloatFunction(0.0f), false, 1.0f, 1.0f, 0.0f, std::optional<Transform>(), std::shared_ptr<const GlyphMap>(), 27);
+    TileLabel tileLabel(1, 1, 0, glyphs, cglib::vec2<float>(0, 0), std::vector<cglib::vec2<float>>(),
+                        style, TileLabel::PlacementInfo(0, 0, false, false), -1);
+    auto label = std::make_shared<Label>(tileLabel, TileId(0, 0, 0), 0, cglib::mat4x4<double>::identity(), std::make_shared<FlatTransformer>());
+
+    label->setOpacity(1.0f);
+    label->setTextOpacity(0.25f); // the name on its way out, the icon holding
+    label->updatePlacement(viewState);
+
+    VertexArray<cglib::vec3<float>> vertices, offsets, normals;
+    VertexArray<cglib::vec2<std::int16_t>> texCoords;
+    VertexArray<cglib::vec4<std::int8_t>> attribs;
+    VertexArray<std::uint16_t> indices;
+    TEST_CHECK(label->calculateVertexData(1.0f, viewState, 0, -1, vertices, offsets, normals, texCoords, attribs, indices),
+               "the label draws with an icon and a name");
+
+    // Alpha rides in attrib[2], as a 0-127 byte. The icon quad comes first in the run.
+    int iconAlpha = -1, textAlpha = -1;
+    for (std::size_t i = 0; i < attribs.size(); i++) {
+        (i < 4 ? iconAlpha : textAlpha) = attribs[i](2);
+    }
+    TEST_CHECK(iconAlpha == 127, "the icon keeps the label's own opacity");
+    TEST_CHECK(textAlpha == static_cast<int>(0.25f * 127.0f), "and the name carries its own");
+}

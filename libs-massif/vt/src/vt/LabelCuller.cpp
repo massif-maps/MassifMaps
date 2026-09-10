@@ -279,6 +279,9 @@ namespace massif::vt {
             }
             if (visible && isOffscreen(labelInfo.cullRecord)) {
                 label->setOpacity(1.0f); // see isOffscreen - it arrives already drawn
+                if (label->drawsText()) {
+                    label->setTextOpacity(1.0f);
+                }
             }
             if (visible != label->isVisible()) {
                 label->setVisible(visible);

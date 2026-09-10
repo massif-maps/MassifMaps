@@ -60,6 +60,14 @@ namespace massif::vt {
         float getOpacity() const { return _opacity; }
         void setOpacity(float opacity) { _opacity = opacity; }
 
+        // The TEXT's own opacity, animated apart from the label's - maplibre's JointOpacityState,
+        // which carries one OpacityState for the text and one for the icon. A shield whose name no
+        // longer fits falls back to the icon-only variant, and with a single opacity the name
+        // vanished between two frames while its icon sat still; this fades it out instead.
+        // For a label with no icon the two track each other exactly, so nothing else changes.
+        float getTextOpacity() const { return _textOpacity; }
+        void setTextOpacity(float opacity) { _textOpacity = opacity; }
+
         bool isVisible() const { return _visible; }
         void setVisible(bool visible) { _visible = visible; }
 
@@ -289,13 +297,14 @@ namespace massif::vt {
         float calculateTerrainScaleFactor(const Placement& placement, const ViewState& viewState) const;
         float calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const;
         void setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const;
+        std::int8_t runOpacity(const cglib::vec4<std::int8_t>& attrib) const;
         void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // Appends the plates behind the text and behind the icon - three quads each, so the corners keep
         // their radius at any text width, each with its own style index. A border is one more plate
         // behind the fill, grown by the border width.
         void appendLabelPlates(float size, float scale, const std::shared_ptr<const Placement>& placement, const LabelPlateIndices& plates, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // One plate: the 3-sliced rounded rectangle around 'box', grown by 'grow' glyph units.
-        void appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        void appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // Appends the leader line to a draw batch (nothing for a label that has none).
         void appendCalloutLine(float size, float scale, const ViewState& viewState, const std::shared_ptr<const Placement>& placement, int styleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // The leader line quad, in the same units as the drawn glyph offsets. Built per frame
@@ -404,6 +413,7 @@ namespace massif::vt {
         bool _calloutAnchored = false;
         int _calloutFailures = 0;
         float _opacity = 0.0f;
+        float _textOpacity = 0.0f;
         bool _visible = false;
         bool _active = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame

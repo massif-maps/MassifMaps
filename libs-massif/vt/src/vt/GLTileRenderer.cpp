@@ -2626,11 +2626,13 @@ namespace massif::vt {
                 else if (label) {
                     newLabel->setVisible(label->isVisible());
                     newLabel->setOpacity(label->getOpacity());
+                    newLabel->setTextOpacity(label->getTextOpacity());
                     newLabel->snapPlacement(*label);
                 }
                 else {
                     newLabel->setVisible(false);
                     newLabel->setOpacity(0);
+                    newLabel->setTextOpacity(0);
                 }
                 newLabel->setActive(true);
                 label = newLabel;
@@ -2693,7 +2695,8 @@ namespace massif::vt {
                     occluded = _labelOcclusionTest(center);
                 }
             }
-            if (label->isVisible() && label->isActive() && !occluded) {
+            bool shown = label->isVisible() && label->isActive() && !occluded;
+            if (shown) {
                 float opacity = std::min(1.0f, label->getOpacity() + dOpacity);
                 label->setOpacity(opacity);
                 refresh = (opacity < 1.0f) || refresh;
@@ -2701,6 +2704,19 @@ namespace massif::vt {
             else {
                 float opacity = std::max(0.0f, label->getOpacity() - dOpacity);
                 label->setOpacity(opacity);
+                refresh = (opacity > 0.0f) || refresh;
+            }
+            // The text carries its own, so a name dropped for the icon-only variant fades out while
+            // its icon stays put - see Label::getTextOpacity. With no icon the two are the same
+            // animation, since drawsText() is then always true.
+            if (shown && label->drawsText()) {
+                float opacity = std::min(1.0f, label->getTextOpacity() + dOpacity);
+                label->setTextOpacity(opacity);
+                refresh = (opacity < 1.0f) || refresh;
+            }
+            else {
+                float opacity = std::max(0.0f, label->getTextOpacity() - dOpacity);
+                label->setTextOpacity(opacity);
                 refresh = (opacity > 0.0f) || refresh;
             }
         }

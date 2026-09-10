@@ -849,7 +849,7 @@ namespace massif::vt {
         if (haloStyleIndex >= 0 || iconHaloStyleIndex >= 0) {
             for (const cglib::vec4<std::int8_t>& attrib : _cachedAttribs) {
                 int glyphHaloIndex = (attrib(0) == 2 ? iconHaloStyleIndex : haloStyleIndex);
-                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphHaloIndex < 0 ? 0 : glyphHaloIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
+                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphHaloIndex < 0 ? 0 : glyphHaloIndex), attrib(1), runOpacity(attrib), billboardMode));
             }
             
             std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
@@ -878,7 +878,7 @@ namespace massif::vt {
             else if (attrib(0) == 2 && iconStyleIndex >= 0) {
                 glyphStyleIndex = iconStyleIndex;
             }
-            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphStyleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
+            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphStyleIndex), attrib(1), runOpacity(attrib), billboardMode));
         }
         
         std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
@@ -898,6 +898,12 @@ namespace massif::vt {
 
         VT_STAT_SPLIT(labelAttribNs, labelClock);
         return valid;
+    }
+
+    // Which opacity a cached glyph draws at: attrib(0) is the run buildPointVertexData stamped -
+    // 2 is the icon, 0 and 1 are the text and its secondary - and the text has its own.
+    std::int8_t Label::runOpacity(const cglib::vec4<std::int8_t>& attrib) const {
+        return static_cast<std::int8_t>((attrib(0) == 2 ? _opacity : _textOpacity) * 127.0f);
     }
 
     void Label::buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
@@ -961,13 +967,13 @@ namespace massif::vt {
             // The quad is the plate's outer shape, border included - the cell was built that way.
             cglib::vec2<float> grow = (plate.style.padding + cglib::vec2<float>(plate.borderWidth, plate.borderWidth)) * pixelScale;
             std::int8_t mode = static_cast<std::int8_t>(plate.drawsBorder() ? GlyphMap::GlyphMode::PLATE : GlyphMap::GlyphMode::BITMAP);
-            appendPlate(*layer.box, *plate.glyph, plate.radius * pixelScale, grow, scale, layer.styleIndex, mode, cameraAxes, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
+            appendPlate(*layer.box, *plate.glyph, plate.radius * pixelScale, grow, scale, layer.styleIndex, mode, cameraAxes, layer.box == &_textBBox, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
         }
     }
 
     // 'radius' and 'grow' are already in the label's own units (screen pixels times the label
     // scale), like the glyph offsets around them.
-    void Label::appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    void Label::appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         // The plate covers the box plus what it is grown by, in glyph units. The cell is barely wider
         // than its corner radius, so it is cut into NINE: corners keep the radius, edges stretch along
         // one axis, the centre fills. Stretching the whole cell flattens every arc into an ellipse.
@@ -1017,7 +1023,7 @@ namespace massif::vt {
                 std::int16_t sv0 = static_cast<std::int16_t>(row.t0), sv1 = static_cast<std::int16_t>(row.t1);
                 texCoords.append(cglib::vec2<std::int16_t>(su0, sv0), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su0, sv1));
 
-                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>(_opacity * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
+                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 const cglib::vec2<float> corners[4] = {

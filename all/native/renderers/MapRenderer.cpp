@@ -1568,16 +1568,13 @@ namespace massif {
             return std::numeric_limits<double>::infinity();
         }
         double halfWidth = _viewState.getHalfWidth(), halfHeight = _viewState.getHalfHeight();
-        return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), maxZ - minZ, _viewState.calculateCameraDistance());
+        // The height range is INTERNAL, the camera distance is WORLD, and the globe's world is
+        // twice the plane's - so the two only compare after the conversion (18-globe.md).
+        return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), (maxZ - minZ) * _viewState.worldPerInternal(), _viewState.calculateCameraDistance());
     }
 
     bool MapRenderer::updateTerrainFlatten(float deltaSeconds) {
-        // PLANAR only: AutoFlatten::parallax compares raw world lengths, and the globe's world is
-        // twice the plane's scale, so every parallax there reads double (18-globe.md).
-        std::shared_ptr<TerrainOptions> terrainOptions;
-        if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-            terrainOptions = _options->getTerrainOptions();
-        }
+        std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
         if (!terrainOptions || !terrainOptions->isEnabled()) {
             return false;
         }

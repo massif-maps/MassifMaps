@@ -122,7 +122,9 @@ suite before the one that depends on it.
    through `ProjectionSurface::calculateMapPos` and put the focus back through
    `calculatePosition`, so they work on either surface, and `ViewState::worldPerInternal` bridges
    the ORBIT (a world distance) and a height (an internal one), which differ by 2 here.
-   `ElevationManager::intersectRay` and `AutoFlatten::parallax` are still along the Z axis.
+   `ElevationManager::intersectRay` is still along the Z axis. `AutoFlatten::parallax` compares a
+   height range against a camera distance, and those are internal and world units respectively, so
+   the caller now converts — see the 2D/3D switch below.
    Vector ELEMENTS take the terrain surface here too now - `TerrainProjectionSurface` delegates
    every position to its base and only adds the height, so the one thing that stays planar is its
    `calculateHitPoint`, which marches the height field in the planar frame. Picking on terrain over
@@ -308,6 +310,20 @@ The fallback now bisects on the height above the terrain - positive at the camer
 slope - which needs nothing but the base surface and the height field, so it serves any base.
 `tests/api/TerrainSurfaceTest.cpp` pins it: a ray straight down over a 300-unit plateau stops 600
 WORLD units early, the 2x again.
+
+### The 2D/3D switch was turned off on the globe, and the map went blank
+
+`MapRenderer::updateTerrainFlatten` bailed out on any non-planar projection, because
+`AutoFlatten::parallax` was believed to read double there. It reads HALF: the height range comes
+from `ElevationManager::getDisplayHeightRange` in INTERNAL units and the camera distance is a WORLD
+one, and only the second is doubled by the globe's world.
+
+The bail-out took the whole switch with it, not just the rule — the seeding, the ratio ramp and
+`setDecodeActive`. An app opening `flattened` in `TERRAIN_FLATTEN_MODE_FULL` therefore never got its
+3D decode back: `terrain-2d-3d` on the globe showed the ground at something like a zoom-3 density
+with an empty drape (`RTT drape EMPTY GROUND … blank 2, of 2 drawn`) and stayed there. The caller
+now converts the height range with `ViewState::worldPerInternal` and the switch runs on both
+surfaces.
 
 ## Two things worth knowing about the spherical shader path
 

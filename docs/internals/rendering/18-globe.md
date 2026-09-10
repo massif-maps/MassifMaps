@@ -436,6 +436,11 @@ with an empty drape (`RTT drape EMPTY GROUND … blank 2, of 2 drawn`) and staye
 now converts the height range with `ViewState::worldPerInternal` and the switch runs on both
 surfaces.
 
+Running it turned up a second fault, on either surface: the ramp is on a CLOCK, its first step has
+no delta yet and so moves nothing, and `updateTerrainFlatten` returned without asking for a frame
+whenever neither the ratio nor the decode had changed. On a map that only redraws on demand the
+switch froze mid-`RAMPING` — asked for, never arriving. It now requests the redraw while ramping.
+
 ## Two things worth knowing about the spherical shader path
 
 **A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the

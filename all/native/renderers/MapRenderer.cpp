@@ -1670,6 +1670,11 @@ namespace massif {
         }
         _flattenSwitchState = next;
         terrainOptions->setSwitching(FlattenSwitch::isWaitingForTiles(next, input));
+        if (next.phase == FlattenSwitch::Phase::RAMPING) {
+            // The ramp runs on a CLOCK, and the frame it starts on has no delta yet - so its first
+            // step moves nothing, and without this nothing asks for the frame that would move it.
+            requestRedraw();
+        }
         if (!decodeChanged && !ratioChanged) {
             return false;
         }

@@ -4041,7 +4041,14 @@ namespace massif::vt {
         // An extrusion's CPU base is already in INTERNAL z units - getDisplayHeight applied the
         // exaggeration and the mercator stretch - so it owes only the frame scale, the same
         // 1/frameScaleZ folded into uElevationScale.x for heights that come from the texture.
-        glUniform1f(shaderProgram.uniforms[U_BASESCALE], static_cast<float>(1.0 / frameScaleZ));
+        if (_transformer->isSpherical() && terrainTexture.metersToInternal > 0) {
+            // ...and on a sphere that scale is the radial one, not the frame's z: internal z through
+            // metres, so a building's base rides the same displacement its ground does (18-globe.md).
+            glUniform1f(shaderProgram.uniforms[U_BASESCALE],
+                static_cast<float>(sphericalMetersToFrame(*_transformer, tileId, vertexFrameMatrix) / terrainTexture.metersToInternal));
+        } else {
+            glUniform1f(shaderProgram.uniforms[U_BASESCALE], static_cast<float>(1.0 / frameScaleZ));
+        }
         if (_transformer->isSpherical()) {
             // A height on a sphere is RADIAL: no Mercator stretch (y and z zero, so the shader's
             // cosh is 1) and no frame z offset, because the displacement is along the normal rather

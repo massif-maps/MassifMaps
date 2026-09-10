@@ -2463,17 +2463,31 @@ namespace massif::vt {
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
-            float groundZ = applyTerrain(pos).z;
-            float baseZ = groundZ;
-        #ifdef TERRAIN
+            vec3 groundPos = applyTerrain(pos);
+            vec3 basePos = groundPos;
             // Flat ground has one elevation everywhere, so the base IS the ground. An unresolved base
             // falls back to the ground under this vertex: a roof that shears down the slope, wrong but
             // visible - skipping the draw loses the building, and a base of 0 buries it.
+        #ifdef TERRAIN_SPHERICAL
+            // Up is the sphere normal, so the base is an offset ALONG it. Rebuilding a z-up vertex
+            // as the planar branch does put every building inside the globe (18-globe.md).
+            highp vec3 baseUp = normalize(terrainSpherePoint(pos));
+            // The tile clip below, taken BEFORE the extrusion moves the vertex: on a sphere a
+            // vertex xy is not its tile position, and the clip discarded every wall (18-globe.md).
+            highp vec2 sphereTileUnit = terrainSphereTileUnit(pos);
+            if ((aVertexHeight > 0.0 || uFloatingBase > 0.5) && aVertexBase > -1.0e29) {
+                basePos = pos + baseUp * (aVertexBase * uBaseScale + uElevationScale.w);
+            }
+        #else
+            float groundZ = groundPos.z;
+            float baseZ = groundZ;
+        #ifdef TERRAIN
             if ((aVertexHeight > 0.0 || uFloatingBase > 0.5) && aVertexBase > -1.0e29) {
                 baseZ = aVertexBase * uBaseScale + uElevationScale.w;
             }
         #endif
-            vec3 basePos = vec3(pos.xy, baseZ);
+            basePos = vec3(pos.xy, baseZ);
+        #endif
             pos = basePos + aVertexNormal * (aVertexHeight * uHeightScale);
             vec3 normal = normalize(mix(aVertexNormal, aVertexBinormal, sideVertex));
             applyShadowPos(basePos + aVertexNormal * (aVertexHeight * uShadowHeightScale), normal);
@@ -2484,8 +2498,12 @@ namespace massif::vt {
             // The overzoom clip, per VERTEX. Not on the centroid: a building can reach into a tile while
             // its centroid sits in another, and a centroid test then drops it from every tile that holds
             // it. Y is flipped back out of the transformer's frame - uTileMatrix works in tile space.
+        #ifdef TERRAIN_SPHERICAL
+            vTilePos = sphereTileUnit;
+        #else
             vec2 vertexTile = aVertexPosition.xy * uUVScale;
             vTilePos = (uTileMatrix * vec3(vertexTile.x, 1.0 - vertexTile.y, 1.0)).xy;
+        #endif
         #ifdef LIGHTING_VSH
             // Unshadowed: the shadow is a per-fragment term, so a per-vertex lighting still takes
             // it as a plain multiply in the fragment shader (and loses its ambient doing so).
@@ -2503,7 +2521,11 @@ namespace massif::vt {
         #endif
         #if defined(SPAN) && defined(TERRAIN)
             vSpanChord = aVertexChord;
+        #ifdef TERRAIN_SPHERICAL
+            vSpanAbove = dot(pos - groundPos, baseUp) / max(uBaseScale, 1.0e-6);
+        #else
             vSpanAbove = (pos.z - groundZ) / max(uBaseScale, 1.0e-6);
+        #endif
         #endif
             gl_Position = applyDepthBias(uMVPMatrix * vec4(pos, 1.0));
         }

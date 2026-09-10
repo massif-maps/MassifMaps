@@ -273,6 +273,26 @@ surface's own world width.
 in WORLD units compared against a planar constant. Anything that feels off by exactly 2x, or by one
 zoom level, on the globe is worth looking at with that in mind.
 
+### The extrusions: drawn all along, and discarded by their own tile clip
+
+3D buildings were missing on the globe while the same style drew them on the plane. They were being
+submitted - the draw is there, at `blend 1.00`, with a sane height scale - and scaling every
+extrusion 50x made one roof appear as a slab, which is what said the geometry existed and the pixels
+did not. Three planar assumptions, all in the extrusion path:
+
+- **The tile clip.** `polygon3DVsh` builds `vTilePos` from `aVertexPosition.xy * uUVScale`, and the
+  fragment shader discards anything outside `[0,1)`. Same fault as the line clip above and the same
+  fix: `terrainSphereTileUnit`, taken BEFORE the extrusion moves the vertex. On its own this is why
+  nothing was visible.
+- **The base.** `basePos = vec3(pos.xy, baseZ)` rebuilds a z-up vertex. On a sphere the base is an
+  offset ALONG the surface normal from the undisplaced position, as `applyTerrain` itself does.
+- **`uBaseScale`.** It converted an internal z to the vertex frame as `1 / frameScaleZ`, which is
+  the plane's ratio; measured on the device, that is exactly half what the sphere needs. It goes
+  through metres now (`sphericalMetersToFrame / metersToInternal`), the same route the DEM heights
+  take, so a building's base rides the ground its walls stand on.
+
+Verified at the Louvre, `zoom 17 tilt 60`: extrusions, streets and labels match the planar frame.
+
 ## Two things worth knowing about the spherical shader path
 
 **A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the

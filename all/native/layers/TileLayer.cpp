@@ -865,6 +865,15 @@ namespace massif {
             }
         }
         
+        {
+            static int pr = 0;
+            if ((pr++ % 1) == 0) {
+                int minZ = 99, maxZ = -1;
+                for (const MapTile& t : _visibleTiles) { minZ = std::min(minZ, t.getZoom()); maxZ = std::max(maxZ, t.getZoom()); }
+                Log::Infof("PROBE cull layer %p visible %d (zoom %d..%d) preload %d, maxVisDist %.1f, lodMaxArea %.1f, targetZoom %d, terrainMinZoom %d, tilt %.1f",
+                    (void*)this, (int)_visibleTiles.size(), minZ, maxZ, (int)_preloadingTiles.size(), _maxVisibleDistance, _lodMaxTileArea, _targetTileZoom, _terrainMinTileZoom, cullState->getViewState().getTilt());
+            }
+        }
         sortTiles(_visibleTiles, cullState->getViewState(), false);
         sortTiles(_preloadingTiles, cullState->getViewState(), true);
     }
@@ -924,34 +933,44 @@ namespace massif {
         }
         double screenArea = std::numeric_limits<double>::infinity();
         {
-            // The tile's own corners, through the vertex transformer: tile-local xy is the unit
-            // square only on a plane, and on a sphere the matrix alone sent them off the surface -
-            // the projected area was then meaningless and tiles refined far too late.
-            static const cglib::vec2<float> CORNERS[4] = {
-                cglib::vec2<float>(0, 0), cglib::vec2<float>(1, 0),
-                cglib::vec2<float>(1, 1), cglib::vec2<float>(0, 1)
-            };
+            // The tile's own surface, through the vertex transformer: tile-local xy is the unit
+            // square only on a plane, and on a sphere the matrix alone sent the corners off the
+            // surface - the projected area was then meaningless and tiles refined far too late.
+            // A sphere needs the INTERIOR too: a coarse tile's four corners land on top of each
+            // other (the root's are all on the antimeridian) and enclose no area at all, so nothing
+            // ever subdivided. Summing a 3x3 grid's cells is the same number on a plane.
             std::shared_ptr<const vt::TileTransformer::VertexTransformer> vertexTransformer = tileTransformer->createTileVertexTransformer(vtTileId);
-            cglib::vec2<double> screenPos[4];
+            const int steps = (tileTransformer->isSpherical() ? 3 : 2);
+            cglib::vec2<double> screenPos[3][3];
             bool projected = true;
-            for (int i = 0; i < 4; i++) {
-                cglib::vec3<double> worldPos = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(CORNERS[i])), tileMat);
-                worldPos = tileTransformer->calculateElevatedPos(worldPos, lodElevation);
-                cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(worldPos(0), worldPos(1), worldPos(2), 1.0), mvpMat);
-                if (!(clipPos(3) > 0)) {
-                    projected = false;
-                    break;
+            for (int j = 0; j < steps && projected; j++) {
+                for (int i = 0; i < steps; i++) {
+                    cglib::vec2<float> uv(static_cast<float>(i) / (steps - 1), static_cast<float>(j) / (steps - 1));
+                    cglib::vec3<double> worldPos = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(uv)), tileMat);
+                    worldPos = tileTransformer->calculateElevatedPos(worldPos, lodElevation);
+                    cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(worldPos(0), worldPos(1), worldPos(2), 1.0), mvpMat);
+                    if (!(clipPos(3) > 0)) {
+                        projected = false;
+                        break;
+                    }
+                    screenPos[j][i] = cglib::vec2<double>(clipPos(0) / clipPos(3) * viewState.getHalfWidth(), clipPos(1) / clipPos(3) * viewState.getHalfHeight());
                 }
-                screenPos[i] = cglib::vec2<double>(clipPos(0) / clipPos(3) * viewState.getHalfWidth(), clipPos(1) / clipPos(3) * viewState.getHalfHeight());
             }
             if (projected) {
                 double area = 0;
-                for (int i = 0; i < 4; i++) {
-                    const cglib::vec2<double>& p = screenPos[i];
-                    const cglib::vec2<double>& q = screenPos[(i + 1) % 4];
-                    area += p(0) * q(1) - q(0) * p(1);
+                for (int j = 0; j + 1 < steps; j++) {
+                    for (int i = 0; i + 1 < steps; i++) {
+                        const cglib::vec2<double>* cell[4] = { &screenPos[j][i], &screenPos[j][i + 1], &screenPos[j + 1][i + 1], &screenPos[j + 1][i] };
+                        double cellArea = 0;
+                        for (int k = 0; k < 4; k++) {
+                            const cglib::vec2<double>& p = *cell[k];
+                            const cglib::vec2<double>& q = *cell[(k + 1) % 4];
+                            cellArea += p(0) * q(1) - q(0) * p(1);
+                        }
+                        area += std::abs(cellArea) * 0.5;
+                    }
                 }
-                screenArea = std::abs(area) * 0.5;
+                screenArea = area;
                 // The area already carries one power of cos(incidence); maplibre's rule wants p of
                 // them, so the exponent applied here is p - 1 and 0 leaves the area rule alone.
                 if (_lodCosThetaExponent != 0) {

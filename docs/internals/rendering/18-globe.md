@@ -312,6 +312,21 @@ slope - which needs nothing but the base surface and the height field, so it ser
 `tests/api/TerrainSurfaceTest.cpp` pins it: a ray straight down over a 300-unit plateau stops 600
 WORLD units early, the 2x again.
 
+### A tile LOD that measured a quad with no area, so the globe never refined
+
+Tangram's rule projects a tile's four corners and compares the enclosed screen area. On a sphere the
+COARSE tiles' corners land on top of each other — the root tile's are all on the antimeridian — so
+the area is exactly 0, the tile is never subdivided, and the recursion stops at zoom 0. The whole
+map was then one zoom-0 tile.
+
+Terrain hid it: `_terrainMinTileZoom` forces subdivision whatever the area says. Turn the terrain
+off, or flatten it, and a globe map went blank — measured, `PROBE cull visible 1 (zoom 0..0)`
+against the plane's `visible 8 (zoom 11..11)` at the same camera.
+
+The rule now samples the patch on a 3x3 grid and sums its four cells when the transformer is
+spherical. That is the same number on a plane, so `steps = 2` there keeps the old four-corner
+arithmetic exactly.
+
 ### Shadows: a light box that could not be fitted, and two passes that never drew
 
 Two independent things had to change, and finding the second cost a build cycle because the first

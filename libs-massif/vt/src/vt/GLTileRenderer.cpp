@@ -4010,11 +4010,25 @@ namespace massif::vt {
         return _terrainTextureCache.emplace(tileId, resolved).first->second;
     }
 
+    // A longitude difference into (-pi, pi]: the frame origin and the tile may sit either side of
+    // the antimeridian, and every spherical uv uniform is now a difference.
+    static double wrapRadians(double x) {
+        return x - 6.283185307179586 * std::floor(x * 0.15915494309189535 + 0.5);
+    }
+
     double GLTileRenderer::sphereWorldRadius() const {
         // The zoom-0 tile matrix diagonal IS the transformer's scale, which for a sphere is its
         // radius in world units. Read that way so no constant is duplicated here.
         double radius = _transformer->calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
         return radius > 0 ? radius : 1.0;
+    }
+
+    cglib::vec2<double> GLTileRenderer::sphereFrameMercator(const cglib::mat4x4<double>& vertexFrameMatrix) const {
+        double sphereRadius = sphereWorldRadius();
+        cglib::vec3<double> o(vertexFrameMatrix(0, 3) / sphereRadius, vertexFrameMatrix(1, 3) / sphereRadius, vertexFrameMatrix(2, 3) / sphereRadius);
+        double len = cglib::length(o);
+        double rz = std::min(0.999999, std::max(-0.999999, o(2) / (len > 0 ? len : 1.0)));
+        return cglib::vec2<double>(std::atan2(o(1), o(0)), 0.5 * std::log((1.0 + rz) / (1.0 - rz)));
     }
 
     void GLTileRenderer::setupSphericalUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix) {
@@ -4033,13 +4047,15 @@ namespace massif::vt {
             static_cast<float>(vertexFrameMatrix(1, 1) / sphereRadius),
             static_cast<float>(vertexFrameMatrix(2, 2) / sphereRadius));
         // The TARGET tile the clip tests against. Pure tile arithmetic: a zoom level spans 2pi of
-        // Mercator radians on both axes, y counted from the south.
+        // Mercator radians on both axes, y counted from the south. Held RELATIVE to the frame
+        // origin, which is the whole point: the absolute value does not survive fp32.
+        cglib::vec2<double> frameMercator = sphereFrameMercator(vertexFrameMatrix);
         double tileCount = static_cast<double>(1 << tileId.zoom);
         double tileSizeRadians = 6.283185307179586 / tileCount;
         glUniform1f(shaderProgram.uniforms[U_DRAPEBAKE], _drapeMVPOverride ? 1.0f : 0.0f);
         glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERETILEUV],
-            static_cast<float>((tileId.x / tileCount - 0.5) * 6.283185307179586),
-            static_cast<float>(((tileCount - 1 - tileId.y) / tileCount - 0.5) * 6.283185307179586),
+            static_cast<float>(wrapRadians((tileId.x / tileCount - 0.5) * 6.283185307179586 - frameMercator(0))),
+            static_cast<float>(((tileCount - 1 - tileId.y) / tileCount - 0.5) * 6.283185307179586 - frameMercator(1)),
             static_cast<float>(1.0 / tileSizeRadians),
             static_cast<float>(1.0 / tileSizeRadians));
     }
@@ -4182,15 +4198,16 @@ namespace massif::vt {
             // The DEM node uv from Mercator RADIANS, which is what the shader's inverse produces:
             // internal = radians * WORLD_SIZE / 2pi, so that factor is folded in here.
             double internalPerRadian = sphereWorldRadius() * 0.5;
+            cglib::vec2<double> frameMercator = sphereFrameMercator(vertexFrameMatrix);
             glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERENODEUV],
-                static_cast<float>(nodeOrigin(0) / internalPerRadian),
-                static_cast<float>(nodeOrigin(1) / internalPerRadian),
+                static_cast<float>(wrapRadians(nodeOrigin(0) / internalPerRadian - frameMercator(0))),
+                static_cast<float>(nodeOrigin(1) / internalPerRadian - frameMercator(1)),
                 static_cast<float>(internalPerRadian * invNodeSizeX),
                 static_cast<float>(internalPerRadian * invNodeSizeY));
             // The same for the FULL texture, which the fragment stage shades and shadows from.
             glUniform4f(shaderProgram.uniforms[U_TERRAINSPHEREELEVUV],
-                static_cast<float>(terrainTexture.internalOrigin(0) / internalPerRadian),
-                static_cast<float>(terrainTexture.internalOrigin(1) / internalPerRadian),
+                static_cast<float>(wrapRadians(terrainTexture.internalOrigin(0) / internalPerRadian - frameMercator(0))),
+                static_cast<float>(terrainTexture.internalOrigin(1) / internalPerRadian - frameMercator(1)),
                 static_cast<float>(internalPerRadian * invSizeX),
                 static_cast<float>(internalPerRadian * invSizeY));
         }

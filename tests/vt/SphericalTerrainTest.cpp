@@ -2,8 +2,9 @@
  * Tests for the arithmetic the TERRAIN_SPHERICAL shader path depends on
  * (libs-massif/vt/src/vt/GLTileRendererShaders.h, applyTerrain).
  *
- * The shader cannot run here, so the two functions it added - terrainSpherePoint and
- * terrainSphereToMercator - are reproduced below EXACTLY as the GLSL writes them, fed the uniform
+ * The shader cannot run here, so the functions it added - terrainSpherePoint,
+ * terrainSphereToMercator and terrainSphereMercatorDelta - are reproduced below EXACTLY as the GLSL
+ * writes them (and in the PRECISION the GPU runs them in, which is its own test), fed the uniform
  * values GLTileRenderer::setupTerrainUniforms computes, and checked against the transformer the
  * geometry was actually built with. That is the part worth testing: an inversion that disagrees
  * with the transformer by any amount puts the DEM sample in the wrong place, and on a globe there
@@ -357,6 +358,69 @@ namespace {
         TEST_CHECK(worst < radius * 1.0e-6, "every lattice vertex sits on the sphere, not on a chord");
     }
 
+    /*
+     * The inversion above is exercised in DOUBLE, and it is exact there. The GPU runs it in fp32,
+     * where forming the absolute unit-sphere point first is fatal: a tile is 1e-5 of the sphere, so
+     * the tile-local detail is below the ulp of an O(1) coordinate. That is the shaky drape, the
+     * break at every tile border and the buildings cut wrong at one - all three from one function.
+     * terrainSphereMercatorDelta keeps the offset small end to end; both forms are reproduced here
+     * exactly as the GLSL writes them, in float.
+     */
+    void testTheShaderInversionSurvivesFloatPrecision() {
+        const double PI = 3.1415926535897932;
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / PI));
+        double sphereRadius = sphere.calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
+        const TileId tileIds[] = { TileId(14, 8300, 5636), TileId(16, 33202, 22546), TileId(18, 132808, 90185) };
+
+        double worstAbsolute = 0, worstRelative = 0;
+        for (const TileId& tileId : tileIds) {
+            cglib::mat4x4<double> frame = sphere.calculateTileMatrix(tileId, 1.0f);
+            cglib::vec3<float> o(static_cast<float>(frame(0, 3) / sphereRadius), static_cast<float>(frame(1, 3) / sphereRadius), static_cast<float>(frame(2, 3) / sphereRadius));
+            cglib::vec3<float> scale(static_cast<float>(frame(0, 0) / sphereRadius), static_cast<float>(frame(1, 1) / sphereRadius), static_cast<float>(frame(2, 2) / sphereRadius));
+
+            // sphereFrameMercator, and the tile origin the uv uniform carries in either form.
+            cglib::vec3<double> od(frame(0, 3) / sphereRadius, frame(1, 3) / sphereRadius, frame(2, 3) / sphereRadius);
+            double orz = od(2) / cglib::length(od);
+            cglib::vec2<double> frameMerc(std::atan2(od(1), od(0)), 0.5 * std::log((1.0 + orz) / (1.0 - orz)));
+            double tileCount = static_cast<double>(1 << tileId.zoom);
+            double tileMercX = (tileId.x / tileCount - 0.5) * 2 * PI;
+            double tileMercY = ((tileCount - 1 - tileId.y) / tileCount - 0.5) * 2 * PI;
+            float invTileSize = static_cast<float>(tileCount / (2 * PI));
+
+            std::shared_ptr<const TileTransformer::VertexTransformer> vertexTransformer = sphere.createTileVertexTransformer(tileId);
+            for (int j = 1; j < 16; j++) {
+                for (int i = 1; i < 16; i++) {
+                    float u = i / 16.0f, v = j / 16.0f;
+                    cglib::vec3<float> pos = vertexTransformer->calculatePoint(cglib::vec2<float>(u, v));
+                    cglib::vec3<float> d(pos(0) * scale(0), pos(1) * scale(1), pos(2) * scale(2));
+
+                    // What it used to do: p = o + d, invert, subtract an O(1) Mercator origin.
+                    cglib::vec3<float> p = o + d;
+                    float len = std::sqrt(p(0) * p(0) + p(1) * p(1) + p(2) * p(2));
+                    float rz = std::min(0.999999f, std::max(-0.999999f, p(2) / len));
+                    float ax = std::atan2(p(1), p(0)) - static_cast<float>(tileMercX);
+                    float ay = 0.5f * std::log((1.0f + rz) / (1.0f - rz)) - static_cast<float>(tileMercY);
+                    ax -= 6.283185307179586f * std::floor(ax * 0.15915494309189535f + 0.5f);
+                    worstAbsolute = std::max(worstAbsolute, static_cast<double>(std::max(std::fabs(ax * invTileSize - u), std::fabs(ay * invTileSize - (1.0f - v)))));
+
+                    // terrainSphereMercatorDelta: every quantity stays the size of the tile.
+                    float od2 = o(0) * d(0) + o(1) * d(1) + o(2) * d(2), dd = d(0) * d(0) + d(1) * d(1) + d(2) * d(2);
+                    float dlen = std::sqrt(1.0f + 2.0f * od2 + dd);
+                    float lenM1 = (2.0f * od2 + dd) / (dlen + 1.0f);
+                    float dsz = (d(2) - o(2) * lenM1) / dlen;
+                    float x = dsz / std::max(1.0e-6f, 1.0f - o(2) * (o(2) + dsz));
+                    float dMercY = std::fabs(x) < 0.01f ? x * (1.0f + x * x * 0.33333333f) : 0.5f * std::log((1.0f + x) / (1.0f - x));
+                    float dLon = std::atan2(o(0) * d(1) - o(1) * d(0), o(0) * (o(0) + d(0)) + o(1) * (o(1) + d(1)));
+                    float rx = dLon - static_cast<float>(tileMercX - frameMerc(0));
+                    float ry = dMercY - static_cast<float>(tileMercY - frameMerc(1));
+                    worstRelative = std::max(worstRelative, static_cast<double>(std::max(std::fabs(rx * invTileSize - u), std::fabs(ry * invTileSize - (1.0f - v)))));
+                }
+            }
+        }
+        // Measured against a 1024-texel drape tile, which is what the error is visible in.
+        TEST_CHECK(worstAbsolute * 1024 > 2.0, "the absolute form is out by drape TEXELS by zoom 18");
+        TEST_CHECK(worstRelative * 1024 < 0.01, "the relative one holds a hundredth of a texel at every zoom");
+    }
 }
 
 void testSphericalTerrain() {
@@ -367,4 +431,5 @@ void testSphericalTerrain() {
     testSphericalHeightHasNoLatitudeStretch();
     testTheExtrusionBaseRisesWithItsGround();
     testTheGroundLatticeIsNotLeftToTheCurvatureSplit();
+    testTheShaderInversionSurvivesFloatPrecision();
 }

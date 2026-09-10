@@ -546,12 +546,27 @@ namespace massif::vt {
             highp float rz = clamp(p.z / len, -0.999999, 0.999999);
             return vec2(atan(p.y, p.x), 0.5 * log((1.0 + rz) / (1.0 - rz)));
         }
-        // Where a vertex sits in the TARGET tile, for the line clip. Same antimeridian wrap as the
-        // node uv: atan gives the longitude modulo 2pi and a tile never spans it.
+        // The same inversion, RELATIVE to the vertex frame's own origin, and never forming the
+        // absolute point: a tile is 1e-5 of the sphere, so an fp32 o + d has already dropped it.
+        // Every uv uniform below is likewise relative, which is why none of them wraps (18-globe.md).
+        highp vec2 terrainSphereMercatorDelta(highp vec3 pos) {
+            highp vec3 o = uTerrainSphereOrigin;    // the frame origin, ON the unit sphere
+            highp vec3 d = pos * uTerrainSphereScale;
+            highp float od = dot(o, d), dd = dot(d, d);
+            highp float len = sqrt(1.0 + 2.0 * od + dd);
+            highp float lenM1 = (2.0 * od + dd) / (len + 1.0); // |o + d| - 1, without the cancellation
+            highp float dz = (d.z - o.z * lenM1) / len;        // sin(lat) difference, small by construction
+            // atanh(a) - atanh(b) = atanh((a - b) / (1 - a b)), and the series is what keeps the
+            // small case exact - log(1 + x) at x = 1e-4 throws away four of the seven digits.
+            highp float x = dz / max(1.0e-6, 1.0 - o.z * (o.z + dz));
+            highp float dMercY = abs(x) < 0.01 ? x * (1.0 + x * x * 0.33333333) : 0.5 * log((1.0 + x) / (1.0 - x));
+            // The cross and dot of o and o + d, expanded so both come out of d alone.
+            highp float dLon = atan(o.x * d.y - o.y * d.x, o.x * (o.x + d.x) + o.y * (o.y + d.y));
+            return vec2(dLon, dMercY);
+        }
+        // Where a vertex sits in the TARGET tile, for the line clip.
         highp vec2 terrainSphereTileUnit(highp vec3 pos) {
-            highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereTileUV.xy;
-            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
-            return merc * uTerrainSphereTileUV.zw;
+            return (terrainSphereMercatorDelta(pos) - uTerrainSphereTileUV.xy) * uTerrainSphereTileUV.zw;
         }
         // The bake draws a vertex by WHERE IN THE TILE it is - its curved world position means
         // nothing to a bake target that IS the tile's unit square. The matrix comes in because
@@ -616,18 +631,12 @@ namespace massif::vt {
         // stage shades and shadows from this texture, and its affine planar form read a curved
         // xy as a flat one (18-globe.md).
         highp vec2 terrainSphereElevUV(highp vec3 pos) {
-            highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereElevUV.xy;
-            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
-            return merc * uTerrainSphereElevUV.zw;
+            return (terrainSphereMercatorDelta(pos) - uTerrainSphereElevUV.xy) * uTerrainSphereElevUV.zw;
         }
         #endif
         vec3 applyTerrain(vec3 pos) {
         #ifdef TERRAIN_SPHERICAL
-            highp vec2 merc = terrainSphereToMercator(terrainSpherePoint(pos)) - uTerrainSphereNodeUV.xy;
-            // atan recovers the longitude modulo 2pi, so a tile at the antimeridian gets its
-            // relative x a whole world out. Wrap it back; a DEM node never spans 2pi.
-            merc.x -= 6.283185307179586 * floor(merc.x * 0.15915494309189535 + 0.5);
-            highp vec2 uv = merc * uTerrainSphereNodeUV.zw;
+            highp vec2 uv = (terrainSphereMercatorDelta(pos) - uTerrainSphereNodeUV.xy) * uTerrainSphereNodeUV.zw;
         #else
             highp vec2 uv = uElevationNodeUV.xy + pos.xy * uElevationNodeUV.zw;
         #endif

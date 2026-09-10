@@ -717,6 +717,7 @@ namespace massif::vt {
         const std::pair<bool, TerrainTexture>& resolveTerrainTexture(const TileId& tileId) const;
         bool terrainGridSurfaces() const;
         double sphereWorldRadius() const;
+        cglib::vec2<double> sphereFrameMercator(const cglib::mat4x4<double>& vertexFrameMatrix) const;
         void setupSphericalUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
         bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface = false);
         // The tile set the terrain SURFACES are drawn from this frame, which is not the renderer's own

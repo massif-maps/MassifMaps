@@ -523,6 +523,42 @@ section below is about. maplibre floors the equivalent number at 32 for the same
 
 This is a mesh-density fix, not the cause of the three artefacts below.
 
+### The drape swam and every tile border broke, because fp32 cannot hold a sphere point
+
+Three symptoms, reported together: the drape "shaky" and terraced, a visible break along every tile
+border, and 3D buildings cut wrong at one. All three are one function.
+
+`terrainSpherePoint` rebuilt the **absolute** unit-sphere coordinate — `uTerrainSphereOrigin + pos *
+uTerrainSphereScale` — and `terrainSphereToMercator` inverted it. That is the tile clip, the drape
+bake target, `vTilePos` in `polygon3DVsh` and both DEM samplings. But a tile is `2^-zoom` of the
+sphere: at zoom 16 it spans 9.6e-5 of an O(1) coordinate whose fp32 ulp is 1.2e-7. **The tile-local
+detail is below the ulp before the inversion runs.** Running the GLSL verbatim in float, worst error
+in the recovered tile uv, measured as texels of a 1024-texel drape tile:
+
+| zoom | 10 | 12 | 14 | 16 | 17 | 18 | 19 |
+|---|---|---|---|---|---|---|---|
+| absolute point | 0.02 | 0.15 | 0.46 | 2.38 | 2.37 | 8.83 | 17.76 |
+| relative offset | 0.0002 | 0.0002 | 0.0002 | 0.0001 | 0.0002 | 0.0002 | 0.0003 |
+
+`uTerrainSphereOrigin` is itself a `float` uniform, and its own ulp is a **per-tile** shift — 1.3
+texels at z16, 5 at z18, different for each tile. That is the break at the border, exactly.
+
+`terrainSphereMercatorDelta` returns the Mercator offset from the **vertex frame's own origin** and
+never forms the absolute point: `atanh(a) - atanh(b) = atanh((a-b)/(1-ab))` with `a-b` expanded so
+it comes out of the small displacement alone, `|o+d|-1` written as `(2 o·d + d·d)/(|o+d|+1)`, and
+the longitude as `atan2` of the cross and dot of `o` with `o+d`, both expanded the same way. The
+small-argument `atanh` takes its series: `log(1+x)` at `x = 1e-4` throws away four of the seven
+digits. Every uv uniform (`uTerrainSphereTileUV`, `uTerrainSphereNodeUV`, `uTerrainSphereElevUV`)
+now carries its origin **relative to the frame origin**, computed in double on the CPU
+(`GLTileRenderer::sphereFrameMercator`), so no O(1) quantity reaches the shader at all — which is
+also why none of them wraps the antimeridian any more; `wrapRadians` does it once, on the CPU.
+
+The error is now flat across zoom, which is the signature worth checking if this ever regresses.
+`testTheShaderInversionSurvivesFloatPrecision` pins both forms; the older
+`testTheShaderInversionRecoversTheTileUV` runs in double and by construction could never see this.
+
+`baseUp = normalize(terrainSpherePoint(pos))` is left alone: a direction needs no more than fp32.
+
 ## Two things worth knowing about the spherical shader path
 
 **A skirt's drop is a globe-only vertex attribute.** On the plane it is still folded into the

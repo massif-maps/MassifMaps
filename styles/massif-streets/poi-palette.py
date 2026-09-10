@@ -50,7 +50,7 @@ CLASSES = {
 # Street furniture, not a place: the glyph stands on the map with no disc under it, which is what
 # Standard's backgroundPointOfInterestLabels=none does for the whole map. Matched on class AND
 # subclass, because OpenMapTiles carries a bench or a tree as a subclass of something coarser.
-NO_BACKGROUND = ['bench', 'drinking_water', 'picnic_site', 'shelter', 'telephone',
+NO_BACKGROUND = ['bench', 'drinking_water', 'garden', 'picnic_site', 'shelter', 'telephone',
                  'toilets', 'tree', 'waste_basket']
 
 # A subclass that belongs to another category than its class. Liberty reads `subclass` for the ICON
@@ -99,8 +99,9 @@ def stops(cat):
             0.25, CATEGORY[cat]['night'], 0.3, CATEGORY[cat]['day']]
 
 
-def disc_match(furniture=None):
-    return flat_match(lambda cat: CATEGORY[cat]['disc'], CATEGORY['default']['disc'], furniture)
+def disc_match(furniture=None, keep_furniture=False):
+    return flat_match(lambda cat: CATEGORY[cat]['disc'], CATEGORY['default']['disc'],
+                      furniture, keep_furniture)
 
 
 def shape_match(key):
@@ -131,7 +132,7 @@ def text_color():
             0.25, at('night'), 0.3, at('day')]
 
 
-def flat_match(value_of, default, furniture=None):
+def flat_match(value_of, default, furniture=None, keep_furniture=False):
     """ONE match on `class`, which is the shape mapbox2css folds into a project.json table.
 
     Nesting a second match inside it - a subclass override, say - defeats the fold, and the rule
@@ -143,7 +144,8 @@ def flat_match(value_of, default, furniture=None):
         out.append(sorted(NO_BACKGROUND))
         out.append(furniture)
     for cat in CATEGORY:
-        classes = [c for c in CLASSES.get(cat, []) if c not in NO_BACKGROUND]
+        classes = CLASSES.get(cat, []) if keep_furniture else [
+            c for c in CLASSES.get(cat, []) if c not in NO_BACKGROUND]
         if not classes:
             continue
         out.append(sorted(classes) if len(classes) > 1 else classes[0])
@@ -192,7 +194,7 @@ def main():
                                            'transparent', 'hsl(0, 0%, 100%)']
             # A glyph with no disc under it is drawn in the category colour, not white on it.
             params['icon'] = flat_match(lambda cat: 'hsl(0, 0%, 100%)', 'hsl(0, 0%, 100%)',
-                                        furniture=disc_match())
+                                        furniture=disc_match(keep_furniture=True))
             params['radius'] = shape_match('radius')
             params['background-stroke-width'] = shape_match('border')
         touched += 1

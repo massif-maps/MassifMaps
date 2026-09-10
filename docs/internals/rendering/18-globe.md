@@ -563,6 +563,12 @@ uniform is measured from the same frame and wrapped the same way, so the differe
 2pi and `terrainSphereRelative` brings the small answer back. Both terms are small, so the wrap
 costs nothing in precision.
 
+**And the no-elevation branch has to zero the spherical uv pair too.** `setupTerrainUniforms` bails
+out early when a tile has no DEM, zeroing every planar elevation uniform on the way — but it left
+`uTerrainSphereNodeUV` and `uTerrainSphereElevUV` holding whatever the last draw put there, i.e.
+another tile's coverage. Below `TerrainOptions::minZoom` (5) EVERY tile takes that branch, which is
+why this shows when you zoom out and not otherwise.
+
 The error is now flat across zoom, which is the signature worth checking if this ever regresses.
 `testTheShaderInversionSurvivesFloatPrecision` pins both forms; the older
 `testTheShaderInversionRecoversTheTileUV` runs in double and by construction could never see this.

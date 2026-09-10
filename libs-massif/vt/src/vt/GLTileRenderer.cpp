@@ -4135,6 +4135,12 @@ namespace massif::vt {
             glUniform1i(shaderProgram.uniforms[U_ELEVATIONNODETEXTURE], 1);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONNODEUV], 0.0f, 0.0f, 0.0f, 0.0f);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONNODETEXELSIZE], 1.0f, 1.0f, 1.0f, 1.0f);
+            if (_transformer->isSpherical()) {
+                // The globe's own pair of the two above. Left out, they keep ANOTHER tile's
+                // coverage - and below terrain's minZoom every tile comes through here.
+                glUniform4f(shaderProgram.uniforms[U_TERRAINSPHERENODEUV], 0.0f, 0.0f, 0.0f, 0.0f);
+                glUniform4f(shaderProgram.uniforms[U_TERRAINSPHEREELEVUV], 0.0f, 0.0f, 0.0f, 0.0f);
+            }
             glUniform2f(shaderProgram.uniforms[U_TILEUNITSCALE], 0.0f, 0.0f); // no tile clipping without elevation
             glUniform2f(shaderProgram.uniforms[U_TILEUNITOFFSET], 0.0f, 0.0f);
             glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], 0.0f);

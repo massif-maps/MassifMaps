@@ -35,9 +35,10 @@ public class Switch2D3DExample extends MapExample {
     private static final long SOURCE_HILLSHADE = 1;
     private static final long SOURCE_VECTOR = 2;
 
-    /** What the 3D view looks AT. The viewpoint it is seen from is derived - see frameFlatStart. */
+    /** Where the map OPENS. Every later switch works off wherever the user has got to. */
     private static final Position SUMMIT = new Position(7.6586, 45.9763);
 
+    /** The opening zoom only. A switch keeps the zoom it is given - see fly(). */
     private static final float ZOOM = 12.5f;
     /** One rotation for both states: north up flat, looking north tilted. A switch that also spun
      *  the map 180 degrees made it impossible to tell where you had come out. */
@@ -276,10 +277,13 @@ public class Switch2D3DExample extends MapExample {
     }
 
     private void fly() {
-        // Where the camera IS, not what it is looking at: at tilt 20 the focus is kilometres out in
-        // front, so re-centring on it would jump the map forward.
-        Position target = in3D ? SUMMIT : map.camera().eyePosition();
-        map.camera().animate(seconds).moveTo(target, ZOOM, ROTATION, in3D ? TILT_3D : TILT_2D);
+        // Rising keeps the focus it has; sinking takes the camera's own ground position, because at
+        // tilt 20 the focus is kilometres out in front and re-centring on it jumps the map forward.
+        Position target = in3D ? map.camera().position() : map.camera().eyePosition();
+        // The zoom carries across. Tilt alone then decides the eye height - the camera stands
+        // distance * sin(tilt) up, so the same zoom that framed a town flat lands low over it in 3D,
+        // and a round trip comes back where it started instead of snapping to one altitude.
+        map.camera().animate(seconds).moveTo(target, map.camera().zoom(), ROTATION, in3D ? TILT_3D : TILT_2D);
     }
 
     /** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */

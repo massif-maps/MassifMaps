@@ -426,6 +426,10 @@ static const int NATIVE_NO_COORDINATE = -1;
     [_baseMapView flyTo:pos zoom:zoom rotation:rotation tilt:tilt climbHeight:climbHeight durationSeconds:durationSeconds];
 }
 
+-(void)flyTo:(MSFMapPos*)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt climbHeight:(float)climbHeight durationSeconds:(float)durationSeconds easing:(enum MSFFlightEasing)easing {
+    [_baseMapView flyTo:pos zoom:zoom rotation:rotation tilt:tilt climbHeight:climbHeight durationSeconds:durationSeconds easing:easing];
+}
+
 -(void)stopFlight {
     [_baseMapView stopFlight];
 }

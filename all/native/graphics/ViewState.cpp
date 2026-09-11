@@ -128,6 +128,14 @@ namespace massif {
         return _zoom0Distance / std::pow(2.0, static_cast<double>(zoom));
     }
 
+    double ViewState::getSpanPerZoom() const {
+        if (_height <= 0 || !(_zoom0Distance > 0) || !(_tanHalfFOVY > 0)) {
+            return 0;
+        }
+        double unitsPerPixel = 2.0 * _tanHalfFOVY * _zoom0Distance / _height;
+        return unitsPerPixel * static_cast<double>(std::max(_width, _height));
+    }
+
     void ViewState::setCameraPos(const cglib::vec3<double>& cameraPos) {
         if (!std::isfinite(cglib::norm(cameraPos))) {
             Log::Errorf("ViewState::setCameraPos: Invalid coordinates %g, %g, %g", cameraPos(0), cameraPos(1), cameraPos(2)); 

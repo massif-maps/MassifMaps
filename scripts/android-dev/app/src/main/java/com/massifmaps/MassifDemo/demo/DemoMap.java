@@ -521,7 +521,7 @@ public class DemoMap {
         MapPos target = new MapPos(focus.getX(), focus.getY(), DemoConfig.PEAK_FINDER_FLY_ELEVATION);
         mapView.flyTo(target, DemoConfig.PEAK_FINDER_FLY_ZOOM, mapView.getRotation(),
                 DemoConfig.PEAK_FINDER_TILT, DemoConfig.PEAK_FINDER_FLY_CLIMB,
-                DemoConfig.PEAK_FINDER_FLY_DURATION);
+                DemoConfig.PEAK_FINDER_FLY_DURATION, DemoConfig.PEAK_FINDER_FLY_EASING);
         // The viewpoint's height is the flight's now (the target's Z, plus the climb over the way),
         // so the demo only has to follow it: read the flight's own progress rather than run a
         // second clock beside it, and keep the widget's number and the config in step.

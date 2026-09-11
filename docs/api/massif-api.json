@@ -1166,6 +1166,10 @@
             {
               "name": "durationSeconds",
               "type": "float"
+            },
+            {
+              "name": "easing",
+              "type": "string"
             }
           ],
           "returns": "void",

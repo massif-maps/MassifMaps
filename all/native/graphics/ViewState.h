@@ -163,6 +163,13 @@ namespace massif {
         float getZoom0Distance() const;
 
         /**
+         * The world span the viewport covers at zoom 0, internal units, along its LONGER side -
+         * Van Wijk's w. Divide by pow(2, zoom) for another zoom.
+         * @return The visible span at zoom 0, or 0 before the view state has a size.
+         */
+        double getSpanPerZoom() const;
+
+        /**
          * Returns the adjusted minimum zoom.
          * If restricted panning is used, then this value can be greater than the minimum zoom specified
          * via Options.

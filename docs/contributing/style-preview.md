@@ -55,6 +55,11 @@ with vector geometry - it fades rasters only. A cased road fades badly at the de
 sits near the background colour, so for the length of the fade only the casing reads and the road
 looks like an outline waiting to be filled. It is `VectorTileLayer::setLayerBlendingSpeed`.
 
+`?labelperspective=0` holds a label at a constant on-screen size however far away it is, which is
+what the SDK did before 6.1; the default `0.5` is maplibre's damping, so a distant label shrinks.
+It is `VectorTileLayer::setLabelPerspectiveScaling`, and the A/B is only visible under TILT — at
+tilt 0 the whole map is one depth and every setting draws the same picture.
+
 `--tile-draw-size 512` because the panes run the SDK on maplibre's tile convention, where the zoom
 number already is maplibre's: converted at the default 256 every zoom stop fires a level late and
 the roads come out visibly thin against the row above.

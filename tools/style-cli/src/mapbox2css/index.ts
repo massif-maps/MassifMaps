@@ -1787,8 +1787,12 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     // ring round the artwork - a peak's mountain glyph in a black circle, since Standard's
     // natural_point_label states no `background-stroke` at all.
     if (icon.plate.borderWidth > 0 && colour('background-stroke', 'shield-icon-background-border-fill', true)) {
-        out.push(`shield-icon-background-border-width: ${round(icon.plate.borderWidth)};`);
-        coverage.emit('shield-icon-background-border-width');
+        // Stated wins over measured, as `radius` does: the ring is measured off the artwork, and one
+        // sheet of identical discs therefore rings a small badge as heavily as a full circle.
+        if (!colour('background-stroke-width', 'shield-icon-background-border-width')) {
+            out.push(`shield-icon-background-border-width: ${round(icon.plate.borderWidth)};`);
+            coverage.emit('shield-icon-background-border-width');
+        }
     }
     // MapBox's `icon-stroke` is the outline it draws UNDER the glyph, which is exactly what the
     // SDK grows from a distance field - so it is the icon HALO, not the plate's border (that one is

@@ -59,6 +59,7 @@ namespace massif {
         void setTerrainRenderOrder(int order);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
+        void setLabelPerspectiveScaling(float scaling);
         void setLabelOrder(int order);
         void setBuildingOrder(int order);
         void setRasterFilterMode(vt::RasterFilterMode filterMode);
@@ -265,6 +266,7 @@ namespace massif {
         bool _interactionMode;
         float _layerBlendingSpeed;
         float _labelBlendingSpeed;
+        float _labelPerspectiveScaling;
         int _labelOrder;
         int _buildingOrder;
         vt::RasterFilterMode _rasterFilterMode;

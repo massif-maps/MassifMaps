@@ -7,6 +7,8 @@
  *   ?source=https://.../{z}/{x}/{y}.mvt&css=<url-encoded CartoCSS>  vector
  *   ?minzoom=0&maxzoom=14                                           what the tileset actually holds
  *   ?tiledrawsize=512&tilelodfactor=1                               pick tiles as a web map does
+ *   ?labelperspective=0                                             0 holds a label's screen size,
+ *                                                                   0.5 shrinks it as maplibre does
  *
  * The style is passed in rather than fetched: main() runs on the browser's main thread, where a
  * synchronous fetch is illegal. The JavaScript binding over the facade C ABI is what will replace
@@ -157,6 +159,7 @@ int main() {
         // fade only the casing reads and the road looks like an outline waiting to be filled.
         // 0 is what maplibre does - vector geometry appears, only rasters fade.
         vectorLayer->setLayerBlendingSpeed(static_cast<float>(queryNumber("blendspeed", 1)));
+        vectorLayer->setLabelPerspectiveScaling(static_cast<float>(queryNumber("labelperspective", 0.5)));
         _MapView->getLayers()->add(vectorLayer);
     }
 

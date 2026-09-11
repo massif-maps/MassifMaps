@@ -29,6 +29,8 @@
 #include <vt/TileTransformer.h>
 #include <mapnikvt/ValueConverter.h>
 
+#include <algorithm>
+
 namespace {
 
     template <typename T>
@@ -56,6 +58,7 @@ namespace massif {
         _clickRadius(4.0f),
         _layerBlendingSpeed(0.0f),
         _labelBlendingSpeed(1.0f),
+        _labelPerspectiveScaling(0.5f),
         _rendererLayerFilter(),
         _clickHandlerLayerFilter(),
         _tileMapsMode(false),
@@ -107,6 +110,9 @@ namespace massif {
         }
         if (auto labelBlendingSpeed = readDecoderParameter<float>(decoder, "_labelblendingspeed")) {
             setLabelBlendingSpeed(*labelBlendingSpeed);
+        }
+        if (auto labelPerspectiveScaling = readDecoderParameter<float>(decoder, "_labelperspectivescaling")) {
+            setLabelPerspectiveScaling(*labelPerspectiveScaling);
         }
         if (auto rendererLayerFilter = readDecoderParameter<std::string>(decoder, "_rendererlayerfilter")) {
             setRendererLayerFilter(*rendererLayerFilter);
@@ -173,6 +179,15 @@ namespace massif {
     
     void VectorTileLayer::setLabelBlendingSpeed(float speed) {
         _labelBlendingSpeed.store(speed);
+    }
+
+    float VectorTileLayer::getLabelPerspectiveScaling() const {
+        return _labelPerspectiveScaling.load();
+    }
+
+    void VectorTileLayer::setLabelPerspectiveScaling(float scaling) {
+        _labelPerspectiveScaling.store(std::min(1.0f, std::max(0.0f, scaling)));
+        redraw();
     }
 
     std::string VectorTileLayer::getRendererLayerFilter() const {
@@ -588,6 +603,7 @@ namespace massif {
             _tileRenderer->setBuildingOrder(static_cast<int>(getBuildingRenderOrder()));
             _tileRenderer->setLayerBlendingSpeed(getLayerBlendingSpeed());
             _tileRenderer->setLabelBlendingSpeed(getLabelBlendingSpeed());
+            _tileRenderer->setLabelPerspectiveScaling(getLabelPerspectiveScaling());
             bool refresh = _tileRenderer->onDrawFrame(deltaSeconds, viewState);
 
             if (opacity < 1.0f) {

@@ -272,6 +272,35 @@ horizon and the guess runs away, shrinking every label on screen as the camera r
 which is what "labels get smaller as I go up or pan" was. `focusDistance` 0 falls back to the old
 guess, so a host that does not set it behaves as before.
 
+#### How much of the divide is given back: `labelPerspectiveScaling`
+
+Cancelling the divide *entirely* is not what the reference renderers do. maplibre and mapbox damp
+it: `symbol_sdf.vertex.glsl` multiplies the glyph size by
+`clamp(0.5 + 0.5 * distance_ratio, 0.0, 4.0)`, so a label past the focus point does shrink — at half
+the rate the projection alone would shrink it. `VectorTileLayer::setLabelPerspectiveScaling` is that
+blend, `0` to `1`, reaching vt as `ViewState::labelPerspectiveScaling`:
+
+| value | factor | what a label at 3× the focus depth looks like |
+|---|---|---|
+| `0` | `depth / focusDepth` | full size — a constant on-screen size, what this SDK did before 6.1 |
+| `0.5` (default) | `0.5 + 0.5 · depth / focusDepth` | ⅔ size — maplibre's own damping |
+| `1` | `1` | ⅓ size — fixed to the map, shrinking as fast as the geometry |
+
+Two carve-outs. The damping applies only **past** the focus point (`factor > 1`); nearer than it the
+same blend scales a label *up*, and a name lunging at the camera across the near half of a tilted
+map is worse than the distant shrink is good — maplibre has this and we do not want it. And a
+**callout** is exempt whatever the setting: it is a screen object whose whole point is to stay
+readable at any range (see below).
+
+This is not only a size. A `line` label must find `textLength × factor` of **world line** to sit on
+(`findClippedLinePlacement`), so at `0` a road at 3× the focus depth was asked for 3× the road and
+its name was dropped. Measured at Grenoble z15.57 tilt 59 in the style preview, massif-local drew
+**6 road names at `0` and 9 at `0.5`**, against maplibre's ~12 — so the damping recovers part of the
+gap, not all of it. What is left is architectural: maplibre decides whether a name fits its line
+once at **tile build time**, in tile space, with no camera in the question at all.
+
+`tools/style-preview` forwards `?labelperspective=` to the massif row, which is how that A/B is run.
+
 A **callout** is sized differently: it is a screen object, so one glyph unit is `size` pixels taken
 off the projection (`calculateLabelScale` → `calculatePixelToWorld`), not off the zoom. The
 zoom-derived scale keeps a constant screen size only while the camera distance follows the zoom,

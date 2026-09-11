@@ -26,6 +26,7 @@ void testSpanResolver();
 void testCollisionPadding();
 void testLabelAnchorAlign();
 void testLabelPadding();
+void testLabelPerspective();
 void testLabelBandTiles();
 void testLabelTextOpacity();
 void testLabelRadialOffset();
@@ -52,6 +53,7 @@ int main() {
     testCollisionPadding();
     testLabelAnchorAlign();
     testLabelPadding();
+    testLabelPerspective();
     testLabelBandTiles();
     testLabelTextOpacity();
     testLabelRadialOffset();

@@ -37,6 +37,10 @@ namespace massif::vt {
         // mapbox's ["measure-light", "brightness"]: how bright the scene light is, 0-1. A style reads it
         // as `view::brightness`, resolved per frame, so a label dims with the hour without a re-decode.
         float lightBrightness = 1.0f;
+        // How much of the perspective divide a label keeps, 0-1. 0 cancels it, for the constant
+        // on-screen size below; 0.5 is maplibre's clamp(0.5 + 0.5 * distance_ratio) - a distant
+        // label shrinks, at half the rate the projection alone would shrink it.
+        float labelPerspectiveScaling = 0.0f;
         bool planarProjection = false;
         cglib::mat4x4<double> projectionMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> cameraMatrix = cglib::mat4x4<double>::identity();

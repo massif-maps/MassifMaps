@@ -299,6 +299,9 @@ function startMassif() {
       // geometry. A cased road fades badly: its fill is near the background colour, so early in
       // the fade only the casing reads and the road looks like an outline waiting to be filled.
       blendspeed: ASKED.get('blendspeed') ?? 1,
+      // ?labelperspective=0 holds a label at a constant screen size however far away it is, which
+      // is what this SDK did before; 0.5 is maplibre's own damping, and what the row compares to.
+      labelperspective: ASKED.get('labelperspective') ?? 0.5,
       lon: centre.lng, lat: centre.lat, zoom: maps[0].getZoom(),
       // The pane starts at the camera the URL asked for, not at north-up nadir: sync only fires
       // on a MOVE, so ?tilt= would otherwise not reach the massif row until something dragged.

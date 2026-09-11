@@ -602,6 +602,15 @@ namespace massif::vt {
             return 1.0f;
         }
         float factor = static_cast<float>(depth / focusDepth);
+        // A CALLOUT is a screen object and keeps the full cancellation; everything else may keep
+        // part of the perspective divide, the way maplibre damps rather than cancels it
+        // (symbol_sdf.vertex.glsl: clamp(0.5 + 0.5 * distance_ratio, 0, 4)). Only PAST the focus
+        // point: nearer than it the same blend would scale a label UP, which maplibre does too and
+        // which reads as a label lunging at the camera on a tilted map.
+        if (factor > 1.0f && _style->orientation != LabelOrientation::CALLOUT && viewState.labelPerspectiveScaling > 0) {
+            float scaling = std::min(1.0f, viewState.labelPerspectiveScaling);
+            factor = (1.0f - scaling) * factor + scaling;
+        }
         // Quantize to ~1% steps: line label vertex data is cached by scale and would
         // otherwise be rebuilt on every frame while the camera moves
         factor = std::exp2(std::round(std::log2(factor) * 64.0f) / 64.0f);

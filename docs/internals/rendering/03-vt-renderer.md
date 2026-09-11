@@ -59,6 +59,15 @@ covered by a shell (`geom 0 extr 0 | tile layers 19 extr 2`), which is what "bui
 all over the place while zooming" was. This cannot strand content: the moment the tile has an active
 layer of its own, the branch above erases the retained one as soon as the replacement is opaque.
 
+**It holds only while the replacement is still coming.** "Nothing active covers this ground" also
+describes a render tile built from a tile of the *current* set that decoded without that layer at
+all — the answer, not a gap. Held, the layer never dies: zooming out from z13 to z10 kept drawing
+the z12 tiles' `#contour[zoom>=12]` lines inside the rectangle those tiles covered, under a camera
+the style stops contours well below, and no further zoom cleared it (the render tile carried four
+retained `contour` layers at blend 1.0, with nothing active in it at all). `RenderTile::current`
+separates the two: set by `initializeRenderTile`, cleared by `mergeExistingRenderTile`, which is
+exactly the ground that has no new tile yet.
+
 **The culling box has to hold what stands on the tile, not just its ground.** `isTileVisible` tests
 `calculateTileBBox`, which is the tile's ground, and an extrusion stands out of it — so a building
 is still on screen well after the ground it stands on has left the frustum, and culling there takes

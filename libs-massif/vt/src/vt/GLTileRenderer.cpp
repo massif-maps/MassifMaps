@@ -8,6 +8,7 @@
 #include "TileSurfaceBuilder.h"
 #include "TerrainElevationScale.h"
 #include "BitmapManager.h"
+#include "RenderTileBlend.h"
 #include "LabelCuller.h"
 #include "RenderStats.h"
 
@@ -2514,6 +2515,7 @@ namespace massif::vt {
         renderTile.targetTileId = targetTileId;
         renderTile.tile = tile;
         renderTile.visible = false;
+        renderTile.current = true;
         for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
             if (!testLayerFilter(layer->getLayerName(), _rendererLayerFilter)) {
                 continue;
@@ -2583,6 +2585,7 @@ namespace massif::vt {
         // No, the tile is missing. Add it in non-active state.
         RenderTile renderTile = existingRenderTile;
         renderTile.targetTileId = targetTileId;
+        renderTile.current = false;
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
             RenderTileLayer& renderLayer = it->second;
             renderLayer.targetTileId = (targetTileId.zoom > renderLayer.targetTileId.zoom ? targetTileId : renderLayer.targetTileId);
@@ -2630,14 +2633,11 @@ namespace massif::vt {
                         break;
                     }
                 }
-                // Nothing active covers this ground YET, so fading leaves a hole: the tile taking over
-                // is still being fetched and this layer dies in the ten frames a fetch does not fit
-                // into. HOLD while the tile is on screen; a tile that leaves still goes in ONE step.
                 bool anyActive = false;
                 for (auto it2 = renderTile.renderLayers.begin(); it2 != renderTile.renderLayers.end(); it2++) {
                     anyActive = anyActive || it2->second.active;
                 }
-                if (!replaced && !(renderTile.visible && !anyActive)) {
+                if (retainedLayerFades(replaced, renderTile.visible, anyActive, renderTile.current)) {
                     renderLayer.blend = std::max(0.0f, renderLayer.blend - delta);
                     refresh = (renderLayer.blend > 0.0f) || refresh;
 

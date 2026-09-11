@@ -492,6 +492,7 @@ namespace massif::vt {
             std::shared_ptr<const Tile> tile;
             std::multimap<int, RenderTileLayer> renderLayers;
             bool visible = false;
+            bool current = false; // built from a tile in the new set, not carried over for uncovered ground
         };
 
         struct FrameBuffer {

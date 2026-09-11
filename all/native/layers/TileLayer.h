@@ -544,6 +544,9 @@ class ProjectionSurface;
         int findChildTiles(const MapTile& visTile, const MapTile& tile, int depth, bool preloadingCache, bool preloadingTile);
 
         static const float DISCRETE_ZOOM_LEVEL_BIAS;
+        // How far past a level boundary the camera zoom must go before the target tile zoom follows
+        // it. See calculateTargetTileZoom - a terrain switch drifts the zoom by ~0.10 of a level.
+        static const double TARGET_TILE_ZOOM_HYSTERESIS;
 
         // Ceiling on the terrain tile cover, used to relax the coarsening floor when the
         // view distance would otherwise demand more tiles than a frame can carry.

@@ -22,6 +22,8 @@ using namespace massif;
 
 #include "TestCheck.h"
 
+void testTargetTileZoomHysteresis();
+
 void testTileStyleZoom() {
     // The near field: the tile IS the zoom the camera asked for, so nothing moves. Every style that
     // renders correctly today does so at this case, and it has to stay byte-identical.
@@ -46,4 +48,37 @@ void testTileStyleZoom() {
     // Before the first cull the target is -1, and every tile has to style as itself rather than
     // collapse to zoom 0.
     TEST_CHECK(calculateStyleTileZoom(12, -1, 2) == 12, "an unset target leaves the tile's own zoom");
+
+    testTargetTileZoomHysteresis();
+}
+
+/*
+ * The target zoom itself, which is the input above. A change here re-decodes every visible tile, so
+ * what matters is that it does NOT move for a wobble: in terrain mode the focus rides the ground,
+ * and a 2D/3D switch measured at Zermatt drifted the zoom from 12.05 to 11.95 and back - a tenth of
+ * a level, invisible, and it re-decoded the whole map twice on top of the switch's own decode.
+ */
+void testTargetTileZoomHysteresis() {
+    const double H = 0.15;
+
+    // With no target yet, the zoom is taken as it is.
+    TEST_CHECK(calculateTargetTileZoom(12.05, -1, H) == 12, "an unset target takes the camera's level");
+    TEST_CHECK(calculateTargetTileZoom(11.95, -1, H) == 11, "and does so below the boundary too");
+
+    // Inside the level: nothing to decide.
+    TEST_CHECK(calculateTargetTileZoom(12.05, 12, H) == 12, "a zoom inside the level holds it");
+    TEST_CHECK(calculateTargetTileZoom(12.99, 12, H) == 12, "right up to the top of it");
+
+    // The measured wobble, both halves of it.
+    TEST_CHECK(calculateTargetTileZoom(11.95, 12, H) == 12, "a tenth of a level below the boundary holds");
+    TEST_CHECK(calculateTargetTileZoom(11.97, 12, H) == 12, "and holds on the way back");
+    TEST_CHECK(calculateTargetTileZoom(12.05, 11, H) == 11, "the same wobble the other way round holds too");
+
+    // A real move still gets through, at the margin and no later.
+    TEST_CHECK(calculateTargetTileZoom(11.85, 12, H) == 11, "clear of the margin, the level follows");
+    TEST_CHECK(calculateTargetTileZoom(12.15, 11, H) == 12, "and upwards at the margin as well");
+    TEST_CHECK(calculateTargetTileZoom(14.50, 11, H) == 14, "a jump lands where it lands, not one level on");
+
+    // A zero margin is the old behaviour: the boundary is the boundary.
+    TEST_CHECK(calculateTargetTileZoom(11.99, 12, 0.0) == 11, "a zero margin follows every crossing");
 }

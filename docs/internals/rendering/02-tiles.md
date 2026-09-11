@@ -140,6 +140,13 @@ Two consequences worth knowing:
   `getMaxZoom()`, so above a source's max zoom it never moves at all; below it, it moves only when
   the camera crosses an integer zoom, which already refetches the near field. mapbox instead keys
   tiles on `OverscaledTileID.overscaledZ` and keeps both versions cached.
+- **So the crossing has a margin** (`TileLayer::TARGET_TILE_ZOOM_HYSTERESIS`, 0.15 of a level,
+  `calculateTargetTileZoom`). Since we re-decode rather than keep both versions, a zoom that only
+  *wobbles* across a boundary re-decodes the map for nothing — and in terrain mode the focus rides
+  the ground, so the zoom moves whenever the elevation under it does. Measured at Zermatt, one 2D/3D
+  switch at zoom 12.05 drifted to 11.95 and back and cost 10 re-decodes instead of 4, on a camera
+  that never moved. Neither reference has this, because neither has to: they key the cache on the
+  parse zoom and a crossing costs them a lookup, not a decode.
 - **This goes beyond both references, deliberately.** mapbox's `reparseOverscaled` only raises the
   parse zoom of a tile already at the source max zoom (`covering_tiles`: `overscaledZ` is used only
   when `it.zoom === maxZoom`); a coarsened tile is parsed at its own zoom, and its layer `minzoom`

@@ -8,8 +8,28 @@
 #define _MASSIF_TILESTYLEZOOM_H_
 
 #include <algorithm>
+#include <cmath>
 
 namespace massif {
+
+    /**
+     * The tile zoom the camera asks for, held across the boundary by a margin. In terrain mode the
+     * focus rides the ground, so the zoom drifts by a fraction of a level whenever the elevation
+     * under it moves - and changing this re-decodes every visible tile. Measured at Zermatt, one
+     * 2D/3D switch at zoom 12.05 drifted to 11.95 and back: invisible, and it re-decoded the whole
+     * map twice on top of the switch's own decode.
+     * cameraZoom already carries the LOD offset and the layer's zoom level bias.
+     */
+    inline int calculateTargetTileZoom(double cameraZoom, int currentTarget, double hysteresis) {
+        int candidate = static_cast<int>(std::floor(cameraZoom));
+        if (currentTarget < 0 || candidate == currentTarget) {
+            return candidate;
+        }
+        if (candidate > currentTarget) {
+            return cameraZoom >= currentTarget + 1 + hysteresis ? candidate : currentTarget;
+        }
+        return cameraZoom <= currentTarget - hysteresis ? candidate : currentTarget;
+    }
 
     /**
      * The zoom a tile's STYLE evaluates at: the zoom the camera asked for, not the (possibly

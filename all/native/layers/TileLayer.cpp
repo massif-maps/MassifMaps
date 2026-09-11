@@ -1,5 +1,6 @@
 #include "TileLayer.h"
 #include "layers/TileLODRule.h"
+#include "layers/TileStyleZoom.h"
 #include "core/BinaryData.h"
 #include "components/Exceptions.h"
 #include "components/CancelableTask.h"
@@ -786,8 +787,9 @@ namespace massif {
         // already decoded carry a stale [zoom] and have to go through the decoder again.
         {
             int maxTargetZoom = getMaxZoom() + (_terrainOverzoomTargets ? getMaxOverzoomLevel() : 0);
-            int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(cullState->getViewState().getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
-            targetTileZoom = std::min(targetTileZoom, _terrainMaxTileZoom);
+            double cameraZoom = cullState->getViewState().getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS;
+            int targetTileZoom = calculateTargetTileZoom(cameraZoom, _targetTileZoom, TARGET_TILE_ZOOM_HYSTERESIS);
+            targetTileZoom = std::min(targetTileZoom, std::min(maxTargetZoom, _terrainMaxTileZoom));
             if (_targetTileZoom != targetTileZoom) {
                 _targetTileZoom = targetTileZoom;
                 onTargetTileZoomChanged();
@@ -1576,6 +1578,7 @@ namespace massif {
     }
 
     const float TileLayer::DISCRETE_ZOOM_LEVEL_BIAS = 0.001f;
+    const double TileLayer::TARGET_TILE_ZOOM_HYSTERESIS = 0.15;
 
     // Measured at the demo's mountain camera: a sane cover is ~50 tiles and the pathological
     // one was 550, so this only engages on a configuration that is already unaffordable.

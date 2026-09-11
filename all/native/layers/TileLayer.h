@@ -14,6 +14,7 @@
 #include "components/DirectorPtr.h"
 #include "datasources/TileDataSource.h"
 #include "layers/Layer.h"
+#include "layers/TerrainDecodeWait.h"
 
 #include <vt/TileId.h>
 
@@ -272,9 +273,15 @@ class ProjectionSurface;
          * switch waits on it before it lets the terrain rise. Internal method.
          * @return True if no tile is still waiting for the current terrain decode state.
          */
-        bool isTerrainDecodeSettled();
+        virtual bool isTerrainDecodeSettled();
 
     protected:
+        /**
+         * Marks the visible tiles as waiting for a new terrain decode state. The next cull records
+         * which ones it had to refetch, and isTerrainDecodeSettled waits on exactly those.
+         */
+        void markTerrainDecodeUnsettled();
+
         class DataSourceListener : public TileDataSource::OnChangeListener {
         public:
             explicit DataSourceListener(const std::shared_ptr<TileLayer>& layer);
@@ -623,7 +630,10 @@ class ProjectionSurface;
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with
         bool _terrainActive = false; // last TerrainOptions active state a cull ran with
-        std::atomic<bool> _terrainDecodeSettled { true }; // false while a 2D/3D switch's tiles are on their way
+        // Its own mutex: the render thread reads this every frame while the switch waits, and
+        // _mutex is held for a whole cull.
+        mutable std::mutex _terrainDecodeMutex;
+        TerrainDecodeWait _terrainDecodeWait;
     };
     
 }

@@ -79,6 +79,7 @@ void testZoomConvention();
 void testShadowCasterRing();
 void testTerrainTesselation();
 void testFlattenSwitch();
+void testTerrainDecodeWait();
 void testPrefetchOrder();
 void testTileStyleZoom();
 void testTileLODRule();
@@ -455,6 +456,7 @@ int main() {
     testShadowCasterRing();
     testTerrainTesselation();
     testFlattenSwitch();
+    testTerrainDecodeWait();
     testPrefetchOrder();
     testTileStyleZoom();
     testTileLODRule();

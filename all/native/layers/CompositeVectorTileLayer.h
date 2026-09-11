@@ -189,6 +189,7 @@ namespace massif {
         virtual void loadData(const std::shared_ptr<CullState>& cullState);
         virtual void offsetLayerHorizontally(double offset);
         virtual bool isUpdateInProgress() const;
+        virtual bool isTerrainDecodeSettled();
         virtual void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
 
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);
@@ -230,6 +231,8 @@ namespace massif {
         void unwireChild(const std::shared_ptr<Layer>& child);
         std::shared_ptr<Layer> makeGroupLayer(const std::string& filter);
         void rebuildDrawItems();
+        /** Refreshes _childTileLayers from the sources and draw items. Caller holds _sourceMutex. */
+        void snapshotChildTileLayers();
         void applyExternalChildZoomRange(const ExternalSource& source);
         // Pushes the tile-selection properties (zoom level bias, max overzoom level, preloading)
         // down to a child layer, honouring the source's per-source overrides. Caller holds _sourceMutex.
@@ -263,6 +266,10 @@ namespace massif {
         std::weak_ptr<TouchHandler> _childTouchHandler;
 
         mutable std::recursive_mutex _sourceMutex;
+
+        // The children, readable without _sourceMutex. See snapshotChildTileLayers.
+        mutable std::mutex _childTileLayersMutex;
+        std::vector<std::shared_ptr<TileLayer> > _childTileLayers;
     };
 
 }

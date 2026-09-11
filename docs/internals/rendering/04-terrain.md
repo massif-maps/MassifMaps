@@ -923,6 +923,31 @@ shows no half-built terrain. It ends on `TileLayer::isTerrainDecodeSettled()` fo
 or on `MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT` (2.5 s — late 3D beats a map pinned flat by one
 tile that never loads). Going the other way there is nothing to wait for, so it ramps at once.
 
+#### The gate is the swap's own tiles, not the tile traffic
+
+`isTerrainDecodeSettled()` used to mean "no cull is running and no visible tile is fetching", and a
+**moving camera always has a visible tile fetching**. So a switch made during a flight never
+satisfied the gate on its merits: what released it was the 2.5 s timeout, which is about as long as
+a flight, and the ramp started as the flight was landing. Measured at Zermatt over a warm cache with
+a 2.5 s flight: `FLAT→WARMING` at t+0.00, `WARMING→RAMPING` at t+1.48, flight down at t+2.50, terrain
+down at t+4.51 — two seconds of the map still rising after the camera had stopped.
+
+So the gate names what it waits for. The swap invalidates the visible tiles and marks the layer
+unsettled; the first cull after it records the visible tiles it had to refetch, and the gate waits on
+**exactly those**. `all/native/layers/TerrainDecodeWait.h` is that bookkeeping alone, free of the
+layer, with `tests/api/TerrainDecodeWaitTest.cpp` on the host. Tiles fetched because the camera moved
+onto new ground are ordinary traffic and are substituted from their parents like any other, so they
+no longer hold the ground flat.
+
+This does not make the two animations one clock — it makes the wait short enough that two timers of
+the same length read as simultaneous. An app that needs them exact still writes `FlattenRatio` off
+the flight's own progress (below), and that is deliberate: the terrain ramp and the flight are
+allowed to have different durations.
+
+A `CompositeVectorTileLayer`'s external sources are separate tile layers that re-decode on the same
+swap, and only the composite is in `Layers`. It overrides `isTerrainDecodeSettled()` to AND over its
+children, or the switch rises into terrain with the hillshade still decoding.
+
 ### Who drives the ratio
 
 Three ways, in increasing order of control:

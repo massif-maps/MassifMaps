@@ -231,6 +231,8 @@ add_executable(api_tests
   TerrainTesselationTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
+  # Same: TerrainDecodeWait.h is what one layer makes that switch wait for, nothing else.
+  TerrainDecodeWaitTest.cpp
   # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.
   ElevationNodeFieldTest.cpp
   # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.

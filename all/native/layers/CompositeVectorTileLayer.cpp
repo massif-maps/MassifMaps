@@ -386,6 +386,7 @@ namespace massif {
         auto decoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(getTileDecoder());
         if (!decoder) {
             VectorTileLayer::setRendererLayerFilter("");
+            snapshotChildTileLayers();
             return;
         }
         std::vector<std::string> order = decoder->getStyleLayerNames();
@@ -435,6 +436,26 @@ namespace massif {
                 Log::Warnf("CompositeVectorTileLayer: external source '%s' is not listed in the style 'layers' - it will not be drawn", s.name.c_str());
             }
         }
+        snapshotChildTileLayers();
+    }
+
+    void CompositeVectorTileLayer::snapshotChildTileLayers() {
+        // Caller holds _sourceMutex. The render thread reads this list holding MapRenderer::_mutex,
+        // and a cull holding _sourceMutex reaches for that same one - taking _sourceMutex over there
+        // deadlocked the GL thread outright, with every worker piled up behind it.
+        std::vector<std::shared_ptr<TileLayer> > children;
+        for (const ExternalSource& s : _externalSources) {
+            if (auto childTileLayer = std::dynamic_pointer_cast<TileLayer>(s.childLayer)) {
+                children.push_back(childTileLayer);
+            }
+        }
+        for (const DrawItem& item : _drawItems) {
+            if (auto groupTileLayer = std::dynamic_pointer_cast<TileLayer>(item.groupLayer)) {
+                children.push_back(groupTileLayer);
+            }
+        }
+        std::lock_guard<std::mutex> lock(_childTileLayersMutex);
+        _childTileLayers.swap(children);
     }
 
     void CompositeVectorTileLayer::setComponents(const std::shared_ptr<CancelableThreadPool>& envelopeThreadPool,
@@ -516,6 +537,21 @@ namespace massif {
             }
         }
         return false;
+    }
+
+    bool CompositeVectorTileLayer::isTerrainDecodeSettled() {
+        // The children re-decode on the same switch, but only the composite is in Layers - so
+        // without this the 2D/3D switch rose into terrain with the hillshade still decoding.
+        bool settled = VectorTileLayer::isTerrainDecodeSettled();
+        std::vector<std::shared_ptr<TileLayer> > children;
+        {
+            std::lock_guard<std::mutex> lock(_childTileLayersMutex);
+            children = _childTileLayers;
+        }
+        for (const std::shared_ptr<TileLayer>& childTileLayer : children) {
+            settled = childTileLayer->isTerrainDecodeSettled() && settled;
+        }
+        return settled;
     }
 
     void CompositeVectorTileLayer::calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const {

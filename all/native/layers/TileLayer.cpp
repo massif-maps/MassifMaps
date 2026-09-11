@@ -221,17 +221,20 @@ namespace massif {
     }
 
     bool TileLayer::isTerrainDecodeSettled() {
-        if (_terrainDecodeSettled) {
-            return true;
-        }
-        // A cull is running, or a visible tile is still being fetched. The invalidation happens
-        // inside loadData, with _calculatingTiles already set, so this never reads settled in the
-        // window before the fetch list exists.
-        if (_calculatingTiles || _fetchingTileTasks.getVisibleCount() != 0) {
+        std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+        return _terrainDecodeWait.settle([this](long long tileId) {
+            for (const std::shared_ptr<FetchTaskBase>& task : _fetchingTileTasks.get(tileId)) {
+                if (!task->isPreloadingTile() && !task->isCanceled()) {
+                    return true;
+                }
+            }
             return false;
-        }
-        _terrainDecodeSettled = true;
-        return true;
+        });
+    }
+
+    void TileLayer::markTerrainDecodeUnsettled() {
+        std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+        _terrainDecodeWait.markUnsettled();
     }
 
     TileLayer::DataSourceListener::DataSourceListener(const std::shared_ptr<TileLayer>& layer) :
@@ -350,7 +353,7 @@ namespace massif {
                 // draws exactly the same picture. Clearing them blanks the map for a whole decode.
                 invalidateTiles(false);
                 clearTiles(true);
-                _terrainDecodeSettled = false;
+                markTerrainDecodeUnsettled();
                 resetTileTransformer();
                 _terrainOptions = terrainOptions;
                 _terrainEnabled = terrainEnabled;
@@ -375,6 +378,10 @@ namespace massif {
         if (!isVisible() || !getVisibleZoomRange().inRange(cullState->getViewState().getZoom()) || getOpacity() <= 0) {
             _calculatingTiles = false;
             VT_STAT_INC(tileLayersSkipped);
+            {
+                std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+                _terrainDecodeWait.settleNow();
+            }
 
             // Report the real change, not an unconditional one: this runs on every cull pass while
             // the layer stays hidden, and a hardcoded 'changed' burns a placement pass over every
@@ -480,8 +487,12 @@ namespace massif {
 
         // Fetch the tiles
         std::unordered_set<long long> fetchedTiles;
+        std::unordered_set<long long> visibleFetchedTiles;
         for (const FetchTileInfo& fetchTileInfo : fetchTileList) {
             long long tileId = getTileId(fetchTileInfo.tile);
+            if (!fetchTileInfo.preloading) {
+                visibleFetchedTiles.insert(tileId);
+            }
             if (fetchedTiles.find(tileId) != fetchedTiles.end()) {
                 continue;
             }
@@ -510,6 +521,11 @@ namespace massif {
             }
         }
     
+        {
+            std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+            _terrainDecodeWait.recordFetched(visibleFetchedTiles);
+        }
+
         // Done. Refresh.
         _calculatingTiles = false;
         _refreshedTiles = true;

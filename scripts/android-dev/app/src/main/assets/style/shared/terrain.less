@@ -1,8 +1,11 @@
 #hillshade[zoom>=4][zoom<=19] {
 	hillshade-illumination-direction: 365;
 	hillshade-shadow-color: #473B24;
-	hillshade-contrast: 0.26;
-	hillshade-exaggeration: linear([view::zoom], (4, 0.6), (12, 1));
+	// The shipped 0.26 / 1.0 pair drew relief that was there but unreadable on this pale palette.
+	// Measured top-down at Valtournenche z12.5: 0.26 -> 0.55 moved half the frame's pixels, and
+	// contrast saturates past that (0.55 -> 0.8 moved 2%), so the rest comes from exaggeration.
+	hillshade-contrast: 0.55;
+	hillshade-exaggeration: linear([view::zoom], (4, 1.2), (12, 2.5));
 }
 
 #mountain_peak {

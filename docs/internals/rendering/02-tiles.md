@@ -140,6 +140,16 @@ Two consequences worth knowing:
   `getMaxZoom()`, so above a source's max zoom it never moves at all; below it, it moves only when
   the camera crosses an integer zoom, which already refetches the near field. mapbox instead keys
   tiles on `OverscaledTileID.overscaledZ` and keeps both versions cached.
+- **And invalidation alone is not enough, because it cannot see a decode in flight.** A fetch
+  snapshots its style zoom when it is *queued*; `onTargetTileZoomChanged` invalidates the cache but
+  not the running tasks, and `timed_lru_cache::put` clears the entry's expiration — so a tile queued
+  under the old target lands *after* the change looking perfectly fresh, and is never refetched. That
+  is how a tile decoded for zoom 13 survived a zoom-out to 11 and went on drawing its
+  `#contour[zoom>=12]` lines, and why zooming out again did not clear it. The decoded tile therefore
+  carries the style zoom it was decoded at (`VectorTileLayer::TileInfo`), and `tileValid` compares it
+  against what the current target would produce (`isStyleTileZoomCurrent`) — a stamp, not a clock.
+  The stale tile keeps drawing as a substitute while its replacement decodes, exactly as an
+  invalidated one does.
 - **So the crossing has a margin** (`TileLayer::TARGET_TILE_ZOOM_HYSTERESIS`, 0.15 of a level,
   `calculateTargetTileZoom`). Since we re-decode rather than keep both versions, a zoom that only
   *wobbles* across a boundary re-decodes the map for nothing — and in terrain mode the focus rides

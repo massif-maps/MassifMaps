@@ -45,6 +45,16 @@ namespace massif {
         return targetTileZoom;
     }
 
+    /**
+     * Whether a tile decoded at styleTileZoom still matches what the camera asks for. The style zoom
+     * is snapshotted when the fetch is QUEUED, and a target-zoom change invalidates the cache but not
+     * the tasks in flight - those land after it and, being fresh, count as valid. That is how a tile
+     * decoded for zoom 13 survived a zoom-out to 11 and kept drawing its [zoom>=12] contours.
+     */
+    inline bool isStyleTileZoomCurrent(int tileZoom, int styleTileZoom, int targetTileZoom, int maxZoomLift) {
+        return styleTileZoom == calculateStyleTileZoom(tileZoom, targetTileZoom, maxZoomLift);
+    }
+
 }
 
 #endif

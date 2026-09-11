@@ -23,6 +23,7 @@ using namespace massif;
 #include "TestCheck.h"
 
 void testTargetTileZoomHysteresis();
+void testStyleTileZoomStaleness();
 
 void testTileStyleZoom() {
     // The near field: the tile IS the zoom the camera asked for, so nothing moves. Every style that
@@ -50,6 +51,7 @@ void testTileStyleZoom() {
     TEST_CHECK(calculateStyleTileZoom(12, -1, 2) == 12, "an unset target leaves the tile's own zoom");
 
     testTargetTileZoomHysteresis();
+    testStyleTileZoomStaleness();
 }
 
 /*
@@ -81,4 +83,35 @@ void testTargetTileZoomHysteresis() {
 
     // A zero margin is the old behaviour: the boundary is the boundary.
     TEST_CHECK(calculateTargetTileZoom(11.99, 12, 0.0) == 11, "a zero margin follows every crossing");
+}
+
+/*
+ * Whether a tile already in the cache still styles the way the camera asks. The style zoom is
+ * snapshotted when the fetch is QUEUED; a target-zoom change invalidates the cache but not the
+ * tasks in flight, and those land afterwards looking fresh. That is how a tile decoded for zoom 13
+ * survived a zoom-out to 11 and went on drawing its `[zoom>=12]` contours - time-based validity
+ * cannot see it, the stamp can.
+ */
+void testStyleTileZoomStaleness() {
+    // The ordinary case: queued and landed under the same target.
+    TEST_CHECK(isStyleTileZoomCurrent(12, 12, 12, 2), "a tile decoded at the current target is current");
+    TEST_CHECK(isStyleTileZoomCurrent(11, 13, 13, 2), "a lifted tile is current while the lift holds");
+
+    // The bug: queued at target 13 (lift 2, so styled 13), landed after the camera went to 11.
+    TEST_CHECK(!isStyleTileZoomCurrent(11, 13, 11, 2), "a tile styled for the zoom the camera left is stale");
+    TEST_CHECK(!isStyleTileZoomCurrent(10, 12, 10, 2), "and so is one that outlived a smaller step");
+
+    // Re-fetched under the new target, it matches again - so this converges instead of looping.
+    TEST_CHECK(isStyleTileZoomCurrent(11, 11, 11, 2), "the re-decode settles it");
+
+    // The lift moving is the same kind of staleness, and TileLayer already re-decodes for it.
+    TEST_CHECK(!isStyleTileZoomCurrent(11, 13, 13, 0), "dropping the lift invalidates what the lift styled");
+
+    // Past the lift a tile styles as itself, whatever the target does - no false staleness on the
+    // horizon band, which is most of a tilted frame.
+    TEST_CHECK(isStyleTileZoomCurrent(9, 9, 13, 2), "a tile past the lift stays current as the target moves");
+
+    // Before the first cull the target is -1 and everything styles as itself; it must not read as
+    // stale on the very first frame and re-fetch the whole map.
+    TEST_CHECK(isStyleTileZoomCurrent(12, 12, -1, 2), "an unset target is not staleness");
 }

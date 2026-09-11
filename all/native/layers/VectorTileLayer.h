@@ -283,12 +283,14 @@ namespace massif {
         
         class TileInfo {
         public:
-            TileInfo() : _tileBounds(), _tileData(), _tileMap() { }
-            TileInfo(const MapBounds& tileBounds, const std::shared_ptr<BinaryData>& tileData, const std::shared_ptr<VectorTileDecoder::TileMap>& tileMap) : _tileBounds(tileBounds), _tileData(tileData), _tileMap(tileMap) { }
+            TileInfo() : _tileBounds(), _tileData(), _tileMap(), _tileZoom(0), _styleTileZoom(0) { }
+            TileInfo(const MapBounds& tileBounds, const std::shared_ptr<BinaryData>& tileData, const std::shared_ptr<VectorTileDecoder::TileMap>& tileMap, int tileZoom, int styleTileZoom) : _tileBounds(tileBounds), _tileData(tileData), _tileMap(tileMap), _tileZoom(tileZoom), _styleTileZoom(styleTileZoom) { }
 
             const MapBounds& getTileBounds() const { return _tileBounds; }
             const std::shared_ptr<BinaryData>& getTileData() const { return _tileData; }
             const std::shared_ptr<VectorTileDecoder::TileMap>& getTileMap() const { return _tileMap; }
+            int getTileZoom() const { return _tileZoom; }
+            int getStyleTileZoom() const { return _styleTileZoom; }
 
             int getMaxDrawCallCount() const;
             std::size_t getSize() const;
@@ -297,7 +299,11 @@ namespace massif {
             MapBounds _tileBounds;
             std::shared_ptr<BinaryData> _tileData;
             std::shared_ptr<VectorTileDecoder::TileMap> _tileMap;
+            int _tileZoom;
+            int _styleTileZoom;
         };
+
+        bool styleTileZoomCurrent(const TileInfo& tileInfo) const;
 
         static const int BACKGROUND_BLOCK_SIZE;
         static const int BACKGROUND_BLOCK_COUNT;

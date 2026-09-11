@@ -268,19 +268,32 @@ namespace massif {
     
     bool VectorTileLayer::tileValid(long long tileId, bool preloadingCache) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (_spanReferenceCache.count(tileId) > 0) {
-            return true;
+        auto it = _spanReferenceCache.find(tileId);
+        if (it != _spanReferenceCache.end()) {
+            return styleTileZoomCurrent(it->second);
         }
+        TileInfo tileInfo;
         if (preloadingCache) {
-            return _preloadingCache.exists(tileId) && _preloadingCache.valid(tileId);
+            if (!_preloadingCache.exists(tileId) || !_preloadingCache.valid(tileId)) {
+                return false;
+            }
+            _preloadingCache.peek(tileId, tileInfo);
         } else {
-            return _visibleCache.exists(tileId) && _visibleCache.valid(tileId);
+            if (!_visibleCache.exists(tileId) || !_visibleCache.valid(tileId)) {
+                return false;
+            }
+            _visibleCache.peek(tileId, tileInfo);
         }
+        return styleTileZoomCurrent(tileInfo);
+    }
+
+    bool VectorTileLayer::styleTileZoomCurrent(const TileInfo& tileInfo) const {
+        return isStyleTileZoomCurrent(tileInfo.getTileZoom(), tileInfo.getStyleTileZoom(), getTargetTileZoom(), getTileStyleZoomLift());
     }
 
     bool VectorTileLayer::prefetchTile(long long tileId, bool preloadingTile) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (_preloadingCache.exists(tileId) && _preloadingCache.valid(tileId)) {
+        if (_preloadingCache.exists(tileId) && tileValid(tileId, true)) {
             if (!preloadingTile) {
                 _preloadingCache.move(tileId, _visibleCache); // move to visible cache, just in case the element gets trashed
             } else {
@@ -288,7 +301,7 @@ namespace massif {
             }
             return true;
         }
-        if (_visibleCache.exists(tileId) && _visibleCache.valid(tileId)) {
+        if (_visibleCache.exists(tileId) && tileValid(tileId, false)) {
             _visibleCache.get(tileId); // do not move to preloading, it will be moved at later stage
             return true;
         }
@@ -901,7 +914,7 @@ namespace massif {
             }
 
             // Construct tile info - keep original data if interactivity is required
-            VectorTileLayer::TileInfo tileInfo(layer->calculateMapTileBounds(dataSourceTile.getFlipped()), layer->_vectorTileEventListener.get() ? tileData->getData() : std::shared_ptr<BinaryData>(), tileMap);
+            VectorTileLayer::TileInfo tileInfo(layer->calculateMapTileBounds(dataSourceTile.getFlipped()), layer->_vectorTileEventListener.get() ? tileData->getData() : std::shared_ptr<BinaryData>(), tileMap, _tile.getZoom(), _styleTileZoom);
             {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
 

@@ -166,7 +166,7 @@ namespace massif::vt {
         SPAN_FLAG = 33554432,
         // ... and the other end: a live no-drape layer scales its alpha by 1 - mask, so the draped
         // layers that come AFTER it in the style order win where they paint.
-        DRAPE_MASK_FLAG = 33554432,
+        DRAPE_MASK_FLAG = 1073741824,
         // A line with an undrawn gap down its middle (mapbox's `line-gap-width`), which is how one
         // rule draws the two strips of a road casing. Compiled in only where a style asks for it.
         GAPWIDTH_FLAG = 67108864,

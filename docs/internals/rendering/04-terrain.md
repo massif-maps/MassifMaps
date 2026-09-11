@@ -1425,3 +1425,10 @@ Costs and known limits:
 
 A/B: `adb shell setprop debug.massif.drapemask 0` and relaunch puts the live layers back on top of
 the whole drape.
+
+**The shader half of this never ran until now.** `DRAPE_MASK_FLAG` was declared on `SPAN_FLAG`'s
+bit, and `flagDefineMap` is keyed by the value, so `DRAPE_MASK` was never defined: the masks were
+baked and paid for every frame, and `applyDrapeMask` was the no-op stub. Worse, asking for the flag
+defined `SPAN` instead, which flattens a contour or maneuver line to `uElevationScale.w` — sea level
+in the tile frame — since its unbound `aVertexBase` reads as a resolved chord of 0. The flag now
+owns bit 2^30. The masked ordering above is therefore **unverified on a device**.

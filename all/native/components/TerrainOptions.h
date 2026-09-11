@@ -809,6 +809,7 @@ namespace massif {
     private:
         void notifyOptionChanged(const std::string& optionName);
         void writeFlattenRatio(float ratio);
+        void markSwitchingIfRising(float askedRatio);
 
         const std::shared_ptr<TileDataSource> _dataSource;
         const std::shared_ptr<ElevationManager> _elevationManager;

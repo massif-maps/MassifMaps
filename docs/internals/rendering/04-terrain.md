@@ -971,6 +971,17 @@ on the endpoints would hand control back on the animation's first frame. `MANUAL
 3D's tiles and the ground is **held** flat until they arrive, with `isSwitching()` as the observable
 so an app can start its flight when the hold ends rather than watch its animation jump.
 
+`isSwitching()` is set when 3D is **asked for**, not when the renderer's next frame notices. An app
+polls it within a frame of writing `Flattened`, and reading `false` there meant it flew against a
+ground the switch then held flat — the terrain ramped after the flight had landed.
+
+**In `MANUAL` the decode only ever goes up.** That same first frame at exactly 1.0 used to read as
+"flat", which in `FULL` took the tiles back to the 2D density; that resets the tile transformer, so
+every tile already in flight is dropped on arrival. Measured with the demo's *Match flight*: the
+decode went 2D→3D→2D→3D inside 1.5 s, 11 re-decodes instead of 4, and the map came out of the
+animation showing its roads and nothing else. `FLAT` drops the decode, once the app has written
+`Flattened` back.
+
 A tilt threshold is asymmetric by construction, and it shows: the rule fires *at* 88°, so a flight
 from a landscape view to top-down flattens at the very END of it, while the reverse fires almost
 immediately. That is what a threshold means, not a bug — an app that wants the switch to lead the

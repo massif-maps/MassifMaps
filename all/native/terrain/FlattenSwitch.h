@@ -123,7 +123,14 @@ namespace massif {
                 // Asking for any 3D asks for its tiles, and the ground is HELD flat until they
                 // arrive, or unsubdivided geometry is displaced over the relief.
                 // TerrainOptions::isSwitching is how an app sees the hold.
-                next.decode3D = !input.fullSwitch || asked < 1.0f;
+                // The decode only ever goes UP here, never back: an app-driven rise writes exactly
+                // 1.0 on its first frame, and dropping to the 2D decode there resets the tile
+                // transformer, so every tile in flight is discarded on arrival - the map came out of
+                // the animation with its roads and nothing else. FLAT drops it, once the app has
+                // handed the ratio back.
+                if (!input.fullSwitch || asked < 1.0f) {
+                    next.decode3D = true;
+                }
                 bool held = asked < 1.0f && state.ratio >= 1.0f && !input.tilesReady;
                 next.ratio = held ? 1.0f : asked;
                 next.warmSeconds = 0.0f;

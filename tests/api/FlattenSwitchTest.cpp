@@ -217,14 +217,40 @@ namespace {
 
         in.manualRatio = 1.0f;
         state = FlattenSwitch::step(state, in);
-        TEST_CHECK(state.ratio == 1.0f && !state.decode3D,
-                   "landing flat in FULL mode drops the terrain subdivision");
+        TEST_CHECK(state.ratio == 1.0f, "and lands where the app put it");
+        TEST_CHECK(state.decode3D, "but the decode does not follow a ratio that is only passing through");
 
-        // Handing it back resumes the automatic switch from wherever the app left it.
+        // Handing it back resumes the automatic switch from wherever the app left it, and THAT is
+        // what drops the decode - see testManualRiseDoesNotFlapTheDecode for why it cannot be here.
         in.manual = false;
         in.flatten = true;
         state = FlattenSwitch::step(state, in);
         TEST_CHECK(state.phase == Phase::FLAT, "released at 1, so it resumes flat");
+        TEST_CHECK(!state.decode3D, "and the release is what drops the terrain subdivision");
+    }
+
+    void testManualRiseDoesNotFlapTheDecode() {
+        // An app-driven rise writes its FIRST frame at ratio 1.0 - progress is 0 there. Reading the
+        // decode off that instant took the tiles back to the 2D density, which resets the tile
+        // transformer, so every tile in flight was discarded on arrival: the map came out of the
+        // animation showing its roads and nothing else.
+        // The sequence an app actually runs: ask for 3D (which asks for the tiles), wait out the
+        // hold, and only then drive the ratio - so the decode is already at the 3D density here.
+        FlattenSwitch::State state = flatState(false);
+        FlattenSwitch::Input in = input(false, true, true);
+        state = FlattenSwitch::step(state, in);
+        TEST_CHECK(state.phase == Phase::WARMING && state.decode3D, "asking for 3D asked for its tiles");
+
+        in.manual = true;
+        in.manualRatio = 1.0f;
+        state = FlattenSwitch::step(state, in);
+        TEST_CHECK(state.phase == Phase::MANUAL, "the app takes the ratio at its animation's first frame");
+
+        for (float ratio : { 1.0f, 0.75f, 0.5f, 0.0f }) {
+            in.manualRatio = ratio;
+            state = FlattenSwitch::step(state, in);
+            TEST_CHECK(state.decode3D, "the decode stays at the 3D density for the whole animation");
+        }
     }
 
     void testManualRiseIsStillGatedOnTiles() {
@@ -259,5 +285,6 @@ void testFlattenSwitch() {
     testTerrainActiveFollowsTheRatio();
     testPerDirectionDurations();
     testManualRatio();
+    testManualRiseDoesNotFlapTheDecode();
     testManualRiseIsStillGatedOnTiles();
 }

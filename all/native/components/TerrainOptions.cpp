@@ -117,6 +117,7 @@ namespace massif {
                     _decodeActive.store(!flattened);
                 }
             }
+            markSwitchingIfRising(flattened ? 1.0f : 0.0f);
             notifyOptionChanged("Flattened");
         }
     }
@@ -157,7 +158,17 @@ namespace massif {
         if (!_flattenSwitchStarted.load()) {
             writeFlattenRatio(value); // no frame has run yet; the switch seeds itself from this
         }
+        markSwitchingIfRising(value);
         notifyOptionChanged("FlattenRatio");
+    }
+
+    void TerrainOptions::markSwitchingIfRising(float askedRatio) {
+        // Asking for 3D off a flat map WILL wait for tiles, and the renderer only says so on its
+        // next frame. An app that polls isSwitching() before that frame reads false, starts its
+        // flight against a ground the switch then holds flat, and the terrain ramps after it lands.
+        if (askedRatio < 1.0f && _flattenRatio.load() >= 1.0f && _flattenSwitchStarted.load()) {
+            _switching.store(true);
+        }
     }
 
     bool TerrainOptions::isManualFlatten() const {

@@ -7,6 +7,8 @@
 #ifndef _MASSIF_BASEMAPVIEW_H_
 #define _MASSIF_BASEMAPVIEW_H_
 
+#include "ui/FlightEasing.h"
+
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -216,6 +218,18 @@ namespace massif {
          * @param durationSeconds The duration in seconds, or 0 to derive it from the path.
          */
         void flyTo(const MapPos& pos, float zoom, float rotation, float tilt, float climbHeight, float durationSeconds);
+        /**
+         * Moves the camera as the overload above, on a chosen timing curve. The others fly on
+         * FLIGHT_EASING_EASE.
+         * @param pos The target position in base projection coordinate system; its Z is the target height.
+         * @param zoom The target zoom level.
+         * @param rotation The target rotation in degrees.
+         * @param tilt The target tilt in degrees.
+         * @param climbHeight The extra height at the middle of the path, in the base projection's units.
+         * @param durationSeconds The duration in seconds, or 0 to derive it from the path.
+         * @param easing The timing curve the whole move runs on.
+         */
+        void flyTo(const MapPos& pos, float zoom, float rotation, float tilt, float climbHeight, float durationSeconds, FlightEasing::FlightEasing easing);
         /**
          * Stops a flight started with flyTo, leaving the camera where it is.
          */

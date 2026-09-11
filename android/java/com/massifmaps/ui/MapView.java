@@ -477,6 +477,20 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
     }
 
     /**
+     * Moves the camera as above, on a chosen timing curve. The others fly on FLIGHT_EASING_EASE.
+     * @param pos The target position in base projection coordinate system; its Z is the target height.
+     * @param zoom The target zoom level.
+     * @param rotation The target rotation in degrees.
+     * @param tilt The target tilt in degrees.
+     * @param climbHeight The extra height at the middle of the path.
+     * @param durationSeconds The duration in seconds, 0 to derive it from the length of the path.
+     * @param easing The timing curve the whole move runs on.
+     */
+    public void flyTo(MapPos pos, float zoom, float rotation, float tilt, float climbHeight, float durationSeconds, @FlightEasing.Value int easing) {
+        baseMapView.flyTo(pos, zoom, rotation, tilt, climbHeight, durationSeconds, easing);
+    }
+
+    /**
      * How far along a flyTo animation is, from 0 to 1, or -1 when none is running.
      * @return The flight progress, or -1.
      */

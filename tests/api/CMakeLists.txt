@@ -210,6 +210,9 @@ add_executable(api_tests
   AutoFlattenTest.cpp
   # Same: CameraClearance.h is mapbox's minimum-height-over-terrain rule and nothing else.
   CameraClearanceTest.cpp
+  # Same: FlightPath.h is Van Wijk's optimal zoom-and-pan path, free of the view state, and
+  # UnitBezier.h the CSS timing curve it is clocked with.
+  FlightPathTest.cpp
   # Same: DrapeStackCuts.h is the ordering rule and nothing else.
   DrapeStackCutsTest.cpp
   # Same: DrapeStandIn.h is the cover of cached tiles a leaf stands in on, and nothing else.

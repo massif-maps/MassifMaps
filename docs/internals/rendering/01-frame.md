@@ -185,14 +185,38 @@ down at the target, so the whole path stays in view instead of the camera crossi
 final zoom. `durationSeconds` 0 derives the duration from the length of the path — their point is
 that a move twice as far should not take twice as long. It stops the per-property animations and
 the kinetic handler when it starts, and they stay out of the way until it finishes (`isFlightActive`,
-`stopFlight`). ρ is fixed at their 1.42.
+`stopFlight`). ρ is fixed at their 1.42 and V at mapbox's 1.2 screenfuls per second.
+
+The path itself is `FlightPath` (all/native/renderers/components/), free of the view state so
+`tests/api/FlightPathTest.cpp` can run it against mapbox-gl's numbers.
+
+### Three things their parameterisation is picky about
+
+**One unit, and it is a SCREENFUL.** `w` is the visible span, `u` the ground distance, and `u/w`
+decides how far the camera pulls back. `ViewState::getSpanPerZoom` is the VIEWPORT's span, mapbox's
+`w0 = max(tr.width, tr.height)`. Until 6.1 it was `WORLD_SIZE * 2^-zoom` — one camera *tile* — so
+every flight dived by a constant `log2(screenHeight / tilePixels)`, ~1.6 levels on a phone, and by
+MORE on a bigger screen where it should be less.
+
+**`u` is GROUND distance.** The viewpoint's height is its own track on the clock, as mapbox's
+`_updateElevation(k)` is. Folded into `u`, a pure climb — same lon/lat, different elevation, which
+is what the peak-finder switch asks for — flew an arc across a map it never crosses.
+
+**`S == 0` means "nothing to say", not "done".** With neither a path nor a zoom change the closed
+form degenerates and mapbox falls through to `easeTo`. `FlightPath::sample` interpolates on the
+clock, so a tilt-only flight eases its position rather than snapping it on frame 1 (#179).
+
+The clock is eased before anything reads it — one `k` for the path, rotation, tilt and climb, as in
+mapbox's `frame(easing(t))`. The default is their `cubic-bezier(0.25, 0.1, 0.25, 1)`; `FlightEasing`
+(all/native/ui/) names the CSS alternatives, `FLIGHT_EASING_LINEAR` being the constant speed the
+paper prescribes and the SDK flew before 6.1. `getFlightProgress()` reports that eased `k`.
 
 The **viewpoint's height travels with the move**: the target `MapPos`'s Z is where it ends, and the
 `climbHeight` overload adds a parabola on top of it — highest halfway, nothing at either end, a
 plane's flight, which is also how the camera clears whatever stands between the two ends.
 
 The platform `MapView`s are hand-written wrappers over `BaseMapView`, not generated, so each one has
-to forward the flight API itself: `flyTo` (all three overloads), `stopFlight`, `isFlightActive` and
+to forward the flight API itself: `flyTo` (all four overloads), `stopFlight`, `isFlightActive` and
 `getFlightProgress` are exposed on both `android/java/com/massifmaps/ui/MapView.java` and
 `ios/objc/ui/MapView.{h,mm}`. A method missing from one of those two files is missing from that
 platform's API however complete the C++ is — iOS had no flight API at all until the peak-finder

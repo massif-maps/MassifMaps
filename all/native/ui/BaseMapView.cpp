@@ -183,7 +183,7 @@ namespace massif {
 
     void BaseMapView::flyTo(const MapPos& pos, float zoom, float durationSeconds) {
         stopCameraAnimations();
-        _mapRenderer->getAnimationHandler().setFlightTarget(_options->getBaseProjection()->toInternal(pos), zoom, nullptr, nullptr, 0.0f, durationSeconds, FLIGHT_RHO);
+        _mapRenderer->getAnimationHandler().setFlightTarget(_options->getBaseProjection()->toInternal(pos), zoom, nullptr, nullptr, 0.0f, durationSeconds, FLIGHT_RHO, FlightEasing::FLIGHT_EASING_EASE);
         // The flight is stepped by the frame loop, and every other camera call gets its frame from
         // calculateCameraEvent. Without this the flight sits at progress 0 on an on-demand
         // renderer - it starts only if something else happens to redraw.
@@ -195,6 +195,10 @@ namespace massif {
     }
 
     void BaseMapView::flyTo(const MapPos& pos, float zoom, float rotation, float tilt, float climbHeight, float durationSeconds) {
+        flyTo(pos, zoom, rotation, tilt, climbHeight, durationSeconds, FlightEasing::FLIGHT_EASING_EASE);
+    }
+
+    void BaseMapView::flyTo(const MapPos& pos, float zoom, float rotation, float tilt, float climbHeight, float durationSeconds, FlightEasing::FlightEasing easing) {
         stopCameraAnimations();
         // The climb is a height in the base projection's units, like the position's Z, so it goes
         // through the same conversion - the internal Z scale is not the internal XY scale.
@@ -202,7 +206,7 @@ namespace massif {
         MapPos internalGround = _options->getBaseProjection()->toInternal(MapPos(pos.getX(), pos.getY(), 0));
         MapPos internalClimb = _options->getBaseProjection()->toInternal(MapPos(pos.getX(), pos.getY(), climbHeight));
         double internalClimbHeight = internalClimb.getZ() - internalGround.getZ();
-        _mapRenderer->getAnimationHandler().setFlightTarget(internalPos, zoom, &rotation, &tilt, static_cast<float>(internalClimbHeight), durationSeconds, FLIGHT_RHO);
+        _mapRenderer->getAnimationHandler().setFlightTarget(internalPos, zoom, &rotation, &tilt, static_cast<float>(internalClimbHeight), durationSeconds, FLIGHT_RHO, easing);
         _mapRenderer->requestRedraw();
     }
 

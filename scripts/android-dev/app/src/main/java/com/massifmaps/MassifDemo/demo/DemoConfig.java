@@ -1084,6 +1084,8 @@ public final class DemoConfig {
     /** Extra height at the middle of the fly-in, in metres: the viewpoint climbs over the way
      *  there like a plane instead of rising straight to its final elevation. */
     public static float PEAK_FINDER_FLY_CLIMB = 1500;
+    /** Timing curve of the fly-in, see com.massifmaps.ui.FlightEasing. 0 EASE, 1 LINEAR. */
+    public static int PEAK_FINDER_FLY_EASING = com.massifmaps.ui.FlightEasing.FLIGHT_EASING_EASE;
     /** AR: the relief view over the camera preview. Dark palette, a transparent clear colour and a
      *  translucent GL surface (the map is then composited over the preview), the sky off, and the
      *  device's orientation driving the camera. */
@@ -1555,6 +1557,7 @@ public final class DemoConfig {
         PEAK_FINDER_FLY_ZOOM = DemoCfg.cfgFloat("peakFinderFlyZoom", PEAK_FINDER_FLY_ZOOM);
         PEAK_FINDER_FLY_DURATION = DemoCfg.cfgFloat("peakFinderFlyDuration", PEAK_FINDER_FLY_DURATION);
         PEAK_FINDER_FLY_CLIMB = DemoCfg.cfgFloat("peakFinderFlyClimb", PEAK_FINDER_FLY_CLIMB);
+        PEAK_FINDER_FLY_EASING = DemoCfg.cfgInt("peakFinderFlyEasing", PEAK_FINDER_FLY_EASING);
         AR_MODE = DemoCfg.cfgBool("ar", AR_MODE);
         AR_ORIENTATION = DemoCfg.cfgBool("arOrientation", AR_ORIENTATION);
         AR_CAMERA = DemoCfg.cfgBool("arCamera", AR_CAMERA);

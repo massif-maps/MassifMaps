@@ -277,13 +277,33 @@ public class Switch2D3DExample extends MapExample {
     }
 
     private void fly() {
-        // Rising keeps the focus it has; sinking takes the camera's own ground position, because at
-        // tilt 20 the focus is kilometres out in front and re-centring on it jumps the map forward.
-        Position target = in3D ? map.camera().position() : map.camera().eyePosition();
+        // Sinking centres on the camera's own ground position, because at tilt 20 the focus is
+        // kilometres out in front. Rising has to be the INVERSE of that, or every round trip walks
+        // backwards by that same offset: it aims at the focus whose 3D camera stands where the flat
+        // map is centred now.
+        Position target = in3D ? focusPutting3DCameraOver(map.camera().position())
+                               : map.camera().eyePosition();
         // The zoom carries across. Tilt alone then decides the eye height - the camera stands
         // distance * sin(tilt) up, so the same zoom that framed a town flat lands low over it in 3D,
         // and a round trip comes back where it started instead of snapping to one altitude.
         map.camera().animate(seconds).moveTo(target, map.camera().zoom(), ROTATION, in3D ? TILT_3D : TILT_2D);
+    }
+
+    /**
+     * The focus to aim a 3D flight at so its CAMERA ends up over pos. The offset is not a constant -
+     * it comes from the viewport, the zoom and the tilt - so ask the SDK instead of deriving it:
+     * put the camera there, see where that left it standing, and mirror the miss. Both moves are
+     * instant and in one callback, so no frame is drawn in between and nothing shows on screen.
+     */
+    private Position focusPutting3DCameraOver(Position pos) {
+        Position was = map.camera().position();
+        float wasZoom = map.camera().zoom();
+        float wasRotation = map.camera().rotation();
+        float wasTilt = map.camera().tilt();
+        map.camera().moveTo(pos, wasZoom, ROTATION, TILT_3D);
+        Position eye = map.camera().eyePosition();
+        map.camera().moveTo(was, wasZoom, wasRotation, wasTilt);
+        return new Position(2 * pos.lng - eye.lng, 2 * pos.lat - eye.lat);
     }
 
     /** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */

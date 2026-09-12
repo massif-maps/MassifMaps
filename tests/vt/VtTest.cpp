@@ -26,6 +26,7 @@ void testSpanDrapeLight();
 void testSpanResolver();
 void testSphericalTerrain();
 void testRenderTileBlend();
+void testLabelSlice();
 void testCollisionPadding();
 void testLabelAnchorAlign();
 void testLabelPadding();
@@ -56,6 +57,7 @@ int main() {
     testSpanResolver();
     testSphericalTerrain();
     testRenderTileBlend();
+    testLabelSlice();
     testCollisionPadding();
     testLabelAnchorAlign();
     testLabelPadding();

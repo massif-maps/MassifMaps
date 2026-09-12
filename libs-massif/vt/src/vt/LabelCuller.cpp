@@ -1,4 +1,5 @@
 #include "LabelCuller.h"
+#include "LabelSlice.h"
 #include "RenderStats.h"
 
 #include <array>
@@ -160,9 +161,10 @@ namespace massif::vt {
         BatchLock labelLock(labelMutex, LABEL_LOCK_BATCH);
         // Collect is ~90% of a pass (performance-log 28), and it runs BEFORE the sort, so cutting
         // it short costs no ordering among the labels that do get collected.
+        const std::size_t sliceStart = cursor;
         std::size_t index = cursor;
         for (; index < labelList.size(); index++) {
-            if (_sliceBudgeted && (index & 0x1f) == 0 && std::chrono::steady_clock::now() > _sliceDeadline) {
+            if (_sliceBudgeted && labelSliceMayStop(index, sliceStart, MIN_SLICE_LABELS) && std::chrono::steady_clock::now() > _sliceDeadline) {
                 _sliceExhausted = true;
                 break;
             }

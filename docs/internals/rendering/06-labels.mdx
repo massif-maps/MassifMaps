@@ -878,9 +878,15 @@ unrationed. Measured in the near field after a four-swipe pan, as dark pixels in
 | t = 20 s | 2555 | 2589 | 2623 |
 
 Labels start appearing at 1 s instead of 20, and the settled picture carries slightly more of them.
-Steady-state placement is still rationed exactly as before. The cost not yet measured is the frame
-time of that one unrationed pass, and abandoning mid-cycle leaves a visible crossfade: for a second
-or two the outgoing placements overlap the incoming ones.
+Steady-state placement is still rationed exactly as before. The frame cost of that one unrationed
+pass is not yet measured.
+
+**A forced placement commits without a fade.** It replaces the whole screen in one pass, so blending
+it in drew every outgoing label on top of its replacement for the length of the fade — a pan came
+out of it with road names printed twice and half-faded POIs. mapbox commits a forced placement with
+`fadeDuration == 0`; `snapLabelTransition` is that, consumed once by the next `startFrame`. The
+overlap spike in the near field (7838 dark pixels at 5 s, against 2389 settled) disappears, and the
+labels are on screen from 1 s.
 
 The pacing is the other half of the guarantee, and it is a **duty-cycle gate** rather than a fixed
 delay: after a pass costing `C` ms, no pass may start for `C · (1000/TARGET − 1)` ms. That holds

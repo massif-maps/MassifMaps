@@ -179,6 +179,7 @@ namespace massif {
          */
         bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
         void restartLabelPlacement();
+        void snapLabelTransition();
 
         // `spanReferenceTiles`: fetched unseen for a stranded bridge's chord, unioned by the
         // renderer and never drawn - see TileLayer::collectSpanReferenceTiles.

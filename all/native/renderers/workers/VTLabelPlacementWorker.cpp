@@ -208,6 +208,7 @@ namespace massif {
         // near field after a pan. A redo owed to a moved camera is exactly mapbox's
         // isFullPlacementRequested: run it whole, once, and the screen is correct in one pass.
         bool sliced = _lastCycleMs > FULL_PLACEMENT_MS && !_forceFullPlacement;
+        bool forced = _forceFullPlacement;
         _forceFullPlacement = false;
         culler.beginSlice(sliced ? PLACEMENT_BUDGET_MS : 0.0);
         std::chrono::steady_clock::time_point passStart = std::chrono::steady_clock::now();
@@ -246,6 +247,13 @@ namespace massif {
         }
 
         if (changed) {
+            // A forced placement swaps the whole screen in one pass: fading it in would draw every
+            // outgoing label over its replacement for the length of the fade. Commit it outright.
+            if (forced) {
+                for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
+                    layer->_tileRenderer->snapLabelTransition();
+                }
+            }
             mapRenderer->requestRedraw();
         }
 

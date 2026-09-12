@@ -1608,7 +1608,12 @@ namespace massif::vt {
 
         // Update labels
         _visiblePassLabels = _passLabels;
-        float dOpacity = (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f);
+        // A placement forced by a camera change replaces the whole screen at once, so crossfading it
+        // shows every outgoing label on top of its replacement for the length of the fade - a pan
+        // came out of it with road names drawn twice. mapbox commits a forced placement with
+        // fadeDuration 0 for the same reason; this is that, consumed once.
+        float dOpacity = (_snapLabelTransition.exchange(false) ? 1.0f
+                                                              : (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f));
         for (int pass = 0; pass < 2; pass++) {
             for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
                 refresh = updateLabel(label, dOpacity) || refresh;
@@ -1931,6 +1936,10 @@ namespace massif::vt {
         // Note: we do not release unused label batches. These are unlinkely very big and can be reused later
         VT_STAT_SPLIT(endFrameNs, statClock);
         return false;
+    }
+
+    void GLTileRenderer::snapLabelTransition() {
+        _snapLabelTransition.store(true);
     }
 
     void GLTileRenderer::restartLabelPlacement() {

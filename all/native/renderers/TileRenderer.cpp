@@ -1255,6 +1255,19 @@ namespace massif {
         return owed;
     }
 
+    void TileRenderer::snapLabelTransition() {
+        std::shared_ptr<vt::GLTileRenderer> tileRenderer;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_vtRenderer) {
+                tileRenderer = _vtRenderer->getTileRenderer();
+            }
+        }
+        if (tileRenderer) {
+            tileRenderer->snapLabelTransition();
+        }
+    }
+
     void TileRenderer::restartLabelPlacement() {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         {

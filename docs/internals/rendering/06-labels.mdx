@@ -888,6 +888,20 @@ out of it with road names printed twice and half-faded POIs. mapbox commits a fo
 overlap spike in the near field (7838 dark pixels at 5 s, against 2389 settled) disappears, and the
 labels are on screen from 1 s.
 
+**The cull order has to be global, not per slice.** A rationed pass collects a slice, sorts *that
+slice*, and greedily inserts it — so a low-priority label in the first slice takes a slot from a
+high-priority one in the fifth, and a sliced cycle answers differently from a whole one for the very
+same scene. That is why the placement visibly changed between the forced first pass and the rationed
+ones that followed. `_labels` is therefore ordered by priority when it is built, and the slices walk
+that order; mapbox orders its symbols once and pauses over that order for the same reason.
+
+Respecting the order costs density, measured on startup as dark pixels in a fixed crop: it settles
+at **12601 against 14981**, about 19% fewer labels, because a high-priority label claiming its slot
+first is usually the bigger one and blocks more small road names. It also converges about 2 s sooner
+(stable from 6 s rather than 8 s), and two cold runs now land within 0.1% of each other. Note what
+this does NOT fix: both orders settle and stay, so the per-slice sort was never the cause of a label
+appearing and then vanishing — only of the two placements disagreeing.
+
 The pacing is the other half of the guarantee, and it is a **duty-cycle gate** rather than a fixed
 delay: after a pass costing `C` ms, no pass may start for `C · (1000/TARGET − 1)` ms. That holds
 placement to `TARGET` (90) ms of every second whatever the tilt, the cycle size, or how often the

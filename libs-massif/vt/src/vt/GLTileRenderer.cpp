@@ -2830,6 +2830,22 @@ namespace massif::vt {
                 labels.push_back(label);
             }
         }
+        // CULL order, which is the opposite of the draw order below: the culler walks this list and
+        // greedily claims grid slots, so the most important label has to come first. It also has to
+        // be a GLOBAL order, because a rationed cycle only sorts the slice it collected - a
+        // low-priority label in the first slice would otherwise take a slot from a high-priority one
+        // in the fifth, and a sliced cycle would answer differently from a whole one for the very
+        // same scene (measured as a placement that changed under a still camera).
+        std::stable_sort(labels.begin(), labels.end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
+            if (label1->getPriority() != label2->getPriority()) {
+                return label1->getPriority() > label2->getPriority();
+            }
+            if (label1->getLayerIndex() != label2->getLayerIndex()) {
+                return label1->getLayerIndex() < label2->getLayerIndex();
+            }
+            return label1->getGlobalId() < label2->getGlobalId();
+        });
+
         for (int pass = 0; pass < 2; pass++) {
             // DRAW order, so the list runs bottom to top. The culler's order is the opposite - it
             // places the most important label FIRST to claim its slot - and copying it put the LEAST

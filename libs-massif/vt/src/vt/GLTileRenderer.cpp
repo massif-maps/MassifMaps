@@ -1933,6 +1933,11 @@ namespace massif::vt {
         return false;
     }
 
+    void GLTileRenderer::restartLabelPlacement() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _labelCullCursor = 0;
+    }
+
     bool GLTileRenderer::cullLabels(LabelCuller& culler) {
         std::vector<std::shared_ptr<Label>> labels;
         {

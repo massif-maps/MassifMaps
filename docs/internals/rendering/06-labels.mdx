@@ -853,6 +853,35 @@ move is a layer that never places a label again: measured on the Crosscall at Gr
 while the far field kept a mass of labels overlapping each other and the panned-to ground had none.
 `labelSliceMayStop` (`vt/LabelSlice.h`) puts a floor of `MIN_SLICE_LABELS` under every call.
 
+**A cycle ends when every layer has wrapped, not when they all wrap together.** Layers hold
+different numbers of labels and so wrap on different passes; requiring them to coincide meant
+`finished` was true in **0 of 230 passes**, `_cycleActive` never cleared, and the grid — cleared only
+between cycles — held 1241 stale records indefinitely. The worker remembers which layers have
+wrapped (`_cycleWrappedLayers`).
+
+**A cycle whose camera has moved is abandoned, not finished.** The frozen view is right *within* a
+cycle, but a rationed one lasts longer than a pan, so every label it has left to place is for a
+screen that is gone. Draining it first is what the user waits through. When the view no longer
+matches, the cycle is dropped outright — cursors back to zero (`restartLabelPlacement`), grid
+cleared, new view — which keeps the invariant that matters (a cycle is never *resumed* against a
+different view) and removes the wait.
+
+**And the cycle that replaces it runs WHOLE.** Rationed, placement is paced to `TARGET` ms of every
+second, so a cycle costing a second of work reaches the screen tens of seconds later. A redo owed to
+a moved camera is precisely mapbox's `isFullPlacementRequested`, so `_forceFullPlacement` runs it
+unrationed. Measured in the near field after a four-swipe pan, as dark pixels in a fixed crop:
+
+| | rationed redo | + run whole | + abandon stale |
+|---|---|---|---|
+| t = 1 s | — | 20 | **772** |
+| t = 10 s | 377 | 2589 | 2623 |
+| t = 20 s | 2555 | 2589 | 2623 |
+
+Labels start appearing at 1 s instead of 20, and the settled picture carries slightly more of them.
+Steady-state placement is still rationed exactly as before. The cost not yet measured is the frame
+time of that one unrationed pass, and abandoning mid-cycle leaves a visible crossfade: for a second
+or two the outgoing placements overlap the incoming ones.
+
 The pacing is the other half of the guarantee, and it is a **duty-cycle gate** rather than a fixed
 delay: after a pass costing `C` ms, no pass may start for `C · (1000/TARGET − 1)` ms. That holds
 placement to `TARGET` (90) ms of every second whatever the tilt, the cycle size, or how often the

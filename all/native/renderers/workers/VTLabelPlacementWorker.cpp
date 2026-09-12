@@ -150,13 +150,6 @@ namespace massif {
             return false;
         }
 
-        // A cycle in progress keeps the view it was opened against: its collision grid is half
-        // built for that screen, and resuming against a moved camera would place the rest of the
-        // labels against it. mapbox freezes the transform for a cycle for the same reason.
-        if (!_cycleActive) {
-            _cycleViewState = mapRenderer->getViewState();
-        }
-        const ViewState& viewState = _cycleViewState;
         std::vector<std::shared_ptr<Layer>> layers = mapRenderer->getLayers()->getAll();
 
         // A composite layer draws its style-layer groups and its vector slots through internal
@@ -165,6 +158,29 @@ namespace massif {
         for (const std::shared_ptr<Layer>& layer : layers) {
             layer->collectLabelLayers(labelLayers);
         }
+
+        // A cycle in progress keeps the view it was opened against: its collision grid is half
+        // built for that screen, and RESUMING against a moved camera would place the rest of the
+        // labels against it. mapbox freezes the transform for a cycle for the same reason.
+        //
+        // Once the camera HAS moved, though, every placement the cycle has left to make is for a
+        // screen that is gone, and draining it first is what the user waits through - measured at up
+        // to ~10 s of panning before the near field is labelled. So the stale cycle is ABANDONED
+        // rather than finished: cursors back to the start, grid cleared, new view. That keeps the
+        // invariant (a cycle is never resumed against a different view) and drops the wait.
+        if (_cycleActive && mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
+            for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
+                layer->_tileRenderer->restartLabelPlacement();
+            }
+            _cycleWrappedLayers.clear();
+            _cycleMs = 0;
+            _cycleActive = false;
+            _forceFullPlacement = true;
+        }
+        if (!_cycleActive) {
+            _cycleViewState = mapRenderer->getViewState();
+        }
+        const ViewState& viewState = _cycleViewState;
 
         // The culler outlives a pass: it carries the cycle's collision grid, and clearing it
         // mid-cycle would let the second half of the labels reuse slots the first half took.
@@ -187,25 +203,46 @@ namespace massif {
         // resume next pass from where each layer stopped. Labels not reached keep the visibility
         // they had, so the map never shows a half-placed screen. A cycle that fit in one pass last
         // time is not rationed at all - see FULL_PLACEMENT_MS.
-        bool sliced = _lastCycleMs > FULL_PLACEMENT_MS;
+        // Rationed placement is paced to PLACEMENT_TARGET_MS_PER_SECOND, so a cycle that costs a
+        // second of work reaches the screen tens of seconds later - measured at ~20 s to label the
+        // near field after a pan. A redo owed to a moved camera is exactly mapbox's
+        // isFullPlacementRequested: run it whole, once, and the screen is correct in one pass.
+        bool sliced = _lastCycleMs > FULL_PLACEMENT_MS && !_forceFullPlacement;
+        _forceFullPlacement = false;
         culler.beginSlice(sliced ? PLACEMENT_BUDGET_MS : 0.0);
         std::chrono::steady_clock::time_point passStart = std::chrono::steady_clock::now();
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
         bool changed = false;
-        bool finished = true;
+        // A layer wraps when its cursor reaches the end of its own label list, which under slicing
+        // takes a different number of passes per layer - so requiring them all to wrap in the SAME
+        // pass never came true, the cycle never ended and the grid was never cleared. Measured on the
+        // Crosscall: 0 completions in 230 passes, 1241 stale records held forever, and no label of a
+        // newly loaded tile could claim a slot again.
+        auto cullLayer = [&](const std::shared_ptr<VectorTileLayer>& layer) {
+            bool wrapped = true;
+            if (layer->_tileRenderer->cullLabels(culler, viewState, wrapped)) {
+                changed = true;
+            }
+            if (wrapped) {
+                _cycleWrappedLayers.insert(layer->_tileRenderer.get());
+            }
+        };
         if (reversedOrder) {
             for (auto it = labelLayers.rbegin(); it != labelLayers.rend(); it++) {
-                if ((*it)->_tileRenderer->cullLabels(culler, viewState, finished)) {
-                    changed = true;
-                }
+                cullLayer(*it);
             }
         } else {
             for (auto it = labelLayers.begin(); it != labelLayers.end(); it++) {
-                if ((*it)->_tileRenderer->cullLabels(culler, viewState, finished)) {
-                    changed = true;
-                }
+                cullLayer(*it);
             }
+        }
+        bool finished = true;
+        for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
+            finished = _cycleWrappedLayers.count(layer->_tileRenderer.get()) > 0 && finished;
+        }
+        if (finished) {
+            _cycleWrappedLayers.clear();
         }
 
         if (changed) {
@@ -230,6 +267,16 @@ namespace massif {
             // has become cheap - the camera tilted back down - drops the rationing again.
             _lastCycleMs = _cycleMs;
             _cycleMs = 0;
+            // Every label of that cycle was placed against the view it opened with, so if the camera
+            // has moved since, the screen now shows placements for a camera that is gone: far tiles
+            // keep a mass of labels overlapping each other and the newly revealed ground has none.
+            // A sliced cycle lasts ~1.7 s under tilt, which is long enough to contain a whole pan.
+            // Nothing else will ask for the redo - a still map stops waking this thread - so the
+            // cycle asks for itself, and converges as soon as one opens on a camera that holds.
+            if (mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
+                _forceFullPlacement = true;
+                scheduleContinuation();
+            }
         }
 
         return true;

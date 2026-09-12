@@ -458,6 +458,7 @@ namespace massif::vt {
 
         /** Returns false when the culler's slice ran out before this layer's labels did. */
         bool cullLabels(LabelCuller& culler);
+        void restartLabelPlacement();
 
         bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
         bool findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, bool geom2D, bool geom3D, std::vector<GeometryIntersectionInfo>& results) const;

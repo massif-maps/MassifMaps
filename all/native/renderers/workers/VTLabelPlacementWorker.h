@@ -10,6 +10,8 @@
 #include "components/ThreadWorker.h"
 #include "graphics/ViewState.h"
 
+#include <set>
+
 #include <vt/LabelCuller.h>
 
 #include <chrono>
@@ -54,6 +56,18 @@ namespace massif {
         std::unique_ptr<vt::LabelCuller> _culler;
         ViewState _cycleViewState;
         bool _cycleActive = false;
+        /**
+         * Which layers have already wrapped during the current cycle. A cycle ends when every layer
+         * has wrapped at least ONCE, not when they all wrap in the same pass - under slicing they
+         * never do, and the grid below then never clears.
+         */
+        std::set<const void*> _cycleWrappedLayers;
+        /**
+         * The next cycle runs WHOLE, unrationed. Set when a cycle ended against a camera that had
+         * moved: the rationed redo would take tens of seconds to reach the screen, which is the one
+         * case where the ration costs more than it protects.
+         */
+        bool _forceFullPlacement = false;
         /**
          * Wall clock the current cycle has spent, and what the last COMPLETED one cost. Slicing is
          * not free - each slice re-sorts and re-inserts its own subset, and the pacing stretches a

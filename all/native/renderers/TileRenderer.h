@@ -178,6 +178,7 @@ namespace massif {
          * this layer's labels did, so the caller knows to come back and resume the cycle.
          */
         bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
+        void restartLabelPlacement();
 
         // `spanReferenceTiles`: fetched unseen for a stranded bridge's chord, unioned by the
         // renderer and never drawn - see TileLayer::collectSpanReferenceTiles.

@@ -1,4 +1,5 @@
 #include "KineticEventHandler.h"
+#include "KineticStep.h"
 #include "components/Options.h"
 #include "core/MapPos.h"
 #include "graphics/ViewState.h"
@@ -200,13 +201,13 @@ namespace massif {
                 _pan = false;
                 _panDelta = 0;
             } else {
-                // Calculate delta time corrected position
-                float factor = std::pow(1.0f - KINETIC_PAN_SLOWDOWN, deltaSeconds);
-                _panDelta *= factor;
+                // Move a fraction of what is left and keep the rest, as rotation and zoom below do.
+                float step = _panDelta * kineticStepFraction(KINETIC_PAN_SLOWDOWN, deltaSeconds);
+                _panDelta -= step;
                 std::shared_ptr<ProjectionSurface> projectionSurface = _mapRenderer.getProjectionSurface();
                 cglib::vec3<double> pos0 = projectionSurface->calculatePosition(_panPositions.first);
                 cglib::vec3<double> pos1 = projectionSurface->calculatePosition(_panPositions.second);
-                cglib::mat4x4<double> transform = projectionSurface->calculateTranslateMatrix(pos0, pos1, _panDelta);
+                cglib::mat4x4<double> transform = projectionSurface->calculateTranslateMatrix(pos0, pos1, step);
                 MapPos newFocusPos = projectionSurface->calculateMapPos(cglib::transform_point(viewState.getFocusPos(), transform));
                 CameraPanEvent cameraEvent;
                 cameraEvent.setPos(newFocusPos);
@@ -258,11 +259,13 @@ namespace massif {
         return std::optional<CameraZoomEvent>();
     }
     
-    const float KineticEventHandler::KINETIC_PAN_STOP_TOLERANCE = 0.007f;
+    // _panDelta is now the whole distance left to travel, not one frame of it, so the three
+    // constants that size it carry the 12.535 the old per-frame stepping summed to at 60 fps.
+    const float KineticEventHandler::KINETIC_PAN_STOP_TOLERANCE = 0.0878f;
     const float KineticEventHandler::KINETIC_PAN_START_TOLERANCE = 0.025f;
     const float KineticEventHandler::KINETIC_PAN_SLOWDOWN = 0.99f;
-    const float KineticEventHandler::KINETIC_PAN_DELTA_MULTIPLIER = 7.0f;
-    const float KineticEventHandler::KINETIC_PAN_DELTA_CLAMP = 1.0f;
+    const float KineticEventHandler::KINETIC_PAN_DELTA_MULTIPLIER = 87.75f;
+    const float KineticEventHandler::KINETIC_PAN_DELTA_CLAMP = 12.535f;
 
     const float KineticEventHandler::KINETIC_ROTATION_STOP_TOLERANCE_ANGLE = 0.2f;
     const float KineticEventHandler::KINETIC_ROTATION_START_TOLERANCE_ANGLE = 1.0f;

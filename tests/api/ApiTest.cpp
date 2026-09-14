@@ -83,6 +83,7 @@ void testTerrainDecodeWait();
 void testPrefetchOrder();
 void testTileStyleZoom();
 void testFocusLift();
+void testKineticStep();
 void testTileLODRule();
 void testSphericalSurface();
 void testGlobeElevationScale();
@@ -461,6 +462,7 @@ int main() {
     testPrefetchOrder();
     testTileStyleZoom();
     testFocusLift();
+    testKineticStep();
     testTileLODRule();
     testSphericalSurface();
     testGlobeElevationScale();

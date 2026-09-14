@@ -1284,6 +1284,26 @@ namespace massif::vt {
             addLabelTile(tilePair.second);
         }
 
+        // The label maps are rebuilt from the PREVIOUS ones, and that is the expensive half of this
+        // call - so it runs here, off the mutex, against a snapshot. The skip guard is answered
+        // first, from the tile list alone, so an unchanged set does not pay for the snapshot.
+        LabelMapBuild labelBuild;
+        labelBuild.signature = calculateLabelTilesSignature(labelTiles);
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            labelBuild.unchanged = (labelBuild.signature == _labelTilesSignature && !_layerLabelMap.empty());
+            labelBuild.generation = _labelMapGeneration;
+            if (!labelBuild.unchanged) {
+                labelBuild.oldLabelMap = _layerLabelMap;      // shared_ptr copies, not labels
+                labelBuild.layerFilter = _rendererLayerFilter; // set under the mutex, and it decides the maps
+            }
+        }
+        if (labelBuild.unchanged) {
+            VT_STAT_INC(labelMapSkips);
+        } else {
+            prepareLabelMaps(labelTiles, labelBuild.oldLabelMap, labelBuild.layerFilter, labelBuild);
+        }
+
         // All other operations must be synchronized
         VT_STAT_CLOCK(visibleClock);
         std::vector<std::shared_ptr<Label>> dirtyLabels;
@@ -1298,7 +1318,19 @@ namespace massif::vt {
         VT_STAT_SPLIT(terrainCoarseningNs, visibleClock);
         buildTileSurfaces(tileIds);
         VT_STAT_SPLIT(tileSurfacesNs, visibleClock);
-        buildLabelMaps(labelTiles);
+        if (!labelBuild.unchanged) {
+            // deinitializeRenderer can have cleared the live maps on the render thread while the
+            // prepare above ran on the snapshot. Rare, and the answer is simply to redo it here.
+            if (labelBuild.generation != _labelMapGeneration) {
+                LabelMapBuild rebuild;
+                rebuild.signature = labelBuild.signature;
+                rebuild.generation = _labelMapGeneration;
+                prepareLabelMaps(labelTiles, _layerLabelMap, _rendererLayerFilter, rebuild);
+                commitLabelMaps(rebuild);
+            } else {
+                commitLabelMaps(labelBuild);
+            }
+        }
         VT_STAT_SPLIT(labelMapsNs, visibleClock);
         buildRenderTiles(tiles);
         VT_STAT_SPLIT(renderTilesNs, visibleClock);
@@ -1546,6 +1578,7 @@ namespace massif::vt {
         }
         _labels.clear();
         _layerLabelMap.clear();
+        _labelMapGeneration++; // a prepare running off the mutex is now describing maps that are gone
     }
     
     bool GLTileRenderer::startFrame(float dt) {
@@ -2694,29 +2727,46 @@ namespace massif::vt {
         return static_cast<long long>(hash);
     }
 
-    void GLTileRenderer::buildLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
-        // Keyed on the tile OBJECTS, like the per-label signature below: the same id can be re-served
-        // by a re-decoded tile, and that one DOES have to rebuild.
+    // Keyed on the tile OBJECTS: the same id can be re-served by a re-decoded tile, and that one DOES
+    // have to rebuild. Cheap, so the skip guard can be answered before anything is snapshotted.
+    long long GLTileRenderer::calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
         long long signature = static_cast<long long>(labelTiles.size());
         for (const std::shared_ptr<const Tile>& labelTile : labelTiles) {
             signature += calculateLabelGeometryHash(labelTile.get(), 0); // order-independent, as pass 1 is
         }
-        if (signature == _labelTilesSignature && !_layerLabelMap.empty()) {
-            VT_STAT_INC(labelMapSkips);
-            return;
-        }
-        _labelTilesSignature = signature;
+        return signature;
+    }
 
+    /*
+     * The two expensive phases, run OFF _mutex against a snapshot of the previous maps.
+     *
+     * They are the whole reason a tile arrival hung the map: setVisibleTiles held the renderer mutex
+     * for the entire rebuild - 26 to 54 ms, 13 times a second while panning - and startFrame on the
+     * render thread wants that same mutex, measured as 102 ms of a 219 ms frame. Neither phase writes
+     * renderer state: the signatures are local, and every label they construct or merge into is one
+     * nothing else can see yet. A REUSED label is the live object, but only its build-time signature
+     * is read here.
+     *
+     * The caller checks the generation before committing, because deinitializeRenderer can clear the
+     * live maps on the render thread while this runs.
+     */
+    void GLTileRenderer::prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const {
         VT_STAT_INC(labelMapRebuilds);
 
         VT_STAT_CLOCK(labelMapClock);
+        std::map<int, std::unordered_map<long long, std::pair<long long, int>>>& newLayerSignatureMap = build.signatures;
+        std::map<int, GlobalIdLabelMap>& newLayerLabelMap = build.labelMap;
+        std::map<int, std::unordered_set<long long>>& reusedLayerLabelIds = build.reusedIds;
         // Pass 1: which tile geometries each label is built from, WITHOUT building anything. Keyed
         // on the tile OBJECT, not its id - the same id can be re-served by a re-decoded tile. The
         // per-contribution hashes are summed, so the signature does not depend on visit order.
-        std::map<int, std::unordered_map<long long, std::pair<long long, int>>> newLayerSignatureMap;
+        auto oldLabelCount = [&oldLayerLabelMap](int layerIndex) {
+            auto it = oldLayerLabelMap.find(layerIndex);
+            return it != oldLayerLabelMap.end() ? it->second.size() : static_cast<std::size_t>(0);
+        };
         for (const std::shared_ptr<const Tile>& tile : labelTiles) {
             for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
-                if (!testLayerFilter(layer->getLayerName(), _rendererLayerFilter)) {
+                if (!testLayerFilter(layer->getLayerName(), layerFilter)) {
                     continue;
                 }
 
@@ -2724,7 +2774,7 @@ namespace massif::vt {
                 if (signatureMap.empty()) {
                     // Sized from the labels it ended up holding last time, as the merge pass does:
                     // grown from empty it rehashes its way to thousands of entries every rebuild.
-                    signatureMap.reserve(_layerLabelMap[layer->getLayerIndex()].size() + 64);
+                    signatureMap.reserve(oldLabelCount(layer->getLayerIndex()) + 64);
                 }
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
                     std::pair<long long, int>& signature = signatureMap[tileLabel->getGlobalId()];
@@ -2736,21 +2786,21 @@ namespace massif::vt {
 
         VT_STAT_SPLIT(labelSignatureNs, labelMapClock);
         // Create label list, merge geometries
-        std::map<int, GlobalIdLabelMap> newLayerLabelMap;
-        std::map<int, std::unordered_set<long long>> reusedLayerLabelIds;
+        static const GlobalIdLabelMap emptyLabelMap;
         for (const std::shared_ptr<const Tile>& tile : labelTiles) {
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(tile->getTileId(), 1.0f);
             std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(tile->getTileId());
             for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
-                if (!testLayerFilter(layer->getLayerName(), _rendererLayerFilter)) {
+                if (!testLayerFilter(layer->getLayerName(), layerFilter)) {
                     continue;
                 }
 
                 GlobalIdLabelMap& newLabelMap = newLayerLabelMap[layer->getLayerIndex()];
                 if (newLabelMap.empty()) {
-                    newLabelMap.reserve(_layerLabelMap[layer->getLayerIndex()].size() + 64);
+                    newLabelMap.reserve(oldLabelCount(layer->getLayerIndex()) + 64);
                 }
-                const GlobalIdLabelMap& oldLabelMap = _layerLabelMap[layer->getLayerIndex()];
+                auto oldLabelMapIt = oldLayerLabelMap.find(layer->getLayerIndex());
+                const GlobalIdLabelMap& oldLabelMap = (oldLabelMapIt != oldLayerLabelMap.end() ? oldLabelMapIt->second : emptyLabelMap);
                 const std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[layer->getLayerIndex()];
                 std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[layer->getLayerIndex()];
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
@@ -2789,7 +2839,8 @@ namespace massif::vt {
         VT_STAT_SPLIT(labelMergeNs, labelMapClock);
         // Stamp the signature on the freshly built labels, now that every contributing tile
         // has been merged into them. Doing it at construction time would make the label look
-        // complete to the merge branch above and swallow its remaining contributions.
+        // complete to the merge branch above and swallow its remaining contributions. Still off
+        // the mutex: every label stamped here is one the renderer has never seen.
         for (auto newLayerLabelIt = newLayerLabelMap.begin(); newLayerLabelIt != newLayerLabelMap.end(); newLayerLabelIt++) {
             const std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[newLayerLabelIt->first];
             const std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[newLayerLabelIt->first];
@@ -2803,6 +2854,16 @@ namespace massif::vt {
         }
 
         VT_STAT_SPLIT(labelStampNs, labelMapClock);
+    }
+
+    // The rest, which MUTATES the live maps and the draw lists: caller holds _mutex. Short by design -
+    // what it does is erase, carry placement over and sort, against work already done.
+    void GLTileRenderer::commitLabelMaps(LabelMapBuild& build) {
+        std::map<int, GlobalIdLabelMap>& newLayerLabelMap = build.labelMap;
+        std::map<int, std::unordered_set<long long>>& reusedLayerLabelIds = build.reusedIds;
+        _labelTilesSignature = build.signature;
+
+        VT_STAT_CLOCK(labelMapClock);
         // Release old labels
         for (auto oldLayerLabelIt = _layerLabelMap.begin(); oldLayerLabelIt != _layerLabelMap.end(); oldLayerLabelIt++) {
             GlobalIdLabelMap& oldLabelMap = oldLayerLabelIt->second;

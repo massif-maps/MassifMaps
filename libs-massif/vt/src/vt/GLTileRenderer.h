@@ -682,7 +682,23 @@ namespace massif::vt {
         bool updateRenderTile(RenderTile& renderTile, float dBlend) const;
 
         static long long calculateLabelGeometryHash(const Tile* tile, long long localId);
-        void buildLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles);
+        /**
+         * A label map rebuild in flight: everything prepareLabelMaps produces off _mutex, for
+         * commitLabelMaps to fold into the live maps under it. See prepareLabelMaps.
+         */
+        struct LabelMapBuild {
+            long long signature = 0;
+            bool unchanged = false;        // the tile set did not move; nothing to do
+            unsigned int generation = 0;   // of the maps oldLabelMap was taken from
+            std::map<int, GlobalIdLabelMap> oldLabelMap;
+            std::optional<std::regex> layerFilter;
+            std::map<int, std::unordered_map<long long, std::pair<long long, int>>> signatures;
+            std::map<int, GlobalIdLabelMap> labelMap;
+            std::map<int, std::unordered_set<long long>> reusedIds;
+        };
+        static long long calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles);
+        void prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const;
+        void commitLabelMaps(LabelMapBuild& build);
         bool updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const;
 
         void findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const TileGeometry>& geometry, const std::vector<cglib::ray3<double>>& rays, float tileSize, float pointBuffer, float lineBuffer, float heightScale, std::vector<GeometryIntersectionInfo>& results) const;
@@ -1060,6 +1076,7 @@ namespace massif::vt {
         // The label tile set the maps were last built from: buildLabelMaps depends on nothing else,
         // so an unchanged set rebuilds them identically at 167-289 ms/s of a streaming map.
         long long _labelTilesSignature = 0;
+        unsigned int _labelMapGeneration = 0; // bumped when the live maps are dropped under us
         mutable std::size_t _lastDrapeGlobalTerm = 0; // diagnostic only: see collectDrapeTiles
         std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;
         GLuint _lastUsedProgram = 0; // currently bound program, 0 = unknown (see useProgram)

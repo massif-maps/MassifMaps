@@ -864,13 +864,18 @@ namespace massif {
     
     VectorTileLayer::FetchTask::FetchTask(const std::shared_ptr<VectorTileLayer>& layer, long long tileId, const MapTile& tile, bool preloadingTile) :
         FetchTaskBase(layer, tileId, tile, preloadingTile),
-        _styleTileZoom(calculateStyleTileZoom(tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift()))
+        _styleTileZoom(tile.getZoom())
     {
     }
-    
+
     bool VectorTileLayer::FetchTask::loadTile(const std::shared_ptr<TileLayer>& tileLayer) {
         auto layer = std::static_pointer_cast<VectorTileLayer>(tileLayer);
-        
+
+        // The style zoom of the tile we are about to decode, read HERE rather than when the task was
+        // queued: a zoom-out lands these tiles under a lower target, and styling a coarse tile for
+        // the zoom the camera has left decodes the near field over 4^lift the ground, to be binned.
+        _styleTileZoom = calculateStyleTileZoom(_tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift());
+
         bool refresh = false;
         for (const MapTile& dataSourceTile : _dataSourceTiles) {
             if (isCanceled()) {

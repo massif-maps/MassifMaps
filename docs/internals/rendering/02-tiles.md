@@ -154,6 +154,16 @@ Two consequences worth knowing:
   decoded at (`VectorTileLayer::TileInfo`), and `tileValid` compares it against what the current
   target would produce (`isStyleTileZoomCurrent`) — a stamp, not a clock. The stale tile keeps
   drawing as a substitute while its replacement decodes, exactly as an invalidated one does.
+- **The style zoom is read when the tile decodes, not when it was queued (changed 2026-09-13).**
+  `isStyleTileZoomCurrent` catches a task that landed under a moved target, but only *after* the
+  decode is paid for, and a zoom-out makes that expensive: zooming out fast from 19, every z17 tile
+  queued while the target was still 19 was styled at 19, emitting the whole z19 near field — house
+  numbers included — over `4^2 = 16x` the ground, and was then binned as stale. Reported as "zoom
+  out from 19 and I end up at 17 with house numbers in every tile on screen; they disappear after".
+  `FetchTask::loadTile` therefore reads `calculateStyleTileZoom` itself, from the target the camera
+  has when the decode actually starts, so the common case decodes once at the right zoom instead of
+  twice. Zooming *in* is unaffected: the target runs ahead of the tiles the LOD has, which is the
+  case the lift exists for.
 - **So the crossing has a margin** (`TileLayer::TARGET_TILE_ZOOM_HYSTERESIS`, 0.15 of a level,
   `calculateTargetTileZoom`). Since we re-decode rather than keep both versions, a zoom that only
   *wobbles* across a boundary re-decodes the map for nothing — and in terrain mode the focus rides

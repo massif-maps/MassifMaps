@@ -115,6 +115,18 @@ void testStyleTileZoomStaleness() {
     // stale on the very first frame and re-fetch the whole map.
     TEST_CHECK(isStyleTileZoomCurrent(12, 12, -1, 2), "an unset target is not staleness");
 
+    // What the decode-time read buys (VectorTileLayer::FetchTask::loadTile). Zooming out from 19,
+    // a z17 tile queued while the target was still 19 used to be styled at 19 - the whole z19 near
+    // field, house numbers included, emitted over 4^2 = 16x the ground, then binned as stale.
+    TEST_CHECK(calculateStyleTileZoom(17, 19, 2) == 19, "queued under the old target, it styled at 19");
+    TEST_CHECK(!isStyleTileZoomCurrent(17, 19, 17, 2), "which the settled camera then threw away");
+    TEST_CHECK(calculateStyleTileZoom(17, 17, 2) == 17, "read at decode time it styles at 17 instead");
+    TEST_CHECK(isStyleTileZoomCurrent(17, 17, 17, 2), "and is not re-decoded at all");
+
+    // Zooming IN is the case the lift exists for and must keep working: the target runs ahead of
+    // the tiles the LOD has, and those tiles must carry the near-field rules.
+    TEST_CHECK(calculateStyleTileZoom(15, 17, 2) == 17, "zooming in, a coarse tile still lifts");
+
     // Why the per-tile stamp replaced the cache wipe on a target-zoom change. Crossing 17 -> 16
     // stales the tiles the lift reached and NOTHING else, so wiping every decoded tile (and the
     // whole preloading cache) re-decoded the map on each integer zoom a fast zoom-out crossed.

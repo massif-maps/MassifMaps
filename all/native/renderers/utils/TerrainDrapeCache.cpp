@@ -1,6 +1,10 @@
 #include "TerrainDrapeCache.h"
 #include "renderers/utils/GLContext.h"
+#include "terrain/DrapeEviction.h"
 #include "terrain/DrapeStandIn.h"
+#include "utils/Log.h"
+
+#include <vt/RenderStats.h>
 
 #ifdef __ANDROID__
 #include <sys/system_properties.h>
@@ -58,6 +62,10 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         if (value == _resolution) {
             return;
         }
+        // Every cached texture dies here, so a resolution that oscillates costs the whole cache per
+        // frame. Logged because it is a per-frame decision made from the camera and the budget.
+        Log::Infof("TerrainDrapeCache: bake resolution %d -> %d, dropping %d cached textures",
+                   _resolution, value, static_cast<int>(_entries.size()));
         _resolution = value;
         // Every cached texture is the old size, so none of them can be reused.
         for (auto it = _entries.begin(); it != _entries.end(); it++) {
@@ -331,14 +339,32 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         std::size_t maxCount = maxEntries();
         std::size_t colourBytes = static_cast<std::size_t>(_resolution) * _resolution * 4;
         std::size_t maxBytes = (isBudgetEnabled() ? std::max(_maxBytes, MIN_ENTRIES * colourBytes) : MAX_ENTRIES * colourBytes);
-        // COLOUR entries only: a coverage mask (#175) is a quarter of a drape in bytes, so counting
-        // them halved the tiles the cache could hold - 56 entries against a cap of 24 on a 28-leaf
-        // cover, evicting the whole previous generation every frame of a zoom.
+        // COLOUR entries only, for the BYTES as well as the count. The budget's own floor is
+        // MIN_ENTRIES colour drapes, so counting the masks a tile cannot be drawn without put the
+        // cache permanently over budget: 21 drapes plus their masks measured 104 MB against 96 MB,
+        // evicting every frame for ever. Masks are bounded by the colour entries they belong to -
+        // DrapeEviction drops one only once its drape is gone. maplibre ties a drape's lifetime to
+        // its tile and mapbox caps the cache at 50 tiles; neither budgets the two separately.
         std::size_t colourEntries = 0;
+        std::size_t bytes = 0;
         for (auto it = _entries.begin(); it != _entries.end(); it++) {
-            colourEntries += (it->first.stack == 0 ? 1 : 0);
+            if (it->first.stack != 0) {
+                continue;
+            }
+            colourEntries++;
+            bytes += it->second.bytes;
         }
-        std::size_t bytes = cachedBytes();
+#if MASSIF_VT_RENDER_STATS
+        // Once a second: whether the cache is over budget at all is what separates "the masks are
+        // evicted" from "the masks never baked", and the two want opposite fixes.
+        static unsigned int lastReportFrame = 0;
+        if (_frameCounter - lastReportFrame >= 60) {
+            lastReportFrame = _frameCounter;
+            Log::Infof("RenderStats: drapeCache entries=%d colour=%d/%d bytes=%d/%d res=%d",
+                       static_cast<int>(_entries.size()), static_cast<int>(colourEntries), static_cast<int>(maxCount),
+                       static_cast<int>(bytes / 1024), static_cast<int>(maxBytes / 1024), _resolution);
+        }
+#endif
         if (colourEntries <= maxCount && bytes <= maxBytes) {
             return; // keep unused tiles cached; they come back constantly while panning/zooming
         }
@@ -346,7 +372,8 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         std::vector<std::pair<unsigned int, Key> > candidates;
         candidates.reserve(_entries.size());
         for (auto it = _entries.begin(); it != _entries.end(); it++) {
-            if (!it->second.used) {
+            bool colourCached = it->first.stack == 0 || _entries.count(Key { it->first.tileId, 0 }) > 0;
+            if (DrapeEviction::isEvictable(it->first.stack, it->second.used, colourCached)) {
                 candidates.emplace_back(it->second.lastUsedFrame, it->first);
             }
         }
@@ -368,8 +395,13 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
                 GLuint texture = it->second.texture;
                 glDeleteTextures(1, &texture);
             }
-            bytes -= std::min(bytes, it->second.bytes);
-            colourEntries -= (candidates[i].second.stack == 0 && colourEntries > 0 ? 1 : 0);
+            if (candidates[i].second.stack == 0) {
+                bytes -= std::min(bytes, it->second.bytes); // the budget counts colour drapes only
+                colourEntries -= (colourEntries > 0 ? 1 : 0);
+                VT_STAT_INC(drapeEvictColour);
+            } else {
+                VT_STAT_INC(drapeEvictMask);
+            }
             _entries.erase(it);
         }
     }

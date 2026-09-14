@@ -74,6 +74,7 @@ void testElevationNodeField();
 void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
+void testDrapeEviction();
 void testDrapeTuning();
 void testZoomConvention();
 void testShadowCasterRing();
@@ -457,6 +458,7 @@ int main() {
     testDayCycleLight();
     testDrapeStackCuts();
     testDrapeStandIn();
+    testDrapeEviction();
     testDrapeTuning();
     testZoomConvention();
     testShadowCasterRing();

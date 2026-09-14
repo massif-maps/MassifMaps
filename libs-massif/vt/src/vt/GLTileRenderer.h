@@ -567,6 +567,10 @@ namespace massif::vt {
             int parameterCount;
             float scale;
             int glyphRenderSize;
+            // The tile owning the ANCHORS in this batch, so the batch can bind that tile's elevation
+            // uniforms and elevate them on the GPU (applyTerrain). Only meaningful with terrain on,
+            // where renderLabelPass groups the labels by it; (-1,-1,-1) is "no tile".
+            TileId tileId { -1, -1, -1 };
             cglib::mat4x4<double> labelMatrix;
             std::array<cglib::vec4<float>, MAX_PARAMETERS> colorTable;
             std::array<float, MAX_PARAMETERS> widthTable;
@@ -761,7 +765,18 @@ namespace massif::vt {
          * @return False when the point is not on a resolved span.
          */
         void markPendingLabelsDirty();
+<<<<<<< HEAD
         std::function<cglib::vec3<double>(const cglib::vec3<double>&)> labelAnchorFunc() const;
+=======
+        std::function<double(const cglib::vec3<double>&)> labelHeightFunc() const;
+        // Whether each label's anchor stands on a span DECK rather than on the ground, so labelVsh
+        // keeps the CPU height there instead of taking the terrain's. One chord test per LABEL: the
+        // height func answers per vertex and cannot report which of its two sources it used.
+        void markDeckAnchoredLabels(const std::vector<std::shared_ptr<Label>>& labels) const;
+        // Which batch a label belongs to: its anchor tile when it needs the GPU to supply a height,
+        // (-1,-1,-1) - the shared batch, CPU height - when it is already anchored.
+        TileId labelBatchTileId(const std::shared_ptr<Label>& label) const;
+>>>>>>> 127cf24b8 (perf(labels): elevate a label anchor on the GPU when the CPU has no height for it)
         bool anchorDirtyLabels();
         bool spanHeightAt(const cglib::vec2<double>& pos, double& height) const;
         void renderTileMask(const TileId& tileId);

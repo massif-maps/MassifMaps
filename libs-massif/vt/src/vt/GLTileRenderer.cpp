@@ -1325,12 +1325,22 @@ namespace massif::vt {
             std::lock_guard<std::mutex> lock(_mutex);
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
                 if (dirtyLabels[i]->isElevationDirty()) {
+<<<<<<< HEAD
                     // Stays dirty where the provider had no elevation: marking it clean anchored the
                     // label at the surface origin, under the terrain, and nothing ever asked again.
                     bool complete = dirtyLabels[i]->applyElevation(positions[i]);
                     dirtyLabels[i]->setElevationDirty(!complete);
+=======
+                    // Cleared even when the provider had no elevation: the answer cannot change until
+                    // new data arrives, and markPendingLabelsDirty re-dirties the label when it does.
+                    // Retrying every frame instead bought nothing and never converged. What carries
+                    // "height unknown" is isElevationAnchored(), not dirtiness.
+                    dirtyLabels[i]->applyElevation(heights[i]);
+                    dirtyLabels[i]->setElevationDirty(false);
+>>>>>>> 127cf24b8 (perf(labels): elevate a label anchor on the GPU when the CPU has no height for it)
                 }
             }
+            markDeckAnchoredLabels(dirtyLabels);
             VT_STAT_SPLIT(labelAnchorNs, visibleClock);
         }
     }
@@ -3735,6 +3745,21 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass) {
+        // Only a label whose CPU height is UNKNOWN needs the GPU to supply one, and that is the only
+        // reason to split the batch: a batch elevates from one tile's elevation uniforms, so labels
+        // needing it must arrive grouped by tile. An anchored label already carries the right height,
+        // so it stays in the shared batch - which is what keeps the draw count where it was. Splitting
+        // every label by tile took label draws from 64 to ~450, and the per-frame cost tracks the draw
+        // count (RenderStats::geometryDraws). Stable, so the culler's order survives within a group.
+        std::vector<std::shared_ptr<Label>> grouped;
+        if (_terrainMode) {
+            grouped = labels;
+            std::stable_sort(grouped.begin(), grouped.end(), [this](const std::shared_ptr<Label>& a, const std::shared_ptr<Label>& b) {
+                return labelBatchTileId(a) < labelBatchTileId(b);
+            });
+        }
+        const std::vector<std::shared_ptr<Label>>& drawOrder = _terrainMode ? grouped : labels;
+
         LabelBatchParameters labelBatchParams;
         // The atlas the batch being built draws from. A batch samples ONE texture, so a label from
         // another atlas ends the batch - the list is in draw order and stays that way.
@@ -3746,7 +3771,7 @@ namespace massif::vt {
         int secondaryStyleIndex = -1;
         int iconStyleIndex = -1;
         int iconHaloStyleIndex = -1;
-        for (const std::shared_ptr<Label>& label : labels) {
+        for (const std::shared_ptr<Label>& label : drawOrder) {
             if (!label->isValid()) {
                 continue;
             }
@@ -3830,7 +3855,9 @@ namespace massif::vt {
                 // The style layer's own occluded opacity, or this layer's default where it sets
                 // none - and a batch carries one, so a change ends it like a change of atlas does.
                 float labelOcclusionOpacity = labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity);
-                if (bitmap != labelBitmap || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                // The anchor tile ends a batch only for a label that needs the GPU's height.
+                TileId labelTileId = labelBatchTileId(label);
+                if (bitmap != labelBitmap || labelBatchParams.tileId != labelTileId || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     bitmap = labelBitmap;
                     labelBatchParams.labelCount = 0;
@@ -3838,6 +3865,7 @@ namespace massif::vt {
                     labelBatchParams.scale = labelStyle->scale;
                     labelBatchParams.glyphRenderSize = labelStyle->glyphRenderSize;
                     labelBatchParams.occlusionOpacity = labelOcclusionOpacity;
+                    labelBatchParams.tileId = labelTileId;
                     labelBatchParams.labelMatrix = _viewState.cameraMatrix * cglib::translate4_matrix(_viewState.origin);
 
                     styleIndex = -1;
@@ -4558,14 +4586,43 @@ namespace massif::vt {
         VT_STAT_SPLIT(prepElevDirtyNs, anchorClock);
         std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc = labelAnchorFunc();
         bool anchored = false;
+        std::vector<std::shared_ptr<Label>> dirty;
         for (const std::shared_ptr<Label>& label : _labels) {
             if (label->isElevationDirty()) {
+<<<<<<< HEAD
                 bool complete = label->updateElevation(anchorFunc);
                 label->setElevationDirty(!complete);
+=======
+                label->updateElevation(heightFunc);
+                label->setElevationDirty(false); // see the bulk path in setVisibleTiles
+                dirty.push_back(label);
+>>>>>>> 127cf24b8 (perf(labels): elevate a label anchor on the GPU when the CPU has no height for it)
                 anchored = true;
             }
         }
+        markDeckAnchoredLabels(dirty);
         return anchored;
+    }
+
+    TileId GLTileRenderer::labelBatchTileId(const std::shared_ptr<Label>& label) const {
+        // (-1,-1,-1) is "no tile": the shared batch, drawn without the terrain flag, which uses the
+        // label's own CPU height. Only an un-anchored label needs a tile's elevation uniforms.
+        if (!_terrainMode || label->isElevationAnchored()) {
+            return TileId(-1, -1, -1);
+        }
+        return label->getTileId();
+    }
+
+    void GLTileRenderer::markDeckAnchoredLabels(const std::vector<std::shared_ptr<Label>>& labels) const {
+        std::vector<SpanResolver::SpanChord> chords = _spanResolver.chords(_extrusionBaseVersion.load(std::memory_order_relaxed));
+        double scale = _labelPositionScale;
+        for (const std::shared_ptr<Label>& label : labels) {
+            cglib::vec3<double> center(0, 0, 0);
+            double deck = 0;
+            bool onDeck = !chords.empty() && label->calculateCenter(center)
+                && SpanResolver::chordHeightAt(chords, cglib::vec2<double>(center(0) * scale, center(1) * scale), deck);
+            label->setAbsoluteHeight(onDeck);
+        }
     }
 
     bool GLTileRenderer::spanHeightAt(const cglib::vec2<double>& pos, double& height) const {
@@ -6993,15 +7050,25 @@ namespace massif::vt {
 
         const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
         unsigned int occlusionFlag = (_labelOcclusionTexture != 0 && labelBatchParams.occlusionOpacity < 1.0f ? LABEL_OCCLUSION_FLAG : 0);
-        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (useDerivatives ? DERIVATIVES_FLAG : 0) | occlusionFlag | fogFlag());
+        // The anchors are elevated on the GPU from this batch's own tile, the same applyTerrain the
+        // surface uses, so a label cannot disagree with the ground it stands on and no CPU height is
+        // needed to draw it (mapbox symbol.vertex.glsl). The texture provider is the VTF capability
+        // gate, as everywhere else; without it the CPU anchor height is all there is.
+        unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider && labelBatchParams.tileId.zoom >= 0 ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0);
+        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (useDerivatives ? DERIVATIVES_FLAG : 0) | occlusionFlag | terrainFlag | fogFlag());
         useProgram(shaderProgram);
         setupFogUniforms(shaderProgram);
+        if (terrainFlag) {
+            // The batch's vertex frame, which is what the anchors are relative to: setupTerrainUniforms
+            // derives the elevation uv from it, so applyTerrain(aVertexPosition) needs no conversion.
+            setupTerrainUniforms(shaderProgram, labelBatchParams.tileId, cglib::translate4_matrix(_viewState.origin), false);
+        }
         if (occlusionFlag) {
-            // Unit 1: unit 0 is the glyph atlas, bound per batch below.
-            glActiveTexture(GL_TEXTURE1);
+            // Unit 2: 0 is the glyph atlas, and setupTerrainUniforms owns 1 (elevation) and 5 (nodes).
+            glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_2D, _labelOcclusionTexture);
             glActiveTexture(GL_TEXTURE0);
-            glUniform1i(shaderProgram.uniforms[U_LABELOCCLUSIONTEX], 1);
+            glUniform1i(shaderProgram.uniforms[U_LABELOCCLUSIONTEX], 2);
             // The occluder square in uv, the depth offset that keeps a label standing ON the
             // ground from reading as behind it, the opacity an occluded label keeps, and the
             // sharpness of the comparison.

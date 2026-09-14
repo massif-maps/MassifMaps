@@ -113,6 +113,10 @@ namespace massif::vt {
         // Whether the label's heights are KNOWN. False while it still carries its flat decode height,
         // which is what the terrain occlusion test must not judge - it would hide it under the ground.
         bool isElevationAnchored() const { return _elevationAnchored; }
+        // The anchor stands on a deck, not on the ground: its height came from a span chord, which is
+        // CPU-only data, so the GPU must not overwrite it with the terrain's. See offsetMode.
+        bool hasAbsoluteHeight() const { return _absoluteHeight; }
+        void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
         bool hasGeometryOverTile(const TileId& tileId) const;
 
@@ -120,7 +124,8 @@ namespace massif::vt {
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
         // False when the provider had no elevation for part of the geometry: those vertices keep the
-        // position they had, and the caller must leave the label dirty so it is asked again.
+        // height they had and isElevationAnchored() stays false. The caller still marks the label
+        // clean - only new data can change the answer, and that re-dirties it (markPendingLabelsDirty).
         bool updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
         // updateElevation in two halves, so the sampling - one elevation lookup per vertex, the
         // whole cost - can run off the renderer's lock: sample reads the x,y of the geometry
@@ -152,9 +157,17 @@ namespace massif::vt {
         bool isScreenLineRun() const { return _style->orientation == LabelOrientation::LINE_BILLBOARD_3D; }
 
     private:
-        // How labelVsh must read a glyph offset (attribs[3]); see calculateVertexData.
+        // How labelVsh must read a glyph offset (attribs[3], bit 0); see calculateVertexData.
         static constexpr std::int8_t WORLD_OFFSET = 0;       // already spanned, add it as is
         static constexpr std::int8_t CAMERA_AXIS_OFFSET = 1; // x/y on the camera axes
+        // Bit 1 of the same slot: the anchor's height is ABSOLUTE and only the CPU knows it (a bridge
+        // deck), so labelVsh must keep it instead of taking the terrain's. mapbox's
+        // u_elevation_from_sea (symbol.vertex.glsl), per label rather than per layer.
+        static constexpr std::int8_t ABSOLUTE_HEIGHT = 2;
+
+        std::int8_t offsetMode(bool cameraAxes) const {
+            return (cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET) | (_absoluteHeight ? ABSOLUTE_HEIGHT : 0);
+        }
 
         static constexpr unsigned int MAX_LABEL_VERTICES = 16384;
         static constexpr unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
@@ -425,6 +438,7 @@ namespace massif::vt {
         bool _active = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame
         bool _elevationAnchored = false; // has been anchored at least once, so a re-anchor may wait
+        bool _absoluteHeight = false;    // anchored on a deck chord, not on the terrain
         long long _geometryHash = 0;
         int _geometryCount = 0;
 

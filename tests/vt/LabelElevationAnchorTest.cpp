@@ -11,11 +11,13 @@
  * i.e. the sampler ran every frame and never moved a single label.
  *
  * So a non-finite sample means "no data": the vertex keeps the height it had, and applyElevation
- * returns false so the caller leaves the label dirty and asks again. Zero stays a legal height.
+ * returns false, which leaves the label un-anchored. Zero stays a legal height. The label is still
+ * marked clean - only new elevation can change the answer, and that re-dirties it - and its RENDER
+ * height comes from the GPU either way, so an un-anchored label is drawn in the right place.
  *
  * NOT covered here: that the provider actually returns NaN (TileRenderer, needs ElevationManager),
- * and that the two call sites leave the label dirty - GLTileRenderer is not in this link. Both are
- * the device check named in the PR.
+ * and that the anchoring sites mark the label clean and the occlusion test skips an un-anchored one -
+ * GLTileRenderer is not in this link. Both are the device check named in the PR.
  */
 
 #include "Label.h"
@@ -92,7 +94,7 @@ void testLabelElevationAnchor() {
     }
 
     // The bug, in one line: no data must not read as sea level. The anchor KEEPS 250 m rather than
-    // being buried at 0, and the label reports incomplete so the caller asks again.
+    // being buried at 0, and the label reports incomplete.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -137,6 +139,39 @@ void testLabelElevationAnchor() {
         // Sticky: a later miss does not un-anchor a label that already has a real height.
         label->updateElevation(constantHeight(std::numeric_limits<double>::quiet_NaN()));
         TEST_CHECK(label->isElevationAnchored(), "a later miss does not un-anchor it");
+    }
+
+    // The deck bit rides in attribs[3] alongside the offset mode, and labelVsh reads them separately:
+    // bit 0 is how to read the glyph offset, bit 1 is "this height is absolute, do not take the
+    // terrain's". Sharing a bit would silently make a deck label take the ground - see ShaderFlagTest
+    // for the same class of bug in the shader flags.
+    {
+        std::shared_ptr<Label> label = buildPointLabel();
+        label->updatePlacement(viewState);
+        label->updateElevation(constantHeight(300.0));
+
+        auto attribMode = [&](std::int8_t& mode) {
+            VertexArray<cglib::vec3<float>> vertices, offsets, normals;
+            VertexArray<cglib::vec2<std::int16_t>> texCoords;
+            VertexArray<cglib::vec4<std::int8_t>> attribs;
+            VertexArray<std::uint16_t> indices;
+            if (!label->calculateVertexData(1.0f, viewState, 0, -1, vertices, offsets, normals, texCoords, attribs, indices) || attribs.size() == 0) {
+                return false;
+            }
+            mode = attribs[0](3);
+            return true;
+        };
+
+        std::int8_t ground = 0, deck = 0;
+        TEST_CHECK(!label->hasAbsoluteHeight(), "a label is terrain-relative by default");
+        TEST_CHECK(attribMode(ground), "a ground label builds vertex data");
+        TEST_CHECK((ground & 2) == 0, "and carries no absolute-height bit");
+
+        label->setAbsoluteHeight(true);
+        TEST_CHECK(label->hasAbsoluteHeight(), "a deck label says so");
+        TEST_CHECK(attribMode(deck), "and still builds vertex data");
+        TEST_CHECK((deck & 2) != 0, "with the absolute-height bit set");
+        TEST_CHECK((deck & 1) == (ground & 1), "and the offset mode in bit 0 untouched");
     }
 
     // Repeated misses never drift: the anchor is the last KNOWN height however often it is asked.

@@ -1857,14 +1857,28 @@ namespace massif::vt {
         #ifdef LIGHTING_FSH
             vNormal = lightingNormal(aVertexNormal);
         #endif
-            vec3 offset = aVertexAttribs[3] > 0.5
+            // attribs[3] bit 0: how to read the glyph offset. Bit 1: the anchor height is ABSOLUTE.
+            vec3 offset = mod(aVertexAttribs[3], 2.0) > 0.5
                 ? uLabelAxisX * aVertexOffset.x + uLabelAxisY * aVertexOffset.y
                 : aVertexOffset;
+            // The anchor's height comes from the SAME elevation texture the surface is drawn from, so
+            // it cannot disagree with the ground, and a CPU height that was never resolved (or is
+            // stale) does not bury the label - mapbox elevates symbols the same way
+            // (symbol.vertex.glsl: z_offset + elevation(tile_anchor)).
+            // A deck label keeps the CPU height - a span chord is CPU-only data and is not the
+            // terrain's. Every other label takes the ground's, so a CPU height that was never resolved
+            // cannot bury it. This is mapbox's u_elevation_from_sea, per label instead of per layer.
+            highp vec3 anchorPos = aVertexPosition;
+        #ifdef TERRAIN
+            if (aVertexAttribs[3] < 1.5) {
+                anchorPos.z = applyTerrain(vec3(aVertexPosition.xy, 0.0)).z;
+            }
+        #endif
         #ifdef LABEL_OCCLUSION
             // Is the ANCHOR behind a 3D occluder? Four soft comparisons around it, averaged, so a label
             // fades as it slides behind a building and no single texel of a half-resolution buffer
             // decides it. Per LABEL, so a glyph run is never cut in half by a wall.
-            highp vec4 anchorClip = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            highp vec4 anchorClip = uMVPMatrix * vec4(anchorPos, 1.0);
             if (anchorClip.w > 0.0) {
                 highp vec2 anchorUV = anchorClip.xy / anchorClip.w * 0.5 + 0.5;
                 highp float anchorDepth = anchorClip.z / anchorClip.w * 0.5 + 0.5 + uLabelOcclusionParams.y;
@@ -1884,7 +1898,7 @@ namespace massif::vt {
                 vBorderColor *= occlusion;
             }
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition + offset, 1.0);
+            gl_Position = uMVPMatrix * vec4(anchorPos + offset, 1.0);
         }
     )GLSL";
 

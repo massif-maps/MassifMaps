@@ -1046,17 +1046,40 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   resolves through the manager's LRU alone, so it fails in exactly the case this is for. The LRU
   remains the fallback for a map with no texture cache at all, and the provider returns **NaN** when
   neither has data. `Label::applyElevation` leaves a non-finite vertex at the height it had and
-  returns false, and both anchoring sites keep such a label dirty so it is asked again. Zero stays a
-  legal height.
+  returns false, which leaves it **un-anchored**. Zero stays a legal height.
   Extrusions hit this first and were fixed the same way — see
   [04-terrain.md](04-terrain.md#cpu-height-queries).
+
+  The label is still marked **clean**, though. Only new elevation can change the answer, and
+  `markPendingLabelsDirty` re-dirties the label when it arrives — so retrying every frame bought
+  nothing, never converged, and was most of what `elevUpdMs` spends. What carries "height unknown" is
+  `isElevationAnchored()`, not dirtiness. That is mapbox's split exactly: an approximate CPU height for
+  collision (`getAtPointOrZero`, defaulting to 0, `src/terrain/elevation.ts`), the true height on the
+  GPU, and no symbol ever hidden for missing elevation.
 
   A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
   occlusion test skips it: it still carries its flat decode height, and judging that against the
   terrain hides it under ground it is not behind. Anchoring is sticky — a later miss does not
   un-anchor a label that already has a real height.
 
-  **Mapbox does none of this, and that is the target.** `symbol.vertex.glsl` elevates a symbol in the
+  **The anchor's RENDER height now comes from the GPU**, so none of the above can misplace a label on
+  screen — it only decides what the culler sees. `labelVsh` calls the surface's own `applyTerrain` on
+  the anchor and uses the result for both `gl_Position` and the occlusion tap. Three things make that
+  possible: `renderLabelPass` groups labels by anchor tile when terrain is on (a batch elevates
+  against one tile's uniforms, so interleaved labels would end the batch every time), the batch binds
+  them with `setupTerrainUniforms(prog, batch.tileId, translate4(origin), false)` — which derives the
+  elevation uv from the vertex frame it is handed, so no conversion is needed — and the label
+  occlusion texture moves to unit **2**, because elevation owns 1 and the node texture 5.
+
+  A label on a bridge **deck** keeps its CPU height instead: a span chord is CPU-only data and is not
+  the terrain's. `attribs[3]` carries that as bit 1 (`ABSOLUTE_HEIGHT`) next to the offset mode in
+  bit 0, set by one `chordHeightAt` test per label at each anchoring site — the height function
+  answers per vertex and cannot report which of its two sources it used. This is mapbox's
+  `u_elevation_from_sea`, per label rather than per layer, and it is the same mechanism a label
+  sitting on top of a 3D building will need (there with a non-zero z-offset rather than an absolute
+  height).
+
+  **What is still CPU-side, and why the cost has not gone yet.** `symbol.vertex.glsl` elevates a symbol in the
   **vertex shader** — `z_offset + elevation(tile_anchor)`, where `elevation()` is a DEM *texture*
   fetch (`_prelude_terrain.vertex.glsl`) from the same texture the ground is drawn from. So a symbol
   is at the ground's height by construction, in the same frame, at no CPU cost, and "elevation not

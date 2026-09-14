@@ -417,8 +417,8 @@ namespace massif::vt {
         // rather than shifted, so the glyph run keeps following the profile it is drawn over.
         //
         // A non-finite height means the provider HAS no elevation there, which is not the same as 0:
-        // writing 0 buries the label under the terrain, and the caller would then mark it clean and
-        // never ask again. Such a vertex is left alone and 'false' keeps the label dirty.
+        // writing 0 buried the label under the terrain. Such a vertex is left alone, and 'false'
+        // leaves the label un-anchored - which is what keeps the occlusion test off it.
         bool changed = false;
         bool complete = true;
         std::size_t n = 0;
@@ -791,7 +791,7 @@ namespace massif::vt {
             return valid;
         }
         // Which frame the offsets below are expressed in; the shader reads it from attribs[3].
-        std::int8_t billboardMode = CAMERA_AXIS_OFFSET;
+        std::int8_t billboardMode = offsetMode(true);
         if (isLineRun()) {
             // The drawn run has to follow the line as THIS view projects it - this is the caller
             // that rebuilds it (see updateLineVertexData).
@@ -815,7 +815,7 @@ namespace massif::vt {
             else {
                 // Flat on the surface: the run was laid out on the placement's own tangent frame,
                 // so span it here and hand the shader a world offset.
-                billboardMode = WORLD_OFFSET;
+                billboardMode = offsetMode(false);
                 for (std::size_t i = 0; i < _cachedVertices.size(); i++) {
                     float s = vertexScale(i);
                     offsets.append(xAxis * (_cachedVertices[i](0) * s) + yAxis * (_cachedVertices[i](1) * s));
@@ -861,7 +861,7 @@ namespace massif::vt {
             } else {
                 // Axes come from the placement (or from the placement normal and the camera
                 // up vector) - span the offset here and hand the shader a world offset.
-                billboardMode = WORLD_OFFSET;
+                billboardMode = offsetMode(false);
                 for (std::size_t i = 0; i < _cachedVertices.size(); i++) {
                     float s = vertexScale(i);
                     offsets.append(xAxis * (_cachedVertices[i](0) * s) + yAxis * (_cachedVertices[i](1) * s));
@@ -1053,7 +1053,7 @@ namespace massif::vt {
                 std::int16_t sv0 = static_cast<std::int16_t>(row.t0), sv1 = static_cast<std::int16_t>(row.t1);
                 texCoords.append(cglib::vec2<std::int16_t>(su0, sv0), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su0, sv1));
 
-                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
+                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * 127.0f), offsetMode(cameraAxes));
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 const cglib::vec2<float> corners[4] = {
@@ -1096,7 +1096,7 @@ namespace massif::vt {
         normals.fill(placement->normal, lineOffsets.size());
         texCoords.copy(lineTexCoords, 0, lineTexCoords.size());
         for (const cglib::vec4<std::int8_t>& attrib : lineAttribs) {
-            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), CAMERA_AXIS_OFFSET));
+            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), offsetMode(true)));
         }
         for (std::uint16_t idx : lineIndices) {
             indices.append(idx + indexOffset);

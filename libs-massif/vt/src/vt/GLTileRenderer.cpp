@@ -1325,8 +1325,10 @@ namespace massif::vt {
             std::lock_guard<std::mutex> lock(_mutex);
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
                 if (dirtyLabels[i]->isElevationDirty()) {
-                    dirtyLabels[i]->applyElevation(positions[i]);
-                    dirtyLabels[i]->setElevationDirty(false);
+                    // Stays dirty where the provider had no elevation: marking it clean anchored the
+                    // label at the surface origin, under the terrain, and nothing ever asked again.
+                    bool complete = dirtyLabels[i]->applyElevation(positions[i]);
+                    dirtyLabels[i]->setElevationDirty(!complete);
                 }
             }
             VT_STAT_SPLIT(labelAnchorNs, visibleClock);
@@ -2898,7 +2900,11 @@ namespace massif::vt {
         bool refresh = false;
         if (label->isValid()) {
             bool occluded = false;
-            if (_labelOcclusionTest && label->isVisible() && label->isActive()) {
+            // Not while the label's height is unknown: it still carries its flat decode height, and
+            // testing that against the terrain hides it under ground it is not actually behind.
+            // mapbox tests no symbol on elevation availability at all - it elevates them in the
+            // vertex shader, so the question cannot arise (symbol.vertex.glsl).
+            if (_labelOcclusionTest && label->isVisible() && label->isActive() && label->isElevationAnchored()) {
                 cglib::vec3<double> center(0, 0, 0);
                 if (label->calculateCenter(center)) {
                     occluded = _labelOcclusionTest(center);
@@ -4554,8 +4560,8 @@ namespace massif::vt {
         bool anchored = false;
         for (const std::shared_ptr<Label>& label : _labels) {
             if (label->isElevationDirty()) {
-                label->updateElevation(anchorFunc);
-                label->setElevationDirty(false);
+                bool complete = label->updateElevation(anchorFunc);
+                label->setElevationDirty(!complete);
                 anchored = true;
             }
         }

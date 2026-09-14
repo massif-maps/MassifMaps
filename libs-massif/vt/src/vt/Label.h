@@ -110,18 +110,24 @@ namespace massif::vt {
         // under one of its tiles changes - it costs one sample per line vertex. An already-anchored
         // label that is neither placed nor on screen DEFERS; one never anchored does not.
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
+        // Whether the label's heights are KNOWN. False while it still carries its flat decode height,
+        // which is what the terrain occlusion test must not judge - it would hide it under the ground.
+        bool isElevationAnchored() const { return _elevationAnchored; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
         bool hasGeometryOverTile(const TileId& tileId) const;
 
         void mergeGeometries(Label& label);
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
-        void updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
+        // False when the provider had no elevation for part of the geometry: those vertices keep the
+        // position they had, and the caller must leave the label dirty so it is asked again.
+        bool updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
         // updateElevation in two halves, so the sampling - one elevation lookup per vertex, the
         // whole cost - can run off the renderer's lock: sample reads the x,y of the geometry
-        // alone, apply writes the heights back under the lock and rebuilds the placement.
+        // alone, apply writes the positions back under the lock and rebuilds the placement.
+        // A non-finite sample means "no data here"; the surface origin would bury the label.
         std::vector<cglib::vec3<double>> sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const;
-        void applyElevation(const std::vector<cglib::vec3<double>>& positions);
+        bool applyElevation(const std::vector<cglib::vec3<double>>& positions);
 
         // Which part of a label a draw pass wants. CALLOUT leader lines are drawn in a pass of
         // their own, BEFORE all text, so that no label's line crosses another label's glyphs.

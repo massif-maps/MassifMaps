@@ -389,8 +389,8 @@ namespace massif::vt {
         return false;
     }
 
-    void Label::updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) {
-        applyElevation(sampleElevation(anchorFunc));
+    bool Label::updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) {
+        return applyElevation(sampleElevation(anchorFunc));
     }
 
     std::vector<cglib::vec3<double>> Label::sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const {
@@ -411,19 +411,25 @@ namespace massif::vt {
         return positions;
     }
 
-    void Label::applyElevation(const std::vector<cglib::vec3<double>>& positions) {
+    bool Label::applyElevation(const std::vector<cglib::vec3<double>>& positions) {
         // Refresh anchor heights from the elevation data: label geometry is built when the tile decodes,
         // possibly before its elevation arrives. A line placement is REBUILT from the re-anchored line
         // rather than shifted, so the glyph run keeps following the profile it is drawn over.
+        //
+        // A non-finite height means the provider HAS no elevation there, which is not the same as 0:
+        // writing 0 buries the label under the terrain, and the caller would then mark it clean and
+        // never ask again. Such a vertex is left alone and 'false' keeps the label dirty.
         bool changed = false;
-        _elevationAnchored = true;
+        bool complete = true;
         std::size_t n = 0;
         for (TilePoint& tilePoint : _tilePoints) {
             if (n >= positions.size()) {
-                return; // geometry grew since the sample (a merge): sampled again next time
+                return false; // geometry grew since the sample (a merge): sampled again next time
             }
             const cglib::vec3<double>& position = positions[n++];
-            if (position != tilePoint.position) {
+            if (!std::isfinite(cglib::norm(position))) {
+                complete = false;
+            } else if (position != tilePoint.position) {
                 tilePoint.position = position;
                 changed = true;
             }
@@ -431,10 +437,12 @@ namespace massif::vt {
         for (TileLine& tileLine : _tileLines) {
             for (cglib::vec3<double>& vertex : tileLine.vertices) {
                 if (n >= positions.size()) {
-                    return;
+                    return false;
                 }
                 const cglib::vec3<double>& position = positions[n++];
-                if (position != vertex) {
+                if (!std::isfinite(cglib::norm(position))) {
+                    complete = false;
+                } else if (position != vertex) {
                     vertex = position;
                     changed = true;
                 }
@@ -444,13 +452,16 @@ namespace massif::vt {
         // The elevation version is global - it moves whenever ANY tile decodes - while the labels
         // affected are only those over that tile. Re-anchoring one whose heights did not move drops its
         // cached vertex data and rebuilds its placement for nothing.
+        // Anchored means the heights are KNOWN, not merely that anchoring was attempted: a label
+        // still carrying its flat decode height must not be judged against the terrain.
+        _elevationAnchored = _elevationAnchored || complete;
         if (!changed) {
-            return;
+            return complete;
         }
         _geometryBBoxValid = false;
         VT_STAT_INC(labelElevationReanchors);
         if (!_placement) {
-            return;
+            return complete;
         }
 
         cglib::vec3<double> position = _placement->position;
@@ -470,7 +481,7 @@ namespace massif::vt {
             }
         }
         if (!placement) {
-            if (n < positions.size()) {
+            if (n < positions.size() && std::isfinite(cglib::norm(positions[n]))) {
                 position = positions[n];
             }
             auto pointPlacement = std::make_shared<Placement>(*_placement);
@@ -481,6 +492,7 @@ namespace massif::vt {
         _cachedFlippedPlacement.reset();
         _cachedPlacement.reset();
         _cachedValid = false;
+        return complete;
     }
 
     bool Label::updatePlacement(const ViewState& viewState) {

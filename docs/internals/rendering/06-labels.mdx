@@ -1021,6 +1021,41 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   screen of labels goes dirty at once while elevation streams in. It still has to run to completion:
   a label left dirty is drawn and culled at its old height, which reads as labels popping in at the
   wrong place and settling.
+
+  **"No elevation here" is not a height of zero.** `ElevationManager::getDisplayHeight` returns 0
+  both for sea level and for "the grid holding this point is not cached", and a grid is routinely
+  evicted while its texture keeps rendering. Anchoring a label on that 0 buries it under the terrain,
+  the occlusion test then hides it *correctly*, and the caller marks it clean so nothing ever asks
+  again. Measured in AlpiMaps on the Crosscall: no labels at all with 3D terrain on, and with
+  `BillboardOcclusionEnabled` off the same labels were visibly under the ground. `RenderStats` named
+  it in one line — `elevUpdMs` 1–180 ms with **`elevReanchor=0`**: the sampler ran every frame and
+  never moved a single label, because the 0 it wrote already matched the 0 that was there.
+
+  So the provider asks `ElevationTextureCache::getDisplayHeight` with **`smooth = false`** first, and
+  the flag is the whole point: that path reads the grid the *texture entry retains* — the one the
+  manager's LRU has already dropped out from under a tile that is still being drawn — walks to a
+  bounded ancestor, and prefetches what is missing. `smooth = true` is the building-BASE variant and
+  resolves through the manager's LRU alone, so it fails in exactly the case this is for. The LRU
+  remains the fallback for a map with no texture cache at all, and the provider returns **NaN** when
+  neither has data. `Label::applyElevation` leaves a non-finite vertex at the height it had and
+  returns false, and both anchoring sites keep such a label dirty so it is asked again. Zero stays a
+  legal height.
+  Extrusions hit this first and were fixed the same way — see
+  [04-terrain.md](04-terrain.md#cpu-height-queries).
+
+  A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
+  occlusion test skips it: it still carries its flat decode height, and judging that against the
+  terrain hides it under ground it is not behind. Anchoring is sticky — a later miss does not
+  un-anchor a label that already has a real height.
+
+  **Mapbox does none of this, and that is the target.** `symbol.vertex.glsl` elevates a symbol in the
+  **vertex shader** — `z_offset + elevation(tile_anchor)`, where `elevation()` is a DEM *texture*
+  fetch (`_prelude_terrain.vertex.glsl`) from the same texture the ground is drawn from. So a symbol
+  is at the ground's height by construction, in the same frame, at no CPU cost, and "elevation not
+  loaded" cannot bury it because the ground is not drawn there either. Their CPU `getAtPointOrZero`
+  exists only for the collision index and defaults to 0 without ever hiding a symbol. Everything
+  above — the sampling cost, the dirty/anchored bookkeeping, the unknown-height window — is the price
+  of anchoring on the CPU instead.
   **This is the most expensive thing on the render thread over 3D terrain** — measured at ~750 000
   elevation samples per frame on the north pan with a full style, 82% of the render thread. Two
   faults made it that: `TileRenderer` classified every arriving DEM tile as a *scale-only* change

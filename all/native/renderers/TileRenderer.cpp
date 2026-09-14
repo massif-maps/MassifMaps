@@ -29,6 +29,8 @@
 #endif
 #include "utils/Const.h"
 
+#include <limits>
+
 #include <vt/Label.h>
 #include <vt/LabelCuller.h>
 #include <vt/TileTransformer.h>
@@ -986,8 +988,24 @@ namespace massif {
             // Labels are anchored when their tile is decoded, possibly before elevation
             // data arrives - re-anchor them whenever the elevation version changes
             std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
-            tileRenderer->setLabelElevationProvider([elevationManager](const cglib::vec3<double>& pos) {
-                return elevationManager->getDisplayHeight(pos(0), pos(1), ElevationManager::LoadMode::CACHED_ONLY);
+            // smooth=FALSE on purpose: that path asks the grid the TEXTURE entry retains, walks to a
+            // bounded ancestor and prefetches what is missing, so it answers where the manager's LRU
+            // has already dropped the grid out from under a tile that is still being drawn. The
+            // smoothed variant is for a building BASE and resolves through that LRU alone.
+            // The LRU is still the fallback for a map with no texture cache (no GPU draping).
+            // NaN only when neither has data: returning 0 there anchored the label under the terrain,
+            // and the caller then marked it clean for good.
+            std::shared_ptr<ElevationTextureCache> labelTextureCache = _elevationTextureCache;
+            int labelZoom = static_cast<int>(viewState.getZoom());
+            tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom](const cglib::vec3<double>& pos) {
+                double height = 0;
+                if (labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height)) {
+                    return height;
+                }
+                if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
+                    return height;
+                }
+                return std::numeric_limits<double>::quiet_NaN();
             });
             // Label anchors come through in INTERNAL coordinates; the span chords are in vt's
             // normalized ones, and a deck lookup needs them in the same space.

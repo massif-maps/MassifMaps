@@ -85,6 +85,19 @@ namespace massif {
         // Where the current frame spent its time. Reset at the start of every frame.
         static inline double skyMs = 0;        // frame start: state, sky, background (includes the swap-buffer wait)
         static inline double preludeMs = 0;    // terrain depth pre-pass / occlusion depth read-back
+        // prelude's own split: it holds five unrelated things and dominates a 3D pan, and its GPU
+        // time is 0.0, so the answer is which CPU step - not which draw.
+        static inline double preTerrainMs = 0;   // terrain surface / background fill, incl. its elevation walk
+        static inline double preDepthMs = 0;     // occlusion depth buffer refresh (read-back when sync)
+        static inline double preClearanceMs = 0; // camera clearance: one elevation lookup, on ElevationManager's lock
+        static inline double prePaintMs = 0;     // terrain paint tile list, per frame, into the vt renderer
+        static inline double prePaintPushMs = 0;   // ... of which the push itself, which takes the vt lock
+        static inline double prePaintLayersMs = 0; // ... collectDrapeLayers, which takes a composite's _sourceMutex
+        static inline double prePaintLayerLockMs = 0; // ... of which waiting for that _sourceMutex
+        static inline double prePaintCoverMs = 0;  // ... the terrain's own visible tile walk
+        static inline double preHeadMs = 0;        // frame start to the terrain fill: layer list, depth-write walk
+        static inline double preTailMs = 0;        // the paint block to the end: drape layer walk, cache setup
+        static inline double preTailCacheMs = 0;   // ... of which the drape cache setup alone
         static inline double prepareMs = 0;    // per-layer startFrame (label re-anchoring, blending state)
         static inline double coverMs = 0;      // drape cover computation
         static inline double drapeMs = 0;      // drape bakes + terrain surface draws
@@ -98,6 +111,9 @@ namespace massif {
 
         static void resetFrame() {
             skyMs = preludeMs = prepareMs = coverMs = drapeMs = layerMs = layer3DMs = billboardMs = 0;
+            preTerrainMs = preDepthMs = preClearanceMs = prePaintMs = prePaintPushMs = 0;
+            prePaintLayersMs = prePaintCoverMs = prePaintLayerLockMs = 0;
+            preHeadMs = preTailMs = preTailCacheMs = 0;
             GpuFrameProfiler::beginFrame();
         }
 
@@ -153,13 +169,27 @@ namespace massif {
                        layer3DMs, billboardMs, other,
                        delta.tileSets, delta.labelMaps, delta.labelsAlloc, delta.snaps,
                        delta.cullPasses, delta.geomDraws, delta.surfBuilt);
+            logPreludeSplit();
 #else
             Log::Infof("PROF SPIKE: frame %.1f ms | sky %.1f prelude %.1f prepare %.1f cover %.1f "
                        "drape %.1f layers %.1f layers3D %.1f billboards %.1f other %.1f "
                        "| (build with MASSIF_VT_RENDER_STATS=1 for the per-frame counters)",
                        frameMs, skyMs, preludeMs, prepareMs, coverMs, drapeMs, layerMs,
                        layer3DMs, billboardMs, other);
+            logPreludeSplit();
 #endif
+        }
+
+        // Only on a spike, and only when prelude is the reason for it - 'rest' is the layer walk.
+        static void logPreludeSplit() {
+            if (preludeMs < 20.0) {
+                return;
+            }
+            Log::Infof("PROF PRELUDE: %.1f ms | head %.1f terrain %.1f depth %.1f clearance %.1f "
+                       "paintTiles %.1f (layers %.1f [lock %.1f] cover %.1f push %.1f) tail %.1f (cache %.1f) rest %.1f",
+                       preludeMs, preHeadMs, preTerrainMs, preDepthMs, preClearanceMs, prePaintMs,
+                       prePaintLayersMs, prePaintLayerLockMs, prePaintCoverMs, prePaintPushMs, preTailMs, preTailCacheMs,
+                       preludeMs - preHeadMs - preTerrainMs - preDepthMs - preClearanceMs - prePaintMs - preTailMs);
         }
 
         // Accumulates one frame and prints the running averages once a second. 'frameMs' is

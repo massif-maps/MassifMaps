@@ -136,6 +136,7 @@ namespace massif::vt {
         // SDK's TileRenderer::refreshTiles, the rest are the phases of setVisibleTiles it calls -
         // so refreshTilesNs contains all of them.
         static inline std::atomic<long long> refreshTilesLockNs{0};    // waiting for the tile mutex the tile threads hold
+        static inline std::atomic<long long> tileRendererLockNs{0};    // the OTHER side: render thread waiting for that same mutex
         static inline std::atomic<long long> refreshTilesNs{0};        // the changed path only
         static inline std::atomic<long long> setVisibleTilesLockNs{0}; // waiting for the renderer mutex
         static inline std::atomic<long long> terrainCoarseningNs{0};
@@ -148,6 +149,33 @@ namespace massif::vt {
         // one costs. This is what decides how fast 3D content appears.
         static inline std::atomic<long long> drapeBakes{0};
         static inline std::atomic<long long> drapeBakeQueued{0};
+        // WHY a tile is in the queue, which is the difference between "the map is still filling in"
+        // and "something invalidates tiles that are already correct". A static scene queueing stale
+        // or restack tiles every frame is the second.
+        static inline std::atomic<long long> drapeQueuedBlank{0};   // no picture at all: a hole
+        static inline std::atomic<long long> drapeQueuedRestack{0}; // the layer stack changed under it
+        static inline std::atomic<long long> drapeQueuedStandIn{0}; // an ancestor's picture is showing
+        static inline std::atomic<long long> drapeQueuedPartial{0}; // a layer is absent from it
+        static inline std::atomic<long long> drapeQueuedStale{0};   // its own picture, older fingerprint
+        // What made a baked tile need baking again: its own fingerprint moved, or its coverage masks
+        // were evicted on their own. Different faults, and only one of them is about the light.
+        static inline std::atomic<long long> drapeStaleFingerprint{0};
+        static inline std::atomic<long long> drapeStaleMask{0};
+        // The fingerprint terms shared by EVERY tile (scene radiance, background emissive). If these
+        // move on a still camera, every cached drape goes stale at once however correct it still is.
+        static inline std::atomic<long long> drapeGlobalTermChanges{0};
+        // The drape cache itself: what it throws away, and whether a mask could be given a texture
+        // at all. A mask that never bakes makes its whole tile re-bake every frame, for ever.
+        // What a bake spends its time on, by geometry type: a line drape visibly lags a fill one.
+        static inline std::atomic<long long> drapeBakeLineNs{0};
+        static inline std::atomic<long long> drapeBakeLineDraws{0};
+        static inline std::atomic<long long> drapeBakePolygonNs{0};
+        static inline std::atomic<long long> drapeBakePolygonDraws{0};
+        static inline std::atomic<long long> drapeBakeOtherNs{0};
+        static inline std::atomic<long long> drapeBakeOtherDraws{0};
+        static inline std::atomic<long long> drapeEvictColour{0};
+        static inline std::atomic<long long> drapeEvictMask{0};
+        static inline std::atomic<long long> drapeMaskAcquireFail{0};
         static inline std::atomic<long long> drapeBakeNs{0};
         static inline std::atomic<long long> geometrySkips{0};   // renderTileGeometry calls that set up and then bailed out (invisible)
 

@@ -336,6 +336,46 @@ namespace massif {
                        bakes - lastBakes, queued - lastQueued, (bakeNs - lastBakeNs) / 1.0e6,
                        (bakeNs - lastBakeNs) / 1.0e6 / std::max(1LL, bakes - lastBakes));
             lastBakes = bakes; lastBakeNs = bakeNs; lastQueued = queued;
+            static long long lastDrapeClass[5] = { 0 };
+            const long long drapeClass[5] = {
+                RenderStats::drapeQueuedBlank.load(), RenderStats::drapeQueuedRestack.load(),
+                RenderStats::drapeQueuedStandIn.load(), RenderStats::drapeQueuedPartial.load(),
+                RenderStats::drapeQueuedStale.load()
+            };
+            Log::Infof("RenderStats: drape queued blank=%lld restack=%lld standIn=%lld partial=%lld stale=%lld (per interval)",
+                       drapeClass[0] - lastDrapeClass[0], drapeClass[1] - lastDrapeClass[1],
+                       drapeClass[2] - lastDrapeClass[2], drapeClass[3] - lastDrapeClass[3],
+                       drapeClass[4] - lastDrapeClass[4]);
+            for (int i = 0; i < 5; i++) { lastDrapeClass[i] = drapeClass[i]; }
+            static long long lastStaleWhy[3] = { 0 };
+            const long long staleWhy[3] = {
+                RenderStats::drapeStaleFingerprint.load(), RenderStats::drapeStaleMask.load(),
+                RenderStats::drapeGlobalTermChanges.load()
+            };
+            Log::Infof("RenderStats: drape stale fingerprint=%lld mask=%lld | globalTermChanges=%lld (per interval)",
+                       staleWhy[0] - lastStaleWhy[0], staleWhy[1] - lastStaleWhy[1],
+                       staleWhy[2] - lastStaleWhy[2]);
+            for (int i = 0; i < 3; i++) { lastStaleWhy[i] = staleWhy[i]; }
+            static long long lastDrapeEvict[3] = { 0 };
+            const long long drapeEvict[3] = {
+                RenderStats::drapeEvictColour.load(), RenderStats::drapeEvictMask.load(),
+                RenderStats::drapeMaskAcquireFail.load()
+            };
+            static long long lastBakeType[6] = { 0 };
+            const long long bakeType[6] = {
+                RenderStats::drapeBakeLineNs.load(), RenderStats::drapeBakeLineDraws.load(),
+                RenderStats::drapeBakePolygonNs.load(), RenderStats::drapeBakePolygonDraws.load(),
+                RenderStats::drapeBakeOtherNs.load(), RenderStats::drapeBakeOtherDraws.load()
+            };
+            Log::Infof("RenderStats: drape bake lines=%lldms/%lld polygons=%lldms/%lld other=%lldms/%lld (per interval)",
+                       (bakeType[0] - lastBakeType[0]) / 1000000, bakeType[1] - lastBakeType[1],
+                       (bakeType[2] - lastBakeType[2]) / 1000000, bakeType[3] - lastBakeType[3],
+                       (bakeType[4] - lastBakeType[4]) / 1000000, bakeType[5] - lastBakeType[5]);
+            for (int i = 0; i < 6; i++) { lastBakeType[i] = bakeType[i]; }
+            Log::Infof("RenderStats: drape evicted colour=%lld mask=%lld | maskAcquireFail=%lld (per interval)",
+                       drapeEvict[0] - lastDrapeEvict[0], drapeEvict[1] - lastDrapeEvict[1],
+                       drapeEvict[2] - lastDrapeEvict[2]);
+            for (int i = 0; i < 3; i++) { lastDrapeEvict[i] = drapeEvict[i]; }
             // The elevation texture pipeline, which is what extra DEM detail multiplies.
             static long long lastDem[6] = { 0 };
             const long long dem[6] = {
@@ -349,10 +389,13 @@ namespace massif {
                        RenderStats::demTexturesLive.load(), RenderStats::demTexturesResolved.load(), RenderStats::demTileZoomGap.load());
             for (int i = 0; i < 6; i++) { lastDem[i] = dem[i]; }
 
-            Log::Infof("RenderStats: endFrame ms=%.1f swept=%lld labelLockWaitMs=%.1f (per interval)",
+            static long long lastTileLockWait = 0;
+            long long tileLockWait = RenderStats::tileRendererLockNs.load();
+            Log::Infof("RenderStats: endFrame ms=%.1f swept=%lld labelLockWaitMs=%.1f tileLockWaitMs=%.1f (per interval)",
                        (endFrameNs - lastEndFrame) / 1.0e6, swept - lastSwept,
-                       (mutexWait - lastMutexWait) / 1.0e6);
-            lastMutexWait = mutexWait;
+                       (mutexWait - lastMutexWait) / 1.0e6,
+                       (tileLockWait - lastTileLockWait) / 1.0e6);
+            lastMutexWait = mutexWait; lastTileLockWait = tileLockWait;
             lastEndFrame = endFrameNs; lastSwept = swept;
 
             // Where one geometry draw goes, in microseconds. 'skips' are calls that set up and
@@ -2508,8 +2551,10 @@ namespace massif {
                     // Terrain base fill, before all tile layers so it shows through translucent
                     // content. COLOR-ONLY under a depth-writing tile layer (kept fill depth clips the
                     // differently-tesselated content); without one it is the occlusion depth source.
+                    FRAME_PROF_ADD(preHeadMs, profDrawStart);
                     bool depthSourceRendered = false;
                     {
+                        FRAME_PROF_NOW(profTerrainStart);
                         if (!_terrainRenderer) {
                             _terrainRenderer = std::make_unique<TerrainRenderer>();
                     _terrainRenderer->setTileTransformer(_options->getTileTransformer());
@@ -2552,8 +2597,10 @@ namespace massif {
                         if (!depthSourceRendered && !depthWriteAssigned) {
                             _terrainRenderer->renderDepthPrepass(viewState, terrainOptions, _glResourceManager);
                         }
+                        FRAME_PROF_ADD(preTerrainMs, profTerrainStart);
                     }
                     if (terrainOptions->isBillboardOcclusionEnabled()) {
+                        FRAME_PROF_NOW(profDepthStart);
                         // Pixel-exact terrain depth buffer for label/billboard occlusion tests
                         if (!_terrainRenderer) {
                             _terrainRenderer = std::make_unique<TerrainRenderer>();
@@ -2566,12 +2613,14 @@ namespace massif {
                             // camera settles rather than on the next unrelated redraw.
                             requestRedraw();
                         }
+                        FRAME_PROF_ADD(preDepthMs, profDepthStart);
                     }
 
                     // The clearance is a BOUND on the zoom, not a corrective event - a correction
                     // fights whatever drives the camera down and oscillates. mapbox's model
                     // (transform._constrainCamera), see docs/internals/rendering/04-terrain.md.
                     {
+                        FRAME_PROF_NOW(profClearanceStart);
                         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
                         // Through the surface: a camera position is a point in 3D on a globe, and an
                         // ORBIT is a world length where a height is an internal one - 2x apart there.
@@ -2585,6 +2634,7 @@ namespace massif {
                             std::lock_guard<std::recursive_mutex> lock(_mutex);
                             _viewState.setTerrainCameraReference(terrainZ, clearanceFloor);
                         }
+                        FRAME_PROF_ADD(preClearanceMs, profClearanceStart);
                     }
                 }
             }
@@ -2613,15 +2663,18 @@ namespace massif {
             // the terrain's own cover. Pushed every frame, before any layer draws, and harmless
             // for a paint that does bake (it ignores the list).
             if (auto paintTerrainOptions = _options->getTerrainOptions()) {
+                FRAME_PROF_NOW(profPaintStart);
                 std::vector<std::shared_ptr<TileLayer> > paintLayers;
                 for (const std::shared_ptr<Layer>& layer : layers) {
                     layer->collectDrapeLayers(paintLayers, viewState);
                 }
+                FRAME_PROF_ADD(prePaintLayersMs, profPaintStart);
                 bool anyPaint = false;
                 for (const std::shared_ptr<TileLayer>& tileLayer : paintLayers) {
                     anyPaint = anyPaint || tileLayer->paintsEveryDrapeTile();
                 }
                 if (anyPaint && _terrainRenderer) {
+                    FRAME_PROF_NOW(profPaintCoverStart);
                     std::vector<MapTile> terrainTiles;
                     _terrainRenderer->collectVisibleTiles(viewState, paintTerrainOptions, terrainTiles);
                     std::vector<vt::TileId> paintTileIds;
@@ -2629,13 +2682,18 @@ namespace massif {
                     for (const MapTile& terrainTile : terrainTiles) {
                         paintTileIds.emplace_back(terrainTile.getZoom(), terrainTile.getX(), terrainTile.getY());
                     }
+                    FRAME_PROF_ADD(prePaintCoverMs, profPaintCoverStart);
+                    FRAME_PROF_NOW(profPaintPushStart);
                     for (const std::shared_ptr<TileLayer>& tileLayer : paintLayers) {
                         if (tileLayer->paintsEveryDrapeTile()) {
                             tileLayer->setTerrainPaintTiles(paintTileIds);
                         }
                     }
+                    FRAME_PROF_ADD(prePaintPushMs, profPaintPushStart);
                 }
+                FRAME_PROF_ADD(prePaintMs, profPaintStart);
             }
+            FRAME_PROF_NOW(profTailStart);
             if (auto terrainOptions = _options->getTerrainOptions()) {
                 if (terrainOptions->isDrapeFillsEnabled()) {
                     // Layers report their own drapeable tile layers, so a composite layer can
@@ -2654,6 +2712,7 @@ namespace massif {
                     }
                     if (!groundLayers.empty()) {
                         // Every layer's render tiles must exist before the cover is read from them.
+                        FRAME_PROF_ADD(preTailMs, profTailStart);
                         FRAME_PROF_ADD(preludeMs, profDrawStart);
                         FRAME_PROF_NOW(profPrepareStart);
                         FRAME_PROF_GPU_BEGIN(SECTION_PREPARE);
@@ -2796,6 +2855,7 @@ namespace massif {
                 // is contiguous and entirely drapeable. Splitting into several stacks only
                 // matters once a non-drapeable layer sits between drapeable ones.
                 if (!drapeLayers.empty()) {
+                    FRAME_PROF_NOW(profTailCacheStart);
                     if (!_terrainDrapeCache) {
                         _terrainDrapeCache = std::make_unique<TerrainDrapeCache>();
                     }
@@ -2811,9 +2871,11 @@ namespace massif {
                         stackSignature ^= layerHash + 0x9e3779b9 + (stackSignature << 6) + (stackSignature >> 2);
                     }
                     _terrainDrapeCache->setStackSignature(stackSignature);
+                    FRAME_PROF_ADD(preTailCacheMs, profTailCacheStart);
 
                     // Every participating layer's render tiles must exist before any of them
                     // bakes, so start their frames first.
+                    FRAME_PROF_ADD(preTailMs, profTailStart);
                     FRAME_PROF_ADD(preludeMs, profDrawStart);
                     FRAME_PROF_NOW(profPrepareStart);
                     FRAME_PROF_GPU_BEGIN(SECTION_PREPARE);
@@ -3113,6 +3175,7 @@ namespace massif {
                         bool needsBake = false;
                         bool hasContent = false;
                         unsigned int texture = _terrainDrapeCache->acquire(it->first, 0, it->second, needsBake, hasContent);
+                        bool fingerprintStale = needsBake;
                         if (!hasContent && seedTile(it->first, texture)) {
                             _terrainDrapeCache->markSeeded(it->first, 0);
                             hasContent = true;
@@ -3200,6 +3263,11 @@ namespace massif {
                         }
                         if (!needsBake) {
                             continue;
+                        }
+                        if (fingerprintStale) {
+                            VT_STAT_INC(drapeStaleFingerprint);
+                        } else {
+                            VT_STAT_INC(drapeStaleMask);
                         }
                         BakeRequest request { it->first, it->second, drapedIndex };
                         if (baked && _terrainDrapeCache->isStale(it->first, 0)) {
@@ -3323,6 +3391,7 @@ namespace massif {
                             bool maskNeedsBake = false, maskHasContent = false;
                             unsigned int maskTexture = _terrainDrapeCache->acquire(request.tileId, static_cast<int>(k) + 1, maskFingerprint, maskNeedsBake, maskHasContent);
                             if (maskTexture == 0) {
+                                VT_STAT_INC(drapeMaskAcquireFail); // never markBaked: this tile re-bakes next frame too
                                 continue;
                             }
                             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, maskTexture, 0);
@@ -3369,6 +3438,11 @@ namespace massif {
                     double bakeTimeBudget = (bakeCameraMoving ? DRAPE_BAKE_TIME_BUDGET : DRAPE_BAKE_TIME_BUDGET_STILL);
                     std::chrono::steady_clock::time_point bakeStart = std::chrono::steady_clock::now();
                     VT_STAT_ADD(drapeBakeQueued, static_cast<long long>(blankTiles.size() + restackTiles.size() + standInTiles.size() + partialTiles.size() + staleTiles.size()));
+                    VT_STAT_ADD(drapeQueuedBlank, static_cast<long long>(blankTiles.size()));
+                    VT_STAT_ADD(drapeQueuedRestack, static_cast<long long>(restackTiles.size()));
+                    VT_STAT_ADD(drapeQueuedStandIn, static_cast<long long>(standInTiles.size()));
+                    VT_STAT_ADD(drapeQueuedPartial, static_cast<long long>(partialTiles.size()));
+                    VT_STAT_ADD(drapeQueuedStale, static_cast<long long>(staleTiles.size()));
                     auto bakeTimeLeft = [&bakeStart, &bakedThisFrame, bakeTimeBudget]() {
                         if (bakedThisFrame == 0) {
                             return true; // always make progress

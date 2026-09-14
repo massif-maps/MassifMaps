@@ -758,7 +758,7 @@ namespace massif::vt {
         return cglib::dot_product(viewState.orientation[2], placement.normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
     }
 
-    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass, const LabelPlateIndices& plates, int secondaryStyleIndex, int iconStyleIndex, int iconHaloStyleIndex) const {
+    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass, const LabelPlateIndices& plates, int secondaryStyleIndex, int iconStyleIndex, int iconHaloStyleIndex, bool buildNormals) const {
         VT_STAT_CLOCK(labelClock);
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         VT_STAT_SPLIT(labelPlacementNs, labelClock);
@@ -787,7 +787,7 @@ namespace massif::vt {
         // Build vertex data cache
         bool valid = isSurfaceFacingView(viewState, *placement);
         if (pass == DrawPass::CALLOUT_LINE) {
-            appendCalloutLine(size, scale, viewState, placement, styleIndex, vertices, offsets, normals, texCoords, attribs, indices);
+            appendCalloutLine(size, scale, viewState, placement, styleIndex, vertices, offsets, normals, texCoords, attribs, indices, buildNormals);
             return valid;
         }
         // Which frame the offsets below are expressed in; the shader reads it from attribs[3].
@@ -848,7 +848,7 @@ namespace massif::vt {
                 calloutShift = calculateCalloutShift(scale, 1.0f / size)
                     + cglib::vec2<float>(0, calculateCalloutLift(viewState) * calculatePixelToWorld(viewState, *placement, pixelScale));
             }
-            appendLabelPlates(size, scale, placement, plates, calloutShift, origin, xAxis, yAxis, vertices, offsets, normals, texCoords, attribs, indices);
+            appendLabelPlates(size, scale, placement, plates, calloutShift, origin, xAxis, yAxis, vertices, offsets, normals, texCoords, attribs, indices, buildNormals);
             vertices.fill(origin, _cachedVertices.size());
             if (_style->orientation == LabelOrientation::BILLBOARD_3D || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D || _style->orientation == LabelOrientation::CALLOUT) {
                 // Axes are the camera's: leave them to the shader. A callout is lifted along the camera
@@ -870,7 +870,14 @@ namespace massif::vt {
         }
 
         VT_STAT_SPLIT(labelTransformNs, labelClock);
-        normals.fill(placement->normal, _cachedVertices.size());
+        // Only where something will read them: aVertexNormal exists in labelVsh solely under
+        // LIGHTING_*, which is compiled in for a NON-planar projection. A planar map filled a
+        // normal per vertex per label per frame and uploaded none of it.
+        if (buildNormals) {
+            if (buildNormals) {
+                normals.fill(placement->normal, _cachedVertices.size());
+            }
+        }
         texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
 
         // The icon's halo lives in this pass too, so an icon keeps its outline on a label whose
@@ -923,7 +930,7 @@ namespace massif::vt {
         }
 
         if (pass == DrawPass::ALL) {
-            appendCalloutLine(size, scale, viewState, placement, styleIndex, vertices, offsets, normals, texCoords, attribs, indices);
+            appendCalloutLine(size, scale, viewState, placement, styleIndex, vertices, offsets, normals, texCoords, attribs, indices, buildNormals);
         }
 
         VT_STAT_SPLIT(labelAttribNs, labelClock);
@@ -971,7 +978,7 @@ namespace massif::vt {
         });
     }
 
-    void Label::appendLabelPlates(float size, float scale, const std::shared_ptr<const Placement>& placement, const LabelPlateIndices& plates, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    void Label::appendLabelPlates(float size, float scale, const std::shared_ptr<const Placement>& placement, const LabelPlateIndices& plates, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool buildNormals) const {
         if (!(size > 0)) {
             return;
         }
@@ -997,13 +1004,13 @@ namespace massif::vt {
             // The quad is the plate's outer shape, border included - the cell was built that way.
             cglib::bbox2<float> plateBox = calculatePlateBox(*layer.box, plate.style, plate.borderWidth, scale, pixelScale);
             std::int8_t mode = static_cast<std::int8_t>(plate.drawsBorder() ? GlyphMap::GlyphMode::PLATE : GlyphMap::GlyphMode::BITMAP);
-            appendPlate(plateBox, *plate.glyph, plate.radius * pixelScale, layer.styleIndex, mode, cameraAxes, layer.box == &_textBBox, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
+            appendPlate(plateBox, *plate.glyph, plate.radius * pixelScale, layer.styleIndex, mode, cameraAxes, layer.box == &_textBBox, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices, buildNormals);
         }
     }
 
     // 'plateBox' and 'radius' are already in the label's own units (screen pixels times the label
     // scale), like the glyph offsets around them.
-    void Label::appendPlate(const cglib::bbox2<float>& plateBox, const GlyphMap::Glyph& glyph, float radius, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    void Label::appendPlate(const cglib::bbox2<float>& plateBox, const GlyphMap::Glyph& glyph, float radius, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool buildNormals) const {
         // The cell is barely wider than its corner radius, so it is cut into NINE: corners keep the
         // radius, edges stretch along one axis, the centre fills. Stretching the whole cell flattens
         // every arc into an ellipse.
@@ -1061,7 +1068,9 @@ namespace massif::vt {
                     cglib::vec2<float>(col.p1, row.p1), cglib::vec2<float>(col.p0, row.p1)
                 };
                 vertices.fill(origin, 4);
-                normals.fill(placement->normal, 4);
+                if (buildNormals) {
+                    normals.fill(placement->normal, 4);
+                }
                 for (int c = 0; c < 4; c++) {
                     cglib::vec2<float> p = cglib::transform(corners[c], transform);
                     if (cameraAxes) {
@@ -1074,7 +1083,7 @@ namespace massif::vt {
         }
     }
 
-    void Label::appendCalloutLine(float size, float scale, const ViewState& viewState, const std::shared_ptr<const Placement>& placement, int styleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    void Label::appendCalloutLine(float size, float scale, const ViewState& viewState, const std::shared_ptr<const Placement>& placement, int styleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool buildNormals) const {
         if (_style->orientation != LabelOrientation::CALLOUT || !_style->calloutLineGlyph || !(_style->calloutLineWidth > 0) || !(size > 0)) {
             return;
         }
@@ -1093,7 +1102,9 @@ namespace massif::vt {
         setupCoordinateSystem(viewState, placement, lineOrigin, lineXAxis, lineYAxis);
         vertices.fill(lineOrigin, lineOffsets.size());
         offsets.copy(lineOffsets, 0, lineOffsets.size());
-        normals.fill(placement->normal, lineOffsets.size());
+        if (buildNormals) {
+            normals.fill(placement->normal, lineOffsets.size());
+        }
         texCoords.copy(lineTexCoords, 0, lineTexCoords.size());
         for (const cglib::vec4<std::int8_t>& attrib : lineAttribs) {
             attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), offsetMode(true)));

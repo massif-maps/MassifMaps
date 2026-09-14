@@ -29,6 +29,7 @@ void testRenderTileBlend();
 void testLabelSlice();
 void testLayerContentFlags();
 void testViewStateMatrix();
+void testLabelNormalBuild();
 void testCollisionPadding();
 void testLabelAnchorAlign();
 void testLabelElevationAnchor();
@@ -63,6 +64,7 @@ int main() {
     testLabelSlice();
     testLayerContentFlags();
     testViewStateMatrix();
+    testLabelNormalBuild();
     testCollisionPadding();
     testLabelAnchorAlign();
     testLabelElevationAnchor();

@@ -3,6 +3,7 @@
 #include "layers/RasterTileLayer.h"
 #include "layers/HillshadeRasterTileLayer.h"
 #include "vectortiles/MBVectorTileDecoder.h"
+#include "vectortiles/StyleConfigZoom.h"
 #include "rastertiles/ElevationDecoder.h"
 #include "rastertiles/TerrariumElevationDataDecoder.h"
 #include "rastertiles/MapBoxElevationDataDecoder.h"
@@ -378,13 +379,17 @@ namespace massif {
     // prelude, for an answer that only moves when the zoom or the style does. Caller holds
     // _sourceMutex; the version covers a live parameter change, which reloads no tile.
     mvt::ResolvedLayerConfig CompositeVectorTileLayer::resolveLayerConfigCached(const std::shared_ptr<MBVectorTileDecoder>& decoder, const std::string& slot, float viewZoom) {
+        // Quantised, and resolved AT the quantised zoom so the cached value is the one the key
+        // describes: with terrain the exact zoom drifts every frame and never hits. See
+        // StyleConfigZoom - the integer zoom the rules are selected at cannot move.
+        float zoom = StyleConfigZoom::quantise(viewZoom);
         unsigned int version = decoder->getConfigVersion();
         auto it = _resolvedConfigCache.find(slot);
-        if (it != _resolvedConfigCache.end() && it->second.version == version && it->second.viewZoom == viewZoom) {
+        if (it != _resolvedConfigCache.end() && it->second.version == version && it->second.viewZoom == zoom) {
             return it->second.config;
         }
-        mvt::ResolvedLayerConfig config = decoder->resolveLayerConfig(slot, viewZoom);
-        _resolvedConfigCache[slot] = ResolvedConfigEntry { version, viewZoom, config };
+        mvt::ResolvedLayerConfig config = decoder->resolveLayerConfig(slot, zoom);
+        _resolvedConfigCache[slot] = ResolvedConfigEntry { version, zoom, config };
         return config;
     }
 

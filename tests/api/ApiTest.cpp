@@ -75,6 +75,7 @@ void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
 void testDrapeEviction();
+void testStyleConfigZoom();
 void testDrapeTuning();
 void testZoomConvention();
 void testShadowCasterRing();
@@ -459,6 +460,7 @@ int main() {
     testDrapeStackCuts();
     testDrapeStandIn();
     testDrapeEviction();
+    testStyleConfigZoom();
     testDrapeTuning();
     testZoomConvention();
     testShadowCasterRing();

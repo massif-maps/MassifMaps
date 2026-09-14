@@ -36,6 +36,15 @@ namespace massif::vt {
          * test - a caller that does not set it gets the previous behaviour exactly.
          */
         void setMetersToInternal(double metersToInternal);
+        /**
+         * Whether a label's anchor is hidden by 3D content, and the layer's default occluded opacity.
+         * Applied DURING placement: a label that is fully hidden reserves no collision slot, so it
+         * cannot suppress a visible neighbour. mapbox returns an empty collision box for an occluded
+         * symbol for the same reason (symbol/collision_index.ts). A label the style keeps partly
+         * visible when occluded is still drawn, so it keeps its slot and is not tested here.
+         * An empty test restores the previous behaviour exactly.
+         */
+        void setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test, float defaultOccludedOpacity);
         void reset();
         /**
          * Opens a slice of a placement cycle, giving every process() call after it a shared
@@ -115,6 +124,8 @@ namespace massif::vt {
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
         double _metersToInternal = 0;
+        std::function<bool(const cglib::vec3<double>&)> _occlusionTest;
+        float _defaultOccludedOpacity = 0.0f;
         std::chrono::steady_clock::time_point _sliceDeadline;
         bool _sliceBudgeted = false;
         bool _sliceExhausted = false;

@@ -12,6 +12,7 @@
 #include "renderers/utils/Texture.h"
 #include "projections/ProjectionSurface.h"
 #include "terrain/ElevationManager.h"
+#include "terrain/TerrainOcclusion.h"
 #include "terrain/ElevationTileGrid.h"
 
 #include <vt/TileTransformer.h>
@@ -582,15 +583,19 @@ namespace massif {
         // Farthest terrain depth AROUND the position, not the depth of its own pixel: a ground label
         // sits exactly on the terrain and the buffer is read back downscaled, so on a slope an exact
         // comparison lets a label's own ground occlude it - the labels blinking while panning.
+        // The SPREAD over the same samples is how obliquely the view meets the ground, which is what
+        // decides how much depth a small height error is worth - see TerrainOcclusion::isBehind.
+        float nearestW = depthW;
         for (int i = 0; i < 4; i++) {
             int dx = (i & 1 ? OCCLUSION_SAMPLE_OFFSET : -OCCLUSION_SAMPLE_OFFSET);
             int dy = (i & 2 ? OCCLUSION_SAMPLE_OFFSET : -OCCLUSION_SAMPLE_OFFSET);
             float neighbourDepthW = sampleDepthW(*depthData, x + dx, y + dy);
             if (neighbourDepthW < std::numeric_limits<float>::max()) {
                 depthW = std::max(depthW, neighbourDepthW);
+                nearestW = std::min(nearestW, neighbourDepthW);
             }
         }
-        return static_cast<float>(clipPos(3)) > depthW * tolerance;
+        return TerrainOcclusion::isBehind(static_cast<float>(clipPos(3)), depthW, depthW - nearestW, tolerance);
     }
 
     void TerrainRenderer::collectVisibleTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, std::vector<MapTile>& tiles) const {

@@ -587,7 +587,7 @@ invalidate a stored camera.
 | `Options.tileLODFactor` | 1.0 | **0.5** | half a nominal tile of screen area per level |
 | `TerrainOptions.meshResolution` | 32 | **64** | tangram's value. 32 leaves draped content visibly floating; 128 cost 8.5 fps against 15.2 |
 | `TerrainOptions.cameraClearance` | 200 m | **60 m** | 200 stops the camera short of the surface, so a close approach swings into the nearest hillside |
-| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0** | a label goes out when its anchor goes behind the relief |
+| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0.2** | measured at Grenoble: 0 drops POIs on slopes facing the camera, because the anchor and the surface drawn under it never agree exactly |
 | `LightOptions.ambientIntensity` | 0.35 | **1.0** | both of these only apply once terrain lighting is on |
 | `LightOptions.shadowStrength` | 0 | **0.3** | ↑ |
 | `LightOptions.shadowBias` | 0.25 | **1.0** | 0.25 leaves acne on a lit slope at 3 cascades |

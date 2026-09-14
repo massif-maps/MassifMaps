@@ -92,6 +92,7 @@ void testTerrainSurface();
 void testFlattenSwitchTimeline();
 void testViewDistance();
 void testFogPitchFade();
+void testTerrainOcclusion();
 
 namespace {
 
@@ -474,6 +475,7 @@ int main() {
     testFlattenSwitchTimeline();
     testViewDistance();
     testFogPitchFade();
+    testTerrainOcclusion();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

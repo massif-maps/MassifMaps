@@ -269,6 +269,8 @@ add_executable(api_tests
   ViewDistanceTest.cpp
   # Same: FogPitchFade.h is mapbox's fog pitch smoothstep, and nothing else.
   FogPitchFadeTest.cpp
+  # Same: TerrainOcclusion.h is the label-vs-terrain depth compare, and nothing else.
+  TerrainOcclusionTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

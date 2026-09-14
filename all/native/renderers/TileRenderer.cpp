@@ -1347,6 +1347,9 @@ namespace massif {
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
+        // Placement answers the occlusion question itself now, so a hidden label takes no collision
+        // slot from a visible one. The test is whatever updateLabelOcclusionTest installed.
+        culler.setOcclusionTest(getLabelOcclusionTest(), _textOcclusionOpacity.load());
         cullViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
@@ -1601,6 +1604,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         if (!terrainOptions || !terrainOptions->isBillboardOcclusionEnabled()) {
             _labelOcclusionState.reset();
             tileRenderer->setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)>());
+            setLabelOcclusionTestCopy(std::function<bool(const cglib::vec3<double>&)>());
             return;
         }
 
@@ -1616,7 +1620,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                     // anchor-vs-terrain mismatch, and raising it lets partly hidden features label.
                     // The projection belongs to the depth buffer's own camera, so it lives with it.
                     float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
-                    tileRenderer->setLabelOcclusionTest([mapRendererWeak, occlusionTolerance](const cglib::vec3<double>& pos) {
+                    // The culler needs the SAME question answered during placement - see
+                    // LabelCuller::setOcclusionTest - so it is kept rather than only installed.
+                    auto depthTest = [mapRendererWeak, occlusionTolerance](const cglib::vec3<double>& pos) {
                         auto mapRenderer = mapRendererWeak.lock();
                         if (!mapRenderer) {
                             return false;
@@ -1626,7 +1632,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                             return false;
                         }
                         return terrainRenderer->isOccludedByTerrain(pos, occlusionTolerance);
-                    });
+                    };
+                    tileRenderer->setLabelOcclusionTest(depthTest);
+                    setLabelOcclusionTestCopy(depthTest);
                     return;
                 }
             }
@@ -1654,7 +1662,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // The ray path lifts the target above the anchor by the same relative tolerance, so
         // both occlusion paths answer the same question.
         double rayTolerance = 0.005 + 0.5 * terrainOptions->getBillboardOcclusionTolerance();
-        tileRenderer->setLabelOcclusionTest([state, elevationManager, cameraPos, rayTolerance](const cglib::vec3<double>& pos) -> bool {
+        auto rayTest = [state, elevationManager, cameraPos, rayTolerance](const cglib::vec3<double>& pos) -> bool {
             // Quantize the position for caching (roughly 4m grid)
             const double QUANT = 10.0;
             long long key = (static_cast<long long>(pos(0) * QUANT) * 73856093LL) ^ (static_cast<long long>(pos(1) * QUANT) * 19349663LL) ^ (static_cast<long long>(pos(2) * QUANT) * 83492791LL);
@@ -1676,7 +1684,19 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 state->results[key] = occluded;
             }
             return occluded;
-        });
+        };
+        tileRenderer->setLabelOcclusionTest(rayTest);
+        setLabelOcclusionTestCopy(rayTest);
+    }
+
+    void TileRenderer::setLabelOcclusionTestCopy(std::function<bool(const cglib::vec3<double>&)> test) {
+        std::lock_guard<std::mutex> lock(_labelOcclusionTestMutex);
+        _labelOcclusionTestCopy = std::move(test);
+    }
+
+    std::function<bool(const cglib::vec3<double>&)> TileRenderer::getLabelOcclusionTest() const {
+        std::lock_guard<std::mutex> lock(_labelOcclusionTestMutex);
+        return _labelOcclusionTestCopy;
     }
 
     bool TileRenderer::initializeRenderer() {

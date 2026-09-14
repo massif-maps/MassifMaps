@@ -112,6 +112,13 @@ namespace massif::vt {
         _metersToInternal = metersToInternal;
     }
 
+    void LabelCuller::setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test, float defaultOccludedOpacity) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _occlusionTest = std::move(test);
+        _defaultOccludedOpacity = defaultOccludedOpacity;
+    }
+
     void LabelCuller::beginSlice(double budgetMs) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -218,6 +225,20 @@ namespace massif::vt {
 
             if (!label->isValid()) {
                 VT_STAT_INC(cullerInvalid);
+            }
+            // Hidden by 3D content: drop it before it can take a collision slot a visible neighbour
+            // needs. Only when the style hides it completely - a label the style keeps partly visible
+            // when occluded is drawn, so it has earned its slot. See setOcclusionTest.
+            // AFTER updatePlacement on purpose: the test is a matrix transform and five texture taps,
+            // and most CONSIDERED labels are off-screen (cullerInvalid). Asking before the placement
+            // ran it on every one of them and cost ~18 ms a pass against ~4.
+            if (label->isValid() && _occlusionTest && style->occlusionOpacity.value_or(_defaultOccludedOpacity) <= 0.0f) {
+                cglib::vec3<double> anchor(0, 0, 0);
+                if (label->calculateCenter(anchor) && _occlusionTest(anchor)) {
+                    VT_STAT_INC(cullerOccluded);
+                    label->setVisible(false);
+                    continue;
+                }
             }
             if (label->isValid()) {
                 float size = (style->sizeFunc)(_viewState);

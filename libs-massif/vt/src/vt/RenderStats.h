@@ -224,6 +224,10 @@ namespace massif::vt {
         // surface-laid label the view meets edge-on), or it lost to a neighbour on the grid.
         static inline std::atomic<long long> cullerNotFacing{0};
         static inline std::atomic<long long> cullerCollided{0};
+        // Hidden by 3D content DURING placement, so it reserved no grid slot. Before this, an
+        // occluded label still held its slot and suppressed a visible neighbour - mapbox returns an
+        // empty collision box for one instead (collision_index.ts).
+        static inline std::atomic<long long> cullerOccluded{0};
     };
 }
 

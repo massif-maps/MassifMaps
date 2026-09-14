@@ -53,7 +53,10 @@ namespace massif {
         _cameraClearance(0.0f),
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
-        _billboardOcclusionTolerance(0.0f),
+        // 0.2, not 0: measured at Grenoble from the south of La Bastille, where 0 dropped POIs on
+        // slopes FACING the camera. The grazing term in TerrainOcclusion::isBehind covers the angle;
+        // this covers what is left - the anchor-vs-drawn-surface error itself.
+        _billboardOcclusionTolerance(0.2f),
         _textOcclusionOpacity(1.0f),
         _viewDistanceFactor(1.0f),
         _viewDistance(0.0f),

@@ -178,6 +178,10 @@ namespace massif {
          * this layer's labels did, so the caller knows to come back and resume the cycle.
          */
         bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
+        // The label occlusion test as installed on the vt renderer, kept so the CULLER can ask the
+        // same question during placement - an occluded label must not reserve a collision slot.
+        void setLabelOcclusionTestCopy(std::function<bool(const cglib::vec3<double>&)> test);
+        std::function<bool(const cglib::vec3<double>&)> getLabelOcclusionTest() const;
         void restartLabelPlacement();
         void snapLabelTransition();
 
@@ -345,6 +349,8 @@ namespace massif {
         std::pair<const void*, const void*> _extrusionProviderKey { nullptr, nullptr };
         std::optional<std::chrono::steady_clock::time_point> _lastSurfaceResetTime;
         std::shared_ptr<LabelOcclusionState> _labelOcclusionState;
+        mutable std::mutex _labelOcclusionTestMutex;
+        std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTestCopy;
 
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _tiles;
         // Offscreen tiles: their labels are placed, their geometry is never drawn. See refreshTiles.

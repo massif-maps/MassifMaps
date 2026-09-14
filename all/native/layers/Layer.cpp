@@ -88,14 +88,17 @@ namespace massif {
         refresh();
     }
 
+    // Its OWN mutex, not the layer's: the render thread reads this per layer per frame (every drape
+    // collect tests it), and refreshDrawData holds the layer mutex across a whole tile-set change -
+    // measured as 220 ms of a 228 ms prelude, on two floats.
     MapRange Layer::getVisibleZoomRange() {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_visibleZoomRangeMutex);
         return _visibleZoomRange;
     }
     
     void Layer::setVisibleZoomRange(const MapRange& range) {
         {
-            std::lock_guard<std::recursive_mutex> lock(_mutex);
+            std::lock_guard<std::mutex> lock(_visibleZoomRangeMutex);
             _visibleZoomRange = range;
         }
         refresh();

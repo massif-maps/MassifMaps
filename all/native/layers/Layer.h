@@ -260,6 +260,7 @@ namespace massif {
         std::atomic<bool> _postProcessed;
 
         MapRange _visibleZoomRange;
+        mutable std::mutex _visibleZoomRangeMutex; // see getVisibleZoomRange - NOT the layer mutex
 
         std::map<std::string, Variant> _metaData;
 

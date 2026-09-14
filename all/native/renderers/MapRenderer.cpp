@@ -1080,12 +1080,14 @@ namespace massif {
                     }
                 }
             } else {
+                _viewState.setFocusHeight(0); // back onto the surface, radially on a globe
                 _viewState.setTerrainHeightRange(0.0f, 0.0f);
             }
 
             _viewState.calculateViewState(*_options);
             viewState = _viewState;
             _viewState.setHorizontalLayerOffsetDir(0);
+
         }
 
         if (terrainDecodeChanged) {

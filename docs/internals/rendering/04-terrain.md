@@ -1216,6 +1216,45 @@ clamped to `[m_baseZoom, m_maxZoom]`, `core/src/view/view.cpp:403-415`). Porting
 `getZoom()` means for tiles, styles and labels alike, so it is its own change — see
 [11-tangram-diff.md](11-tangram-diff.md#the-zoom-is-calibrated-on-the-focus-not-on-the-terrain).
 
+### Switching terrain OFF stranded the focus at its last terrain height (fixed 2026-09-12)
+
+**Symptom.** Enable 3D terrain, move around, then disable it. The map stays drawable but everything
+is wrong at once: labels and line widths several levels too small, tiles far coarser than the zoom
+asks for, zooming in gains no detail, the ground runs out into the background colour below the
+horizon and that band grows as you zoom, and a pan crawls. Switching terrain back on repairs it
+instantly, which is what makes it look like a terrain bug rather than a camera one.
+
+**Cause.** The focus is lifted onto the surface every frame while terrain is on — the same
+`transform._centerAltitude` model as the [zoom pivot](#the-zoom-pivot-sank-the-focus-and-everything-was-drawn-at-the-wrong-scale-fixed-2026-08-13)
+section above. The `else` arm, with no elevation manager, zeroed the height *range* and never
+brought the focus back down, so it kept whatever height it was last lifted to while the ground
+returned to z=0.
+
+The zoom is calibrated on `dist(camera, focus)`, so the whole scale then describes a camera that is
+not where the camera is. The probe that section documents reads it straight off:
+
+```
+FOCUSPROBE zoom=17.16 tilt=20.0 dist=18.3 orbit=18.3 ratio=1.0000
+           focusZ=107.0 camZ=113.3 terrainZ=75.9 flat=0.00 active=0
+```
+
+`active=0` is terrain off; `focusZ=107.0` is the stranding. The camera sits 113 m over a ground the
+zoom believes is 18 m away — six times too near — so the tile walk asks for a zoom several levels
+coarse and every zoom-dependent width and label size is evaluated there. `ratio` staying at 1.0000
+is the same tell as last time: the invariant the SDK maintains was intact throughout, and the one it
+does not maintain — that the focus is on the ground being drawn — is what broke.
+
+**The fix** is `focusLiftDelta` (`all/native/terrain/FocusLift.h`), which both arms of the branch now
+go through: terrain on lands the focus on the terrain, terrain off lands it at z=0, and an
+undecoded height holds rather than dropping the focus to sea level every time the DEM lags a pan.
+`liftFocus` has exactly one caller, so nothing else was relying on a raised focus.
+
+**Two dead ends this cost**, both worth not repeating. The render scale and panning were measured
+correct the whole time — a 300 px drag shifts the content 288 px, and a 500 px drag moves the ground
+199 m, matching the zoom — so "the picture is too wide" was wrong and the *focus height*, not the
+scale, was the thing to probe. And the mixed tile-zoom histogram (z14 next to z16 at a z18 camera)
+is normal: a good run at z16 fetches the same spread, because it covers several sources.
+
 ## The surface shader
 
 `TerrainOptions::setSurfaceShaderSource` lets the application paint the terrain surface itself. It

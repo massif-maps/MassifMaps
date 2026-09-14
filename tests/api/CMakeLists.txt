@@ -243,6 +243,7 @@ add_executable(api_tests
   PrefetchOrderTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
+  FocusLiftTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.
   TileLODRuleTest.cpp
   # The globe's surface against the planar one - the conventions terrain-on-globe rests on.

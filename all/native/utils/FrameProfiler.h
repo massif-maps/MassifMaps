@@ -94,10 +94,14 @@ namespace massif {
         static inline double prePaintPushMs = 0;   // ... of which the push itself, which takes the vt lock
         static inline double prePaintLayersMs = 0; // ... collectDrapeLayers, which takes a composite's _sourceMutex
         static inline double prePaintLayerLockMs = 0; // ... of which waiting for that _sourceMutex
+        static inline double prePaintConfigMs = 0;    // ... of which resolving each slot's style config
+        static inline double prePaintApplyMs = 0;     // ... of which applying it to the child layer
         static inline double prePaintCoverMs = 0;  // ... the terrain's own visible tile walk
         static inline double preHeadMs = 0;        // frame start to the terrain fill: layer list, depth-write walk
         static inline double preTailMs = 0;        // the paint block to the end: drape layer walk, cache setup
         static inline double preTailCacheMs = 0;   // ... of which the drape cache setup alone
+        static inline double preTailOptionsMs = 0; // ... of which reading the terrain options
+        static inline double preTailWalkMs = 0;    // ... of which the drape/ground layer walk
         static inline double prepareMs = 0;    // per-layer startFrame (label re-anchoring, blending state)
         static inline double coverMs = 0;      // drape cover computation
         static inline double drapeMs = 0;      // drape bakes + terrain surface draws
@@ -113,7 +117,9 @@ namespace massif {
             skyMs = preludeMs = prepareMs = coverMs = drapeMs = layerMs = layer3DMs = billboardMs = 0;
             preTerrainMs = preDepthMs = preClearanceMs = prePaintMs = prePaintPushMs = 0;
             prePaintLayersMs = prePaintCoverMs = prePaintLayerLockMs = 0;
+            prePaintConfigMs = prePaintApplyMs = 0;
             preHeadMs = preTailMs = preTailCacheMs = 0;
+            preTailOptionsMs = preTailWalkMs = 0;
             GpuFrameProfiler::beginFrame();
         }
 
@@ -186,9 +192,9 @@ namespace massif {
                 return;
             }
             Log::Infof("PROF PRELUDE: %.1f ms | head %.1f terrain %.1f depth %.1f clearance %.1f "
-                       "paintTiles %.1f (layers %.1f [lock %.1f] cover %.1f push %.1f) tail %.1f (cache %.1f) rest %.1f",
+                       "paintTiles %.1f (layers %.1f [lock %.1f config %.1f apply %.1f] cover %.1f push %.1f) tail %.1f (options %.1f walk %.1f cache %.1f) rest %.1f",
                        preludeMs, preHeadMs, preTerrainMs, preDepthMs, preClearanceMs, prePaintMs,
-                       prePaintLayersMs, prePaintLayerLockMs, prePaintCoverMs, prePaintPushMs, preTailMs, preTailCacheMs,
+                       prePaintLayersMs, prePaintLayerLockMs, prePaintConfigMs, prePaintApplyMs, prePaintCoverMs, prePaintPushMs, preTailMs, preTailOptionsMs, preTailWalkMs, preTailCacheMs,
                        preludeMs - preHeadMs - preTerrainMs - preDepthMs - preClearanceMs - prePaintMs - preTailMs);
         }
 

@@ -393,6 +393,7 @@ namespace massif {
         return config;
     }
 
+
     void CompositeVectorTileLayer::rebuildDrawItems() {
         // Caller holds _sourceMutex (or is the constructor).
         _resolvedConfigCache.clear();
@@ -851,8 +852,12 @@ namespace massif {
                 // renderComposite, or one the style hides at this zoom is baked into the terrain
                 // texture. The config is applied here too, because the bake runs BEFORE it.
                 if (source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
+                    FRAME_PROF_NOW(profConfigStart);
                     mvt::ResolvedLayerConfig config = resolveLayerConfigCached(decoder, item.slot, viewState.getZoom());
+                    FRAME_PROF_ADD(prePaintConfigMs, profConfigStart);
+                    FRAME_PROF_NOW(profApplyStart);
                     applyConfig(*source, config, viewState);
+                    FRAME_PROF_ADD(prePaintApplyMs, profApplyStart);
                     if (!config.visible) {
                         continue;
                     }

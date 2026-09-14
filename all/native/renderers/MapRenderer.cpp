@@ -2695,6 +2695,8 @@ namespace massif {
             }
             FRAME_PROF_NOW(profTailStart);
             if (auto terrainOptions = _options->getTerrainOptions()) {
+                FRAME_PROF_ADD(preTailOptionsMs, profTailStart);
+                FRAME_PROF_NOW(profTailWalkStart);
                 if (terrainOptions->isDrapeFillsEnabled()) {
                     // Layers report their own drapeable tile layers, so a composite layer can
                     // contribute its children (hillshade/raster slots, style-layer groups) in
@@ -2702,6 +2704,7 @@ namespace massif {
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         layer->collectDrapeLayers(drapeLayers, viewState);
                     }
+                    FRAME_PROF_ADD(preTailWalkMs, profTailWalkStart);
                 } else {
                     // NO DRAPE: the tangram arrangement. The stack shares ONE cover, the ground is
                     // drawn once for it before any layer, and layers composite straight onto it -
@@ -2710,6 +2713,7 @@ namespace massif {
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         layer->collectDrapeLayers(groundLayers, viewState);
                     }
+                    FRAME_PROF_ADD(preTailWalkMs, profTailWalkStart);
                     if (!groundLayers.empty()) {
                         // Every layer's render tiles must exist before the cover is read from them.
                         FRAME_PROF_ADD(preTailMs, profTailStart);

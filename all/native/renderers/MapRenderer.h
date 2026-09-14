@@ -20,6 +20,7 @@
 #include "components/StyleEnvironment.h"
 #include "terrain/AutoFlatten.h"
 #include "terrain/FlattenSwitch.h"
+#include "terrain/FlattenSwitchTimeline.h"
 #include "ui/MapMoveReason.h"
 
 #include <cglib/mat.h>
@@ -287,6 +288,8 @@ namespace massif {
         // DECODE state changed this frame, which is the only moment the visible tile set has to be
         // recomputed.
         bool updateTerrainFlatten(float deltaSeconds);
+        // Times each half of a switch and logs one line when it finishes costing anything.
+        void reportFlattenSwitchTiming(const FlattenSwitch::State& state, const FlattenSwitch::Input& input, int tilesOwed, float deltaSeconds);
 
         static const int BILLBOARD_PLACEMENT_TASK_DELAY;
         static const int VT_LABEL_PLACEMENT_TASK_DELAY;
@@ -325,6 +328,12 @@ namespace massif {
         // DEM has not arrived flattens itself at startup and never recovers.
         bool _autoFlattenSeenTerrain = false;
         std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
+        // What each half of a switch cost, reported once per switch. See FlattenSwitchTimeline.
+        FlattenSwitchTimeline _flattenSwitchTimeline;
+        // The drape's own progress, for that report: both are written by the draw pass and read by
+        // the switch at the start of the next frame, so the settle is one frame late. Render thread.
+        bool _drapeBakesPending = false;
+        int _drapeBakesDone = 0;
         // Set by every camera event; the rule stays quiet while it is false. See AutoFlatten::Trigger.
         std::atomic<bool> _cameraPlaced { false };
 

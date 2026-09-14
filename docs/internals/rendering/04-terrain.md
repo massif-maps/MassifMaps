@@ -948,6 +948,38 @@ A `CompositeVectorTileLayer`'s external sources are separate tile layers that re
 swap, and only the composite is in `Layers`. It overrides `isTerrainDecodeSettled()` to AND over its
 children, or the switch rises into terrain with the hillshade still decoding.
 
+#### Which half of the switch was slow
+
+"The switch is slow" covers three separate waits with three separate fixes, so the switch times each
+and logs one line when it stops costing anything. `all/native/terrain/FlattenSwitchTimeline.h` is that
+accounting alone, free of the renderer, with `tests/api/FlattenSwitchTimelineTest.cpp` on the host.
+It is always on — a couple of lines per switch, not per frame.
+
+```
+MapRenderer: 2D->3D switch took 4820 ms - warm 3120 ms (186 frames, 12 tiles owed), ramp 2500 ms
+  (30 frames, 12.0 fps), settle 1200 ms (14 frames, 96 bakes)
+```
+
+| Phase | What it is | What moves it |
+|---|---|---|
+| **warm** | the tile re-decode the rise waits on, rendering 2D. **This is where the labels leave** | `FlattenMode` (`RENDER` skips it), the DEM cache, the warm timeout |
+| **ramp** | the exaggeration ramp itself. The fps here is the animation the user sees | the frame cost, not the switch — see [10-performance.md](10-performance.md) |
+| **settle** | 3D reached, the camera landed, the drape still baking | the per-frame bake budget and `DRAPE_BAKE_SETTLE_MS` |
+
+`settle` is the **drape's bake queue only**, deliberately. Asking the layers whether tiles are still
+in flight means `TileLayer::isUpdateInProgress()`, and a composite takes `_sourceMutex` for it — from
+the render thread, which holds `MapRenderer::_mutex`. That is the inversion
+`snapshotChildTileLayers` exists to avoid, and doing it here **hung the app outright on the first
+switch**. Tile arrival is already in the `warm` number and in the `PROF` lines; the drape is what the
+complaint is about anyway.
+
+`tiles owed` is `-1` while the cull that names the tiles has not run yet, which is a third answer and
+not zero. `TIMED OUT` in the warm field means the tiles never came and the 2.5 s timeout released the
+switch — the ramp then shows what is missing. `settle` is capped at 30 s so a camera that never stops
+fetching still produces a report.
+
+A sink is ramp-only: it has nothing to wait for, and 3D-decoded tiles draw correctly flat.
+
 ### Who drives the ratio
 
 Three ways, in increasing order of control:

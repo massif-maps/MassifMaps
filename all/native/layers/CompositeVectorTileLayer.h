@@ -190,6 +190,7 @@ namespace massif {
         virtual void offsetLayerHorizontally(double offset);
         virtual bool isUpdateInProgress() const;
         virtual bool isTerrainDecodeSettled();
+        virtual int getTerrainDecodePendingCount() const;
         virtual void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
 
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);

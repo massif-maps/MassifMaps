@@ -233,6 +233,11 @@ namespace massif {
         });
     }
 
+    int TileLayer::getTerrainDecodePendingCount() const {
+        std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+        return _terrainDecodeWait.getPendingCount();
+    }
+
     void TileLayer::markTerrainDecodeUnsettled() {
         std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
         _terrainDecodeWait.markUnsettled();

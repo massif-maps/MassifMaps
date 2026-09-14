@@ -102,4 +102,20 @@ void testTerrainDecodeWait() {
         TEST_CHECK(!wait.settle(fetching({ 20 })), "the second swap's tiles hold it");
         TEST_CHECK(wait.settle(fetching({ 10 })), "the first swap's tiles no longer do");
     }
+
+    // What the switch's own timing report prints: how many tiles are left, and that "not named yet"
+    // is a third answer rather than zero - a report saying 0 tiles owed on a wait that had not been
+    // told what to wait for would point the blame at the ramp.
+    {
+        TerrainDecodeWait wait;
+        TEST_CHECK(wait.getPendingCount() == 0, "a settled layer owes nothing");
+        wait.markUnsettled();
+        TEST_CHECK(wait.getPendingCount() == -1, "an unnamed wait does not report a count");
+        wait.recordFetched({ 10, 11, 12 });
+        TEST_CHECK(wait.getPendingCount() == 3, "once named, it is the tiles it is waiting on");
+        wait.settle(fetching({ 10 }));
+        TEST_CHECK(wait.getPendingCount() == 1, "and it counts down as they land");
+        wait.settle(nothingFetching());
+        TEST_CHECK(wait.getPendingCount() == 0, "to nothing");
+    }
 }

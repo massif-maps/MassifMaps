@@ -263,6 +263,8 @@ add_executable(api_tests
   # needs the data source and the grid cache and does not link here.
   TerrainSurfaceTest.cpp
   "${SDK_BASE_DIR}/all/native/terrain/TerrainProjectionSurface.cpp"
+  # Same: FlattenSwitchTimeline.h is what each half of a 2D/3D switch cost, and nothing else.
+  FlattenSwitchTimelineTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

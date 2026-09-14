@@ -23,6 +23,11 @@ namespace massif {
     public:
         bool isSettled() const { return _settled; }
 
+        /** How many tiles still owe the switch a decode; -1 before the cull that names them. */
+        int getPendingCount() const {
+            return _settled ? 0 : (_pending ? -1 : static_cast<int>(_tiles.size()));
+        }
+
         /** A decode swap just invalidated the visible tiles. What it invalidated is not known yet. */
         void markUnsettled() {
             _settled = false;

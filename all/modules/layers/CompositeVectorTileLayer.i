@@ -45,6 +45,8 @@
 // - a HillshadeRasterTileLayer's custom NormalMapLightingShader is generated code, not a style
 // property. applyConfig never writes it, so a shader set here survives the per-frame pass.
 !method(massif::CompositeVectorTileLayer, getExternalChildLayer, arg(name, string), returns(object, massif::Layer))
+// Internal, driven by MapRenderer: what the 2D/3D switch is still waiting on, for its own report.
+%ignore massif::CompositeVectorTileLayer::getTerrainDecodePendingCount;
 %std_exceptions(massif::CompositeVectorTileLayer::CompositeVectorTileLayer)
 %std_exceptions(massif::CompositeVectorTileLayer::addExternalDataSource)
 %std_exceptions(massif::CompositeVectorTileLayer::addVectorDataSource)

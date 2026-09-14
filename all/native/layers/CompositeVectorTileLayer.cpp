@@ -554,6 +554,20 @@ namespace massif {
         return settled;
     }
 
+    int CompositeVectorTileLayer::getTerrainDecodePendingCount() const {
+        int count = VectorTileLayer::getTerrainDecodePendingCount();
+        std::vector<std::shared_ptr<TileLayer> > children;
+        {
+            std::lock_guard<std::mutex> lock(_childTileLayersMutex);
+            children = _childTileLayers;
+        }
+        for (const std::shared_ptr<TileLayer>& childTileLayer : children) {
+            int childCount = childTileLayer->getTerrainDecodePendingCount();
+            count = childCount < 0 || count < 0 ? -1 : count + childCount;
+        }
+        return count;
+    }
+
     void CompositeVectorTileLayer::calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const {
         VectorTileLayer::calculateRayIntersectedElements(ray, viewState, results);
 

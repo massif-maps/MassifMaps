@@ -1582,6 +1582,33 @@ namespace massif {
         return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), (maxZ - minZ) * _viewState.worldPerInternal(), _viewState.calculateCameraDistance());
     }
 
+    void MapRenderer::reportFlattenSwitchTiming(const FlattenSwitch::State& state, const FlattenSwitch::Input& input, int tilesOwed, float deltaSeconds) {
+        FlattenSwitchTimeline::Input timing;
+        timing.phase = state.phase;
+        timing.deltaSeconds = deltaSeconds;
+        timing.tilesOwed = tilesOwed;
+        timing.warmTimedOut = input.warmTimeout > 0 && state.warmSeconds >= input.warmTimeout;
+        // Consumed rather than read: a flat frame never reaches the drape at all, and a stale true
+        // would hold the report open for the whole settle cap.
+        timing.bakes = _drapeBakesDone;
+        timing.bakesQueued = _drapeBakesPending;
+        _drapeBakesDone = 0;
+        _drapeBakesPending = false;
+        // NOT isUpdateInProgress(): a composite takes _sourceMutex for it, and this runs on the
+        // render thread under _mutex - the deadlock snapshotChildTileLayers exists to avoid.
+        FlattenSwitchTimeline::Report report;
+        if (!_flattenSwitchTimeline.step(timing, report)) {
+            return;
+        }
+        // One line per switch: which of the three halves the user was actually waiting on.
+        Log::Infof("MapRenderer: %s switch took %.0f ms - warm %.0f ms (%d frames, %d tiles owed%s), ramp %.0f ms (%d frames, %.1f fps), settle %.0f ms (%d frames, %d bakes)",
+            report.rising ? "2D->3D" : "3D->2D", report.totalSeconds() * 1000.0f,
+            report.warmSeconds * 1000.0f, report.warmFrames, report.tilesOwed, report.timedOut ? ", TIMED OUT" : "",
+            report.rampSeconds * 1000.0f, report.rampFrames,
+            report.rampSeconds > 0 ? report.rampFrames / report.rampSeconds : 0.0f,
+            report.settleSeconds * 1000.0f, report.settleFrames, report.bakes);
+    }
+
     bool MapRenderer::updateTerrainFlatten(float deltaSeconds) {
         std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
         if (!terrainOptions || !terrainOptions->isEnabled()) {
@@ -1658,11 +1685,14 @@ namespace massif {
         input.riseDuration = riseDuration < 0 ? input.flattenDuration : riseDuration;
         input.warmTimeout = TERRAIN_SWITCH_WARM_TIMEOUT;
         // The tile gate, for both the automatic wait and an app-driven rise.
+        int tilesOwed = 0;
         if (FlattenSwitch::isWaitingForTiles(_flattenSwitchState, input)) {
             input.tilesReady = true;
             for (const std::shared_ptr<Layer>& layer : _layers->getAll()) {
                 if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
                     input.tilesReady = tileLayer->isTerrainDecodeSettled() && input.tilesReady;
+                    int owed = tileLayer->getTerrainDecodePendingCount();
+                    tilesOwed = owed < 0 || tilesOwed < 0 ? -1 : tilesOwed + owed;
                 }
             }
             requestRedraw(); // nothing else asks for the frame the wait ends on
@@ -1678,6 +1708,7 @@ namespace massif {
                 input.flatten ? 1 : 0, input.manual ? 1 : 0, input.tilesReady ? 1 : 0, next.warmSeconds);
         }
         _flattenSwitchState = next;
+        reportFlattenSwitchTiming(next, input, tilesOwed, deltaSeconds);
         terrainOptions->setSwitching(FlattenSwitch::isWaitingForTiles(next, input));
         if (next.phase == FlattenSwitch::Phase::RAMPING) {
             // The ramp runs on a CLOCK, and the frame it starts on has no delta yet - so its first
@@ -3423,6 +3454,9 @@ namespace massif {
                     if (drapeBakesLeft) {
                         requestRedraw();
                     }
+                    // What the 2D/3D switch's settle report reads, one frame later.
+                    _drapeBakesPending = drapeBakesLeft;
+                    _drapeBakesDone += bakedThisFrame;
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());
                     if (bakeStarted) {
                         // Detach before sampling: a texture left attached to a framebuffer counts

@@ -275,6 +275,13 @@ class ProjectionSurface;
          */
         virtual bool isTerrainDecodeSettled();
 
+        /**
+         * How many visible tiles still owe that switch a decode, for the switch's own timing report.
+         * -1 before the cull that names them has run. Internal method.
+         * @return The number of tiles the 2D/3D switch is waiting on in this layer.
+         */
+        virtual int getTerrainDecodePendingCount() const;
+
     protected:
         /**
          * Marks the visible tiles as waiting for a new terrain decode state. The next cull records

@@ -16,11 +16,13 @@
 #include <string>
 #include <vector>
 
+#include <mapnikvt/LayerConfigResolver.h> // ResolvedLayerConfig, held by value in the config cache
+
 namespace massif {
     class TileDataSource;
     class VectorTileDecoder;
+    class MBVectorTileDecoder;
     class ElevationDecoder;
-    namespace mvt { struct ResolvedLayerConfig; }
 
     namespace CompositeSourceType {
         /**
@@ -232,6 +234,8 @@ namespace massif {
         void unwireChild(const std::shared_ptr<Layer>& child);
         std::shared_ptr<Layer> makeGroupLayer(const std::string& filter);
         void rebuildDrawItems();
+        /** A slot's resolved config, memoised per (zoom, decoder version). Caller holds _sourceMutex. */
+        mvt::ResolvedLayerConfig resolveLayerConfigCached(const std::shared_ptr<MBVectorTileDecoder>& decoder, const std::string& slot, float viewZoom);
         /** Refreshes _childTileLayers from the sources and draw items. Caller holds _sourceMutex. */
         void snapshotChildTileLayers();
         void applyExternalChildZoomRange(const ExternalSource& source);
@@ -271,6 +275,13 @@ namespace massif {
         // The children, readable without _sourceMutex. See snapshotChildTileLayers.
         mutable std::mutex _childTileLayersMutex;
         std::vector<std::shared_ptr<TileLayer> > _childTileLayers;
+
+        struct ResolvedConfigEntry {
+            unsigned int version;
+            float viewZoom;
+            mvt::ResolvedLayerConfig config;
+        };
+        std::map<std::string, ResolvedConfigEntry> _resolvedConfigCache; // see resolveLayerConfigCached
     };
 
 }

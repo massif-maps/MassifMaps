@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <string>
+#include <atomic>
 #include <mutex>
 #include <map>
 #include <vector>
@@ -152,7 +153,14 @@ namespace massif {
          * @param listener The previously added listener.
          */
         void unregisterOnChangeListener(const std::shared_ptr<OnChangeListener>& listener);
-        
+
+        /**
+         * Bumped by every change and every refresh, so a caller may cache anything resolved from the
+         * style and know when that answer expired. A live parameter change refreshes without
+         * reloading a tile, and would otherwise be invisible to such a cache.
+         */
+        unsigned int getConfigVersion() const { return _configVersion.load(); }
+
     protected:
         VectorTileDecoder();
 
@@ -161,6 +169,7 @@ namespace massif {
     private:
         std::vector<std::shared_ptr<OnChangeListener> > _onChangeListeners;
         mutable std::mutex _onChangeListenersMutex;
+        std::atomic<unsigned int> _configVersion { 0 };
     };
         
 }

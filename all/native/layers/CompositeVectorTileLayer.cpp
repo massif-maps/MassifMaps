@@ -12,6 +12,7 @@
 #include "core/MapRange.h"
 #include "core/MapVec.h"
 #include "components/Exceptions.h"
+#include "utils/FrameProfiler.h"
 #include "utils/Log.h"
 
 #include <algorithm>
@@ -372,8 +373,24 @@ namespace massif {
         }
     }
 
+    // Resolving a slot's config walks the style and takes the DECODER's mutex, and the render thread
+    // did it per draw item, twice a frame (the drape collect and the draw) - 41 ms of a 43 ms
+    // prelude, for an answer that only moves when the zoom or the style does. Caller holds
+    // _sourceMutex; the version covers a live parameter change, which reloads no tile.
+    mvt::ResolvedLayerConfig CompositeVectorTileLayer::resolveLayerConfigCached(const std::shared_ptr<MBVectorTileDecoder>& decoder, const std::string& slot, float viewZoom) {
+        unsigned int version = decoder->getConfigVersion();
+        auto it = _resolvedConfigCache.find(slot);
+        if (it != _resolvedConfigCache.end() && it->second.version == version && it->second.viewZoom == viewZoom) {
+            return it->second.config;
+        }
+        mvt::ResolvedLayerConfig config = decoder->resolveLayerConfig(slot, viewZoom);
+        _resolvedConfigCache[slot] = ResolvedConfigEntry { version, viewZoom, config };
+        return config;
+    }
+
     void CompositeVectorTileLayer::rebuildDrawItems() {
         // Caller holds _sourceMutex (or is the constructor).
+        _resolvedConfigCache.clear();
 
         // Drop previous internal group layers.
         for (const DrawItem& item : _drawItems) {
@@ -489,19 +506,29 @@ namespace massif {
         // parameters changed (a change triggers a decoder update -> tile reload -> loadData).
         applyVectorSourceConfigs();
 
-        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
-        for (const ExternalSource& s : _externalSources) {
-            // Only sources the style actually gives a slot to: one the style's 'layers' never
-            // mentions has no draw item, yet it still fetched and decoded its tiles - DEM downloads
-            // and normal maps for a layer the map does not show.
-            if (s.childLayer && isDrawnSlot(s.name)) {
-                s.childLayer->loadData(cullState);
+        // WHICH children to load is what _sourceMutex protects; loading them is not. A child's
+        // loadData builds its fetch set and queues its tasks, and holding the mutex across all of
+        // them blocked the render thread in collectDrapeLayers for 277 ms of a 280 ms prelude -
+        // the map hung exactly while tiles were streaming in.
+        std::vector<std::shared_ptr<Layer> > loadLayers;
+        {
+            std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+            for (const ExternalSource& s : _externalSources) {
+                // Only sources the style actually gives a slot to: one the style's 'layers' never
+                // mentions has no draw item, yet it still fetched and decoded its tiles - DEM downloads
+                // and normal maps for a layer the map does not show.
+                if (s.childLayer && isDrawnSlot(s.name)) {
+                    loadLayers.push_back(s.childLayer);
+                }
+            }
+            for (const DrawItem& item : _drawItems) {
+                if (item.groupLayer) {
+                    loadLayers.push_back(item.groupLayer);
+                }
             }
         }
-        for (const DrawItem& item : _drawItems) {
-            if (item.groupLayer) {
-                item.groupLayer->loadData(cullState);
-            }
+        for (const std::shared_ptr<Layer>& loadLayer : loadLayers) {
+            loadLayer->loadData(cullState);
         }
     }
 
@@ -800,7 +827,11 @@ namespace massif {
 
         auto decoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(getTileDecoder());
 
+        // The render thread reaches for _sourceMutex here every frame, and a cull holds it for a
+        // whole tile-set refresh - timed apart from the work below for exactly that reason.
+        FRAME_PROF_NOW(profLayerLockStart);
         std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        FRAME_PROF_ADD(prePaintLayerLockMs, profLayerLockStart);
         for (const DrawItem& item : _drawItems) {
             std::shared_ptr<Layer> childLayer;
             if (item.kind == DRAW_ITEM_VT_GROUP) {
@@ -815,7 +846,7 @@ namespace massif {
                 // renderComposite, or one the style hides at this zoom is baked into the terrain
                 // texture. The config is applied here too, because the bake runs BEFORE it.
                 if (source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
-                    mvt::ResolvedLayerConfig config = decoder->resolveLayerConfig(item.slot, viewState.getZoom());
+                    mvt::ResolvedLayerConfig config = resolveLayerConfigCached(decoder, item.slot, viewState.getZoom());
                     applyConfig(*source, config, viewState);
                     if (!config.visible) {
                         continue;
@@ -887,7 +918,7 @@ namespace massif {
             // as well. Vector children have no config symbolizer (they are styled by normal line/text
             // rules, which the child's own decode already zoom-filters).
             if (visible && source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
-                mvt::ResolvedLayerConfig config = decoder->resolveLayerConfig(item.slot, viewState.getZoom());
+                mvt::ResolvedLayerConfig config = resolveLayerConfigCached(decoder, item.slot, viewState.getZoom());
                 applyConfig(*source, config, viewState);
                 visible = config.visible;
             }

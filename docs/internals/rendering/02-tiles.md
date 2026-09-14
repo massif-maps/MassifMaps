@@ -134,22 +134,26 @@ tile-zoom behaviour everywhere.
 
 Two consequences worth knowing:
 
-- **The style zoom is part of a decoded tile's identity, and the cache key is not.** When
-  `_targetTileZoom` or the lift moves, every decoded tile is stale, so the cull invalidates the visible tiles
-  (they stay on screen and reload) and drops the preloading cache. Target zoom is clamped by
-  `getMaxZoom()`, so above a source's max zoom it never moves at all; below it, it moves only when
-  the camera crosses an integer zoom, which already refetches the near field. mapbox instead keys
-  tiles on `OverscaledTileID.overscaledZ` and keeps both versions cached.
-- **And invalidation alone is not enough, because it cannot see a decode in flight.** A fetch
-  snapshots its style zoom when it is *queued*; `onTargetTileZoomChanged` invalidates the cache but
-  not the running tasks, and `timed_lru_cache::put` clears the entry's expiration — so a tile queued
-  under the old target lands *after* the change looking perfectly fresh, and is never refetched. That
-  is how a tile decoded for zoom 13 survived a zoom-out to 11 and went on drawing its
-  `#contour[zoom>=12]` lines, and why zooming out again did not clear it. The decoded tile therefore
-  carries the style zoom it was decoded at (`VectorTileLayer::TileInfo`), and `tileValid` compares it
-  against what the current target would produce (`isStyleTileZoomCurrent`) — a stamp, not a clock.
-  The stale tile keeps drawing as a substitute while its replacement decodes, exactly as an
-  invalidated one does.
+- **The style zoom is part of a decoded tile's identity, and the cache key is not.** So a decoded
+  tile carries the style zoom it was built at and `tileValid` compares that stamp per tile. It must
+  NOT be a cache wipe: #238 originally had `onTargetTileZoomChanged` call `invalidateTiles(false)`
+  plus `clearTiles(true)`, which threw away every decoded tile and the whole preloading cache on
+  each integer zoom crossing — including the tiles the crossing could not possibly stale. A zoom-out
+  from 19 to 11 crosses eight of them, so the map re-decoded eight times and tiles arrived one by
+  one where 5.x had them instantly (bisected to #238, fixed 2026-09-13). The stamp invalidates
+  exactly the lifted tiles: one at or above the target, or past the lift, is untouched, and at lift
+  0 nothing is stale at all. mapbox instead keys tiles on `OverscaledTileID.overscaledZ` and keeps
+  both versions cached. Target zoom is clamped by `getMaxZoom()`, so above a source's max zoom it
+  never moves.
+- **And invalidation alone is not enough, because it cannot see a decode in flight.**
+  `onTargetTileZoomChanged` invalidates the cache but not the running tasks, and
+  `timed_lru_cache::put` clears the entry's expiration — so a tile queued under the old target lands
+  *after* the change looking perfectly fresh, and is never refetched. That is how a tile decoded for
+  zoom 13 survived a zoom-out to 11 and went on drawing its `#contour[zoom>=12]` lines, and why
+  zooming out again did not clear it. The decoded tile therefore carries the style zoom it was
+  decoded at (`VectorTileLayer::TileInfo`), and `tileValid` compares it against what the current
+  target would produce (`isStyleTileZoomCurrent`) — a stamp, not a clock. The stale tile keeps
+  drawing as a substitute while its replacement decodes, exactly as an invalidated one does.
 - **So the crossing has a margin** (`TileLayer::TARGET_TILE_ZOOM_HYSTERESIS`, 0.15 of a level,
   `calculateTargetTileZoom`). Since we re-decode rather than keep both versions, a zoom that only
   *wobbles* across a boundary re-decodes the map for nothing — and in terrain mode the focus rides

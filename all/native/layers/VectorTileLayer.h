@@ -213,8 +213,6 @@ namespace massif {
         virtual void clearTiles(bool preloadingTiles);
         virtual void invalidateTiles(bool preloadingTiles);
 
-        virtual void onTargetTileZoomChanged();
-
         virtual std::shared_ptr<VectorTileDecoder::TileMap> getTileMap(long long tileId) const;
         virtual std::shared_ptr<vt::Tile> getPoleTile(int y) const;
 

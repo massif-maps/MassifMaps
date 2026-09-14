@@ -341,14 +341,6 @@ namespace massif {
         }
     }
 
-    void VectorTileLayer::onTargetTileZoomChanged() {
-        // Every decoded tile matched its rules at the previous target zoom. Invalidate rather than
-        // clear the visible ones: they stay on screen, correct for the zoom they came from, while
-        // they decode again.
-        invalidateTiles(false);
-        clearTiles(true);
-    }
-
     std::shared_ptr<VectorTileDecoder::TileMap> VectorTileLayer::getTileMap(long long tileId) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         TileInfo tileInfo;

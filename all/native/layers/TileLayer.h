@@ -512,8 +512,9 @@ class ProjectionSurface;
         int getTargetTileZoom() const { return _targetTileZoom; }
         int getTileStyleZoomLift() const { return _tileStyleZoomLift; }
 
-        // Nothing to do for a layer whose tiles decode the same however the camera is placed - only
-        // a styled tile carries the target zoom into its content.
+        // A hook, not an invalidation: a decoded tile carries the style zoom it was built at, and
+        // tileValid() compares that stamp per tile. Wiping the caches here re-decoded the whole map
+        // on every integer zoom crossing, tiles the crossing could not stale included.
         virtual void onTargetTileZoomChanged() { }
 
         const DirectorPtr<TileDataSource> _dataSource;

@@ -114,4 +114,15 @@ void testStyleTileZoomStaleness() {
     // Before the first cull the target is -1 and everything styles as itself; it must not read as
     // stale on the very first frame and re-fetch the whole map.
     TEST_CHECK(isStyleTileZoomCurrent(12, 12, -1, 2), "an unset target is not staleness");
+
+    // Why the per-tile stamp replaced the cache wipe on a target-zoom change. Crossing 17 -> 16
+    // stales the tiles the lift reached and NOTHING else, so wiping every decoded tile (and the
+    // whole preloading cache) re-decoded the map on each integer zoom a fast zoom-out crossed.
+    TEST_CHECK(!isStyleTileZoomCurrent(15, 17, 16, 2), "a lifted tile is staled by the crossing");
+    TEST_CHECK(isStyleTileZoomCurrent(16, 16, 16, 2), "a tile at the new target is untouched");
+    TEST_CHECK(isStyleTileZoomCurrent(13, 13, 16, 2), "and so is one past the lift");
+
+    // With no lift the target reaches nothing, so a crossing can stale nothing at all.
+    TEST_CHECK(isStyleTileZoomCurrent(15, 15, 17, 0), "at lift 0 a crossing stales nothing");
+    TEST_CHECK(calculateStyleTileZoom(15, 17, 0) == 15, "because every tile styles at its own zoom");
 }

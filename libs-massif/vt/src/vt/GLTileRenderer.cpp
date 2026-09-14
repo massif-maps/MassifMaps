@@ -7177,29 +7177,40 @@ namespace massif::vt {
         glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.widthTable.data());
         glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.strokeWidthTable.data());
         
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.verticesVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelVertices.size() * 3 * sizeof(float), _labelVertices.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, 0, 0);
+        // ONE allocation, then each attribute into its own sub-range. Five glBufferData a draw was
+        // five driver allocations and five chances to synchronise; this is one of each, for the same
+        // bytes. Every range starts 4-byte aligned, which every attribute here is naturally.
+        std::size_t verticesBytes = _labelVertices.size() * 3 * sizeof(float);
+        std::size_t offsetsBytes = _labelOffsets.size() * 3 * sizeof(float);
+        std::size_t normalsBytes = (_lightingShader2D ? _labelNormals.size() * 3 * sizeof(float) : 0);
+        std::size_t texCoordsBytes = _labelTexCoords.size() * 2 * sizeof(std::int16_t);
+        std::size_t attribsBytes = _labelAttribs.size() * 4 * sizeof(std::int8_t);
+        std::size_t offsetsAt = verticesBytes;
+        std::size_t normalsAt = offsetsAt + offsetsBytes;
+        std::size_t texCoordsAt = normalsAt + normalsBytes;
+        std::size_t attribsAt = texCoordsAt + texCoordsBytes;
 
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.offsetsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelOffsets.size() * 3 * sizeof(float), _labelOffsets.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXOFFSET], 3, GL_FLOAT, GL_FALSE, 0, 0);
+        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.attributesVBO);
+        // Respecified with no data first: the buffer is drawn from every frame, and orphaning it
+        // means the upload below cannot wait for the previous frame's draw to finish with it.
+        glBufferData(GL_ARRAY_BUFFER, attribsAt + attribsBytes, nullptr, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, verticesBytes, _labelVertices.data());
+        glBufferSubData(GL_ARRAY_BUFFER, offsetsAt, offsetsBytes, _labelOffsets.data());
+        if (normalsBytes > 0) {
+            glBufferSubData(GL_ARRAY_BUFFER, normalsAt, normalsBytes, _labelNormals.data());
+        }
+        glBufferSubData(GL_ARRAY_BUFFER, texCoordsAt, texCoordsBytes, _labelTexCoords.data());
+        glBufferSubData(GL_ARRAY_BUFFER, attribsAt, attribsBytes, _labelAttribs.data());
 
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<const GLvoid*>(static_cast<std::uintptr_t>(0)));
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXOFFSET], 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<const GLvoid*>(static_cast<std::uintptr_t>(offsetsAt)));
         if (_lightingShader2D) {
-            glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.normalsVBO);
-            glBufferData(GL_ARRAY_BUFFER, _labelNormals.size() * 3 * sizeof(float), _labelNormals.data(), GL_DYNAMIC_DRAW);
-            enableVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_FLOAT, GL_FALSE, 0, 0);
+            enableVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<const GLvoid*>(static_cast<std::uintptr_t>(normalsAt)));
 
             _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
         }
-        
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.texCoordsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelTexCoords.size() * 2 * sizeof(std::int16_t), _labelTexCoords.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_FALSE, 0, 0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.attribsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelAttribs.size() * 4 * sizeof(std::int8_t), _labelAttribs.data(), GL_DYNAMIC_DRAW);
-        enableVertexAttrib(shaderProgram.attribs[A_VERTEXATTRIBS], 4, GL_BYTE, GL_FALSE, 0, 0);
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_FALSE, 0, reinterpret_cast<const GLvoid*>(static_cast<std::uintptr_t>(texCoordsAt)));
+        enableVertexAttrib(shaderProgram.attribs[A_VERTEXATTRIBS], 4, GL_BYTE, GL_FALSE, 0, reinterpret_cast<const GLvoid*>(static_cast<std::uintptr_t>(attribsAt)));
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledLabelBatch.indicesVBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, _labelIndices.size() * sizeof(std::uint16_t), _labelIndices.data(), GL_DYNAMIC_DRAW);
@@ -7819,34 +7830,14 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch) {
-        glGenBuffers(1, &compiledLabelBatch.verticesVBO);
-        glGenBuffers(1, &compiledLabelBatch.offsetsVBO);
-        glGenBuffers(1, &compiledLabelBatch.normalsVBO);
-        glGenBuffers(1, &compiledLabelBatch.texCoordsVBO);
-        glGenBuffers(1, &compiledLabelBatch.attribsVBO);
+        glGenBuffers(1, &compiledLabelBatch.attributesVBO);
         glGenBuffers(1, &compiledLabelBatch.indicesVBO);
     }
 
     void GLTileRenderer::deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch) {
-        if (compiledLabelBatch.verticesVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.verticesVBO);
-            compiledLabelBatch.verticesVBO = 0;
-        }
-        if (compiledLabelBatch.offsetsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.offsetsVBO);
-            compiledLabelBatch.offsetsVBO = 0;
-        }
-        if (compiledLabelBatch.normalsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.normalsVBO);
-            compiledLabelBatch.normalsVBO = 0;
-        }
-        if (compiledLabelBatch.texCoordsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.texCoordsVBO);
-            compiledLabelBatch.texCoordsVBO = 0;
-        }
-        if (compiledLabelBatch.attribsVBO != 0) {
-            glDeleteBuffers(1, &compiledLabelBatch.attribsVBO);
-            compiledLabelBatch.attribsVBO = 0;
+        if (compiledLabelBatch.attributesVBO != 0) {
+            glDeleteBuffers(1, &compiledLabelBatch.attributesVBO);
+            compiledLabelBatch.attributesVBO = 0;
         }
         if (compiledLabelBatch.indicesVBO != 0) {
             glDeleteBuffers(1, &compiledLabelBatch.indicesVBO);

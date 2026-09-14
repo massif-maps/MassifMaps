@@ -900,7 +900,11 @@ namespace massif {
     bool CompositeVectorTileLayer::renderComposite(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState, bool terrain) {
         auto decoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(getTileDecoder());
 
+        // Held across the draw of every child below, so a wait here is a wait for the whole 3D pass -
+        // and the pass3D counters live inside it and cannot see one.
+        FRAME_PROF_NOW(profRenderLockStart);
         std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        FRAME_PROF_ADD(layer3DLockMs, profRenderLockStart);
 
         // Group 0 renders on this layer itself (with the group-0 rendererLayerFilter set in
         // rebuildDrawItems). When there are no external child slots, this draws everything.

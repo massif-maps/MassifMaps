@@ -107,6 +107,9 @@ namespace massif {
         static inline double drapeMs = 0;      // drape bakes + terrain surface draws
         static inline double layerMs = 0;      // base layer draw pass
         static inline double layer3DMs = 0;    // 3D layer draw pass
+        // ... of which waiting for a composite's _sourceMutex, which renderComposite holds across the
+        // draw of every child. The pass3D counters sit INSIDE that, so a wait here is invisible to them.
+        static inline double layer3DLockMs = 0;
         static inline double billboardMs = 0;  // billboard sorting and drawing
 
         static double now() {
@@ -115,6 +118,7 @@ namespace massif {
 
         static void resetFrame() {
             skyMs = preludeMs = prepareMs = coverMs = drapeMs = layerMs = layer3DMs = billboardMs = 0;
+            layer3DLockMs = 0;
             preTerrainMs = preDepthMs = preClearanceMs = prePaintMs = prePaintPushMs = 0;
             prePaintLayersMs = prePaintCoverMs = prePaintLayerLockMs = 0;
             prePaintConfigMs = prePaintApplyMs = 0;
@@ -176,6 +180,7 @@ namespace massif {
                        delta.tileSets, delta.labelMaps, delta.labelsAlloc, delta.snaps,
                        delta.cullPasses, delta.geomDraws, delta.surfBuilt);
             logPreludeSplit();
+            logLayer3DSplit();
 #else
             Log::Infof("PROF SPIKE: frame %.1f ms | sky %.1f prelude %.1f prepare %.1f cover %.1f "
                        "drape %.1f layers %.1f layers3D %.1f billboards %.1f other %.1f "
@@ -184,6 +189,16 @@ namespace massif {
                        layer3DMs, billboardMs, other);
             logPreludeSplit();
 #endif
+        }
+
+        // Same idea for the 3D pass: its own counters (pass3DLabels2DNs and friends) live inside the
+        // composite's lock, so they cannot see a wait for it.
+        static void logLayer3DSplit() {
+            if (layer3DMs < 20.0) {
+                return;
+            }
+            Log::Infof("PROF LAYERS3D: %.1f ms | sourceLock %.1f rest %.1f",
+                       layer3DMs, layer3DLockMs, layer3DMs - layer3DLockMs);
         }
 
         // Only on a spike, and only when prelude is the reason for it - 'rest' is the layer walk.

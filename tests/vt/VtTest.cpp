@@ -28,6 +28,7 @@ void testSphericalTerrain();
 void testRenderTileBlend();
 void testLabelSlice();
 void testLayerContentFlags();
+void testViewStateMatrix();
 void testCollisionPadding();
 void testLabelAnchorAlign();
 void testLabelElevationAnchor();
@@ -61,6 +62,7 @@ int main() {
     testRenderTileBlend();
     testLabelSlice();
     testLayerContentFlags();
+    testViewStateMatrix();
     testCollisionPadding();
     testLabelAnchorAlign();
     testLabelElevationAnchor();

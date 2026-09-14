@@ -36,6 +36,7 @@ add_executable(vt_tests
   RenderTileBlendTest.cpp
   LabelSliceTest.cpp
   LayerContentFlagsTest.cpp
+  ViewStateMatrixTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"

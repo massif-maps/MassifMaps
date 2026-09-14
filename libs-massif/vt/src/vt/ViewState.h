@@ -42,6 +42,12 @@ namespace massif::vt {
         bool planarProjection = false;
         cglib::mat4x4<double> projectionMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> cameraMatrix = cglib::mat4x4<double>::identity();
+        // The view-projection and its INVERSE, resolved once with the rest of the frame's camera.
+        // Label::setupCoordinateSystem snaps every point label's anchor to the screen pixel grid and
+        // needs both to do it - and it ran the product and a 4x4 double inverse PER LABEL, per frame,
+        // off values identical for the whole frame (3589 labels an interval on the Crosscall).
+        cglib::mat4x4<double> viewProjMatrix = cglib::mat4x4<double>::identity();
+        cglib::mat4x4<double> invViewProjMatrix = cglib::mat4x4<double>::identity();
         cglib::vec3<double> origin = cglib::vec3<double>::zero();
         cglib::frustum3<double> frustum = cglib::gl_projection_frustum(cglib::mat4x4<double>::identity());
         // The frustum LABELS are placed against: the one above, grown by labelPadding screen pixels
@@ -67,7 +73,9 @@ namespace massif::vt {
         explicit ViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float rotation, float tilt, float aspect, float resolution) : zoom(zoom), rotation(rotation), tilt(tilt), aspect(aspect), resolution(resolution), zoomScale(std::pow(2.0f, -zoom)), projectionMatrix(projectionMatrix), cameraMatrix(cameraMatrix), origin(), frustum(), labelFrustum(), orientation() {
             cglib::mat4x4<double> invCameraMatrix = cglib::inverse(cameraMatrix);
             origin = cglib::proj_p(cglib::col_vector(invCameraMatrix, 3));
-            frustum = cglib::gl_projection_frustum(projectionMatrix * cameraMatrix);
+            viewProjMatrix = projectionMatrix * cameraMatrix;
+            invViewProjMatrix = cglib::inverse(viewProjMatrix);
+            frustum = cglib::gl_projection_frustum(viewProjMatrix);
             labelPadding = calculateLabelPadding(tilt);
             labelFrustum = cglib::gl_projection_frustum(paddedProjectionMatrix() * cameraMatrix);
             for (int i = 0; i < 3; i++) {

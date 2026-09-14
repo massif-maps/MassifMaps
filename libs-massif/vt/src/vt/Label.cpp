@@ -1522,7 +1522,7 @@ namespace massif::vt {
         // The run is laid out on the line AS THE CAMERA PROJECTS IT, so the view-projection is part of
         // the key. Only the RENDERER rebuilds on a view change: the culler's view state lags the frame,
         // so re-laying out there judges the label against a view nobody sees.
-        cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+        const cglib::mat4x4<double>& mvpMatrix = viewState.viewProjMatrix; // resolved once per frame
         // A flat run does not follow the projection - it lies on the ground - but which way it reads
         // does, so the camera AXES are its key. That leaves a flat run reused across a pan, where a
         // screen run rebuilds.
@@ -1573,8 +1573,10 @@ namespace massif::vt {
             // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
             // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
             // shimmer-free (tangram-style screen-space anchoring)
-            cglib::mat4x4<double> viewProjMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
-            cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewProjMatrix);
+            // Both resolved once with the frame's camera (ViewState): the product and the inverse
+            // below are the same for every label, and doing them here cost a 4x4 double inverse per
+            // label per frame.
+            cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewState.viewProjMatrix);
             if (clipPos(3) > 0) {
                 double screenWidth = viewState.resolution * viewState.aspect;
                 double screenHeight = viewState.resolution;
@@ -1583,7 +1585,7 @@ namespace massif::vt {
                 double snappedX = std::round(pixelX * 4.0) * 0.25;
                 double snappedY = std::round(pixelY * 4.0) * 0.25;
                 cglib::vec3<double> snappedNDC((snappedX / screenWidth - 0.5) * 2.0, (snappedY / screenHeight - 0.5) * 2.0, clipPos(2) / clipPos(3));
-                position = cglib::transform_point(snappedNDC, cglib::inverse(viewProjMatrix));
+                position = cglib::transform_point(snappedNDC, viewState.invViewProjMatrix);
             }
         }
         origin = cglib::vec3<float>::convert(position - viewState.origin);
@@ -1825,7 +1827,7 @@ namespace massif::vt {
         // test share that measure: a SCREEN run is worth its PROJECTED length, since a line running away
         // from a tilted camera is a fraction of its ground length, while a FLAT run is worth its own.
         bool screenRun = isScreenLineRun();
-        cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+        const cglib::mat4x4<double>& mvpMatrix = viewState.viewProjMatrix; // resolved once per frame
         auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<double>& result) {
             cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), mvpMatrix);
             if (!(clipPos(3) > 0)) {

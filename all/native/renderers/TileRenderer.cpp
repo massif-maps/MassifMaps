@@ -30,6 +30,8 @@
 #include "utils/Const.h"
 
 #include <limits>
+#include <atomic>
+#include <chrono>
 
 #include <vt/Label.h>
 #include <vt/LabelCuller.h>
@@ -44,6 +46,28 @@
 #include <cglib/mat.h>
 
 namespace massif {
+
+    // Diagnostic for the label anchor: which source answered, for what coordinate and tile, once a
+    // second. elevReanchor stayed 0 across several device builds while the provider was rewritten
+    // twice, and reading the two lookups did not say why - so it reports itself. Temporary.
+    static void logLabelElevationQuery(const cglib::vec3<double>& pos, int zoom, bool fromTexture, bool fromGrid, double height) {
+        static std::atomic<long long> queries { 0 }, textureHits { 0 }, gridHits { 0 }, misses { 0 };
+        queries++;
+        if (fromTexture) { textureHits++; } else if (fromGrid) { gridHits++; } else { misses++; }
+        static std::atomic<long long> lastLogMs { 0 };
+        long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        long long last = lastLogMs.load();
+        if (nowMs - last < 1000 || !lastLogMs.compare_exchange_strong(last, nowMs)) {
+            return;
+        }
+        int extent = 1 << std::max(0, zoom);
+        double u = pos(0) / Const::WORLD_SIZE + 0.5, v = 0.5 - pos(1) / Const::WORLD_SIZE;
+        Log::Infof("PROF LABELELEV: queries %lld texture %lld grid %lld MISS %lld | zoom %d tile %d/%d | internal %.1f,%.1f uv %.6f,%.6f -> %s %.1f m",
+            queries.load(), textureHits.load(), gridHits.load(), misses.load(), zoom,
+            static_cast<int>(std::floor(u * extent)), static_cast<int>(std::floor(v * extent)),
+            pos(0), pos(1), u, v, (fromTexture ? "texture" : fromGrid ? "grid" : "MISS"), height);
+    }
+
 
     struct TileRenderer::LabelOcclusionState {
         std::mutex mutex;
@@ -999,10 +1023,15 @@ namespace massif {
             int labelZoom = static_cast<int>(viewState.getZoom());
             tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom](const cglib::vec3<double>& pos) {
                 double height = 0;
-                if (labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height)) {
-                    return height;
+                bool fromTexture = labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::ANY_CACHED_ANCESTOR);
+                bool fromGrid = false;
+                if (!fromTexture) {
+                    fromGrid = elevationManager->getDisplayHeightCached(pos(0), pos(1), height);
                 }
-                if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
+                // Which of the two answered, once a second: elevReanchor stayed 0 through several
+                // builds and no amount of reading the two lookups said why. Remove once it has.
+                logLabelElevationQuery(pos, labelZoom, fromTexture, fromGrid, height);
+                if (fromTexture || fromGrid) {
                     return height;
                 }
                 return std::numeric_limits<double>::quiet_NaN();

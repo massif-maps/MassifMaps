@@ -1034,7 +1034,15 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   So the provider asks `ElevationTextureCache::getDisplayHeight` with **`smooth = false`** first, and
   the flag is the whole point: that path reads the grid the *texture entry retains* — the one the
   manager's LRU has already dropped out from under a tile that is still being drawn — walks to a
-  bounded ancestor, and prefetches what is missing. `smooth = true` is the building-BASE variant and
+  bounded ancestor, and prefetches what is missing — and **how far that bound reaches was the actual
+  root cause**. `BASE_MAX_ANCESTOR_LEVELS` is 1, while `RenderStats`' `zoomGap` measured **3**: the
+  elevation sits three levels coarser than the render tiles, so a one-level walk refused the only data
+  there was and returned false for every label at every position. The cap is right for its original
+  caller — an extrusion bakes its base into its vertices, so a far ancestor is a wrong answer rather
+  than a coarse one — so the bound is now the caller's, and a label passes `ANY_CACHED_ANCESTOR`,
+  which is what the grid path already grants through `LoadMode::CACHED_ONLY`. Confirmed on the
+  Crosscall: **19 misses in 746 584 queries**, and `elevReanchor` non-zero for the first time.
+  `smooth = true` is the building-BASE variant and
   resolves through the manager's LRU alone, so it fails in exactly the case this is for. The LRU
   remains the fallback for a map with no texture cache at all, and the provider returns **NaN** when
   neither has data. `Label::applyElevation` leaves a non-finite vertex at the height it had and

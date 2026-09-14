@@ -511,7 +511,7 @@ namespace massif {
         }
     }
 
-    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height) const {
+    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels) const {
         if (zoom < 0) {
             return false;
         }
@@ -566,7 +566,7 @@ namespace massif {
             // A base is BAKED into the vertices, so a far ancestor is not a coarser answer but a
             // wrong one: over Paris a footprint that fell through came back at 127 m where the DEM
             // says 34. The vertex keeps its sentinel and resolves for real once the tile lands.
-            if (dataZoom - dataTile.getZoom() > BASE_MAX_ANCESTOR_LEVELS) {
+            if (dataZoom - dataTile.getZoom() > maxAncestorLevels) {
                 return false;
             }
             auto cacheIt = _cache.find(dataTile.getTileId());

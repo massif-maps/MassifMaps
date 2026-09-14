@@ -94,9 +94,23 @@ namespace massif {
          * portal measured 441 m and 663 m within one run, so two halves of one deck were baked at
          * different heights.
          *
+         * maxAncestorLevels bounds how far above `zoom` the answer may come from. An extrusion BAKES
+         * its base into its vertices, so a far ancestor is a wrong answer rather than a coarse one -
+         * hence the tight default. A LABEL anchor is re-anchored whenever the elevation changes and a
+         * few metres is invisible, so it passes a generous bound: with the elevation three levels
+         * coarser than the render tiles (RenderStats zoomGap), one level answered for nothing at all.
+         *
          * @return False when the renderer has no elevation for the tile holding the point.
          */
-        bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height) const;
+        // Default for a BAKED query. One level covers the common "decoded but not yet in the texture
+        // cache" frame; beyond that the answer is a smoothed average of a region, not the ground
+        // under the point - which a vertex cannot be given, but a re-anchored label can.
+        static const int BASE_MAX_ANCESTOR_LEVELS = 1;
+        // What a label anchor passes: any cached ancestor, which is what the grid path already grants
+        // through LoadMode::CACHED_ONLY.
+        static const int ANY_CACHED_ANCESTOR = 32;
+
+        bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels = BASE_MAX_ANCESTOR_LEVELS) const;
 
         /**
          * Resolves every tile at the elevation source's own maximum detail instead of at the level
@@ -216,10 +230,7 @@ namespace massif {
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         float _viewZoom = 0.0f; // the camera's zoom this frame, for the border prefetch bound
         std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
-        // How far above the level the source carries a CPU height query may fall back. One level
-        // covers the common "the tile is decoded but not yet in the texture cache" frame; beyond
-        // that the answer is a smoothed average of a region, not the ground under the point.
-        static const int BASE_MAX_ANCESTOR_LEVELS = 1;
+
         // How far below the camera's zoom a tile may be and still fetch its border neighbours. A
         // tilted view's far ground is covered by very coarse tiles, and each asked for its 8
         // neighbours: at startup that was 129 of 222 tile loads, and it delayed the near ground the

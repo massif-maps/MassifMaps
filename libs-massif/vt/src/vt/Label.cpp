@@ -737,10 +737,10 @@ namespace massif::vt {
     }
 
     bool Label::isSurfaceFacingView(const ViewState& viewState, const Placement& placement) const {
-        // A CALLOUT is a screen object - it faces the camera and is joined to its feature by a leader
-        // line - so how steeply the view meets the ground says nothing about whether it can be read.
-        // Every other orientation is laid out against that surface and degenerates edge-on.
-        if (_style->orientation == LabelOrientation::CALLOUT) {
+        // Only a label laid out ON the surface degenerates when the view meets it edge-on. A
+        // billboard stands up and faces the camera and a CALLOUT is a screen object, so the ground
+        // normal says nothing about either - mapbox and maplibre cull neither, they scale instead.
+        if (_style->orientation != LabelOrientation::POINT && _style->orientation != LabelOrientation::LINE) {
             return true;
         }
         return cglib::dot_product(viewState.orientation[2], placement.normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;

@@ -265,6 +265,10 @@ add_executable(api_tests
   "${SDK_BASE_DIR}/all/native/terrain/TerrainProjectionSurface.cpp"
   # Same: FlattenSwitchTimeline.h is what each half of a 2D/3D switch cost, and nothing else.
   FlattenSwitchTimelineTest.cpp
+  # Same: ViewDistance.h is the camera height the draw ceiling is a multiple of, and nothing else.
+  ViewDistanceTest.cpp
+  # Same: FogPitchFade.h is mapbox's fog pitch smoothstep, and nothing else.
+  FogPitchFadeTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

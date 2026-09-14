@@ -488,6 +488,7 @@ namespace massif {
     private:
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible) const;
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible, float& skyHorizonNDC) const;
+        void logViewDistances(const Options& options, float near, float far, double rayFar, double maxDist, double viewDistance, double cameraHeight) const;
         float calculateMinZoom(const Options& options) const;
 
         /**

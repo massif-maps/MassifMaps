@@ -3,23 +3,46 @@
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
 #include "terrain/CameraClearance.h"
+#include "graphics/ViewDistance.h"
 #include "graphics/ZoomConvention.h"
 #include "utils/Const.h"
+#include "utils/FrameProfiler.h"
 #include "utils/GeneralUtils.h"
 #include "utils/Log.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <cglib/mat.h>
 #include <vt/ViewState.h>
 
+#ifdef __ANDROID__
+#include <sys/system_properties.h>
+#endif
+
 namespace massif {
 
-    // Tangram's constants (core/src/view/view.cpp): the far-plane factor on the camera height,
-    // and the LOD depth whose 2^(d+1)-1 = 127 tile widths cap how far tiles are ever walked.
+    // Tangram's far-plane factor on the camera height (core/src/view/view.cpp). Their LOD depth,
+    // which caps how far tiles are walked, is ViewDistance::MAX_TILE_LOD - two callers need it.
     static const double TANGRAM_FAR_PLANE_FACTOR = 2.0;
-    static const int MAX_TILE_LOD = 6;
+
+#ifdef __ANDROID__
+    // Takes the draw ceiling back to scaling the ORBIT alone, for an A/B against the altitude-aware
+    // one without a rebuild:  adb shell setprop debug.massif.viewceiling 0
+    static bool isTerrainViewCeilingEnabled() {
+        static const bool enabled = [] {
+            char property[PROP_VALUE_MAX] = { 0 };
+            return !(__system_property_get("debug.massif.viewceiling", property) > 0 && property[0] == '0');
+        }();
+        return enabled;
+    }
+#else
+    static bool isTerrainViewCeilingEnabled() {
+        return true;
+    }
+#endif
 
     ViewState::ViewState() :
         _cameraPos(0, 0, 1),
@@ -874,7 +897,13 @@ namespace massif {
             }
         }
 
-        double maxDist = std::pow(2.0f, -_zoom) * zoom0Distance * options.getDrawDistance();
+        // Scaling the zoom-derived orbit ALONE made this ceiling a function of the zoom, and it cut
+        // peaks off a low camera in mountains whose tiles were fetched anyway - 05-depth-model.md.
+        double orbitDistance = std::pow(2.0f, -_zoom) * zoom0Distance;
+        double cameraHeight = isTerrainViewCeilingEnabled()
+            ? ViewDistance::cameraHeight(orbitDistance, _cameraPos(2)) : orbitDistance;
+        double maxDist = ViewDistance::drawCeiling(cameraHeight, options.getDrawDistance(), Const::WORLD_SIZE * std::pow(2.0, -_zoom));
+        double rayFar = far;
         if (far > maxDist) {
             far = maxDist;
             skyVisible = true;
@@ -933,6 +962,32 @@ namespace massif {
             near = std::max(near, terrainNear);
             far = std::max(static_cast<float>(viewDistance > 0 ? viewDistance : maxDist), near * 2.0f);
         }
+        logViewDistances(options, near, far, rayFar, maxDist, viewDistance, cameraHeight);
+    }
+
+    /**
+     * Which of the four limits ended the map, in km: 05-depth-model.md. Once a second, and the cull
+     * worker calls it too, so the limiter is atomic.
+     */
+    void ViewState::logViewDistances(const Options& options, float near, float far, double rayFar, double maxDist, double viewDistance, double cameraHeight) const {
+#if MASSIF_FRAME_PROFILER
+        static std::atomic<long long> lastLogMs { 0 };
+        long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        long long last = lastLogMs.load();
+        if (nowMs - last < 1000 || !lastLogMs.compare_exchange_strong(last, nowMs)) {
+            return;
+        }
+        double toKm = Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE / 1000.0;
+        float fogStart = 0, fogEnd = 0;
+        if (std::shared_ptr<FogOptions> fogOptions = options.getFogOptions()) {
+            fogStart = static_cast<float>(fogOptions->getRangeStart() * calculateCameraDistance() * toKm);
+            fogEnd = static_cast<float>(fogOptions->getRangeEnd() * calculateCameraDistance() * toKm);
+        }
+        Log::Infof("PROF VIEW: zoom %.2f tilt %.1f | orbit %.2f alt %.2f height %.2f km | terrain %.2f..%.2f km | ray far %.2f ceiling %.2f rule %.2f -> near %.4f far %.2f km | fog %.2f..%.2f km",
+            _zoom, _tilt, calculateCameraDistance() * toKm, _cameraPos(2) * toKm, cameraHeight * toKm,
+            _terrainHeightMin * toKm, _terrainHeightMax * toKm,
+            rayFar * toKm, maxDist * toKm, viewDistance * toKm, near * toKm, far * toKm, fogStart, fogEnd);
+#endif
     }
 
     double ViewState::calculateCameraDistance() const {
@@ -958,7 +1013,7 @@ namespace massif {
         // Tangram's m_pos.z is both the height above the ground plane and the zoom-derived distance
         // to the focus; with 3D terrain the two part company, and on a 2600 m summit the zoom-derived
         // one alone draws a few kilometres of panorama. Take the larger of the two.
-        double cameraDistance = std::max(calculateCameraDistance(), _cameraPos(2));
+        double cameraDistance = ViewDistance::cameraHeight(calculateCameraDistance(), _cameraPos(2));
 
         // Tilt is measured from the horizontal here and pitch from the vertical there, so the
         // angle from the view axis to the horizon is (90 - tilt) + fovy/2.
@@ -968,9 +1023,7 @@ namespace massif {
         if (cosPitch > 0.0) {
             distance = TANGRAM_FAR_PLANE_FACTOR * cameraDistance / cosPitch;
         }
-        // 127 tile widths at this zoom, in internal units.
-        double worldTileSize = Const::WORLD_SIZE * std::pow(2.0, -_zoom);
-        distance = std::min(distance, worldTileSize * (std::pow(2.0, MAX_TILE_LOD + 1) - 1.0));
+        distance = std::min(distance, ViewDistance::tileWalkCap(Const::WORLD_SIZE * std::pow(2.0, -_zoom)));
         // An absolute distance only ever EXTENDS the rule. Metres are zoom-independent while the
         // rule scales with 2^-zoom, so letting metres win outright ends the ground in a disc well
         // inside a zoomed-out screen (MassifMaps#156).

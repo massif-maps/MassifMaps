@@ -143,6 +143,62 @@ The vertex shaders match: both sample the terrain at the **extruded** corner (`a
 delta)`), never at the anchor. A quad placed at the anchor's height and then offset sideways is a
 flat plate whose uphill half is under the ground.
 
+## How far the map reaches
+
+Four separate limits end the ground, and they are easy to confuse because all four look the same on
+screen. `ViewState::calculateViewDistances` applies them in this order:
+
+| Limit | What it is | Where |
+|---|---|---|
+| the ray horizon | nine rays through the frustum, hit-tested against the lowest visible ground | the bisection loop |
+| the draw ceiling | `DrawDistance` (default 16) multiples of the camera height, capped at 127 tile widths | `ViewDistance::drawCeiling` |
+| tangram's rule | `2 * height / cos(tilt' + fovy/2)`, capped at 127 tile widths | `calculateViewDistance` |
+| the fog | `fog-range-end` multiples of the camera-to-focus distance, going opaque | [08-lighting-sky-fog.md](08-lighting-sky-fog.md) |
+
+**The height all of them scale is `max(orbitDistance, cameraAltitude)`** — `ViewDistance::cameraHeight`,
+tangram's `m_pos.z`. The orbit distance halves with every zoom step; the altitude does not. The draw
+ceiling used to scale the orbit *alone*, which made it a function of the zoom: dropping the camera
+towards the ground in mountains shortened the view with every step and cut peaks a few kilometres
+away, **while the tile walk — the same height times a larger factor — had already fetched them**.
+Raising the ceiling there draws tiles that were being paid for anyway.
+
+`adb shell setprop debug.massif.viewceiling 0` takes the ceiling back to scaling the orbit alone,
+which is the A/B for anything that reads as a depth-precision regression (labels vanishing against 3D
+content is the one to watch — the label occluder packs window depth into rgb, so its precision rides
+on this far plane).
+
+The ceiling keeps tangram's **127 tile widths** cap, and that is not cosmetic: with
+`ViewDistanceFactor` 0 the cull envelope stops at the far plane *alone*
+(`CullWorker::calculateEnvelope`), so a ceiling free to grow with the camera's altitude is a tile walk
+free to grow with it — a high camera at a high zoom would ask for hundreds of tile widths of ground.
+
+Mapbox has no zoom-only ceiling at all. Its far plane
+(`src/geo/projection/far_z.ts`) is a law of sines off the camera's height above sea level, clamped at
+`10 * cameraAltitude / cos(pitch)`. Comparing the two rules at `h` = camera height:
+
+| tilt (ours; 90 is top-down) | our rule | mapbox `far_z.ts` |
+|---|---|---|
+| 90 | 2.07 h | ~1.0 h |
+| 45 | 4 h | 1.9 h |
+| 20 | 22.9 h | 11.1 h |
+| 5 | ∞, capped at 127 tiles | 115 h (the horizon clamp) |
+
+**Mapbox's far plane is about half of ours at every tilt below the horizon**, so porting it whole
+would shorten the view, not lengthen it. What is worth taking from mapbox is the *absence* of a
+zoom-derived ceiling, which is the change above.
+
+Build the demo with `-PprofileRender` (`-DMASSIF_FRAME_PROFILER=1`) and a `PROF VIEW` line names which
+of the four ended the map, once a second, in kilometres:
+
+```
+PROF VIEW: zoom 15.30 tilt 20.4 | orbit 1.42 alt 3.10 height 3.10 km | terrain 0.55..4.21 km
+  | ray far 61.80 ceiling 49.60 rule 71.02 -> near 0.0620 far 49.60 km | fog 2.48..24.80 km
+```
+
+`far` equal to `ceiling` means the draw ceiling cut it; equal to `rule` means tangram's rule did; well
+under both means the horizon is genuinely there. A `fog` end shorter than `far` means nothing was
+clipped at all — the ground is simply invisible.
+
 ## Rules to keep
 
 1. **Never push the reference surface back.** Slack belongs on the content, forward and test-only. A

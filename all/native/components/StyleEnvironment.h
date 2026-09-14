@@ -198,8 +198,10 @@ namespace massif {
      *
      * cameraDistance is ViewState::calculateCameraDistance() in internal units, which the range is
      * measured in. It is a function of the zoom alone, so one range setting holds at every zoom.
+     *
+     * tilt fades the fog out as the view comes back to top-down - see FogPitchFade.h.
      */
-    ResolvedFog resolveFog(const std::shared_ptr<FogOptions>& fogOptions, const StyleEnvironment& env, const ResolvedLighting& lighting, double cameraDistance);
+    ResolvedFog resolveFog(const std::shared_ptr<FogOptions>& fogOptions, const StyleEnvironment& env, const ResolvedLighting& lighting, double cameraDistance, float tilt);
 
     /**
      * The sky to actually draw: SkyOptions, with every value the style defines substituted in.

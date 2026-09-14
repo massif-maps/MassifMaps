@@ -1134,7 +1134,7 @@ namespace massif {
             // Distance fog, lit by the same sun as the ground (see resolveFog). The range is
             // camera-relative, so resolveFog already returns internal units - it needs no terrain,
             // and this is what fogs a plain 2D map as well.
-            ResolvedFog fog = resolveFog(options->getFogOptions(), _styleEnvironment, lighting, viewState.calculateCameraDistance());
+            ResolvedFog fog = resolveFog(options->getFogOptions(), _styleEnvironment, lighting, viewState.calculateCameraDistance(), viewState.getTilt());
             tileRenderer->setFog(vt::Color(fog.color.getR() / 255.0f, fog.color.getG() / 255.0f, fog.color.getB() / 255.0f, fog.color.getA() / 255.0f),
                                  fog.startDistance, fog.distance, fog.rangeScale, fog.horizonBlend);
             tileRenderer->setFogColors(vt::Color(fog.highColor.getR() / 255.0f, fog.highColor.getG() / 255.0f, fog.highColor.getB() / 255.0f, fog.highColor.getA() / 255.0f),

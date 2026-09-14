@@ -1359,6 +1359,27 @@ Camera-relative is the load-bearing choice. `ViewState::calculateCameraDistance(
 camera. A metric range had to be retuned for every zoom, and a range tuned for a city view painted a
 mountain view solid.
 
+It has a cost, and it is the one to know when a view looks too short: the fog end is
+`range-end × camera-to-focus`, so it **halves with every zoom step**. At `range-end` 8 and a
+kilometre of orbit distance the map is opaque at 8 km however far the far plane reaches — the ground
+is not clipped, it is simply invisible. Mapbox's fog scales the same way (its `range` is in units of
+`cameraToCenterDistance`), so this is parity, not a defect; what an app has against it is a zoom
+expression on `fog-range-end`. [05-depth-model.md](05-depth-model.md) lists the four limits together,
+and the `PROF VIEW` line prints the fog end in kilometres next to the far plane.
+
+### No fog looking straight down
+
+The range being camera-relative means a top-down map fogs its own ground at a few kilometres out with
+no distance in the frame to justify it. Mapbox fades the whole fog out by pitch —
+`smoothstep(45°, 65°, pitch)`, `src/style/fog_helpers.ts` — and `FogPitchFade.h` is that rule with
+their pitch read off our tilt (`pitch = 90 − tilt`): no fog at all top-down, full fog once the view is
+25° off the horizon. `resolveFog` applies it to the fog colour's **alpha**, which is where mapbox puts
+it too (`painter.ts` passes `getOpacity(pitch)` as `u_fog_color[3]`), so `ResolvedFog::active()` goes
+false and the pass is skipped entirely rather than drawing a transparent one.
+
+This changes what an existing style renders at a low tilt: a map that showed haze top-down no longer
+does. `adb shell setprop debug.massif.fogpitch 0` turns the fade off for the A/B.
+
 ### The horizon term is what closes the seam
 
 The one thing to understand. There used to be **four** fog implementations — vt's linear ramp, the

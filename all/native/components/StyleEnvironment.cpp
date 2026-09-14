@@ -3,6 +3,7 @@
 #include "components/TerrainOptions.h"
 #include "components/LightOptions.h"
 #include "components/FogOptions.h"
+#include "components/FogPitchFade.h"
 #include "components/SkyOptions.h"
 #include "utils/Const.h"
 
@@ -281,7 +282,7 @@ namespace {
         return std::min(1.0f, std::max(0.0f, opacity));
     }
 
-    ResolvedFog resolveFog(const std::shared_ptr<FogOptions>& fogOptions, const StyleEnvironment& env, const ResolvedLighting& lighting, double cameraDistance) {
+    ResolvedFog resolveFog(const std::shared_ptr<FogOptions>& fogOptions, const StyleEnvironment& env, const ResolvedLighting& lighting, double cameraDistance, float tilt) {
         ResolvedFog fog;
         if (!fogOptions) {
             return fog;
@@ -351,6 +352,12 @@ namespace {
                               channel(fog.color.getG(), lighting.sunColor.getG()),
                               channel(fog.color.getB(), lighting.sunColor.getB()),
                               fog.color.getA());
+        }
+        // A top-down map has no distance to fog. Mapbox puts this on the fog colour's alpha too
+        // (painter.ts passes getOpacity(pitch) as u_fog_color[3]), so active() turns the pass off.
+        if (isFogPitchFadeEnabled()) {
+            fog.color = Color(fog.color.getR(), fog.color.getG(), fog.color.getB(),
+                              static_cast<unsigned char>(fog.color.getA() * fogPitchOpacity(tilt) + 0.5f));
         }
         if (!enabled) {
             fog.color = Color(0, 0, 0, 0);

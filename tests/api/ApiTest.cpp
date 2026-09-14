@@ -85,14 +85,13 @@ void testTileStyleZoom();
 void testFocusLift();
 void testKineticStep();
 void testTileLODRule();
-<<<<<<< HEAD
 void testSphericalSurface();
 void testGlobeElevationScale();
 void testSkyFrame();
 void testTerrainSurface();
-=======
 void testFlattenSwitchTimeline();
->>>>>>> 08adba4df (chore(terrain): report which half of a 2D/3D switch was the slow one)
+void testViewDistance();
+void testFogPitchFade();
 
 namespace {
 
@@ -468,14 +467,13 @@ int main() {
     testFocusLift();
     testKineticStep();
     testTileLODRule();
-<<<<<<< HEAD
     testSphericalSurface();
     testGlobeElevationScale();
     testSkyFrame();
     testTerrainSurface();
-=======
     testFlattenSwitchTimeline();
->>>>>>> 08adba4df (chore(terrain): report which half of a 2D/3D switch was the slow one)
+    testViewDistance();
+    testFogPitchFade();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -47,28 +47,6 @@
 
 namespace massif {
 
-    // Diagnostic for the label anchor: which source answered, for what coordinate and tile, once a
-    // second. elevReanchor stayed 0 across several device builds while the provider was rewritten
-    // twice, and reading the two lookups did not say why - so it reports itself. Temporary.
-    static void logLabelElevationQuery(const cglib::vec3<double>& pos, int zoom, bool fromTexture, bool fromGrid, double height) {
-        static std::atomic<long long> queries { 0 }, textureHits { 0 }, gridHits { 0 }, misses { 0 };
-        queries++;
-        if (fromTexture) { textureHits++; } else if (fromGrid) { gridHits++; } else { misses++; }
-        static std::atomic<long long> lastLogMs { 0 };
-        long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        long long last = lastLogMs.load();
-        if (nowMs - last < 1000 || !lastLogMs.compare_exchange_strong(last, nowMs)) {
-            return;
-        }
-        int extent = 1 << std::max(0, zoom);
-        double u = pos(0) / Const::WORLD_SIZE + 0.5, v = 0.5 - pos(1) / Const::WORLD_SIZE;
-        Log::Infof("PROF LABELELEV: queries %lld texture %lld grid %lld MISS %lld | zoom %d tile %d/%d | internal %.1f,%.1f uv %.6f,%.6f -> %s %.1f m",
-            queries.load(), textureHits.load(), gridHits.load(), misses.load(), zoom,
-            static_cast<int>(std::floor(u * extent)), static_cast<int>(std::floor(v * extent)),
-            pos(0), pos(1), u, v, (fromTexture ? "texture" : fromGrid ? "grid" : "MISS"), height);
-    }
-
-
     struct TileRenderer::LabelOcclusionState {
         std::mutex mutex;
         cglib::vec3<double> cameraPos = cglib::vec3<double>(0, 0, 0);
@@ -140,13 +118,22 @@ namespace massif {
         _interactionMode = enabled;
     }
 
+    // Render-thread side of _mutex, timed: what a tile-set change on the cull thread costs the frame
+    // it lands in. refreshTilesLockNs is the same wait seen from the other thread.
+    std::unique_lock<std::mutex> TileRenderer::lockTimed() const {
+        VT_STAT_CLOCK(lockClock);
+        std::unique_lock<std::mutex> lock(_mutex);
+        VT_STAT_SPLIT(tileRendererLockNs, lockClock);
+        return lock;
+    }
+
     void TileRenderer::setTerrainRenderOrder(int order) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
         _terrainRenderOrder = order;
     }
 
     void TileRenderer::setTerrainDepthWriteMode(bool enabled) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
         _terrainDepthWriteMode = enabled;
     }
     
@@ -305,7 +292,7 @@ namespace massif {
     }
 
     bool TileRenderer::prepareFrame(float deltaSeconds, const ViewState& viewState) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
         return prepareFrameUnsafe(deltaSeconds, viewState);
     }
@@ -618,7 +605,7 @@ namespace massif {
     }
 
     bool TileRenderer::isGroundAOBakeable() const {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
             return tileRenderer->isGroundAOBakeable();
@@ -727,8 +714,15 @@ namespace massif {
     }
 
     void TileRenderer::setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
+        // Pushed every frame, but it only CHANGES when the terrain cover does. The push takes the
+        // vt renderer's mutex, which a tile-set change holds for a whole label map rebuild - 151 ms
+        // of a 213 ms prelude, on a list that was usually identical to the one already there.
+        if (tileIds == _terrainPaintTileIds) {
+            return;
+        }
+        _terrainPaintTileIds = tileIds;
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
             tileRenderer->setTerrainPaintTiles(tileIds);
         }
@@ -845,7 +839,7 @@ namespace massif {
 #endif
 
     bool TileRenderer::onDrawFrame(float deltaSeconds, const ViewState& viewState) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
         if (!initializeRenderer()) {
             return false;
@@ -1028,9 +1022,6 @@ namespace massif {
                 if (!fromTexture) {
                     fromGrid = elevationManager->getDisplayHeightCached(pos(0), pos(1), height);
                 }
-                // Which of the two answered, once a second: elevReanchor stayed 0 through several
-                // builds and no amount of reading the two lookups said why. Remove once it has.
-                logLabelElevationQuery(pos, labelZoom, fromTexture, fromGrid, height);
                 if (fromTexture || fromGrid) {
                     return height;
                 }
@@ -1246,7 +1237,7 @@ namespace massif {
     }
     
     bool TileRenderer::onDrawFrame3D(float deltaSeconds, const ViewState& viewState) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
         // The frame ends here regardless of what follows, so clear the prepare latch up front:
         // leaking it past an early return would make every later frame skip startFrame.
@@ -1370,36 +1361,46 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // threads hold this mutex while storing decoded tiles - which is exactly when the set
         // changes. A long wait here and a short one inside setVisibleTiles mean different fixes.
         VT_STAT_CLOCK(refreshClock);
-        std::lock_guard<std::mutex> lock(_mutex);
-        VT_STAT_SPLIT(refreshTilesLockNs, refreshClock);
-
-        // A preloading draw data is a tile OUTSIDE the view frustum - the label band or the
-        // preloading ring. Its labels are wanted, so that they are placed before they scroll in;
-        // its geometry is not, and drawing it was 15% of the render tiles for nothing.
+        std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles, labelOnlyTiles;
-        for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
-            auto& target = (drawData->isPreloadingTile() ? labelOnlyTiles : tiles);
-            target[drawData->getVTTileId()] = drawData->getVTTile();
-        }
+        int teleportOffset = 0;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            VT_STAT_SPLIT(refreshTilesLockNs, refreshClock);
 
-        bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) ||
-                       (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
-        if (!changed) {
-            return false;
-        }
-
-        if (_vtRenderer) {
-            if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
-                if (_horizontalLayerOffset != 0) {
-                    tileRenderer->teleportVisibleTiles((int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE), 0);
-                }
-                tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles);
+            // A preloading draw data is a tile OUTSIDE the view frustum - the label band or the
+            // preloading ring. Its labels are wanted, so that they are placed before they scroll in;
+            // its geometry is not, and drawing it was 15% of the render tiles for nothing.
+            for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
+                auto& target = (drawData->isPreloadingTile() ? labelOnlyTiles : tiles);
+                target[drawData->getVTTileId()] = drawData->getVTTile();
             }
+
+            bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) ||
+                           (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
+            if (!changed) {
+                return false;
+            }
+
+            if (_vtRenderer) {
+                tileRenderer = _vtRenderer->getTileRenderer();
+            }
+            teleportOffset = (int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE);
+            _tiles = tiles;
+            _labelOnlyTiles = labelOnlyTiles;
+            _spanReferenceTiles = spanReferenceTiles;
+            _horizontalLayerOffset = 0;
         }
-        _tiles = std::move(tiles);
-        _labelOnlyTiles = std::move(labelOnlyTiles);
-        _spanReferenceTiles = spanReferenceTiles;
-        _horizontalLayerOffset = 0;
+
+        // OFF the mutex: setVisibleTiles rebuilds the label maps (~26 ms, 16x a second while
+        // panning) and locks the vt renderer itself. Held here it also blocked every render-thread
+        // call on this layer - measured as 500 ms of lock per second of a 3D pan.
+        if (tileRenderer) {
+            if (teleportOffset != 0) {
+                tileRenderer->teleportVisibleTiles(teleportOffset, 0);
+            }
+            tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles);
+        }
         // The changed path only - the unchanged one returns above and costs nothing. INCLUDES
         // setVisibleTiles, whose own splits break it down further.
         VT_STAT_SPLIT(refreshTilesNs, refreshClock);

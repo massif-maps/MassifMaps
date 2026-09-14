@@ -216,6 +216,8 @@ namespace massif {
 
         bool initializeRenderer();
         bool isPlanarProjectionMode() const;
+        // _mutex taken from the render thread, timed: a tile-set change holds it on the cull thread.
+        std::unique_lock<std::mutex> lockTimed() const;
         // Tangram-model measurement switch, read once from debug.massif.depthshift (Android only).
         static float getTerrainContentDepthShift();
         // tangram res/scenes/terrain-3d.yaml: depth_shift = -0.02*u_proj[2][3], and [2][3] is -1.
@@ -352,6 +354,7 @@ namespace massif {
         mutable std::mutex _labelOcclusionTestMutex;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTestCopy;
 
+        std::vector<vt::TileId> _terrainPaintTileIds; // last pushed, so an unchanged cover costs no vt lock
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _tiles;
         // Offscreen tiles: their labels are placed, their geometry is never drawn. See refreshTiles.
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _labelOnlyTiles;

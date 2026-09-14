@@ -1383,6 +1383,44 @@ the mountains standing in the far half of a tilted city view. They are cut as fi
 under the camera, because subdivision cost is per tile and **independent of the tile's size on
 screen**.
 
+### A draped fill is not subdivided any more
+
+The table above is a **3D** camera, where fills are draped and baked once. Flat is the opposite case:
+`TerrainOptions::isActive()` is false at ratio 1, so nothing is draped, and every fill is drawn as
+ordinary 2D geometry — at its terrain density, on every frame. Crosscall, Grenoble z16.2 t26, assets
+style, 8 swipes, `-PprofileRender`, interleaved two reps:
+
+| | fps | `layers` | geometry indices / frame |
+|---|---|---|---|
+| terrain off (true 2D) | 12.0 | 21.4 ms | 2.09M |
+| flattened, `RENDER` (3D-flat) | 11.9 | 27.0 ms | 4.02M |
+| 3D-flat, `debug.massif.linesourcedensity 1` | 11.3 | 27.5 ms | 4.29M |
+| 3D-flat, `debug.massif.areasourcedensity 1` | **13.3** | **21.4 ms** | **1.95M** |
+
+**All the extra index data is fills.** The line prop changes nothing because `isDrapeLinesEnabled()`
+defaults to true, which already puts lines at source density; area subdivision is the whole of it,
+and switching it off lands on or past 2D's frame rate. So `TileLayer` now gates fill subdivision on
+`isDrapeFillsEnabled()` exactly the way it gates line subdivision on `isDrapeLinesEnabled()` — a
+draped fill is baked into a texture, where its subdivision is never drawn, and flat it is drawn and
+buys nothing. A style that turns draping off (tangram content mode) still gets the subdivision, and
+`debug.massif.areasourcedensity 1` still forces it off there for measurement.
+
+**The dead end this replaced: a flat index set.** Keeping the source triangulation beside the refined
+one and drawing it while `_terrainMode` is false halves the indices and does **not** move the frame
+rate — same source, two reps, 3D-flat **4.02M → 2.04M indices, 11.9 → 11.5 fps**, `layers` 27.0 →
+25.5 ms, against 2D's 12.5 fps / 22.5 ms. About 1.5 ms of `layers`, inside the fps noise of a pan,
+for ~50% more index memory per fill geometry and a batch cut that has to land on a source-triangle
+boundary (a uint16 batch renumbers its vertices, so a flat triangle whose refinement straddled a cut
+has its corners in neither batch). The screenshot A/B sat at the same-build run-to-run baseline (mean
+3.28 against 2.68, same band profile), so the two triangulations do draw alike — they just do not
+draw at different speeds. **The index count is not what terrain subdivision costs**; the vertices in
+the buffer and the decode that made them are, which is why only a decode-side gate moves anything.
+
+What this owes a device check: draping is decided **per tile at render time** and this density
+globally at decode time, so a fill drawn live where the drape does not reach — a no-drape layer
+filter, a stand-in tile, content past the drape ring — now has no subdivision and can float over
+relief. 3D over a valley is the camera that shows it.
+
 ### Where this should go: pay in depth, not in vertices
 
 Tangram does not subdivide at all. `res/scenes/terrain-3d.yaml` displaces every vertex in the vertex

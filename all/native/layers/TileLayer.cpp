@@ -45,8 +45,8 @@ namespace massif {
         return forced;
     }
 
-    // Measurement switch for what AREA subdivision costs: it is the expensive half and it is on for
-    // correctness, not speed - an un-subdivided fill floats above the ground. Off = shipped.
+    // Forces source density for AREAS even where the fills are not draped, where an un-subdivided
+    // fill floats above the ground. Draped fills already take it; this is the measurement switch.
     //   adb shell setprop debug.massif.areasourcedensity 1
     static bool isAreaSourceDensityForced() {
         static const bool forced = [] {
@@ -340,11 +340,11 @@ namespace massif {
             bool terrainEnabled = terrainOptions && terrainOptions->isDecodeActive();
             int terrainMeshResolution = terrainOptions ? terrainOptions->getMeshResolution() : 0;
             int terrainMinZoom = terrainOptions ? terrainOptions->getMinZoom() : 0;
-            // Fills stay subdivided even under draping: draping is decided per tile at render time,
-            // this density globally at decode time. MUST match what resetTileTransformer() passes,
-            // or tiles decoded for the other mode stay in the cache forever.
+            // A DRAPED fill is baked into a texture, so its subdivision is never drawn - the same
+            // reason lines take the gate below. MUST match what resetTileTransformer() passes, or
+            // tiles decoded for the other mode stay in the cache forever.
             bool terrainTangramContent = terrainEnabled && terrainOptions && !terrainOptions->isDrapeFillsEnabled();
-            bool terrainSourceDensity = isAreaSourceDensityForced();
+            bool terrainSourceDensity = (terrainOptions && terrainOptions->isDrapeFillsEnabled()) || isAreaSourceDensityForced();
             bool terrainSourceDensityLines = terrainTangramContent || (terrainOptions && terrainOptions->isDrapeLinesEnabled()) || isLineSourceDensityForced();
             // NOT the exaggeration: only the GPU reads it (via the elevation texture's
             // metersToInternal), so comparing it here re-decoded the whole map on every 'expand' frame.
@@ -1399,7 +1399,7 @@ namespace massif {
                     // tesselation the cached tiles were built with, so a mismatch leaves tiles
                     // decoded for the other mode in place forever.
                     bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
-                    tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
+                    tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), terrainOptions->isDrapeFillsEnabled() || isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
                 }
             }
         }

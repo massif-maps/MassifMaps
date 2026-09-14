@@ -129,9 +129,12 @@ namespace massif {
 
             static long long lastConsidered = 0, lastDistanceCut = 0;
             static long long lastCullPhase[3] = { 0 };
-            static long long lastCullFate[3] = { 0 };
-            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld",
-                       deltas[13], deltas[14], deltas[15], deltas[0], deltas[11],
+            static long long lastCullFate[5] = { 0 };
+            static long long lastLabelMapSkips = 0;
+            long long deltaLabelMapSkips = RenderStats::labelMapSkips.load() - lastLabelMapSkips;
+            lastLabelMapSkips = RenderStats::labelMapSkips.load();
+            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld labelMapSkips=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld notFacing=%lld collided=%lld",
+                       deltas[13], deltas[14], deltas[15], deltas[0], deltas[11], deltaLabelMapSkips,
                        deltas[1], deltas[2],
                        deltas[3], deltas[12], RenderStats::labelsLive.load(), deltas[4],
                        deltas[5], deltas[6], deltas[7], deltas[8], deltas[16],
@@ -143,10 +146,14 @@ namespace massif {
                        (RenderStats::cullerInsertNs.load() - lastCullPhase[2]) / 1.0e6,
                        RenderStats::cullerInvalid.load() - lastCullFate[0],
                        RenderStats::cullerSorted.load() - lastCullFate[1],
-                       RenderStats::cullerVisible.load() - lastCullFate[2]);
+                       RenderStats::cullerVisible.load() - lastCullFate[2],
+                       RenderStats::cullerNotFacing.load() - lastCullFate[3],
+                       RenderStats::cullerCollided.load() - lastCullFate[4]);
             lastCullFate[0] = RenderStats::cullerInvalid.load();
             lastCullFate[1] = RenderStats::cullerSorted.load();
             lastCullFate[2] = RenderStats::cullerVisible.load();
+            lastCullFate[3] = RenderStats::cullerNotFacing.load();
+            lastCullFate[4] = RenderStats::cullerCollided.load();
             lastConsidered = RenderStats::cullerConsidered.load();
             lastDistanceCut = RenderStats::cullerDistanceCut.load();
             lastCullPhase[0] = RenderStats::cullerCollectNs.load();

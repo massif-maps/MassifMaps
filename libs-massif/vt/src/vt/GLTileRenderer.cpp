@@ -1146,6 +1146,8 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _rendererLayerFilter = filter;
+        // The skip guard's set signature says nothing about the filter, which also decides the maps.
+        _labelTilesSignature = 0;
     }
 
     void GLTileRenderer::setRendererLayerIndexRange(const std::optional<std::pair<int, int>>& range) {
@@ -2674,8 +2676,21 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::buildLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
+        // Keyed on the tile OBJECTS, like the per-label signature below: the same id can be re-served
+        // by a re-decoded tile, and that one DOES have to rebuild.
+        long long signature = static_cast<long long>(labelTiles.size());
+        for (const std::shared_ptr<const Tile>& labelTile : labelTiles) {
+            signature += calculateLabelGeometryHash(labelTile.get(), 0); // order-independent, as pass 1 is
+        }
+        if (signature == _labelTilesSignature && !_layerLabelMap.empty()) {
+            VT_STAT_INC(labelMapSkips);
+            return;
+        }
+        _labelTilesSignature = signature;
+
         VT_STAT_INC(labelMapRebuilds);
 
+        VT_STAT_CLOCK(labelMapClock);
         // Pass 1: which tile geometries each label is built from, WITHOUT building anything. Keyed
         // on the tile OBJECT, not its id - the same id can be re-served by a re-decoded tile. The
         // per-contribution hashes are summed, so the signature does not depend on visit order.
@@ -2687,6 +2702,11 @@ namespace massif::vt {
                 }
 
                 std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[layer->getLayerIndex()];
+                if (signatureMap.empty()) {
+                    // Sized from the labels it ended up holding last time, as the merge pass does:
+                    // grown from empty it rehashes its way to thousands of entries every rebuild.
+                    signatureMap.reserve(_layerLabelMap[layer->getLayerIndex()].size() + 64);
+                }
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
                     std::pair<long long, int>& signature = signatureMap[tileLabel->getGlobalId()];
                     signature.first += calculateLabelGeometryHash(tile.get(), tileLabel->getLocalId());
@@ -2695,6 +2715,7 @@ namespace massif::vt {
             }
         }
 
+        VT_STAT_SPLIT(labelSignatureNs, labelMapClock);
         // Create label list, merge geometries
         std::map<int, GlobalIdLabelMap> newLayerLabelMap;
         std::map<int, std::unordered_set<long long>> reusedLayerLabelIds;
@@ -2746,6 +2767,7 @@ namespace massif::vt {
             }
         }
 
+        VT_STAT_SPLIT(labelMergeNs, labelMapClock);
         // Stamp the signature on the freshly built labels, now that every contributing tile
         // has been merged into them. Doing it at construction time would make the label look
         // complete to the merge branch above and swallow its remaining contributions.
@@ -2761,6 +2783,7 @@ namespace massif::vt {
             }
         }
 
+        VT_STAT_SPLIT(labelStampNs, labelMapClock);
         // Release old labels
         for (auto oldLayerLabelIt = _layerLabelMap.begin(); oldLayerLabelIt != _layerLabelMap.end(); oldLayerLabelIt++) {
             GlobalIdLabelMap& oldLabelMap = oldLayerLabelIt->second;
@@ -2776,6 +2799,7 @@ namespace massif::vt {
             }
         }
 
+        VT_STAT_SPLIT(labelReleaseNs, labelMapClock);
         // Copy existing label placements
         for (auto newLayerLabelIt = newLayerLabelMap.begin(); newLayerLabelIt != newLayerLabelMap.end(); newLayerLabelIt++) {
             const GlobalIdLabelMap& newLabelMap = newLayerLabelIt->second;
@@ -2806,6 +2830,7 @@ namespace massif::vt {
             }
         }
 
+        VT_STAT_SPLIT(labelCarryNs, labelMapClock);
         // Build the final label lists: ONE list per pass, in draw order - the style's (priority,
         // layer, id) and nothing else. Grouping by glyph atlas first made the order of two labels in
         // different atlases a pointer hash.
@@ -2865,6 +2890,7 @@ namespace massif::vt {
         _labels = std::move(labels);
         _passLabels = std::move(passLabels);
         _labelOcclusionStyled = styledOcclusion;
+        VT_STAT_SPLIT(labelListNs, labelMapClock);
         VT_STAT_SET(labelsLive, static_cast<long long>(_labels.size()));
     }
 

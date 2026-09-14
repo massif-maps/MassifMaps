@@ -321,6 +321,12 @@ namespace massif::vt {
                 visible = visible && testGroupDistance(labelInfo);
             }
 
+            if (!labelInfo.valid) {
+                VT_STAT_INC(cullerNotFacing);
+            } else if (!visible) {
+                VT_STAT_INC(cullerCollided);
+            }
+
             if (visible) {
                 VT_STAT_INC(cullerVisible);
                 if (groupId >= 0) {

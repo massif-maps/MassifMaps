@@ -38,6 +38,7 @@ namespace massif::vt {
 
         // Label churn
         static inline std::atomic<long long> labelMapRebuilds{0};      // buildLabelMaps calls (only the label-carrying layers reach it)
+        static inline std::atomic<long long> labelMapSkips{0};         // ... and the ones an unchanged label tile set skipped
         static inline std::atomic<long long> labelsAllocated{0};       // new vt::Label objects built in buildLabelMaps
         static inline std::atomic<long long> labelsReused{0};          // labels kept because every contributing tile geometry was unchanged
         static inline std::atomic<long long> labelsLive{0};            // labels alive after the last buildLabelMaps (gauge, not a delta)
@@ -219,6 +220,10 @@ namespace massif::vt {
         static inline std::atomic<long long> cullerInvalid{0};
         static inline std::atomic<long long> cullerSorted{0};
         static inline std::atomic<long long> cullerVisible{0};
+        // Why a sorted label did NOT end up drawn: its envelope was refused (off-screen, or a
+        // surface-laid label the view meets edge-on), or it lost to a neighbour on the grid.
+        static inline std::atomic<long long> cullerNotFacing{0};
+        static inline std::atomic<long long> cullerCollided{0};
     };
 }
 

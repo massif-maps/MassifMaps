@@ -860,6 +860,7 @@ namespace massif::vt {
 
         _groundAOIntensity = intensity;
         _groundAOAttenuation = attenuation;
+        refreshGroundAOBakeable();
     }
 
     void GLTileRenderer::setBuildingHeight(float scale, float viewScale, bool growOnAppear, bool fadeOnAppear) {
@@ -877,13 +878,18 @@ namespace massif::vt {
         return hasGroundAOTiles(groundAOZoomFade(_viewState.zoom));
     }
 
+    // Answered from a cached flag, refreshed where the visible tiles and the AO state are set. The
+    // owner asks once per drape layer per frame to fingerprint the stack, and the walk it used to do
+    // took this mutex - which a tile-set change holds for a whole label map rebuild: 211 ms of a
+    // 219 ms prelude. NO zoom fade, unlike the screen-space pass: a bake is cached and only redone
+    // when the tile's CONTENT changes, so anything the camera moves must stay out of it.
     bool GLTileRenderer::isGroundAOBakeable() const {
-        std::lock_guard<std::mutex> lock(_mutex);
+        return _groundAOBakeable.load();
+    }
 
-        // NO zoom fade, unlike the screen-space pass: a bake is cached and only redone when the
-        // tile's CONTENT changes, so anything the camera moves must stay out of it - faded, a tile
-        // baked below the fade's own zoom kept no shadow for as long as it lived.
-        return hasGroundAOTiles(1.0f);
+    void GLTileRenderer::refreshGroundAOBakeable() {
+        // Caller holds _mutex.
+        _groundAOBakeable.store(hasGroundAOTiles(1.0f));
     }
 
     bool GLTileRenderer::hasGroundAOTiles(float fade) const {
@@ -1564,6 +1570,7 @@ namespace massif::vt {
 
         // Update geometry blending state
         _visibleRenderTiles = _renderTiles;
+        refreshGroundAOBakeable(); // the tiles it answers from are the ones just published
         VT_STAT_CLOCK(prepClock);
         float dBlend = (_layerBlendingSpeed > 0.0f ? dt * _layerBlendingSpeed : 1.0f);
         for (RenderTile& renderTile : *_visibleRenderTiles) {
@@ -4952,6 +4959,17 @@ namespace massif::vt {
         if (!_visibleRenderTiles) {
             return;
         }
+        // The part of every tile's fingerprint that is not per-tile: if it moves, the whole cover
+        // goes stale at once, which reads as "the drape re-bakes for ever" but is not about tiles.
+        std::size_t globalTerm = 0;
+        for (int i = 0; i < 3; i++) {
+            globalTerm = globalTerm * 31 + static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * 64.0f);
+        }
+        globalTerm = globalTerm * 31 + static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * 64.0f);
+        if (globalTerm != _lastDrapeGlobalTerm) {
+            _lastDrapeGlobalTerm = globalTerm;
+            VT_STAT_INC(drapeGlobalTermChanges);
+        }
         for (const RenderTile& renderTile : *_visibleRenderTiles) {
             if (!renderTile.visible) {
                 continue;
@@ -5250,7 +5268,18 @@ namespace massif::vt {
                     bool span = !geometry->getSpanRecords().empty();
                     bool wanted = spanOnly ? span : isDrapeableGeometry(geometry);
                     if (wanted && isLayerDraped(renderLayer.layer)) {
+                        VT_STAT_CLOCK(bakeClock);
                         renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, geometry);
+                        if (geometry->getType() == TileGeometry::Type::LINE) {
+                            VT_STAT_INC(drapeBakeLineDraws);
+                            VT_STAT_SPLIT(drapeBakeLineNs, bakeClock);
+                        } else if (geometry->getType() == TileGeometry::Type::POLYGON) {
+                            VT_STAT_INC(drapeBakePolygonDraws);
+                            VT_STAT_SPLIT(drapeBakePolygonNs, bakeClock);
+                        } else {
+                            VT_STAT_INC(drapeBakeOtherDraws);
+                            VT_STAT_SPLIT(drapeBakeOtherNs, bakeClock);
+                        }
                         bakedPrimitives++;
                     }
                 }
@@ -5898,15 +5927,9 @@ namespace massif::vt {
     }
 
     bool GLTileRenderer::hasGroundAOContent(const RenderTileLayer& renderLayer) const {
-        if (!renderLayer.layer) {
-            return false;
-        }
-        for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-            if (geometry->getType() == TileGeometry::Type::POLYGON3DGROUND) {
-                return true;
-            }
-        }
-        return false;
+        // Decided when the layer was decoded: a style with no extrusions has no contact shadow to
+        // find, and the walk that looked for one could never stop early.
+        return renderLayer.layer && renderLayer.layer->hasGroundAOGeometry();
     }
 
     bool GLTileRenderer::hasDrapeableContent(const RenderTileLayer& renderLayer) const {

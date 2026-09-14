@@ -35,6 +35,7 @@ add_executable(vt_tests
   SphericalTerrainTest.cpp
   RenderTileBlendTest.cpp
   LabelSliceTest.cpp
+  LayerContentFlagsTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"

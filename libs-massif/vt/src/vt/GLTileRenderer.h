@@ -35,6 +35,7 @@
 #include <set>
 #include <utility>
 #include <regex>
+#include <atomic>
 #include <mutex>
 
 #include <cglib/ray.h>
@@ -805,6 +806,7 @@ namespace massif::vt {
         // Contact shadows this layer would bake into the drape (see calculateDrapeFingerprint).
         bool hasGroundAOContent(const RenderTileLayer& renderLayer) const;
         bool hasGroundAOTiles(float zoomFade) const;
+        void refreshGroundAOBakeable(); // caller holds _mutex; see isGroundAOBakeable
         // Element opacity a draped layer is baked with: the style's layer opacity, or 1 when the
         // layer has a comp-op (which the bake can not reproduce).
         float calculateDrapeOpacity(const RenderTileLayer& renderLayer) const;
@@ -965,6 +967,8 @@ namespace massif::vt {
         bool _buildingGrowOnAppear = false;
         bool _buildingFadeOnAppear = false;
         float _groundAOIntensity = 0.0f;
+        // Read lock-free, per drape layer per frame: the walk behind it used to take _mutex.
+        std::atomic<bool> _groundAOBakeable { false };
         float _groundAOAttenuation = 0.69f;
         bool _groundAOMaskPass = false; // set only while the mask is being drawn
         // A label's anchor sits ON the ground and the buffer it is compared against is half resolution
@@ -1056,6 +1060,7 @@ namespace massif::vt {
         // The label tile set the maps were last built from: buildLabelMaps depends on nothing else,
         // so an unchanged set rebuilds them identically at 167-289 ms/s of a streaming map.
         long long _labelTilesSignature = 0;
+        mutable std::size_t _lastDrapeGlobalTerm = 0; // diagnostic only: see collectDrapeTiles
         std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;
         GLuint _lastUsedProgram = 0; // currently bound program, 0 = unknown (see useProgram)
         std::map<std::string, ShaderProgram> _shaderProgramMap;

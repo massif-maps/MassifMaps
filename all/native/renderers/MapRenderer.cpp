@@ -439,6 +439,16 @@ namespace massif {
             lastDemTexels = RenderStats::demEncodeTexels.load();
             for (int i = 0; i < 6; i++) { lastDem[i] = dem[i]; }
             for (int i = 0; i < 2; i++) { lastDemTex[i] = demTex[i]; }
+            // One encode, split. Only meaningful divided by the encodes in the same interval.
+            static long long lastDemSplit[3] = { 0 };
+            const long long demSplit[3] = {
+                RenderStats::demEncodeTextureNs.load(), RenderStats::demEncodeBitmapNs.load(),
+                RenderStats::demEncodeNodeNs.load()
+            };
+            Log::Infof("RenderStats: demEncode textureMs=%.1f bitmapMs=%.1f nodeMs=%.1f (per interval)",
+                       (demSplit[0] - lastDemSplit[0]) / 1.0e6, (demSplit[1] - lastDemSplit[1]) / 1.0e6,
+                       (demSplit[2] - lastDemSplit[2]) / 1.0e6);
+            for (int i = 0; i < 3; i++) { lastDemSplit[i] = demSplit[i]; }
 
             static long long lastTileLockWait = 0;
             long long tileLockWait = RenderStats::tileRendererLockNs.load();

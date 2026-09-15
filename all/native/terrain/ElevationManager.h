@@ -277,6 +277,8 @@ namespace massif {
         MapTile clampTileZoom(const MapTile& mapTile) const;
         MapTile clampDataTileZoom(const MapTile& dataTile) const;
         static int nodeBoxCells();
+        /** Cache read that honours the failure marker's expiry, which read() alone does not. */
+        bool readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid) const;
         std::shared_ptr<ElevationTileGrid> lookupTileGrid(const MapTile& dataTile, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> getGridForInternalPos(double internalX, double internalY, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> loadTileGrid(const MapTile& mapTile) const;

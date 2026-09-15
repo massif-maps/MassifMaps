@@ -246,6 +246,16 @@ namespace massif {
         return lookupTileGrid(clampDataTileZoom(dataTile), mode);
     }
 
+    bool ElevationManager::readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid) const {
+        if (!_gridCache.read(tileId, grid)) {
+            return false;
+        }
+        // A failed load is cached as a null grid with an expiry, and timed_lru_cache::read does not
+        // look at one - only valid() does. Read alone makes the marker permanent, and a tile that
+        // failed once is then never retried and never answers a height again.
+        return grid || _gridCache.valid(tileId);
+    }
+
     std::shared_ptr<ElevationTileGrid> ElevationManager::lookupTileGrid(const MapTile& tile, LoadMode mode) const {
         if (tile.getZoom() < _dataSource->getMinZoom()) {
             return std::shared_ptr<ElevationTileGrid>();
@@ -276,7 +286,7 @@ namespace massif {
             // this tile id is the data source saying the level does not exist here, so it stands.
             std::lock_guard<std::mutex> lock(_mutex);
             std::shared_ptr<ElevationTileGrid> grid;
-            if (_gridCache.read(tile.getTileId(), grid)) {
+            if (readCachedGrid(tile.getTileId(), grid)) {
                 if (grid) {
                     return grid;
                 }
@@ -287,7 +297,7 @@ namespace massif {
             MapTile searchTile = tile;
             for (int depth = 0; depth <= MAX_ANCESTOR_SEARCH_DEPTH; depth++) {
                 std::shared_ptr<ElevationTileGrid> grid;
-                if (_gridCache.read(searchTile.getTileId(), grid)) {
+                if (readCachedGrid(searchTile.getTileId(), grid)) {
                     if (grid) {
                         memo = GridMemo { _instanceId, memoVersion, tile.getTileId(), mode, grid };
                         return grid;
@@ -443,7 +453,7 @@ namespace massif {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             std::shared_ptr<ElevationTileGrid> grid;
-            if (_gridCache.read(tileId, grid)) {
+            if (readCachedGrid(tileId, grid)) {
                 return; // already loaded, resolved via an ancestor, or recently failed
             }
             if (_pendingLoads.find(tileId) != _pendingLoads.end()) {

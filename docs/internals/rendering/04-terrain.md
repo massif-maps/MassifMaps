@@ -1220,6 +1220,12 @@ loaded. It also removes a spurious lift per tile crossed while panning: with sea
 stand-in, every new tile arriving dropped the measured height by the whole ground elevation, which
 arms the lift; against the focus ground that step is metres.
 
+**A failed DEM load was permanent.** The failure is cached as a null grid with a 30 s expiry
+(`FAILED_TILE_TTL_MILLISECONDS`), but `timed_lru_cache::read` does not look at an expiry — only
+`valid()` does, and nothing called it. So the marker never expired: the tile was never retried, and
+every height query over it answered "no data" until the LRU evicted the entry. `readCachedGrid`
+checks both, so a marker past its expiry reads as absent and the load is tried again.
+
 A camera under the terrain also explains the tap: `ElevationManager::intersectRay` starts its march
 below the ground and returns `t = 0`, which the caller rejects, and
 `TouchHandler::calculateTerrainHeight` fell back to sea level — kilometres of ray away from the

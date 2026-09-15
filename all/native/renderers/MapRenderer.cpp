@@ -424,13 +424,18 @@ namespace massif {
             };
             // encodeMs is worker time summed over the encode threads, so it can exceed the interval;
             // live/resolved are summed over the caches AND the frames, so only zero/non-zero reads.
+            static long long lastDemClears = 0, lastDemTexels = 0;
             static long long lastDemTex[2] = { 0 };
             const long long demTex[2] = { RenderStats::demTexturesLive.load(), RenderStats::demTexturesResolved.load() };
-            Log::Infof("RenderStats: dem encodes=%lld patches=%lld encodeWorkerMs=%.1f | uploads=%lld uploadMs=%.1f patchMs=%.1f | liveSum=%lld resolvedSum=%lld zoomGap=%lld caches=%lld (per interval)",
+            Log::Infof("RenderStats: dem encodes=%lld patches=%lld encodeWorkerMs=%.1f | uploads=%lld uploadMs=%.1f patchMs=%.1f | liveSum=%lld resolvedSum=%lld zoomGap=%lld caches=%lld detailMask=0x%llx detailClears=%lld texelsPerEncode=%lld (per interval)",
                        dem[0] - lastDem[0], dem[1] - lastDem[1], (dem[2] - lastDem[2]) / 1.0e6,
                        dem[3] - lastDem[3], (dem[4] - lastDem[4]) / 1.0e6, (dem[5] - lastDem[5]) / 1.0e6,
                        demTex[0] - lastDemTex[0], demTex[1] - lastDemTex[1], RenderStats::demTileZoomGap.load(),
-                       RenderStats::demCachesLive.load());
+                       RenderStats::demCachesLive.load(), RenderStats::demDetailMask.load(),
+                       RenderStats::demDetailClears.load() - lastDemClears,
+                       (dem[0] - lastDem[0]) > 0 ? (RenderStats::demEncodeTexels.load() - lastDemTexels) / (dem[0] - lastDem[0]) : 0LL);
+            lastDemClears = RenderStats::demDetailClears.load();
+            lastDemTexels = RenderStats::demEncodeTexels.load();
             for (int i = 0; i < 6; i++) { lastDem[i] = dem[i]; }
             for (int i = 0; i < 2; i++) { lastDemTex[i] = demTex[i]; }
 

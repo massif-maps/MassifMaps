@@ -221,6 +221,11 @@ namespace massif::vt {
         // Live ElevationTextureCache instances. One encode THREAD each, so a stale cache kept alive
         // by a lambda that captured its shared_ptr keeps encoding tiles nobody will draw.
         static inline std::atomic<long long> demCachesLive{0};
+        // Which detail levels are in use across the caches, as a bitmask of 1<<level: a single bit
+        // means one shared cache would serve every layer, several means it must be keyed by level.
+        static inline std::atomic<long long> demDetailMask{0};
+        static inline std::atomic<long long> demDetailClears{0}; // caches emptied by a detail-level change - each one re-encodes everything
+        static inline std::atomic<long long> demEncodeTexels{0}; // padded texels per encode, to size the cost against mapbox's 258 squared
         static inline std::atomic<long long> demEncodes{0};      // full padded-texture encodes on the worker
         static inline std::atomic<long long> demBorderPatches{0}; // border-ring-only encodes
         static inline std::atomic<long long> demEncodeNs{0};     // worker time in both
@@ -287,6 +292,7 @@ namespace massif::vt {
 
 #define VT_STAT_INC(name) (massif::vt::RenderStats::name++)
 #define VT_STAT_ADD(name, value) (massif::vt::RenderStats::name += (value))
+#define VT_STAT_OR(name, value) (massif::vt::RenderStats::name |= (value))
 #define VT_STAT_SET(name, value) (massif::vt::RenderStats::name = (value))
 // A clock read is ~30 ns here, so a handful per draw is affordable; 'var' is reset to the
 // current time so the same variable can walk through consecutive sections of one draw.
@@ -301,6 +307,7 @@ namespace massif::vt {
 
 #define VT_STAT_INC(name) ((void)0)
 #define VT_STAT_ADD(name, value) ((void)0)
+#define VT_STAT_OR(name, value) ((void)0)
 #define VT_STAT_SET(name, value) ((void)0)
 #define VT_STAT_CLOCK(var) ((void)0)
 #define VT_STAT_SPLIT(name, var) ((void)0)

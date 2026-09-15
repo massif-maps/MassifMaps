@@ -305,6 +305,7 @@ namespace massif {
             // megabyte behind it is allocated once instead of per encode.
             VT_STAT_CLOCK(encodeClock);
             job.grid->encodeTextureWithBorders(job.neighbours, _encodeScratch);
+            VT_STAT_ADD(demEncodeTexels, static_cast<long long>(width) * height);
             // The encoded rows are south-to-north, already bottom-up in the Bitmap convention, and
             // Bitmap flips a POSITIVE stride - so pass a negative one and take the data as-is.
 
@@ -518,6 +519,7 @@ namespace massif {
     void ElevationTextureCache::setDetailLevels(int extraLevels) {
         if (_detailLevels != extraLevels) {
             _detailLevels = extraLevels;
+            VT_STAT_INC(demDetailClears);
             clear(); // every entry was resolved at the other level
         }
     }
@@ -613,6 +615,7 @@ namespace massif {
 #if MASSIF_VT_RENDER_STATS
         // Accumulated, not stored: there is one of these per tile layer, and a store let an empty
         // cache overwrite a busy one's count - reading 0 while textures were plainly being uploaded.
+        vt::RenderStats::demDetailMask.fetch_or(1LL << std::min(std::max(_detailLevels, 0), 15));
         vt::RenderStats::demTexturesLive.fetch_add(static_cast<long long>(_cache.size()));
         vt::RenderStats::demTexturesResolved.fetch_add(static_cast<long long>(_frameResolved.size()));
 #endif

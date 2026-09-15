@@ -3819,6 +3819,7 @@ namespace massif::vt {
         // so it stays in the shared batch - which is what keeps the draw count where it was. Splitting
         // every label by tile took label draws from 64 to ~450, and the per-frame cost tracks the draw
         // count (RenderStats::geometryDraws). Stable, so the culler's order survives within a group.
+        VT_STAT_CLOCK(sortClock);
         std::vector<std::shared_ptr<Label>> grouped;
         if (_terrainMode) {
             grouped = labels;
@@ -3826,6 +3827,7 @@ namespace massif::vt {
                 return labelBatchTileId(a) < labelBatchTileId(b);
             });
         }
+        VT_STAT_SPLIT(labelPassSortNs, sortClock);
         const std::vector<std::shared_ptr<Label>>& drawOrder = _terrainMode ? grouped : labels;
 
         LabelBatchParameters labelBatchParams;
@@ -3853,8 +3855,11 @@ namespace massif::vt {
 
             // Held by value for the whole iteration: getBitmapPattern returns a temporary, a tile
             // thread can reset the map's pattern, and a reference through its -> is not extended.
+            VT_STAT_CLOCK(patternClock);
             std::shared_ptr<const BitmapPattern> labelPattern = labelStyle->glyphMap->getBitmapPattern();
+            VT_STAT_SPLIT(labelPassPatternNs, patternClock);
             const std::shared_ptr<const Bitmap>& labelBitmap = labelPattern->bitmap;
+            VT_STAT_CLOCK(styleClock);
             if (lastLabelStyle != labelStyle) {
                 // The scene light, as far as the label's emissive lets it through. mapbox lights a
                 // label like any other surface but defaults text and icon to 1, a no-op here, which
@@ -4051,6 +4056,7 @@ namespace massif::vt {
 
                 lastLabelStyle = labelStyle;
             }
+            VT_STAT_SPLIT(labelPassStyleNs, styleClock);
 
             VT_STAT_CLOCK(statClock);
             std::size_t labelVertexOffset = _labelVertices.size();

@@ -122,6 +122,11 @@ namespace massif::vt {
         static inline std::atomic<long long> pass3DLabels3DNs{0};
         // Label pass: the glyph quads are rebuilt from scratch for every visible label
         // every frame, then uploaded as one batch.
+        // renderLabelPass, split: the pass costs 54-81 ms an interval while the per-label vertex build
+        // and the batch upload together account for 21-27, and the rest was never measured.
+        static inline std::atomic<long long> labelPassSortNs{0};    // the per-pass grouped copy and its sort
+        static inline std::atomic<long long> labelPassPatternNs{0}; // getBitmapPattern, PER LABEL, on the glyph map's mutex
+        static inline std::atomic<long long> labelPassStyleNs{0};   // per-style colour/width evaluation and its table scans
         static inline std::atomic<long long> labelVertexBuildNs{0};
         static inline std::atomic<long long> labelBatchNs{0};
         static inline std::atomic<long long> labelsDrawnVertices{0};

@@ -206,6 +206,15 @@ namespace massif {
             long long labelBatch = RenderStats::labelBatchNs.load();
             long long labelVerts = RenderStats::labelsDrawnVertices.load();
             long long lineLayouts = RenderStats::lineLayoutBuilds.load();
+            static long long lastLabelPass[3] = { 0 };
+            const long long labelPass[3] = {
+                RenderStats::labelPassSortNs.load(), RenderStats::labelPassPatternNs.load(),
+                RenderStats::labelPassStyleNs.load()
+            };
+            Log::Infof("RenderStats: labelPass sortMs=%.1f patternMs=%.1f styleMs=%.1f (per interval)",
+                       (labelPass[0] - lastLabelPass[0]) / 1.0e6, (labelPass[1] - lastLabelPass[1]) / 1.0e6,
+                       (labelPass[2] - lastLabelPass[2]) / 1.0e6);
+            for (int i = 0; i < 3; i++) { lastLabelPass[i] = labelPass[i]; }
             Log::Infof("RenderStats: labels built=%lld lineLayouts=%lld buildMs=%.1f batchMs=%.1f (per interval)",
                        labelVerts - lastLabelVerts, lineLayouts - lastLineLayouts,
                        (labelBuild - lastLabelBuild) / 1.0e6,

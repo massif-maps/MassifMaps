@@ -236,7 +236,11 @@ namespace massif::vt {
         // boxX*boxY texels through a std::function, and boxX scales with how much coarser the
         // neighbour is - quadratically. texels/call is the box, and what decides whether that is it.
         static inline std::atomic<long long> demNodeEdgeCalls{0};
-        static inline std::atomic<long long> demNodeBoxTexels{0}; // padded texels per encode, to size the cost against mapbox's 258 squared
+        static inline std::atomic<long long> demNodeBoxTexels{0};
+        // The encode's own THREAD CPU time, against the wall time encodeWorkerMs measures. Identical
+        // read counts have cost 575 ms and 11886 ms, so the question is whether the thread is
+        // computing or waiting - cpu ~ wall means tune the loop, cpu << wall means stop tuning it.
+        static inline std::atomic<long long> demEncodeCpuNs{0}; // padded texels per encode, to size the cost against mapbox's 258 squared
         static inline std::atomic<long long> demEncodes{0};      // full padded-texture encodes on the worker
         static inline std::atomic<long long> demBorderPatches{0}; // border-ring-only encodes
         static inline std::atomic<long long> demEncodeNs{0};     // worker time in both

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <ctime>
 #include <vector>
 
 #ifdef __ANDROID__
@@ -304,6 +305,11 @@ namespace massif {
             // The scratch buffer belongs to this thread alone and is reused by every job, so the
             // megabyte behind it is allocated once instead of per encode.
             VT_STAT_CLOCK(totalClock); // the whole encode, so encodeWorkerMs keeps its meaning
+#if MASSIF_VT_RENDER_STATS
+            // This THREAD's cpu time, not the clock on the wall - the pair is the whole question.
+            timespec cpuStart = { 0, 0 };
+            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpuStart);
+#endif
             VT_STAT_CLOCK(encodeClock); // and the three splits below, which must sum to it
             job.grid->encodeTextureWithBorders(job.neighbours, _encodeScratch);
             VT_STAT_ADD(demEncodeTexels, static_cast<long long>(width) * height);
@@ -324,6 +330,11 @@ namespace massif {
             }
             VT_STAT_SPLIT(demEncodeNodeNs, encodeClock);
             VT_STAT_SPLIT(demEncodeNs, totalClock);
+#if MASSIF_VT_RENDER_STATS
+            timespec cpuEnd = { 0, 0 };
+            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpuEnd);
+            VT_STAT_ADD(demEncodeCpuNs, (cpuEnd.tv_sec - cpuStart.tv_sec) * 1000000000LL + (cpuEnd.tv_nsec - cpuStart.tv_nsec));
+#endif
             VT_STAT_INC(demEncodes);
 
             {

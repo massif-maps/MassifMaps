@@ -700,8 +700,8 @@ namespace massif {
     }
 
     bool VectorTileLayer::readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
-
+        // No layer mutex: _tileDecoder is const and its getters lock themselves, so this held the
+        // mutex refreshDrawData keeps across a whole tile-set change - twice a frame, per layer.
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
         if (!mapSettings) {
             return false;

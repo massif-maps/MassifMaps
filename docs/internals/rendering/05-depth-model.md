@@ -151,7 +151,7 @@ screen. `ViewState::calculateViewDistances` applies them in this order:
 | Limit | What it is | Where |
 |---|---|---|
 | the ray horizon | nine rays through the frustum, hit-tested against the lowest visible ground | the bisection loop |
-| the draw ceiling | `DrawDistance` (default 16) multiples of the camera height, capped at 127 tile widths | `ViewDistance::drawCeiling` |
+| the draw ceiling | `DrawDistance` (default 16) multiples of the camera height over `sin(tilt)`, capped at 127 tile widths | `ViewDistance::drawCeiling` |
 | tangram's rule | `2 * height / cos(tilt' + fovy/2)`, capped at 127 tile widths | `calculateViewDistance` |
 | the fog | `fog-range-end` multiples of the camera-to-focus distance, going opaque | [08-lighting-sky-fog.md](08-lighting-sky-fog.md) |
 
@@ -161,6 +161,14 @@ ceiling used to scale the orbit *alone*, which made it a function of the zoom: d
 towards the ground in mountains shortened the view with every step and cut peaks a few kilometres
 away, **while the tile walk — the same height times a larger factor — had already fetched them**.
 Raising the ceiling there draws tiles that were being paid for anyway.
+
+**And it is divided by `sin(tilt)`** — mapbox's `cameraToSeaLevelDistance = altitude / cos(pitch)`
+(`src/geo/projection/far_z.ts`), where pitch 0 is straight down and ours is tilt 90, so their
+`cos(pitch)` is our `sin(tilt)`. Straight down is unchanged; tilt 20 reaches 2.9x further. Without
+it the ceiling was the same looking at the camera's own feet and at the horizon, so descending
+towards a valley floor cut the range off entirely — at Grenoble a camera 400 m up drew 6.4 km while
+the Belledonne it was pointed at is 20 km out. Floored at `MIN_TILT_SIN` (0.1, tilt 5.7 degrees),
+because a horizontal view divides by zero, and bounded by the 127-tile walk cap as before.
 
 `adb shell setprop debug.massif.viewceiling 0` takes the ceiling back to scaling the orbit alone,
 which is the A/B for anything that reads as a depth-precision regression (labels vanishing against 3D

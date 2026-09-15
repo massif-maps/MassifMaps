@@ -8,6 +8,7 @@
 #define _MASSIF_VIEWDISTANCE_H_
 
 #include <algorithm>
+#include <cmath>
 
 namespace massif {
 
@@ -35,16 +36,28 @@ namespace massif {
         }
 
         /**
-         * The ceiling on how far the map is DRAWN: DrawDistance multiples of that height. Scaling
-         * the ORBIT alone made it a function of the zoom, so dropping near the ground in mountains
-         * cut off peaks whose tiles were being fetched anyway. Mapbox has no zoom-only ceiling at
-         * all; its far plane is 10 * cameraAltitude / cos(pitch) (src/geo/projection/far_z.ts).
+         * Below this the tilt no longer lengthens the ceiling: 0.1 is tilt 5.7 degrees, already 10x
+         * the straight-down reach, and past it the tile walk cap is the bound in any case.
+         */
+        static constexpr double MIN_TILT_SIN = 0.1;
+
+        /**
+         * The ceiling on how far the map is DRAWN: DrawDistance multiples of that height, divided
+         * by the sine of the tilt. Scaling the ORBIT alone made it a function of the zoom, so
+         * dropping near the ground in mountains cut off peaks whose tiles were being fetched anyway.
+         *
+         * The tilt term is mapbox's cameraToSeaLevelDistance = altitude / cos(pitch)
+         * (src/geo/projection/far_z.ts); pitch 0 is straight down there and tilt 90 is straight down
+         * here, so their cos(pitch) is our sin(tilt) and straight down is unchanged. Without it the
+         * map reaches as far looking at the horizon as at the camera's own feet, which is why a low
+         * camera saw a hundred metres of a mountain range.
          *
          * Under the tile walk cap all the same: with ViewDistanceFactor 0 the cull envelope stops at
          * the far plane ALONE, so an unbounded ceiling is an unbounded tile walk (CullWorker).
          */
-        static double drawCeiling(double cameraHeight, double drawDistance, double worldTileSize) {
-            return std::min(cameraHeight * drawDistance, tileWalkCap(worldTileSize));
+        static double drawCeiling(double cameraHeight, double drawDistance, double worldTileSize, double tiltSin) {
+            double grazing = std::max(std::isfinite(tiltSin) ? tiltSin : 1.0, MIN_TILT_SIN);
+            return std::min(cameraHeight * drawDistance / grazing, tileWalkCap(worldTileSize));
         }
     };
 

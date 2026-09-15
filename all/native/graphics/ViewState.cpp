@@ -902,7 +902,8 @@ namespace massif {
         double orbitDistance = std::pow(2.0f, -_zoom) * zoom0Distance;
         double cameraHeight = isTerrainViewCeilingEnabled()
             ? ViewDistance::cameraHeight(orbitDistance, _cameraPos(2)) : orbitDistance;
-        double maxDist = ViewDistance::drawCeiling(cameraHeight, options.getDrawDistance(), Const::WORLD_SIZE * std::pow(2.0, -_zoom));
+        double maxDist = ViewDistance::drawCeiling(cameraHeight, options.getDrawDistance(), Const::WORLD_SIZE * std::pow(2.0, -_zoom),
+                                                   std::sin(_tilt * Const::DEG_TO_RAD));
         double rayFar = far;
         if (far > maxDist) {
             far = maxDist;

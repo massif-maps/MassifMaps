@@ -783,6 +783,12 @@ namespace massif {
                         _terrainMaxTileZoom = cameraTileZoom + terrainOptions->getMaxTileZoomOffset();
                     }
                     _terrainMinTileZoom = cameraTileZoom - terrainOptions->getMaxTileZoomCoarsening();
+                    // Stop it following the camera past the zoom the DEM runs out at: the floor
+                    // overrides the LOD's own answer, so a tile 20 km out was three levels better
+                    // for zooming in without moving towards it.
+                    if (auto elevationManager = terrainOptions->getElevationManager()) {
+                        _terrainMinTileZoom = std::min(_terrainMinTileZoom, elevationManager->getDetailZoomLimit());
+                    }
                 }
             }
         }

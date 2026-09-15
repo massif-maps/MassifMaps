@@ -158,6 +158,14 @@ namespace massif {
         MapTile getTileForInternalPos(double internalX, double internalY) const;
 
         /**
+         * The RENDER tile zoom at which this DEM stops adding relief: its source maximum plus the
+         * levels clampTileZoom drops for an oversized grid (a 512-texel source is used one level
+         * coarser). A render tile finer than this resamples the same heightfield, so it is where
+         * the terrain LOD floor stops following the camera.
+         */
+        int getDetailZoomLimit() const;
+
+        /**
          * Returns the tile carrying the elevation data for the given render tile at FULL detail:
          * capped by the data source maximum zoom level only, not by what the terrain mesh can
          * express. For consumers that resolve more than the mesh does - shading is per fragment,

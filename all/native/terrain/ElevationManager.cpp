@@ -406,6 +406,17 @@ namespace massif {
         }
     }
 
+    int ElevationManager::getDetailZoomLimit() const {
+        // The inverse of clampTileZoom: it drops a render tile one level per doubling of the grid
+        // over DEM_TEXELS_PER_TILE_UNIT, then caps at the source maximum. So the render zoom where
+        // the data runs out is the source maximum plus the levels clampTileZoom would have dropped.
+        int bias = 0;
+        for (int size = _gridSizeHint.load(); size > DEM_TEXELS_PER_TILE_UNIT; size /= 2) {
+            bias++;
+        }
+        return _dataSource->getMaxZoom() + bias;
+    }
+
     MapTile ElevationManager::getTileForInternalPos(double internalX, double internalY) const {
         MapPos dataSourcePos = _projection->fromInternal(MapPos(wrapInternalX(internalX), internalY, 0));
         return TileUtils::CalculateClippedMapTile(dataSourcePos, _dataSource->getMaxZoom(), _projection).getFlipped();

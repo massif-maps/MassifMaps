@@ -264,6 +264,15 @@ the area — **1.4 levels**. Each corner is projected at its own DEM height now
 which recovers it and only where the ground is actually tilted toward the viewer. The blunt
 alternative, `Options::TileLODFactor` 0.71, buys the same level everywhere and costs 2× the tiles.
 
+**The floor stops following the camera past the DEM's limit.** `_terrainMinTileZoom` is
+`cameraTileZoom - MaxTileZoomCoarsening`, and it overrides the LOD's own answer for every tile
+however far away, so a ridge 20 km out went from z11 at camera z14 to z14 at camera z17 - three
+levels better for zooming in without moving towards it. It is now also capped at
+`ElevationManager::getDetailZoomLimit` (the source maximum plus the levels `clampTileZoom` drops for
+an oversized grid). Past that a finer tile resamples the same heightfield, so the floor's purpose -
+an accurate occluder silhouette, neighbouring layers in step - is already served, and distance is
+left to decide. Below it nothing changes.
+
 **The step that made it urgent.** One flat quad per tile is not just 1.4 levels of lost slope: the
 quad floats at the tile's MEAN height, so a tile holding a summit sits at ~1100 m while the city
 tile in front of it sits at 220 m. At a low tilt a quad whose height nears the camera's own altitude

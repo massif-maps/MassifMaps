@@ -303,9 +303,11 @@ namespace massif {
             int height = job.grid->getHeight() + 2;
             // The scratch buffer belongs to this thread alone and is reused by every job, so the
             // megabyte behind it is allocated once instead of per encode.
-            VT_STAT_CLOCK(encodeClock);
+            VT_STAT_CLOCK(totalClock); // the whole encode, so encodeWorkerMs keeps its meaning
+            VT_STAT_CLOCK(encodeClock); // and the three splits below, which must sum to it
             job.grid->encodeTextureWithBorders(job.neighbours, _encodeScratch);
             VT_STAT_ADD(demEncodeTexels, static_cast<long long>(width) * height);
+            VT_STAT_SPLIT(demEncodeTextureNs, encodeClock);
             // The encoded rows are south-to-north, already bottom-up in the Bitmap convention, and
             // Bitmap flips a POSITIVE stride - so pass a negative one and take the data as-is.
 
@@ -313,13 +315,15 @@ namespace massif {
             // is requantised and the height field keeps the data source's own precision.
             int texelBytes = job.grid->getBytesPerTexel();
             encoded.bitmap = std::make_shared<BorderBitmap>(_encodeScratch.data(), width, height, job.grid->getColorFormat(), -texelBytes * width);
+            VT_STAT_SPLIT(demEncodeBitmapNs, encodeClock);
             // The node texture: (nodes + 1)^2 in the same encoding, rows south-to-north as well.
             if (job.grid->getNodesPerEdge() > 0) {
                 int nodeSize = job.grid->getNodesPerEdge() + 1;
                 job.grid->encodeNodeTexture(job.neighbours, _nodeScratch);
                 encoded.nodeBitmap = std::make_shared<BorderBitmap>(_nodeScratch.data(), nodeSize, nodeSize, job.grid->getColorFormat(), -texelBytes * nodeSize);
             }
-            VT_STAT_SPLIT(demEncodeNs, encodeClock);
+            VT_STAT_SPLIT(demEncodeNodeNs, encodeClock);
+            VT_STAT_SPLIT(demEncodeNs, totalClock);
             VT_STAT_INC(demEncodes);
 
             {

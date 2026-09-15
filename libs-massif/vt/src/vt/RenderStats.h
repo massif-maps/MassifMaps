@@ -225,7 +225,13 @@ namespace massif::vt {
         // means one shared cache would serve every layer, several means it must be keyed by level.
         static inline std::atomic<long long> demDetailMask{0};
         static inline std::atomic<long long> demDetailClears{0}; // caches emptied by a detail-level change - each one re-encodes everything
-        static inline std::atomic<long long> demEncodeTexels{0}; // padded texels per encode, to size the cost against mapbox's 258 squared
+        static inline std::atomic<long long> demEncodeTexels{0};
+        // One encode, split three ways. It read 242 ms once and ~5 s another time on ONE thread, and
+        // the long ones match the interval almost exactly - so it BLOCKS rather than computes, and
+        // this says where. The sampler walking cold neighbour grids is the suspicion, not the answer.
+        static inline std::atomic<long long> demEncodeTextureNs{0}; // encodeTextureWithBorders
+        static inline std::atomic<long long> demEncodeBitmapNs{0};  // the Bitmap copy mapbox does not make
+        static inline std::atomic<long long> demEncodeNodeNs{0};    // the node texture and its own Bitmap // padded texels per encode, to size the cost against mapbox's 258 squared
         static inline std::atomic<long long> demEncodes{0};      // full padded-texture encodes on the worker
         static inline std::atomic<long long> demBorderPatches{0}; // border-ring-only encodes
         static inline std::atomic<long long> demEncodeNs{0};     // worker time in both

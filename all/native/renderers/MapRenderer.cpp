@@ -1098,13 +1098,15 @@ namespace massif {
             mapRendererListener->onBeforeDrawFrame();
         }
 
+        // OFF the renderer mutex: this notifies option listeners, and a listener is application code -
+        // the facade's map-moved event reaches a JS handler that posts SYNCHRONOUSLY to the main
+        // thread. Under _mutex that deadlocks against any facade getter (BaseMapView::getZoom).
+        bool terrainDecodeChanged = updateTerrainFlatten(deltaSeconds);
+
         // Calculate camera params and make a synchronized copy of the view state
         ViewState viewState;
-        bool terrainDecodeChanged = false;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-
-            terrainDecodeChanged = updateTerrainFlatten(deltaSeconds);
 
             // Terrain: extend view distances by the terrain height range and keep
             // the camera above the terrain surface. A position is turned into internal coordinates
@@ -1725,13 +1727,23 @@ namespace massif {
         float parallaxThreshold = terrainOptions->getAutoFlattenParallax();
         float tiltThreshold = terrainOptions->getAutoFlattenTilt();
         if (!manual && (parallaxThreshold > 0 || tiltThreshold > 0)) {
-            // The parallax costs a height-range lookup, so only pay for it when it is part of the rule.
-            double parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
-            bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, terrainOptions->isFlattened());
+            // The three inputs the renderer mutex owns, read together so they describe one camera.
+            // The DECISION is taken without it: setFlattened below reaches application code.
+            double parallax = 0;
+            float tilt = 0;
+            bool cameraPlaced = false;
+            {
+                std::lock_guard<std::recursive_mutex> lock(_mutex);
+                // The parallax costs a height-range lookup, so only pay for it when it is part of the rule.
+                parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
+                tilt = _viewState.getTilt();
+                cameraPlaced = _cameraPlaced;
+            }
+            bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, tilt, tiltThreshold, terrainOptions->isFlattened());
             // Only on a CHANGE of the rule's own answer - see AutoFlatten::Trigger.
-            if (_autoFlattenTrigger.changed(flatten, _cameraPlaced)) {
+            if (_autoFlattenTrigger.changed(flatten, cameraPlaced)) {
                 Log::Infof("MapRenderer: auto-flatten %s (parallax %.1f px vs %.1f, tilt %.1f vs %.1f, data quiet %.1f s, seen terrain %d)",
-                    flatten ? "ON" : "off", parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, _autoFlattenDataQuiet, _autoFlattenSeenTerrain ? 1 : 0);
+                    flatten ? "ON" : "off", parallax, parallaxThreshold, tilt, tiltThreshold, _autoFlattenDataQuiet, _autoFlattenSeenTerrain ? 1 : 0);
                 terrainOptions->setFlattened(flatten);
                 manual = terrainOptions->isManualFlatten(); // setFlattened hands the ratio back
             }

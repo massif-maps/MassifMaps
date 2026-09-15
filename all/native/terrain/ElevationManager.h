@@ -184,6 +184,13 @@ namespace massif {
         void prefetchTileGrid(const MapTile& dataTile, int priority) const;
 
         /**
+         * The same queueing, for a tile a consumer NEEDS rather than one it would like to have
+         * ready. Not subject to TerrainOptions::ElevationPrefetchEnabled, which is about
+         * neighbours: the ground under the camera decides whether the camera is inside a mountain.
+         */
+        void requestTileGrid(const MapTile& dataTile, int priority) const;
+
+        /**
          * Sets the point the prefetch queue is ordered against - the camera focus, in internal
          * coordinates. Within a priority level the queued tile NEAREST to it is loaded first, so
          * the ground under the viewer appears before the ground at the horizon.

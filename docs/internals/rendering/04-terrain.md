@@ -1195,8 +1195,11 @@ and from then on the clearance, the tile detail and the tap are all correct.
   position with `CACHED_ONLY`, and at a low tilt that point sits **behind the near plane** — no
   visible tile covers it, so no DEM tile is ever loaded for it and `getDisplayHeight` answered 0
   (sea level) for good. The camera then looked clear of a shell built on sea level while it was
-  inside the mountain. The clearance block now prefetches that one tile itself
-  (`ElevationManager::getTileForInternalPos`) and asks for the frame that will read it.
+  inside the mountain. The clearance block now asks for that one tile itself
+  (`ElevationManager::getTileForInternalPos` + `requestTileGrid`) and asks for the frame that will
+  read it. `requestTileGrid`, not `prefetchTileGrid`: the latter is gated on
+  `TerrainOptions::ElevationPrefetchEnabled`, which is about neighbours, and this tile decides
+  whether the camera is inside a mountain.
 - *A tilt is not a pan.* The lift was armed only by a pan event, and a 2D/3D switch tilts the
   camera down and raises the ground under it without ever panning. See `CameraClearance::needsLift`
   above.
@@ -1207,6 +1210,15 @@ and from then on the clearance, the tile detail and the tap are all correct.
   level until the camera moved. The debounced elevation-version block in `MapRenderer::onDrawFrame`
   now re-culls the tile layers as well as refreshing the vector ones; it covers the ramp (the
   exaggeration bumps the version) and a cold start in 3D (the first DEM tiles do).
+
+**Unknown ground is NOT sea level.** Measured in the Alps at tilt 20, one second apart:
+`ground UNKNOWN, assumed 0 m, camera 866 m over it, shell 54 m, holding` then `ground at 889 m,
+camera -23 m over it (was 866), LIFTING`. The camera was 23 m inside a ridge while the rule
+called it 866 m clear, and the lift only fired once the tile landed — the "I went into the ground,
+then it jumped out" report. The stand-in is now the ground at the FOCUS, which is on screen and
+loaded. It also removes a spurious lift per tile crossed while panning: with sea level as the
+stand-in, every new tile arriving dropped the measured height by the whole ground elevation, which
+arms the lift; against the focus ground that step is metres.
 
 A camera under the terrain also explains the tap: `ElevationManager::intersectRay` starts its march
 below the ground and returns `t = 0`, which the caller rejects, and

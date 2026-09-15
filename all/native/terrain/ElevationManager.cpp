@@ -430,6 +430,10 @@ namespace massif {
         if (!_neighbourPrefetch.load()) {
             return;
         }
+        requestTileGrid(dataTile, priority);
+    }
+
+    void ElevationManager::requestTileGrid(const MapTile& dataTile, int priority) const {
         MapTile tile = clampDataTileZoom(dataTile);
         if (tile.getZoom() < _dataSource->getMinZoom()) {
             return;

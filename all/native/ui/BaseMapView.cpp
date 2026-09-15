@@ -104,12 +104,12 @@ namespace massif {
     }
     
     MapPos BaseMapView::getFocusPos() const {
-        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getFocusPos());
+        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewStateSnapshot().getFocusPos());
         return _options->getBaseProjection()->fromInternal(mapPosInternal);
     }
     
     MapPos BaseMapView::getCameraPos() const {
-        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getCameraPos());
+        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewStateSnapshot().getCameraPos());
         // The GROUND under the camera. calculateMapPos carries the height through, and a focus
         // position with a height in it moves the view - setFocusPos would frame somewhere else.
         mapPosInternal.setZ(0);
@@ -117,20 +117,23 @@ namespace massif {
     }
 
     float BaseMapView::getRotation() const {
-        return _mapRenderer->getViewState().getRotation();
+        return _mapRenderer->getViewStateSnapshot().getRotation();
     }
     
     float BaseMapView::getTilt() const {
-        return _mapRenderer->getViewState().getTilt();
+        return _mapRenderer->getViewStateSnapshot().getTilt();
     }
     
     float BaseMapView::getZoom() const {
-        return _mapRenderer->getViewState().getZoom();
+        return _mapRenderer->getViewStateSnapshot().getZoom();
     }
     
     void BaseMapView::pan(const MapVec& deltaPos, float durationSeconds) {
-        MapPos focusPos0Internal = _options->getBaseProjection()->toInternal(getFocusPos());
-        MapPos focusPos1Internal = _options->getBaseProjection()->toInternal(getFocusPos() + deltaPos);
+        // The EXACT focus, not the published snapshot: this derives a delta from it, and a frame-old
+        // base would move the map somewhere the caller did not ask for.
+        MapPos focusPos = _options->getBaseProjection()->fromInternal(_options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getFocusPos()));
+        MapPos focusPos0Internal = _options->getBaseProjection()->toInternal(focusPos);
+        MapPos focusPos1Internal = _options->getBaseProjection()->toInternal(focusPos + deltaPos);
 
         _mapRenderer->getAnimationHandler().stopPan();
         _mapRenderer->getKineticEventHandler().stopPan();
@@ -157,7 +160,7 @@ namespace massif {
         // stays in bounds, and from a world view any focus is dragged back to the bounds centre.
         // Held as ONE frame, or the render thread draws the half-applied state and flattens it.
         std::unique_lock<std::recursive_mutex> hold = _mapRenderer->holdView();
-        bool zoomIn = zoom > getZoom();
+        bool zoomIn = zoom > _mapRenderer->getViewState().getZoom(); // exact: holdView is already held
         if (zoomIn) {
             setZoom(zoom, 0);
         }

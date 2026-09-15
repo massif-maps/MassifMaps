@@ -588,7 +588,24 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         ViewState viewState = _viewState;
         viewState.calculateViewState(*_options);
+        publishViewStateSnapshot(viewState);
         return viewState;
+    }
+
+    ViewState MapRenderer::getViewStateSnapshot() const {
+        {
+            std::lock_guard<std::mutex> lock(_viewStateSnapshotMutex);
+            if (_viewStateSnapshot) {
+                return *_viewStateSnapshot;
+            }
+        }
+        return getViewState(); // nothing published yet: the first reader pays for one
+    }
+
+    void MapRenderer::publishViewStateSnapshot(const ViewState& viewState) const {
+        auto snapshot = std::make_shared<const ViewState>(viewState);
+        std::lock_guard<std::mutex> lock(_viewStateSnapshotMutex);
+        _viewStateSnapshot = snapshot;
     }
 
     std::shared_ptr<ProjectionSurface> MapRenderer::getProjectionSurface() const {
@@ -1182,6 +1199,7 @@ namespace massif {
             _viewState.setHorizontalLayerOffsetDir(0);
 
         }
+        publishViewStateSnapshot(viewState); // what getViewStateSnapshot hands to the app's thread
 
         if (terrainDecodeChanged) {
             // The terrain LOD, the overzoom targets and the view distance all differ between the

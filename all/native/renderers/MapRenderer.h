@@ -120,6 +120,14 @@ namespace massif {
         ViewState getViewState() const;
 
         /**
+         * Returns the last view state published by a frame, without waiting for the renderer mutex.
+         * For readers on the application's thread: _mutex is held for a whole drawn frame, and a
+         * getter that waits for it can deadlock against an event a frame emits. Up to a frame stale.
+         * @return The last published view state.
+         */
+        ViewState getViewStateSnapshot() const;
+
+        /**
          * Returns the current projectin surface object.
          * @return The current projection surface object.
          */
@@ -312,6 +320,9 @@ namespace massif {
         std::optional<std::chrono::steady_clock::time_point> _lastFrameTime;
     
         ViewState _viewState;
+        void publishViewStateSnapshot(const ViewState& viewState) const;
+        mutable std::shared_ptr<const ViewState> _viewStateSnapshot;
+        mutable std::mutex _viewStateSnapshotMutex; // pointer swap only, never held across work - NOT _mutex
         float _lastLabelPlacementZoom = 0.0f;
 
         // The 2D/3D switch. The ratio and the decode state live on TerrainOptions, where everything

@@ -982,10 +982,19 @@ namespace massif {
         if (std::isnan(cglib::norm(worldPos))) {
             return 0;
         }
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         cglib::ray3<double> ray(viewState.getCameraPos(), worldPos - viewState.getCameraPos());
         double t = 0;
-        if (terrainOptions->getElevationManager()->intersectRay(ray, t) && t > 0) {
+        if (elevationManager->intersectRay(ray, t) && t > 0) {
             return ray(t)(2);
+        }
+        // No hit: the camera is UNDER the terrain (the march starts below the ground and returns
+        // t = 0), or the DEM along the ray is not decoded yet. Sea level is kilometres under the
+        // drawn ground in mountains and puts the tap that far off - anchor on the focus instead.
+        double focusHeight = 0;
+        const cglib::vec3<double>& focusPos = viewState.getFocusPos();
+        if (elevationManager->getDisplayHeightCached(focusPos(0), focusPos(1), focusHeight)) {
+            return focusHeight;
         }
         return 0;
     }

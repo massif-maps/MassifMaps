@@ -150,6 +150,14 @@ namespace massif {
         MapTile getDataTile(const MapTile& mapTile) const;
 
         /**
+         * The render tile covering the given internal position, at the source maximum zoom - what
+         * the display-height queries here sample. Pair with getDataTile and prefetchTileGrid to
+         * get a point loaded that no visible tile covers: the ground under a low-tilt camera sits
+         * behind the near plane, and nothing else ever asks for it.
+         */
+        MapTile getTileForInternalPos(double internalX, double internalY) const;
+
+        /**
          * Returns the tile carrying the elevation data for the given render tile at FULL detail:
          * capped by the data source maximum zoom level only, not by what the terrain mesh can
          * express. For consumers that resolve more than the mesh does - shading is per fragment,

@@ -83,6 +83,9 @@ namespace massif {
             return std::max(terrainZ / (1 - FRACTION), terrainZ + c);
         }
 
+            return panned || cameraHeight < 0 || cameraHeight < lastCameraHeight;
+        }
+
         /**
          * The zoom at which the camera, zooming about the focus, lands on the clearance shell.
          * Below the current zoom when the camera is already under the shell; +infinity when no

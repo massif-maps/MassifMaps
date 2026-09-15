@@ -1372,6 +1372,22 @@ namespace massif {
     }
 #endif
 
+    // Why the camera is (or is not) held off the ground, once a second:
+    //   adb shell setprop debug.massif.clearance 1
+#ifdef __ANDROID__
+    bool MapRenderer::isClearanceProbeEnabled() {
+        static const bool enabled = [] {
+            char property[PROP_VALUE_MAX] = { 0 };
+            return __system_property_get("debug.massif.clearance", property) > 0 && property[0] != '0';
+        }();
+        return enabled;
+    }
+#else
+    bool MapRenderer::isClearanceProbeEnabled() {
+        return false;
+    }
+#endif
+
     void MapRenderer::onSurfaceDestroyed() {
         // This method may never be called (e.x Android)
         _surfaceCreated = false;

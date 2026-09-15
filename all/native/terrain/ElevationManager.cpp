@@ -396,6 +396,11 @@ namespace massif {
         }
     }
 
+    MapTile ElevationManager::getTileForInternalPos(double internalX, double internalY) const {
+        MapPos dataSourcePos = _projection->fromInternal(MapPos(wrapInternalX(internalX), internalY, 0));
+        return TileUtils::CalculateClippedMapTile(dataSourcePos, _dataSource->getMaxZoom(), _projection).getFlipped();
+    }
+
     MapTile ElevationManager::getDataTile(const MapTile& mapTile) const {
         return clampTileZoom(mapTile);
     }
@@ -793,9 +798,7 @@ namespace massif {
             }
         }
 
-        MapPos dataSourcePos = _projection->fromInternal(MapPos(internalX, internalY, 0));
-        MapTile mapTile = TileUtils::CalculateClippedMapTile(dataSourcePos, _dataSource->getMaxZoom(), _projection).getFlipped();
-        std::shared_ptr<ElevationTileGrid> grid = getTileGrid(mapTile, mode);
+        std::shared_ptr<ElevationTileGrid> grid = getTileGrid(getTileForInternalPos(internalX, internalY), mode);
         if (memoizable && grid) {
             memo = PosMemo { _instanceId, memoVersion, mode, grid };
         }

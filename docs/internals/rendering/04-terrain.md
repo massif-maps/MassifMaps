@@ -1159,7 +1159,10 @@ map somewhere else:
   past the tilt range's top does the rest come from a zoom out about the focus. And it lifts only
   a camera under the ground, or after a pan (their `adaptCameraAltitude` = dragging): after a
   zoom the ground under the moved camera differs by a little, and lifting for that turned every
-  pinch tick on a slope into a tilt.
+  pinch tick on a slope into a tilt. What arms the lift is `CameraClearance::needsLift`: a pan, a
+  camera under the ground, or **any loss of height since the last check** — a tilt toward the
+  horizon, the ground rising through a 2D/3D switch, the DEM under the camera landing. The lift
+  only ever raises the height, so the frames of its own animation never re-arm it.
 - **A zoom is never cancelled for want of a ground hit.** `TouchHandler::calculatePivotPos` falls
   back to the focus when the ray under the fingers misses the anchor plane or lands past the far
   plane. Close to the terrain the far plane is short and half the screen is sky, so requiring a hit
@@ -1177,6 +1180,38 @@ map somewhere else:
 `isValidScreenPosition` tests the plane the gesture is actually anchored to (the terrain height
 under the touch, `_gestureAnchorHeight`), not sea level: in the mountains the two are hundreds of
 metres, and at a low tilt kilometres of ray, apart.
+
+### The 2D/3D switch left the camera under the shell and the tiles at sea level (fixed 2026-09-15)
+
+**Symptom.** After a cold start and a full 2D→3D switch at a low tilt, in mountains:
+`TerrainOptions::CameraClearance` never fires, the ground right under the camera is at a zoom that
+does not match what is on screen, the first tile past it is several levels coarser than the LOD
+should give it, and a tap lands far from the finger. Zooming in far enough produces a jump back —
+and from then on the clearance, the tile detail and the tap are all correct.
+
+**Three causes, one shared shape: nothing re-reads the ground once the camera has stopped.**
+
+- *The ground under the camera was never fetched.* The clearance measures `terrainZ` at the camera
+  position with `CACHED_ONLY`, and at a low tilt that point sits **behind the near plane** — no
+  visible tile covers it, so no DEM tile is ever loaded for it and `getDisplayHeight` answered 0
+  (sea level) for good. The camera then looked clear of a shell built on sea level while it was
+  inside the mountain. The clearance block now prefetches that one tile itself
+  (`ElevationManager::getTileForInternalPos`) and asks for the frame that will read it.
+- *A tilt is not a pan.* The lift was armed only by a pan event, and a 2D/3D switch tilts the
+  camera down and raises the ground under it without ever panning. See `CameraClearance::needsLift`
+  above.
+- *The tile set was picked for a flat map.* `FlattenSwitch` turns the 3D decode on at the START of
+  the switch (`Phase::WARMING`), where the flatten ratio is still 1 and the exaggeration 0, and the
+  one cull that `terrainDecodeChanged` triggers runs there. The ramp that raises the ground
+  afterwards only asks for redraws, so every tile stayed at the zoom the LOD gives a map at sea
+  level until the camera moved. The debounced elevation-version block in `MapRenderer::onDrawFrame`
+  now re-culls the tile layers as well as refreshing the vector ones; it covers the ramp (the
+  exaggeration bumps the version) and a cold start in 3D (the first DEM tiles do).
+
+A camera under the terrain also explains the tap: `ElevationManager::intersectRay` starts its march
+below the ground and returns `t = 0`, which the caller rejects, and
+`TouchHandler::calculateTerrainHeight` fell back to sea level — kilometres of ray away from the
+finger at tilt 20. It falls back to the height at the focus instead.
 
 ### The zoom pivot sank the focus, and everything was drawn at the wrong scale (fixed 2026-08-13)
 

@@ -600,8 +600,10 @@ namespace massif {
         uploadReadyTextures();
         applyBorderPatches();
 #if MASSIF_VT_RENDER_STATS
-        vt::RenderStats::demTexturesLive.store(static_cast<long long>(_cache.size()));
-        vt::RenderStats::demTexturesResolved.store(static_cast<long long>(_frameResolved.size()));
+        // Accumulated, not stored: there is one of these per tile layer, and a store let an empty
+        // cache overwrite a busy one's count - reading 0 while textures were plainly being uploaded.
+        vt::RenderStats::demTexturesLive.fetch_add(static_cast<long long>(_cache.size()));
+        vt::RenderStats::demTexturesResolved.fetch_add(static_cast<long long>(_frameResolved.size()));
 #endif
         _frameResolved.clear();
         _frameStartCounter = _accessCounter;

@@ -422,11 +422,16 @@ namespace massif {
                 RenderStats::demEncodeNs.load(), RenderStats::demUploads.load(),
                 RenderStats::demUploadNs.load(), RenderStats::demPatchNs.load()
             };
-            Log::Infof("RenderStats: dem encodes=%lld patches=%lld encodeMs=%.1f | uploads=%lld uploadMs=%.1f patchMs=%.1f | live=%lld resolved=%lld zoomGap=%lld (per interval)",
+            // encodeMs is worker time summed over the encode threads, so it can exceed the interval;
+            // live/resolved are summed over the caches AND the frames, so only zero/non-zero reads.
+            static long long lastDemTex[2] = { 0 };
+            const long long demTex[2] = { RenderStats::demTexturesLive.load(), RenderStats::demTexturesResolved.load() };
+            Log::Infof("RenderStats: dem encodes=%lld patches=%lld encodeWorkerMs=%.1f | uploads=%lld uploadMs=%.1f patchMs=%.1f | liveSum=%lld resolvedSum=%lld zoomGap=%lld (per interval)",
                        dem[0] - lastDem[0], dem[1] - lastDem[1], (dem[2] - lastDem[2]) / 1.0e6,
                        dem[3] - lastDem[3], (dem[4] - lastDem[4]) / 1.0e6, (dem[5] - lastDem[5]) / 1.0e6,
-                       RenderStats::demTexturesLive.load(), RenderStats::demTexturesResolved.load(), RenderStats::demTileZoomGap.load());
+                       demTex[0] - lastDemTex[0], demTex[1] - lastDemTex[1], RenderStats::demTileZoomGap.load());
             for (int i = 0; i < 6; i++) { lastDem[i] = dem[i]; }
+            for (int i = 0; i < 2; i++) { lastDemTex[i] = demTex[i]; }
 
             static long long lastTileLockWait = 0;
             long long tileLockWait = RenderStats::tileRendererLockNs.load();

@@ -88,6 +88,73 @@ namespace massif {
         }
 
         /**
+         * One axis of a bilinear lattice sum, grouped into runs that share a cell.
+         *
+         * A node box that reaches into a COARSER neighbour reads it with sampleHeight at this
+         * grid's texel spacing, so `scale` consecutive samples land in the same neighbour cell,
+         * where the height is bilinear in the two corners. Over such a run the weighted sum has a
+         * closed form: the corners are constant, so only the weights times the interpolation
+         * fraction need accumulating. The box covers (box/scale) cells an axis, so the pair loop
+         * that follows is base^2 - constant however coarse the neighbour is - instead of box^2.
+         *
+         * c0/c1 are the clamped corner indices sampleHeight would use, s0/s1 the summed weights
+         * against them. The sum over the run is s0*H(c0) + s1*H(c1).
+         */
+        struct LatticeRun {
+            int c0 = 0, c1 = 0;
+            double s0 = 0, s1 = 0;
+        };
+
+        /**
+         * Splits `count` samples at f0 + i*df into runs of constant (c0, c1), accumulating the
+         * weights. `dim` is the sampled raster's size: outside it the corners clamp, exactly as
+         * sampleHeight clamps, so a run past the edge collapses onto one repeated texel.
+         */
+        static void latticeRuns(double f0, double df, const float* weights, int count, int dim, std::vector<LatticeRun>& runs) {
+            runs.clear();
+            for (int i = 0; i < count; i++) {
+                double w = weights[i];
+                if (w <= 0) {
+                    continue;
+                }
+                double f = f0 + df * i;
+                int g0 = static_cast<int>(std::floor(f));
+                double d = f - g0;
+                int c0 = std::min(std::max(g0, 0), dim - 1);
+                int c1 = std::min(std::max(g0 + 1, 0), dim - 1);
+                if (runs.empty() || runs.back().c0 != c0 || runs.back().c1 != c1) {
+                    LatticeRun run;
+                    run.c0 = c0;
+                    run.c1 = c1;
+                    runs.push_back(run);
+                }
+                runs.back().s0 += w * (1.0 - d);
+                runs.back().s1 += w * d;
+            }
+        }
+
+        /**
+         * The weighted sum of a bilinear raster over the lattice the two run lists describe.
+         * `corner(x, y)` is the raster's texel. Exactly the sum of the per-sample bilinears -
+         * reassociated, not approximated, because a bilinear is separable in its two fractions.
+         */
+        template <typename CornerFn>
+        static double latticeSum(const std::vector<LatticeRun>& xRuns, const std::vector<LatticeRun>& yRuns, const CornerFn& corner) {
+            double sum = 0;
+            for (const LatticeRun& y : yRuns) {
+                double row = 0;
+                for (const LatticeRun& x : xRuns) {
+                    row += x.s0 * y.s0 * corner(x.c0, y.c0)
+                         + x.s1 * y.s0 * corner(x.c1, y.c0)
+                         + x.s0 * y.s1 * corner(x.c0, y.c1)
+                         + x.s1 * y.s1 * corner(x.c1, y.c1);
+                }
+                sum += row;
+            }
+            return sum;
+        }
+
+        /**
          * Prefix sums over a raster, so the mean of an axis-aligned block of it is four lookups
          * instead of one read per texel. An edge node's box reaches 497 texels a side at a large
          * zoom gap - a quarter of a million reads for one node - and half of that box is the

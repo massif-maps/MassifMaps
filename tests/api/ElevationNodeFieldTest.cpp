@@ -195,9 +195,75 @@ namespace {
                    "an unbuilt table falls back to the per-texel sum");
     }
 
+    /*
+     * The lattice closed form against the per-sample bilinear it replaces. This is the half of an
+     * edge node's box that lies in a COARSER neighbour, where the old path called sampleHeight once
+     * per texel of OUR grid - up to a quarter of a million times for one node, most of them landing
+     * in the same neighbour cell. Exactness is not optional here: this value is what makes two tiles
+     * agree on their shared edge.
+     */
+    void testLatticeSumMatchesPerSampleBilinear() {
+        const int NW = 9, NH = 7;                       // the coarse neighbour
+        std::vector<float> nb(static_cast<std::size_t>(NW) * NH);
+        for (int y = 0; y < NH; y++) {
+            for (int x = 0; x < NW; x++) {
+                nb[static_cast<std::size_t>(y) * NW + x] = static_cast<float>(50 + x * 13 - y * 5 + (x * y) % 7);
+            }
+        }
+        auto corner = [&nb](int x, int y) { return nb[static_cast<std::size_t>(y) * NW + x]; };
+
+        // scale = how much coarser the neighbour is; df = 1/scale, the step our texels take in it.
+        for (int scale : { 2, 4, 8, 16 }) {
+            for (double f0 : { -2.5, -0.5, 0.0, 0.25, 3.75 }) {
+                const int count = 6 * scale;
+                std::vector<float> wx(count, 1.0f), wy(count, 1.0f);
+                wx.front() = 0.4f; wx.back() = 0.6f;     // the box's fractional rim
+                wy.front() = 0.7f; wy.back() = 0.3f;
+                double df = 1.0 / scale;
+
+                double brute = 0;
+                for (int j = 0; j < count; j++) {
+                    double fy = f0 + df * j;
+                    int gy0 = static_cast<int>(std::floor(fy));
+                    double dy = fy - gy0;
+                    int cy1 = std::min(std::max(gy0 + 1, 0), NH - 1);
+                    int cy0 = std::min(std::max(gy0, 0), NH - 1);
+                    for (int i = 0; i < count; i++) {
+                        double fx = f0 + df * i;
+                        int gx0 = static_cast<int>(std::floor(fx));
+                        double dx = fx - gx0;
+                        int cx1 = std::min(std::max(gx0 + 1, 0), NW - 1);
+                        int cx0 = std::min(std::max(gx0, 0), NW - 1);
+                        double h = (1 - dx) * (1 - dy) * corner(cx0, cy0) + dx * (1 - dy) * corner(cx1, cy0)
+                                 + (1 - dx) * dy * corner(cx0, cy1) + dx * dy * corner(cx1, cy1);
+                        brute += static_cast<double>(wx[i]) * wy[j] * h;
+                    }
+                }
+
+                std::vector<ElevationNodeField::LatticeRun> xRuns, yRuns;
+                ElevationNodeField::latticeRuns(f0, df, wx.data(), count, NW, xRuns);
+                ElevationNodeField::latticeRuns(f0, df, wy.data(), count, NH, yRuns);
+                double fast = ElevationNodeField::latticeSum(xRuns, yRuns, corner);
+
+                if (std::abs(brute - fast) > 1.0e-6 * std::max(1.0, std::abs(brute))) {
+                    TEST_CHECK(false, "the lattice closed form is the per-sample bilinear sum");
+                    return;
+                }
+                // ... and it is the point of the exercise that it took far fewer terms.
+                if (static_cast<int>(xRuns.size()) > count / scale + 3) {
+                    TEST_CHECK(false, "and groups the lattice into one run per neighbour cell");
+                    return;
+                }
+            }
+        }
+        TEST_CHECK(true, "the lattice closed form is the per-sample bilinear sum");
+        TEST_CHECK(true, "and groups the lattice into one run per neighbour cell");
+    }
+
 }
 
 void testElevationNodeField() {
+    testLatticeSumMatchesPerSampleBilinear();
     testSatMatchesBruteForce();
     testNeighbourSlot();
     testBoxSize();

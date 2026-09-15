@@ -231,7 +231,12 @@ namespace massif::vt {
         // this says where. The sampler walking cold neighbour grids is the suspicion, not the answer.
         static inline std::atomic<long long> demEncodeTextureNs{0}; // encodeTextureWithBorders
         static inline std::atomic<long long> demEncodeBitmapNs{0};  // the Bitmap copy mapbox does not make
-        static inline std::atomic<long long> demEncodeNodeNs{0};    // the node texture and its own Bitmap // padded texels per encode, to size the cost against mapbox's 258 squared
+        static inline std::atomic<long long> demEncodeNodeNs{0};    // the node texture and its own Bitmap
+        // Inside the node texture: an EDGE node is recomputed from the neighbours by box-averaging
+        // boxX*boxY texels through a std::function, and boxX scales with how much coarser the
+        // neighbour is - quadratically. texels/call is the box, and what decides whether that is it.
+        static inline std::atomic<long long> demNodeEdgeCalls{0};
+        static inline std::atomic<long long> demNodeBoxTexels{0}; // padded texels per encode, to size the cost against mapbox's 258 squared
         static inline std::atomic<long long> demEncodes{0};      // full padded-texture encodes on the worker
         static inline std::atomic<long long> demBorderPatches{0}; // border-ring-only encodes
         static inline std::atomic<long long> demEncodeNs{0};     // worker time in both

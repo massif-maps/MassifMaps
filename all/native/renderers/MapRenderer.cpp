@@ -445,6 +445,12 @@ namespace massif {
                 RenderStats::demEncodeTextureNs.load(), RenderStats::demEncodeBitmapNs.load(),
                 RenderStats::demEncodeNodeNs.load()
             };
+            static long long lastNodeBox[2] = { 0 };
+            const long long nodeBox[2] = { RenderStats::demNodeEdgeCalls.load(), RenderStats::demNodeBoxTexels.load() };
+            Log::Infof("RenderStats: demNode edgeCalls=%lld boxTexelsPerCall=%lld (per interval)",
+                       nodeBox[0] - lastNodeBox[0],
+                       (nodeBox[0] - lastNodeBox[0]) > 0 ? (nodeBox[1] - lastNodeBox[1]) / (nodeBox[0] - lastNodeBox[0]) : 0LL);
+            for (int i = 0; i < 2; i++) { lastNodeBox[i] = nodeBox[i]; }
             Log::Infof("RenderStats: demEncode textureMs=%.1f bitmapMs=%.1f nodeMs=%.1f (per interval)",
                        (demSplit[0] - lastDemSplit[0]) / 1.0e6, (demSplit[1] - lastDemSplit[1]) / 1.0e6,
                        (demSplit[2] - lastDemSplit[2]) / 1.0e6);

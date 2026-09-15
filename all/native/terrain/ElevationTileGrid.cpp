@@ -3,6 +3,8 @@
 #include "graphics/Bitmap.h"
 #include "utils/Log.h"
 
+#include <vt/RenderStats.h>
+
 #include <algorithm>
 #include <cmath>
 
@@ -341,6 +343,8 @@ namespace massif {
         if (j == n) scale = std::max(scale, edgeScales[3]);
         boxX *= scale;
         boxY *= scale;
+        VT_STAT_INC(demNodeEdgeCalls);
+        VT_STAT_ADD(demNodeBoxTexels, static_cast<long long>(boxX) * boxY);
         double cx = static_cast<double>(i) * _width / n;
         double cy = static_cast<double>(j) * _height / n;
         return ElevationNodeField::nodeHeight(cx, cy, boxX, boxY, texel);

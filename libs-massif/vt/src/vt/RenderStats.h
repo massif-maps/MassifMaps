@@ -116,6 +116,12 @@ namespace massif::vt {
         static inline std::atomic<long long> lineLayoutBuilds{0};
         static inline std::atomic<long long> labelTransformNs{0}; // world transform of the glyph quads (what a GPU billboard would remove)
         static inline std::atomic<long long> labelAttribNs{0};    // normals / uvs / attribs / indices plumbing into the batch arrays
+        // The frame profiler's 'sky' section, which is 10-25 ms a frame and holds three things. The
+        // clear is the frame's FIRST GL call, so a driver with no free buffer blocks the CPU there:
+        // time in frameClearNs is the frame waiting to be presented, not work anyone can remove.
+        static inline std::atomic<long long> frameClearNs{0};
+        static inline std::atomic<long long> skyDrawNs{0};
+        static inline std::atomic<long long> backgroundDrawNs{0};
         // The base pass, which is the frame profiler's 'layers' section - 74-151 ms a frame in the
         // slow 3D intervals, with almost no labels drawn in them. Split at the calls, in order.
         static inline std::atomic<long long> pass2DStateNs{0};     // view state, terrain versions and the drape/grid settings pushed into the renderer

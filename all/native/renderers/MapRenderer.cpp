@@ -304,6 +304,16 @@ namespace massif {
             for (int i = 0; i < 4; i++) { lastPrep[i] = prep[i]; }
             for (int i = 0; i < 2; i++) { lastLabelSplit[i] = labelSplit[i]; }
 
+            static long long lastSky[3] = { 0 };
+            const long long sky[3] = {
+                RenderStats::frameClearNs.load(), RenderStats::skyDrawNs.load(),
+                RenderStats::backgroundDrawNs.load()
+            };
+            Log::Infof("RenderStats: sky clearMs=%.1f skyMs=%.1f backgroundMs=%.1f (per interval)",
+                       (sky[0] - lastSky[0]) / 1.0e6, (sky[1] - lastSky[1]) / 1.0e6,
+                       (sky[2] - lastSky[2]) / 1.0e6);
+            for (int i = 0; i < 3; i++) { lastSky[i] = sky[i]; }
+
             static long long lastLayerHold = 0;
             long long layerHold = RenderStats::layerRefreshHoldNs.load();
             Log::Infof("RenderStats: layerRefreshHoldMs=%.1f (per interval)", (layerHold - lastLayerHold) / 1.0e6);
@@ -1200,9 +1210,12 @@ namespace massif {
         FRAME_PROF_NOW(profFrameStart);
         FRAME_PROF_RESET();
         FRAME_PROF_GPU_BEGIN(SECTION_SKY);
+        VT_STAT_CLOCK(skyClock);
         initializeRenderState();
+        VT_STAT_SPLIT(frameClearNs, skyClock);
         // The shader sky replaces the legacy sky band when it draws.
         bool skyDrawn = _skyRenderer.onDrawFrame(viewState, _frameFog, resolveSky(_options->getSkyOptions(), _frameStyleEnvironment));
+        VT_STAT_SPLIT(skyDrawNs, skyClock);
         // Timed apart from the sky: both are full-screen-ish draws at the START of the frame, and
         // the first section of a frame also absorbs whatever the GPU idled waiting for the CPU
         // (see GpuFrameProfiler), so one number for the two says nothing about either.
@@ -1213,6 +1226,7 @@ namespace massif {
         if (isBackgroundEnabled()) {
             _backgroundRenderer.onDrawFrame(viewState, _frameFog, !skyDrawn);
         }
+        VT_STAT_SPLIT(backgroundDrawNs, skyClock);
         FRAME_PROF_ADD(skyMs, profFrameStart);
         drawLayers(deltaSeconds, viewState, static_cast<bool>(postProcessEffect));
         FRAME_PROF_GPU_END();

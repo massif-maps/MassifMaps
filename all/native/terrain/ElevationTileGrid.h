@@ -176,9 +176,25 @@ namespace massif {
         // 'texel' (which answers outside the grid) on an edge, widened by the edge's scale.
         template <typename TexelFn>
         float nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel) const;
-        // Neighbour texel access in metres for the node boxes, and how much coarser each
-        // neighbour (W, E, S, N) is than this grid, as a power of two (1 = not coarser).
-        std::function<float(int, int)> makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
+        /**
+         * Neighbour texel access in metres for the node boxes. A concrete functor, not a
+         * std::function: an edge node box averages up to 23k texels through this and the node
+         * loops are templates, so the indirect call was the whole read cost. Same values.
+         */
+        struct NodeTexelSampler {
+            const ElevationTileGrid* grid;
+            std::array<std::shared_ptr<ElevationTileGrid>, 8> keep; // holds the neighbours alive
+            std::array<const ElevationTileGrid*, 8> neighbours;
+            std::array<bool, 8> sameLevel;
+            double texelX, texelY;
+
+            float operator()(int gx, int gy) const;
+        };
+
+        NodeTexelSampler makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
+
+        // How much coarser each neighbour (W, E, S, N) is than this grid, as a power of two
+        // (1 = not coarser).
         std::array<int, 4> edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
 
         const MapTile _tile;

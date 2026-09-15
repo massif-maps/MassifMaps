@@ -11,6 +11,7 @@
 
 #include "terrain/ElevationNodeField.h"
 
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -120,9 +121,33 @@ namespace {
         TEST_CHECK(ElevationNodeField::sample(field, 4, 1.0, 1.0) == 0.0f, "a field too small for its node count answers 0 instead of reading past its end");
     }
 
+    /*
+     * Which neighbour a direction means (ElevationNodeField::neighbourSlot). The node texel sampler
+     * used to find this by scanning an eight-entry table per texel - up to 23k texels for ONE edge
+     * node - and now indexes it. A wrong slot reads the wrong neighbour, which is a seam along a
+     * tile edge, so the mapping is pinned here against the packing order it must match: W E S N
+     * then SW SE NW NE, exactly the order ElevationTileGrid fills its neighbour array in.
+     */
+    void testNeighbourSlot() {
+        const std::array<std::pair<int, int>, 8> DIRS = { {
+            { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+        } };
+        for (int i = 0; i < 8; i++) {
+            if (ElevationNodeField::neighbourSlot(DIRS[i].first, DIRS[i].second) != i) {
+                TEST_CHECK(false, "every direction maps to the slot the neighbour array packs it in");
+                return;
+            }
+        }
+        TEST_CHECK(true, "every direction maps to the slot the neighbour array packs it in");
+        TEST_CHECK(ElevationNodeField::neighbourSlot(0, 0) == -1, "and the centre is this grid, not a neighbour");
+        TEST_CHECK(ElevationNodeField::neighbourSlot(2, 0) == -1 && ElevationNodeField::neighbourSlot(0, -3) == -1,
+                   "a direction that is not a neighbour reads this grid rather than past the array");
+    }
+
 }
 
 void testElevationNodeField() {
+    testNeighbourSlot();
     testBoxSize();
     testBoxWeights();
     testNodeIsCellMean();

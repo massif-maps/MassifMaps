@@ -41,6 +41,20 @@ namespace massif {
          * cells, so nothing narrower than that survives into a node. 1 when the raster is coarser
          * than the box, where the box is a plain bilinear sample.
          */
+        /**
+         * The slot of the neighbour lying in direction (dx, dy), in the order a grid packs them:
+         * W E S N then SW SE NW NE. -1 is this grid itself. Split out of the node texel sampler so
+         * it can be pinned from a test: an edge node box reads up to 23k texels through that
+         * sampler, and a wrong slot reads the wrong neighbour - a seam along the tile edge.
+         */
+        static int neighbourSlot(int dx, int dy) {
+            if (dx < -1 || dx > 1 || dy < -1 || dy > 1) {
+                return -1;
+            }
+            static const int SLOT[9] = { 4, 2, 5, 0, -1, 1, 6, 3, 7 };
+            return SLOT[(dy + 1) * 3 + (dx + 1)];
+        }
+
         static int boxTexels(int width, int nodes, int cells) {
             return std::max(1, std::max(1, cells) * width / std::max(1, nodes));
         }

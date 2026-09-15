@@ -264,39 +264,44 @@ namespace massif {
         };
     }
 
-    std::function<float(int, int)> ElevationTileGrid::makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
+    ElevationTileGrid::NodeTexelSampler ElevationTileGrid::makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
         // The same three cases as makeTexelSampler, in metres and for any distance past the
-        // edge: a node box reaches half a cell out, not one texel.
-        double texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
-        double texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
-        return [this, neighbours, texelX, texelY](int gx, int gy) -> float {
-            static const std::array<std::pair<int, int>, 8> DIRS = { {
-                { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
-            } };
-            int dx = (gx < 0 ? -1 : (gx >= _width ? 1 : 0));
-            int dy = (gy < 0 ? -1 : (gy >= _height ? 1 : 0));
-            if (dx != 0 || dy != 0) {
-                for (std::size_t i = 0; i < DIRS.size(); i++) {
-                    if (DIRS[i].first != dx || DIRS[i].second != dy) {
-                        continue;
-                    }
-                    const std::shared_ptr<ElevationTileGrid>& neighbour = neighbours[i];
-                    if (!neighbour) {
-                        break;
-                    }
-                    bool sameLevel = neighbour->_width == _width && neighbour->_height == _height && neighbour->_tile.getZoom() == _tile.getZoom() && !(neighbour->_tile == _tile);
-                    if (sameLevel) {
-                        int nx = std::min(std::max(gx - dx * _width, 0), _width - 1);
-                        int ny = std::min(std::max(gy - dy * _height, 0), _height - 1);
-                        return neighbour->getHeight(nx, ny);
-                    }
-                    double px = _internalBounds.getMin().getX() + (gx + 0.5) * texelX;
-                    double py = _internalBounds.getMin().getY() + (gy + 0.5) * texelY;
-                    return neighbour->sampleHeight(px, py);
+        // edge: a node box reaches half a cell out, not one texel. Everything that does not
+        // depend on the texel is resolved HERE, once, instead of per read.
+        NodeTexelSampler sampler;
+        sampler.grid = this;
+        sampler.keep = neighbours;
+        sampler.texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
+        sampler.texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
+        for (std::size_t i = 0; i < neighbours.size(); i++) {
+            const ElevationTileGrid* neighbour = neighbours[i].get();
+            sampler.neighbours[i] = neighbour;
+            sampler.sameLevel[i] = neighbour && neighbour->_width == _width && neighbour->_height == _height
+                                && neighbour->_tile.getZoom() == _tile.getZoom() && !(neighbour->_tile == _tile);
+        }
+        return sampler;
+    }
+
+    float ElevationTileGrid::NodeTexelSampler::operator()(int gx, int gy) const {
+        int width = grid->_width, height = grid->_height;
+        int dx = (gx < 0 ? -1 : (gx >= width ? 1 : 0));
+        int dy = (gy < 0 ? -1 : (gy >= height ? 1 : 0));
+        if (dx != 0 || dy != 0) {
+            // Indexed, not searched: the linear scan this replaces cost up to eight compares a texel.
+            int slot = ElevationNodeField::neighbourSlot(dx, dy);
+            const ElevationTileGrid* neighbour = (slot >= 0 ? neighbours[slot] : nullptr);
+            if (neighbour) {
+                if (sameLevel[slot]) {
+                    int nx = std::min(std::max(gx - dx * width, 0), width - 1);
+                    int ny = std::min(std::max(gy - dy * height, 0), height - 1);
+                    return neighbour->getHeight(nx, ny);
                 }
+                double px = grid->_internalBounds.getMin().getX() + (gx + 0.5) * texelX;
+                double py = grid->_internalBounds.getMin().getY() + (gy + 0.5) * texelY;
+                return neighbour->sampleHeight(px, py);
             }
-            return getHeight(std::min(std::max(gx, 0), _width - 1), std::min(std::max(gy, 0), _height - 1));
-        };
+        }
+        return grid->getHeight(std::min(std::max(gx, 0), width - 1), std::min(std::max(gy, 0), height - 1));
     }
 
     std::array<int, 4> ElevationTileGrid::edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {

@@ -8,6 +8,7 @@
 #define _MASSIF_ELEVATIONTILEGRID_H_
 
 #include "core/MapTile.h"
+#include "terrain/ElevationNodeField.h"
 #include "core/MapBounds.h"
 #include "graphics/Bitmap.h"
 
@@ -175,7 +176,8 @@ namespace massif {
         // Height of node (i, j) for the node TEXTURE: the field's own value inside, a box over
         // 'texel' (which answers outside the grid) on an edge, widened by the edge's scale.
         template <typename TexelFn>
-        float nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel) const;
+        float nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel,
+                              const ElevationNodeField::SummedAreaTable& sat) const;
         /**
          * Neighbour texel access in metres for the node boxes. A concrete functor, not a
          * std::function: an edge node box averages up to 23k texels through this and the node
@@ -195,6 +197,11 @@ namespace massif {
 
         // How much coarser each neighbour (W, E, S, N) is than this grid, as a power of two
         // (1 = not coarser).
+        // Prefix sums over this grid's own texels, for the node boxes. Built per node-texture
+        // encode and dropped with it: one is a couple of megabytes, and every cached grid keeping
+        // one would cost more than the reads it saves.
+        void buildHeightSat(ElevationNodeField::SummedAreaTable& sat) const;
+
         std::array<int, 4> edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
 
         const MapTile _tile;

@@ -88,6 +88,98 @@ namespace massif {
         }
 
         /**
+         * Prefix sums over a raster, so the mean of an axis-aligned block of it is four lookups
+         * instead of one read per texel. An edge node's box reaches 497 texels a side at a large
+         * zoom gap - a quarter of a million reads for one node - and half of that box is the
+         * grid's own texels, which this answers in O(1).
+         *
+         * EXACT, not an approximation: it is the same sum, reassociated. Double accumulation, so a
+         * 512x512 grid of metre heights does not lose the low bits the seam depends on.
+         */
+        struct SummedAreaTable {
+            int width = 0, height = 0;
+            std::vector<double> sums; // (width + 1) * (height + 1), sums[0][*] and sums[*][0] are 0
+
+            bool valid() const { return width > 0 && height > 0; }
+
+            template <typename TexelFn>
+            void build(int w, int h, const TexelFn& texel) {
+                width = w;
+                height = h;
+                sums.assign(static_cast<std::size_t>(w + 1) * (h + 1), 0.0);
+                for (int y = 0; y < h; y++) {
+                    double row = 0;
+                    for (int x = 0; x < w; x++) {
+                        row += texel(x, y);
+                        sums[static_cast<std::size_t>(y + 1) * (w + 1) + (x + 1)] =
+                            sums[static_cast<std::size_t>(y) * (w + 1) + (x + 1)] + row;
+                    }
+                }
+            }
+
+            /** Sum over texels [x0, x1] x [y0, y1], inclusive. The caller clamps to the raster. */
+            double rectSum(int x0, int y0, int x1, int y1) const {
+                if (x1 < x0 || y1 < y0) {
+                    return 0.0;
+                }
+                std::size_t stride = static_cast<std::size_t>(width) + 1;
+                return sums[static_cast<std::size_t>(y1 + 1) * stride + (x1 + 1)]
+                     - sums[static_cast<std::size_t>(y0) * stride + (x1 + 1)]
+                     - sums[static_cast<std::size_t>(y1 + 1) * stride + x0]
+                     + sums[static_cast<std::size_t>(y0) * stride + x0];
+            }
+        };
+
+        /**
+         * nodeHeight, with the whole-weight texels that lie INSIDE the raster taken from a summed
+         * area table. Every other texel - the fractional rim of the box, and everything past the
+         * raster, which is a neighbour's - still goes through `texel`, so the value is unchanged.
+         */
+        template <typename TexelFn>
+        static float nodeHeightSat(double cx, double cy, int boxX, int boxY, const SummedAreaTable& sat, const TexelFn& texel) {
+            if (!sat.valid()) {
+                return nodeHeight(cx, cy, boxX, boxY, texel);
+            }
+            std::vector<float> wx, wy;
+            int firstX = boxWeights(cx - 0.5 * boxX, boxX, wx);
+            int firstY = boxWeights(cy - 0.5 * boxY, boxY, wy);
+            // The span of FULL-weight texels that the table can answer: inside the raster, and not
+            // the fractional rim. A weight is 1 only where the box covers the texel completely.
+            int satX0 = firstX, satX1 = firstX + static_cast<int>(wx.size()) - 1;
+            int satY0 = firstY, satY1 = firstY + static_cast<int>(wy.size()) - 1;
+            while (satX0 <= satX1 && (satX0 < 0 || wx[satX0 - firstX] < 1.0f)) { satX0++; }
+            while (satX1 >= satX0 && (satX1 >= sat.width || wx[satX1 - firstX] < 1.0f)) { satX1--; }
+            while (satY0 <= satY1 && (satY0 < 0 || wy[satY0 - firstY] < 1.0f)) { satY0++; }
+            while (satY1 >= satY0 && (satY1 >= sat.height || wy[satY1 - firstY] < 1.0f)) { satY1--; }
+
+            double sum = 0;
+            if (satX0 <= satX1 && satY0 <= satY1) {
+                sum += sat.rectSum(satX0, satY0, satX1, satY1);
+            }
+            // Everything the block did not cover, one texel at a time, exactly as before.
+            for (std::size_t j = 0; j < wy.size(); j++) {
+                if (wy[j] <= 0) {
+                    continue;
+                }
+                int ty = firstY + static_cast<int>(j);
+                bool rowInBlock = (satY0 <= satY1 && ty >= satY0 && ty <= satY1);
+                double row = 0;
+                for (std::size_t i = 0; i < wx.size(); i++) {
+                    if (wx[i] <= 0) {
+                        continue;
+                    }
+                    int tx = firstX + static_cast<int>(i);
+                    if (rowInBlock && satX0 <= satX1 && tx >= satX0 && tx <= satX1) {
+                        continue; // the table has it
+                    }
+                    row += wx[i] * texel(tx, ty);
+                }
+                sum += wy[j] * row;
+            }
+            return static_cast<float>(sum / (static_cast<double>(boxX) * boxY));
+        }
+
+        /**
          * Mean height over the boxX x boxY texel block centred on texel-space position (cx, cy).
          * `texel(tx, ty)` must answer OUTSIDE the raster too - a neighbour's texel, or a clamped
          * one - because a node on the tile edge reaches half a box into the next tile. Two tiles

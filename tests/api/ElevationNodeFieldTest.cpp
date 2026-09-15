@@ -144,9 +144,61 @@ namespace {
                    "a direction that is not a neighbour reads this grid rather than past the array");
     }
 
+    /*
+     * nodeHeightSat must be nodeHeight, to the bit that a seam would show in. It answers the
+     * full-weight texels inside the raster from prefix sums and leaves the fractional rim and
+     * everything past the raster to the same callback, so the only difference allowed is the
+     * reassociation of a double sum.
+     */
+    void testSatMatchesBruteForce() {
+        const int W = 24, H = 20;
+        std::vector<float> grid(static_cast<std::size_t>(W) * H);
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                grid[static_cast<std::size_t>(y) * W + x] = static_cast<float>(100 + x * 7 - y * 3 + (x * y) % 11);
+            }
+        }
+        // Outside the raster is a neighbour's business; any answer will do as long as BOTH paths
+        // get the same one, which is what the rim and the past-the-edge texels exercise.
+        auto texel = [&grid](int x, int y) -> float {
+            if (x < 0 || y < 0 || x >= W || y >= H) {
+                return static_cast<float>(1000 + x * 2 - y);
+            }
+            return grid[static_cast<std::size_t>(y) * W + x];
+        };
+
+        ElevationNodeField::SummedAreaTable sat;
+        sat.build(W, H, texel);
+        TEST_CHECK(sat.valid(), "the table builds over the raster");
+        TEST_CHECK(std::abs(sat.rectSum(0, 0, W - 1, H - 1) - [&]{ double t = 0; for (float v : grid) { t += v; } return t; }()) < 1e-6,
+                   "and its whole-raster sum is the raster's sum");
+
+        // Boxes wholly inside, straddling each edge and each corner, and wider than the raster -
+        // the last is the case an edge node at a large zoom gap actually hits.
+        const double centres[][2] = { { 12.0, 10.0 }, { 12.5, 10.5 }, { 0.0, 10.0 }, { 24.0, 10.0 },
+                                      { 12.0, 0.0 }, { 12.0, 20.0 }, { 0.0, 0.0 }, { 24.0, 20.0 } };
+        const int sizes[] = { 1, 2, 3, 8, 30, 64 };
+        double worst = 0;
+        for (const auto& c : centres) {
+            for (int box : sizes) {
+                float ref = ElevationNodeField::nodeHeight(c[0], c[1], box, box, texel);
+                float fast = ElevationNodeField::nodeHeightSat(c[0], c[1], box, box, sat, texel);
+                worst = std::max(worst, std::abs(static_cast<double>(ref) - fast));
+            }
+        }
+        TEST_CHECK(worst < 1.0e-3, "and every box mean matches the per-texel sum");
+
+        // A table that was never built must not silently answer zero.
+        ElevationNodeField::SummedAreaTable empty;
+        TEST_CHECK(ElevationNodeField::nodeHeightSat(12.0, 10.0, 8, 8, empty, texel)
+                   == ElevationNodeField::nodeHeight(12.0, 10.0, 8, 8, texel),
+                   "an unbuilt table falls back to the per-texel sum");
+    }
+
 }
 
 void testElevationNodeField() {
+    testSatMatchesBruteForce();
     testNeighbourSlot();
     testBoxSize();
     testBoxWeights();

@@ -304,6 +304,13 @@ namespace massif {
         return grid->getHeight(std::min(std::max(gx, 0), width - 1), std::min(std::max(gy, 0), height - 1));
     }
 
+    void ElevationTileGrid::buildHeightSat(ElevationNodeField::SummedAreaTable& sat) const {
+        if (_width < 1 || _height < 1 || !_pixelData) {
+            return; // nodeHeightSat falls back to the per-texel sum on an unbuilt table
+        }
+        sat.build(_width, _height, [this](int x, int y) { return getHeight(x, y); });
+    }
+
     std::array<int, 4> ElevationTileGrid::edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
         // How much coarser the W, E, S, N neighbour is, as the power of two its texel is of ours
         // (edgeFilter's rule: coarser means more than 1.5x). Its lattice cell is that much wider,
@@ -331,7 +338,8 @@ namespace massif {
     }
 
     template <typename TexelFn>
-    float ElevationTileGrid::nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel) const {
+    float ElevationTileGrid::nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel,
+                                             const ElevationNodeField::SummedAreaTable& sat) const {
         int n = _nodesPerEdge;
         int boxX = ElevationNodeField::boxTexels(_width, n, _boxCells);
         int boxY = ElevationNodeField::boxTexels(_height, n, _boxCells);
@@ -352,7 +360,9 @@ namespace massif {
         VT_STAT_ADD(demNodeBoxTexels, static_cast<long long>(boxX) * boxY);
         double cx = static_cast<double>(i) * _width / n;
         double cy = static_cast<double>(j) * _height / n;
-        return ElevationNodeField::nodeHeight(cx, cy, boxX, boxY, texel);
+        // The full-weight texels inside this raster come from the prefix sums; the rim and the
+        // neighbours' texels still go through the callback, so the value is the same sum.
+        return ElevationNodeField::nodeHeightSat(cx, cy, boxX, boxY, sat, texel);
     }
 
     void ElevationTileGrid::encodeNodeTexture(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const {
@@ -363,12 +373,16 @@ namespace massif {
         }
         int stride = n + 1;
         textureData.resize(static_cast<std::size_t>(stride) * stride * _bytesPerTexel);
-        std::function<float(int, int)> texel = makeNodeTexelSampler(neighbours);
+        NodeTexelSampler texel = makeNodeTexelSampler(neighbours);
         std::array<int, 4> scales = edgeBoxScales(neighbours);
+        // Built here, not kept: one pass over the raster serves every edge node of this encode, and
+        // a table per CACHED grid would be a couple of megabytes each.
+        ElevationNodeField::SummedAreaTable sat;
+        buildHeightSat(sat);
         std::size_t s = 0;
         for (int j = 0; j <= n; j++) {
             for (int i = 0; i <= n; i++, s += _bytesPerTexel) {
-                encodeHeight(nodeTexelHeight(i, j, scales, texel), &textureData[s]);
+                encodeHeight(nodeTexelHeight(i, j, scales, texel, sat), &textureData[s]);
             }
         }
     }
@@ -378,8 +392,10 @@ namespace massif {
         if (n < 1) {
             return;
         }
-        std::function<float(int, int)> texel = makeNodeTexelSampler(neighbours);
+        NodeTexelSampler texel = makeNodeTexelSampler(neighbours);
         std::array<int, 4> scales = edgeBoxScales(neighbours);
+        ElevationNodeField::SummedAreaTable sat;
+        buildHeightSat(sat);
         std::size_t bytes = static_cast<std::size_t>(n + 1) * _bytesPerTexel;
         strips.south.resize(bytes);
         strips.north.resize(bytes);
@@ -387,10 +403,10 @@ namespace massif {
         strips.east.resize(bytes);
         for (int k = 0; k <= n; k++) {
             std::size_t s = static_cast<std::size_t>(k) * _bytesPerTexel;
-            encodeHeight(nodeTexelHeight(k, 0, scales, texel), &strips.south[s]);
-            encodeHeight(nodeTexelHeight(k, n, scales, texel), &strips.north[s]);
-            encodeHeight(nodeTexelHeight(0, k, scales, texel), &strips.west[s]);
-            encodeHeight(nodeTexelHeight(n, k, scales, texel), &strips.east[s]);
+            encodeHeight(nodeTexelHeight(k, 0, scales, texel, sat), &strips.south[s]);
+            encodeHeight(nodeTexelHeight(k, n, scales, texel, sat), &strips.north[s]);
+            encodeHeight(nodeTexelHeight(0, k, scales, texel, sat), &strips.west[s]);
+            encodeHeight(nodeTexelHeight(n, k, scales, texel, sat), &strips.east[s]);
         }
     }
 

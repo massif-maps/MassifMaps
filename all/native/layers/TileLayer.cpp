@@ -859,6 +859,9 @@ namespace massif {
 
         _lodMaxTileArea = 0;
         _lodCosThetaExponent = 0;
+        // ONE vertical leg for the whole frame, as maplibre takes it (covering_tiles.ts: distanceZ
+        // is |center.z - camera.z|, passed for every candidate tile). Per tile it is a cliff.
+        _lodCameraHeight = std::abs(cullState->getViewState().getCameraPos()(2) - cullState->getViewState().getFocusPos()(2));
         if (auto options = getOptions()) {
             const ViewState& viewState = cullState->getViewState();
             // TileDrawSize alone: the zoom offset belongs to the target-zoom cap, not to this
@@ -977,7 +980,17 @@ namespace massif {
                 for (int i = 0; i < steps; i++) {
                     cglib::vec2<float> uv(static_cast<float>(i) / (steps - 1), static_cast<float>(j) / (steps - 1));
                     cglib::vec3<double> worldPos = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(uv)), tileMat);
-                    worldPos = tileTransformer->calculateElevatedPos(worldPos, lodElevation);
+                    // Each sample at its OWN height, not all of them at the tile's mean: a flat quad
+                    // floated at a summit's average is seen edge-on once that average nears the
+                    // camera's altitude, and the tile drops several levels in one step (02-tiles.md).
+                    double sampleZ = lodElevation;
+                    if (_lodElevationManager) {
+                        double sampleHeight = 0;
+                        if (_lodElevationManager->getDisplayHeightCached(worldPos(0), worldPos(1), sampleHeight)) {
+                            sampleZ = sampleHeight;
+                        }
+                    }
+                    worldPos = tileTransformer->calculateElevatedPos(worldPos, sampleZ);
                     cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(worldPos(0), worldPos(1), worldPos(2), 1.0), mvpMat);
                     if (!(clipPos(3) > 0)) {
                         projected = false;
@@ -1003,6 +1016,10 @@ namespace massif {
                 screenArea = area;
                 // The area already carries one power of cos(incidence); maplibre's rule wants p of
                 // them, so the exponent applied here is p - 1 and 0 leaves the area rule alone.
+                // The angle is maplibre's thisTilePitch: the tile's HORIZONTAL distance against one
+                // vertical leg for the whole frame (covering_tiles.ts, distanceZ = the camera's
+                // height over the centre). Against the tile's OWN elevation it collapses to 0 where
+                // terrain rises to the camera's altitude - one tile good, the next at the floor.
                 if (_lodCosThetaExponent != 0) {
                     // Against the tile's own UP, which is the z axis only on a plane.
                     cglib::vec3<double> up = cglib::vec3<double>::convert(vertexTransformer->calculateNormal(cglib::vec2<float>(0.5f, 0.5f)));

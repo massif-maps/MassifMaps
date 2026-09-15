@@ -259,10 +259,18 @@ it only becomes gentler than ours above fov ~37° (p 0.83 at fov 50) and harsher
 What is wrong is the **input**: the four corners are projected as a flat footprint quad, so a
 mountain face standing toward the camera is given the incidence angle of flat ground in the same
 place. At 85° flat incidence a 30° slope facing the camera really presents cos 55° / cos 85° ≈ 6.6×
-the area — **1.4 levels**. Projecting each corner at its own DEM height instead of all four at one
-height would recover that, and only where the ground is actually tilted toward the viewer. Not done
-yet. The blunt alternative, `Options::TileLODFactor` 0.71, buys the same level everywhere and costs
-2× the tiles.
+the area — **1.4 levels**. Each corner is projected at its own DEM height now
+(`getDisplayHeightCached` per corner, falling back to the tile mean where the DEM has not landed),
+which recovers it and only where the ground is actually tilted toward the viewer. The blunt
+alternative, `Options::TileLODFactor` 0.71, buys the same level everywhere and costs 2× the tiles.
+
+**The step that made it urgent.** One flat quad per tile is not just 1.4 levels of lost slope: the
+quad floats at the tile's MEAN height, so a tile holding a summit sits at ~1100 m while the city
+tile in front of it sits at 220 m. At a low tilt a quad whose height nears the camera's own altitude
+is seen nearly edge-on and its area collapses, so that one tile drops several levels while its
+neighbour is fine — "one good mountain tile, then a terrible one", with the step moving as the
+camera descends and no way back except flying almost onto it. Per-corner heights remove the mean,
+and with it the collapse.
 
 At **tilt 90** none of this applies: the areas there (408k–464k px²) are above the threshold, so the
 level is the `targetTileZoom` cap, `floor(cameraZoom)`, for every tile. Tangram short-circuits the

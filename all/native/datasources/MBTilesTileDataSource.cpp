@@ -31,10 +31,11 @@ namespace massif {
         _scheme(MBTilesScheme::MBTILES_SCHEME_TMS),
         _database(OpenDatabase(path)),
         _cachedMinZoom(minZoom),
-        _cachedMaxZoom(maxZoom),
+        _cachedMaxZoom(),
         _cachedDataExtent(),
         _mutex()
     {
+        cacheDeclaredMaxZoom(maxZoom);
     }
     
     MBTilesTileDataSource::MBTilesTileDataSource(int minZoom, int maxZoom, const std::string& path, MBTilesScheme::MBTilesScheme scheme) :
@@ -42,10 +43,11 @@ namespace massif {
         _scheme(scheme),
         _database(OpenDatabase(path)),
         _cachedMinZoom(minZoom),
-        _cachedMaxZoom(maxZoom),
+        _cachedMaxZoom(),
         _cachedDataExtent(),
         _mutex()
     {
+        cacheDeclaredMaxZoom(maxZoom);
     }
         
     MBTilesTileDataSource::~MBTilesTileDataSource() {
@@ -74,6 +76,30 @@ namespace massif {
         }
     }
 
+    void MBTilesTileDataSource::cacheDeclaredMaxZoom(int maxZoom) {
+        // A maximum the caller NAMED wins over the database. MAX_SUPPORTED_ZOOM_LEVEL is not one:
+        // it is how "as deep as it goes" is spelled - the default, what the binding passes when the
+        // app names nothing, and what a metadata maxzoom of "inf" means. Only the database knows
+        // how deep that is, so leave it unresolved and let getMaxZoom ask.
+        if (maxZoom < Const::MAX_SUPPORTED_ZOOM_LEVEL) {
+            _cachedMaxZoom = maxZoom;
+        }
+    }
+
+    void MBTilesTileDataSource::cacheZoomLevels() const {
+        int minZoom = 0, maxZoom = -1;
+        loadZoomLevels(minZoom, maxZoom);
+        if (!_cachedMinZoom) {
+            _cachedMinZoom = minZoom;
+        }
+        // Nobody named a maximum, so the database answers. It matters that this is the level it
+        // really holds: every level declared above one makes each fetch probe its way down to the
+        // real one (TileLayer::FetchTaskBase walks the ancestors inside the declared range).
+        if (!_cachedMaxZoom) {
+            _cachedMaxZoom = maxZoom < 0 ? TileDataSource::getMaxZoom() : maxZoom;
+        }
+    }
+
     int MBTilesTileDataSource::getMinZoom() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
@@ -84,10 +110,7 @@ namespace massif {
                 return 0;
             }
 
-            int minZoom = 0, maxZoom = -1;
-            loadZoomLevels(minZoom, maxZoom);
-            _cachedMinZoom = minZoom;
-            _cachedMaxZoom = maxZoom;
+            cacheZoomLevels();
         }
         return *_cachedMinZoom;
     }
@@ -102,10 +125,7 @@ namespace massif {
                 return -1;
             }
 
-            int minZoom = 0, maxZoom = -1;
-            loadZoomLevels(minZoom, maxZoom);
-            _cachedMinZoom = minZoom;
-            _cachedMaxZoom = maxZoom;
+            cacheZoomLevels();
         }
         return *_cachedMaxZoom;
     }
@@ -214,7 +234,9 @@ namespace massif {
                     foundMinZoom = true;
                 } else if (name == "maxzoom") {
                     maxZoom = numValue;
-                    foundMaxZoom = true;
+                    // "inf" is not a level the database holds, it is "as deep as it goes" - and the
+                    // tiles table is what knows. Left as 24 it makes every fetch probe ten levels.
+                    foundMaxZoom = numValue < Const::MAX_SUPPORTED_ZOOM_LEVEL;
                 }
             }
             query.finish();

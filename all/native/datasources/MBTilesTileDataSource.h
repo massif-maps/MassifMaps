@@ -98,6 +98,10 @@ namespace massif {
         static std::unique_ptr<sqlite3pp::database> OpenDatabase(const std::string& path);
 
         bool loadZoomLevels(int& minZoom, int& maxZoom) const;
+        /** Caches a maximum the caller named; an unnamed one is left to the database. */
+        void cacheDeclaredMaxZoom(int maxZoom);
+        /** Caches the zoom range read from the database. */
+        void cacheZoomLevels() const;
         bool loadDataExtent(MapBounds& mapBounds) const;
 
         MBTilesScheme::MBTilesScheme _scheme;

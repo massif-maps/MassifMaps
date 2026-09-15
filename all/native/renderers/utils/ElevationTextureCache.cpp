@@ -336,7 +336,16 @@ namespace massif {
                 }
                 _encodedQueue.push_back(std::move(encoded));
             }
+            // Ask for a frame: the upload happens in beginFrame, so on a still map this texture would
+            // wait for the next gesture and the ground would stay flat under labels already at height.
+            if (_textureReadyListener) {
+                _textureReadyListener();
+            }
         }
+    }
+
+    void ElevationTextureCache::setTextureReadyListener(const std::function<void()>& listener) {
+        _textureReadyListener = listener;
     }
 
     void ElevationTextureCache::uploadReadyTextures() {

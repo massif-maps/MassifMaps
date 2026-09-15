@@ -12,6 +12,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -72,6 +73,14 @@ namespace massif {
          * The view zoom bounds the border prefetch - see NEIGHBOUR_PREFETCH_MAX_LEVELS_BELOW_VIEW.
          */
         void beginFrame(float viewZoom);
+
+        /**
+         * Called when an encode finishes and a texture is waiting to be uploaded. Uploads happen in
+         * beginFrame, so a texture encoded on a still map needs a frame asked for or it is never
+         * applied - the ground stays as last drawn while the relief sits in the queue.
+         * Invoked on the ENCODE WORKER, outside every lock held here.
+         */
+        void setTextureReadyListener(const std::function<void()>& listener);
 
         /**
          * Ground height at an internal position, in internal z units (exaggeration and the mercator
@@ -245,6 +254,8 @@ namespace massif {
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame
+
+        std::function<void()> _textureReadyListener; // see setTextureReadyListener; set once, before the worker starts
 
         // Encode pipeline. The worker only ever touches the queues and the grids handed to it.
         mutable std::mutex _encodeMutex;

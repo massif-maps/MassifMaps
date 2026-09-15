@@ -983,6 +983,15 @@ namespace massif {
                 if (!_elevationTextureCache && elevationManager) {
                     if (auto mapRenderer = _mapRenderer.lock()) {
                         _elevationTextureCache = std::make_shared<ElevationTextureCache>(elevationManager, mapRenderer->getGLResourceManager());
+                        // An encoded texture is uploaded in beginFrame, so without this a still map
+                        // never asks for the frame that would apply it: the ground stays flat under
+                        // labels already standing at terrain height, until the next gesture.
+                        std::weak_ptr<MapRenderer> mapRendererWeak = mapRenderer;
+                        _elevationTextureCache->setTextureReadyListener([mapRendererWeak]() {
+                            if (auto redrawRenderer = mapRendererWeak.lock()) {
+                                redrawRenderer->requestRedraw();
+                            }
+                        });
                     }
                 }
                 if (_elevationTextureCache) {

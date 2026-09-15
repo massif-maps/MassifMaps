@@ -73,6 +73,7 @@ namespace massif {
         _glResourceManager(glResourceManager),
         _cache()
     {
+        VT_STAT_INC(demCachesLive);
     }
 
     bool ElevationTextureCache::getTexture(const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
@@ -493,6 +494,7 @@ namespace massif {
     }
 
     ElevationTextureCache::~ElevationTextureCache() {
+        VT_STAT_ADD(demCachesLive, -1);
         stopEncodeWorker();
     }
 

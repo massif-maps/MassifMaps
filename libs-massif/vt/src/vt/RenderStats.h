@@ -218,6 +218,9 @@ namespace massif::vt {
         // Elevation texture pipeline (the SDK's ElevationTextureCache). Extra DEM detail multiplies the
         // tiles by four a level, and these say which end pays for it: the encode worker, the per-frame
         // upload budget, or simply more distinct textures to bind.
+        // Live ElevationTextureCache instances. One encode THREAD each, so a stale cache kept alive
+        // by a lambda that captured its shared_ptr keeps encoding tiles nobody will draw.
+        static inline std::atomic<long long> demCachesLive{0};
         static inline std::atomic<long long> demEncodes{0};      // full padded-texture encodes on the worker
         static inline std::atomic<long long> demBorderPatches{0}; // border-ring-only encodes
         static inline std::atomic<long long> demEncodeNs{0};     // worker time in both

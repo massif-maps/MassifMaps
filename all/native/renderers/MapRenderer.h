@@ -29,6 +29,7 @@
 
 #include <array>
 #include <atomic>
+#include <limits>
 #include <optional>
 #include <chrono>
 #include <memory>
@@ -44,6 +45,7 @@ namespace massif {
     class Bitmap;
     class BillboardDrawData;
     class ElevationManager;
+    class ElevationTextureCache;
     class Layer;
     class Layers;
     class MapRendererListener;
@@ -172,6 +174,14 @@ namespace massif {
         std::shared_ptr<Options> getOptions() const;
         
         std::shared_ptr<GLResourceManager> getGLResourceManager() const;
+
+        /**
+         * The elevation texture cache for this manager, shared by every tile layer. One per MAP:
+         * the encoded texture is a function of the elevation data and the tile id alone, so a cache
+         * per layer meant five encode threads and five textures for identical heights.
+         * GL thread only. Internal method.
+         */
+        std::shared_ptr<ElevationTextureCache> getElevationTextureCache(const std::shared_ptr<ElevationManager>& elevationManager);
 
         /**
          * Returns the terrain renderer (may be null). GL thread only. Internal method.
@@ -367,7 +377,9 @@ namespace massif {
         std::string _postProcessShaderName;
         std::optional<std::chrono::steady_clock::time_point> _postProcessStartTime;
         std::unique_ptr<TerrainRenderer> _terrainRenderer;
-        std::weak_ptr<ElevationManager> _redrawElevationManager; // the one whose loads ask for a frame
+        std::weak_ptr<ElevationManager> _redrawElevationManager;
+        std::shared_ptr<ElevationTextureCache> _elevationTextureCache; // see getElevationTextureCache
+        std::weak_ptr<ElevationManager> _elevationTextureCacheManager; // which manager the cache above belongs to
         std::vector<vt::TileId> _groundCoverTileIds; // last frame's shared ground cover (shadow refresh trigger)
         std::unique_ptr<TerrainDrapeCache> _terrainDrapeCache;
         std::unique_ptr<TerrainShadowMap> _terrainShadowMap; // shared cross-layer drape target

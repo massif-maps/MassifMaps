@@ -516,6 +516,10 @@ namespace massif {
         }
     }
 
+    void ElevationTextureCache::requestDetailLevels(int extraLevels) {
+        _requestedDetailLevels = std::max(_requestedDetailLevels, extraLevels);
+    }
+
     void ElevationTextureCache::setDetailLevels(int extraLevels) {
         if (_detailLevels != extraLevels) {
             _detailLevels = extraLevels;
@@ -608,6 +612,12 @@ namespace massif {
 
     void ElevationTextureCache::beginFrame(float viewZoom) {
         _viewZoom = viewZoom;
+        setDetailLevels(_requestedDetailLevels);
+        _requestedDetailLevels = 0;
+        // This frame's content changes, taken in one go: every layer reads the same list and none of
+        // them takes it away from the others.
+        _frameContentChanges.clear();
+        _frameContentChanges.swap(_contentChanges);
         // Textures encoded since the last frame go up now, ahead of the draws that sample them,
         // and border refinements are patched into the ones already there.
         uploadReadyTextures();
@@ -623,10 +633,8 @@ namespace massif {
         _frameStartCounter = _accessCounter;
     }
 
-    std::vector<MapTile> ElevationTextureCache::drainContentChanges() {
-        std::vector<MapTile> changes;
-        changes.swap(_contentChanges);
-        return changes;
+    const std::vector<MapTile>& ElevationTextureCache::getFrameContentChanges() const {
+        return _frameContentChanges;
     }
 
     void ElevationTextureCache::clear() {

@@ -138,9 +138,21 @@ namespace massif {
          * over them, which is mapbox's model - a global bump re-did every building on screen each
          * time any DEM tile landed.
          */
-        std::vector<MapTile> drainContentChanges();
+        /**
+         * The tiles whose texture content changed, as of the start of this frame. NOT drained: the
+         * cache is shared by every tile layer and each one must invalidate its own extrusion bases,
+         * so the list is swapped in by beginFrame and stays readable by all of them for the frame.
+         */
+        const std::vector<MapTile>& getFrameContentChanges() const;
 
         void setDetailLevels(int extraLevels);
+
+        /**
+         * Asks for at least this many extra detail levels. The cache is shared by every tile layer
+         * and a painted layer wants more than a plain one, so the frame takes the MAX of what was
+         * asked and applies it in beginFrame - a per-layer set would clear the cache on each change.
+         */
+        void requestDetailLevels(int extraLevels);
 
         void clear();
 
@@ -255,6 +267,8 @@ namespace massif {
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame
 
+        std::vector<MapTile> _frameContentChanges; // see getFrameContentChanges
+        int _requestedDetailLevels = 0; // see requestDetailLevels, reset every frame
         std::function<void()> _textureReadyListener; // see setTextureReadyListener; set once, before the worker starts
 
         // Encode pipeline. The worker only ever touches the queues and the grids handed to it.

@@ -895,7 +895,7 @@ namespace massif {
                         // the grid, so the manager's version alone leaves a base on an ancestor. Scoped
                         // to the tiles that landed - re-resolving every building on each DEM arrival cost.
                         if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
-                            std::vector<MapTile> contentChanges = elevationTextureCache->drainContentChanges();
+                            const std::vector<MapTile>& contentChanges = elevationTextureCache->getFrameContentChanges();
                             if (!contentChanges.empty()) {
                                 std::vector<vt::TileId> contentTileIds;
                                 contentTileIds.reserve(contentChanges.size());
@@ -977,29 +977,20 @@ namespace massif {
                     // element placement query the same manager and must see the same heights).
                     elevationManager->setSurfaceResolution(activeTerrainOptions->getMeshResolution());
                 }
-                if (_elevationTextureCache && _elevationTextureCache->getElevationManager() != elevationManager) {
-                    _elevationTextureCache.reset();
-                }
-                if (!_elevationTextureCache && elevationManager) {
+                // One cache for the whole map, not one per layer: the encoded texture depends only on
+                // the elevation data and the tile id, so a cache each meant an encode THREAD each over
+                // identical heights. MapRenderer owns it and calls beginFrame once a frame.
+                _elevationTextureCache.reset();
+                if (elevationManager) {
                     if (auto mapRenderer = _mapRenderer.lock()) {
-                        _elevationTextureCache = std::make_shared<ElevationTextureCache>(elevationManager, mapRenderer->getGLResourceManager());
-                        // An encoded texture is uploaded in beginFrame, so without this a still map
-                        // never asks for the frame that would apply it: the ground stays flat under
-                        // labels already standing at terrain height, until the next gesture.
-                        std::weak_ptr<MapRenderer> mapRendererWeak = mapRenderer;
-                        _elevationTextureCache->setTextureReadyListener([mapRendererWeak]() {
-                            if (auto redrawRenderer = mapRendererWeak.lock()) {
-                                redrawRenderer->requestRedraw();
-                            }
-                        });
+                        _elevationTextureCache = mapRenderer->getElevationTextureCache(elevationManager);
                     }
                 }
                 if (_elevationTextureCache) {
                     // The paint reads the elevation texture per FRAGMENT, so it may ignore the
                     // mesh's level cap. A dial, not a flag - each level back is 4x the working set.
                     //   adb shell setprop debug.massif.paintdetail 0|1|2   (2 = the source's own level)
-                    _elevationTextureCache->setDetailLevels(_terrainPaintEnabled && _terrainPaintFullDetail ? terrainPaintDetailLevels() : 0);
-                    _elevationTextureCache->beginFrame(viewState.getZoom());
+                    _elevationTextureCache->requestDetailLevels(_terrainPaintEnabled && _terrainPaintFullDetail ? terrainPaintDetailLevels() : 0);
                     std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache;
                     terrainTextureProvider = [elevationTextureCache](const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
                         return elevationTextureCache->getTexture(tileId, terrainTexture);

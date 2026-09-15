@@ -24,6 +24,7 @@
 #include "renderers/cameraevents/CameraTiltEvent.h"
 #include "renderers/cameraevents/CameraZoomEvent.h"
 #include "renderers/drawdatas/BillboardDrawData.h"
+#include "renderers/utils/ElevationTextureCache.h"
 #include "renderers/utils/GLContext.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/FrameBuffer.h"
@@ -697,6 +698,28 @@ namespace massif {
         return _options;
     }
 
+    std::shared_ptr<ElevationTextureCache> MapRenderer::getElevationTextureCache(const std::shared_ptr<ElevationManager>& elevationManager) {
+        if (!elevationManager) {
+            return std::shared_ptr<ElevationTextureCache>();
+        }
+        if (_elevationTextureCache && _elevationTextureCacheManager.lock() != elevationManager) {
+            _elevationTextureCache.reset(); // its textures and its encode thread belong to the old manager
+        }
+        if (!_elevationTextureCache) {
+            _elevationTextureCache = std::make_shared<ElevationTextureCache>(elevationManager, getGLResourceManager());
+            _elevationTextureCacheManager = elevationManager;
+            // An encoded texture is uploaded in beginFrame, so without this a still map never asks for
+            // the frame that would apply it: the ground stays flat under labels already at height.
+            std::weak_ptr<MapRenderer> mapRendererWeak = shared_from_this();
+            _elevationTextureCache->setTextureReadyListener([mapRendererWeak]() {
+                if (auto mapRenderer = mapRendererWeak.lock()) {
+                    mapRenderer->requestRedraw();
+                }
+            });
+        }
+        return _elevationTextureCache;
+    }
+
     std::shared_ptr<GLResourceManager> MapRenderer::getGLResourceManager() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         return _glResourceManager;
@@ -1194,6 +1217,12 @@ namespace massif {
                         for (const std::shared_ptr<Layer>& layer : _layers->getAll()) {
                             if (std::dynamic_pointer_cast<VectorLayer>(layer)) {
                                 layer->refresh();
+                            } else if (std::dynamic_pointer_cast<TileLayer>(layer)) {
+                                // The LOD projects every tile at the height the DEM gives it, so a
+                                // set picked before the first tile landed - or through the 2D/3D
+                                // ramp, where the exaggeration is still 0 - is the set for a map at
+                                // sea level. Nothing else culls while the camera stands still.
+                                layerChanged(layer, true);
                             }
                         }
                     } else {
@@ -2611,6 +2640,12 @@ namespace massif {
                         // tilt of 60 that point sits behind the bottom of the screen.
                         const cglib::vec3<double>& focusPos = viewState.getFocusPos();
                         elevationManager->setPrefetchFocus(focusPos(0), focusPos(1));
+                        // ONCE a frame, for every layer: it uploads what the encoder finished and
+                        // resets the per-frame resolution memo, so a call per layer would spend the
+                        // upload budget five times over and throw the memo away four times.
+                        if (auto elevationTextureCache = getElevationTextureCache(elevationManager)) {
+                            elevationTextureCache->beginFrame(viewState.getZoom());
+                        }
                         if (_redrawElevationManager.lock() != elevationManager) {
                             std::weak_ptr<MapRenderer> mapRendererWeak = shared_from_this();
                             elevationManager->setDataChangedListener([mapRendererWeak]() {

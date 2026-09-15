@@ -21,6 +21,7 @@
 #include "vectortiles/VectorTileDecoder.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 
+#include <vt/RenderStats.h>
 #include <vt/TileId.h>
 #include <vt/Tile.h>
 #include <vt/TileBackground.h>
@@ -407,6 +408,7 @@ namespace massif {
     
     void VectorTileLayer::refreshDrawData(const std::shared_ptr<CullState>& cullState, bool tilesChanged) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
+        VT_STAT_CLOCK(holdClock);
 
         // Get all tiles currently in the visible cache
         std::unordered_set<long long> lastVisibleCacheTiles = _visibleCache.keys();
@@ -490,6 +492,7 @@ namespace massif {
             _visibleTileIds.push_back(drawData->getTileId());
         }
         _tempDrawDatas.clear();
+        VT_STAT_SPLIT(layerRefreshHoldNs, holdClock);
     }
     
     int VectorTileLayer::getMinZoom() const {

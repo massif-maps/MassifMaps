@@ -304,6 +304,26 @@ namespace massif {
             for (int i = 0; i < 4; i++) { lastPrep[i] = prep[i]; }
             for (int i = 0; i < 2; i++) { lastLabelSplit[i] = labelSplit[i]; }
 
+            static long long lastLayerHold = 0;
+            long long layerHold = RenderStats::layerRefreshHoldNs.load();
+            Log::Infof("RenderStats: layerRefreshHoldMs=%.1f (per interval)", (layerHold - lastLayerHold) / 1.0e6);
+            lastLayerHold = layerHold;
+
+            // The 'layers' section, split. state+light are per-frame setup that draws nothing.
+            static long long lastPass2D[7] = { 0 };
+            const long long pass2D[7] = {
+                RenderStats::pass2DStateNs.load(), RenderStats::pass2DLightNs.load(),
+                RenderStats::pass2DPrepareNs.load(), RenderStats::pass2DGeometryNs.load(),
+                RenderStats::pass2DLabels2DNs.load(), RenderStats::pass2DExtrusionNs.load(),
+                RenderStats::pass2DLabels3DNs.load()
+            };
+            Log::Infof("RenderStats: pass2D stateMs=%.1f lightMs=%.1f prepareMs=%.1f geometryMs=%.1f labels2DMs=%.1f extrusionMs=%.1f labels3DMs=%.1f (per interval)",
+                       (pass2D[0] - lastPass2D[0]) / 1.0e6, (pass2D[1] - lastPass2D[1]) / 1.0e6,
+                       (pass2D[2] - lastPass2D[2]) / 1.0e6, (pass2D[3] - lastPass2D[3]) / 1.0e6,
+                       (pass2D[4] - lastPass2D[4]) / 1.0e6, (pass2D[5] - lastPass2D[5]) / 1.0e6,
+                       (pass2D[6] - lastPass2D[6]) / 1.0e6);
+            for (int i = 0; i < 7; i++) { lastPass2D[i] = pass2D[i]; }
+
             static long long lastPass3D[3] = { 0 };
             const long long pass3D[3] = {
                 RenderStats::pass3DLabels2DNs.load(), RenderStats::pass3DGeometryNs.load(),

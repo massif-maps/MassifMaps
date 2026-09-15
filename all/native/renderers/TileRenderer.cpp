@@ -840,6 +840,7 @@ namespace massif {
 
     bool TileRenderer::onDrawFrame(float deltaSeconds, const ViewState& viewState) {
         auto lock = lockTimed();
+        VT_STAT_CLOCK(passClock);
 
         if (!initializeRenderer()) {
             return false;
@@ -1116,6 +1117,7 @@ namespace massif {
         // Sun lighting of the draped surface: once every 2D layer is baked in, the surface is the
         // only lit ground geometry, so one directional light shades the whole map and the pre-baked
         // hillshade raster layer becomes optional.
+        VT_STAT_SPLIT(pass2DStateNs, passClock);
         vt::GLTileRenderer::TerrainLighting terrainLighting;
         if (auto options = _options.lock()) {
             // The style's values win over the options wherever it has an opinion; the rest of the
@@ -1209,18 +1211,24 @@ namespace massif {
 
         bool refresh = false;
         try {
+            VT_STAT_SPLIT(pass2DLightNs, passClock);
             refresh = prepareFrameUnsafe(deltaSeconds, viewState);
+            VT_STAT_SPLIT(pass2DPrepareNs, passClock);
 
             tileRenderer->renderGeometry(true, false);
+            VT_STAT_SPLIT(pass2DGeometryNs, passClock);
             if (_labelOrder == 0) {
                 tileRenderer->renderLabels(true, false);
             }
+            VT_STAT_SPLIT(pass2DLabels2DNs, passClock);
             if (_buildingOrder == 0) {
                 tileRenderer->renderGeometry(false, true);
             }
+            VT_STAT_SPLIT(pass2DExtrusionNs, passClock);
             if (_labelOrder >= 0 && drawsBillboardLabelsHere(0)) {
                 tileRenderer->renderLabels(false, true);
             }
+            VT_STAT_SPLIT(pass2DLabels3DNs, passClock);
         }
         catch (const std::exception& ex) {
             Log::Errorf("TileRenderer::onDrawFrame: Rendering failed: %s", ex.what());

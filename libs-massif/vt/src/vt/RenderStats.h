@@ -116,6 +116,15 @@ namespace massif::vt {
         static inline std::atomic<long long> lineLayoutBuilds{0};
         static inline std::atomic<long long> labelTransformNs{0}; // world transform of the glyph quads (what a GPU billboard would remove)
         static inline std::atomic<long long> labelAttribNs{0};    // normals / uvs / attribs / indices plumbing into the batch arrays
+        // The base pass, which is the frame profiler's 'layers' section - 74-151 ms a frame in the
+        // slow 3D intervals, with almost no labels drawn in them. Split at the calls, in order.
+        static inline std::atomic<long long> pass2DStateNs{0};     // view state, terrain versions and the drape/grid settings pushed into the renderer
+        static inline std::atomic<long long> pass2DLightNs{0};     // lighting, fog and the label occlusion test resolved from the style
+        static inline std::atomic<long long> pass2DPrepareNs{0};   // prepareFrameUnsafe, when MapRenderer's prepare phase did not already run it
+        static inline std::atomic<long long> pass2DGeometryNs{0};
+        static inline std::atomic<long long> pass2DLabels2DNs{0};
+        static inline std::atomic<long long> pass2DExtrusionNs{0}; // buildingOrder 0, i.e. extrusions in the base pass
+        static inline std::atomic<long long> pass2DLabels3DNs{0};
         // The three calls the 3D pass makes, in order.
         static inline std::atomic<long long> pass3DLabels2DNs{0};
         static inline std::atomic<long long> pass3DGeometryNs{0};
@@ -140,6 +149,9 @@ namespace massif::vt {
         // The tile-set change path, which runs inside the layer draw pass. The first two are the
         // SDK's TileRenderer::refreshTiles, the rest are the phases of setVisibleTiles it calls -
         // so refreshTilesNs contains all of them.
+        // How long the cull thread holds the LAYER's mutex across refreshDrawData. Anything on the
+        // render thread that wants that mutex waits this out, so it is the ceiling on such a stall.
+        static inline std::atomic<long long> layerRefreshHoldNs{0};
         static inline std::atomic<long long> refreshTilesLockNs{0};    // waiting for the tile mutex the tile threads hold
         static inline std::atomic<long long> tileRendererLockNs{0};    // the OTHER side: render thread waiting for that same mutex
         static inline std::atomic<long long> refreshTilesNs{0};        // the changed path only

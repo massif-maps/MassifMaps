@@ -254,6 +254,10 @@ namespace massif {
 
         void initializeRenderState() const;
 
+        // Holds the camera on the clearance shell as each camera event moves it, rather than one
+        // frame later (mapbox's transform._constrainCamera). Call with _mutex held.
+        void constrainCameraToClearance();
+
         // Dumps and resets the per-call-site redraw request counts. Diagnostic for "the map never
         // stops rendering": the counts say whether the frames come from an animation, from tiles
         // arriving, or from one caller firing on every single frame.

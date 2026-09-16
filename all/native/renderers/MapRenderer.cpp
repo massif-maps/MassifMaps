@@ -759,6 +759,47 @@ namespace massif {
         return _kineticEventHandler;
     }
     
+    /**
+     * Holds the camera on the clearance shell the moment a camera event moves it, not one frame
+     * later. mapbox constrains inside the transform (_constrainCamera) for the same reason: a
+     * clearance applied only in the render loop can do no better than correct a camera that has
+     * ALREADY been drawn under the ground. Measured on the device, a gesture took the camera from
+     * 217 m above a 1385 m ridge to 146 m inside it between two consecutive frame checks.
+     *
+     * Raises only. Letting the focus back down is the frame's job (CameraClearance::focusFollow),
+     * and doing it here would fight the follow band on every event.
+     * Cached heights only, so it never waits on a tile; through the surface, so it holds on a globe.
+     * Call with _mutex held.
+     */
+    void MapRenderer::constrainCameraToClearance() {
+        std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
+        if (!terrainOptions || !terrainOptions->isEnabled()) {
+            return;
+        }
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        std::shared_ptr<ProjectionSurface> projectionSurface = _options->getProjectionSurface();
+        if (!elevationManager || !projectionSurface) {
+            return;
+        }
+        MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
+        MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
+        double cameraTerrainZ = 0;
+        if (!elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ)) {
+            // The ground under the camera is behind the near plane at a low tilt, so nothing else
+            // asks for it; the focus ground stands in until the frame's own check fetches it.
+            if (!elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), cameraTerrainZ)) {
+                return;
+            }
+        }
+        double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ();
+        double clearanceFloor = terrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
+        double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
+        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor) - orbitHeight;
+        if (shellFocusZ > focusMapPos.getZ()) {
+            _viewState.setFocusHeight(shellFocusZ);
+        }
+    }
+
     void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
         if (durationSeconds > 0) {
             if (cameraEvent.isUseDelta()) {
@@ -785,6 +826,7 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
+            constrainCameraToClearance();
     
             // Calculate parameters for kinetic events
             newFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
@@ -826,6 +868,7 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
+            constrainCameraToClearance();
             
             // Calculate parameters for kinetic events
             float rotation = _viewState.getRotation();
@@ -862,6 +905,7 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
+            constrainCameraToClearance();
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called
@@ -892,6 +936,7 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
+            constrainCameraToClearance();
             
             // Calculate parameters for kinetic events
             float zoom = _viewState.getZoom();

@@ -1363,19 +1363,12 @@ namespace massif::vt {
             std::lock_guard<std::mutex> lock(_mutex);
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
                 if (dirtyLabels[i]->isElevationDirty()) {
-<<<<<<< HEAD
-                    // Stays dirty where the provider had no elevation: marking it clean anchored the
-                    // label at the surface origin, under the terrain, and nothing ever asked again.
-                    bool complete = dirtyLabels[i]->applyElevation(positions[i]);
-                    dirtyLabels[i]->setElevationDirty(!complete);
-=======
                     // Cleared even when the provider had no elevation: the answer cannot change until
                     // new data arrives, and markPendingLabelsDirty re-dirties the label when it does.
                     // Retrying every frame instead bought nothing and never converged. What carries
                     // "height unknown" is isElevationAnchored(), not dirtiness.
-                    dirtyLabels[i]->applyElevation(heights[i]);
+                    dirtyLabels[i]->applyElevation(positions[i]);
                     dirtyLabels[i]->setElevationDirty(false);
->>>>>>> 127cf24b8 (perf(labels): elevate a label anchor on the GPU when the CPU has no height for it)
                 }
             }
             markDeckAnchoredLabels(dirtyLabels);
@@ -4668,14 +4661,9 @@ namespace massif::vt {
         std::vector<std::shared_ptr<Label>> dirty;
         for (const std::shared_ptr<Label>& label : _labels) {
             if (label->isElevationDirty()) {
-<<<<<<< HEAD
-                bool complete = label->updateElevation(anchorFunc);
-                label->setElevationDirty(!complete);
-=======
-                label->updateElevation(heightFunc);
+                label->updateElevation(anchorFunc);
                 label->setElevationDirty(false); // see the bulk path in setVisibleTiles
                 dirty.push_back(label);
->>>>>>> 127cf24b8 (perf(labels): elevate a label anchor on the GPU when the CPU has no height for it)
                 anchored = true;
             }
         }

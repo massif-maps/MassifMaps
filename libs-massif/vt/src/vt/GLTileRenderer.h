@@ -782,10 +782,7 @@ namespace massif::vt {
          * @return False when the point is not on a resolved span.
          */
         void markPendingLabelsDirty();
-<<<<<<< HEAD
         std::function<cglib::vec3<double>(const cglib::vec3<double>&)> labelAnchorFunc() const;
-=======
-        std::function<double(const cglib::vec3<double>&)> labelHeightFunc() const;
         // Whether each label's anchor stands on a span DECK rather than on the ground, so labelVsh
         // keeps the CPU height there instead of taking the terrain's. One chord test per LABEL: the
         // height func answers per vertex and cannot report which of its two sources it used.
@@ -793,7 +790,6 @@ namespace massif::vt {
         // Which batch a label belongs to: its anchor tile when it needs the GPU to supply a height,
         // (-1,-1,-1) - the shared batch, CPU height - when it is already anchored.
         TileId labelBatchTileId(const std::shared_ptr<Label>& label) const;
->>>>>>> 127cf24b8 (perf(labels): elevate a label anchor on the GPU when the CPU has no height for it)
         bool anchorDirtyLabels();
         bool spanHeightAt(const cglib::vec2<double>& pos, double& height) const;
         void renderTileMask(const TileId& tileId);

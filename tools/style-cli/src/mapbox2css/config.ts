@@ -98,6 +98,22 @@ export function resolveConfig(style: MapboxStyle): ConfigResult {
     return { parameters, undeclared };
 }
 
+/**
+ * The configs the style asks to keep as RUNTIME parameters instead of folding to a constant:
+ *
+ *     "metadata": { "massif:live-config": ["poiRanking"] }
+ *
+ * Opt-in, because folding is what makes a configurable style convert at all - see fold.ts - and a
+ * live one only works where CartoCSS can say the same thing, which is a filter or a plain property.
+ * Its `schema` entry carries straight over: the default and the enum are what project.json declares.
+ */
+export function liveConfig(style: MapboxStyle): string[] {
+    const asked = (style as Record<string, Json>).metadata;
+    if (!asked || typeof asked !== 'object' || Array.isArray(asked)) return [];
+    const names = (asked as Record<string, Json>)['massif:live-config'];
+    return Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string') : [];
+}
+
 /** The style's `imports` entries, whatever shape the document is in. */
 export function imports(style: MapboxStyle): Array<{ id?: string; url?: string; config?: Json }> {
     const raw = (style as Record<string, Json>).imports;

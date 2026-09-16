@@ -62,6 +62,7 @@
 %ignore massif::MBVectorTileDecoder::getMapSettings;
 %ignore massif::MBVectorTileDecoder::getSymbolizerContextSettings;
 %ignore massif::MBVectorTileDecoder::setPixelScale;
+%ignore massif::MBVectorTileDecoder::setTileSize;
 %ignore massif::MBVectorTileDecoder::loadMapnikMap;
 %ignore massif::MBVectorTileDecoder::loadCartoCSSMap;
 %ignore massif::MBVectorTileDecoder::resolveLayerConfig;

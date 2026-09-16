@@ -91,6 +91,8 @@ namespace massif::vt {
         };
 
         cglib::vec2<int> getGridIndex(const cglib::vec2<float>& pos) const;
+        /** Placed, but not on screen yet - it skips the fade, so it is drawn the moment it scrolls in. */
+        bool isOffscreen(const CullRecord& cullRecord) const;
         void clearGrid();
         void addGridRecord(RecordGrid& grid, const CullRecord& cullRecord) const;
         bool testGridOverlap(const LabelInfo& labelInfo) const;

@@ -37,6 +37,11 @@ targets:
       - path: MassifDemo/Examples
         buildPhase: resources
         type: folder
+      # The demo's full OSM style project, shared with android-dev, for the composite-layer example.
+      # A folder resource keeps its own name, which is the base path BundleAssetPackage is given.
+      - path: ../android-dev/app/src/main/assets/style
+        buildPhase: resources
+        type: folder
     # The style projects the examples load with assets://styles/<name>.zip. The SOURCE is the one
     # under scripts/android-dev - a plain, diffable folder both demos read - and the zip that
     # ZippedAssetPackage wants is a build product, exactly as android-dev's zipStyleProjects makes

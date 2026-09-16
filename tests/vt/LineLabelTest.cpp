@@ -64,6 +64,19 @@ namespace {
         return std::make_shared<Label>(tileLabel, TileId(0, 0, 0), 0, cglib::mat4x4<double>::identity(), std::make_shared<FlatTransformer>());
     }
 
+    // The same straight line, but carried by many vertices - a street the tileset stores as a
+    // string of short segments rather than as two endpoints. The placement smooths it before
+    // laying glyphs out, and the smoothing is what this exercises.
+    std::shared_ptr<Label> buildDenseLineLabel(int glyphCount, float lineLength, int vertexCount, float anchorX) {
+        std::vector<cglib::vec2<float>> vertices;
+        for (int i = 0; i < vertexCount; i++) {
+            vertices.emplace_back(lineLength * i / (vertexCount - 1), 0.0f);
+        }
+        TileLabel tileLabel(1, 1, 0, buildGlyphs(glyphCount), cglib::vec2<float>(anchorX, 0), vertices,
+                            buildStyle(), TileLabel::PlacementInfo(0, 0, false, false), -1);
+        return std::make_shared<Label>(tileLabel, TileId(0, 0, 0), 0, cglib::mat4x4<double>::identity(), std::make_shared<FlatTransformer>());
+    }
+
     // Top-down camera over the middle of the line, far enough that the whole line is in frustum.
     ViewState buildViewState(float lineLength) {
         cglib::vec3<double> eye(lineLength * 0.5, 0, 100);
@@ -109,5 +122,28 @@ void testLineLabel() {
 
         std::array<cglib::vec3<float>, 4> envelope;
         TEST_CHECK(!label->calculateEnvelope(viewState, envelope), "a run longer than its line is not laid out at all");
+    }
+
+    // SMOOTHING MAY NOT SHORTEN THE LINE. The same 10 units, this time carried by 11 vertices: the
+    // placement averages the line over windows of a third of the text, and averaging the end
+    // windows too used to pull both ends inward - here to 8.5 units, less than the run needs. The
+    // window scales with the TEXT, so a wider face or a letter-spacing shortened the very line it
+    // then had to fit on, and a street name MapBox places was dropped.
+    {
+        std::shared_ptr<Label> label = buildDenseLineLabel(9, lineLength, 11, 5.0f);
+        ViewState viewState = buildViewState(lineLength);
+        label->updatePlacement(viewState);
+
+        std::array<cglib::vec3<float>, 4> envelope;
+        TEST_CHECK(label->calculateEnvelope(viewState, envelope), "a run needing 9 of 10 units is laid out on a line of many vertices");
+
+        double minX = std::numeric_limits<double>::max(), maxX = -std::numeric_limits<double>::max();
+        for (const cglib::vec3<float>& corner : envelope) {
+            double x = viewState.origin(0) + corner(0);
+            minX = std::min(minX, x);
+            maxX = std::max(maxX, x);
+        }
+        TEST_CHECK(maxX <= lineLength + 1.0e-3, "the run still does not reach past the end of the line");
+        TEST_CHECK(minX >= -1.0e-3, "the run still does not reach past the start of the line");
     }
 }

@@ -41,6 +41,7 @@ namespace massif::mvt {
             bindProperty("dy", &_dy);
             bindProperty("placement-priority", &_placementPriority);
             bindProperty("minimum-distance", &_minimumDistance);
+            bindProperty("collision-padding", &_collisionPadding);
             bindProperty("max-distance", &_maxDistance);
             bindProperty("occlusion-opacity", &_occlusionOpacity);
             bindProperty("callout-screen-anchor", &_calloutScreenAnchor);
@@ -63,6 +64,8 @@ namespace massif::mvt {
             bindProperty("background-radius", &_backgroundRadius);
             bindProperty("background-padding-x", &_backgroundPaddingX);
             bindProperty("background-padding-y", &_backgroundPaddingY);
+            bindProperty("background-width", &_backgroundWidth);
+            bindProperty("background-height", &_backgroundHeight);
             bindProperty("background-border-fill", &_backgroundBorderFill);
             bindProperty("background-border-opacity", &_backgroundBorderOpacity);
             bindProperty("background-border-width", &_backgroundBorderWidth);
@@ -126,6 +129,9 @@ namespace massif::mvt {
         FloatProperty _dy = FloatProperty(0.0f);
         FloatProperty _placementPriority = FloatProperty(0.0f);
         FloatProperty _minimumDistance = FloatProperty(0.0f);
+        // mapbox text-padding / icon-padding: pixels grown around this label's box for the
+        // collision test alone, so two labels stay apart without either being drawn bigger.
+        FloatProperty _collisionPadding = FloatProperty(0.0f);
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Negative = unset, i.e. the layer's own default stands.
         FloatProperty _occlusionOpacity = FloatProperty(-1.0f);
@@ -166,6 +172,9 @@ namespace massif::mvt {
         FloatProperty _backgroundRadius = FloatProperty(0.0f);
         FloatProperty _backgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _backgroundPaddingY = FloatProperty(2.0f);
+        // A fixed outer size, which the padding cannot give: it is measured from content that varies.
+        FloatProperty _backgroundWidth = FloatProperty(0.0f);
+        FloatProperty _backgroundHeight = FloatProperty(0.0f);
         // A border around the plate: one more plate behind it, that much larger on every side.
         ColorProperty _backgroundBorderFill = ColorProperty("#000000");
         FloatProperty _backgroundBorderOpacity = FloatProperty(1.0f);

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Massif pane</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f7f5f0; }
+  #map { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #readout { position: fixed; z-index: 2; bottom: 6px; left: 6px; padding: 2px 6px; border-radius: 3px;
+             background: rgba(28,31,36,.8); color: #d7dde6; pointer-events: none;
+             font: 11px/1.5 ui-monospace, Menlo, monospace; white-space: pre; }
+  #err { position: fixed; inset: auto 8px 8px 8px; max-height: 50%; overflow: auto;
+         padding: 6px 8px; border-radius: 3px; background: rgba(120,20,20,.9); color: #fff;
+         font: 12px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; display: none; }
+</style>
+</head>
+<body>
+<!--
+  One Massif view per DOCUMENT: the web build hard-codes its canvas selector (WebMapView("#map")),
+  so the preview grid embeds this page twice rather than putting two canvases side by side.
+-->
+<canvas id="map"></canvas>
+<div id="readout"></div>
+<div id="err"></div>
+<script type="module">
+  import { createMassifPane } from './massif.mjs';
+
+  const params = new URLSearchParams(location.search);
+  const camera = {
+    center: [Number(params.get('lon')), Number(params.get('lat'))],
+    zoom: Number(params.get('zoom')),
+  };
+
+  const el = document.getElementById('err');
+  const seen = new Set();
+  const report = (line) => {
+    if (!/error|failed|warn/i.test(line) || seen.has(line)) return;
+    seen.add(line);
+    el.style.display = 'block';
+    el.textContent = [...seen].slice(-6).join('\n');
+  };
+
+  try {
+    const pane = await createMassifPane(document.getElementById('map'),
+      params.get('carto'), params.get('source'), camera, report);
+    // the grid drives every pane from the MapLibre map above it
+    addEventListener('message', (event) => {
+      if (event.data && event.data.massifCamera) pane.moveTo(event.data.massifCamera);
+    });
+    // The SDK starts north-up and flat whatever MASSIF_DEFAULTS said, so the opening camera is
+    // pushed once the pane is up rather than left to the first sync, which only fires on a move.
+    pane.moveTo(camera);
+    parent.postMessage({ massifReady: params.get('pane') }, '*');
+
+    // the same line the MapLibre panes print; tilt is reported the way they state it, not the
+    // SDK's, where 90 is looking straight down
+    const readout = document.getElementById('readout');
+    const show = () => {
+      try {
+        const [lon, lat] = pane.camera.focusPos;
+        // Reported as maplibre's BEARING, the negative of the SDK's rotation (see massif.mjs), so
+        // the four readouts can be compared straight across.
+        readout.textContent = `z ${pane.camera.zoom.toFixed(2)}  ${lon.toFixed(5)}, ` +
+          `${lat.toFixed(5)}  rot ${(-pane.camera.rotation).toFixed(1)}  ` +
+          `tilt ${(90 - pane.camera.tilt).toFixed(1)}`;
+      } catch (error) {
+        readout.textContent = String(error && error.message || error);
+      }
+      requestAnimationFrame(show);
+    };
+    show();
+  } catch (error) {
+    el.style.display = 'block';
+    // a C++ throw arrives as a WebAssembly.Exception, which stringifies to nothing useful
+    const decode = globalThis.module && globalThis.module.getExceptionMessage;
+    el.textContent = (decode ? String(decode(error)) + '\n' : '') +
+      String(error && error.stack || error);
+  }
+</script>
+</body>
+</html>

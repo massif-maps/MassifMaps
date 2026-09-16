@@ -84,7 +84,14 @@ namespace massif {
          * @param pixelScale The display scale factor (DPI / 160).
          */
         virtual void setPixelScale(float pixelScale) { }
-    
+
+        /**
+         * Sets the size a tile is drawn at, in style pixels. A style's sizes are fractions of it,
+         * so it has to follow Options::TileDrawSize or they scale with the tile.
+         * @param tileSize The tile draw size, in style pixels.
+         */
+        virtual void setTileSize(float tileSize) { }
+
         /**
          * Returns minimum zoom level supported for by the decoder (or style).
          * @return Minimum supported zoom level.

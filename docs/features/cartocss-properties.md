@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-233 properties across 12 symbolizers.
+242 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 61 of 233.
+Live-capable properties: 61 of 242.
 
 ## `building`
 
@@ -198,12 +198,15 @@ Live-capable properties: 61 of 233.
 | `shield-background-border-opacity` | `background-border-opacity` | float | `1.0` |  |  |
 | `shield-background-border-width` | `background-border-width` | float | `0.0` |  |  |
 | `shield-background-fill` | `background-fill` | color | `transparent` |  |  |
+| `shield-background-height` | `background-height` | float | `0.0` |  |  |
 | `shield-background-opacity` | `background-opacity` | float | `1.0` |  |  |
 | `shield-background-padding-x` | `background-padding-x` | float | `3.0` |  |  |
 | `shield-background-padding-y` | `background-padding-y` | float | `2.0` |  |  |
 | `shield-background-radius` | `background-radius` | float | `0.0` |  |  |
+| `shield-background-width` | `background-width` | float | `0.0` |  |  |
 | `shield-character-spacing` | `character-spacing` | float | `0.0` |  |  |
 | `shield-clip` | `clip` | bool | `false` |  |  |
+| `shield-collision-padding` | `collision-padding` | float | `0.0` |  |  |
 | `shield-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `shield-dx` | `shield-dx` | float | `0.0` |  |  |
 | `shield-dy` | `shield-dy` | float | `0.0` |  |  |
@@ -222,10 +225,12 @@ Live-capable properties: 61 of 233.
 | `shield-icon-background-border-opacity` | `icon-background-border-opacity` | float | `1.0` |  |  |
 | `shield-icon-background-border-width` | `icon-background-border-width` | float | `0.0` |  |  |
 | `shield-icon-background-fill` | `icon-background-fill` | color | `transparent` |  |  |
+| `shield-icon-background-height` | `icon-background-height` | float | `0.0` |  |  |
 | `shield-icon-background-opacity` | `icon-background-opacity` | float | `1.0` |  |  |
 | `shield-icon-background-padding-x` | `icon-background-padding-x` | float | `3.0` |  |  |
 | `shield-icon-background-padding-y` | `icon-background-padding-y` | float | `2.0` |  |  |
 | `shield-icon-background-radius` | `icon-background-radius` | float | `0.0` |  |  |
+| `shield-icon-background-width` | `icon-background-width` | float | `0.0` |  |  |
 | `shield-icon-dx` | `icon-dx` | float | `0.0` |  |  |
 | `shield-icon-dy` | `icon-dy` | float | `0.0` |  |  |
 | `shield-icon-face-name` | `icon-face-name` | string |  |  |  |
@@ -253,6 +258,7 @@ Live-capable properties: 61 of 233.
 | `shield-text-horizontal-alignment` | `text-horizontal-alignment` | string |  |  |  |
 | `shield-text-opacity` | `opacity` | float | `1.0` | yes |  |
 | `shield-text-optional` | `text-optional` | bool | `false` |  |  |
+| `shield-text-radial-offset` | `text-radial-offset` | float | `0.0` |  |  |
 | `shield-text-transform` | `text-transform` | value | `none` |  |  |
 | `shield-unlock-image` | `unlock-image` | bool | `false` |  |  |
 | `shield-vertical-alignment` | `vertical-alignment` | value | `auto` |  |  |
@@ -272,10 +278,12 @@ Live-capable properties: 61 of 233.
 | `text-background-border-opacity` | `background-border-opacity` | float | `1.0` |  |  |
 | `text-background-border-width` | `background-border-width` | float | `0.0` |  |  |
 | `text-background-fill` | `background-fill` | color | `transparent` |  |  |
+| `text-background-height` | `background-height` | float | `0.0` |  |  |
 | `text-background-opacity` | `background-opacity` | float | `1.0` |  |  |
 | `text-background-padding-x` | `background-padding-x` | float | `3.0` |  |  |
 | `text-background-padding-y` | `background-padding-y` | float | `2.0` |  |  |
 | `text-background-radius` | `background-radius` | float | `0.0` |  |  |
+| `text-background-width` | `background-width` | float | `0.0` |  |  |
 | `text-callout-align` | `callout-align` | string |  |  |  |
 | `text-callout-line-anchor` | `callout-line-anchor` | string |  |  |  |
 | `text-callout-line-width` | `callout-line-width` | float | `1.0` |  |  |
@@ -286,6 +294,7 @@ Live-capable properties: 61 of 233.
 | `text-callout-step` | `callout-step` | float | `0.0` |  |  |
 | `text-character-spacing` | `character-spacing` | float | `0.0` |  |  |
 | `text-clip` | `clip` | bool | `false` |  |  |
+| `text-collision-padding` | `collision-padding` | float | `0.0` |  |  |
 | `text-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `text-dx` | `dx` | float | `0.0` |  |  |
 | `text-dy` | `dy` | float | `0.0` |  |  |

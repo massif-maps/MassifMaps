@@ -268,6 +268,13 @@ namespace massif::mvt {
             else if (type == "string") {
                 return Value(value);
             }
+            else if (type == "object" || type == "array") {
+                Value tableValue = valueFromJSON(value);
+                if (!isContainerValue(tableValue)) {
+                    _logger->write(Logger::Severity::ERROR, "Could not parse JSON value: " + value + " as: " + type);
+                }
+                return tableValue;
+            }
             else {
                 _logger->write(Logger::Severity::WARNING, "Unsupported value type: " + type);
             }

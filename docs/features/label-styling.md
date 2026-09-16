@@ -137,6 +137,22 @@ builder.setTitleFontName("Roboto, Helvetica Neue, sans-serif");
 }
 ```
 
+Padding is measured from the content, so the same plate comes out a different size behind every
+label. `text-background-width` / `text-background-height` pin it instead — an **outer** size in
+pixels, border included, centred on what the plate sits behind, and the padding for that axis is
+ignored. Either axis can be left at 0 to keep being sized by the content, which is what a chip of
+one height around text of any length wants:
+
+```css
+#topos {
+  text-name: [icon];
+  text-background-fill: #d95d39;
+  text-background-width: 22;      /* one pin size, whatever glyph it carries */
+  text-background-height: 22;
+  text-background-radius: 11;
+}
+```
+
 The same properties exist as `shield-background-*` (behind the text) and `shield-icon-background-*`
 (behind the icon run). A plate is nine-sliced from one cached atlas cell that carries both the fill
 and the border, drawn as a single quad: the border never shows through the fill, so a plate keeps

@@ -237,6 +237,8 @@ namespace massif {
 
         virtual void setPixelScale(float pixelScale);
 
+        virtual void setTileSize(float tileSize);
+
         virtual int getMinZoom() const;
         
         virtual int getMaxZoom() const;
@@ -266,6 +268,7 @@ namespace massif {
         
         const std::shared_ptr<mvt::Logger> _logger;
         float _pixelScale;
+        float _tileSize;
         TileFormat::TileFormat _tileFormat;
         bool _featureIdOverride;
         bool _cartoCSSLayerNamesIgnored;

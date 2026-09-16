@@ -26,3 +26,6 @@ boost*
 /web/demo/massif-demo.data
 /web/demo/styles/
 /web/demo/config.json
+
+# Written by `massif-style mapbox2css` from the style JSON beside it, never by hand.
+/styles/*/carto/

@@ -57,7 +57,12 @@ namespace massif {
         _vtRenderer(),
         _interactionMode(false),
         _layerBlendingSpeed(1.0f),
-        _labelBlendingSpeed(1.0f),
+        // Labels fade in 1/speed seconds, so this is maplibre's fadeDuration of 300 ms
+        // (Style::_updatePlacement). A full second was long enough that a name was still fading in
+        // when it had reached the middle of the screen, and it is the same duration
+        // VTLabelPlacementWorker holds the next placement pass off for.
+        _labelBlendingSpeed(1.0f / 0.3f),
+        _labelPerspectiveScaling(0.5f),
         _labelOrder(0),
         _buildingOrder(1),
         _rasterFilterMode(vt::RasterFilterMode::BILINEAR),
@@ -127,6 +132,11 @@ namespace massif {
     void TileRenderer::setLabelBlendingSpeed(float speed) {
         std::lock_guard<std::mutex> lock(_mutex);
         _labelBlendingSpeed = speed;
+    }
+
+    void TileRenderer::setLabelPerspectiveScaling(float scaling) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _labelPerspectiveScaling = scaling;
     }
 
     void TileRenderer::setLabelOrder(int order) {
@@ -314,6 +324,8 @@ namespace massif {
         // A label's world size is 2^-zoom of the WORLD, and vt scales it by the planar
         // Const::WORLD_SIZE: the globe's own world is twice as wide, or labels come out half size.
         prepareViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
+        prepareViewState.planarProjection = isPlanarProjectionMode();
+        prepareViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         prepareViewState.lightBrightness = _resolvedBrightness;
         // Missing here, vt fell back to the camera's height above the z=0 PLANE - right on a plane,
         // and on a globe the camera's world z, which sized every label at the 0.05 floor.
@@ -828,6 +840,8 @@ namespace massif {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
+        vtViewState.planarProjection = isPlanarProjectionMode(); // labels rescale by view depth, so neither terrain elevation nor a tilt blows up their screen size
+        vtViewState.labelPerspectiveScaling = _labelPerspectiveScaling; // how much of that rescale is given back, so a distant label shrinks like maplibre's
         vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
         tileRenderer->setViewState(vtViewState);
@@ -1077,6 +1091,7 @@ namespace massif {
             _buildingAmbient = lighting.buildingAmbient;
             _buildingVerticalGradient = lighting.buildingVerticalGradient;
             _buildingRoofShade = lighting.buildingRoofShade;
+            _buildingLightingMapLibre = lighting.buildingLightingMapLibre;
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
             _buildingHeightScale = lighting.buildingHeightScale;
@@ -1258,6 +1273,8 @@ namespace massif {
         vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
+        cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
+        cullViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
         culler.setViewState(cullViewState);
@@ -1280,12 +1297,17 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_SPLIT(refreshTilesLockNs, refreshClock);
 
-        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles;
+        // A preloading draw data is a tile OUTSIDE the view frustum - the label band or the
+        // preloading ring. Its labels are wanted, so that they are placed before they scroll in;
+        // its geometry is not, and drawing it was 15% of the render tiles for nothing.
+        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles, labelOnlyTiles;
         for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
-            tiles[drawData->getVTTileId()] = drawData->getVTTile();
+            auto& target = (drawData->isPreloadingTile() ? labelOnlyTiles : tiles);
+            target[drawData->getVTTileId()] = drawData->getVTTile();
         }
 
-        bool changed = (tiles != _tiles) || (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
+        bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) ||
+                       (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
         if (!changed) {
             return false;
         }
@@ -1295,10 +1317,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 if (_horizontalLayerOffset != 0) {
                     tileRenderer->teleportVisibleTiles((int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE), 0);
                 }
-                tileRenderer->setVisibleTiles(tiles, spanReferenceTiles);
+                tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles);
             }
         }
         _tiles = std::move(tiles);
+        _labelOnlyTiles = std::move(labelOnlyTiles);
         _spanReferenceTiles = spanReferenceTiles;
         _horizontalLayerOffset = 0;
         // The changed path only - the unchanged one returns above and costs nothing. INCLUDES
@@ -1491,6 +1514,16 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 #endif
     }
 
+    bool TileRenderer::isPlanarProjectionMode() const {
+        // The label size correction and the pixel-grid snapping belong to the PROJECTION, not to
+        // the terrain: a tilted flat map divides by w exactly the same way, which is what made
+        // labels near the camera far larger than the ones behind them.
+        if (auto options = _options.lock()) {
+            return options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR;
+        }
+        return false;
+    }
+
     void TileRenderer::updateLabelOcclusionTest(const std::shared_ptr<vt::GLTileRenderer>& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) {
         if (!terrainOptions || !terrainOptions->isBillboardOcclusionEnabled()) {
             _labelOcclusionState.reset();
@@ -1593,7 +1626,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         _vtRenderer = glResourceManager->create<VTRenderer>(_tileTransformer);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
-            tileRenderer->setVisibleTiles(_tiles);
+            tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles);
             // These tiles were handed over before this renderer existed, so their placement pass
             // found no GL renderer and did nothing. On a still camera nothing asks again, which left
             // a labels-only layer invisible until the user panned.
@@ -1620,6 +1653,17 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 glUniform2f(glGetUniformLocation(shaderProgram, "u_verticalGradient"), _buildingVerticalGradient, _buildingRoofShade);
                 glUniform1f(glGetUniformLocation(shaderProgram, "u_emissive"), _buildingEmissive);
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_radiance"), 1, _resolvedRadiance.data());
+                glUniform1f(glGetUniformLocation(shaderProgram, "u_mlMode"), _buildingLightingMapLibre ? 1.0f : 0.0f);
+                // MapLibre's default light, anchored to the VIEWPORT: spherical (1.15, 210, 30)
+                // through their sphericalToCartesian, with y negated because their tile y runs
+                // south and this one runs north, then turned by the bearing as they turn it.
+                double bearing = viewState.rotation * Const::DEG_TO_RAD;
+                float c = static_cast<float>(std::cos(bearing)), s = static_cast<float>(std::sin(bearing));
+                cglib::vec3<float> light(ML_LIGHT_POS(0) * c - ML_LIGHT_POS(1) * s,
+                                         ML_LIGHT_POS(0) * s + ML_LIGHT_POS(1) * c,
+                                         ML_LIGHT_POS(2));
+                glUniform3fv(glGetUniformLocation(shaderProgram, "u_mlLightPos"), 1, light.data());
+                glUniform2f(glGetUniformLocation(shaderProgram, "u_mlLight"), ML_LIGHT_INTENSITY, ML_VERTICAL_GRADIENT);
             });
             tileRenderer->setLightingShader3D(lightingShader3D);
 
@@ -1652,6 +1696,12 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return _vtRenderer && _vtRenderer->isValid();
     }
 
+    // sphericalToCartesian([1.15, 210, 30]), used as maplibre computes it: their extrusion normals
+    // and this SDK's agree on the sign of y, so negating it for the "north-up" axis put the light
+    // on the wrong side and darkened exactly the walls maplibre lights. Left UNNORMALISED, as they
+    // leave it - the 1.15 radius is part of the look.
+    const cglib::vec3<float> TileRenderer::ML_LIGHT_POS = cglib::vec3<float>(0.2875f, -0.4980f, 0.9959f);
+
     const std::string TileRenderer::LIGHTING_SHADER_2D = R"GLSL(
         uniform vec3 u_viewDir;
         vec4 applyLighting(lowp vec4 color, mediump vec3 normal) {
@@ -1672,7 +1722,30 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // space. Passed even though the 3D pass computes its own per-face term, because it is what
         // a replaceable grade is written against and what the emissive mixes back towards.
         uniform vec3 u_radiance;
+        // MapLibre's own fill-extrusion model, for a style that lights nothing (see
+        // StyleEnvironment::resolveLighting). Its light is VIEWPORT-anchored, so u_mlLightPos
+        // arrives already turned by the bearing.
+        uniform float u_mlMode;
+        uniform vec3 u_mlLightPos;
+        uniform vec2 u_mlLight; // x = intensity, y = vertical gradient
         vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow, mediump float skyShadow) {
+            if (u_mlMode > 0.5) {
+                // fill_extrusion.vertex.glsl, ported: a slight ambient so nothing is ever black, a
+                // directional term whose range NARROWS with the light intensity and with how bright
+                // the surface already is, and a flat darkening of the facades.
+                mediump vec3 mlColor = color.rgb + 0.03 * color.a;
+                mediump float mlValue = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+                mediump float mlDir = clamp(dot(normal, u_mlLightPos), 0.0, 1.0);
+                mlDir = mix(1.0 - u_mlLight.x, max(1.0 - mlValue + u_mlLight.x, 1.0), mlDir);
+                // Their gradient is clamped at mix(0.7, 0.98, 1 - intensity), and a building has to
+                // pass ~106 m before the ramp above that floor is reached at all - so for a city
+                // tile the floor IS the term, and a wall wears it whole. A tower taller than that
+                // is lit here a touch flatter than maplibre lights it.
+                mlDir *= mix(1.0, (1.0 - u_mlLight.y) + u_mlLight.y * mix(0.7, 0.98, 1.0 - u_mlLight.x), sideVertex);
+                // Their shading has no shadow map; the map's own shadow still multiplies it, so a
+                // style that turns shadows on keeps them.
+                return vec4(min(mlColor * mlDir * shadow, vec3(color.a)), color.a);
+            }
             // Ambient occlusion where a wall meets the ground - the cue that makes an extrusion
             // stand on the terrain rather than float, which the shadow map cannot resolve. wallT is
             // baked per vertex from the ABSOLUTE height, so a whole building shares one ramp.

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { Untranslatable, expandTokens, translateExpression } from '../dist/mapbox2css/expression.js';
+import { Untranslatable, expandTokens, setTileDrawSize, translateExpression } from '../dist/mapbox2css/expression.js';
 import { translateFilter, zoomPredicates } from '../dist/mapbox2css/filter.js';
 
 test('literals', () => {
@@ -208,7 +208,15 @@ test('the in OPERATOR is not the in FILTER, and a style using it must not be dro
         ["when(([class] = 'track' || [class] = 'service'))"]);
     // A one-element haystack is an equality, so it brackets like any other.
     assert.deepEqual(translateFilter(['in', ['get', 'class'], ['literal', ['track']]]),
-        ["when(([class] = 'track'))"]);
+        ["[class = 'track']"]);
+    // Several labels naming ONE constant collapse to that equality: both geometry names are
+    // mapnik geometry type 2, and comparing the NUMBER against the NAME matched nothing.
+    assert.deepEqual(
+        translateFilter(['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]]),
+        ["['mapnik::geometry_type' = 2]"]);
+    assert.deepEqual(
+        translateFilter(['match', ['geometry-type'], ['LineString', 'Polygon'], true, false]),
+        ['when(([mapnik::geometry_type] = 2 || [mapnik::geometry_type] = 3))']);
     assert.match(translateExpression(['case', ['in', ['get', 'class'], ['literal', ['a', 'b']]], '#f00', '#00f']),
         /\(\[class\] = 'a' \|\| \[class\] = 'b'\)/);
     assert.equal(translateExpression(['in', ['get', 'class'], ['literal', []]]), 'false');
@@ -266,4 +274,59 @@ test('a ramp at the stop of another ramp collapses: CartoCSS cannot nest two', (
     assert.ok(!/linear\([^)]*linear\(/.test(out), out);
     assert.match(out, /view::brightness/);
     assert.match(notes.join(' '), /cannot nest/);
+});
+
+test('the zoom shift follows the tile draw size the style will be drawn at', () => {
+    // log2(512 / size): the SDK's 256 is a level above MapBox, an app on maplibre's 512 is level
+    // with it. Shifting there drew every road a level thin.
+    try {
+        setTileDrawSize(512);
+        assert.equal(translateExpression(['zoom']), '[view::zoom]');
+        assert.equal(
+            translateExpression(['interpolate', ['linear'], ['zoom'], 6, 1, 16, 12]),
+            'linear([view::zoom], (6, 1), (16, 12))');
+        assert.deepEqual(zoomPredicates(6, 20), ['[zoom >= 6]', '[zoom < 20]']);
+    } finally {
+        setTileDrawSize(256);
+    }
+    assert.equal(translateExpression(['zoom']), '([view::zoom] - 1)');
+});
+
+test('a match on a sliced prefix becomes one regex per branch', () => {
+    // How a style picks a road shield's colour: the first letter of the ref says which network it
+    // is. CartoCSS has no substring, so each label is the same prefix regex `==` already used -
+    // and upcase folds onto the whole string, which says the same thing for a prefix.
+    const out = translateExpression(['match',
+        ['upcase', ['slice', ['coalesce', ['get', 'ref'], ''], 0, 1]],
+        'A', '#ff0000', 'D', '#ffcc00', '#ffffff']);
+    assert.match(out, /uppercase\(\(\(\[ref\]\) \?\? \(''\)\)\) =~ 'A\.\*'/);
+    assert.match(out, /=~ 'D\.\*'/);
+    assert.ok(out.includes('#ff0000') && out.includes('#ffcc00') && out.includes('#ffffff'));
+
+    // A label that cannot be a prefix of that length never matches, and says so.
+    assert.match(translateExpression(['match', ['slice', ['get', 'ref'], 0, 1], 'AB', 1, 0]), /false/);
+});
+
+test('a coalesce is parenthesised whole, because ?? binds looser than a comparison', () => {
+    // CartoCSSParser puts ?? in term0 with && and ||, and comparisons in term1 - so `[x] ?? '' =
+    // 'y'` parses as `[x] ?? ('' = 'y')`, true for ANY feature carrying the field. Bare, it made
+    // every filter written that way pass everything: motorway exits drew as road shields, and a
+    // guard on `network` excluded every road that had one.
+    const eq = translateExpression(['==', ['coalesce', ['get', 'subclass'], ''], 'junction']);
+    assert.equal(eq, "((([subclass]) ?? ('')) = 'junction')");
+    // The parens have to sit OUTSIDE the ??, not just around each operand.
+    assert.ok(!/\[subclass\]\) \?\? \(''\) =/.test(eq), `precedence lost: ${eq}`);
+});
+
+test('a zoom test inside a FILTER is per tile, not per frame', () => {
+    // ExpressionContext hands a predicate `view::zoom` = the tile's own zoom + 0.5 when there is no
+    // view state, which is where a filter is evaluated. So a filter gate behaves like maplibre's:
+    // decided once per tile. A gate at 13 is off for a z12 tile (12.5) and on for a z13 one (13.5).
+    assert.equal(translateExpression(['>=', ['zoom'], 13]), '(([view::zoom] - 1) >= 13)');
+    try {
+        setTileDrawSize(512);
+        assert.equal(translateExpression(['>=', ['zoom'], 13]), '([view::zoom] >= 13)');
+    } finally {
+        setTileDrawSize(256);
+    }
 });

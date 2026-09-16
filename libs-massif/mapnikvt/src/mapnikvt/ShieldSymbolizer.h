@@ -23,6 +23,7 @@ namespace massif::mvt {
             bindProperty("shield-dy", &_shieldDy);
             bindProperty("unlock-image", &_unlockImage);
             bindProperty("anchors", &_anchors);
+            bindProperty("text-radial-offset", &_textRadialOffset);
             bindProperty("text-optional", &_textOptional);
             bindProperty("icon-name", &_iconText);
             bindProperty("icon-face-name", &_iconFaceName);
@@ -39,6 +40,8 @@ namespace massif::mvt {
             bindProperty("icon-background-radius", &_iconBackgroundRadius);
             bindProperty("icon-background-padding-x", &_iconBackgroundPaddingX);
             bindProperty("icon-background-padding-y", &_iconBackgroundPaddingY);
+            bindProperty("icon-background-width", &_iconBackgroundWidth);
+            bindProperty("icon-background-height", &_iconBackgroundHeight);
             bindProperty("icon-background-border-fill", &_iconBackgroundBorderFill);
             bindProperty("icon-background-border-opacity", &_iconBackgroundBorderOpacity);
             bindProperty("icon-background-border-width", &_iconBackgroundBorderWidth);
@@ -69,6 +72,9 @@ namespace massif::mvt {
         FloatProperty _shieldDx = FloatProperty(0.0f);
         FloatProperty _shieldDy = FloatProperty(0.0f);
         StringProperty _anchors = StringProperty("");
+        // mapbox 'text-radial-offset', in pixels: anchor to the near edge of the text, on the chosen
+        // side's axis and nothing across it. 0 leaves the placement to dx/dy and the icon's edge.
+        FloatProperty _textRadialOffset = FloatProperty(0.0f);
         BoolProperty _textOptional = BoolProperty(false);
         StringProperty _iconText = StringProperty("");
         StringProperty _iconFaceName = StringProperty("");
@@ -93,6 +99,8 @@ namespace massif::mvt {
         FloatProperty _iconBackgroundRadius = FloatProperty(0.0f);
         FloatProperty _iconBackgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _iconBackgroundPaddingY = FloatProperty(2.0f);
+        FloatProperty _iconBackgroundWidth = FloatProperty(0.0f);
+        FloatProperty _iconBackgroundHeight = FloatProperty(0.0f);
         ColorProperty _iconBackgroundBorderFill = ColorProperty("#000000");
         FloatProperty _iconBackgroundBorderOpacity = FloatProperty(1.0f);
         FloatProperty _iconBackgroundBorderWidth = FloatProperty(0.0f);

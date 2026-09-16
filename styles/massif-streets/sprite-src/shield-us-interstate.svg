@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="20" viewBox="0 0 24 20">
+  <!-- MUTCD M1-1. Federal work, public domain. -->
+  <defs>
+    <path id="body" d="M2 5.2C2 3.4 5 2 12 2s10 1.4 10 3.2V10c0 4.2-5.6 7.2-10 8.2C7.6 17.2 2 14.2 2 10Z"/>
+    <clipPath id="inside"><use href="#body"/></clipPath>
+  </defs>
+  <use href="#body" fill="#003f87" stroke="#ffffff" stroke-width="2.4"/>
+  <rect x="0" y="0" width="24" height="7" fill="#b01c2e" clip-path="url(#inside)"/>
+</svg>

@@ -126,12 +126,17 @@ namespace massif {
 
         /**
          * Returns the current relative layer blending speed.
-         * @return The current relative layer blending speed. Default is 1.0.
+         * @return The current relative layer blending speed. Default is 0.0 (no blending).
          */
         float getLayerBlendingSpeed() const;
         /**
          * Sets the relative layer blending speed.
-         * @param speed The new relative speed value. Default is 1.0. Use zero or negative values to disable blending.
+         *
+         * The default is 0 - a tile's geometry appears, as maplibre and mapbox-gl do it; they fade
+         * rasters only. A cased road cross-fades badly, because its fill is usually near the
+         * background colour: for the length of the fade only the casing reads and the road looks
+         * like an outline waiting to be filled. Set 1 for the fade this SDK used to do.
+         * @param speed The new relative speed value. Use zero or negative values to disable blending.
          */
         void setLayerBlendingSpeed(float speed);
 
@@ -145,6 +150,20 @@ namespace massif {
          * @param speed The new relative speed value. Default is 1.0. Use zero or negative values to disable blending.
          */
         void setLabelBlendingSpeed(float speed);
+
+        /**
+         * Returns how much of the perspective divide a label keeps as it recedes from the camera.
+         * @return The label perspective scaling, 0 to 1. Default is 0.5.
+         */
+        float getLabelPerspectiveScaling() const;
+        /**
+         * Sets how much of the perspective divide a label keeps as it recedes from the camera.
+         * At 0 a label holds a constant on-screen size at any distance. At 0.5, mapbox's and
+         * maplibre's own value, a distant label shrinks at half the rate the projection would
+         * shrink it. At 1 it shrinks with the map. Callout labels always hold their size.
+         * @param scaling The new scaling, clamped to 0 to 1. Default is 0.5.
+         */
+        void setLabelPerspectiveScaling(float scaling);
 
         /**
          * Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names.
@@ -297,6 +316,7 @@ namespace massif {
         std::atomic<float> _clickRadius;
         std::atomic<float> _layerBlendingSpeed;
         std::atomic<float> _labelBlendingSpeed;
+        std::atomic<float> _labelPerspectiveScaling;
         std::string _rendererLayerFilter;
         std::string _clickHandlerLayerFilter;
 

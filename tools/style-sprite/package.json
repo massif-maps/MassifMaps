@@ -1,0 +1,13 @@
+{
+  "name": "@massif-maps/style-sprite",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pack a folder of SVGs into a MapLibre sprite sheet",
+  "type": "module",
+  "bin": { "massif-sprite": "build.mjs" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "pngjs": "^7.0.0"
+  }
+}

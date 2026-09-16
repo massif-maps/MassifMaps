@@ -7,6 +7,7 @@
 int failures = 0;
 
 void testPlateBitmap();
+void testPlateBox();
 void testLineLabel();
 void testExtrusionCorner();
 void testExtrusionRingOrientation();
@@ -17,15 +18,25 @@ void testExtrusionFloor();
 void testLabelDistance();
 void testSpanGeometry();
 void testShadowCasterClip();
+void testShaderFlags();
 void testExtrusionAnchor();
 void testExtrusionEmissive();
 void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 void testSpanResolver();
 void testSphericalTerrain();
+void testCollisionPadding();
+void testLabelAnchorAlign();
+void testLabelPadding();
+void testLabelPerspective();
+void testLabelBandTiles();
+void testLabelTextOpacity();
+void testLabelRadialOffset();
+void testLabelEdgeOffset();
 
 int main() {
     testPlateBitmap();
+    testPlateBox();
     testLineLabel();
     testExtrusionCorner();
     testExtrusionRingOrientation();
@@ -36,12 +47,21 @@ int main() {
     testLabelDistance();
     testSpanGeometry();
     testShadowCasterClip();
+    testShaderFlags();
     testExtrusionAnchor();
     testExtrusionEmissive();
     testExtrusionGroupAnchor();
     testSpanDrapeLight();
     testSpanResolver();
     testSphericalTerrain();
+    testCollisionPadding();
+    testLabelAnchorAlign();
+    testLabelPadding();
+    testLabelPerspective();
+    testLabelBandTiles();
+    testLabelTextOpacity();
+    testLabelRadialOffset();
+    testLabelEdgeOffset();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

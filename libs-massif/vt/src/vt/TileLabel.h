@@ -63,6 +63,9 @@ namespace massif::vt {
             // that gives, whatever the text does afterwards - mapbox sizes an icon by icon-size and
             // the name by text-size, and they are not the same ramp. 0 leaves the icon on the text.
             float iconRefSize = 0.0f;
+            // mapbox text-padding / icon-padding: screen pixels grown around this label's box
+            // for the COLLISION test, so two labels keep apart without either being drawn bigger.
+            float collisionPadding = 0.0f;
             // Added to the placement priority by the culler, per label and per pass - the one
             // place a style function may read view::distance (see TextLabelStyle::rankFunc).
             FloatFunction rankFunc;

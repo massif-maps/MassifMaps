@@ -15,6 +15,7 @@ void testDataDrivenProperty();
 void testInterpolateExpression();
 void testViewStateProperty();
 void testFontNames();
+void testValueJSON();
 
 int main() {
     testLayerConfig();
@@ -26,6 +27,7 @@ int main() {
     testInterpolateExpression();
     testViewStateProperty();
     testFontNames();
+    testValueJSON();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

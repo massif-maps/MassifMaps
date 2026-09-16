@@ -4,26 +4,36 @@ import com.massifmaps.MassifDemo.examples.ExampleHost;
 import com.massifmaps.MassifDemo.examples.ExampleInfo;
 import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.MassifDemo.examples.Sections;
+import com.massifmaps.api.MassifLayer;
 import com.massifmaps.api.MassifMap;
+import com.massifmaps.api.MassifSource;
 import com.massifmaps.api.Position;
 import com.massifmaps.api.Spec;
 
 /**
- * The 2D/3D switch, and every way of driving it: the SDK's own animation, a tilt gesture, and the
- * app's own clock for an exact match to a camera flight.
+ * The 2D/3D switch on the map an app actually ships: a composite layer carrying the demo's own
+ * OSM style, a hillshade and contours over one shared DEM, with shadows on top. Everything that
+ * costs something when the ground moves is in the frame at once, which is the point - the switch
+ * is cheap on a raster basemap with a toy style, and that is not what an app sees.
  */
 @ExampleInfo(
     id = "terrain-2d-3d",
     title = "2D / 3D switch",
-    description = "One flag switches the map between flat and 3D terrain. Full switch decides "
-                + "whether a flat map still pays for 3D, auto by tilt lets a tilt gesture do the "
-                + "switching, and match flight drives the terrain off the camera's own clock.",
+    description = "One flag switches a composite layer - a full OSM style, hillshade and contours "
+                + "over one shared DEM - between flat and 3D terrain. Full switch decides whether a "
+                + "flat map still pays for 3D, auto by tilt lets a tilt gesture do the switching, "
+                + "match flight drives the terrain off the camera's own clock, and shadows show what "
+                + "the switch costs with a shadow pass in the frame.",
     section = Sections.TERRAIN,
     order = 15)
 public class Switch2D3DExample extends MapExample {
 
     private static final String UA =
         "MassifMapsExamples/1.0 (+https://github.com/massif-maps/MassifMaps)";
+
+    /** CompositeSourceType, as the facade takes it. RASTER is 0 and is not used here. */
+    private static final long SOURCE_HILLSHADE = 1;
+    private static final long SOURCE_VECTOR = 2;
 
     /** What the 3D view looks AT. The viewpoint it is seen from is derived - see frameFlatStart. */
     private static final Position SUMMIT = new Position(7.6586, 45.9763);
@@ -66,17 +76,43 @@ public class Switch2D3DExample extends MapExample {
         this.host = host;
         this.map = host.map();
 
-        map.addLayer("basemap", Spec.of("raster")
+        // ONE DEM behind all three consumers - the terrain mesh, the hillshade slot and the
+        // contour generator - so a tile is fetched, cached and decoded once. Given an id because
+        // the specs below reference it by name.
+        MassifSource dem = map.source("dem", dem(host));
+        // Contours are GENERATED from that DEM, as ordinary vector tiles carrying 'ele' and 'div'.
+        MassifSource contours = map.source("contours", Spec.of("contour").set("source", "dem"));
+
+        // The demo app's own OSM style, a real one: 23 layers over nine .less files, its own fonts
+        // and shields, and `hillshade` and `contour` already among its layers. A `bundle` package
+        // is the APK's assets on Android and the app bundle's files on iOS.
+        map.style("osm", Spec.of("mbvt")
+            .set("project", Spec.of("project")
+                .set("assets", Spec.of("bundle").set("path", "style"))
+                .set("name", "osm")));
+
+        // A composite layer weaves the two external sources into the STYLE's own layer order:
+        // base.json lists "hillshade" and "contour" between `transportation` and
+        // `transportation_name`, so the relief goes under the road casings and the contour labels
+        // compete with the road names for a slot - which is the ordering an app actually ships.
+        MassifLayer base = map.addLayer("basemap", Spec.of("composite-vector")
             .set("source", Spec.of("persistent-cache")
-                .set("databasePath", host.cachePath("osm-raster.db"))
+                .set("databasePath", host.cachePath("openfreemap.db"))
                 .set("capacity", 100 * 1024 * 1024)
                 .set("source", Spec.of("http")
-                    .set("url", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
-                    .set("maxZoom", 19)
-                    // OSM's tile policy REQUIRES an identifying User-Agent, or every tile is a 403.
-                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))));
+                    .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
+                    .set("maxZoom", 14)
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA))))
+            .set("style", "osm"));
+        // The slot NAME is the style layer name. Hillshade needs no elevation decoder passed: it
+        // reads dem_encoding off the source, which is where the terrain reads it too. Its own
+        // `#hillshade[zoom>=4][zoom<=19]` config rule is what bounds it.
+        base.call("addExternalDataSource", "hillshade", dem.handle(), SOURCE_HILLSHADE);
+        // A VECTOR slot carries no config symbolizer - the style's ordinary line and text rules
+        // zoom-filter it in the decode, and terrain.less starts the coarse divisors at zoom 12.
+        base.call("addExternalDataSource", "contour", contours.handle(), SOURCE_VECTOR);
 
-        map.terrain(Spec.of("terrain").set("source", dem(host)))
+        map.terrain(Spec.of("terrain").set("source", "dem"))
            .apply(Spec.object()
                // Configured and left on. The switch is `flattened`, and it opens flat - set BEFORE
                // any layer decodes, so not one tile is built for a 3D the map has not shown.
@@ -95,7 +131,9 @@ public class Switch2D3DExample extends MapExample {
         // The sun comes from BEHIND the camera or the face being looked at is the one in shadow.
         // This view is of the SOUTH side, so the light is south.
         map.light(Spec.of("light").set("terrainLightingEnabled", true)
-                                  .set("sunAzimuth", 170).set("sunAltitude", 42));
+                                  .set("sunAzimuth", 170).set("sunAltitude", 42)
+                                  .set("shadowStrength", 0.0)
+                                  .set("shadowSoftness", 1.5));
 
         frameFlatStart();
 
@@ -128,6 +166,16 @@ public class Switch2D3DExample extends MapExample {
                     on ? "TERRAIN_FLATTEN_MODE_FULL" : "TERRAIN_FLATTEN_MODE_RENDER");
                 host.caption(on ? "FULL: flat costs nothing, each switch re-decodes the visible tiles."
                                 : "RENDER: switching is free, but flat still carries 3D's triangles.");
+            }
+        });
+        host.toggle("Shadows", false, new ExampleHost.OnToggle() {
+            @Override
+            public void onToggle(boolean on) {
+                // 1 is the physically correct strength; 0 is off, and skips the shadow pass.
+                map.light().set("shadowStrength", on ? 1.0 : 0.0);
+                host.caption(on ? "Shadows on: watch them flatten WITH the ground, not after it - "
+                                + "the cascades follow the same ratio the terrain is ramping."
+                                : "Shadows off: no shadow pass, so the switch is as cheap as it gets.");
             }
         });
         host.toggle("Auto by tilt", false, new ExampleHost.OnToggle() {

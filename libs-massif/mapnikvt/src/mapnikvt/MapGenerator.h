@@ -28,6 +28,7 @@ namespace massif::mvt {
 
     protected:
         std::string generateTypeString(const Value& value) const;
+        std::string generateValueString(const Value& value) const;
 
         const std::shared_ptr<SymbolizerGenerator> _symbolizerGenerator;
         const std::shared_ptr<Logger> _logger;

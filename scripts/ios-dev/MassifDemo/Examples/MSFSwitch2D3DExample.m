@@ -5,8 +5,10 @@
 #import "api/MSFMassifObject.h"
 
 /**
- * The 2D/3D switch, and every way of driving it: the SDK's own animation, a tilt gesture, and the
- * app's own clock for an exact match to a camera flight.
+ * The 2D/3D switch on the map an app actually ships: a composite layer carrying the demo's own OSM
+ * style, a hillshade and contours over one shared DEM, with shadows on top. Everything that costs
+ * something when the ground moves is in the frame at once, which is the point - the switch is cheap
+ * on a raster basemap with a toy style, and that is not what an app sees.
  *
  * The Objective-C twin of the Android example with the same id - see
  * scripts/android-dev/.../examples/terrain/Switch2D3DExample.java.
@@ -43,6 +45,9 @@ static const float kTilt3D = 20.0f;
 static const float kAutoTilt = 88.0f;
 /** How often the matched ramp samples the flight. */
 static const NSTimeInterval kTick = 0.032;
+/** CompositeSourceType, as the facade takes it. RASTER is 0 and is not used here. */
+static const int kSourceHillshade = 1;
+static const int kSourceVector = 2;
 
 static MSFSpec *dem(id<MSFExampleHost> host) {
     return [[[[MSFSpec of:@"persistent-cache"]
@@ -66,22 +71,52 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
     _matchFlight = NO;
     _seconds = 2.5f;
 
-    [_map addLayer:@"basemap"
-              spec:[[MSFSpec of:@"raster"]
+    // ONE DEM behind all three consumers - the terrain mesh, the hillshade slot and the contour
+    // generator - so a tile is fetched, cached and decoded once. Given an id because the specs
+    // below reference it by name.
+    MSFMassifSource *demSource = [_map source:@"dem" spec:dem(host) error:nil];
+    // Contours are GENERATED from that DEM, as ordinary vector tiles carrying 'ele' and 'div'.
+    MSFMassifSource *contours =
+        [_map source:@"contours" spec:[[MSFSpec of:@"contour"] set:@"source" value:@"dem"] error:nil];
+
+    // The demo app's own OSM style, a real one: 23 layers over nine .less files, its own fonts and
+    // shields, and `hillshade` and `contour` already among its layers. A `bundle` package is the
+    // app bundle's files on iOS and the APK's assets on Android.
+    [_map style:@"osm"
+           spec:[[MSFSpec of:@"mbvt"]
+                   set:@"project" value:[[[MSFSpec of:@"project"]
+                       set:@"assets" value:[[MSFSpec of:@"bundle"] set:@"path" value:@"style"]]
+                       set:@"name" value:@"osm"]]
+          error:nil];
+
+    // A composite layer weaves the two external sources into the STYLE's own layer order: base.json
+    // lists "hillshade" and "contour" between `transportation` and `transportation_name`, so the
+    // relief goes under the road casings and the contour labels compete with the road names for a
+    // slot - which is the ordering an app actually ships.
+    MSFMassifLayer *base = [_map addLayer:@"basemap"
+              spec:[[[MSFSpec of:@"composite-vector"]
                       set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
-                          set:@"databasePath" value:[host cachePath:@"osm-raster.db"]]
+                          set:@"databasePath" value:[host cachePath:@"openfreemap.db"]]
                           set:@"capacity" value:@(100 * 1024 * 1024)]
                           set:@"source" value:[[[[MSFSpec of:@"http"]
-                              set:@"url" value:@"https://tile.openstreetmap.org/{z}/{x}/{y}.png"]
-                              set:@"maxZoom" value:@19]
-                              // OSM's tile policy REQUIRES an identifying User-Agent, or every tile
-                              // is a 403.
+                              set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
+                              set:@"maxZoom" value:@14]
                               set:@"HTTPHeaders" value:[[MSFSpec object]
                                   set:@"User-Agent" value:kUserAgent]]]]
+                      set:@"style" value:@"osm"]
              error:nil];
+    // The slot NAME is the style layer name. Hillshade needs no elevation decoder passed: it reads
+    // dem_encoding off the source, which is where the terrain reads it too. Its own
+    // `#hillshade[zoom>=4][zoom<=19]` config rule is what bounds it.
+    [[base call:@"addExternalDataSource"
+           args:@[@"hillshade", @(demSource.handle), @(kSourceHillshade)] error:nil] destroy];
+    // A VECTOR slot carries no config symbolizer - the style's ordinary line and text rules
+    // zoom-filter it in the decode, and terrain.less starts the coarse divisors at zoom 12.
+    [[base call:@"addExternalDataSource"
+           args:@[@"contour", @(contours.handle), @(kSourceVector)] error:nil] destroy];
 
     MSFPropertyGroup *terrain =
-        [_map terrainWithSpec:[[MSFSpec of:@"terrain"] set:@"source" value:dem(host)] error:nil];
+        [_map terrainWithSpec:[[MSFSpec of:@"terrain"] set:@"source" value:@"dem"] error:nil];
     // Configured and left on. The switch is `flattened`, and it opens flat - set BEFORE any layer
     // decodes, so not one tile is built for a 3D the map has not shown. `flattenMode` FULL is the
     // whole way: a flat map decodes and culls as if no terrain were attached. The auto rule is off
@@ -100,10 +135,12 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
                         set:@"rangeEnd" value:@8] error:nil];
     // The sun comes from BEHIND the camera or the face being looked at is the one in shadow. This
     // view is of the SOUTH side, so the light is south.
-    [_map lightWithSpec:[[[[MSFSpec of:@"light"]
+    [_map lightWithSpec:[[[[[[MSFSpec of:@"light"]
         set:@"terrainLightingEnabled" value:@YES]
         set:@"sunAzimuth" value:@170]
-        set:@"sunAltitude" value:@42] error:nil];
+        set:@"sunAltitude" value:@42]
+        set:@"shadowStrength" value:@0.0]
+        set:@"shadowSoftness" value:@1.5] error:nil];
 
     [self frameFlatStart];
 
@@ -130,6 +167,15 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
         [self_->_host caption:on
             ? @"FULL: flat costs nothing, each switch re-decodes the visible tiles."
             : @"RENDER: switching is free, but flat still carries 3D's triangles."];
+    }];
+    [host toggle:@"Shadows" on:NO action:^(BOOL on) {
+        __typeof(self) self_ = weakSelf;
+        // 1 is the physically correct strength; 0 is off, and skips the shadow pass.
+        [self_->_map.light set:@"shadowStrength" value:@(on ? 1.0 : 0.0)];
+        [self_->_host caption:on
+            ? @"Shadows on: watch them flatten WITH the ground, not after it - the cascades "
+               "follow the same ratio the terrain is ramping."
+            : @"Shadows off: no shadow pass, so the switch is as cheap as it gets."];
     }];
     [host toggle:@"Auto by tilt" on:NO action:^(BOOL on) {
         __typeof(self) self_ = weakSelf;

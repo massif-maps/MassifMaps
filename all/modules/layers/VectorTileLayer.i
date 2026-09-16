@@ -32,6 +32,7 @@
 %attribute(massif::VectorTileLayer, float, ClickRadius, getClickRadius, setClickRadius)
 %attribute(massif::VectorTileLayer, float, LayerBlendingSpeed, getLayerBlendingSpeed, setLayerBlendingSpeed)
 %attribute(massif::VectorTileLayer, float, LabelBlendingSpeed, getLabelBlendingSpeed, setLabelBlendingSpeed)
+%attribute(massif::VectorTileLayer, float, LabelPerspectiveScaling, getLabelPerspectiveScaling, setLabelPerspectiveScaling)
 %attributestring(massif::VectorTileLayer, std::string, RendererLayerFilter, getRendererLayerFilter, setRendererLayerFilter)
 %attributestring(massif::VectorTileLayer, std::string, ClickHandlerLayerFilter, getClickHandlerLayerFilter, setClickHandlerLayerFilter)
 !attributestring_polymorphic(massif::VectorTileLayer, vectortiles.VectorTileDecoder, TileDecoder, getTileDecoder)

@@ -11,6 +11,7 @@ namespace massif {
         _sunAltitude(45.0f),
         _sunColorARGB(Color(255, 255, 255, 255).getARGB()),
         _sunIntensity(1.0f),
+        _sunIntensityStated(false),
         // Full ambient and a real shadow strength: the values every terrain bench and every example
         // screenshot was made with. Both only take effect once an app turns terrain lighting on, so
         // nothing changes for a map that does not ask for it.
@@ -122,9 +123,14 @@ namespace massif {
 
     void LightOptions::setSunIntensity(float intensity) {
         float clamped = std::max(0.0f, std::min(8.0f, intensity));
+        _sunIntensityStated.store(true);
         if (_sunIntensity.exchange(clamped) != clamped) {
             notifyOptionChanged("SunIntensity");
         }
+    }
+
+    bool LightOptions::isSunIntensityStated() const {
+        return _sunIntensityStated.load();
     }
 
     float LightOptions::getAmbientIntensity() const {

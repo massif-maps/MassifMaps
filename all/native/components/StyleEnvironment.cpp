@@ -147,10 +147,15 @@ namespace {
         if (env.backgroundEmissive) {
             lighting.backgroundEmissive = *env.backgroundEmissive;
         }
-        // Buildings follow the sun unconditionally - terrainLightingEnabled decides whether the
-        // GROUND is lit, and gating the walls on it too gave the extrusions a second lighting
-        // model that changed shape as the terrain was toggled.
-        lighting.buildingLightIntensity = lighting.sunIntensity;
+        // Buildings follow the sun whatever terrainLightingEnabled says - gating the walls on it too
+        // gave the extrusions a second lighting model that changed shape as the terrain was toggled.
+        // Only a STATED sun carries, though. mapbox's model wants the two intensities to partition
+        // the light (Standard asks for 0.8 + 0.2), and LightOptions' own default is a full 1.0 -
+        // summed with the walls' 0.5 ambient that put every sunlit roof past 1, where it clamped to
+        // white on any style that lights nothing of its own.
+        if (env.sunIntensity || (lightOptions && lightOptions->isSunIntensityStated())) {
+            lighting.buildingLightIntensity = lighting.sunIntensity;
+        }
         // Their AMBIENT is their own and does not follow the ground's: ambient is the floor the
         // directional term sits on, so flattening the ground with ambient 1 - normal under a
         // hillshade - would flatten every facade too. 'building-ambient' ties them back together.
@@ -166,6 +171,17 @@ namespace {
         if (env.buildingRoofShade) {
             lighting.buildingRoofShade = *env.buildingRoofShade;
         }
+        // A map nothing lights is a plain converted style, and what its author saw is MAPLIBRE
+        // drawing it - a different fill-extrusion model, and the difference is the facades: it
+        // floors the directional term at 1 - intensity whichever way a wall faces, so its walls sit
+        // at 42-63% of the roof where this one cannot get below 74% without blowing the roof out at
+        // some other sun altitude. The moment anything states a light, mapbox's model is the right
+        // one - it is what a converted Standard and the day cycle are written against.
+        lighting.buildingLightingMapLibre =
+            !env.buildingLightIntensity && !env.buildingAmbient && !env.buildingVerticalGradient
+            && !env.sunIntensity && !env.sunAltitude && !env.sunAzimuth && !env.ambientIntensity
+            && !(lightOptions && (lightOptions->isSunIntensityStated() || lightOptions->isDayCycleLightsEnabled()));
+
         // Both are style EXPRESSIONS over the view, so a curve that overshoots its own range hands
         // over a negative scale - and a negative height extrudes the building DOWN through the
         // ground it stands on. Zero is a legitimate answer; below zero never is.

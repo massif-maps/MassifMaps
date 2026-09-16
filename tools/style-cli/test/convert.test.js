@@ -16,6 +16,7 @@ useMemorySpriteHost();
 /** These tests assert on the translated literals, so they read the style before the palette
   * pass moves them out - see variables.test.js for the hoisting itself. */
 const NO_PALETTE = { variables: false };
+const NO_PALETTE_FOLD = { variables: false, foldCasings: true };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const style = JSON.parse(readFileSync(join(HERE, 'fixtures', 'style.json'), 'utf8'));
@@ -90,11 +91,17 @@ test('zoom-driven paint stays a per-frame function', () => {
 });
 
 test('unsupported layers and properties are dropped AND counted', () => {
-    const { coverage } = run();
+    const { coverage, mss } = run();
     assert.ok(coverage.dropped.has('layer type "heatmap"'), 'heatmap layer reported');
     assert.ok(!coverage.dropped.has('line-blur'), 'line-blur is carried now, not dropped');
     assert.equal(coverage.dropped.get('fill-antialias').reason, 'always on in the vt renderer');
-    assert.ok(coverage.droppedCount >= 3);
+    // An extrusion's LOOK is a Map setting, taken by buildingMapSettings before the per-layer pass
+    // sees it. Reporting it dropped as well said a vertical gradient had been thrown away when it
+    // is in the Map block - so this fixture's two drops are the only two, and both are real.
+    assert.ok(!coverage.dropped.has('fill-extrusion-vertical-gradient'),
+        'a building Map setting is carried, not dropped');
+    assert.match(mss, /building-vertical-gradient:/);
+    assert.equal(coverage.droppedCount, 2);
     assert.match(coverage.report(), /^Coverage: \d+\/\d+ properties \(\d+%\)/);
 });
 
@@ -151,6 +158,37 @@ test('a dash ramped over zoom still dashes, at the LAST stop that dashes', () =>
     // ...and a ramp that only ever states a solid pattern writes no dash at all, rather than a
     // "dash" as long as the line width scaled it.
     assert.ok(!mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [1, 0]]]).includes('dasharray'));
+});
+
+test('a PLAIN dash over a ramped width becomes one rule per zoom band', () => {
+    // Liberty's rail hatching: [0.2, 8] over a width running 3 px at z15 to 8 px at z20. One scale
+    // cannot serve that - at 5.5 the dash drew 1.8x too long at the bottom of the range - and a
+    // plain literal has no stop zoom of its own to be read at, the way a ramped dash does.
+    const hatching = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 14.5, 0, 15, 3, 20, 8],
+        'line-dasharray': [0.2, 8],
+    } };
+    const out = convert({ layers: [hatching] }, table, NO_PALETTE).mss;
+    const dashes = [...out.matchAll(/line-dasharray: ([\d.]+),/g)].map((m) => Number(m[1]));
+
+    assert.equal(dashes.length, 2, 'a 2.7x width range is two bands, cut where the width doubles');
+    assert.ok(dashes[0] < dashes[1], 'the lower band scales by the narrower line');
+    // Measured from the first POSITIVE stop: the ramp starts at width 0, and below that there is
+    // nothing for the dash to be in proportion to.
+    assert.match(out, /#road\[zoom < 19\]::l_b1 \{/);
+    assert.match(out, /#road\[zoom >= 19\]::l_b2 \{/);
+});
+
+test('a dash a style RAMPS keeps its own stop zoom, and is not banded', () => {
+    // The stop the pattern begins at is already the targeted zoom to read the width at - Standard's
+    // stair treads depend on it. Banding on top of that would move it.
+    const steps = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 0, 18, 6, 22, 80],
+        'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 19, ['literal', [0.1, 0.1]]],
+    } };
+    const out = convert({ layers: [steps] }, table, NO_PALETTE).mss;
+    assert.equal([...out.matchAll(/line-dasharray:/g)].length, 1, 'one rule, not a band each');
+    assert.match(out, /line-dasharray: 1.51,1.51;/, 'width(19) = 15.1, as gl-js draws it there');
 });
 
 test('a dash is scaled by the line width AT the zoom its stop starts', () => {
@@ -219,4 +257,101 @@ test("a mapbox:// sprite names an API URL, since nothing can fetch that scheme",
     assert.equal(resolveSpriteUrl('mapbox://sprites/mapbox/standard/7ixcpyhbhz67em71mmpln1klo'),
         'https://api.mapbox.com/styles/v1/mapbox/standard/sprite');
     assert.equal(resolveSpriteUrl('https://example.com/sprite'), 'https://example.com/sprite');
+});
+
+test('--fold-casings leaves a pair alone when the fill orders its own features', () => {
+    const pair = { layers: [
+        { id: 'road-casing', type: 'line', source: 'osm', 'source-layer': 'transportation',
+          paint: { 'line-color': '#c08a3e', 'line-width': 8 } },
+        { id: 'road-fill', type: 'line', source: 'osm', 'source-layer': 'transportation',
+          paint: { 'line-color': '#ffffff', 'line-width': 5 } },
+    ] };
+    // No sort key: the pair folds, and one rule draws the casing from the fill's own buffer.
+    assert.match(convert(pair, table, NO_PALETTE_FOLD).mss, /line-border-width: \(\(8 - 5\) \/ 2\);/);
+
+    // With one, the fill becomes a rule per class and a folded casing would draw over the road
+    // beside it, so the fold is skipped and the casing keeps its own rules - all before the fills.
+    pair.layers[1].layout = { 'line-sort-key': ['match', ['get', 'class'], 'motorway', 2, 1] };
+    const ordered = convert(pair, table, NO_PALETTE_FOLD).mss;
+    assert.ok(!ordered.includes('line-border-width'));
+    // Whatever each side expands into, every casing rule comes before every fill rule - which is
+    // the ordering a mapbox casing LAYER gives, and the whole point of not folding here.
+    const rules = ordered.split('\n').filter((l) => l.startsWith('#transportation'));
+    const lastCasing = rules.findLastIndex((r) => r.includes('::road_casing'));
+    const firstFill = rules.findIndex((r) => r.includes('::road_fill'));
+    assert.ok(lastCasing >= 0 && firstFill >= 0);
+    assert.ok(lastCasing < firstFill, 'a casing rule is emitted after a fill rule');
+});
+
+test('a style carries its own fonts, and project.json names them for whoever ships it', () => {
+    // The decoder scans <style>/fonts/ and needs no list; a project served over HTTP cannot be
+    // listed, which is what the list is for. It is the only way a face reaches the web build.
+    const layers = [{ id: 'l', type: 'symbol', 'source-layer': 'place',
+        layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'] } }];
+    const withFonts = convert({ layers }, table,
+        { ...NO_PALETTE, fonts: ['NotoSans-Bold.ttf'] }).project;
+    assert.deepEqual(JSON.parse(withFonts).fonts, ['NotoSans-Bold.ttf']);
+
+    // A style that carries none says nothing rather than an empty list.
+    assert.ok(!('fonts' in JSON.parse(convert({ layers }, table, NO_PALETTE).project)));
+});
+
+
+test('a palette the style asks for becomes a parameter table, read per feature', () => {
+    // metadata is ignored by every renderer, so a layer can ask for this and stay a valid MapLibre
+    // style. Opt-in per property: a table is worth it for a palette meant to be tuned, and not for
+    // the two-branch colour ramp on a road - only the author knows which is which.
+    const styleParams = new Map();
+    const { mss } = convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['match', ['get', 'class'],
+                    ['bus', 'railway'], '#2e5a80', 'park', '#4a7a3a', '#666666'],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    // The fallback stays in the rule: a class the table does not name still draws, and `??` is what
+    // a parameter miss falls through on.
+    assert.match(mss, /text-fill: \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\);/);
+    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+    assert.equal(styleParams.get('poi-fill-railway'), '#2e5a80');
+    assert.equal(styleParams.get('poi-fill-park'), '#4a7a3a');
+});
+
+test('a parameter colour goes in as hex, because that is what the decoder can parse', () => {
+    // A rule's hsl() is read by the CartoCSS compiler; a PARAMETER is a plain string parseColor has
+    // to read at runtime, and its grammar knows #rrggbb, rgb() and the CSS names but not hsl().
+    const styleParams = new Map();
+    convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['match', ['get', 'class'],
+                    'bus', 'hsl(216, 60%, 50%)', 'park', 'hsl(126, 42%, 40%)', '#666666'],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.equal(styleParams.get('poi-fill-bus'), '#3370cc');
+    assert.equal(styleParams.get('poi-fill-park'), '#3b9144');
+});
+
+test('a property the style does not ask for keeps its ternary', () => {
+    const styleParams = new Map();
+    const { mss } = convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            layout: { 'text-field': ['get', 'name'] },
+            paint: { 'text-color': ['match', ['get', 'class'], 'bus', '#2e5a80', '#666666'] },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.match(mss, /text-fill: \(\(\[class\] = 'bus'\) \? #2e5a80 : #666666\);/);
+    assert.equal(styleParams.size, 0);
 });

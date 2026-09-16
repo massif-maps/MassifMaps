@@ -133,6 +133,15 @@ namespace massif {
         void setAmbientColor(const Color& color);
 
         /**
+         * Returns whether anything has SET the sun intensity, as opposed to leaving it at its
+         * default. 3D extrusions follow a stated sun; against the default they keep their own,
+         * which is what stops an unlit style's roofs summing past full light. Not part of the
+         * bound API - it exists for StyleEnvironment::resolveLighting.
+         * @return True if setSunIntensity has been called.
+         */
+        bool isSunIntensityStated() const;
+
+        /**
          * Returns whether this sun overrides the one a style states.
          * @return True if the application's sun wins over the style's. The default is false.
          */
@@ -375,6 +384,7 @@ namespace massif {
         std::atomic<float> _sunAltitude;
         std::atomic<int> _sunColorARGB;
         std::atomic<float> _sunIntensity;
+        std::atomic<bool> _sunIntensityStated;
         std::atomic<float> _ambientIntensity;
         std::atomic<int> _ambientColorARGB;
         std::atomic<bool> _sunOverridesStyle;

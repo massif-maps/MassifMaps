@@ -47,6 +47,16 @@ namespace massif::mvt {
      */
     Value getValueElement(const Value& container, const Value& key);
 
+    /** Whether the value is an array or an object, so it has no scalar reading. */
+    bool isContainerValue(const Value& value);
+
+    /**
+     * A value as JSON, and back. This is how a container survives the places a value is carried as
+     * text - the Mapnik XML a style compiles to, and the string-valued parameter API.
+     */
+    std::string valueToJSON(const Value& value);
+    Value valueFromJSON(const std::string& json);
+
     /**
      * The number of elements of an array or members of an object; 0 for anything else.
      */

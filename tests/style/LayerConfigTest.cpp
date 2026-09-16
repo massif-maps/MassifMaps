@@ -104,6 +104,33 @@ void testLayerConfig() {
         TEST_CHECK(range.first == 0 && range.second == 24, "a styling-only layer is zoom-unconstrained");
     }
 
+    // A CONFIG rule's own zoom range IS the bound, which is what lets a style say "contours from
+    // zoom 12" and have the SDK stop fetching the DEM below it rather than merely hide the lines.
+    // The shape is the alpine style project's: one bracketed rule carrying `contour-visible`, and
+    // styling-only rules beside it that must not widen the range back to 0..24.
+    {
+        Map map { Map::Settings() };
+        auto configSymbolizer = std::make_shared<ContourConfigSymbolizer>(logger);
+        configSymbolizer->getProperty("visible")->setExpression(Expression(Value(true)));
+        auto configRule = std::make_shared<Rule>("config", 12, 24, std::shared_ptr<const Filter>(),
+            std::vector<std::shared_ptr<const Symbolizer>> { configSymbolizer });
+        // The index-contour rule, and the one that labels it - both narrower, both styling only.
+        auto lineRule = std::make_shared<Rule>("line", 12, 24, geometryTypeFilter(),
+            std::vector<std::shared_ptr<const Symbolizer>> { std::make_shared<TestGeometrySymbolizer>(logger) });
+        auto textRule = std::make_shared<Rule>("text", 14, 24, geometryTypeFilter(),
+            std::vector<std::shared_ptr<const Symbolizer>> { std::make_shared<TestGeometrySymbolizer>(logger) });
+        addLayer(map, makeStyle("contour", { configRule, lineRule, textRule }));
+
+        std::pair<int, int> range = resolveLayerZoomRange(map, "contour");
+        TEST_CHECK(range.first == 12, "a bracketed config rule bounds the layer at its own min zoom");
+        TEST_CHECK(range.second == 24, "and leaves the top open");
+
+        TEST_CHECK(!resolveLayerConfig(map, "contour", 11.0f, nullptr).visible,
+                   "so the slot is not visible below the zoom the style asked for");
+        TEST_CHECK(resolveLayerConfig(map, "contour", 12.0f, nullptr).visible,
+                   "and is visible at it");
+    }
+
     // A mapnik:: variable with no feature under it is undefined, not a crash - the same
     // expression reached from anywhere else out of a tile.
     {

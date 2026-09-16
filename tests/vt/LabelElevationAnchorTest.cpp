@@ -76,8 +76,12 @@ namespace {
         return true;
     }
 
-    std::function<double(const cglib::vec3<double>&)> constantHeight(double height) {
-        return [height](const cglib::vec3<double>&) { return height; };
+    // The provider anchors a point, not a bare height: on a globe "up" is radial, so the whole
+    // position comes back. A non-finite one means it has no data there.
+    std::function<cglib::vec3<double>(const cglib::vec3<double>&)> constantHeight(double height) {
+        return [height](const cglib::vec3<double>& pos) {
+            return cglib::vec3<double>(pos(0), pos(1), height);
+        };
     }
 }
 

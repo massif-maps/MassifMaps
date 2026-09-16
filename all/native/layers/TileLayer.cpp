@@ -867,7 +867,6 @@ namespace massif {
         _lodCosThetaExponent = 0;
         // ONE vertical leg for the whole frame, as maplibre takes it (covering_tiles.ts: distanceZ
         // is |center.z - camera.z|, passed for every candidate tile). Per tile it is a cliff.
-        _lodCameraHeight = std::abs(cullState->getViewState().getCameraPos()(2) - cullState->getViewState().getFocusPos()(2));
         if (auto options = getOptions()) {
             const ViewState& viewState = cullState->getViewState();
             // TileDrawSize alone: the zoom offset belongs to the target-zoom cap, not to this

@@ -3784,14 +3784,7 @@ namespace massif {
                         if (it->texture != 0) {
                             surfaceDraws += drapeLayers.front()->renderDrapedSurface(it->tileId, it->texture, it->uvOffsetX, it->uvOffsetY, it->uvScale);
                         } else {
-                            // DEPTH ONLY. The background above has already drawn these very meshes,
-                            // pattern and all, so painting the clear colour over them is a flat grey
-                            // block on ground that was already drawn - what a 2D/3D switch shows
-                            // while the first bakes land, measured as 10 blank tiles of 10.
-                            // Masking colour keeps the depth write the terrain depends on.
-                            glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                             surfaceDraws += drapeLayers.front()->renderDrapedSurfaceFill(it->tileId, drapeClearColor);
-                            glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                             filledSurfaces++;
                         }
                     }

@@ -464,6 +464,71 @@ namespace {
         TEST_CHECK(worstUnwrapped > 5.0, "and the raw offset is out by 2pi, not by a rounding term");
         TEST_CHECK(worstWrapped < 1.0e-5, "the wrap puts every one of them back");
     }
+
+    /*
+     * A STAND-IN frame: an ancestor tile serving a finer target while it loads, which is the normal
+     * case at low zoom and the one every other test here misses - they all use frame == tile.
+     * setupSphericalUniforms is handed the TARGET's id and the SOURCE's frame matrix, so the two
+     * have to agree across a zoom gap. Measured because the low-zoom ground streaking was blamed on
+     * exactly this and it turned out not to be: the inversion holds to a hundredth of a texel four
+     * levels of overzoom deep. A negative result, kept so it is not re-suspected.
+     */
+    void testAStandInFrameStillLandsOnItsTargetTile() {
+        const double PI = 3.1415926535897932;
+        SphericalTileTransformer sphere(static_cast<float>(WORLD_SIZE / PI));
+        double sphereRadius = sphere.calculateTileMatrix(TileId(0, 0, 0), 1.0f)(0, 0);
+
+        double worst = 0;
+        for (int sourceZoom : { 4, 6, 10, 14 }) {
+            for (int deltaZoom = 0; deltaZoom <= 4; deltaZoom++) {
+                int n = 1 << sourceZoom;
+                int sx = static_cast<int>((2.3376 * PI / 180 + PI) / (2 * PI) * n);
+                int sy = static_cast<int>((1 - std::log(std::tan(PI / 4 + 48.8606 * PI / 360)) / PI) / 2 * n);
+                TileId source(sourceZoom, sx, sy);
+                int step = 1 << deltaZoom;
+                TileId target(sourceZoom + deltaZoom, sx * step + step / 2, sy * step + step / 2);
+
+                cglib::mat4x4<double> frame = sphere.calculateTileMatrix(source, 1.0f);
+                cglib::vec3<float> o(static_cast<float>(frame(0, 3) / sphereRadius), static_cast<float>(frame(1, 3) / sphereRadius), static_cast<float>(frame(2, 3) / sphereRadius));
+                cglib::vec3<float> scale(static_cast<float>(frame(0, 0) / sphereRadius), static_cast<float>(frame(1, 1) / sphereRadius), static_cast<float>(frame(2, 2) / sphereRadius));
+
+                cglib::vec3<double> od(frame(0, 3) / sphereRadius, frame(1, 3) / sphereRadius, frame(2, 3) / sphereRadius);
+                double orz = od(2) / cglib::length(od);
+                double frameLon = std::atan2(od(1), od(0)), frameMercY = 0.5 * std::log((1.0 + orz) / (1.0 - orz));
+
+                double tileCount = static_cast<double>(1 << target.zoom);
+                double wrapX = (target.x / tileCount - 0.5) * 2 * PI - frameLon;
+                wrapX -= 2 * PI * std::floor(wrapX / (2 * PI) + 0.5);
+                float uvX = static_cast<float>(wrapX);
+                float uvY = static_cast<float>(((tileCount - 1 - target.y) / tileCount - 0.5) * 2 * PI - frameMercY);
+                float invTileSize = static_cast<float>(tileCount / (2 * PI));
+
+                std::shared_ptr<const TileTransformer::VertexTransformer> vertexTransformer = sphere.createTileVertexTransformer(source);
+                for (int j = 1; j < 8; j++) {
+                    for (int i = 1; i < 8; i++) {
+                        float tu = i / 8.0f, tv = j / 8.0f;
+                        // The same ground point, addressed in the SOURCE tile's own square.
+                        cglib::vec2<float> sourceUV((target.x - source.x * step + tu) / step, (target.y - source.y * step + tv) / step);
+                        cglib::vec3<float> pos = vertexTransformer->calculatePoint(sourceUV);
+                        cglib::vec3<float> d(pos(0) * scale(0), pos(1) * scale(1), pos(2) * scale(2));
+
+                        float dot = o(0) * d(0) + o(1) * d(1) + o(2) * d(2), dd = d(0) * d(0) + d(1) * d(1) + d(2) * d(2);
+                        float len = std::sqrt(1.0f + 2.0f * dot + dd);
+                        float lenM1 = (2.0f * dot + dd) / (len + 1.0f);
+                        float dsz = (d(2) - o(2) * lenM1) / len;
+                        float x = dsz / std::max(1.0e-6f, 1.0f - o(2) * (o(2) + dsz));
+                        float dMercY = std::fabs(x) < 0.01f ? x * (1.0f + x * x * 0.33333333f) : 0.5f * std::log((1.0f + x) / (1.0f - x));
+                        float dLon = std::atan2(o(0) * d(1) - o(1) * d(0), o(0) * (o(0) + d(0)) + o(1) * (o(1) + d(1)));
+
+                        float mx = dLon - uvX, my = dMercY - uvY;
+                        mx -= 6.283185307179586f * std::floor(mx * 0.15915494309189535f + 0.5f);
+                        worst = std::max(worst, static_cast<double>(std::max(std::fabs(mx * invTileSize - tu), std::fabs(my * invTileSize - (1.0f - tv)))));
+                    }
+                }
+            }
+        }
+        TEST_CHECK(worst * 1024 < 0.05, "a stand-in frame lands its target's uv to a hundredth of a drape texel");
+    }
 }
 
 void testSphericalTerrain() {
@@ -477,4 +542,5 @@ void testSphericalTerrain() {
     testTheShaderInversionSurvivesFloatPrecision();
     testTheExtrusionAnchorIsTheTileSquareAndNotACurvedPoint();
     testACoarseFrameStillNeedsTheAntimeridianWrap();
+    testAStandInFrameStillLandsOnItsTargetTile();
 }

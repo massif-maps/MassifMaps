@@ -497,6 +497,20 @@ surfaces actually drawn as a flat fill in a frame: worst frame **11 of 19 (58 %)
 What is left is a cold cache, where there is genuinely nothing to stand in on — the remaining fills
 cluster in the first second after launch.
 
+**And the fill left over from a cold cache is drawn DEPTH ONLY** (changed 2026-09-17). The clear
+colour is `TerrainOptions::BackgroundColor`, falling back to the first drape layer's style
+background when its alpha is 0 — so on most styles the fill was a flat grey block. It did not need
+to paint anything at all: the background plane above draws the *same* terrain meshes and has already
+written their depth, pattern included, so masking colour on the fill shows that instead of the block
+while keeping the depth write the terrain depends on (a skipped surface leaves a hole and lets
+elements behind the terrain through). Read off the device on a 2D/3D switch at Grenoble:
+`blank 10, stand-in 0, seeded 0` of 10 tiles, 2 drawn as flat fills — a cold drape cache, because
+the 2D map is not drawn through the drape at all and there is nothing yet to stand in on.
+
+The clear colour still matters for a bake that HAS content: a texel no layer paints is a hole
+showing the background plane behind the terrain, so the ground between features is baked from it.
+Only the no-texture fill changes.
+
 ### The cache has to hold two generations, not one
 
 Searching the cache is worthless if the cache has already been emptied, and it had: the budget was

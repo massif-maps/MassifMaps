@@ -988,8 +988,10 @@ namespace massif {
                     // Each sample at its OWN height, not all of them at the tile's mean: a flat quad
                     // floated at a summit's average is seen edge-on once that average nears the
                     // camera's altitude, and the tile drops several levels in one step (02-tiles.md).
+                    // PLANAR only: worldPos is internal x,y just there. On the globe it is Cartesian
+                    // on the sphere, and sampling the grid with it reads a random place on the map.
                     double sampleZ = lodElevation;
-                    if (_lodElevationManager) {
+                    if (_lodElevationManager && !tileTransformer->isSpherical()) {
                         double sampleHeight = 0;
                         if (_lodElevationManager->getDisplayHeightCached(worldPos(0), worldPos(1), sampleHeight)) {
                             sampleZ = sampleHeight;

@@ -1871,7 +1871,12 @@ namespace massif::vt {
             highp vec3 anchorPos = aVertexPosition;
         #ifdef TERRAIN
             if (aVertexAttribs[3] < 1.5) {
-                anchorPos.z = applyTerrain(vec3(aVertexPosition.xy, 0.0)).z;
+                // The WHOLE position through applyTerrain, both ways. On a globe the sphere point is
+                // recoverable only from the real vertex (terrainSphereMercatorDelta reads all three
+                // components) and the lift is RADIAL, so neither forcing z to 0 going in nor taking
+                // .z coming out is right there. On a plane applyTerrain ignores z and returns
+                // vec3(pos.xy, z), so both forms are the same.
+                anchorPos = applyTerrain(aVertexPosition);
             }
         #endif
         #ifdef LABEL_OCCLUSION

@@ -60,11 +60,14 @@ each mistake cost in
   additive, never restore from a backup or an older commit.
 - **Minimum code.** No speculative features, no hypothetical abstractions.
 - **No spaghetti.** A fix on top of a fix is a signal to restructure, not to add another branch.
-- **Comments: 3 lines HARD MAX, 1 is the norm.** A comment longer than 3 lines is a bug in the
-  diff — split it into a doc page or delete it. Say WHY only; never restate what the next line
-  does. A measurement, a dead end, a rationale narrative belong in `docs/internals/rendering/`,
-  not above the constant they produced. This applies to `//`, `/* */` and doc comments alike, and
-  to every file you touch — a long comment you pass through gets shortened, not preserved.
+- **Comments: the default is NONE. 2 lines HARD MAX when one is warranted.** Self-explanatory code
+  gets no comment — if a reader can see it from the next line, deleting the comment is the fix.
+  Write one only for WHY: a non-obvious constraint, a trap, a reference to copy from. Never restate
+  what the code does, never narrate a rename, never explain a parameter the signature already names.
+  A measurement, a dead end, a rationale narrative belong in `docs/internals/rendering/`, not above
+  the constant they produced — link the page instead. Applies to `//`, `/* */` and doc comments
+  alike, and to every file you touch: a long comment you pass through gets shortened, not preserved.
+  Before handing work over, re-read every comment you added and delete the ones carrying no WHY.
 - **Observed or unverified — never blur the two.** A syntax check is not a render result; an
   emulator pass is not a device pass. State the method, and retract plainly when a measurement turns
   out not to measure what you claimed.

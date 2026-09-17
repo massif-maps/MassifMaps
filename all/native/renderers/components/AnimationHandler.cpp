@@ -4,10 +4,33 @@
 #include "core/MapPos.h"
 #include "graphics/ViewState.h"
 #include "utils/Const.h"
+#include "utils/UnitBezier.h"
 
 #include <cmath>
 
 namespace massif {
+
+    namespace {
+
+        // Van Wijk's V, in screenfuls per second. Their optimum, and mapbox-gl's `speed` default.
+        const double FLIGHT_SPEED = 1.2;
+
+        double applyEasing(FlightEasing::FlightEasing easing, double t) {
+            switch (easing) {
+            case FlightEasing::FLIGHT_EASING_LINEAR:
+                return t;
+            case FlightEasing::FLIGHT_EASING_EASE_IN:
+                return UnitBezier(0.42, 0.0, 1.0, 1.0).solve(t);
+            case FlightEasing::FLIGHT_EASING_EASE_OUT:
+                return UnitBezier(0.0, 0.0, 0.58, 1.0).solve(t);
+            case FlightEasing::FLIGHT_EASING_EASE_IN_OUT:
+                return UnitBezier(0.42, 0.0, 0.58, 1.0).solve(t);
+            default:
+                return UnitBezier(0.25, 0.1, 0.25, 1.0).solve(t);
+            }
+        }
+
+    }
 
     AnimationHandler::AnimationHandler(MapRenderer& mapRenderer) :
         _panStarted(false),
@@ -28,15 +51,11 @@ namespace massif {
         _zoomTargetPos(),
         _flightActive(false),
         _flightStarted(false),
-        _flightZeroPath(false),
         _flightElapsed(0),
         _flightDuration(0),
         _flightRho(1.42),
-        _flightU1(0),
-        _flightW0(1),
-        _flightW1(1),
-        _flightR0(0),
-        _flightS(0),
+        _flightEasing(FlightEasing::FLIGHT_EASING_EASE),
+        _flightPath(),
         _flightStartPos(),
         _flightTargetPos(),
         _flightClimb(0),
@@ -170,7 +189,7 @@ namespace massif {
         _zoomDurationSeconds = 0;
     }
     
-    void AnimationHandler::setFlightTarget(const MapPos& pos, float zoom, const float* rotation, const float* tilt, float climbHeight, float durationSeconds, float rho) {
+    void AnimationHandler::setFlightTarget(const MapPos& pos, float zoom, const float* rotation, const float* tilt, float climbHeight, float durationSeconds, float rho, FlightEasing::FlightEasing easing) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         // The per-property animations would keep pulling the camera their own way.
@@ -180,6 +199,7 @@ namespace massif {
         _zoomDurationSeconds = 0;
 
         _flightRho = (rho > 0.1f ? rho : 1.42);
+        _flightEasing = easing;
         _flightTargetPos = pos;
         _flightTargetZoom = zoom;
         _flightStartRotation.reset();
@@ -233,62 +253,39 @@ namespace massif {
             _flightStartRotation = viewState.getRotation();
             _flightStartTilt = viewState.getTilt();
 
-            // Van Wijk's w is the width of the visible world; only the RATIO of the widths and of
-            // the distance to them matters, so world units per screen at each zoom will do.
-            _flightW0 = Const::WORLD_SIZE * std::pow(2.0, -static_cast<double>(_flightStartZoom));
-            _flightW1 = Const::WORLD_SIZE * std::pow(2.0, -static_cast<double>(_flightTargetZoom));
-            cglib::vec3<double> p0 = viewState.getFocusPos();
-            cglib::vec3<double> p1 = projectionSurface->calculatePosition(_flightTargetPos);
-            _flightU1 = cglib::length(p1 - p0);
+            // Van Wijk's w is a SCREENFUL: measuring it against a tile pulled every flight back by
+            // a constant log2(screen / tile). See docs/internals/rendering/01-frame.md.
+            double spanPerZoom = viewState.getSpanPerZoom();
+            if (!(spanPerZoom > 0)) {
+                // No viewport yet: WORLD_SIZE still gives the right w1/w0, only a wrong arc depth.
+                spanPerZoom = Const::WORLD_SIZE;
+            }
+            double w0 = spanPerZoom * std::pow(2.0, -static_cast<double>(_flightStartZoom));
+            double w1 = spanPerZoom * std::pow(2.0, -static_cast<double>(_flightTargetZoom));
+            // Ground only: folded into u, a pure climb flew an arc across a map it never crosses.
+            cglib::vec3<double> p0 = projectionSurface->calculatePosition(MapPos(_flightStartPos.getX(), _flightStartPos.getY(), 0));
+            cglib::vec3<double> p1 = projectionSurface->calculatePosition(MapPos(_flightTargetPos.getX(), _flightTargetPos.getY(), 0));
+            _flightPath.setup(w0, w1, cglib::length(p1 - p0), _flightRho);
 
-            double rho2 = _flightRho * _flightRho;
-            _flightZeroPath = !(_flightU1 > _flightW0 * 1.0e-6);
-            if (_flightZeroPath) {
-                // A pure zoom: their formula divides by the distance. Zoom exponentially instead,
-                // which is what their path degenerates to.
-                _flightS = std::abs(std::log(_flightW1 / _flightW0)) / _flightRho;
-                _flightR0 = 0;
-            } else {
-                double b0 = (_flightW1 * _flightW1 - _flightW0 * _flightW0 + rho2 * rho2 * _flightU1 * _flightU1) / (2 * _flightW0 * rho2 * _flightU1);
-                double b1 = (_flightW1 * _flightW1 - _flightW0 * _flightW0 - rho2 * rho2 * _flightU1 * _flightU1) / (2 * _flightW1 * rho2 * _flightU1);
-                double r0 = std::log(-b0 + std::sqrt(b0 * b0 + 1));
-                double r1 = std::log(-b1 + std::sqrt(b1 * b1 + 1));
-                _flightR0 = r0;
-                _flightS = (r1 - r0) / _flightRho;
-            }
-            if (!(_flightS > 0)) {
-                _flightS = 0;
-            }
             if (!(_flightDuration > 0)) {
                 // Their point: the duration follows the length of the path, so a move twice as far
                 // does not take twice as long. V is in their units of "screenfuls per second".
-                const double V = 1.4;
-                _flightDuration = static_cast<float>(std::max(0.25, _flightS / V));
+                _flightDuration = static_cast<float>(_flightPath.suggestedDuration(FLIGHT_SPEED, 0.25));
             }
         }
 
         _flightElapsed += deltaSeconds;
         float t = (_flightDuration > 0 ? std::min(1.0f, _flightElapsed / _flightDuration) : 1.0f);
         bool done = (t >= 1.0f);
+        // ONE eased clock for the whole move, as mapbox-gl runs theirs.
+        double k = (done ? 1.0 : applyEasing(_flightEasing, t));
 
         double ratio = 1.0;
         double zoom = _flightTargetZoom;
-        if (!done && _flightS > 0) {
-            double s = t * _flightS;
-            double w = 0;
-            if (_flightZeroPath) {
-                w = _flightW0 * std::exp((_flightW1 > _flightW0 ? 1.0 : -1.0) * _flightRho * s);
-                ratio = 0;
-            } else {
-                double coshR0 = std::cosh(_flightR0);
-                double u = _flightW0 / (_flightRho * _flightRho) * (coshR0 * std::tanh(_flightRho * s + _flightR0) - std::sinh(_flightR0));
-                w = _flightW0 * coshR0 / std::cosh(_flightRho * s + _flightR0);
-                ratio = u / _flightU1;
-            }
-            if (w > 0) {
-                zoom = _flightStartZoom + std::log(_flightW0 / w) / std::log(2.0);
-            }
-            ratio = std::max(0.0, std::min(1.0, ratio));
+        if (!done) {
+            double zoomDelta = 0;
+            _flightPath.sample(k, ratio, zoomDelta);
+            zoom = _flightStartZoom + zoomDelta;
         }
 
         MapPos newFocusPos = _flightTargetPos;
@@ -298,15 +295,12 @@ namespace massif {
             cglib::mat4x4<double> transform = projectionSurface->calculateTranslateMatrix(pos0, pos1, ratio);
             newFocusPos = projectionSurface->calculateMapPos(cglib::transform_point(pos0, transform));
         }
-        // The viewpoint's HEIGHT travels with the move: it follows the same ground fraction, plus
-        // a parabola that lifts it above both ends and comes back down - a plane's flight, and the
-        // reason a climb is worth having is that it clears what is between the two ends.
-        double height = _flightStartPos.getZ() + (_flightTargetPos.getZ() - _flightStartPos.getZ()) * ratio;
+        double height = _flightStartPos.getZ() + (_flightTargetPos.getZ() - _flightStartPos.getZ()) * k;
         if (!done && _flightClimb != 0) {
-            height += _flightClimb * 4.0 * ratio * (1.0 - ratio);
+            height += _flightClimb * 4.0 * k * (1.0 - k);
         }
         newFocusPos.setZ(height);
-        _flightProgress = t;
+        _flightProgress = static_cast<float>(k);
 
         CameraPanEvent panCameraEvent;
         panCameraEvent.setKeepRotation(true);
@@ -325,12 +319,12 @@ namespace massif {
                 delta += 360;
             }
             CameraRotationEvent rotationCameraEvent;
-            rotationCameraEvent.setRotation(*_flightStartRotation + delta * t);
+            rotationCameraEvent.setRotation(*_flightStartRotation + static_cast<float>(delta * k));
             rotationEvent = rotationCameraEvent;
         }
         if (_flightTargetTilt && _flightStartTilt) {
             CameraTiltEvent tiltCameraEvent;
-            tiltCameraEvent.setTilt(*_flightStartTilt + (*_flightTargetTilt - *_flightStartTilt) * t);
+            tiltCameraEvent.setTilt(*_flightStartTilt + static_cast<float>((*_flightTargetTilt - *_flightStartTilt) * k));
             tiltEvent = tiltCameraEvent;
         }
 

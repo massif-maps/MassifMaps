@@ -12,6 +12,8 @@
 #include "renderers/cameraevents/CameraRotationEvent.h"
 #include "renderers/cameraevents/CameraTiltEvent.h"
 #include "renderers/cameraevents/CameraZoomEvent.h"
+#include "renderers/components/FlightPath.h"
+#include "ui/FlightEasing.h"
 
 #include <optional>
 #include <memory>
@@ -48,9 +50,10 @@ namespace massif {
          * in INTERNAL coordinates. durationSeconds <= 0 derives the duration from the path
          * length, which is the point of their parametrisation - a move twice as far does not take
          * twice as long. rho is the aggressiveness of the pull-back (their rho, 1.42 is the value
-         * they derive as optimal). Supersedes the per-property targets while it runs.
+         * they derive as optimal). easing is the timing curve. Supersedes the per-property
+         * targets while it runs.
          */
-        void setFlightTarget(const MapPos& pos, float zoom, const float* rotation, const float* tilt, float climbHeight, float durationSeconds, float rho);
+        void setFlightTarget(const MapPos& pos, float zoom, const float* rotation, const float* tilt, float climbHeight, float durationSeconds, float rho, FlightEasing::FlightEasing easing);
         void stopFlight();
         bool isFlightActive() const;
         /**
@@ -93,20 +96,13 @@ namespace massif {
         float _zoomTarget;
         std::optional<MapPos> _zoomTargetPos;
     
-        // Van Wijk flight state: _flightS is the total path length in their units, _flightU1 the
-        // ground distance, the rest their precomputed parametrisation. _flightZeroPath marks a pure
-        // zoom, where their formula divides by the distance.
         bool _flightActive;
         bool _flightStarted;
-        bool _flightZeroPath;
         float _flightElapsed;
         float _flightDuration;
         double _flightRho;
-        double _flightU1;
-        double _flightW0;
-        double _flightW1;
-        double _flightR0;
-        double _flightS;
+        FlightEasing::FlightEasing _flightEasing;
+        FlightPath _flightPath;
         MapPos _flightStartPos;
         MapPos _flightTargetPos;
         double _flightClimb; // internal units added at the middle of the path, parabolic

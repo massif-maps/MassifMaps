@@ -35,6 +35,23 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        // The facade has no enum argument kind, so the timing curve crosses by its CSS name.
+        FlightEasing::FlightEasing parseEasing(const std::string& name) {
+            if (name == "linear") {
+                return FlightEasing::FLIGHT_EASING_LINEAR;
+            }
+            if (name == "ease-in") {
+                return FlightEasing::FLIGHT_EASING_EASE_IN;
+            }
+            if (name == "ease-out") {
+                return FlightEasing::FLIGHT_EASING_EASE_OUT;
+            }
+            if (name == "ease-in-out") {
+                return FlightEasing::FLIGHT_EASING_EASE_IN_OUT;
+            }
+            return FlightEasing::FLIGHT_EASING_EASE;
+        }
+
         Result flyTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             auto view = static_cast<BaseMapView*>(obj);
             MapPos pos;
@@ -44,11 +61,15 @@ namespace massif { namespace api {
                 !args.getDouble(5, seconds)) {
                 return RESULT_BAD_SPEC;
             }
+            std::string easing;
+            if (args.count() > 6) {
+                args.getString(6, easing);
+            }
             // climbHeight arches the path - highest halfway, nothing at either end, which is what
             // clears the ridge between two valleys. 0 is the straight flight.
             view->flyTo(pos, static_cast<float>(zoom), static_cast<float>(rotation),
                         static_cast<float>(tilt), static_cast<float>(climbHeight),
-                        static_cast<float>(seconds));
+                        static_cast<float>(seconds), parseEasing(easing));
             return RESULT_OK;
         }
 

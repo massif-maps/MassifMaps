@@ -786,8 +786,14 @@ namespace massif {
                     // Stop it following the camera past the zoom the DEM runs out at: the floor
                     // overrides the LOD's own answer, so a tile 20 km out was three levels better
                     // for zooming in without moving towards it.
-                    if (auto elevationManager = terrainOptions->getElevationManager()) {
-                        _terrainMinTileZoom = std::min(_terrainMinTileZoom, elevationManager->getDetailZoomLimit());
+                    // PLANAR only, where this was measured. The floor is what FORCES a terrain tile
+                    // to subdivide, so capping it allows coarser surfaces - and on the globe the
+                    // zoom carries worldPerInternal (2*cos(lat)), so a DEM-source zoom clamps it far
+                    // harder than on the plane and the relief goes flat.
+                    if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+                        if (auto elevationManager = terrainOptions->getElevationManager()) {
+                            _terrainMinTileZoom = std::min(_terrainMinTileZoom, elevationManager->getDetailZoomLimit());
+                        }
                     }
                 }
             }

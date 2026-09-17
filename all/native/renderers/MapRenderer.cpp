@@ -826,11 +826,15 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
-            constrainCameraToClearance();
-    
+
             // Calculate parameters for kinetic events
             newFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
             zoom = _viewState.getZoom();
+            // AFTER the kinetic delta is read, never before. setPanDelta measures the fling from the
+            // 3D distance between the two focus positions, and a clearance lift is a VERTICAL
+            // correction of hundreds of metres against a pan step of metres - folded in, it makes
+            // the fling enormous and the map flies off when the finger leaves.
+            constrainCameraToClearance();
           
             // In case of seamless panning horizontal teleport, offset the delta focus pos
             oldFocusPos.setX(oldFocusPos.getX() + _viewState.getHorizontalLayerOffsetDir() * Const::WORLD_SIZE);
@@ -868,13 +872,13 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
-            constrainCameraToClearance();
-            
+
             // Calculate parameters for kinetic events
             float rotation = _viewState.getRotation();
             deltaRotation = rotation - oldRotation;
 
             focusPos = getProjectionSurface()->calculateMapPos(_viewState.getFocusPos());
+            constrainCameraToClearance(); // after the kinetic read, as in the pan overload
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called
@@ -936,13 +940,13 @@ namespace massif {
             // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
-            constrainCameraToClearance();
-            
+
             // Calculate parameters for kinetic events
             float zoom = _viewState.getZoom();
             deltaZoom = zoom - oldZoom;
 
             focusPos = getProjectionSurface()->calculateMapPos(_viewState.getFocusPos());
+            constrainCameraToClearance(); // after the kinetic read, as in the pan overload
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called

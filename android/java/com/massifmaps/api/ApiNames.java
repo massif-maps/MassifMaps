@@ -339,6 +339,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> FLIGHT_PROGRESS = MassifObject.key("flightProgress");
     /** Returns the state of the flippable flag. */
     public static final MassifObject.Key<Boolean> FLIPPABLE = MassifObject.key("flippable");
+    /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
+    public static final MassifObject.Key<Double> FOCUS_LIFT = MassifObject.key("focusLift");
     /** Returns the focus point offset (from screen center) in pixels. */
     public static final MassifObject.Key<String> FOCUS_POINT_OFFSET = MassifObject.key("focusPointOffset");
     /** Returns the position that the camera is currently looking at. */
@@ -429,10 +431,14 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> LABEL_BLENDING_SPEED = MassifObject.key("labelBlendingSpeed");
     /** Returns the contour interval used for label stubs. */
     public static final MassifObject.Key<Double> LABEL_INTERVAL = MassifObject.key("labelInterval");
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    public static final MassifObject.Key<Double> LABEL_PERSPECTIVE_SCALING = MassifObject.key("labelPerspectiveScaling");
     /** Returns the current display order of the labels. */
     public static final MassifObject.Key<String> LABEL_RENDER_ORDER = MassifObject.key("labelRenderOrder");
     /** Returns whether only short label stubs are generated instead of full contour lines. */
     public static final MassifObject.Key<Boolean> LABEL_STUBS_ENABLED = MassifObject.key("labelStubsEnabled");
+    /** Returns how far labels are placed, in multiples of the camera-to-focus distance. */
+    public static final MassifObject.Key<Double> LABEL_VIEW_DISTANCE = MassifObject.key("labelViewDistance");
     public static final MassifObject.Key<String> LANGUAGE = MassifObject.key("language");
     /** Returns the layer of the raster tile. */
     public static final MassifObject.Key<MassifObject> LAYER = MassifObject.key("layer");
@@ -951,6 +957,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> VIEW_DISTANCE = MassifObject.key("viewDistance");
     /** Returns the factor applied to the view distance. */
     public static final MassifObject.Key<Double> VIEW_DISTANCE_FACTOR = MassifObject.key("viewDistanceFactor");
+    /** Returns the maximum view distance, in meters. */
+    public static final MassifObject.Key<Double> VIEW_DISTANCE_MAX = MassifObject.key("viewDistanceMax");
     /** Returns a view state. */
     public static final MassifObject.Key<String> VIEW_STATE = MassifObject.key("viewState");
     /** Returns the visibility of the object. */

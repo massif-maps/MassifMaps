@@ -339,6 +339,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightActive;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightProgress;
 /** Returns the state of the flippable flag. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlippable;
+/** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFocusLift;
 /** Returns the focus point offset (from screen center) in pixels. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFocusPointOffset;
 /** Returns the position that the camera is currently looking at. */
@@ -429,10 +431,14 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyKineticZoom;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelBlendingSpeed;
 /** Returns the contour interval used for label stubs. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelInterval;
+/** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelPerspectiveScaling;
 /** Returns the current display order of the labels. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelRenderOrder;
 /** Returns whether only short label stubs are generated instead of full contour lines. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelStubsEnabled;
+/** Returns how far labels are placed, in multiples of the camera-to-focus distance. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelViewDistance;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLanguage;
 /** Returns the layer of the raster tile. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLayer;
@@ -951,6 +957,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyVerticalRangeStart;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistance;
 /** Returns the factor applied to the view distance. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistanceFactor;
+/** Returns the maximum view distance, in meters. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistanceMax;
 /** Returns a view state. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewState;
 /** Returns the visibility of the object. */

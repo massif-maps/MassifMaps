@@ -1699,6 +1699,8 @@ export interface PropertyTypes {
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    "labelPerspectiveScaling": number;
     /** Returns the current display order of the labels. */
     "labelRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the current relative layer blending speed. */
@@ -1851,6 +1853,8 @@ export interface PropertyTypes {
     "terrainOptions.flattenRatio": number;
     /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
     "terrainOptions.flattened": boolean;
+    /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
+    "terrainOptions.focusLift": number;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -1875,6 +1879,8 @@ export interface PropertyTypes {
     "terrainOptions.viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "terrainOptions.viewDistanceFactor": number;
+    /** Returns the maximum view distance, in meters. */
+    "terrainOptions.viewDistanceMax": number;
   };
   "massif::CullState": {
     /** (read-only) Returns a view state. */
@@ -3967,6 +3973,8 @@ export interface PropertyTypes {
     "kineticRotation": boolean;
     /** Returns the state of kinetic zoom flag. */
     "kineticZoom": boolean;
+    /** Returns how far labels are placed, in multiples of the camera-to-focus distance. */
+    "labelViewDistance": number;
     /** Returns wether layers are processed in reversed order to process labels. */
     "layersLabelsProcessedInReverseOrder": boolean;
     /** Returns the light (sun) options. May be null. */
@@ -4182,6 +4190,8 @@ export interface PropertyTypes {
     "terrain.flattenRatio": number;
     /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
     "terrain.flattened": boolean;
+    /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
+    "terrain.focusLift": number;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrain.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -4206,6 +4216,8 @@ export interface PropertyTypes {
     "terrain.viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "terrain.viewDistanceFactor": number;
+    /** Returns the maximum view distance, in meters. */
+    "terrain.viewDistanceMax": number;
     /** Returns the terrain options. May be null if no terrain is configured. */
     "terrainOptions": Handle<"massif::TerrainOptions">;
     /** Returns how long the terrain takes to sink flat. */
@@ -4252,6 +4264,8 @@ export interface PropertyTypes {
     "terrainOptions.flattenRatio": number;
     /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
     "terrainOptions.flattened": boolean;
+    /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
+    "terrainOptions.focusLift": number;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -4276,6 +4290,8 @@ export interface PropertyTypes {
     "terrainOptions.viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "terrainOptions.viewDistanceFactor": number;
+    /** Returns the maximum view distance, in meters. */
+    "terrainOptions.viewDistanceMax": number;
     /** Returns the tile size used for drawing map tiles. */
     "tileDrawSize": number;
     /** Returns the factor on the screen size a tile may cover before it is refined. */
@@ -5487,6 +5503,8 @@ export interface PropertyTypes {
     "flattenRatio": number;
     /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
     "flattened": boolean;
+    /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
+    "focusLift": number;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -5511,6 +5529,8 @@ export interface PropertyTypes {
     "viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "viewDistanceFactor": number;
+    /** Returns the maximum view distance, in meters. */
+    "viewDistanceMax": number;
   };
   "massif::TerrariumElevationDataDecoder": {
   };
@@ -6018,6 +6038,8 @@ export interface PropertyTypes {
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    "labelPerspectiveScaling": number;
     /** Returns the current display order of the labels. */
     "labelRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the current relative layer blending speed. */
@@ -6475,6 +6497,8 @@ export interface PropertyTypes {
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    "labelPerspectiveScaling": number;
     /** Returns the current display order of the labels. */
     "labelRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the current relative layer blending speed. */
@@ -7067,6 +7091,8 @@ export interface LayerSpec_composite_vector {
   frameNr?: number;
   /** Returns the current relative label blending speed. */
   labelBlendingSpeed?: number;
+  /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+  labelPerspectiveScaling?: number;
   /** Returns the current display order of the labels. */
   labelRenderOrder?: "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
   /** Returns the current relative layer blending speed. */
@@ -7304,6 +7330,8 @@ export interface LayerSpec_vector {
   frameNr?: number;
   /** Returns the current relative label blending speed. */
   labelBlendingSpeed?: number;
+  /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+  labelPerspectiveScaling?: number;
   /** Returns the current display order of the labels. */
   labelRenderOrder?: "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
   /** Returns the current relative layer blending speed. */
@@ -7490,6 +7518,8 @@ export interface OptionsSpec_terrain {
   flattenRatio?: number;
   /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
   flattened?: boolean;
+  /** Returns the height the viewpoint is lifted above the ground-following focus, in meters. */
+  focusLift?: number;
   /** Returns how many zoom levels below the camera a tile may coarsen to. */
   maxTileZoomCoarsening?: number;
   /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -7513,6 +7543,8 @@ export interface OptionsSpec_terrain {
   viewDistance?: number;
   /** Returns the factor applied to the view distance. */
   viewDistanceFactor?: number;
+  /** Returns the maximum view distance, in meters. */
+  viewDistanceMax?: number;
 }
 
 export type OptionsSpec = OptionsSpec_fog | OptionsSpec_light | OptionsSpec_sky | OptionsSpec_terrain;

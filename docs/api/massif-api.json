@@ -5618,6 +5618,15 @@
           "doc": "Returns the state of kinetic zoom flag."
         },
         {
+          "name": "labelViewDistance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how far labels are placed, in multiples of the camera-to-focus distance."
+        },
+        {
           "name": "layersLabelsProcessedInReverseOrder",
           "type": "BOOL",
           "readOnly": false,
@@ -8003,6 +8012,15 @@
           "doc": "Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there."
         },
         {
+          "name": "focusLift",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the height the viewpoint is lifted above the ground-following focus, in meters."
+        },
+        {
           "name": "maxTileZoomCoarsening",
           "type": "INT",
           "readOnly": false,
@@ -8109,6 +8127,15 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns the factor applied to the view distance."
+        },
+        {
+          "name": "viewDistanceMax",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the maximum view distance, in meters."
         }
       ],
       "aliases": {},
@@ -9662,6 +9689,15 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns the current relative label blending speed."
+        },
+        {
+          "name": "labelPerspectiveScaling",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how much of the perspective divide a label keeps as it recedes from the camera."
         },
         {
           "name": "labelRenderOrder",

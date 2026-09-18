@@ -794,7 +794,10 @@ namespace massif {
         double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ();
         double clearanceFloor = terrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
         double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
-        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor) - orbitHeight;
+        // Plus the application's lift, as in the frame's own rule: without it a lifted viewpoint
+        // reads as a focus ABOVE the shell here and the constraint stops holding it.
+        double lift = terrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
+        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor) - orbitHeight + lift;
         if (shellFocusZ > focusMapPos.getZ()) {
             _viewState.setFocusHeight(shellFocusZ);
         }
@@ -1265,7 +1268,13 @@ namespace massif {
                         // ... and never below the shell: the focus RAISES the camera, which keeps the
                         // tilt and the zoom the user set. Correcting by tilting jumped the view.
                         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor) - orbitHeight;
-                        _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ));
+                        // The application's own lift goes ON TOP of whatever the rule decided, so
+                        // the shell and the follow band keep working under a raised viewpoint - and
+                        // so the lift means the same thing at every altitude: this far above the
+                        // ground it stands over. It is excluded from `follow` on purpose: that is
+                        // measured with the focus PINNED, or the lift would feed into its own input.
+                        double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
+                        _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
                     }
                 }
                 MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());

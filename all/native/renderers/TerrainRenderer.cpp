@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <limits>
 #include <cmath>
+#include <set>
 
 namespace massif {
 
@@ -602,8 +603,22 @@ namespace massif {
         if (!terrainOptions) {
             return;
         }
-        if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
-            calculateVisibleTiles(viewState, elevationManager, MapTile(0, 0, 0, 0), tiles);
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        if (!elevationManager) {
+            return;
+        }
+        // The cut, and a BUDGET on it: a level coarser everywhere until it fits, the way
+        // TileLayer::calculateVisibleTiles keeps its own cover inside TERRAIN_COVER_TILE_BUDGET. See
+        // MAX_VISIBLE_MESH_TILES for what overflowing it costs - it is not the drawing, it is the
+        // mesh cache being smaller than the frame's working set.
+        int maxZoom = Const::MAX_SUPPORTED_ZOOM_LEVEL;
+        for (;;) {
+            tiles.clear();
+            calculateVisibleTiles(viewState, elevationManager, MapTile(0, 0, 0, 0), maxZoom, tiles);
+            if (static_cast<int>(tiles.size()) <= MAX_VISIBLE_MESH_TILES || maxZoom <= 0) {
+                return;
+            }
+            maxZoom--;
         }
     }
 
@@ -628,12 +643,43 @@ namespace massif {
         }
     }
 
+    int TerrainRenderer::calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds) {
+        // The visible set is a quadtree cut, so a neighbour is either at this tile's zoom or is one
+        // of its ANCESTORS. Walking the neighbour's ancestry up from this zoom therefore finds it,
+        // and the zoom it is found at is the neighbour's LOD.
+        //
+        // The cut is NOT restricted - nothing stops two adjacent tiles being several levels apart -
+        // so the mask carries the DIFFERENCE per side, two bits each, and not just a flag.
+        int zoom = tile.getZoom();
+        int frameNr = tile.getFrameNr();
+        int tileCount = 1 << zoom;
+        auto neighbourLevels = [&](int dx, int dy) {
+            int nx = tile.getX() + dx;
+            int ny = tile.getY() + dy;
+            if (ny < 0 || ny >= tileCount) {
+                return 0; // off the top or the bottom of the world: nothing to meet
+            }
+            nx = (nx % tileCount + tileCount) % tileCount; // x wraps
+            for (int nzoom = zoom; nzoom >= 0; nzoom--) {
+                if (visibleTileIds.count(MapTile(nx >> (zoom - nzoom), ny >> (zoom - nzoom), nzoom, frameNr).getTileId()) > 0) {
+                    return std::min(zoom - nzoom, EDGE_MAX_LEVELS);
+                }
+            }
+            return 0; // not visible at all, so there is no seam to close
+        };
+
+        // Tile y runs south while the mesh's gy runs north, hence the swap.
+        return (neighbourLevels(0, 1) << EDGE_SHIFT_SOUTH) | (neighbourLevels(0, -1) << EDGE_SHIFT_NORTH) | (neighbourLevels(-1, 0) << EDGE_SHIFT_WEST) |
+               (neighbourLevels(1, 0) << EDGE_SHIFT_EAST);
+    }
+
     void TerrainRenderer::collectTileMeshes(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, int meshResolutionCap, std::vector<std::pair<MapTile, std::shared_ptr<TileMesh> > >& tileMeshes) {
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
 
-        // Calculate visible terrain tiles
+        // Calculate visible terrain tiles. Through collectVisibleTiles, so the meshes are built for
+        // the SAME budgeted cut every other pass of this frame walks.
         std::vector<MapTile> tiles;
-        calculateVisibleTiles(viewState, elevationManager, MapTile(0, 0, 0, 0), tiles);
+        collectVisibleTiles(viewState, terrainOptions, tiles);
 
         float exaggeration = elevationManager->getExaggeration();
         int minZoom = terrainOptions->getMinZoom();
@@ -643,6 +689,18 @@ namespace massif {
         }
 
         unsigned int pass = ++_meshCacheClock;
+        // Only where the app asked for it: stitching costs a mesh variant per edge combination, and
+        // this renderer's surfaces are already skirted, so it is an improvement rather than a fix
+        // for a hole. Same flag the draped path reads (TileRenderer).
+        bool stitching = terrainOptions->isTileEdgeStitchingEnabled();
+        // Built once for the whole cut, not per tile: the neighbour lookup is a membership test and
+        // rebuilding the set inside the loop makes the pass quadratic in the tile count.
+        std::set<long long> visibleTileIds;
+        if (stitching) {
+            for (const MapTile& visibleTile : tiles) {
+                visibleTileIds.insert(visibleTile.getTileId());
+            }
+        }
 
         tileMeshes.reserve(tiles.size());
         for (const MapTile& tile : tiles) {
@@ -652,10 +710,15 @@ namespace massif {
                 grid = elevationManager->getTileGrid(tile, ElevationManager::LoadMode::CACHED_ONLY);
             }
             int gridSize = calculateMeshGridSize(tile, grid, meshResolution);
+            int edgeMask = stitching ? calculateEdgeMask(tile, visibleTileIds) : 0;
+            // The mask belongs to the mesh, so it belongs in the key: the same tile at the same
+            // resolution is a different surface once a neighbour coarsens, and a pan changes that
+            // without changing anything else.
+            int cacheKey = gridSize | (edgeMask << 16);
 
             // Rebuild the mesh only when its inputs actually changed. This avoids rebuilding
             // every cached mesh each time a new elevation tile arrives during loading.
-            auto it = _meshCache.find(std::make_pair(tileId, gridSize));
+            auto it = _meshCache.find(std::make_pair(tileId, cacheKey));
             if (it == _meshCache.end() || it->second.grid != grid || it->second.exaggeration != exaggeration || it->second.gridSize != gridSize) {
                 if (it == _meshCache.end() && _meshCache.size() >= MAX_CACHED_MESHES) {
                     evictLeastRecentlyUsedMeshes(pass);
@@ -664,9 +727,9 @@ namespace massif {
                 entry.grid = grid;
                 entry.exaggeration = exaggeration;
                 entry.gridSize = gridSize;
-                entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize);
+                entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize, edgeMask);
                 entry.lastUsed = pass;
-                it = _meshCache.insert_or_assign(std::make_pair(tileId, gridSize), std::move(entry)).first;
+                it = _meshCache.insert_or_assign(std::make_pair(tileId, cacheKey), std::move(entry)).first;
             }
             it->second.lastUsed = pass;
             tileMeshes.emplace_back(tile, it->second.mesh);
@@ -809,7 +872,7 @@ namespace massif {
         }
     }
 
-    void TerrainRenderer::calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, std::vector<MapTile>& tiles) const {
+    void TerrainRenderer::calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, int maxZoom, std::vector<MapTile>& tiles) const {
         if (tile.getZoom() > Const::MAX_SUPPORTED_ZOOM_LEVEL) {
             return;
         }
@@ -861,14 +924,14 @@ namespace massif {
         if (std::shared_ptr<TileDataSource> dataSource = elevationManager->getDataSource()) {
             maxUsefulZoom = dataSource->getMaxZoom() + 3;
         }
-        int targetTileZoom = std::min(maxUsefulZoom, static_cast<int>(viewState.getZoom() + 0.001f));
+        int targetTileZoom = std::min({ maxUsefulZoom, maxZoom, static_cast<int>(viewState.getZoom() + 0.001f) });
         if (targetTileZoom <= tile.getZoom()) {
             subDivide = false;
         }
 
         if (subDivide) {
             for (int n = 0; n < 4; n++) {
-                calculateVisibleTiles(viewState, elevationManager, tile.getChild(n), tiles);
+                calculateVisibleTiles(viewState, elevationManager, tile.getChild(n), maxZoom, tiles);
             }
         } else {
             tiles.push_back(tile);
@@ -896,7 +959,7 @@ namespace massif {
         return std::max(gridSize, MIN_MESH_GRID_SIZE);
     }
 
-    std::shared_ptr<TerrainRenderer::TileMesh> TerrainRenderer::buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize) const {
+    std::shared_ptr<TerrainRenderer::TileMesh> TerrainRenderer::buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, int edgeMask) const {
         auto mesh = std::make_shared<TileMesh>();
 
         int tileMask = (1 << tile.getZoom()) - 1;
@@ -920,25 +983,84 @@ namespace massif {
         bool spherical = _tileTransformer->isSpherical();
 
         mesh->vertices.reserve((rowSize * rowSize + 8 * rowSize) * 3); // grid + skirt vertices
-        mesh->heights.reserve(rowSize * rowSize);
+        // The heights come FIRST, on their own: the vertices are built from them below, and so are
+        // the surface normals (ensureSurfaceAttribs), so the stitching in between reaches both.
+        mesh->heights.assign(rowSize * rowSize, 0.0f);
+        if (grid) {
+            for (int gy = 0; gy <= gridSize; gy++) {
+                double internalY = originY + (static_cast<double>(gy) / gridSize) * size;
+                double internalPerMeter = exaggeration * elevationManager->getDisplayScale(internalY);
+                double localPerInternal = (spherical ? sphericalLocalPerInternal(tile, internalY) : localFromInternal);
+                for (int gx = 0; gx <= gridSize; gx++) {
+                    double internalX = originX + (static_cast<double>(gx) / gridSize) * size;
+                    double meters = grid->sampleNodeHeight(internalX, internalY); // the drawn surface, which this depth stands in for
+                    // The height in INTERNAL units is the same on either surface (18-globe.md);
+                    // only the internal-to-tile-local factor differs, and the plane's is written
+                    // out rather than derived so its depth mesh keeps the values it had.
+                    mesh->heights[gy * rowSize + gx] = static_cast<float>(meters * internalPerMeter * localPerInternal);
+                }
+            }
+        }
+
+        // LOD stitching: where the neighbour is coarser its edge carries FEWER nodes, so the detail
+        // this tile has in between is exactly what opens the crack. Dropping our edge to the
+        // neighbour's spacing - a straight line between the nodes the two share - closes it, and
+        // only the one row of edge nodes moves, so nothing inside the tile is smoothed.
+        //
+        // The neighbour's spacing is assumed to be ours doubled per zoom level it is coarser by,
+        // which is what calculateMeshGridSize gives whenever both tiles land on the same cap.
+        if (grid && edgeMask != 0) {
+            auto stitchEdge = [&](int shift, bool horizontal, int fixedIndex) {
+                int levels = (edgeMask >> shift) & EDGE_LEVELS_MASK;
+                if (levels <= 0) {
+                    return;
+                }
+                // One level coarser is every second node interpolated away, two levels every
+                // fourth, and so on: the neighbour covers twice the ground per level with the same
+                // node count.
+                int step = 1 << levels;
+                auto nodeAt = [&](int index) {
+                    int gx = horizontal ? index : fixedIndex;
+                    int gy = horizontal ? fixedIndex : index;
+                    return gy * rowSize + gx;
+                };
+                // WHICH of our nodes the neighbour actually has depends on where this tile sits
+                // inside the ground the coarse one covers: as the second of two children, its
+                // nodes fall on our ODD indices. The tile's offset within that block gives the
+                // phase - and the mesh's own index runs north while a tile's y runs south, hence
+                // the flip on a vertical edge.
+                int block = step - 1;
+                int blockIndex = (horizontal ? tile.getX() & block : block - (tile.getY() & block));
+                int phase = (step - (blockIndex * gridSize) % step) % step;
+                for (int index = phase - step; index < gridSize; index += step) {
+                    // An anchor off the end of the edge is the edge's own end node: the corners are
+                    // shared with the neighbour in any case.
+                    int first = std::max(index, 0);
+                    int next = std::min(index + step, gridSize);
+                    if (next <= first) {
+                        continue;
+                    }
+                    float height0 = mesh->heights[nodeAt(first)];
+                    float height1 = mesh->heights[nodeAt(next)];
+                    for (int inner = first + 1; inner < next; inner++) {
+                        float ratio = static_cast<float>(inner - first) / static_cast<float>(next - first);
+                        mesh->heights[nodeAt(inner)] = height0 + (height1 - height0) * ratio;
+                    }
+                }
+            };
+            stitchEdge(EDGE_SHIFT_SOUTH, true, 0);
+            stitchEdge(EDGE_SHIFT_NORTH, true, gridSize);
+            stitchEdge(EDGE_SHIFT_WEST, false, 0);
+            stitchEdge(EDGE_SHIFT_EAST, false, gridSize);
+        }
+
         double minLocalZ = 0;
         for (int gy = 0; gy <= gridSize; gy++) {
             for (int gx = 0; gx <= gridSize; gx++) {
                 double x = static_cast<double>(gx) / gridSize;
                 double y = static_cast<double>(gy) / gridSize;
-                double internalX = originX + x * size;
-                double internalY = originY + y * size;
-                double localZ = 0;
-                if (grid) {
-                    double meters = grid->sampleNodeHeight(internalX, internalY); // the drawn surface, which this depth stands in for
-                    // The height in INTERNAL units is the same on either surface (18-globe.md);
-                    // only the internal-to-tile-local factor differs, and the plane's is written
-                    // out rather than derived so its depth mesh keeps the values it had.
-                    double internalZ = meters * exaggeration * elevationManager->getDisplayScale(internalY);
-                    localZ = internalZ * (spherical ? sphericalLocalPerInternal(tile, internalY) : localFromInternal);
-                }
+                double localZ = mesh->heights[gy * rowSize + gx];
                 minLocalZ = std::min(minLocalZ, localZ);
-                mesh->heights.push_back(static_cast<float>(localZ));
                 if (spherical) {
                     cglib::vec2<float> tilePos(static_cast<float>(x), static_cast<float>(1.0 - y));
                     cglib::vec3<float> point = vertexTransformer->calculatePoint(tilePos);

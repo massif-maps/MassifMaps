@@ -59,6 +59,7 @@
 %attributeval(massif::TerrainOptions, massif::Color, BackgroundColor, getBackgroundColor, setBackgroundColor)
 %attribute(massif::TerrainOptions, float, ViewDistanceFactor, getViewDistanceFactor, setViewDistanceFactor)
 %attribute(massif::TerrainOptions, float, ViewDistance, getViewDistance, setViewDistance)
+%attribute(massif::TerrainOptions, float, ViewDistanceMax, getViewDistanceMax, setViewDistanceMax)
 %attribute(massif::TerrainOptions, int, DrapeCacheSize, getDrapeCacheSize, setDrapeCacheSize)
 %attribute(massif::TerrainOptions, int, DrapeWorkingSet, getDrapeWorkingSet, setDrapeWorkingSet)
 %attribute(massif::TerrainOptions, int, MaxTileZoomCoarsening, getMaxTileZoomCoarsening, setMaxTileZoomCoarsening)
@@ -67,6 +68,7 @@
 // existed in C++ only, so no binding could get a camera close to a slope - which is exactly what
 // composing a 3D view needs.
 %attribute(massif::TerrainOptions, float, CameraClearance, getCameraClearance, setCameraClearance)
+%attribute(massif::TerrainOptions, float, FocusLift, getFocusLift, setFocusLift)
 %attribute(massif::TerrainOptions, float, CameraClampDuration, getCameraClampDuration, setCameraClampDuration)
 %attribute(massif::TerrainOptions, bool, BillboardOcclusionEnabled, isBillboardOcclusionEnabled, setBillboardOcclusionEnabled)
 %attribute(massif::TerrainOptions, float, BillboardOcclusionTolerance, getBillboardOcclusionTolerance, setBillboardOcclusionTolerance)

@@ -51,6 +51,7 @@ namespace massif {
         // 60 m, not 200: 200 stops the camera well short of the surface, so a close approach swings
         // the view into the nearest hillside instead of flying between the peaks.
         _cameraClearance(0.0f),
+        _focusLift(0.0f),
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
         // 0.2, not 0: measured at Grenoble from the south of La Bastille, where 0 dropped POIs on
@@ -60,6 +61,7 @@ namespace massif {
         _textOcclusionOpacity(1.0f),
         _viewDistanceFactor(1.0f),
         _viewDistance(0.0f),
+        _viewDistanceMax(0.0f),
         // 3, not the demo's 8: 8 only pays for itself next to the demo's fixed 170 km view. On the
         // default view distance it coarsens tiles that are still large on screen, leaving a blurred
         // band with a hard tile edge down the middle.
@@ -484,6 +486,17 @@ namespace massif {
         }
     }
 
+    float TerrainOptions::getViewDistanceMax() const {
+        return _viewDistanceMax.load();
+    }
+
+    void TerrainOptions::setViewDistanceMax(float distance) {
+        float clamped = std::max(0.0f, distance);
+        if (_viewDistanceMax.exchange(clamped) != clamped) {
+            notifyOptionChanged("ViewDistanceMax");
+        }
+    }
+
     Color TerrainOptions::getBackgroundColor() const {
         return Color(_backgroundColorARGB.load());
     }
@@ -524,6 +537,17 @@ namespace massif {
         float value = std::max(0.0f, clearance);
         if (_cameraClearance.exchange(value) != value) {
             notifyOptionChanged("CameraClearance");
+        }
+    }
+
+    float TerrainOptions::getFocusLift() const {
+        return _focusLift.load();
+    }
+
+    void TerrainOptions::setFocusLift(float lift) {
+        float value = std::max(0.0f, lift);
+        if (_focusLift.exchange(value) != value) {
+            notifyOptionChanged("FocusLift");
         }
     }
 

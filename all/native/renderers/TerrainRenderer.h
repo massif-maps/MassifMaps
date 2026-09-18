@@ -17,6 +17,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <vector>
 
 #include <cglib/vec.h>
@@ -168,7 +169,28 @@ namespace massif {
         static constexpr int DEPTH_SUBMIT_MOVING_INTERVAL = 500;   // minimum interval (ms) between worker jobs while moving
         static constexpr int MIN_MESH_GRID_SIZE = 4;  // grid cells per tile edge, lower bound
         static constexpr int MAX_MESH_GRID_SIZE = 96; // grid cells per tile edge, upper bound
+        // The LOD stitching mask: how many levels COARSER the neighbour on each side is, two bits
+        // each, in the MESH's frame - gy = 0 is the south edge, since internal y runs north while a
+        // tile's y runs south. 0 on a side means the neighbour is at this tile's own zoom.
+        static constexpr int EDGE_SHIFT_SOUTH = 0;
+        static constexpr int EDGE_SHIFT_NORTH = 2;
+        static constexpr int EDGE_SHIFT_WEST = 4;
+        static constexpr int EDGE_SHIFT_EAST = 6;
+        static constexpr int EDGE_LEVELS_MASK = 3;
+        static constexpr int EDGE_MAX_LEVELS = 3; // 8x the node spacing, and what two bits hold
         static constexpr int MAX_CACHED_MESHES = 160;
+        // How many tiles the visible cut may hold, and why it is HALF the cache: one frame walks the
+        // same cut two or three times (the surface, the depth pre-pass, the occlusion depth texture)
+        // and the passes ask for different mesh resolutions, so each tile occupies more than one cache
+        // entry per frame. A cut bigger than that evicts meshes the NEXT pass of the SAME frame needs,
+        // so every pass rebuilds them: the whole surface, tile by tile, several times a frame.
+        //
+        // That is what a WIDE view walks into and a tall one does not. Landscape covers several times
+        // the ground at the same tilt, and the camera distance for a given zoom follows the viewport's
+        // HEIGHT (ViewState::calculateZoom0Distance), so turning the device also subdivides further -
+        // the cut grew past the cache and the frame rate collapsed, with the same scene in portrait
+        // perfectly smooth.
+        static constexpr int MAX_VISIBLE_MESH_TILES = MAX_CACHED_MESHES / 2;
         static constexpr int DEPTH_TEXTURE_MESH_RESOLUTION = 32; // mesh cap for the occlusion depth texture
         static constexpr int OCCLUSION_SAMPLE_OFFSET = 4; // buffer pixels sampled around a queried position
 
@@ -200,9 +222,15 @@ namespace massif {
         void evictLeastRecentlyUsedMeshes(unsigned int pass);
         bool updateDepthBufferAsync(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
         bool updateDepthBufferSync(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager);
-        void calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, std::vector<MapTile>& tiles) const;
-        std::shared_ptr<TileMesh> buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize) const;
+        // `maxZoom` caps the cut, which is how the budget below coarsens the whole surface a level at
+        // a time; Const::MAX_SUPPORTED_ZOOM_LEVEL means "no cap".
+        void calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, int maxZoom, std::vector<MapTile>& tiles) const;
+        std::shared_ptr<TileMesh> buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, int edgeMask) const;
         int calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution) const;
+        // How much coarser the visible neighbour on each of a tile's four edges is, as EDGE_SHIFT_*
+        // fields. The mesh drops those edges to the neighbour's node spacing so the two surfaces
+        // meet (see buildTileMesh); 0 means every neighbour is at this tile's own zoom.
+        static int calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds);
         cglib::mat4x4<double> calculateTileMatrix(const MapTile& tile) const;
         // Linear eye depth (view w, internal units) of the terrain at a buffer pixel. Returns a
         // huge value for sky pixels and for pixels outside the buffer.

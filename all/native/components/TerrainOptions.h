@@ -447,6 +447,31 @@ namespace massif {
         void setViewDistance(float distance);
 
         /**
+         * Returns the maximum view distance, in meters.
+         * @return The view distance ceiling in meters. 0 (the default) is no ceiling.
+         */
+        float getViewDistanceMax() const;
+        /**
+         * Sets a MAXIMUM distance the map is drawn to, in METERS - the counterpart of
+         * setViewDistance, and the only metric way to make the map reach LESS far than the factor
+         * rule. The rule is proportional to the camera's height over the cosine of the angle to the
+         * horizon, so a view along the ground reaches tens of kilometres from a hillside and past a
+         * hundred from a summit: ground that is fetched, meshed, draped and drawn to be a few pixels
+         * of haze. A ceiling caps the cull envelope (CullWorker), the tile walk (TileLayer) and the
+         * far plane together, so it is a real saving rather than clipped work.
+         * NOT derived from the fog, on purpose. The fog's range says where the ground has gone
+         * white, and a summit standing above the haze is both further than that and the whole point
+         * of FogOptions' vertical range - so the two are set independently and this one is the app's
+         * own trade between how far the view reaches and what it costs.
+         * Applied after setViewDistance, which it therefore also caps: asking for at least 150 km
+         * and at most 30 gives 30.
+         * 0 (the default) is no ceiling, leaving the factor rule and the tile walk cap to bound the
+         * view as before.
+         * @param distance The new maximum view distance in meters, or 0 for no ceiling.
+         */
+        void setViewDistanceMax(float distance);
+
+        /**
          * Returns the drape cache budget in megabytes.
          * @return The drape cache budget in megabytes. The default is 96.
          */
@@ -640,6 +665,31 @@ namespace massif {
          * @param clearance The new clearance floor in meters. 0 (the default) applies the zoom-relative rule alone.
          */
         void setCameraClearance(float clearance);
+
+        /**
+         * Returns the height the viewpoint is lifted above the ground-following focus, in meters.
+         * @return The focus lift in meters. The default is 0.
+         */
+        float getFocusLift() const;
+        /**
+         * Sets the height the viewpoint is lifted above the ground under it, in meters.
+         *
+         * The focus sits ON the terrain (mapbox's transform._centerAltitude) and the renderer owns
+         * its height, so an application cannot place the eye above the ground by writing a focus
+         * position with a z in it - the next frame recomputes it. This is the lift that survives:
+         * it is ADDED to whatever the ground-following rule decides, so the clearance shell and the
+         * follow band keep working underneath it and the eye ends up this far above the ground it
+         * stands over, at any zoom and any tilt.
+         *
+         * What it is for is a first-person viewpoint: a peak finder standing a few hundred meters
+         * up, seeing over the ridge in front of it. A camera looking at the horizon has almost no
+         * orbit height to raise it with, so the zoom cannot buy that view.
+         *
+         * Meters, like CameraClearance: the Mercator stretch and the display scale are applied
+         * here, not by the caller.
+         * @param lift The new lift in meters. 0 (the default) leaves the focus on the ground.
+         */
+        void setFocusLift(float lift);
 
         /**
          * Returns the duration of the camera terrain-following correction animation.
@@ -845,12 +895,14 @@ namespace massif {
         std::atomic<bool> _backgroundBitmapEnabled;
         std::atomic<float> _depthBias;
         std::atomic<float> _cameraClearance;
+        std::atomic<float> _focusLift;
         std::atomic<float> _cameraClampDuration;
         std::atomic<bool> _billboardOcclusionEnabled;
         std::atomic<float> _billboardOcclusionTolerance;
         std::atomic<float> _textOcclusionOpacity;
         std::atomic<float> _viewDistanceFactor;
         std::atomic<float> _viewDistance;
+        std::atomic<float> _viewDistanceMax;
         std::atomic<int> _drapeCacheSize;
         std::atomic<int> _drapeWorkingSet;
         std::atomic<int> _maxTileZoomCoarsening;

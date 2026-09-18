@@ -934,9 +934,13 @@ namespace massif {
             if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
                 viewDistanceFactor = terrainOptions->getViewDistanceFactor();
                 // Only when the absolute distance is the one that WON: it merely extends the rule
-                // now, and where the rule is longer this is the plain factor case.
+                // now, and where the rule is longer this is the plain factor case. A ceiling takes
+                // it out of the running entirely - it cannot have won if it was capped away, and
+                // pushing the far plane out to it would draw the ground the cull envelope no longer
+                // has (calculateViewDistance).
                 double absolute = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
-                absoluteViewDistance = absolute > 0 && absolute >= viewDistance;
+                double maxDistance = terrainOptions->getViewDistanceMax() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
+                absoluteViewDistance = absolute > 0 && absolute >= viewDistance && !(maxDistance > 0 && maxDistance < absolute);
             }
             if (absoluteViewDistance || viewDistanceFactor > 1.0f) {
                 // The app asked for MORE ground than tangram's rule gives, so the far plane has to
@@ -1004,12 +1008,16 @@ namespace massif {
         // near-horizontal view. The factor scales it: 1 is their rule, 0 the ground-derived one.
         float factor = 1.0f;
         double absoluteDistance = 0;
+        // The app's own ceiling, in the same internal units. Not derived from the fog: ground above
+        // the haze is further than the fog's range and still has to be drawn (TerrainOptions).
+        double maxDistance = 0;
         if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
             absoluteDistance = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
+            maxDistance = terrainOptions->getViewDistanceMax() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
             factor = terrainOptions->getViewDistanceFactor();
         }
         if (!(factor > 0.0f)) {
-            return absoluteDistance;
+            return maxDistance > 0 ? std::min(absoluteDistance, maxDistance) : absoluteDistance;
         }
         // Tangram's m_pos.z is both the height above the ground plane and the zoom-derived distance
         // to the focus; with 3D terrain the two part company, and on a 2600 m summit the zoom-derived
@@ -1028,7 +1036,10 @@ namespace massif {
         // An absolute distance only ever EXTENDS the rule. Metres are zoom-independent while the
         // rule scales with 2^-zoom, so letting metres win outright ends the ground in a disc well
         // inside a zoomed-out screen (MassifMaps#156).
-        return std::max(distance * factor, absoluteDistance);
+        double viewDistance = std::max(distance * factor, absoluteDistance);
+        // The ceiling is applied LAST, so it caps the minimum above as well as the rule: a view
+        // asked to reach at least 150 km and at most 30 reaches 30.
+        return maxDistance > 0 ? std::min(viewDistance, maxDistance) : viewDistance;
     }
     
     float ViewState::calculateMinZoom(const Options& options) const {

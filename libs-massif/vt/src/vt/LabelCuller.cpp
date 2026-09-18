@@ -112,6 +112,12 @@ namespace massif::vt {
         _metersToInternal = metersToInternal;
     }
 
+    void LabelCuller::setLabelViewDistance(double viewDistance) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _labelViewDistance = viewDistance;
+    }
+
     void LabelCuller::setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test, float defaultOccludedOpacity) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -203,8 +209,7 @@ namespace massif::vt {
                     // The perspective cut comes FIRST and costs one length: everything below it -
                     // updatePlacement, the variant envelopes, the grid test - is per label, and the
                     // horizon band is where most of the labels are (performance-log 27).
-                    if (cameraToCenter > 0 &&
-                        LabelDistance::perspectiveRatio(cameraToCenter, internalDistance) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF) {
+                    if (LabelDistance::isTooFar(cameraToCenter, internalDistance, _labelViewDistance)) {
                         VT_STAT_INC(cullerDistanceCut);
                         label->setVisible(false);
                         continue;
@@ -492,7 +497,18 @@ namespace massif::vt {
         // Everything below is in SCREEN PIXELS, and so is the offset the label is given: it is converted
         // to world units at draw time against the projection at the label's own depth, so a lift of N
         // pixels stays N pixels while the camera tilts, rises or zooms.
-        float lift = style->calloutOffset;
+        //
+        // NORMALIZED screen pixels, though, while the style's own callout pixels - the offset and the
+        // step - are DEVICE ones, like the glyph size they space out (Label::calculateLabelScale takes
+        // the same). Hence the conversion: measured in this space they would otherwise be tighter or
+        // looser than the names they separate by whatever the viewport's height happens to be, so a
+        // row spacing that worked in portrait had the rows overlapping in landscape.
+        float calloutPixel = std::max(1.0f, _viewState.resolution * style->scale * 0.5f);
+        if (_viewState.deviceResolution > 0 && _viewState.resolution > 0) {
+            calloutPixel *= _viewState.resolution / _viewState.deviceResolution;
+        }
+        float calloutOffset = style->calloutOffset * calloutPixel;
+        float lift = calloutOffset;
         if (style->calloutScreenAnchor >= 0) {
             float bandY = (1.0f - style->calloutScreenAnchor) * _viewState.resolution;
             lift = std::max(lift, bandY - anchorY);
@@ -503,7 +519,7 @@ namespace massif::vt {
         float maxLift = _viewState.resolution - top - SCREEN_EDGE_MARGIN;
         // Rows may go down (negative step), but never below the lift the style asks for: the label
         // belongs ABOVE its feature, and its leader line only exists while it is.
-        float minLift = std::max(style->calloutOffset, SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1));
+        float minLift = std::max(calloutOffset, SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1));
         // A summit already so high on screen that its name would not fit above it has no place for that
         // name: drop it. Pulling the label down to the screen edge instead put it BELOW its own summit,
         // off the band the style asks for and with its leader line pointing down.
@@ -513,13 +529,21 @@ namespace massif::vt {
         }
         lift = std::max(lift, minLift);
 
-        float step = (style->calloutStep > 0 ? style->calloutStep : labelInfo.size * 1.2f);
+        // NOT '> 0': a NEGATIVE step is how a style says its rows go DOWN, which is the only direction
+        // a band pinned near the top of the screen has room in - and taking the default instead sent
+        // them up into the edge margin, where `rowLift > maxLift` broke out of the row loop on the
+        // first one. Every label past the first of a crowded band was therefore dropped rather than
+        // stacked, which in a panorama is most of the horizon.
+        float step = (style->calloutStep != 0.0f ? style->calloutStep * calloutPixel : labelInfo.size * 1.2f * calloutPixel);
 
         // The row it already holds is tried first, as long as it is still one this pass would
         // offer: a label that keeps changing row while the camera moves reads as flicker even
         // though it never disappears.
         if (labelInfo.wasVisible && previousOffset > 0) {
-            if (previousOffset >= lift - 0.5f && previousOffset <= maxLift + 0.5f) {
+            // The rows this pass offers run from minLift to maxLift whichever way the step points:
+            // comparing against `lift` alone refused every row BELOW the band, so a downward-stepping
+            // style lost its held row on every pass and re-flowed the whole band.
+            if (previousOffset >= minLift - 0.5f && previousOffset <= maxLift + 0.5f) {
                 if (envelopeAt(previousOffset) && testGridOverlap(labelInfo) && testGroupDistance(labelInfo)) {
                     label->setCalloutFailures(0);
                     return true;

@@ -37,6 +37,13 @@ namespace massif::vt {
          */
         void setMetersToInternal(double metersToInternal);
         /**
+         * How far a label may be from the camera, in MULTIPLES of the camera-to-focus distance.
+         * maplibre's own cut is 5 (LabelDistance::DEFAULT_VIEW_DISTANCE), which is the default here
+         * too; 0 places every label however far away it is. A view along the ground is what needs
+         * the override - see LabelDistance and Options::setLabelViewDistance.
+         */
+        void setLabelViewDistance(double viewDistance);
+        /**
          * Whether a label's anchor is hidden by 3D content, and the layer's default occluded opacity.
          * Applied DURING placement: a label that is fully hidden reserves no collision slot, so it
          * cannot suppress a visible neighbour. mapbox returns an empty collision box for an occluded
@@ -124,6 +131,7 @@ namespace massif::vt {
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
         double _metersToInternal = 0;
+        double _labelViewDistance = LabelDistance::DEFAULT_VIEW_DISTANCE;
         std::function<bool(const cglib::vec3<double>&)> _occlusionTest;
         float _defaultOccludedOpacity = 0.0f;
         std::chrono::steady_clock::time_point _sliceDeadline;

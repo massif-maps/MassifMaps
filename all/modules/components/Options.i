@@ -102,6 +102,7 @@
 %attribute(massif::Options, int, TileStyleZoomLift, getTileStyleZoomLift, setTileStyleZoomLift)
 %attribute(massif::Options, float, DPI, getDPI, setDPI)
 %attribute(massif::Options, float, DrawDistance, getDrawDistance, setDrawDistance)
+%attribute(massif::Options, float, LabelViewDistance, getLabelViewDistance, setLabelViewDistance)
 %std_exceptions(massif::Options::setBaseProjection)
 %std_exceptions(massif::Options::setTiltRange)
 %std_exceptions(massif::Options::setZoomRange)

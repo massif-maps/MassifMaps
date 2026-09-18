@@ -1152,7 +1152,20 @@ namespace massif::vt {
         // A callout is a screen object: its size is what the style asks in pixels, taken off the
         // projection rather than the zoom. The zoom-derived scale only holds a constant screen size
         // while the camera distance follows the zoom, which free roam breaks.
-        return size * calculatePixelToWorld(viewState, *placement, zoomScale / std::max(size, 1.0f));
+        //
+        // DEVICE pixels, and with the display's own scale, so that the style's size means the same
+        // thing it means for every other label. `resolution` is the NORMALIZED screen
+        // (2 * tileDrawSize * dpiScale), so measuring against it alone left a callout's size
+        // multiplied by deviceHeight / resolution: the same name came out a different size on a
+        // taller screen, and shrank by half when the device was turned to landscape.
+        //
+        // Every other label lands at `size * dpiScale` device pixels - its world size is
+        // size * 2^-zoom / tileSize, and a tile of that zoom is drawn tileDrawSize * dpiScale pixels
+        // wide - so this takes the same. `_style->scale` is 1/tileSize, which is what makes
+        // resolution * scale / 2 the display's scale without vt having to be told it.
+        float deviceResolution = viewState.deviceResolution > 0 ? viewState.deviceResolution : viewState.resolution;
+        float pixelScale = std::max(1.0f, viewState.resolution * _style->scale * 0.5f);
+        return size * pixelScale * calculatePixelToWorld(viewState, *placement, zoomScale / std::max(size, 1.0f), deviceResolution);
     }
 
     float Label::calculateAnchorScreenY(const ViewState& viewState) const {
@@ -1184,13 +1197,17 @@ namespace massif::vt {
         return _calloutOffset + (_calloutAnchorScreenY - anchorScreenY);
     }
 
-    float Label::calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback) const {
+    float Label::calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback, float resolution) const {
         // One screen pixel is depth / (projection scale * half the screen height) world units at that
         // depth. Taken from the projection, not the label's zoom-derived scale, so a lift in pixels
         // MEANS pixels - a camera that tilts or rises would otherwise slide the label.
+        //
+        // Which screen, though, is the caller's: the culler's lifts and rows are in NORMALIZED screen
+        // pixels (the default), while a label's own size is in device pixels - see
+        // calculateLabelScale.
         cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(viewState.orientation[2]);
         double depth = cglib::dot_product(placement.position - viewState.origin, viewDir);
-        double halfScreen = viewState.projectionMatrix(1, 1) * viewState.resolution * 0.5;
+        double halfScreen = viewState.projectionMatrix(1, 1) * (resolution > 0 ? resolution : viewState.resolution) * 0.5;
         if (!(depth > 0) || !(halfScreen > 0)) {
             return fallback;
         }

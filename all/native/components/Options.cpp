@@ -9,6 +9,7 @@
 #include "projections/PlanarProjectionSurface.h"
 #include "projections/SphericalProjectionSurface.h"
 
+#include <vt/LabelDistance.h>
 #include <vt/TileTransformer.h>
 #include "utils/Const.h"
 #include "utils/Log.h"
@@ -40,6 +41,7 @@ namespace massif {
         _tileStyleZoomLift(2),
         _dpi(160.0f),
         _drawDistance(16),
+        _labelViewDistance(static_cast<float>(vt::LabelDistance::DEFAULT_VIEW_DISTANCE)),
         _fovY(70),
         _panningMode(PanningMode::PANNING_MODE_FREE),
         _pivotMode(PivotMode::PIVOT_MODE_TOUCHPOINT),
@@ -422,6 +424,23 @@ namespace massif {
             _drawDistance = drawDistance;
         }
         notifyOptionChanged("DrawDistance");
+    }
+
+    float Options::getLabelViewDistance() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _labelViewDistance;
+    }
+
+    void Options::setLabelViewDistance(float viewDistance) {
+        float clamped = std::max(0.0f, viewDistance);
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_labelViewDistance == clamped) {
+                return;
+            }
+            _labelViewDistance = clamped;
+        }
+        notifyOptionChanged("LabelViewDistance");
     }
     
     int Options::getFieldOfViewY() const {

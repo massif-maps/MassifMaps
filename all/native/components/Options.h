@@ -461,6 +461,33 @@ namespace massif {
          * @param drawDistance The new draw distance value.
          */
         void setDrawDistance(float drawDistance);
+
+        /**
+         * Returns how far labels are placed, in multiples of the camera-to-focus distance.
+         * @return The label view distance. The default is 5, and 0 means no limit.
+         */
+        float getLabelViewDistance() const;
+        /**
+         * Sets how far from the camera a label may be placed, in MULTIPLES of the camera-to-focus
+         * distance - the unit FogOptions' range and LightOptions' shadow distance also use.
+         *
+         * A label glyph is screen-space: it does not shrink with distance the way the geometry it
+         * names does, so a tilted view otherwise fills its horizon band with full-size names for
+         * features tens of kilometres away. mapbox and maplibre both cut them inside the symbol
+         * collision index, and the default here is maplibre's own cut (5; theirs is written as a
+         * perspective ratio of 0.6).
+         *
+         * It is a MAP's rule, though, not a universal one. A view along the ground - a panorama, a
+         * first person camera - has its focus a few kilometres in front of a low camera, so five
+         * times that distance cuts everything past ten or twenty kilometres, and in that view the
+         * far summits are the whole subject rather than clutter. Raise it for those, or set 0 and
+         * let the styles' own text-max-distance be the only limit.
+         *
+         * Placement cost grows with it: every label that survives the cut is a placement and a
+         * collision test per pass.
+         * @param viewDistance The new label view distance, or 0 for no limit.
+         */
+        void setLabelViewDistance(float viewDistance);
     
         /**
          * Returns the vertial field of view angle.
@@ -946,6 +973,7 @@ namespace massif {
         float _dpi;
     
         float _drawDistance;
+        float _labelViewDistance;
     
         int _fovY;
     

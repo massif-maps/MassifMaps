@@ -199,6 +199,11 @@ namespace massif {
             double coshLatitude = std::cosh(latitude);
             culler.setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE * coshLatitude);
         }
+        // How far labels may be placed, in multiples of the camera-to-focus distance. maplibre's
+        // own cut is the default; a view along the ground needs it raised or turned off, since its
+        // focus sits a few kilometres in front of a low camera and everything worth naming is past
+        // five times that (Options::setLabelViewDistance).
+        culler.setLabelViewDistance(mapRenderer->getOptions()->getLabelViewDistance());
         // Placement is rationed like mapbox's and maplibre's: a slice of wall clock per pass, then
         // resume next pass from where each layer stopped. Labels not reached keep the visibility
         // they had, so the map never shows a half-placed screen. A cycle that fit in one pass last

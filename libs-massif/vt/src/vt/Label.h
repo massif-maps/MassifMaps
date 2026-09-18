@@ -305,7 +305,9 @@ namespace massif::vt {
         // World units one SCREEN PIXEL is worth at the label's own depth, read off the projection
         // instead of the label's scale: the scale comes from the zoom, so converting with it makes
         // a callout's lift drift up and down the screen whenever the camera moves.
-        float calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback) const;
+        // `resolution` 0 (the default) measures against the NORMALIZED screen, which is what the
+        // culler's lifts and rows are in; a label's own SIZE passes the device height instead.
+        float calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback, float resolution = 0.0f) const;
         // World units one glyph unit is worth. Zoom-derived for an ordinary label (that is what
         // keeps it the same size as the rest of the map); taken off the projection for a CALLOUT,
         // which is a screen object and has to keep its pixel size whatever the camera does.

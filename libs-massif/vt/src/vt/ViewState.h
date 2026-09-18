@@ -22,6 +22,16 @@ namespace massif::vt {
         float tilt = 0;
         float aspect = 1;
         float resolution = 0;
+        // The viewport's REAL height in device pixels; 0 = not set.
+        //
+        // `resolution` above is the NORMALIZED screen - 2 * tileDrawSize * dpiScale - which is what
+        // every style size is measured against, and it says nothing about how many pixels the
+        // viewport actually has. The two only differ by a constant, so anything sized off the zoom
+        // comes out at the size the style asked whatever the screen is; but a SCREEN-space object
+        // (a callout label) sized off `resolution` alone ends up scaled by the ratio between them -
+        // so the same label was a different size on a taller screen, and shrank when the device was
+        // turned. See Label::calculateLabelScale.
+        float deviceResolution = 0;
         float zoomScale = 1;
         // Distance from the camera to the focus point, in internal units; 0 = not set, and the label
         // scaling falls back to where the view axis meets z=0. That fallback is only right for a focus

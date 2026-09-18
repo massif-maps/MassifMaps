@@ -343,6 +343,10 @@ namespace massif {
         // Missing here, vt fell back to the camera's height above the z=0 PLANE - right on a plane,
         // and on a globe the camera's world z, which sized every label at the 0.05 floor.
         prepareViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
+        // The viewport's real height, for the screen-space objects whose size is NOT derived from the
+        // zoom - see ViewState::deviceResolution and setLineAntialiasScale below, which needs the same
+        // ratio for the same reason.
+        prepareViewState.deviceResolution = static_cast<float>(viewState.getHeight());
         tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
         tileRenderer->setRadiance(_resolvedRadiance);
@@ -865,6 +869,7 @@ namespace massif {
         vtViewState.labelPerspectiveScaling = _labelPerspectiveScaling; // how much of that rescale is given back, so a distant label shrinks like maplibre's
         vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
+        vtViewState.deviceResolution = static_cast<float>(viewState.getHeight()); // see ViewState::deviceResolution: a callout's size is in device pixels, not normalized ones
         tileRenderer->setViewState(vtViewState);
         // A line width is given in unscaled-DPI units; this is what one of them is worth in device
         // pixels, so the antialias ramp can be one pixel wide instead of one unit (see lineFsh).
@@ -1352,6 +1357,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         cullViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
+        // The same as the draw pass gets, or the culler would measure a callout at a different size
+        // from the one drawn and place a row of them where they are not.
+        cullViewState.deviceResolution = static_cast<float>(viewState.getHeight());
         culler.setViewState(cullViewState);
 
         try {

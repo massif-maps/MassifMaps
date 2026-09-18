@@ -118,6 +118,12 @@ namespace massif {
         if (cullState) {
             // Reload data using the last known cull state.
             loadData(cullState);
+            // ...and a FRAME, which loading does NOT imply: refreshDrawData asks for one only when
+            // the tile SET changed (TileLayer, RasterTileLayer), so everything that changes how the
+            // tiles ALREADY loaded are drawn - opacity, visibility, a zoom range, a filter mode -
+            // left the screen exactly as it was until something else happened to redraw it. That is
+            // why an opacity slider appeared to do nothing until the map was panned.
+            redraw();
         } else {
             // Last cullstate not known yet. Let renderer do async update.
             if (auto mapRenderer = getMapRenderer()) {

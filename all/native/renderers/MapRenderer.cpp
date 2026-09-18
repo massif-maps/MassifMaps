@@ -1527,12 +1527,18 @@ namespace massif {
     void MapRenderer::setPostProcessEffect(const std::shared_ptr<PostProcessEffect>& postProcessEffect) {
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            if (_postProcessEffect == postProcessEffect) {
-                return;
+            // The clock restarts only for a DIFFERENT effect: an animated shader reads it, and a
+            // parameter change is not a new effect.
+            if (_postProcessEffect != postProcessEffect) {
+                _postProcessEffect = postProcessEffect;
+                _postProcessStartTime = std::chrono::steady_clock::now();
             }
-            _postProcessEffect = postProcessEffect;
-            _postProcessStartTime = std::chrono::steady_clock::now();
         }
+        // ...but the redraw is unconditional, INCLUDING re-setting the effect that is already set.
+        // An effect's float/color parameters are mutable on the effect object itself and it holds no
+        // reference back here, so setting the same effect again is the only way a parameter change
+        // can ask for a frame. Returning early on an unchanged pointer left every parameter write on
+        // a still map invisible until something else happened to redraw.
         requestRedraw();
     }
 

@@ -499,9 +499,15 @@ namespace massif {
                 _cameraEvents.fetch_or(CAMERA_ROTATE);
                 _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
-            // Up and down changes the tilt, in the same direction the two-finger tilt uses.
+            // Up and down changes the tilt, and OPPOSITE to the two-finger tilt on purpose.
+            //
+            // The map gesture drags the GROUND: pulling the fingers up tips the map up towards the
+            // horizon. A look drags the VIEW, which is the other way round - this is the panorama
+            // convention (Street View, every first person control scheme): the scene follows the
+            // finger, so dragging down brings the sky down into the screen, which is a look UP.
+            // Tilt 90 is straight down here, so looking up is a NEGATIVE delta for a positive dy.
             if (dy != 0) {
-                float scale = INCHES_TO_TILT_DELTA / dpi;
+                float scale = -INCHES_TO_TILT_DELTA / dpi;
                 if (_options->isTiltGestureReversed()) {
                     scale = -scale;
                 }
@@ -696,7 +702,11 @@ namespace massif {
             // covers the same part of the view at any zoom.
             double perInch = _options->getFreeRoamMoveSpeed() * viewState.calculateCameraDistance();
             double dpi = _options->getDPI();
-            cglib::vec3<double> offset = forward * (-dy / dpi * perInch) + right * (-dx / dpi * perInch);
+            // Dragging DOWN goes forward, which is the map's own pan read in first person: a one
+            // finger drag moves the ground with the finger, so pulling the ground towards you walks
+            // the camera away from you. Sideways keeps the same reading - dragging right pushes the
+            // ground right, so the camera goes left - and only the forward axis had it backwards.
+            cglib::vec3<double> offset = forward * (dy / dpi * perInch) + right * (-dx / dpi * perInch);
 
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(cameraMapPos, projectionSurface->calculateMapPos(cameraPos + offset)));

@@ -47,6 +47,12 @@
 !method(massif::CompositeVectorTileLayer, getExternalChildLayer, arg(name, string), returns(object, massif::Layer))
 // Internal, driven by MapRenderer: what the 2D/3D switch is still waiting on, for its own report.
 %ignore massif::CompositeVectorTileLayer::getTerrainDecodePendingCount;
+// The click setters are overridden only to reach the internal style-group layers - the binding stays
+// the one VectorTileLayer declares, and the call through it dispatches here because they are virtual.
+// Wrapping them again would add a second declaration of the same property to every generated surface.
+%ignore massif::CompositeVectorTileLayer::setVectorTileEventListener;
+%ignore massif::CompositeVectorTileLayer::setClickRadius;
+%ignore massif::CompositeVectorTileLayer::setClickHandlerLayerFilter;
 %std_exceptions(massif::CompositeVectorTileLayer::CompositeVectorTileLayer)
 %std_exceptions(massif::CompositeVectorTileLayer::addExternalDataSource)
 %std_exceptions(massif::CompositeVectorTileLayer::addVectorDataSource)

@@ -122,7 +122,7 @@ namespace massif {
          * Units are screen density independent pixels (DP or DIP).
          * @param radius The new click radius of vector tile features. The default value is 4.
          */
-        void setClickRadius(float radius);
+        virtual void setClickRadius(float radius);
 
         /**
          * Returns the current relative layer blending speed.
@@ -189,7 +189,7 @@ namespace massif {
          * @param filter The new click handler layer filter.
          * @throws std::runtime_error If the filter expression is not valid.
          */
-        void setClickHandlerLayerFilter(const std::string& filter);
+        virtual void setClickHandlerLayerFilter(const std::string& filter);
     
         /**
          * Returns the vector tile event listener.
@@ -200,7 +200,7 @@ namespace massif {
          * Sets the vector tile event listener.
          * @param eventListener The vector tile event listener.
          */
-        void setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener);
+        virtual void setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener);
     
     protected:
         friend class VTLabelPlacementWorker;

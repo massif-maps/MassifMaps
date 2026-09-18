@@ -238,6 +238,49 @@ namespace massif {
         }
     }
 
+    // The click state, to every internal style group.
+    //
+    // A style with external source slots draws only the layers BELOW the first slot on this layer;
+    // everything above it is on a group layer built by makeGroupLayer. A VectorTileLayer with no
+    // event listener returns from calculateRayIntersectedElements without testing anything, so a
+    // listener set on the composite alone made every feature above the first slot unclickable -
+    // with the DEM in the style's hillshade slot, that is every road, icon and label on the map.
+    //
+    // The external children are deliberately left out: they carry their own source, and a click on
+    // one is a click on that source's features, not on this style's.
+    void CompositeVectorTileLayer::setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener) {
+        VectorTileLayer::setVectorTileEventListener(eventListener);
+
+        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        for (const DrawItem& item : _drawItems) {
+            if (auto groupLayer = std::dynamic_pointer_cast<VectorTileLayer>(item.groupLayer)) {
+                groupLayer->setVectorTileEventListener(eventListener);
+            }
+        }
+    }
+
+    void CompositeVectorTileLayer::setClickRadius(float radius) {
+        VectorTileLayer::setClickRadius(radius);
+
+        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        for (const DrawItem& item : _drawItems) {
+            if (auto groupLayer = std::dynamic_pointer_cast<VectorTileLayer>(item.groupLayer)) {
+                groupLayer->setClickRadius(radius);
+            }
+        }
+    }
+
+    void CompositeVectorTileLayer::setClickHandlerLayerFilter(const std::string& filter) {
+        VectorTileLayer::setClickHandlerLayerFilter(filter);
+
+        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
+        for (const DrawItem& item : _drawItems) {
+            if (auto groupLayer = std::dynamic_pointer_cast<VectorTileLayer>(item.groupLayer)) {
+                groupLayer->setClickHandlerLayerFilter(filter);
+            }
+        }
+    }
+
     void CompositeVectorTileLayer::setExternalDataSourceZoomLevelBias(const std::string& name, float bias) {
         std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
         ExternalSource& source = getExternalSource(name);
@@ -356,6 +399,11 @@ namespace massif {
         // The groups render the same source as this layer, so they must select the same tiles.
         groupLayer->setZoomLevelBias(getZoomLevelBias());
         groupLayer->setPreloading(isPreloading());
+        // The click state too: a group is rebuilt whenever the style or the slot list changes, which
+        // is long after the app set its listener, and a group without one answers no click at all.
+        groupLayer->setClickRadius(getClickRadius());
+        groupLayer->setClickHandlerLayerFilter(getClickHandlerLayerFilter());
+        groupLayer->setVectorTileEventListener(getVectorTileEventListener());
         std::shared_ptr<Layer> child = groupLayer;
         if (_componentsSet) {
             wireChild(child);
@@ -898,6 +946,16 @@ namespace massif {
     }
 
     bool CompositeVectorTileLayer::renderComposite(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState, bool terrain) {
+        // This layer's OWN visibility, for the whole composite. Hiding a layer only stops it
+        // CULLING (TileLayer::calculateVisibleTiles returns early), which empties this layer's own
+        // renderer but leaves the group layers and the external children holding the tiles they
+        // already had - and those are drawn below without ever consulting their parent. So a hidden
+        // composite kept drawing its style's groups (roads, contours, ...) until the layer was
+        // removed outright, which is the opposite of what setVisible says.
+        if (!isVisible() || getOpacity() <= 0) {
+            return false;
+        }
+
         auto decoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(getTileDecoder());
 
         std::lock_guard<std::recursive_mutex> lock(_sourceMutex);

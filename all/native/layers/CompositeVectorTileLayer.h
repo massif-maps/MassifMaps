@@ -141,6 +141,27 @@ namespace massif {
         virtual void setPreloading(bool preloading);
 
         /**
+         * Sets the vector tile event listener for this layer and for every internal style-group
+         * layer it owns. A style with external source slots draws everything above the first slot
+         * on a group layer, and a group layer with no listener reports no click at all, so the
+         * listener has to reach them or only the bottom-most group answers clicks.
+         * @param eventListener The vector tile event listener.
+         */
+        virtual void setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener);
+        /**
+         * Sets the click radius for this layer and for every internal style-group layer it owns.
+         * @param radius The new click radius of vector tile features.
+         */
+        virtual void setClickRadius(float radius);
+        /**
+         * Sets the click handler layer filter for this layer and for every internal style-group
+         * layer it owns.
+         * @param filter The new click handler layer filter.
+         * @throws std::runtime_error If the filter expression is not valid.
+         */
+        virtual void setClickHandlerLayerFilter(const std::string& filter);
+
+        /**
          * Sets the zoom level bias of a single external data source, overriding the layer-wide value.
          * Use this to fetch a source at a different resolution from the base map - e.g. a bias of 1.0
          * on a high-resolution DEM source makes the hillshade use one zoom level more detail.

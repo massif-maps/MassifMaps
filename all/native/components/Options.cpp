@@ -443,12 +443,12 @@ namespace massif {
         notifyOptionChanged("LabelViewDistance");
     }
     
-    int Options::getFieldOfViewY() const {
+    float Options::getFieldOfViewY() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _fovY;
     }
     
-    void Options::setFieldOfViewY(int fovY) {
+    void Options::setFieldOfViewY(float fovY) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             if (_fovY == fovY) {

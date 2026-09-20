@@ -324,7 +324,7 @@ public final class ApiNames {
     /** In case of MultiPoint PointGeometry this will return the index of the clicked position */
     public static final MassifObject.Key<Long> FEATURE_POS_INDEX = MassifObject.key("featurePosIndex");
     /** Returns the vertial field of view angle. */
-    public static final MassifObject.Key<Long> FIELD_OF_VIEW_Y = MassifObject.key("fieldOfViewY");
+    public static final MassifObject.Key<Double> FIELD_OF_VIEW_Y = MassifObject.key("fieldOfViewY");
     /** Returns the string based search expression. If empty, then search expression is not used. */
     public static final MassifObject.Key<String> FILTER_EXPRESSION = MassifObject.key("filterExpression");
     /** Returns how far a flattened terrain goes back towards a plain 2D map. */

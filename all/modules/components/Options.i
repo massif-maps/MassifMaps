@@ -56,7 +56,7 @@
 !alias(massif::Options, light, lightOptions)
 !alias(massif::Options, projection, baseProjection)
 !alias(massif::Options, background, backgroundBitmap)
-%attribute(massif::Options, int, FieldOfViewY, getFieldOfViewY, setFieldOfViewY)
+%attribute(massif::Options, float, FieldOfViewY, getFieldOfViewY, setFieldOfViewY)
 %attribute(massif::Options, bool, KineticZoom, isKineticZoom, setKineticZoom)
 %attribute(massif::Options, bool, Rotatable, isRotatable, setRotatable)
 %attribute(massif::Options, bool, UserInput, isUserInput, setUserInput)

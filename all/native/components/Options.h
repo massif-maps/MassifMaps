@@ -493,13 +493,18 @@ namespace massif {
          * Returns the vertial field of view angle.
          * @return The vertical field of view angle in degrees.
          */
-        int getFieldOfViewY() const;
+        float getFieldOfViewY() const;
         /**
          * Sets the vertial field of view angle. Larger values increase the viewable area, at the cost of performance and
          * additional perspective distortion. The default is 70.
+         *
+         * FRACTIONAL degrees are meaningful and are the reason this is not an integer: an AR overlay
+         * has to reproduce the field of view of the camera behind it exactly, or a feature is drawn
+         * at a different size from the one photographed. One degree is about 3% of the tangent at a
+         * narrow field, which at the frame edge is a mismatch of tens of pixels.
          * @param fovY The new vertical field of view angle in degrees.
          */
-        void setFieldOfViewY(int fovY);
+        void setFieldOfViewY(float fovY);
     
         /**
          * Returns the panning mode.
@@ -975,7 +980,7 @@ namespace massif {
         float _drawDistance;
         float _labelViewDistance;
     
-        int _fovY;
+        float _fovY;
     
         PanningMode::PanningMode _panningMode;
         

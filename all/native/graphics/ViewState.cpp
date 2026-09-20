@@ -366,7 +366,7 @@ namespace massif {
         return _far;
     }
     
-    int ViewState::getFOVY() const {
+    float ViewState::getFOVY() const {
         return _fovY;
     }
     
@@ -621,7 +621,7 @@ namespace massif {
     void ViewState::calculateViewState(const Options& options) {
         // If FOV or tile draw size changed, recalculate zoom0Distance
         std::shared_ptr<ProjectionSurface> projectionSurface = options.getProjectionSurface();
-        int FOVY = options.getFieldOfViewY();
+        float FOVY = options.getFieldOfViewY();
         int tileDrawSize = options.getTileDrawSize();
         float zoomOffset = options.getZoomOffset();
         float dpi = options.getDPI();

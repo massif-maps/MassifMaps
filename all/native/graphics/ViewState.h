@@ -269,7 +269,7 @@ namespace massif {
          * Returns the vertical field of view angle.
          * @return The vertical field of view angle in degrees.
          */
-        int getFOVY() const;
+        float getFOVY() const;
         /**
          * Returns the vertical field of view angle, divided by 2.
          * @return The vertical field of view angle in degrees, divided by 2.
@@ -539,7 +539,7 @@ namespace massif {
         double _terrainClearanceFloor = 0.0; // the app's CameraClearance, internal units
         double _terrainCameraZ = 0.0; // terrain height under the camera, 0 = unknown
     
-        int _fovY;
+        float _fovY;
         float _halfFOVY;
         double _tanHalfFOVY;
         double _cosHalfFOVY;

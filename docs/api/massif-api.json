@@ -5536,11 +5536,11 @@
         },
         {
           "name": "fieldOfViewY",
-          "type": "INT",
+          "type": "FLOAT",
           "readOnly": false,
           "static": false,
           "position": false,
-          "cppType": "int",
+          "cppType": "float",
           "doc": "Returns the vertial field of view angle."
         },
         {

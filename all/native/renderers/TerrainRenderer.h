@@ -18,6 +18,7 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #include <cglib/vec.h>
@@ -141,8 +142,11 @@ namespace massif {
          * with the current one: the buffer lags a moving camera by up to the submit interval,
          * so a current-camera distance compared against it reads every label as occluded while
          * zooming out. Projecting with the buffer's own matrix makes the answer merely late.
-         * Fails open (not occluded) when there is no data, or when the position falls behind
-         * that camera or outside its viewport.
+         *
+         * A position that camera cannot see - behind it, or outside its viewport - is UNANSWERABLE
+         * rather than visible, and gets the verdict it was last given (see _occlusionVerdicts).
+         * Fails open only when there is no data at all, or when nothing is known about the
+         * position yet.
          */
         bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance) const;
 
@@ -193,6 +197,11 @@ namespace massif {
         static constexpr int MAX_VISIBLE_MESH_TILES = MAX_CACHED_MESHES / 2;
         static constexpr int DEPTH_TEXTURE_MESH_RESOLUTION = 32; // mesh cap for the occlusion depth texture
         static constexpr int OCCLUSION_SAMPLE_OFFSET = 4; // buffer pixels sampled around a queried position
+        // How many remembered occlusion verdicts are kept (see _occlusionVerdicts). One per labelled
+        // feature the camera has looked at, so a panorama's few thousand summits fit; past it the
+        // whole table is dropped rather than evicted one by one - a verdict is a hint, and losing it
+        // costs one pass of the behaviour this had before.
+        static constexpr std::size_t MAX_OCCLUSION_VERDICTS = 8192;
 
         static const std::string TERRAIN_DEPTH_VERTEX_SHADER;
         static const std::string TERRAIN_DEPTH_FRAGMENT_SHADER;
@@ -235,6 +244,13 @@ namespace massif {
         // Linear eye depth (view w, internal units) of the terrain at a buffer pixel. Returns a
         // huge value for sky pixels and for pixels outside the buffer.
         static float sampleDepthW(const TerrainDepthBuffer& depthData, int x, int y);
+        // A queried position's identity, for the remembered verdicts. The HORIZONTAL position only:
+        // a label's elevation is re-anchored as elevation tiles stream in, and a key that moved with
+        // it would forget the verdict exactly while the data it depends on is arriving.
+        static long long occlusionVerdictKey(const cglib::vec3<double>& pos);
+        bool cachedOcclusionVerdict(long long key) const;
+        void rememberOcclusionVerdict(long long key, bool occluded) const;
+        void resetOcclusionVerdicts();
 
         std::shared_ptr<vt::TileTransformer> _tileTransformer;
         std::shared_ptr<FrameBuffer> _frameBuffer;
@@ -270,6 +286,18 @@ namespace massif {
         std::chrono::steady_clock::time_point _depthReadbackTime; // throttles read-backs while the camera moves
         cglib::mat4x4<double> _depthLastSeenMVPMatrix = cglib::mat4x4<double>::zero(); // camera of the previous frame
         bool _depthStale = false; // an update was deferred: the data no longer matches the camera
+
+        // The last verdict each queried position was given, and why one is kept at all: the depth
+        // buffer only covers the camera it was rendered from, which lags a moving one by up to the
+        // submit interval. A label the camera has just turned toward falls OUTSIDE that buffer, and
+        // answering 'not occluded' there made every name entering from the screen edge appear and
+        // then vanish once the buffer caught up - the labels that showed and disappeared while
+        // looking around. Unanswerable now means 'as before' instead of 'visible'.
+        //
+        // Cleared when the elevation changes, which is the one thing that can change a verdict for a
+        // camera that has not moved.
+        mutable std::unordered_map<long long, bool> _occlusionVerdicts;
+        mutable std::mutex _occlusionVerdictMutex;
     };
 }
 

@@ -22,6 +22,8 @@
 #include <algorithm>
 #include <limits>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <set>
 
 namespace massif {
@@ -480,6 +482,9 @@ namespace massif {
             _depthStale = true;
             return true;
         }
+        if (_depthElevationVersion != elevationVersion) {
+            resetOcclusionVerdicts(); // new ground, so what a position was last told may be wrong
+        }
         _depthMVPMatrix = mvpMatrix;
         _depthElevationVersion = elevationVersion;
         _depthStale = true; // the result lands in a later frame; keep rendering until it does
@@ -542,6 +547,9 @@ namespace massif {
             std::lock_guard<std::mutex> lock(_depthMutex);
             _depthDataSnapshot = std::move(newDepthData);
         }
+        if (_depthElevationVersion != elevationVersion) {
+            resetOcclusionVerdicts(); // new ground, so what a position was last told may be wrong
+        }
         _depthMVPMatrix = viewState.getModelviewProjectionMat();
         _depthElevationVersion = elevationVersion;
         GLContext::CheckGLError("TerrainRenderer::updateDepthBuffer");
@@ -561,6 +569,36 @@ namespace massif {
         return depth * depthData.far;
     }
 
+    long long TerrainRenderer::occlusionVerdictKey(const cglib::vec3<double>& pos) {
+        // The bit patterns, not a quantization: a label's centre is recomputed from the same tile
+        // geometry on every placement pass and repeats exactly, so this hits. A rebuilt or moved
+        // feature misses instead of colliding, and a miss is the behaviour this had before.
+        std::uint64_t xBits = 0, yBits = 0;
+        double x = pos(0), y = pos(1);
+        std::memcpy(&xBits, &x, sizeof(xBits));
+        std::memcpy(&yBits, &y, sizeof(yBits));
+        return static_cast<long long>(xBits ^ (yBits * 0x9E3779B97F4A7C15ULL));
+    }
+
+    bool TerrainRenderer::cachedOcclusionVerdict(long long key) const {
+        std::lock_guard<std::mutex> lock(_occlusionVerdictMutex);
+        auto it = _occlusionVerdicts.find(key);
+        return it != _occlusionVerdicts.end() ? it->second : false; // never seen: as before, place it
+    }
+
+    void TerrainRenderer::rememberOcclusionVerdict(long long key, bool occluded) const {
+        std::lock_guard<std::mutex> lock(_occlusionVerdictMutex);
+        if (_occlusionVerdicts.size() >= MAX_OCCLUSION_VERDICTS) {
+            _occlusionVerdicts.clear();
+        }
+        _occlusionVerdicts[key] = occluded;
+    }
+
+    void TerrainRenderer::resetOcclusionVerdicts() {
+        std::lock_guard<std::mutex> lock(_occlusionVerdictMutex);
+        _occlusionVerdicts.clear();
+    }
+
     bool TerrainRenderer::isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance) const {
         std::shared_ptr<const TerrainDepthBuffer> depthData;
         {
@@ -571,15 +609,24 @@ namespace massif {
             return false;
         }
 
+        long long verdictKey = occlusionVerdictKey(pos);
         cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), depthData->mvpMatrix);
         if (clipPos(3) <= 0) {
-            return false;
+            return cachedOcclusionVerdict(verdictKey); // behind the buffer's camera: unanswerable
         }
         int x = static_cast<int>((clipPos(0) / clipPos(3) * 0.5 + 0.5) * depthData->width);
         int y = static_cast<int>((0.5 - clipPos(1) / clipPos(3) * 0.5) * depthData->height);
+        // Outside the buffer's viewport is UNANSWERABLE, and is not the same thing as a sky pixel
+        // inside it - which is a real answer, and the common one for a summit on the horizon. The
+        // bounds are tested here rather than left to sampleDepthW, which returns the same 'nothing
+        // there' for both.
+        if (x < 0 || y < 0 || x >= depthData->width || y >= depthData->height) {
+            return cachedOcclusionVerdict(verdictKey);
+        }
         float depthW = sampleDepthW(*depthData, x, y);
         if (depthW == std::numeric_limits<float>::max()) {
-            return false; // sky, or moved outside what this buffer covers
+            rememberOcclusionVerdict(verdictKey, false);
+            return false; // sky: nothing in front of it
         }
         // Farthest terrain depth AROUND the position, not the depth of its own pixel: a ground label
         // sits exactly on the terrain and the buffer is read back downscaled, so on a slope an exact
@@ -596,7 +643,9 @@ namespace massif {
                 nearestW = std::min(nearestW, neighbourDepthW);
             }
         }
-        return TerrainOcclusion::isBehind(static_cast<float>(clipPos(3)), depthW, depthW - nearestW, tolerance);
+        bool occluded = TerrainOcclusion::isBehind(static_cast<float>(clipPos(3)), depthW, depthW - nearestW, tolerance);
+        rememberOcclusionVerdict(verdictKey, occluded);
+        return occluded;
     }
 
     void TerrainRenderer::collectVisibleTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, std::vector<MapTile>& tiles) const {

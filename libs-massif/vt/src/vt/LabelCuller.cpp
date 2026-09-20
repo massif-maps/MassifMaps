@@ -217,6 +217,7 @@ namespace massif::vt {
                     if (_metersToInternal > 0) {
                         distance = static_cast<float>(internalDistance / _metersToInternal);
                         if (maxDistance > 0 && distance > maxDistance) {
+                            VT_STAT_INC(cullerMaxDistanceCut);
                             label->setVisible(false);
                             continue;
                         }

@@ -35,22 +35,34 @@ namespace massif {
         // whole frame threw away every frame in which one section landed on a flush.
         const double MAX_PLAUSIBLE_MS = 500.0;
 
+        // Process-wide: an entry point is the driver's, not a context's.
         PFNGLGENQUERIESEXTPROC GenQueriesEXT = NULL;
         PFNGLBEGINQUERYEXTPROC BeginQueryEXT = NULL;
         PFNGLENDQUERYEXTPROC EndQueryEXT = NULL;
         PFNGLGETQUERYOBJECTUIVEXTPROC GetQueryObjectuivEXT = NULL;
 
-        QuerySlot Slots[SLOT_COUNT];
-        int CurrentSlot = -1;
-        int ActiveSection = -1;
-        bool Initialized = false;
-        bool Supported = false;
+        // Everything below is PER GL THREAD, because a query object belongs to the context that
+        // generated it. A process can hold several map views - the panorama beside the main map -
+        // each with its own thread and context, and one shared set of these meant the second
+        // renderer called glBeginQueryEXT with names from the FIRST context. That is
+        // GL_INVALID_OPERATION, once per frame forever, reported at whichever CheckGLError came
+        // next: 8000 'GLError (0x502) at BackgroundRenderer::onDrawFrame' lines in twenty minutes,
+        // starting at the exact frame the second view's surface was created. The same held for a
+        // surface RECREATED after a context loss, where the names belonged to a context that no
+        // longer existed. 'Initialized' being per thread is what makes each context generate its
+        // own queries; ActiveSection per thread is what keeps one renderer's endSection from
+        // closing another's query.
+        thread_local QuerySlot Slots[SLOT_COUNT];
+        thread_local int CurrentSlot = -1;
+        thread_local int ActiveSection = -1;
+        thread_local bool Initialized = false;
+        thread_local bool Supported = false;
 
-        double SumMs[GpuFrameProfiler::SECTION_COUNT];
-        int SectionFrames[GpuFrameProfiler::SECTION_COUNT];
-        int SectionDrops[GpuFrameProfiler::SECTION_COUNT];
-        int MeasuredFrames = 0;
-        int DisjointFrames = 0;
+        thread_local double SumMs[GpuFrameProfiler::SECTION_COUNT];
+        thread_local int SectionFrames[GpuFrameProfiler::SECTION_COUNT];
+        thread_local int SectionDrops[GpuFrameProfiler::SECTION_COUNT];
+        thread_local int MeasuredFrames = 0;
+        thread_local int DisjointFrames = 0;
 
         void Initialize() {
             Initialized = true;
@@ -128,6 +140,20 @@ namespace massif {
             }
             MeasuredFrames++;
             slot.pending = false;
+        }
+    }
+
+    void GpuFrameProfiler::resetContext() {
+        // The old names are NOT deleted: they belong to a context that is either gone or is
+        // another thread's, and deleting them from here is the very error this exists to avoid.
+        // A few leaked query names per context, in a profiling build only.
+        Initialized = false;
+        Supported = false;
+        CurrentSlot = -1;
+        ActiveSection = -1;
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            Slots[i].pending = false;
+            std::fill(Slots[i].used, Slots[i].used + GpuFrameProfiler::SECTION_COUNT, false);
         }
     }
 
@@ -235,6 +261,9 @@ namespace massif {
             warned = true;
             Log::Info("GpuFrameProfiler: built without GL_EXT_disjoint_timer_query headers, GPU timings disabled");
         }
+    }
+
+    void GpuFrameProfiler::resetContext() {
     }
 
     void GpuFrameProfiler::beginSection(int section) {

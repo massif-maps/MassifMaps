@@ -72,6 +72,11 @@ namespace massif {
             SECTION_COUNT
         };
 
+        // Called when a GL context is created on this thread: the query objects belong to the
+        // context that generated them, so a recreated surface has to generate its own. Without
+        // this the names of the dead context were used forever, and every glBeginQueryEXT was a
+        // GL_INVALID_OPERATION.
+        static void resetContext();
         // Called at the start of every frame: collects whatever the GPU has finished and picks
         // the query slot this frame writes into.
         static void beginFrame();
@@ -83,31 +88,40 @@ namespace massif {
 
     struct FrameProfiler {
         // Where the current frame spent its time. Reset at the start of every frame.
-        static inline double skyMs = 0;        // frame start: state, sky, background (includes the swap-buffer wait)
-        static inline double preludeMs = 0;    // terrain depth pre-pass / occlusion depth read-back
+        //
+        // PER THREAD, and that is not a detail: a process can have SEVERAL map views, each with its
+        // own GL thread and its own context (the panorama next to the main map). Shared, every field
+        // here was the sum of two frames drawn by two renderers at two frame rates, and the 'PROF'
+        // line described neither of them. One set per GL thread means one line per map, told apart
+        // by the thread id logcat already prints.
+        //
+        // The RenderStats counters below are still process-wide atomics, so the per-frame deltas in
+        // checkSpike are shared where these are not.
+        static inline thread_local double skyMs = 0;        // frame start: state, sky, background (includes the swap-buffer wait)
+        static inline thread_local double preludeMs = 0;    // terrain depth pre-pass / occlusion depth read-back
         // prelude's own split: it holds five unrelated things and dominates a 3D pan, and its GPU
         // time is 0.0, so the answer is which CPU step - not which draw.
-        static inline double preTerrainMs = 0;   // terrain surface / background fill, incl. its elevation walk
-        static inline double preDepthMs = 0;     // occlusion depth buffer refresh (read-back when sync)
-        static inline double preClearanceMs = 0; // camera clearance: one elevation lookup, on ElevationManager's lock
-        static inline double prePaintMs = 0;     // terrain paint tile list, per frame, into the vt renderer
-        static inline double prePaintPushMs = 0;   // ... of which the push itself, which takes the vt lock
-        static inline double prePaintLayersMs = 0; // ... collectDrapeLayers, which takes a composite's _sourceMutex
-        static inline double prePaintLayerLockMs = 0; // ... of which waiting for that _sourceMutex
-        static inline double prePaintConfigMs = 0;    // ... of which resolving each slot's style config
-        static inline double prePaintApplyMs = 0;     // ... of which applying it to the child layer
-        static inline double prePaintCoverMs = 0;  // ... the terrain's own visible tile walk
-        static inline double preHeadMs = 0;        // frame start to the terrain fill: layer list, depth-write walk
-        static inline double preTailMs = 0;        // the paint block to the end: drape layer walk, cache setup
-        static inline double preTailCacheMs = 0;   // ... of which the drape cache setup alone
-        static inline double preTailOptionsMs = 0; // ... of which reading the terrain options
-        static inline double preTailWalkMs = 0;    // ... of which the drape/ground layer walk
-        static inline double prepareMs = 0;    // per-layer startFrame (label re-anchoring, blending state)
-        static inline double coverMs = 0;      // drape cover computation
-        static inline double drapeMs = 0;      // drape bakes + terrain surface draws
-        static inline double layerMs = 0;      // base layer draw pass
-        static inline double layer3DMs = 0;    // 3D layer draw pass
-        static inline double billboardMs = 0;  // billboard sorting and drawing
+        static inline thread_local double preTerrainMs = 0;   // terrain surface / background fill, incl. its elevation walk
+        static inline thread_local double preDepthMs = 0;     // occlusion depth buffer refresh (read-back when sync)
+        static inline thread_local double preClearanceMs = 0; // camera clearance: one elevation lookup, on ElevationManager's lock
+        static inline thread_local double prePaintMs = 0;     // terrain paint tile list, per frame, into the vt renderer
+        static inline thread_local double prePaintPushMs = 0;   // ... of which the push itself, which takes the vt lock
+        static inline thread_local double prePaintLayersMs = 0; // ... collectDrapeLayers, which takes a composite's _sourceMutex
+        static inline thread_local double prePaintLayerLockMs = 0; // ... of which waiting for that _sourceMutex
+        static inline thread_local double prePaintConfigMs = 0;    // ... of which resolving each slot's style config
+        static inline thread_local double prePaintApplyMs = 0;     // ... of which applying it to the child layer
+        static inline thread_local double prePaintCoverMs = 0;  // ... the terrain's own visible tile walk
+        static inline thread_local double preHeadMs = 0;        // frame start to the terrain fill: layer list, depth-write walk
+        static inline thread_local double preTailMs = 0;        // the paint block to the end: drape layer walk, cache setup
+        static inline thread_local double preTailCacheMs = 0;   // ... of which the drape cache setup alone
+        static inline thread_local double preTailOptionsMs = 0; // ... of which reading the terrain options
+        static inline thread_local double preTailWalkMs = 0;    // ... of which the drape/ground layer walk
+        static inline thread_local double prepareMs = 0;    // per-layer startFrame (label re-anchoring, blending state)
+        static inline thread_local double coverMs = 0;      // drape cover computation
+        static inline thread_local double drapeMs = 0;      // drape bakes + terrain surface draws
+        static inline thread_local double layerMs = 0;      // base layer draw pass
+        static inline thread_local double layer3DMs = 0;    // 3D layer draw pass
+        static inline thread_local double billboardMs = 0;  // billboard sorting and drawing
 
         static double now() {
             return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -146,7 +160,7 @@ namespace massif {
             struct Snapshot {
                 long long tileSets, labelMaps, labelsAlloc, snaps, cullPasses, geomDraws, surfBuilt;
             };
-            static Snapshot last = { 0, 0, 0, 0, 0, 0, 0 };
+            static thread_local Snapshot last = { 0, 0, 0, 0, 0, 0, 0 };
             Snapshot now = {
                 RenderStats::visibleTileSetChanges.load(), RenderStats::labelMapRebuilds.load(),
                 RenderStats::labelsAllocated.load(), RenderStats::snapPlacements.load(),
@@ -203,10 +217,10 @@ namespace massif {
         static void endFrame(double frameMs) {
             checkSpike(frameMs);
 
-            static double sumMs = 0, maxMs = 0, sumSky = 0, sumPrelude = 0, sumPrepare = 0;
-            static double sumCover = 0, sumDrape = 0, sumLayer = 0, sumLayer3D = 0, sumBillboard = 0;
-            static int count = 0;
-            static std::chrono::steady_clock::time_point lastLog = std::chrono::steady_clock::now();
+            static thread_local double sumMs = 0, maxMs = 0, sumSky = 0, sumPrelude = 0, sumPrepare = 0;
+            static thread_local double sumCover = 0, sumDrape = 0, sumLayer = 0, sumLayer3D = 0, sumBillboard = 0;
+            static thread_local int count = 0;
+            static thread_local std::chrono::steady_clock::time_point lastLog = std::chrono::steady_clock::now();
 
             sumMs += frameMs;
             maxMs = std::max(maxMs, frameMs);
@@ -239,6 +253,7 @@ namespace massif {
 #define FRAME_PROF_END(startVar) (massif::FrameProfiler::endFrame(massif::FrameProfiler::now() - (startVar)))
 #define FRAME_PROF_GPU_BEGIN(section) (massif::GpuFrameProfiler::beginSection(massif::GpuFrameProfiler::section))
 #define FRAME_PROF_GPU_END() (massif::GpuFrameProfiler::endSection())
+#define FRAME_PROF_GPU_RESET() (massif::GpuFrameProfiler::resetContext())
 
 #else
 
@@ -249,6 +264,7 @@ namespace massif {
 #define FRAME_PROF_END(startVar) ((void)0)
 #define FRAME_PROF_GPU_BEGIN(section) ((void)0)
 #define FRAME_PROF_GPU_END() ((void)0)
+#define FRAME_PROF_GPU_RESET() ((void)0)
 
 #endif
 

@@ -284,6 +284,12 @@ namespace massif::vt {
         static inline std::atomic<long long> cullerNs{0};
         // Labels the perspective cut dropped before they cost a placement - the horizon band.
         static inline std::atomic<long long> cullerDistanceCut{0};
+        // Labels hidden by the STYLE's own max-distance (text/shield/marker 'max-distance'), which is
+        // a different rule from the perspective cut above and was the one fate a line did not report.
+        // Counted because of what its absence cost: a panorama with the app's max-distance left at
+        // 10 km showed every summit once - the pass that places a label cannot measure its distance
+        // yet - and hid it on the next pass, and the line said only that 'considered' did not add up.
+        static inline std::atomic<long long> cullerMaxDistanceCut{0};
         static inline std::atomic<long long> cullerConsidered{0};
         // LabelCuller::process by phase - which one a time budget would have to slice.
         static inline std::atomic<long long> cullerCollectNs{0}; // updatePlacement + variant envelopes, per label

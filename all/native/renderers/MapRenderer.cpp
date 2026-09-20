@@ -76,12 +76,25 @@ namespace massif {
 #if MASSIF_VT_RENDER_STATS
     namespace {
         // Diagnostic dump of the vt label/tile churn counters (vt/RenderStats.h,
-        // MASSIF_VT_RENDER_STATS). All but 'live' are per-interval deltas; GL thread only, so the
-        // previous values need no synchronization.
+        // MASSIF_VT_RENDER_STATS). All but 'live' are per-interval deltas.
+        //
+        // The counters are PROCESS-wide, so these lines describe every map view in the process
+        // together - the panorama beside the main map. The consecutive lines still tile the
+        // timeline (each is the delta since the previous one, whichever renderer printed it), but a
+        // line cannot be attributed to one map. It USED to be worse than that: 'GL thread only, so
+        // the previous values need no synchronization' stopped being true the day a second map view
+        // existed, and two GL threads then tore the previous values between them. Hence the lock -
+        // whoever gets it prints, the other renderer's frame just carries on.
         constexpr int RENDER_STATS_INTERVAL = 1000; // ms
 
         void logRenderStats() {
             using vt::RenderStats;
+
+            static std::mutex statsMutex;
+            std::unique_lock<std::mutex> statsLock(statsMutex, std::try_to_lock);
+            if (!statsLock.owns_lock()) {
+                return; // another renderer is printing this interval
+            }
 
             static const int COUNT = 17;
             static std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
@@ -91,6 +104,7 @@ namespace massif {
             if (now - lastTime < std::chrono::milliseconds(RENDER_STATS_INTERVAL)) {
                 return;
             }
+            double intervalMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
             lastTime = now;
 
             const long long values[COUNT] = {
@@ -128,40 +142,55 @@ namespace massif {
             lastFlips = flips;
             lastCullerNs = cullerNs;
 
-            static long long lastConsidered = 0, lastDistanceCut = 0;
+            static long long lastConsidered = 0, lastDistanceCut = 0, lastMaxDistanceCut = 0;
             static long long lastCullPhase[3] = { 0 };
             static long long lastCullFate[6] = { 0 };
             static long long lastLabelMapSkips = 0;
-            long long deltaLabelMapSkips = RenderStats::labelMapSkips.load() - lastLabelMapSkips;
-            lastLabelMapSkips = RenderStats::labelMapSkips.load();
-            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld labelMapSkips=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld notFacing=%lld collided=%lld occluded=%lld",
+            long long labelMapSkips = RenderStats::labelMapSkips.load();
+            long long deltaLabelMapSkips = labelMapSkips - lastLabelMapSkips;
+            lastLabelMapSkips = labelMapSkips;
+
+            // ONE snapshot of the culler counters, taken before anything is printed, and the SAME
+            // values stored as the previous interval's. They used to be loaded inside the Log call
+            // and loaded AGAIN, a line later, to become 'last': the placement worker keeps counting
+            // in between, so each counter was sampled at a different instant and every increment
+            // that landed in the gap was reported in no interval at all. That is why a line did not
+            // add up - considered 369 against placeUpd 211 with distCut 0 read as 158 labels cut by
+            // a style max-distance that no style in the app sets.
+            const long long considered = RenderStats::cullerConsidered.load();
+            const long long distanceCut = RenderStats::cullerDistanceCut.load();
+            const long long maxDistanceCut = RenderStats::cullerMaxDistanceCut.load();
+            const long long cullPhase[3] = {
+                RenderStats::cullerCollectNs.load(), RenderStats::cullerSortNs.load(), RenderStats::cullerInsertNs.load()
+            };
+            const long long cullFate[6] = {
+                RenderStats::cullerInvalid.load(), RenderStats::cullerSorted.load(), RenderStats::cullerVisible.load(),
+                RenderStats::cullerNotFacing.load(), RenderStats::cullerCollided.load(), RenderStats::cullerOccluded.load()
+            };
+            Log::Infof("RenderStats: over %.0f ms | cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld labelMapSkips=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld styleMaxDistCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld notFacing=%lld collided=%lld occluded=%lld",
+                       intervalMs,
                        deltas[13], deltas[14], deltas[15], deltas[0], deltas[11], deltaLabelMapSkips,
                        deltas[1], deltas[2],
                        deltas[3], deltas[12], RenderStats::labelsLive.load(), deltas[4],
                        deltas[5], deltas[6], deltas[7], deltas[8], deltas[16],
                        deltas[9], deltas[10], deltaPasses, deltaFlips, deltaCullerNs / 1.0e6,
-                       RenderStats::cullerConsidered.load() - lastConsidered,
-                       RenderStats::cullerDistanceCut.load() - lastDistanceCut,
-                       (RenderStats::cullerCollectNs.load() - lastCullPhase[0]) / 1.0e6,
-                       (RenderStats::cullerSortNs.load() - lastCullPhase[1]) / 1.0e6,
-                       (RenderStats::cullerInsertNs.load() - lastCullPhase[2]) / 1.0e6,
-                       RenderStats::cullerInvalid.load() - lastCullFate[0],
-                       RenderStats::cullerSorted.load() - lastCullFate[1],
-                       RenderStats::cullerVisible.load() - lastCullFate[2],
-                       RenderStats::cullerNotFacing.load() - lastCullFate[3],
-                       RenderStats::cullerCollided.load() - lastCullFate[4],
-                       RenderStats::cullerOccluded.load() - lastCullFate[5]);
-            lastCullFate[0] = RenderStats::cullerInvalid.load();
-            lastCullFate[1] = RenderStats::cullerSorted.load();
-            lastCullFate[2] = RenderStats::cullerVisible.load();
-            lastCullFate[3] = RenderStats::cullerNotFacing.load();
-            lastCullFate[4] = RenderStats::cullerCollided.load();
-            lastCullFate[5] = RenderStats::cullerOccluded.load();
-            lastConsidered = RenderStats::cullerConsidered.load();
-            lastDistanceCut = RenderStats::cullerDistanceCut.load();
-            lastCullPhase[0] = RenderStats::cullerCollectNs.load();
-            lastCullPhase[1] = RenderStats::cullerSortNs.load();
-            lastCullPhase[2] = RenderStats::cullerInsertNs.load();
+                       considered - lastConsidered,
+                       distanceCut - lastDistanceCut,
+                       maxDistanceCut - lastMaxDistanceCut,
+                       (cullPhase[0] - lastCullPhase[0]) / 1.0e6,
+                       (cullPhase[1] - lastCullPhase[1]) / 1.0e6,
+                       (cullPhase[2] - lastCullPhase[2]) / 1.0e6,
+                       cullFate[0] - lastCullFate[0],
+                       cullFate[1] - lastCullFate[1],
+                       cullFate[2] - lastCullFate[2],
+                       cullFate[3] - lastCullFate[3],
+                       cullFate[4] - lastCullFate[4],
+                       cullFate[5] - lastCullFate[5]);
+            std::copy(cullFate, cullFate + 6, lastCullFate);
+            std::copy(cullPhase, cullPhase + 3, lastCullPhase);
+            lastConsidered = considered;
+            lastDistanceCut = distanceCut;
+            lastMaxDistanceCut = maxDistanceCut;
 
             // Draw submission, per interval. geomDraws is the number that matters: the frame
             // cost of a style tracks it, not the index count next to it.
@@ -1137,6 +1166,9 @@ namespace massif {
         }
         _glResourceManager = std::make_shared<GLResourceManager>();
         _glResourceManager->setGLThreadId(std::this_thread::get_id());
+
+        // The GPU timer queries belong to the context that generated them, and this is a new one.
+        FRAME_PROF_GPU_RESET();
 
         // Reset screen blending state
         _screenBoundFBOs.clear();

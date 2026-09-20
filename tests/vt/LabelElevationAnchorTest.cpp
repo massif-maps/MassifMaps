@@ -178,6 +178,26 @@ void testLabelElevationAnchor() {
         TEST_CHECK((deck & 1) == (ground & 1), "and the offset mode in bit 0 untouched");
     }
 
+    // The floating POI: the first anchor of a 2D/3D switch is taken from a COARSE ancestor tile -
+    // finite, and metres over the real ground - and the exact tile lands frames later. An already
+    // anchored label must still take the better height, and must follow the exaggeration ramp step
+    // by step, or it stays in the air. What feeds it those samples is TileRenderer, which has to
+    // invalidate on the elevation TEXTURE landing and on the exaggeration, not only on the grid.
+    {
+        std::shared_ptr<Label> label = buildPointLabel();
+        label->updatePlacement(viewState);
+        TEST_CHECK(label->updateElevation(constantHeight(127.0)), "the coarse ancestor anchors the label");
+        TEST_CHECK(label->isElevationAnchored(), "so it counts as anchored from there on");
+        TEST_CHECK(label->updateElevation(constantHeight(34.0)), "the exact tile re-anchors it");
+        double z = 0;
+        TEST_CHECK(anchorHeight(label, z) && std::abs(z - 34.0) < 1e-6, "down onto the ground it stands on");
+        for (int step = 1; step <= 4; step++) {
+            double ramped = 34.0 * step * 0.25;
+            TEST_CHECK(label->updateElevation(constantHeight(ramped)), "every ramp step re-anchors the label");
+            TEST_CHECK(anchorHeight(label, z) && std::abs(z - ramped) < 1e-6, "at the exaggeration of that step");
+        }
+    }
+
     // Repeated misses never drift: the anchor is the last KNOWN height however often it is asked.
     {
         std::shared_ptr<Label> label = buildPointLabel();

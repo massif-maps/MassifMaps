@@ -917,7 +917,20 @@ namespace massif {
                                     contentTileIds.emplace_back(mapTile.getZoom(), mapTile.getX(), mapTile.getY());
                                 }
                                 tileRenderer->invalidateExtrusionBases(contentTileIds);
+                                // A label anchor reads the same texture entry first, so it is left on an
+                                // ancestor by the same lag - and an ancestor is metres too high, which is
+                                // a POI floating over the ground once the switch has settled.
+                                tileRenderer->invalidateLabelElevation(contentTileIds);
                             }
+                        }
+                        // Every CPU height carries the exaggeration, so a ramp step invalidates the whole
+                        // screen. Hoisted out of the branches below: those name the tiles whose DATA
+                        // changed, and on a frame that brought both, the labels elsewhere kept a height
+                        // from a step of the 2D/3D ramp that the ground had already left.
+                        float exaggeration = elevationManager->getExaggeration();
+                        if (exaggeration != _elevationExaggeration) {
+                            _elevationExaggeration = exaggeration;
+                            tileRenderer->invalidateLabelElevation();
                         }
                         unsigned int elevationVersion = elevationManager->getVersion();
                         if (elevationVersion != _elevationVersion) {
@@ -936,8 +949,7 @@ namespace massif {
 
                             std::vector<MapTile> changedTiles;
                             if (scaleOnly) {
-                                _elevationVersion = elevationVersion;
-                                tileRenderer->invalidateLabelElevation();
+                                _elevationVersion = elevationVersion; // the labels are already invalidated above
                             } else if (_elevationVersion != 0 && elevationManager->getChangedTiles(_elevationVersion, changedTiles)) {
                                 _elevationVersion = elevationVersion;
                                 std::vector<vt::TileId> changedTileIds;

@@ -1075,6 +1075,22 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   collision (`getAtPointOrZero`, defaulting to 0, `src/terrain/elevation.ts`), the true height on the
   GPU, and no symbol ever hidden for missing elevation.
 
+  **A generous ancestor bound is a debt, and the payment is three invalidations, not one.** The
+  ancestor answer above is knowingly wrong by metres — it is only safe because the label is
+  re-anchored when something better arrives, and `TileRenderer` used to watch a single source for
+  that, `ElevationManager`'s version. Two others move the same answer. The elevation **texture**
+  lands a few frames after the grid, and the provider reads the texture entry *first*, so a label
+  anchored on an ancestor while the grid was still in flight was never told; the extrusion bases
+  already invalidated off `getFrameContentChanges()` and the labels now do too. And the
+  **exaggeration** is inside every CPU height: a scale change alone was handled, but a frame that
+  brought a DEM tile *as well* took the tile-scoped branch and left every label elsewhere on the
+  previous ramp step. Both cases are a 2D/3D switch exactly: the ramp moves the exaggeration every
+  frame while the DEM for the view streams in over the same frames, and a label that misses its
+  re-anchor is a POI left hanging in the air over the ground — the whole screen at one height at
+  first (one stale coarse texel answers all of them), most of them coming down as tiles land, a few
+  never. `TileRenderer` now tracks the exaggeration itself and invalidates every label anchor when
+  it moves, ahead of the branch chain that only ever names changed tiles.
+
   A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
   occlusion test skips it: it still carries its flat decode height, and judging that against the
   terrain hides it under ground it is not behind. Anchoring is sticky — a later miss does not

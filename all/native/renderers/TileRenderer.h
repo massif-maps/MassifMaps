@@ -307,6 +307,8 @@ namespace massif {
         // The elevation DATA version last acted on, apart from the global one: a change to only
         // the exaggeration moves the global version without making any surface stale.
         unsigned int _elevationDataVersion = 0;
+        // ...and the exaggeration itself, which every CPU height carries. -1 = never read.
+        float _elevationExaggeration = -1.0f;
         // What the extrusions light with, resolved from the style over the options
         // (StyleEnvironment::resolveLighting).
         float _buildingLightIntensity = 1.0f;

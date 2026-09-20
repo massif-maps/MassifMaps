@@ -15,6 +15,8 @@
 #include <cglib/bbox.h>
 #include <cglib/frustum3.h>
 
+#include "LabelDistance.h"
+
 namespace massif::vt {
     struct ViewState final {
         float zoom = 0;
@@ -41,6 +43,16 @@ namespace massif::vt {
         // where the evaluation is PER LABEL - the culler's ranking pass - since the renderer evaluates a
         // style function once per batch and a per-label value there would break batching.
         float labelDistance = 0;
+        // How far a label may be PLACED, in multiples of focusDistance; 0 places every label however
+        // far it is. Options::setLabelViewDistance, and the same rule the culler applies.
+        //
+        // It has to be here as well as on the culler, and that is the whole point: the culler's cut
+        // reads a label's PLACEMENT, and Label::updatePlacement refuses to place one past its own
+        // copy of the rule - so an application that raised the culler's limit still had every distant
+        // label rejected one step earlier, with nothing for the culler to reconsider. A panorama is
+        // exactly that case: its focus sits a couple of kilometres in front of a low camera, and the
+        // default five times that cut every summit past ~15 km.
+        float labelViewDistance = LabelDistance::DEFAULT_VIEW_DISTANCE;
 
         // mapbox's ["measure-light", "brightness"]: how bright the scene light is, 0-1. A style reads it
         // as `view::brightness`, resolved per frame, so a label dims with the hour without a re-decode.

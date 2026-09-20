@@ -48,10 +48,13 @@ namespace massif {
         void scheduleContinuation();
 
         /**
-         * A placement cycle is rationed across several passes (mapbox's PauseablePlacement), so the
-         * culler, its collision grid and the view it was opened against all outlive one pass. The
-         * view is FROZEN for the cycle: resuming against a moved camera would collide the second
+         * A placement cycle MAY be rationed across several passes (mapbox's PauseablePlacement), so
+         * the culler, its collision grid and the view it was opened against all outlive one pass.
+         * The view is FROZEN for the cycle: resuming against a moved camera would collide the second
          * half of the labels against a grid built for a different screen.
+         *
+         * The ration is currently 0 - see PLACEMENT_BUDGET_MS - so a cycle is one pass, and this is
+         * the mechanism for turning it back on rather than a thing the worker relies on.
          */
         std::unique_ptr<vt::LabelCuller> _culler;
         ViewState _cycleViewState;
@@ -63,18 +66,16 @@ namespace massif {
          */
         std::set<const void*> _cycleWrappedLayers;
         /**
-         * The next cycle runs WHOLE, unrationed. Set when a cycle ended against a camera that had
-         * moved: the rationed redo would take tens of seconds to reach the screen, which is the one
-         * case where the ration costs more than it protects.
+         * The next placement is COMMITTED rather than faded in (TileRenderer::snapLabelTransition).
+         * Set only when a cycle was abandoned because the camera moved under it: there is no
+         * outgoing screen left to cross-fade from, and fading would draw every outgoing label over
+         * its replacement for the length of the fade. A redo owed to a camera that moved while the
+         * pass ran is NOT this case - that is the ordinary state of a view being turned, and
+         * snapping it made every name change read as a blink.
          */
-        bool _forceFullPlacement = false;
-        /**
-         * Wall clock the current cycle has spent, and what the last COMPLETED one cost. Slicing is
-         * not free - each slice re-sorts and re-inserts its own subset, and the pacing stretches a
-         * cycle over many passes - so a cycle that fits in one pass is run in one pass.
-         */
+        bool _snapNextPlacement = false;
+        /** Wall clock the current cycle has spent. */
         double _cycleMs = 0;
-        double _lastCycleMs = 0;
         /** No pass may start before this: what holds placement to its share of wall clock. */
         std::chrono::steady_clock::time_point _nextAllowedTime;
         

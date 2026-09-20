@@ -556,8 +556,12 @@ namespace massif::vt {
         // unplaced label does not have, so it could not see these at all (performance-log 29).
         // The frustum tested is the PADDED one, so a label just outside the viewport is still placed.
         cglib::bbox3<double> geometryBBox = calculateGeometryBBox(viewState);
-        bool beyondCutoff = viewState.focusDistance > 0 &&
-            LabelDistance::perspectiveRatio(viewState.focusDistance, cglib::length(geometryBBox.center() - viewState.origin)) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF;
+        // The APPLICATION's cut, not the hard-coded ratio: the two are the same number by default
+        // (PERSPECTIVE_RATIO_CUTOFF 0.6 is DEFAULT_VIEW_DISTANCE 5), and 0 places every label however
+        // far it is. Reading the constant here is what made Options::setLabelViewDistance only half
+        // work - the culler let a distant label through and this refused to place it, so there was
+        // never a placement for the culler to judge (ViewState::labelViewDistance).
+        bool beyondCutoff = LabelDistance::isTooFar(viewState.focusDistance, cglib::length(geometryBBox.center() - viewState.origin), viewState.labelViewDistance);
         if (beyondCutoff || !viewState.labelFrustum.inside(geometryBBox)) {
             _cachedFlippedPlacement.reset();
             if (!_placement) {

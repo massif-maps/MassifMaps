@@ -347,6 +347,12 @@ namespace massif {
         // zoom - see ViewState::deviceResolution and setLineAntialiasScale below, which needs the same
         // ratio for the same reason.
         prepareViewState.deviceResolution = static_cast<float>(viewState.getHeight());
+        // How far a label may be PLACED. The default is maplibre's own cut and an application raises
+        // or removes it (Options::setLabelViewDistance); Label::updatePlacement reads it, so a value
+        // that never reached vt left every distant label unplaced whatever the culler allowed.
+        if (auto options = _options.lock()) {
+            prepareViewState.labelViewDistance = options->getLabelViewDistance();
+        }
         tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
         tileRenderer->setRadiance(_resolvedRadiance);
@@ -870,6 +876,9 @@ namespace massif {
         vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
         vtViewState.deviceResolution = static_cast<float>(viewState.getHeight()); // see ViewState::deviceResolution: a callout's size is in device pixels, not normalized ones
+        if (auto options = _options.lock()) {
+            vtViewState.labelViewDistance = options->getLabelViewDistance(); // the application's own cut; see the prepare pass
+        }
         tileRenderer->setViewState(vtViewState);
         // A line width is given in unscaled-DPI units; this is what one of them is worth in device
         // pixels, so the antialias ramp can be one pixel wide instead of one unit (see lineFsh).
@@ -1360,6 +1369,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // The same as the draw pass gets, or the culler would measure a callout at a different size
         // from the one drawn and place a row of them where they are not.
         cullViewState.deviceResolution = static_cast<float>(viewState.getHeight());
+        // The placement search applies the SAME cut the culler does (LabelCuller::setLabelViewDistance),
+        // and it is the one that runs first: an unplaced label never reaches the culler's own test.
+        if (auto options = _options.lock()) {
+            cullViewState.labelViewDistance = options->getLabelViewDistance();
+        }
         culler.setViewState(cullViewState);
 
         try {

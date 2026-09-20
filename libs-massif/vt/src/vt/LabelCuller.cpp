@@ -520,14 +520,23 @@ namespace massif::vt {
         // Rows may go down (negative step), but never below the lift the style asks for: the label
         // belongs ABOVE its feature, and its leader line only exists while it is.
         float minLift = std::max(calloutOffset, SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1));
-        // A summit already so high on screen that its name would not fit above it has no place for that
-        // name: drop it. Pulling the label down to the screen edge instead put it BELOW its own summit,
-        // off the band the style asks for and with its leader line pointing down.
-        if (lift > maxLift || minLift > maxLift) {
+        // A feature already so high on screen that its name cannot fit above it AT ALL has no place
+        // for that name: drop it. Pulling the label down to the screen edge instead put it BELOW its
+        // own anchor, off the band the style asks for and with its leader line pointing down.
+        if (minLift > maxLift) {
             label->setCalloutFailures(0);
             return false;
         }
-        lift = std::max(lift, minLift);
+        // The BAND asking for more room than the screen has is a different matter, and not the
+        // label's fault: the row is a preference, the name is not. Hold it as high as fits.
+        //
+        // This is what a band pinned near the top does in LANDSCAPE. `resolution` is the normalized
+        // screen and is the same in both orientations, so a label occupies a much larger fraction of
+        // a short screen - on a phone about 2.2x - while the band's anchor stays the same fraction.
+        // A 3% top offset is 32 device pixels of a 1080-pixel landscape screen, less than a name and
+        // its plate, so `lift > maxLift` held for every label the band lifted and the whole row was
+        // dropped rather than moved down by the few pixels it needed.
+        lift = std::max(std::min(lift, maxLift), minLift);
 
         // NOT '> 0': a NEGATIVE step is how a style says its rows go DOWN, which is the only direction
         // a band pinned near the top of the screen has room in - and taking the default instead sent

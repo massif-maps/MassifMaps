@@ -126,23 +126,17 @@ namespace massif {
     // is the same 300 ms.
     const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 300;
 
-    // mapbox and maplibre both slice placement at 2 ms and resume next frame
-    // (placement_algorithms/default.ts, pauseable_placement.ts). A slice is soft: the check is every
-    // 32 labels, so one can overshoot by that much.
-    static const double PLACEMENT_BUDGET_MS = 2.0;
-    // ...and they get their pacing from the frame. This thread has no frame to hang off, so the
-    // duty-cycle gate below is what paces it instead.
-    // A cycle this cheap is run whole, unsliced: mapbox does the same through
-    // isFullPlacementRequested / fadeDuration == 0, maplibre through _forceFullPlacement. Looking
-    // DOWN a cycle is ~10 ms, and slicing it made the culler cost MORE, not less - the ceiling is
-    // only worth paying for when there is something to ration.
-    static const double FULL_PLACEMENT_MS = 10.0;
-    // The ceiling itself, and the only thing that actually enforces it. A cycle's SIZE cannot bound
-    // a RATE: once placement got cheap enough to run whole, it simply ran more often, and 8 ms at
-    // 15 passes a second is 120 ms/s again. So after spending C ms, the next pass waits
+    // The ceiling, and the only thing that enforces it. A cycle's SIZE cannot bound a RATE: once
+    // placement got cheap enough to run whole, it simply ran more often, and 8 ms at 15 passes a
+    // second is 120 ms/s again. So after spending C ms, the next pass waits
     // C * (1000/TARGET - 1), holding placement to TARGET ms of every second whatever the tilt, the
     // cycle size or how often the camera asks. It is a cap, not a quota - a still map spends none.
     static const double PLACEMENT_TARGET_MS_PER_SECOND = 90.0;
+
+    // A cycle is no longer SLICED, at any size - see the note at culler.beginSlice below. The
+    // machinery for it is still here and still correct (a cursor per layer, a culler and a frozen
+    // view that outlive a pass); restoring a non-zero budget there turns it back on.
+    static const double PLACEMENT_BUDGET_MS = 0.0;
 
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
@@ -175,7 +169,10 @@ namespace massif {
             _cycleWrappedLayers.clear();
             _cycleMs = 0;
             _cycleActive = false;
-            _forceFullPlacement = true;
+            // The screen this cycle was placing for is gone, so the placement that replaces it has
+            // nothing to fade FROM: commit it outright. This is the only case that snaps - see
+            // 'forced' below.
+            _snapNextPlacement = true;
         }
         if (!_cycleActive) {
             _cycleViewState = mapRenderer->getViewState();
@@ -204,18 +201,24 @@ namespace massif {
         // focus sits a few kilometres in front of a low camera and everything worth naming is past
         // five times that (Options::setLabelViewDistance).
         culler.setLabelViewDistance(mapRenderer->getOptions()->getLabelViewDistance());
-        // Placement is rationed like mapbox's and maplibre's: a slice of wall clock per pass, then
-        // resume next pass from where each layer stopped. Labels not reached keep the visibility
-        // they had, so the map never shows a half-placed screen. A cycle that fit in one pass last
-        // time is not rationed at all - see FULL_PLACEMENT_MS.
-        // Rationed placement is paced to PLACEMENT_TARGET_MS_PER_SECOND, so a cycle that costs a
-        // second of work reaches the screen tens of seconds later - measured at ~20 s to label the
-        // near field after a pan. A redo owed to a moved camera is exactly mapbox's
-        // isFullPlacementRequested: run it whole, once, and the screen is correct in one pass.
-        bool sliced = _lastCycleMs > FULL_PLACEMENT_MS && !_forceFullPlacement;
-        bool forced = _forceFullPlacement;
-        _forceFullPlacement = false;
-        culler.beginSlice(sliced ? PLACEMENT_BUDGET_MS : 0.0);
+        // NOT rationed within a pass any more. PLACEMENT_TARGET_MS_PER_SECOND is what holds
+        // placement to its share of wall clock, and it does so "whatever the tilt, the cycle size or
+        // how often the camera asks" - so a slice buys no ceiling the duty cycle does not already
+        // give. What a slice DOES cost is the SELECTION: the culler sorts by priority and then
+        // inserts greedily, and a slice sorts only the subset it collected, so a label collected
+        // early claims a grid slot before a higher-priority label in a later slice is even looked
+        // at. On a city map that is invisible - a cycle is ~8 ms there and was never sliced - but in
+        // a panorama the whole screen is horizon band, a cycle is hundreds of milliseconds, and the
+        // labels whose priority only counts once everything is in the sort are exactly the far
+        // summits the mode exists to name. The set of names also changed with every slice boundary,
+        // which is what reads as labels churning while the view turns.
+        //
+        // The price is latency, not throughput: a 200 ms cycle now lands in one pass and the duty
+        // cycle spaces the next one ~2 s later, so placement follows a turning view in steps
+        // instead of continuously. That is the trade the mode wants - one stable set of names.
+        bool forced = _snapNextPlacement;
+        _snapNextPlacement = false;
+        culler.beginSlice(PLACEMENT_BUDGET_MS);
         std::chrono::steady_clock::time_point passStart = std::chrono::steady_clock::now();
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
@@ -252,8 +255,10 @@ namespace massif {
         }
 
         if (changed) {
-            // A forced placement swaps the whole screen in one pass: fading it in would draw every
-            // outgoing label over its replacement for the length of the fade. Commit it outright.
+            // Only an ABANDONED cycle snaps. A redo owed to a camera that moved while the pass ran
+            // is the normal case on a view that is being turned - snapping that one meant every
+            // placement of a turning view arrived with no fade at all, which is what made a changed
+            // name read as a blink rather than a cross-fade.
             if (forced) {
                 for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
                     layer->_tileRenderer->snapLabelTransition();
@@ -276,18 +281,15 @@ namespace massif {
         if (_cycleActive) {
             scheduleContinuation();
         } else {
-            // What the NEXT cycle decides on. Measured over the whole cycle, so a sliced one that
-            // has become cheap - the camera tilted back down - drops the rationing again.
-            _lastCycleMs = _cycleMs;
             _cycleMs = 0;
             // Every label of that cycle was placed against the view it opened with, so if the camera
             // has moved since, the screen now shows placements for a camera that is gone: far tiles
             // keep a mass of labels overlapping each other and the newly revealed ground has none.
-            // A sliced cycle lasts ~1.7 s under tilt, which is long enough to contain a whole pan.
             // Nothing else will ask for the redo - a still map stops waking this thread - so the
             // cycle asks for itself, and converges as soon as one opens on a camera that holds.
+            // It does NOT snap: this is the ordinary case while a view is being turned, and the
+            // cross-fade is what keeps the change legible.
             if (mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
-                _forceFullPlacement = true;
                 scheduleContinuation();
             }
         }

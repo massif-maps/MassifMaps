@@ -237,6 +237,15 @@ namespace massif::vt {
         // neighbour is - quadratically. texels/call is the box, and what decides whether that is it.
         static inline std::atomic<long long> demNodeEdgeCalls{0};
         static inline std::atomic<long long> demNodeBoxTexels{0};
+        // Where an edge node's box texels are actually ANSWERED FROM, which is what decides whether
+        // the unused latticeRuns/latticeSum closed form is worth wiring in: it collapses a run of
+        // samples that land in one COARSE neighbour cell, and does nothing for the other two.
+        // Own texels are a clamped index read and the summed-area table can answer them in bulk;
+        // a same-level neighbour is also a plain index read. Only the coarse bucket pays a full
+        // bilinear sampleHeight per texel, so only that bucket is the case for the closed form.
+        static inline std::atomic<long long> demNodeTexelsOwn{0};
+        static inline std::atomic<long long> demNodeTexelsSameLevel{0};
+        static inline std::atomic<long long> demNodeTexelsCoarse{0};
         // The encode's own THREAD CPU time, against the wall time encodeWorkerMs measures. Identical
         // read counts have cost 575 ms and 11886 ms, so the question is whether the thread is
         // computing or waiting - cpu ~ wall means tune the loop, cpu << wall means stop tuning it.

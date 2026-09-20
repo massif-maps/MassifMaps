@@ -485,6 +485,17 @@ namespace massif {
                        nodeBox[0] - lastNodeBox[0],
                        (nodeBox[0] - lastNodeBox[0]) > 0 ? (nodeBox[1] - lastNodeBox[1]) / (nodeBox[0] - lastNodeBox[0]) : 0LL);
             for (int i = 0; i < 2; i++) { lastNodeBox[i] = nodeBox[i]; }
+            // Which grid answered each of those texels. Only the COARSE bucket pays a bilinear
+            // sampleHeight per texel, and only that bucket is what latticeRuns/latticeSum would
+            // collapse - so this is the number that says whether wiring it in is worth the seam risk.
+            static long long lastNodeSource[3] = { 0, 0, 0 };
+            const long long nodeSource[3] = { RenderStats::demNodeTexelsOwn.load(), RenderStats::demNodeTexelsSameLevel.load(), RenderStats::demNodeTexelsCoarse.load() };
+            long long nodeSourceTotal = 0;
+            for (int i = 0; i < 3; i++) { nodeSourceTotal += nodeSource[i] - lastNodeSource[i]; }
+            Log::Infof("RenderStats: demNode texels own=%lld sameLevel=%lld coarse=%lld (%.1f%% coarse, per interval)",
+                       nodeSource[0] - lastNodeSource[0], nodeSource[1] - lastNodeSource[1], nodeSource[2] - lastNodeSource[2],
+                       nodeSourceTotal > 0 ? 100.0 * (nodeSource[2] - lastNodeSource[2]) / nodeSourceTotal : 0.0);
+            for (int i = 0; i < 3; i++) { lastNodeSource[i] = nodeSource[i]; }
             Log::Infof("RenderStats: demEncode textureMs=%.1f bitmapMs=%.1f nodeMs=%.1f (per interval)",
                        (demSplit[0] - lastDemSplit[0]) / 1.0e6, (demSplit[1] - lastDemSplit[1]) / 1.0e6,
                        (demSplit[2] - lastDemSplit[2]) / 1.0e6);

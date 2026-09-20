@@ -48,6 +48,13 @@ namespace massif::mvt {
         static long long convertId(const Value& val);
         static long long generateId();
         static long long combineId(long long id, std::size_t hash);
+        /**
+         * Folds a point label's anchor into its id. A tile whose features carry no id gives every
+         * one of them id 0, so a layer's point labels all share one global id and the renderer
+         * merges them into a single label - two POIs a few metres apart become one, with whichever
+         * of them the tile decoded first supplying the icon. Only for a feature with no id.
+         */
+        static long long combineAnchorId(long long id, const vt::TileId& tileId, const cglib::vec2<float>& vertex);
 
         const std::shared_ptr<Logger> _logger;
 

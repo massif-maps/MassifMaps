@@ -63,6 +63,24 @@ tiles. Labels with the same `globalId` from different tiles are merged (`mergeGe
 geometry copy per tile, identified by `(tileId, localId)`), and visibility, opacity and placement
 are carried over from the previous object via `snapPlacement`.
 
+**Where `globalId` comes from.** The symbolizer builds it from the feature's id in the tile, xored
+with a hash of the symbolizer itself (`Symbolizer::combineId`), so one feature cut across several
+tiles yields one label. A tile whose features carry **no id** breaks that: `MBVTFeatureDecoder`
+returns `0` for all of them (it also accepts an `id`, `osm_id` or `cartodb_id` attribute), every
+point label in the layer lands on the same `globalId`, and the merge above collapses them into a
+single label — two POIs a few metres apart draw as one, with whichever the tile decoded first
+supplying the icon and text, and the winner flipping as tiles rebuild.
+
+For a **point** label with no feature id the anchor is folded in instead
+(`Symbolizer::combineAnchorId`, used by the markers, text and shield symbolizers): the anchor is
+quantised to 2^-28 of the world, ~0.15 m at the equator. That is bit-identical across overzoom
+levels of one source tile and across a tile-border duplicate, so a point still merges with itself,
+while two distinct POIs stay distinct. It does **not** survive a change of source zoom — a z13 and
+a z14 tile snap the same POI to different cells — so during the streaming overlap of a zoom step
+such a point can exist twice; both copies draw the same icon at the same place. Line and polygon
+labels are untouched: their cross-tile merge is what stitches a road name, and an anchor cannot key
+it. Tiles that do carry feature ids take none of this path.
+
 **Placement stability invariant.** `snapPlacement` / `findSnappedPointPlacement` /
 `findSnappedLinePlacement` prefer the geometry copy with the same `(tileId, localId)` as the previous
 placement. Without that, re-snapping picks a winner by merged-list order — which changes with the

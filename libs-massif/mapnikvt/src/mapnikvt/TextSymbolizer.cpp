@@ -218,10 +218,13 @@ namespace massif::mvt {
                 }
 
                 long long localId = featureCollection.getLocalId(featureIndex);
-                long long labelId = combineId(featureCollection.getFeatureId(featureIndex), hash);
+                long long featureId = featureCollection.getFeatureId(featureIndex);
+                long long labelId = combineId(featureId, hash);
+                bool anchorLabelId = (featureId == 0); // see combineAnchorId
                 bool labelIdOverriden = false;
                 if (labelIdOverride) {
                     labelId = *labelIdOverride;
+                    anchorLabelId = false;
                     if (!labelId) {
                         labelId = generateId();
                     } else {
@@ -238,7 +241,8 @@ namespace massif::mvt {
                     int index = 0;
                     for (const auto& vertices : verticesList) {
                         for (const auto &vertex: vertices) {
-                            textProcessor(localId, 10 * labelId + index, groupId, vertex,
+                            long long pointLabelId = (anchorLabelId ? combineAnchorId(labelId, tileId, vertex) : labelId);
+                            textProcessor(localId, 10 * pointLabelId + index, groupId, vertex,
                                           vt::TileLayerBuilder::Vertices(), text, placementPriority,
                                           minimumDistance, allowOverlapSameFeatureId,
                                           sameFeatureIdDependent, index);

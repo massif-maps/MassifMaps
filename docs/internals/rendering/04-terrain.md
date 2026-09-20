@@ -210,6 +210,38 @@ that off-by-default mode its node texture is twice as dense as its mesh and filt
 mapbox never meets this: GRID_DIM 128 over a maxzoom-14 512-texel DEM is one texel per node at
 z16 by construction of the data, not by a rule.
 
+#### An edge node's box is summed per REGION, not per texel
+
+Encoding the node texture was, for a while, the whole DEM pipeline: `nodeMs` 907 of a 1002 ms
+interval on a Galaxy S22, with the single encode worker pinned at 100% while the camera rotated and
+the terrain visibly trailing it. `textureMs` in the same interval was 3.9.
+
+All of it is the edge ring. An interior node reads `_nodeHeights`, already built at decode time; an
+edge node's box reaches half its width into the neighbours, and where that neighbour is COARSER every
+one of those texels was a bilinear `sampleHeight` into it. Measured with
+`demNodeTexels{Own,SameLevel,Coarse}`: **98% of the texels an edge node reads come from a coarse
+neighbour**, 14.9 million of them a second. The box is widened to the coarse neighbour's cell
+(`edgeBoxScales`), so the worse the zoom gap the bigger the box *and* the larger the coarse share -
+`boxTexelsPerCall` 96 / 1141 / 2070 gave `nodeMs` 8.7 / 151.5 / 907.
+
+`ElevationNodeField::nodeHeightRegions` splits the box into at most nine bands - three column bands
+(west of our raster, our own, east of it) by three row bands - so each band has **one** owner and the
+dispatch leaves the texel loop. A band in a coarse neighbour is then summed by the closed form
+(`latticeRuns` / `latticeSum`): `scale` consecutive samples of ours land in one of its cells, where
+the height is bilinear in two corners, so the band costs `(box/scale)^2` terms instead of `box^2`.
+Our own band takes the summed-area table for the texels the box covers whole. Anything else - a
+same-level neighbour, a missing one - stays one read per texel, which is all it ever cost.
+
+**7.7x on the node encode** normalised per box texel, 11.9x raw, and `coarse=0` afterwards. The
+closed form was written and host-tested long before this and had no caller but its own test; see
+[performance-log.md](../performance-log.md) entry 30 for the numbers, for the seam check, and for the
+two changes that aimed at the other 2% and measured as nothing.
+
+It is the same sum reassociated, exact to a relative 1e-6 rather than to the bit. That is visible in
+exactly one place - the **horizon silhouette**, where a sub-metre height difference is a pixel of
+ridge against sky - and nowhere along a tile border, which is what a seam would be. Anything changed
+here wants that screen diff, not only `tests/api/ElevationNodeFieldTest.cpp`.
+
 ### The decoder is per tile, not per source
 
 `ElevationManager::loadTileGrid` resolves the decoder from the TILE's `dem_encoding` meta data

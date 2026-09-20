@@ -275,6 +275,111 @@ namespace massif {
         }
 
         /**
+         * Where a COARSE neighbour's raster sits under ours, as an affine map from OUR absolute
+         * texel index to its continuous texel coordinate: f = origin + step * g, the same f
+         * ElevationTileGrid::sampleHeight computes. step is our texel over theirs, so it is
+         * 1/scale and `scale` consecutive samples of ours share one of their cells.
+         */
+        struct LatticeMapping {
+            double originX = 0, stepX = 0;
+            double originY = 0, stepY = 0;
+            int dimX = 0, dimY = 0;
+        };
+
+        /**
+         * nodeHeight over a box that straddles the tile border, with each REGION of the box
+         * answered by whoever owns it instead of one dispatch per texel.
+         *
+         * An edge node's box reaches half its width into the neighbours, and on a DEM tile edge
+         * shared with a coarser neighbour that half is the whole cost: measured on a Galaxy S22,
+         * 98% of the texels an edge node reads come from a coarse neighbour, each one a bilinear
+         * sampleHeight, 14.9 million of them in a second with the encode worker pinned at 100%.
+         *
+         * The box splits into at most nine regions - three column bands (west of the raster, our
+         * own, east of it) by three row bands - and each band has ONE owner, so the dispatch moves
+         * out of the texel loop. A band owned by a coarse neighbour is then summed by the closed
+         * form (latticeRuns/latticeSum), which costs (box/scale)^2 instead of box^2; our own band
+         * takes the summed-area table for its full-weight interior; anything else is per texel as
+         * before.
+         *
+         * `mapping(dx, dy, out)` answers true and fills `out` only for a COARSE neighbour - for
+         * our own raster, a same-level neighbour or a missing one it answers false and the band
+         * falls back to `texel`. `corner(dx, dy, x, y)` is that neighbour's own raster.
+         *
+         * Not bit-identical to nodeHeight: the closed form is the same sum reassociated, exact to
+         * a relative 1e-6 (tests/api/ElevationNodeFieldTest.cpp). Tile edges are where that shows,
+         * so a change here wants a seam check on a device, not only the host suite.
+         */
+        template <typename TexelFn, typename MappingFn, typename CornerFn>
+        static float nodeHeightRegions(double cx, double cy, int boxX, int boxY, int width, int height,
+                                       const SummedAreaTable& sat, const TexelFn& texel,
+                                       const MappingFn& mapping, const CornerFn& corner) {
+            std::vector<float> wx, wy;
+            int firstX = boxWeights(cx - 0.5 * boxX, boxX, wx);
+            int firstY = boxWeights(cy - 0.5 * boxY, boxY, wy);
+            int countX = static_cast<int>(wx.size());
+            int countY = static_cast<int>(wy.size());
+            // The band edges as indices into wx/wy. Most boxes use only two of the three.
+            auto clampIndex = [](int value, int hi) { return std::min(std::max(value, 0), hi); };
+            const int xCut[4] = { 0, clampIndex(-firstX, countX), clampIndex(width - firstX, countX), countX };
+            const int yCut[4] = { 0, clampIndex(-firstY, countY), clampIndex(height - firstY, countY), countY };
+
+            double sum = 0;
+            for (int band = 0; band < 9; band++) {
+                int bx = band % 3, by = band / 3;
+                int x0 = xCut[bx], x1 = xCut[bx + 1];
+                int y0 = yCut[by], y1 = yCut[by + 1];
+                if (x0 >= x1 || y0 >= y1) {
+                    continue;
+                }
+                int dx = bx - 1, dy = by - 1;
+                LatticeMapping map;
+                if ((dx != 0 || dy != 0) && mapping(dx, dy, map)) {
+                    std::vector<LatticeRun> xRuns, yRuns;
+                    latticeRuns(map.originX + map.stepX * (firstX + x0), map.stepX, wx.data() + x0, x1 - x0, map.dimX, xRuns);
+                    latticeRuns(map.originY + map.stepY * (firstY + y0), map.stepY, wy.data() + y0, y1 - y0, map.dimY, yRuns);
+                    sum += latticeSum(xRuns, yRuns, [&corner, dx, dy](int x, int y) { return corner(dx, dy, x, y); });
+                    continue;
+                }
+                // Our own band can take the table for the texels the box covers WHOLE; everything
+                // else in the band, and every other band, is one read per texel as before.
+                bool own = (dx == 0 && dy == 0 && sat.valid());
+                int satX0 = x0, satX1 = x1 - 1, satY0 = y0, satY1 = y1 - 1;
+                if (own) {
+                    while (satX0 <= satX1 && wx[satX0] < 1.0f) { satX0++; }
+                    while (satX1 >= satX0 && wx[satX1] < 1.0f) { satX1--; }
+                    while (satY0 <= satY1 && wy[satY0] < 1.0f) { satY0++; }
+                    while (satY1 >= satY0 && wy[satY1] < 1.0f) { satY1--; }
+                }
+                bool haveBlock = own && satX0 <= satX1 && satY0 <= satY1;
+                if (haveBlock) {
+                    sum += sat.rectSum(firstX + satX0, firstY + satY0, firstX + satX1, firstY + satY1);
+                }
+                for (int j = y0; j < y1; j++) {
+                    if (wy[j] <= 0) {
+                        continue;
+                    }
+                    int ty = firstY + j;
+                    bool rowInBlock = (haveBlock && j >= satY0 && j <= satY1);
+                    double row = 0;
+                    int i = x0;
+                    while (i < x1) {
+                        if (rowInBlock && i == satX0) {
+                            i = satX1 + 1; // the table answered this whole span
+                            continue;
+                        }
+                        if (wx[i] > 0) {
+                            row += wx[i] * texel(firstX + i, ty);
+                        }
+                        i++;
+                    }
+                    sum += wy[j] * row;
+                }
+            }
+            return static_cast<float>(sum / (static_cast<double>(boxX) * boxY));
+        }
+
+        /**
          * Every node of an N-cell lattice over a width x height raster, row-major, row j at
          * texel-space y = j * height / N, (N + 1)^2 values. Node (i, j) sits on the cell corner
          * (i * width / N, j * height / N): node 0 is the tile's west/south EDGE, node N its

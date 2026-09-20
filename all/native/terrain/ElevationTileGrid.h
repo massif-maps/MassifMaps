@@ -173,11 +173,6 @@ namespace massif {
 
         float getHeight(int gx, int gy) const { return decodeTexel(texel(gx, gy)); }
 
-        // Height of node (i, j) for the node TEXTURE: the field's own value inside, a box over
-        // 'texel' (which answers outside the grid) on an edge, widened by the edge's scale.
-        template <typename TexelFn>
-        float nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel,
-                              const ElevationNodeField::SummedAreaTable& sat) const;
         /**
          * Neighbour texel access in metres for the node boxes. A concrete functor, not a
          * std::function: an edge node box averages up to 23k texels through this and the node
@@ -191,7 +186,25 @@ namespace massif {
             double texelX, texelY;
 
             float operator()(int gx, int gy) const;
+
+            /**
+             * The affine map onto the raster of the neighbour in direction (dx, dy), for the whole
+             * REGION of a box that lies there - true only when that neighbour exists and is
+             * COARSER, which is the one case worth summing in closed form. Our own raster and a
+             * same-level neighbour are a plain indexed read and stay per texel.
+             */
+            bool coarseMapping(int dx, int dy, ElevationNodeField::LatticeMapping& mapping) const;
+            /** That neighbour's own texel, for the closed form's corners. */
+            float neighbourHeight(int dx, int dy, int x, int y) const;
         };
+
+        // Height of node (i, j) for the node TEXTURE: the field's own value inside, a box over
+        // 'texel' (which answers outside the grid) on an edge, widened by the edge's scale.
+        // Takes the sampler CONCRETELY rather than as a template parameter, because the box is
+        // summed per region and a region needs to know which neighbour owns it - see
+        // ElevationNodeField::nodeHeightRegions.
+        float nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const NodeTexelSampler& texel,
+                              const ElevationNodeField::SummedAreaTable& sat) const;
 
         NodeTexelSampler makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
 

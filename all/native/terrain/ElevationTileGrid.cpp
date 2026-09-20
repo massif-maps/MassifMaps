@@ -292,16 +292,54 @@ namespace massif {
             const ElevationTileGrid* neighbour = (slot >= 0 ? neighbours[slot] : nullptr);
             if (neighbour) {
                 if (sameLevel[slot]) {
+                    VT_STAT_INC(demNodeTexelsSameLevel);
                     int nx = std::min(std::max(gx - dx * width, 0), width - 1);
                     int ny = std::min(std::max(gy - dy * height, 0), height - 1);
                     return neighbour->getHeight(nx, ny);
                 }
+                VT_STAT_INC(demNodeTexelsCoarse);
                 double px = grid->_internalBounds.getMin().getX() + (gx + 0.5) * texelX;
                 double py = grid->_internalBounds.getMin().getY() + (gy + 0.5) * texelY;
                 return neighbour->sampleHeight(px, py);
             }
         }
+        VT_STAT_INC(demNodeTexelsOwn);
         return grid->getHeight(std::min(std::max(gx, 0), width - 1), std::min(std::max(gy, 0), height - 1));
+    }
+
+    bool ElevationTileGrid::NodeTexelSampler::coarseMapping(int dx, int dy, ElevationNodeField::LatticeMapping& mapping) const {
+        int slot = ElevationNodeField::neighbourSlot(dx, dy);
+        if (slot < 0) {
+            return false;
+        }
+        const ElevationTileGrid* neighbour = neighbours[slot];
+        if (!neighbour || sameLevel[slot] || neighbour->_width < 1 || neighbour->_height < 1) {
+            return false; // our own read, a texel-exact copy, or nothing to map onto
+        }
+        double neighbourWidth = neighbour->_internalBounds.getMax().getX() - neighbour->_internalBounds.getMin().getX();
+        double neighbourHeight = neighbour->_internalBounds.getMax().getY() - neighbour->_internalBounds.getMin().getY();
+        if (!(neighbourWidth > 0) || !(neighbourHeight > 0)) {
+            return false;
+        }
+        // operator() asks the neighbour for the height at the centre of OUR texel gx, and
+        // sampleHeight turns that into its own texel coordinate. Both steps are affine in gx, so
+        // the composition is too - and this is that composition, written once per region instead
+        // of being recomputed per texel.
+        double neighbourTexelX = neighbourWidth / neighbour->_width;
+        double neighbourTexelY = neighbourHeight / neighbour->_height;
+        mapping.stepX = texelX / neighbourTexelX;
+        mapping.stepY = texelY / neighbourTexelY;
+        mapping.originX = (grid->_internalBounds.getMin().getX() + 0.5 * texelX - neighbour->_internalBounds.getMin().getX()) / neighbourTexelX - 0.5;
+        mapping.originY = (grid->_internalBounds.getMin().getY() + 0.5 * texelY - neighbour->_internalBounds.getMin().getY()) / neighbourTexelY - 0.5;
+        mapping.dimX = neighbour->_width;
+        mapping.dimY = neighbour->_height;
+        return true;
+    }
+
+    float ElevationTileGrid::NodeTexelSampler::neighbourHeight(int dx, int dy, int x, int y) const {
+        int slot = ElevationNodeField::neighbourSlot(dx, dy);
+        const ElevationTileGrid* neighbour = (slot >= 0 ? neighbours[slot] : nullptr);
+        return neighbour ? neighbour->getHeight(x, y) : 0.0f;
     }
 
     void ElevationTileGrid::buildHeightSat(ElevationNodeField::SummedAreaTable& sat) const {
@@ -337,8 +375,7 @@ namespace massif {
         return scales;
     }
 
-    template <typename TexelFn>
-    float ElevationTileGrid::nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel,
+    float ElevationTileGrid::nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const NodeTexelSampler& texel,
                                              const ElevationNodeField::SummedAreaTable& sat) const {
         int n = _nodesPerEdge;
         int boxX = ElevationNodeField::boxTexels(_width, n, _boxCells);
@@ -360,9 +397,12 @@ namespace massif {
         VT_STAT_ADD(demNodeBoxTexels, static_cast<long long>(boxX) * boxY);
         double cx = static_cast<double>(i) * _width / n;
         double cy = static_cast<double>(j) * _height / n;
-        // The full-weight texels inside this raster come from the prefix sums; the rim and the
-        // neighbours' texels still go through the callback, so the value is the same sum.
-        return ElevationNodeField::nodeHeightSat(cx, cy, boxX, boxY, sat, texel);
+        // Per REGION of the box, not per texel: the full-weight texels inside this raster come from
+        // the prefix sums, a band lying in a COARSER neighbour is summed in closed form over that
+        // neighbour's own cells, and only the rest goes through the callback.
+        return ElevationNodeField::nodeHeightRegions(cx, cy, boxX, boxY, _width, _height, sat, texel,
+            [&texel](int dx, int dy, ElevationNodeField::LatticeMapping& mapping) { return texel.coarseMapping(dx, dy, mapping); },
+            [&texel](int dx, int dy, int x, int y) { return texel.neighbourHeight(dx, dy, x, y); });
     }
 
     void ElevationTileGrid::encodeNodeTexture(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const {

@@ -260,11 +260,126 @@ namespace {
         TEST_CHECK(true, "and groups the lattice into one run per neighbour cell");
     }
 
+    /*
+     * nodeHeightRegions must be nodeHeight, over a box that straddles the tile border into COARSE
+     * neighbours on every side. It is the same sum with the dispatch lifted out of the texel loop
+     * and each neighbour band replaced by the lattice closed form, so what it may differ by is the
+     * reassociation - and a tile edge is exactly where that would show as a seam.
+     *
+     * The reference builds the neighbours' heights through the plain per-texel callback, sampling
+     * each coarse grid bilinearly the way ElevationTileGrid::sampleHeight does, so both paths are
+     * being asked the same question.
+     */
+    void testRegionsMatchPerTexelSum() {
+        const int W = 32, H = 28;
+        std::vector<float> own(static_cast<std::size_t>(W) * H);
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                own[static_cast<std::size_t>(y) * W + x] = static_cast<float>(200 + x * 5 - y * 3 + (x * y) % 13);
+            }
+        }
+        // One coarse neighbour per direction, each a different coarseness, so a corner band meets
+        // two different scales at once.
+        struct Neighbour { int w, h, scale; std::vector<float> data; };
+        std::array<Neighbour, 8> nb;
+        const int scales[8] = { 2, 4, 2, 8, 4, 2, 8, 4 };
+        for (int slot = 0; slot < 8; slot++) {
+            int scale = scales[slot];
+            nb[slot].scale = scale;
+            nb[slot].w = W / scale;
+            nb[slot].h = H / scale;
+            nb[slot].data.resize(static_cast<std::size_t>(nb[slot].w) * nb[slot].h);
+            for (int y = 0; y < nb[slot].h; y++) {
+                for (int x = 0; x < nb[slot].w; x++) {
+                    nb[slot].data[static_cast<std::size_t>(y) * nb[slot].w + x] = static_cast<float>(300 + slot * 17 + x * 11 - y * 7);
+                }
+            }
+        }
+        auto corner = [&nb](int dx, int dy, int x, int y) -> float {
+            int slot = ElevationNodeField::neighbourSlot(dx, dy);
+            if (slot < 0) {
+                return 0.0f;
+            }
+            const Neighbour& n = nb[slot];
+            return n.data[static_cast<std::size_t>(std::min(std::max(y, 0), n.h - 1)) * n.w + std::min(std::max(x, 0), n.w - 1)];
+        };
+        // Our texel (gx, gy) lies in the neighbour at gx/scale - the same affine map
+        // NodeTexelSampler::coarseMapping builds, with the two tiles covering the same ground.
+        auto mapping = [&nb](int dx, int dy, ElevationNodeField::LatticeMapping& map) {
+            int slot = ElevationNodeField::neighbourSlot(dx, dy);
+            if (slot < 0) {
+                return false;
+            }
+            const Neighbour& n = nb[slot];
+            map.stepX = 1.0 / n.scale;
+            map.stepY = 1.0 / n.scale;
+            map.originX = 0.5 / n.scale - 0.5;
+            map.originY = 0.5 / n.scale - 0.5;
+            map.dimX = n.w;
+            map.dimY = n.h;
+            return true;
+        };
+        // The per-texel reference: our own raster inside, and outside it the bilinear sample of the
+        // owning neighbour at our texel centre, which is what the region form has to reproduce.
+        auto texel = [&own, &corner, &mapping](int gx, int gy) -> float {
+            int dx = (gx < 0 ? -1 : (gx >= W ? 1 : 0));
+            int dy = (gy < 0 ? -1 : (gy >= H ? 1 : 0));
+            if (dx == 0 && dy == 0) {
+                return own[static_cast<std::size_t>(gy) * W + gx];
+            }
+            ElevationNodeField::LatticeMapping map;
+            if (!mapping(dx, dy, map)) {
+                return 0.0f;
+            }
+            double fx = map.originX + map.stepX * gx;
+            double fy = map.originY + map.stepY * gy;
+            int gx0 = static_cast<int>(std::floor(fx)), gy0 = static_cast<int>(std::floor(fy));
+            double sx = fx - gx0, sy = fy - gy0;
+            int cx0 = std::min(std::max(gx0, 0), map.dimX - 1), cx1 = std::min(std::max(gx0 + 1, 0), map.dimX - 1);
+            int cy0 = std::min(std::max(gy0, 0), map.dimY - 1), cy1 = std::min(std::max(gy0 + 1, 0), map.dimY - 1);
+            return static_cast<float>((1 - sx) * (1 - sy) * corner(dx, dy, cx0, cy0) + sx * (1 - sy) * corner(dx, dy, cx1, cy0)
+                                      + (1 - sx) * sy * corner(dx, dy, cx0, cy1) + sx * sy * corner(dx, dy, cx1, cy1));
+        };
+
+        ElevationNodeField::SummedAreaTable sat;
+        sat.build(W, H, [&own](int x, int y) { return own[static_cast<std::size_t>(y) * W + x]; });
+
+        // Every edge and every corner of the tile, plus one box wholly inside as the control, and
+        // boxes from a single texel up to wider than the raster.
+        const double centres[][2] = { { 0.0, 0.0 }, { 32.0, 0.0 }, { 0.0, 28.0 }, { 32.0, 28.0 },
+                                      { 0.0, 14.0 }, { 32.0, 14.0 }, { 16.0, 0.0 }, { 16.0, 28.0 },
+                                      { 16.0, 14.0 }, { 4.5, 3.5 } };
+        const int sizes[] = { 1, 2, 4, 9, 16, 48 };
+        double worst = 0;
+        for (const auto& c : centres) {
+            for (int box : sizes) {
+                float ref = ElevationNodeField::nodeHeight(c[0], c[1], box, box, texel);
+                float fast = ElevationNodeField::nodeHeightRegions(c[0], c[1], box, box, W, H, sat, texel, mapping, corner);
+                worst = std::max(worst, std::abs(static_cast<double>(ref) - fast) / std::max(1.0, std::abs(static_cast<double>(ref))));
+            }
+        }
+        TEST_CHECK(worst < 1.0e-5, "a box summed per region is the box summed per texel");
+
+        // With no coarse neighbour anywhere it must still be the plain sum - this is the same-level
+        // and missing-neighbour case, where every band falls back to the callback.
+        auto noMapping = [](int, int, ElevationNodeField::LatticeMapping&) { return false; };
+        double worstPlain = 0;
+        for (const auto& c : centres) {
+            for (int box : sizes) {
+                float ref = ElevationNodeField::nodeHeight(c[0], c[1], box, box, texel);
+                float fast = ElevationNodeField::nodeHeightRegions(c[0], c[1], box, box, W, H, sat, texel, noMapping, corner);
+                worstPlain = std::max(worstPlain, std::abs(static_cast<double>(ref) - fast) / std::max(1.0, std::abs(static_cast<double>(ref))));
+            }
+        }
+        TEST_CHECK(worstPlain < 1.0e-5, "and with no coarse neighbour it is the plain per-texel sum");
+    }
+
 }
 
 void testElevationNodeField() {
     testLatticeSumMatchesPerSampleBilinear();
     testSatMatchesBruteForce();
+    testRegionsMatchPerTexelSum();
     testNeighbourSlot();
     testBoxSize();
     testBoxWeights();

@@ -2131,3 +2131,72 @@ horizon road shields are gone, which is the clutter the cut is for.
 
 **Where the tilt ladder stands now**, against 129.2 ms and 668 ms/s at the start of entry 27:
 frame avg 71.3 at tilt 30 and 43.5 at tilt 80, `cullMs` under 62 at both.
+
+## 30. An edge node's box is 98% coarse-neighbour texels (2026-09-20)
+
+Galaxy S22 (Adreno 730), `-PprofileRender`, `bench/dem.sh` - the Saint-Eynard camera at z14 tilt 20,
+rotating 180 degrees, the whole session captured because the encodes happen while the cover fills and
+a window that starts after the map settles contains almost none of them.
+
+The complaint was the map hitching on a fast rotation on a device that should not hitch, and the DEM
+being the suspect. It is: `encodeWorkerMs=1002.6` in a 1000 ms interval - **one worker thread pinned
+at 100%** while the camera turns, with `nodeMs` 907 of it. `textureMs` was 3.9. The elevation texture
+encode had already been fixed (entry 9.4's straight row copy); the NODE texture had not.
+
+`demNodeTexels{Own,SameLevel,Coarse}` says where an edge node's box texels are answered from, which
+is the number that decides what to do about it:
+
+| `boxTexelsPerCall` | `nodeMs` | own | sameLevel | coarse |
+|---|---|---|---|---|
+| 2070 | 907.0 | 33 248 | 276 608 | 14 853 151 (**98.0%**) |
+| 1141 | 151.5 | 49 552 | 176 944 | 4 986 529 (95.7%) |
+| 96 | 8.7 | 75 328 | 8 224 | 66 464 (44.3%) |
+
+**14.9 million bilinear `sampleHeight` calls a second**, and the cost tracks the box size exactly,
+because a big box *is* a coarse neighbour (`edgeBoxScales` widens it to that neighbour's cell).
+
+`latticeRuns` / `latticeSum` were written and host-tested for precisely this and **wired to nothing** -
+their only caller in the repo was their own test. `ElevationNodeField::nodeHeightRegions` now splits
+the box into at most nine bands (three column bands by three row bands, each with ONE owner), so the
+dispatch leaves the texel loop: a coarse band takes the closed form at `(box/scale)^2` terms, our own
+band takes the summed-area table for its full-weight interior, everything else stays per texel.
+
+Interleaved, four runs an arm, the order reversed in the second pair:
+
+| | encodes | worker/enc | node/enc | `boxTexelsPerCall` | ns per box texel |
+|---|---|---|---|---|---|
+| before | 251 | 123.3 ms | **85.4 ms** | 9589 | 9.14 |
+| regions | 232 | 23.7 ms | **7.2 ms** | 4957 | 1.18 |
+
+**7.7x normalised, 11.9x raw**, and `coarse=0` in every interval afterwards - the per-texel bilinear
+path is never taken. Normalising per box texel is the conservative reading twice over: the win is
+`scale^2`, so the arm with the smaller boxes is the one that gained least.
+
+`boxTexelsPerCall` comes out lower in the fixed arm in both orderings, which is second order rather
+than a confound: the box widens when a neighbour is a coarser ANCESTOR, which is what is available
+while the same-level neighbour is still queued behind the worker. Encoding faster leaves more
+same-level neighbours ready, which narrows the boxes, which encodes faster.
+
+**Not bit-exact, by construction** - the closed form is the same sum reassociated, to a relative
+1e-6. A tile edge is where that would show, so the check was a screen diff of the same camera on both
+builds: 9186 of 2 527 200 pixels differ, almost all by one or two luminance levels, and they lie on
+the **horizon silhouette** and nowhere else. No straight lines, which is what a tile-border seam
+would be. The terrain interior is pixel-identical.
+
+### Two things that measured as nothing, and why
+
+Both were tried first and neither moved the number, because both aimed at the 2%:
+
+- **Skipping the summed-area block in `nodeHeightSat` instead of stepping over it.** The loop did
+  visit every texel of the box and `continue` past the ones the table answered, so it was
+  O(boxX * boxY) whatever the table covered. Bit-exact, strictly fewer iterations, worth ~nothing:
+  the iterations it removes are the cheap ones.
+- **Not building the table when it cannot pay.** It serves the edge nodes alone, so at n=128 with no
+  zoom gap it costs about 8x what it saves, and `encodeNodeTextureBorders` - whose whole job is the
+  ring - was filling a 2 MB table to answer a few hundred texels. Also worth ~nothing, for the same
+  reason.
+
+The first A/B of these two appeared to show a 2x REGRESSION (`node/enc` 60.4 -> 110.4). It showed
+nothing of the kind: `boxTexelsPerCall` was 22705 against 47790, so the two arms had encoded
+different tiles. **Normalise DEM numbers by box texels or do not report them** - the workload is
+data-driven and does not repeat between launches.

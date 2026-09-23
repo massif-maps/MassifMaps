@@ -209,6 +209,99 @@ namespace massif {
                        surfaceDraws - lastSurfaceDraws, surfaceIndices - lastSurfaceIndices);
             lastSurfaceDraws = surfaceDraws; lastSurfaceIndices = surfaceIndices;
 
+            // TerrainRenderer's own meshes, built INLINE on the render thread. 'buildMs' against the
+            // frame time is the whole question: a panorama rotating past its mesh cache spends the
+            // frame building rather than drawing.
+            {
+                static long long lastMeshBuilds = 0, lastMeshBuildUs = 0, lastMeshVerts = 0, lastMeshEvictions = 0, lastMeshHits = 0;
+                long long meshBuilds = RenderStats::terrainMeshBuilds.load();
+                long long meshBuildUs = RenderStats::terrainMeshBuildUs.load();
+                long long meshVerts = RenderStats::terrainMeshVerts.load();
+                long long meshEvictions = RenderStats::terrainMeshEvictions.load();
+                long long meshHits = RenderStats::terrainMeshCacheHits.load();
+                Log::Infof("RenderStats: terrainMesh builds=%lld buildMs=%.1f verts=%lld | evictions=%lld cacheHits=%lld (per interval)",
+                           meshBuilds - lastMeshBuilds, (meshBuildUs - lastMeshBuildUs) / 1000.0,
+                           meshVerts - lastMeshVerts, meshEvictions - lastMeshEvictions, meshHits - lastMeshHits);
+                lastMeshBuilds = meshBuilds; lastMeshBuildUs = meshBuildUs; lastMeshVerts = meshVerts;
+                lastMeshEvictions = meshEvictions; lastMeshHits = meshHits;
+
+                static long long lastAttribBakes = 0, lastAttribUs = 0;
+                long long attribBakes = RenderStats::terrainAttribBakes.load();
+                long long attribUs = RenderStats::terrainAttribUs.load();
+                static long long lastRefines = 0, lastRefineUs = 0;
+                long long refines = RenderStats::terrainAttribRefines.load();
+                long long refineUs = RenderStats::terrainAttribRefineUs.load();
+                Log::Infof("RenderStats: terrainAttribs bakes=%lld ms=%.1f (render thread) | refines=%lld ms=%.1f (worker) (per interval)",
+                           attribBakes - lastAttribBakes, (attribUs - lastAttribUs) / 1000.0,
+                           refines - lastRefines, (refineUs - lastRefineUs) / 1000.0);
+                lastAttribBakes = attribBakes; lastAttribUs = attribUs;
+                lastRefines = refines; lastRefineUs = refineUs;
+
+                static long long lastFixedVerts = 0, lastTotalVerts = 0;
+                long long fixedVerts = RenderStats::terrainAttribFixedVerts.load();
+                long long totalVerts = RenderStats::terrainAttribTotalVerts.load();
+                long long fixedDelta = fixedVerts - lastFixedVerts;
+                long long totalDelta = totalVerts - lastTotalVerts;
+                Log::Infof("RenderStats: terrainAttribs fixedScale %lld/%lld verts (%.1f%% resolved a NON-ZERO DEM gradient; the rest are flat or kept the mesh one) (per interval)",
+                           fixedDelta, totalDelta, totalDelta > 0 ? 100.0 * fixedDelta / totalDelta : 0.0);
+                lastFixedVerts = fixedVerts; lastTotalVerts = totalVerts;
+
+                static long long lastZeroGrid = 0, lastZeroSkirt = 0, lastSkirtOOR = 0;
+                long long zeroGrid = RenderStats::terrainAttribZeroGrid.load();
+                long long zeroSkirt = RenderStats::terrainAttribZeroSkirt.load();
+                long long skirtOOR = RenderStats::terrainAttribSkirtOutOfRange.load();
+                Log::Infof("RenderStats: terrainAttribs ZERO normals AS UPLOADED grid=%lld skirt=%lld, skirt source out of range=%lld (per interval)",
+                           zeroGrid - lastZeroGrid, zeroSkirt - lastZeroSkirt, skirtOOR - lastSkirtOOR);
+                lastZeroGrid = zeroGrid; lastZeroSkirt = zeroSkirt; lastSkirtOOR = skirtOOR;
+
+                static long long lastCarry[4] = { 0 };
+                const long long carry[4] = {
+                    RenderStats::terrainAttribCarryHit.load(), RenderStats::terrainAttribCarryMissNew.load(),
+                    RenderStats::terrainAttribCarryMissUnrefined.load(), RenderStats::terrainAttribCarryMissGrid.load()
+                };
+                Log::Infof("RenderStats: terrainAttribs refined-normal carry hit=%lld | miss: new tile=%lld, sibling unrefined=%lld, GRID SIZE CHANGED=%lld (per interval)",
+                           carry[0] - lastCarry[0], carry[1] - lastCarry[1], carry[2] - lastCarry[2], carry[3] - lastCarry[3]);
+                for (int i = 0; i < 4; i++) { lastCarry[i] = carry[i]; }
+
+                static long long lastStretch[4] = { 0 };
+                const long long stretch[4] = {
+                    RenderStats::terrainAttribStretch1.load(), RenderStats::terrainAttribStretch2.load(),
+                    RenderStats::terrainAttribStretch4.load(), RenderStats::terrainAttribStretchBig.load()
+                };
+                Log::Infof("RenderStats: terrainAttribs DEM coarser than the asked step (tiles) 1x=%lld 2x=%lld 4x=%lld 8x+=%lld (DATA detail only - every tile now SAMPLES at normalSampleDistance) (per interval)",
+                           stretch[0] - lastStretch[0], stretch[1] - lastStretch[1], stretch[2] - lastStretch[2], stretch[3] - lastStretch[3]);
+                for (int i = 0; i < 4; i++) { lastStretch[i] = stretch[i]; }
+
+                static long long lastTexelRetry = 0;
+                Log::Infof("RenderStats: terrainAttribs provisional=%lld final=%lld rebakes=%lld (a provisional bake read a DEM coarser than the source has; cumulative)",
+                           RenderStats::terrainAttribProvisional.load(), RenderStats::terrainAttribFinal.load(),
+                           RenderStats::terrainAttribRebakes.load());
+                long long texelRetry = RenderStats::terrainAttribTexelRetry.load();
+                Log::Infof("RenderStats: terrainAttribs texel retries=%lld (vertices exactly flat at the asked step) (per interval)",
+                           texelRetry - lastTexelRetry);
+                lastTexelRetry = texelRetry;
+
+                static long long lastStale[4] = { 0 };
+                const long long stale[4] = {
+                    RenderStats::terrainAttribStaleFresh.load(), RenderStats::terrainAttribStale1.load(),
+                    RenderStats::terrainAttribStale2.load(), RenderStats::terrainAttribStale3.load()
+                };
+                Log::Infof("RenderStats: terrainAttribs STALE normals (tiles) fresh=%lld, 1 level=%lld, 2 levels=%lld, 3+=%lld (baked from a coarser DEM than the tile now has) (per interval)",
+                           stale[0] - lastStale[0], stale[1] - lastStale[1], stale[2] - lastStale[2], stale[3] - lastStale[3]);
+                for (int i = 0; i < 4; i++) { lastStale[i] = stale[i]; }
+
+                static long long lastGrid[5] = { 0 };
+                const long long grid[5] = {
+                    RenderStats::terrainMeshGrid1.load(), RenderStats::terrainMeshGrid4.load(),
+                    RenderStats::terrainMeshGrid16.load(), RenderStats::terrainMeshGrid48.load(),
+                    RenderStats::terrainMeshGridFull.load()
+                };
+                Log::Infof("RenderStats: terrainMesh density (tiles/cut-walk) 1=%lld 4=%lld 16=%lld 48=%lld full=%lld (per interval)",
+                           grid[0] - lastGrid[0], grid[1] - lastGrid[1], grid[2] - lastGrid[2],
+                           grid[3] - lastGrid[3], grid[4] - lastGrid[4]);
+                for (int i = 0; i < 5; i++) { lastGrid[i] = grid[i]; }
+            }
+
             static long long lastSurfSplit[7] = { 0 };
             const long long surfSplit[7] = {
                 RenderStats::surfShadowDraws.load(), RenderStats::surfMaskDraws.load(),
@@ -466,6 +559,27 @@ namespace massif {
                        (dem[0] - lastDem[0]) > 0 ? (RenderStats::demEncodeTexels.load() - lastDemTexels) / (dem[0] - lastDem[0]) : 0LL);
             lastDemClears = RenderStats::demDetailClears.load();
             lastDemTexels = RenderStats::demEncodeTexels.load();
+            // The decoded GRID cache, not the texture cache above. reinserts > 0 means grids still
+            // in use are being evicted and reloaded, and every reload bumps the elevation version:
+            // labels re-anchor and the surface moves for as long as it goes on. Pinned bytes with
+            // a steady insert rate is the signature.
+            static long long lastElevGrid[2] = { 0 };
+            const long long elevGrid[2] = { RenderStats::elevGridInserts.load(), RenderStats::elevGridReinserts.load() };
+            Log::Infof("RenderStats: elevGrid inserts=%lld reinserts=%lld | bytes=%lldMB capacity=%lldMB distinctEver=%lld gridKB=%lld managers=%lld (per interval, gauges)",
+                       elevGrid[0] - lastElevGrid[0], elevGrid[1] - lastElevGrid[1],
+                       RenderStats::elevGridBytes.load() >> 20, RenderStats::elevGridCapacity.load() >> 20,
+                       RenderStats::elevGridDistinctEver.load(), RenderStats::elevGridSizeKB.load(),
+                       RenderStats::elevGridManagers.load());
+            for (int i = 0; i < 2; i++) { lastElevGrid[i] = elevGrid[i]; }
+
+            // WHERE AN ELEVATION LOOKUP LANDS. Cumulative, not per interval: the question is what the
+            // session as a whole resolved, not what the last second did. aliasHits against exactHits
+            // is the one that matters - an alias answers with an ANCESTOR's grid for a tile that may
+            // well have its own by now, and nothing ever asks again, so those tiles keep normals
+            // sampled from a DEM several levels too coarse and shade lighter than their neighbours.
+            Log::Infof("RenderStats: elevResolve exact=%lld aliasHits=%lld walkHits=%lld | aliasPuts=%lld (cumulative)",
+                       RenderStats::elevExactHits.load(), RenderStats::elevAncestorAliasHits.load(),
+                       RenderStats::elevAncestorWalkHits.load(), RenderStats::elevAncestorAliasPuts.load());
             for (int i = 0; i < 6; i++) { lastDem[i] = dem[i]; }
             for (int i = 0; i < 2; i++) { lastDemTex[i] = demTex[i]; }
             // One encode, split. Only meaningful divided by the encodes in the same interval.
@@ -837,7 +951,7 @@ namespace massif {
         // Plus the application's lift, as in the frame's own rule: without it a lifted viewpoint
         // reads as a focus ABOVE the shell here and the constraint stops holding it.
         double lift = terrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
-        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor) - orbitHeight + lift;
+        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, terrainOptions->getCameraClearanceFraction()) - orbitHeight + lift;
         if (shellFocusZ > focusMapPos.getZ()) {
             _viewState.setFocusHeight(shellFocusZ);
         }
@@ -1297,6 +1411,7 @@ namespace massif {
                     MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
                     MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
                     double terrainZ = 0;
+                    bool heightApplied = false;
                     if (elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), terrainZ)) {
                         // Everything below is measured with the focus PINNED, so the lift it decides
                         // cannot feed back into its own input and oscillate.
@@ -1306,18 +1421,67 @@ namespace massif {
                         double pinnedCameraZ = terrainZ + orbitHeight;
                         double clearanceFloor = focusTerrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
                         double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
-                        double minHeight = CameraClearance::minHeight(pinnedCameraZ, maxZoomOrbit, clearanceFloor);
+                        double clearanceFraction = focusTerrainOptions->getCameraClearanceFraction();
+                        double minHeight = CameraClearance::minHeight(pinnedCameraZ, maxZoomOrbit, clearanceFloor, clearanceFraction);
                         double follow = CameraClearance::focusFollow(pinnedCameraZ - cameraTerrainZ, minHeight);
                         // ... and never below the shell: the focus RAISES the camera, which keeps the
                         // tilt and the zoom the user set. Correcting by tilting jumped the view.
-                        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor) - orbitHeight;
+                        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, clearanceFraction) - orbitHeight;
                         // The application's own lift goes ON TOP of whatever the rule decided, so
                         // the shell and the follow band keep working under a raised viewpoint - and
                         // so the lift means the same thing at every altitude: this far above the
                         // ground it stands over. It is excluded from `follow` on purpose: that is
                         // measured with the focus PINNED, or the lift would feed into its own input.
                         double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
-                        _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
+                        // FIRST PERSON: the eye stands on the ground under ITSELF, and on nothing
+                        // else. The rule above is an orbiting camera's - it takes the ground under
+                        // the FOCUS, which at a panorama's tilt is kilometres ahead. Two ways that
+                        // is wrong for standing on a summit: turning sweeps the focus across other
+                        // terrain, so the viewpoint rises and sinks as you look around, and the far
+                        // ground is the LAST to arrive, so it keeps changing under a focus nobody is
+                        // standing on - the whole view drifts up and down while the DEM streams in.
+                        //
+                        // Here the reference is the ground under the camera, so the eye is still
+                        // while the height field fills in behind it, and `focusLift` means exactly
+                        // what it says: this far above the ground you stand on.
+                        if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                            _viewState.setFocusHeight(cameraTerrainZ - orbitHeight + lift);
+                        } else {
+                            _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
+                        }
+                        heightApplied = true;
+                        // TEMPORARY DIAGNOSTIC, deliberately ungated: the flag that carries the
+                        // RenderStats lines is passed somewhere this tree does not record, and a
+                        // diagnostic that might not be compiled in is a wasted rebuild.
+                        // WHERE THE EYE ENDS UP, and which of the four terms put it there. Every
+                        // height in METRES, so it reads against a summit. Once a second: this runs
+                        // per frame and the answer only moves when the camera does.
+                        {
+                            static std::chrono::steady_clock::time_point lastLog;
+                            std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+                            if (now - lastLog > std::chrono::seconds(1)) {
+                                lastLog = now;
+                                double scale = elevationManager->getDisplayScale(focusMapPos.getY());
+                                double toM = (scale != 0 ? 1.0 / scale : 0.0);
+                                MapPos newCameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
+                                Log::Infof("EYE: camera %.0f m (ground %.0f) | focus %.0f m (ground %.0f) | orbitH %.0f follow %.2f shell %.0f lift %.0f | tilt %.1f zoom %.2f",
+                                           newCameraMapPos.getZ() * toM, cameraTerrainZ * toM,
+                                           projectionSurface->calculateMapPos(_viewState.getFocusPos()).getZ() * toM, terrainZ * toM,
+                                           orbitHeight * toM, follow, shellFocusZ * toM, lift * toM,
+                                           _viewState.getTilt(), _viewState.getZoom());
+                            }
+                        }
+                    }
+                    // THE OTHER OUTCOME, and easy to miss: no cached ground under the focus means
+                    // the rule never runs and the focus keeps whatever height it was left on.
+                    if (!heightApplied) {
+                        static std::chrono::steady_clock::time_point lastSkipLog;
+                        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+                        if (now - lastSkipLog > std::chrono::seconds(1)) {
+                            lastSkipLog = now;
+                            Log::Infof("EYE: no cached ground under the focus, height left as it was | tilt %.1f zoom %.2f",
+                                       _viewState.getTilt(), _viewState.getZoom());
+                        }
                     }
                 }
                 MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
@@ -1604,7 +1768,7 @@ namespace massif {
                 }
                 // Full mesh resolution: an effect drawing lines from this depth would otherwise
                 // draw the coarse depth mesh's own triangulation.
-                if (_terrainRenderer->renderDepthTexture(viewState, terrainOptions, _glResourceManager, 0)) {
+                if (_terrainRenderer->renderDepthTexture(viewState, terrainOptions, _glResourceManager, 0, effect->isTerrainNormalsRequired())) {
                     terrainDepthTex = _terrainRenderer->getDepthTextureId();
                 }
             }
@@ -2675,13 +2839,39 @@ namespace massif {
         // Normalize the per-layer union to a non-overlapping quadtree partition, keeping the
         // finest tile for any ground - overlapping surfaces of different tesselations fight.
         // See docs/internals/rendering/04-terrain.md, "Normalizing the cover to a quadtree partition".
+        // EVERY STRICT ANCESTOR of every collected tile, built once. The normalization asks two
+        // questions and both were a full scan of the set: 'is one of my ancestors collected' and
+        // 'is a finer collected tile inside me'. Each was O(n^2) in the tile count and ran EVERY
+        // frame, camera moving or not - at ~490 tiles that is ~240k coversTile calls per loop, and
+        // buildLeaves below repeats its one for every level the cap forces it to drop. Measured at
+        // 4.7-7.1 ms of a 32 ms frame, the largest single item in it (PROF COVER 'collect').
+        //
+        // Against this set both are lookups: walk my own <=20 ancestors for the first, one
+        // membership test for the second. Same answers - a tile is in here exactly when some
+        // collected tile has it as a strict ancestor, which is what coversTile tested pairwise.
+        std::set<vt::TileId> collectedAncestors;
+        for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
+            for (int zoom = it->first.zoom - 1; zoom >= 0; zoom--) {
+                int deltaZoom = it->first.zoom - zoom;
+                // Already present means a sibling walked this chain to the root, so the rest is in.
+                if (!collectedAncestors.insert(vt::TileId(zoom, it->first.x >> deltaZoom, it->first.y >> deltaZoom)).second) {
+                    break;
+                }
+            }
+        }
+        auto hasCoarserCollected = [&collectedTiles](const vt::TileId& tileId) {
+            for (int zoom = tileId.zoom - 1; zoom >= 0; zoom--) {
+                int deltaZoom = tileId.zoom - zoom;
+                if (collectedTiles.find(vt::TileId(zoom, tileId.x >> deltaZoom, tileId.y >> deltaZoom)) != collectedTiles.end()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         std::vector<vt::TileId> pending;
         for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
-            bool hasCoarserTile = false;
-            for (auto it2 = collectedTiles.begin(); it2 != collectedTiles.end() && !hasCoarserTile; it2++) {
-                hasCoarserTile = coversTile(it2->first, it->first);
-            }
-            if (!hasCoarserTile) {
+            if (!hasCoarserCollected(it->first)) {
                 pending.push_back(it->first); // top of a subtree; its descendants follow from the split
             }
         }
@@ -2708,10 +2898,7 @@ namespace massif {
             while (!stack.empty() && leaves.size() + stack.size() <= MAX_DRAPE_TILES) {
                 vt::TileId tileId = stack.back();
                 stack.pop_back();
-                bool finerInside = false;
-                for (auto it = collectedTiles.begin(); it != collectedTiles.end() && !finerInside; it++) {
-                    finerInside = coversTile(tileId, it->first);
-                }
+                bool finerInside = collectedAncestors.find(tileId) != collectedAncestors.end();
                 if (!finerInside || tileId.zoom >= zoomLimit) {
                     leaves.push_back(tileId);
                     continue;
@@ -2766,6 +2953,14 @@ namespace massif {
         // With no tile layer at all, an approximate depth pre-pass stands in.
         bool terrainMode = false;
         {
+            // NOTE: releasing _elevationTextureCache here when getTerrainOptions() is null looks
+            // right - the cache holds a STRONG shared_ptr to its ElevationManager and
+            // getElevationTextureCache only ever swaps it for a DIFFERENT manager, never for none,
+            // so a detached terrain leaks the manager with its 3 prefetch threads and its 336 MB of
+            // grids. It was tried and REVERTED: on device `caches` went 2 to 1 and the panorama's
+            // surface draws went from 80 to 683 a frame (`drape` 10 ms to 112 ms), so one of the two
+            // renderers was losing a cache it was still drawing from. The manager is released from
+            // the app side instead, by setting the view's terrain options to null before teardown.
             if (auto terrainOptions = _options->getTerrainOptions()) {
                 if (terrainOptions->isActive()) {
                     terrainMode = true;
@@ -2832,8 +3027,11 @@ namespace massif {
                             // normally drive the elevation loads - without this the surface has a
                             // flat height field to shade and the map goes idle on it.
                             if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                                FRAME_PROF_NOW(profCutStart);
                                 std::vector<MapTile> terrainTiles;
                                 _terrainRenderer->collectVisibleTiles(viewState, terrainOptions, terrainTiles);
+                                FRAME_PROF_ADD(preTerrainCutMs, profCutStart);
+                                FRAME_PROF_NOW(profPrefetchStart);
                                 for (const MapTile& terrainTile : terrainTiles) {
                                     MapTile dataTile = elevationManager->getDataTile(terrainTile);
                                     elevationManager->prefetchTileGrid(dataTile, 2);
@@ -2841,9 +3039,12 @@ namespace massif {
                                         requestRedraw();
                                     }
                                 }
+                                FRAME_PROF_ADD(preTerrainPrefetchMs, profPrefetchStart);
                             }
                             ResolvedLighting surfaceLighting = resolveLighting(_options->getLightOptions(), _frameStyleEnvironment);
+                            FRAME_PROF_NOW(profSurfaceStart);
                             backgroundRendered = _terrainRenderer->renderSurface(viewState, terrainOptions, _glResourceManager, surfaceLighting, _frameFog, keepDepth);
+                            FRAME_PROF_ADD(preTerrainSurfaceMs, profSurfaceStart);
                         }
                         if (!backgroundRendered && terrainOptions->isBackgroundBitmapEnabled()) {
                             if (std::shared_ptr<Bitmap> backgroundBitmap = _options->getBackgroundBitmap()) {
@@ -2895,7 +3096,7 @@ namespace massif {
                         double clearanceFloor = terrainOptions->getCameraClearance() * displayScale;
                         if (clearanceSurface) {
                             std::lock_guard<std::recursive_mutex> lock(_mutex);
-                            _viewState.setTerrainCameraReference(terrainZ, clearanceFloor);
+                            _viewState.setTerrainCameraReference(terrainZ, clearanceFloor, terrainOptions->getCameraClearanceFraction());
                         }
                         FRAME_PROF_ADD(preClearanceMs, profClearanceStart);
                     }
@@ -2921,6 +3122,9 @@ namespace massif {
         bool groundAODraped = false;
         std::vector<std::shared_ptr<TileLayer> > drapeLayers;
         bool sharedGroundActive = false;
+        // preludeMs is closed out by whichever terrain branch runs; this says whether one did, so
+        // the fallback before the layer walk does not double-count when one has.
+        bool preludeAccounted = false;
         if (terrainMode) {
             // A terrain paint has no tile set: without a drape to bake into it draws itself, on
             // the terrain's own cover. Pushed every frame, before any layer draws, and harmless
@@ -2981,6 +3185,7 @@ namespace massif {
                         // Every layer's render tiles must exist before the cover is read from them.
                         FRAME_PROF_ADD(preTailMs, profTailStart);
                         FRAME_PROF_ADD(preludeMs, profDrawStart);
+                        preludeAccounted = true;
                         FRAME_PROF_NOW(profPrepareStart);
                         FRAME_PROF_GPU_BEGIN(SECTION_PREPARE);
                         for (const std::shared_ptr<TileLayer>& tileLayer : groundLayers) {
@@ -2992,26 +3197,48 @@ namespace massif {
 
                         // The terrain's own visible cover seeds the ground: it is what the camera
                         // can see, not what the layers happen to have fetched.
+                        FRAME_PROF_NOW(profCoverSeedStart);
                         std::vector<vt::TileId> terrainCoverTileIds = collectTerrainCoverTileIds(viewState, terrainOptions);
+                        FRAME_PROF_ADD(coverSeedMs, profCoverSeedStart);
                         std::vector<std::map<vt::TileId, std::size_t> > groundLayerTiles;
                         std::map<vt::TileId, std::size_t> groundCollectedTiles;
                         std::vector<vt::TileId> groundTileIds;
                         std::vector<int> groundProxyDepths;
                         std::vector<bool> groundStandingIn; // parallel: this tile is drawn in place of a finer one
                         int groundZoom = 0, groundMaxCollectedZoom = 0;
+                        FRAME_PROF_NOW(profCoverCollectStart);
                         collectTerrainCover(groundLayers, viewState, terrainOptions, terrainCoverTileIds, false, groundLayerTiles, groundCollectedTiles, groundTileIds, groundZoom, groundMaxCollectedZoom);
+                        FRAME_PROF_ADD(coverCollectMs, profCoverCollectStart);
 
+                        FRAME_PROF_NOW(profCoverStandInStart);
                         // A leaf whose DEM has not arrived draws FLAT and the paint skips it, so it
                         // flashes bare until elevation lands - every tile on screen during a zoom.
                         // Without a stand-in texture, STAND ON the coarsest loaded ancestor instead.
                         if (std::shared_ptr<ElevationManager> groundElevationManager = terrainOptions->getElevationManager()) {
-                            auto hasElevation = [&groundElevationManager](const vt::TileId& tileId) {
+                            // MEMOIZED, and for the frame only. The walk below asks about a tile and
+                            // then about its whole ancestor chain, and neighbouring leaves share
+                            // most of that chain - so the same handful of coarse tiles were looked
+                            // up in the grid cache over and over. Measured on the Crosscall: `cover`
+                            // was 8-14 ms of a 30-42 ms panorama frame, the largest single item,
+                            // over ~53 cover tiles.
+                            std::map<vt::TileId, bool> elevationMemo;
+                            auto hasElevation = [&groundElevationManager, &elevationMemo](const vt::TileId& tileId) {
+                                auto memo = elevationMemo.find(tileId);
+                                if (memo != elevationMemo.end()) {
+                                    return memo->second;
+                                }
                                 int tileMask = (1 << tileId.zoom) - 1;
                                 MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
-                                return static_cast<bool>(groundElevationManager->getTileGrid(mapTile, ElevationManager::LoadMode::CACHED_ONLY));
+                                bool loaded = static_cast<bool>(groundElevationManager->getTileGrid(mapTile, ElevationManager::LoadMode::CACHED_ONLY));
+                                elevationMemo.emplace(tileId, loaded);
+                                return loaded;
                             };
                             std::vector<vt::TileId> loadedTileIds;
                             std::vector<bool> standingIn;
+                            // Where each stand-in landed in loadedTileIds, so the dedup below is a
+                            // lookup rather than a linear scan of everything placed so far - that
+                            // scan made the whole walk quadratic in the cover size.
+                            std::map<vt::TileId, std::size_t> loadedIndex;
                             loadedTileIds.reserve(groundTileIds.size());
                             standingIn.reserve(groundTileIds.size());
                             for (const vt::TileId& tileId : groundTileIds) {
@@ -3021,17 +3248,19 @@ namespace massif {
                                 }
                                 // The walk can bring several leaves onto one ancestor; drawing it
                                 // once is both correct and cheaper.
-                                auto it = std::find(loadedTileIds.begin(), loadedTileIds.end(), standIn);
-                                if (it == loadedTileIds.end()) {
+                                auto it = loadedIndex.find(standIn);
+                                if (it == loadedIndex.end()) {
+                                    loadedIndex.emplace(standIn, loadedTileIds.size());
                                     loadedTileIds.push_back(standIn);
                                     standingIn.push_back(standIn != tileId);
                                 } else if (standIn != tileId) {
-                                    standingIn[it - loadedTileIds.begin()] = true;
+                                    standingIn[it->second] = true;
                                 }
                             }
                             groundTileIds = std::move(loadedTileIds);
                             groundStandingIn = std::move(standingIn);
                         }
+                        FRAME_PROF_ADD(coverStandInMs, profCoverStandInStart);
 
                         // Tangram's proxy depth (tileManager.cpp). The `m_proxyCounter > 0` guard is
                         // the point: only a stand-in gets a depth, a live coarse tile takes zero.
@@ -3084,7 +3313,9 @@ namespace massif {
                         // Shadows OFF deliberately: they work, but the road overlay wears a fine
                         // speckle of acne the drape path does not have. Flip to true to work on it,
                         // with the drape path as the reference to diff against.
+                        FRAME_PROF_NOW(profCoverShadowStart);
                         applyTerrainShadows(groundLayers, groundTileIds, terrainOptions, viewState, groundPrevFBO, coverChanged, false, lighting, shadowTexelMeters);
+                        FRAME_PROF_ADD(coverShadowMs, profCoverShadowStart);
 
                         FRAME_PROF_ADD(coverMs, profCoverStart);
                         FRAME_PROF_NOW(profGroundStart);
@@ -3099,7 +3330,14 @@ namespace massif {
                                 break;
                             }
                         }
-                        int groundDraws = groundDrawer->renderTerrainGround(groundColor);
+                        // Skipped only when the app says the surface shader already painted this
+                        // ground - see TerrainOptions::setSharedGroundEnabled. The ground tiles and
+                        // the layer ordinals above are still published either way: they are what the
+                        // layers place themselves against, and only the DRAW is redundant.
+                        int groundDraws = 0;
+                        if (terrainOptions->isSharedGroundEnabled()) {
+                            groundDraws = groundDrawer->renderTerrainGround(groundColor);
+                        }
                         FRAME_PROF_ADD(drapeMs, profGroundStart);
                         FRAME_PROF_GPU_END();
 
@@ -3144,6 +3382,7 @@ namespace massif {
                     // bakes, so start their frames first.
                     FRAME_PROF_ADD(preTailMs, profTailStart);
                     FRAME_PROF_ADD(preludeMs, profDrawStart);
+                    preludeAccounted = true;
                     FRAME_PROF_NOW(profPrepareStart);
                     FRAME_PROF_GPU_BEGIN(SECTION_PREPARE);
                     for (const std::shared_ptr<TileLayer>& tileLayer : drapeLayers) {
@@ -3965,6 +4204,14 @@ namespace massif {
             billboardDrawDatas.reserve(_billboardDrawDatas.size());
         }
         BillboardSorter billboardSorter(billboardDrawDatas);
+
+        // Both preludeMs sites sit inside the drape and shared-ground branches, so a terrain map
+        // with NO ground layer at all - a panorama whose only layer is a label overlay - left the
+        // whole prelude (the depth pre-pass, the surface shader) unattributed and it surfaced as
+        // 'other'. Close it out here instead, so PROF still adds up.
+        if (!preludeAccounted) {
+            FRAME_PROF_ADD(preludeMs, profDrawStart);
+        }
 
         // Do base drawing pass
         bool needRedraw = false;

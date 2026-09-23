@@ -91,6 +91,92 @@ namespace massif::vt {
         static inline std::atomic<long long> styleLayersDrawn{0};
         static inline std::atomic<long long> surfaceDraws{0};     // terrain tile surface draws (depth pre-pass, drape, fill, main) - NOT in geometryDraws
         static inline std::atomic<long long> surfaceIndices{0};
+        // TerrainRenderer's OWN meshes (not the vt tile surfaces above): how many were built, how
+        // long that took and how many vertices it produced. Built inline on the render thread in
+        // collectTileMeshes, so a build is a frame that does not draw until it finishes - which is
+        // what a panorama's rotation looks like when its mesh cache cannot hold a full turn.
+        static inline std::atomic<long long> terrainMeshBuilds{0};
+        static inline std::atomic<long long> terrainMeshBuildUs{0};
+        static inline std::atomic<long long> terrainMeshVerts{0};
+        static inline std::atomic<long long> terrainMeshEvictions{0};
+        static inline std::atomic<long long> terrainMeshCacheHits{0};
+        // The SURFACE ATTRIBUTES bake, which is the other half of a mesh rebuild and was invisible:
+        // ensureSurfaceAttribs re-derives a normal per vertex, and on the fixed-scale path
+        // (TerrainOptions::NormalSampleDistance) it reads the DEM four times per vertex to do it.
+        // A 64-cell mesh is 4225 vertices, so one rebuilt tile is ~17000 cached elevation lookups
+        // and a frame that rebuilds seventy of them is over a million.
+        static inline std::atomic<long long> terrainAttribBakes{0};
+        static inline std::atomic<long long> terrainAttribUs{0};
+        // ...and the DEM-sampled REFINEMENT, which runs on TerrainRenderer's attribute worker. Read
+        // against the wall clock, not against the frame: this one is supposed to be off the render
+        // thread, so it costing more than the inline bake is the point rather than a problem.
+        static inline std::atomic<long long> terrainAttribRefines{0};
+        static inline std::atomic<long long> terrainAttribRefineUs{0};
+        // How many vertices the fixed-scale path actually RESOLVED, against how many it tried. The
+        // DEM is read CACHED_ONLY, so a vertex whose ±sampleDistance neighbours are not in the grid
+        // cache silently keeps the MESH gradient - which is measured over a step that halves every
+        // zoom level, so two tiles at different LOD then disagree about their normals along the whole
+        // shared edge. That is the "some tiles are shaded differently" symptom, and this is the only
+        // way to tell it from a refine that never ran.
+        static inline std::atomic<long long> terrainAttribFixedVerts{0};
+        static inline std::atomic<long long> terrainAttribTotalVerts{0};
+        // Vertices whose baked normal is the ZERO vector. The normal-packing shader turns those into
+        // BA = (0.5, 0.5), which the post-process decodes as a straight-up normal - so they draw with
+        // no slope shading and no ridge ink while the surface shader, which reads the same attribute
+        // without a round trip, still looks correct. Split by grid vs SKIRT, because the skirt run is
+        // filled by a separate loop that stops early if skirtSources is short.
+        // COUNTED AT THE UPLOAD, not inside the bake. The first version of this counter ran halfway
+        // through ensureSurfaceAttribs, BEFORE the skirt fill loop, so it reported every skirt
+        // vertex of every mesh as a zero normal and sent a whole round of debugging after skirts.
+        // A stat has to measure what leaves the function, not what the middle of it looks like.
+        static inline std::atomic<long long> terrainAttribZeroGrid{0};
+        static inline std::atomic<long long> terrainAttribZeroSkirt{0};
+        // Skirt vertices whose source index does not fit the attribs: the second way the fill loop
+        // can leave a zero, and the one the first diagnostic missed.
+        static inline std::atomic<long long> terrainAttribSkirtOutOfRange{0};
+        // Mesh rebuilds that found (hit) or did not find (miss) a refined sibling to carry the
+        // fixed-scale normals from. A miss draws the mesh-gradient stand-in until the worker lands.
+        static inline std::atomic<long long> terrainAttribCarryHit{0};
+        // Misses by cause: no cached variant of this tile at all, one that exists but has not been
+        // refined yet, and one that was refined at a DIFFERENT grid size (a carry declined here).
+        static inline std::atomic<long long> terrainAttribCarryMissNew{0};
+        static inline std::atomic<long long> terrainAttribCarryMissUnrefined{0};
+        static inline std::atomic<long long> terrainAttribCarryMissGrid{0};
+        // How much COARSER than normalSampleDistance a tile's normals actually resolved, bucketed by
+        // the stretch of the DEM grid it is standing on. A tile on an ancestor draws less ridge ink
+        // than its neighbour that resolved its own grid - the visible "lighter tile".
+        static inline std::atomic<long long> terrainAttribStretch1{0};
+        static inline std::atomic<long long> terrainAttribStretch2{0};
+        static inline std::atomic<long long> terrainAttribStretch4{0};
+        static inline std::atomic<long long> terrainAttribStretchBig{0};
+        // Vertices that came back EXACTLY FLAT at normalSampleDistance and had to retry at the DEM
+        // texel. The per-tile clamp this replaces spent that coarser step on every vertex of every
+        // tile whose grid was coarse; this counts how often it is genuinely needed.
+        static inline std::atomic<long long> terrainAttribTexelRetry{0};
+        // Bakes that had to read a DEM coarser than the source could give (provisional) against those
+        // that got the data they asked for (final), and how many were redone once more data landed.
+        // provisional falling to zero while rebakes stop is what "it has converged" looks like.
+        static inline std::atomic<long long> terrainAttribProvisional{0};
+        static inline std::atomic<long long> terrainAttribFinal{0};
+        static inline std::atomic<long long> terrainAttribRebakes{0};
+        // Tiles whose stored normals were baked from a COARSER DEM than they now resolve, by how
+        // many zoom levels. Nothing else per-tile distinguishes them - the flags all read correct.
+        static inline std::atomic<long long> terrainAttribStaleFresh{0};
+        static inline std::atomic<long long> terrainAttribStale1{0};
+        static inline std::atomic<long long> terrainAttribStale2{0};
+        static inline std::atomic<long long> terrainAttribStale3{0};
+        // The cut's MESH DENSITY, bucketed by gridSize: <=1, <=4, <=16, <=48, and the rest. A tile
+        // that resolved its own elevation tile gets the full meshResolution; one standing on a
+        // cached ANCESTOR covering four or sixteen times the ground gets a quarter or a sixteenth of
+        // it (calculateMeshGridSize divides the DEM's texels by the stretch), and one with no grid
+        // or a flat one gets a single quad. Neighbours at the SAME zoom can land in different
+        // buckets, and then they carry visibly different relief - which no LOD reasoning explains
+        // and which is the "some tiles are shaded differently" report.
+        static inline std::atomic<long long> terrainMeshGrid1{0};
+        static inline std::atomic<long long> terrainMeshGrid4{0};
+        static inline std::atomic<long long> terrainMeshGrid16{0};
+        static inline std::atomic<long long> terrainMeshGrid48{0};
+        static inline std::atomic<long long> terrainMeshGridFull{0};
         // ... split by the pass that issued it, to see how many times a frame the same
         // terrain mesh is pushed through the vertex stage.
         static inline std::atomic<long long> surfShadowDraws{0};
@@ -260,6 +346,39 @@ namespace massif::vt {
         static inline std::atomic<long long> demTexturesLive{0}; // textures in the cache (gauge)
         static inline std::atomic<long long> demTexturesResolved{0}; // distinct textures a frame resolves (gauge)
         static inline std::atomic<long long> demTileZoomGap{0};      // render tile zoom - elevation tile zoom (gauge)
+
+        // ElevationManager's DECODED GRID cache, which is a different thing from the texture cache
+        // above: it is what every height query, label anchor and mesh vertex reads. Every insert
+        // bumps the global elevation version, so every insert re-anchors labels and moves the
+        // surface. Its capacity is a grid COUNT (MIN_CACHED_GRIDS), and a view whose working set
+        // exceeds it evicts grids still in use and reloads them forever - which looks exactly like
+        // data still streaming in, except it never ends. These separate the two: inserts that keep
+        // arriving with `bytes` pinned at `capacity` are thrash, not streaming.
+        static inline std::atomic<long long> elevGridInserts{0};   // grids stored (each one bumps the version)
+        static inline std::atomic<long long> elevGridReinserts{0}; // of those, tiles this manager had ALREADY loaded once
+        static inline std::atomic<long long> elevGridBytes{0};     // cache bytes in use (gauge)
+        static inline std::atomic<long long> elevGridCapacity{0};  // cache capacity in bytes (gauge)
+        // Distinct tiles this manager has ever loaded (gauge). Against the cache's grid count
+        // (capacity/grid size, MIN_CACHED_GRIDS) this is the one number that says whether the cap
+        // is low enough: plateauing well under it means the set fits and the thrash is over,
+        // plateauing above it means the cap has to come down further or the cache has to grow.
+        static inline std::atomic<long long> elevGridDistinctEver{0};
+        // These counters are GLOBAL, and a map has one ElevationManager per TerrainOptions - so a
+        // panorama opened over a 3D map has two, both summing in here. Without this, thrash in the
+        // map behind reads as thrash in the panorama. Grid size distinguishes them too: one source
+        // serving tiles of two resolutions is what grew the cache from 147 to 336 MB.
+        static inline std::atomic<long long> elevGridManagers{0};  // live ElevationManager instances (gauge)
+        static inline std::atomic<long long> elevGridSizeKB{0};    // last inserted grid's size (gauge)
+        // ANCESTOR RESOLUTION. A tile the source could not answer at its own zoom is cached POINTING
+        // AT its ancestor, so later lookups stop at that alias instead of asking for the tile again.
+        // If the alias is what most ancestor answers come from, a tile that once resolved coarse
+        // stays coarse for the session - and since which tiles lose that race is decided by arrival
+        // order, the same tile is shaded differently on different runs. 'walk' is the honest case:
+        // no entry for the tile at all, so the search climbed to a cached ancestor.
+        static inline std::atomic<long long> elevAncestorAliasPuts{0}; // tile ids pointed at an ancestor
+        static inline std::atomic<long long> elevAncestorAliasHits{0}; // lookups answered by that alias
+        static inline std::atomic<long long> elevAncestorWalkHits{0};  // answered by climbing, no alias
+        static inline std::atomic<long long> elevExactHits{0};         // answered by the tile's own grid
 
         // Where a single renderTileGeometry call goes, in nanoseconds, split at the
         // boundaries a fix would actually move. Only meaningful divided by geometryDraws.

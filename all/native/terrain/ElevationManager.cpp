@@ -15,6 +15,8 @@
 #include "utils/Log.h"
 #include "utils/TileUtils.h"
 
+#include <vt/RenderStats.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -33,7 +35,11 @@ namespace massif {
     static const std::size_t MIN_CACHED_GRIDS = 192;
     static const int FAILED_TILE_TTL_MILLISECONDS = 30 * 1000;
     static const int MAX_ANCESTOR_SEARCH_DEPTH = 8;
-    static const std::size_t MAX_PREFETCH_QUEUE_SIZE = 64;
+    // Sized for the largest cut that asks: a map's is well under this, a PANORAMA's is ~320 tiles
+    // (TerrainRenderer's visible-tile budget is meshCacheSize/2). At 64 the queue could not hold one
+    // frame's worth, so most of the cut was shed and re-pushed every frame and the DEM converged in
+    // quadtree-walk order rather than from the camera outwards. An entry is a MapTile and an int.
+    static const std::size_t MAX_PREFETCH_QUEUE_SIZE = 384;
     static const int PREFETCH_THREADS = 3; // elevation tiles are network+decode bound; one worker converges too slowly
     static constexpr double NO_DATA_ELEVATION = -1000000.0;
     static constexpr double DEFAULT_MIN_ELEVATION = -500.0;
@@ -69,6 +75,7 @@ namespace massif {
         _seamlessTileEdges(true),
         _surfaceResolution(32),
         _gridSizeHint(256),
+        _maxDataZoom(0),
         _neighbourPrefetch(true),
         _version(1),
         _dataVersion(1),
@@ -82,9 +89,14 @@ namespace massif {
     {
         _dataSourceListener = std::make_shared<DataSourceListener>(*this);
         _dataSource->registerOnChangeListener(_dataSourceListener);
+        VT_STAT_INC(elevGridManagers);
+        Log::Infof("LIFE: ElevationManager #%d created", _instanceId);
     }
 
     ElevationManager::~ElevationManager() {
+        // TEMPORARY DIAGNOSTIC, ungated. RenderStats 'managers' climbed 1,2,3,4 across entries and
+        // never fell, so the question is only ever WHICH of these two lines is missing.
+        Log::Infof("LIFE: ElevationManager #%d destroyed", _instanceId);
         {
             std::lock_guard<std::mutex> lock(_prefetchMutex);
             _prefetchStopped = true;
@@ -99,6 +111,7 @@ namespace massif {
             }
         }
         _dataSource->unregisterOnChangeListener(_dataSourceListener);
+        VT_STAT_ADD(elevGridManagers, -1);
     }
 
     std::shared_ptr<TileDataSource> ElevationManager::getDataSource() const {
@@ -147,6 +160,20 @@ namespace massif {
 
     void ElevationManager::setNeighbourPrefetchEnabled(bool enabled) {
         _neighbourPrefetch.store(enabled);
+    }
+
+    int ElevationManager::getMaxDataZoomCap() const {
+        return _maxDataZoom.load();
+    }
+
+    void ElevationManager::setMaxDataZoomCap(int maxZoom) {
+        int value = std::max(0, std::min(maxZoom, Const::MAX_SUPPORTED_ZOOM_LEVEL));
+        if (_maxDataZoom.exchange(value) != value) {
+            // The resident grids are the ones the cap is meant to get rid of: keeping them would
+            // leave the finer heights in play for as long as they are cached, which is the very
+            // disagreement between neighbours the cap exists to end.
+            tilesChanged();
+        }
     }
 
     std::size_t ElevationManager::getCacheCapacity() const {
@@ -212,6 +239,11 @@ namespace massif {
     }
 
     bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height) const {
+        int resolvedZoom = -1;
+        return getDisplayHeightCached(internalX, internalY, height, resolvedZoom);
+    }
+
+    bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height, int& resolvedZoom) const {
         // getDisplayHeight cannot say whether it HAS data - it returns 0 either way, and 0 is a legal
         // height. An extrusion given a base of 0 where the ground is 215 m sinks below the terrain.
         double wrappedX = wrapInternalX(internalX);
@@ -219,6 +251,10 @@ namespace massif {
         if (!grid) {
             return false;
         }
+        // WHICH grid answered, not just whether one did. A cached-only read falls back to any cached
+        // ancestor, so it can succeed and still hand back a height off a DEM several levels too
+        // coarse - and a caller differentiating two of these cannot otherwise tell.
+        resolvedZoom = grid->getTile().getZoom();
         height = grid->sampleNodeHeight(wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
         return true;
     }
@@ -299,6 +335,11 @@ namespace massif {
                 std::shared_ptr<ElevationTileGrid> grid;
                 if (readCachedGrid(searchTile.getTileId(), grid)) {
                     if (grid) {
+#if MASSIF_VT_RENDER_STATS
+                        if (grid->getTile() == tile) { VT_STAT_INC(elevExactHits); }
+                        else if (searchTile == tile) { VT_STAT_INC(elevAncestorAliasHits); }
+                        else { VT_STAT_INC(elevAncestorWalkHits); }
+#endif
                         memo = GridMemo { _instanceId, memoVersion, tile.getTileId(), mode, grid };
                         return grid;
                     }
@@ -357,9 +398,29 @@ namespace massif {
                                static_cast<int>(MIN_CACHED_GRIDS), static_cast<int>(grid->getDataSize() >> 10));
                     _gridCache.resize(minCapacity);
                 }
+#if MASSIF_VT_RENDER_STATS
+                // A tile arriving for the SECOND time can only mean it was evicted while still in
+                // use: nothing else asks for a grid this manager already holds.
+                if (!_everLoadedTiles.insert(grid->getTile().getTileId()).second) {
+                    VT_STAT_INC(elevGridReinserts);
+                }
+                // The MAX across managers, not the last writer's: the gauge is global and several
+                // managers write it, so plain assignment made it bounce (230/288/255/296 measured)
+                // and it read as noise rather than as a working-set size.
+                {
+                    long long mine = static_cast<long long>(_everLoadedTiles.size());
+                    long long seen = vt::RenderStats::elevGridDistinctEver.load();
+                    while (mine > seen && !vt::RenderStats::elevGridDistinctEver.compare_exchange_weak(seen, mine)) { }
+                }
+                VT_STAT_SET(elevGridSizeKB, static_cast<long long>(grid->getDataSize() >> 10));
+                VT_STAT_INC(elevGridInserts);
+#endif
                 _gridCache.put(grid->getTile().getTileId(), grid, grid->getDataSize());
+                VT_STAT_SET(elevGridBytes, static_cast<long long>(_gridCache.size()));
+                VT_STAT_SET(elevGridCapacity, static_cast<long long>(_gridCache.capacity()));
                 if (grid->getTile() != tile) {
                     // Loaded an ancestor (replace-with-parent); also mark the requested tile as resolved via ancestor
+                    VT_STAT_INC(elevAncestorAliasPuts);
                     _gridCache.put(tileId, grid, 1024);
                 }
                 float maxSeen = _maxSeenElevation.load();
@@ -414,12 +475,18 @@ namespace massif {
         for (int size = _gridSizeHint.load(); size > DEM_TEXELS_PER_TILE_UNIT; size /= 2) {
             bias++;
         }
+        // NOT dataMaxZoom(): this is the LOD FLOOR (TileLayer::_terrainMinTileZoom), so the cap here
+        // decides how coarse a terrain tile may be, and a coarse tile is tessellated into many
+        // sub-surfaces to follow the ground. Capping it measured `fill` at 3654 tile-surface draws
+        // in ONE frame against 39 render tiles - tens of millions of triangles, 4-second frames.
+        // MaxZoom is a working-set control; it belongs in tile SELECTION (clampDataTileZoom), not in
+        // anything that decides tessellation.
         return _dataSource->getMaxZoom() + bias;
     }
 
     MapTile ElevationManager::getTileForInternalPos(double internalX, double internalY) const {
         MapPos dataSourcePos = _projection->fromInternal(MapPos(wrapInternalX(internalX), internalY, 0));
-        return TileUtils::CalculateClippedMapTile(dataSourcePos, _dataSource->getMaxZoom(), _projection).getFlipped();
+        return TileUtils::CalculateClippedMapTile(dataSourcePos, dataMaxZoom(), _projection).getFlipped();
     }
 
     MapTile ElevationManager::getDataTile(const MapTile& mapTile) const {
@@ -482,13 +549,30 @@ namespace massif {
             }
             std::deque<PrefetchEntry>& queue = (priority >= 2 ? _prefetchQueueHigh : _prefetchQueue);
             queue.push_back(PrefetchEntry { tile, priority });
+            bool haveFocus = _prefetchFocusValid.load();
+            double focusU = _prefetchFocusU.load(), focusV = _prefetchFocusV.load();
             while (queue.size() > MAX_PREFETCH_QUEUE_SIZE) {
                 // Shed the least useful entry, not the oldest: the low queue mixes edge neighbours
                 // with single-corner diagonals, and a full queue gives up the corners first.
+                //
+                // Within a priority, shed the one FURTHEST FROM THE CAMERA. With the tie broken by
+                // insertion order instead, a cut bigger than the queue keeps only the tiles that
+                // happen to come LAST in the quadtree walk - an order with no relation to where the
+                // camera is looking. A panorama's cut is ~320 tiles against a queue of 64, so five
+                // sixths of it was shed and re-pushed every frame, and which sixth survived was
+                // decided by walk order. That is why the same viewpoint came up with a different set
+                // of coarse tiles on every start: whichever tiles won the walk got their DEM, the
+                // rest stayed on an ancestor, and nothing about it was tied to the view.
+                //
+                // The worker already drains nearest-first; this makes the QUEUE it drains from agree,
+                // so loading converges outwards from the camera and is repeatable.
                 auto victim = queue.begin();
+                double victimDistance = (haveFocus ? prefetchTileDistance(victim->tile, focusU, focusV) : 0.0);
                 for (auto it = queue.begin(); it != queue.end(); it++) {
-                    if (it->priority < victim->priority) {
+                    double distance = (haveFocus ? prefetchTileDistance(it->tile, focusU, focusV) : 0.0);
+                    if (it->priority < victim->priority || (it->priority == victim->priority && distance > victimDistance)) {
                         victim = it;
+                        victimDistance = distance;
                     }
                 }
                 _prefetchTileIds.erase(victim->tile.getTileId());
@@ -590,6 +674,10 @@ namespace massif {
     }
 
     int ElevationManager::getMaxDataZoom() const {
+        // The SOURCE's depth, deliberately not dataMaxZoom(). This is the ElevationProvider contract,
+        // and its one caller is TerrainProjectionSurface::CalculateSplitThreshold - it sizes the
+        // projection surface's subdivision off it. A working-set cap must not move geometry
+        // tessellation; see getDetailZoomLimit for what that cost when it did.
         if (std::shared_ptr<TileDataSource> dataSource = getDataSource()) {
             return dataSource->getMaxZoom();
         }
@@ -794,10 +882,16 @@ namespace massif {
         return clampDataTileZoom(tile);
     }
 
+    int ElevationManager::dataMaxZoom() const {
+        int cap = _maxDataZoom.load();
+        int sourceMax = _dataSource->getMaxZoom();
+        return cap > 0 ? std::min(cap, sourceMax) : sourceMax;
+    }
+
     MapTile ElevationManager::clampDataTileZoom(const MapTile& dataTile) const {
         // Only the data source zoom range: idempotent, safe to apply to an elevation tile.
         MapTile tile = dataTile;
-        int maxZoom = _dataSource->getMaxZoom();
+        int maxZoom = dataMaxZoom();
         while (tile.getZoom() > maxZoom) {
             tile = tile.getParent();
         }

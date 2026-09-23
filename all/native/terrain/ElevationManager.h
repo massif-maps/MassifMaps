@@ -25,6 +25,7 @@
 #include <vector>
 
 #include <stdext/timed_lru_cache.h>
+#include <vt/RenderStats.h> // MASSIF_VT_RENDER_STATS gates the diagnostic member below
 
 namespace massif {
     class TileDataSource;
@@ -81,6 +82,26 @@ namespace massif {
         void setNeighbourPrefetchEnabled(bool enabled);
 
         /**
+         * Caps the zoom of the elevation tiles this manager will resolve, independently of what the
+         * data source can offer. 0, the default, uses the source maximum - the ordinary behaviour.
+         *
+         * This is a WORKING SET control, not a quality one. The grid cache holds a fixed grid COUNT
+         * (MIN_CACHED_GRIDS), so a view whose set of distinct elevation tiles exceeds it evicts
+         * grids that are still on screen and reloads them, forever. Every insert bumps the
+         * elevation version, and a version bump re-anchors every label and re-samples the surface,
+         * so the symptom is not a slow map but a map that never settles: labels shift, the ground
+         * rises and sinks, and neighbouring tiles hold grids of different levels so their shared
+         * edge is built from two disagreeing height fields.
+         * A panorama reaching a hundred kilometres is exactly that view. Capping the zoom collapses
+         * the set to the tiles at or above the cap, which is bounded, so the cache stops thrashing
+         * and the height field settles once. TerrainOptions::setMaxZoom drives this alongside the
+         * mesh cut, because pinning the cut alone leaves the DATA refining under it.
+         * Changing it drops the decoded grids.
+         */
+        int getMaxDataZoomCap() const;
+        void setMaxDataZoomCap(int maxZoom);
+
+        /**
          * Sets the terrain surface resolution (mesh cells per tile edge). Every decoded grid
          * carries a node field built for it - the DEM box-filtered to one mesh cell
          * (ElevationNodeField) - which is what the surface is displaced from and what every
@@ -121,6 +142,14 @@ namespace massif {
          * @return True if a cached grid answered.
          */
         bool getDisplayHeightCached(double internalX, double internalY, double& height) const;
+        /**
+         * The same, and also reports the zoom of the grid that answered. A cached-only read falls
+         * back to any cached ANCESTOR, so it can succeed while handing back a height off a DEM
+         * several levels coarser than the source could give - which a caller differentiating two of
+         * these to build a normal has to know, or it bakes a smoothed slope and keeps it.
+         * @return True if a cached grid answered.
+         */
+        bool getDisplayHeightCached(double internalX, double internalY, double& height, int& resolvedZoom) const;
         /**
          * Returns the display height gradient (dz/dx, dz/dy, unitless) at the given internal coordinates.
          */
@@ -284,6 +313,8 @@ namespace massif {
         double wrapInternalX(double internalX) const;
         MapTile clampTileZoom(const MapTile& mapTile) const;
         MapTile clampDataTileZoom(const MapTile& dataTile) const;
+        /** The source maximum, or the MaxDataZoom cap where one is set and is lower. */
+        int dataMaxZoom() const;
         static int nodeBoxCells();
         /** Cache read that honours the failure marker's expiry, which read() alone does not. */
         bool readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid) const;
@@ -309,6 +340,7 @@ namespace massif {
         std::atomic<bool> _seamlessTileEdges;
         std::atomic<int> _surfaceResolution;      // terrain mesh cells per tile edge
         mutable std::atomic<int> _gridSizeHint;   // texels per elevation tile edge, from the last decoded grid
+        std::atomic<int> _maxDataZoom;            // setMaxDataZoomCap; 0 = the source maximum
         std::atomic<bool> _neighbourPrefetch;
         mutable std::atomic<unsigned int> _version;
         mutable std::atomic<float> _maxSeenElevation;
@@ -322,6 +354,9 @@ namespace massif {
 
         mutable cache::timed_lru_cache<long long, std::shared_ptr<ElevationTileGrid> > _gridCache;
         bool _gridCacheCapacityFixed = false; // set through setCacheCapacity: the app's number wins over the grid-count rule
+#if MASSIF_VT_RENDER_STATS
+        mutable std::set<long long> _everLoadedTiles; // diagnostics only: tells an eviction reload from a first load
+#endif
         mutable std::map<long long, std::shared_future<std::shared_ptr<ElevationTileGrid> > > _pendingLoads; // single-flight de-duplication of concurrent loads
         std::function<void()> _dataChangedListener; // called outside _mutex, see setDataChangedListener
         mutable std::mutex _mutex;

@@ -15,12 +15,16 @@
 #include "terrain/TerrainOcclusion.h"
 #include "terrain/ElevationTileGrid.h"
 
+#include <vt/RenderStats.h>
 #include <vt/TileTransformer.h>
 #include "utils/Const.h"
+#include "renderers/utils/TerrainMeshBuffer.h"
 #include "utils/Log.h"
 
 #include <algorithm>
+#include <chrono>
 #include <limits>
+#include <mutex>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -37,8 +41,46 @@ namespace massif {
         // vertex. Recovering it from the position only works while the tile is a flat unit square.
         std::vector<unsigned short> skirtSources;
         std::vector<unsigned short> indices;
+        // Where the SKIRT indices start. The grid is emitted first, so drawing only this many
+        // indices draws the surface without its edge walls - see renderTiles' skipSkirts.
+        std::size_t gridIndexCount = 0;
         // Surface pass only, filled on first use: nx, ny, nz, elevation in metres per vertex.
         std::vector<float> surfaceAttribs;
+        // The TerrainOptions::getNormalSampleDistance the attribs above were built with, so that
+        // changing it re-bakes them instead of being ignored until the mesh is evicted. -1 is
+        // "not built yet"; 0 is the mesh-derived gradient, which is a real setting.
+        float surfaceAttribSampleDistance = -1.0f;
+        // The GPU copy. Created on first draw and kept for the mesh's life - see TerrainMeshBuffer
+        // for why drawing straight out of the vectors above was the most expensive thing in a frame.
+        std::shared_ptr<TerrainMeshBuffer> buffer;
+        // The sample distance the ATTRIB buffer holds, so a re-bake re-uploads and nothing else does.
+        float uploadedAttribSampleDistance = -2.0f;
+        // Whether the attribs above are the FIXED-SCALE ones (read from the DEM at a constant ground
+        // step) or the cheap mesh-gradient stand-in baked inline so the tile can draw at once. See
+        // refineSurfaceAttribs: the DEM read is four lookups per vertex and measured 14 ms a tile,
+        // which is a hitch on the render thread and nothing at all on a worker.
+        bool attribsRefined = false;
+        // The DEM tile this mesh's grid actually resolved to, for the per-tile debug views: the
+        // difference between a tile and its neighbour has been inferred four times over and never
+        // once LOOKED AT, so it gets painted on the surface instead.
+        int demZoom = -1;
+        // The DEM zoom the surface attribs were actually COMPUTED from, which is not the same as the
+        // one the tile resolves NOW: attribs are baked once and ensureSurfaceAttribs early-returns
+        // forever after, so a tile refined while standing on a coarse ancestor keeps those normals
+        // even once its own grid lands. attribsRefined and demZoom both read healthy in that state.
+        int attribsDemZoom = -1;
+        // The COARSEST grid any of the four stencil reads fell back to, and whether that was coarser
+        // than the source could have given. The tile's own grid does not decide this: the reads are
+        // at +/- normalSampleDistance, so near an edge they land on NEIGHBOURING DEM tiles, and a
+        // tile whose own grid is exact still bakes a smoothed slope if its neighbour's has not
+        // arrived. A provisional bake is one that must be redone when more data lands - without it
+        // the tile keeps whatever the cache happened to hold at that instant, which is decided by
+        // arrival order and so differs from run to run: the same tile, shaded differently each time.
+        bool attribsProvisional = false;
+        int attribsWorstZoom = -1;
+        unsigned int attribsDataVersion = 0; // ElevationManager::getDataVersion() when it was baked
+        int attribsRebakes = 0;              // bounded, see MAX_ATTRIB_REBAKES
+        bool attribsPending = false; // a refine job is out for this mesh; render thread only
         int gridSize = 0;
     };
 
@@ -55,9 +97,23 @@ namespace massif {
         _shader(),
         _meshCache()
     {
+        logBuildStamp();
+    }
+
+    // WHICH NATIVE BINARY IS ACTUALLY RUNNING. __DATE__/__TIME__ are baked in at compile time, so
+    // this is the one thing that cannot be livesynced: JS is pushed to files/app independently of
+    // the APK, so neither the install timestamp nor the app's own version can tell a fresh native
+    // build from a stale one. Several debugging rounds were spent on changes that had never
+    // reached the device, and on dismissing results that had.
+    void TerrainRenderer::logBuildStamp() {
+        static std::once_flag once;
+        std::call_once(once, []() {
+            Log::Infof("massif native build: %s %s", __DATE__, __TIME__);
+        });
     }
 
     TerrainRenderer::~TerrainRenderer() {
+        stopAttribWorker();
     }
 
     bool TerrainRenderer::renderDepthPrepass(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager) {
@@ -333,7 +389,7 @@ namespace massif {
         return _surfaceShader;
     }
 
-    bool TerrainRenderer::renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap) {
+    bool TerrainRenderer::renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap, bool withNormals) {
         if (!terrainOptions || !glResourceManager || viewState.getWidth() <= 0 || viewState.getHeight() <= 0) {
             return false;
         }
@@ -352,20 +408,25 @@ namespace massif {
         // unchanged it is still the answer. This pass draws the terrain from CPU meshes at full
         // resolution - 9.5 ms of a 19.3 ms peak-finder frame on an Adreno 610.
         unsigned int elevationVersion = (terrainOptions->getElevationManager() ? terrainOptions->getElevationManager()->getVersion() : 0);
-        if (_depthTextureMVPMatrix == viewState.getModelviewProjectionMat() && _depthTextureElevationVersion == elevationVersion && _depthTextureMeshResolutionCap == meshResolutionCap) {
+        if (!_depthTextureAttribsDirty && _depthTextureMVPMatrix == viewState.getModelviewProjectionMat() && _depthTextureElevationVersion == elevationVersion && _depthTextureMeshResolutionCap == meshResolutionCap && _depthTextureWithNormals == withNormals) {
             return true;
         }
+        _depthTextureAttribsDirty = false;
         _depthTextureMVPMatrix = viewState.getModelviewProjectionMat();
         _depthTextureElevationVersion = elevationVersion;
         _depthTextureMeshResolutionCap = meshResolutionCap;
+        _depthTextureWithNormals = withNormals;
 
         GLint prevFBO = 0;
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
         glBindFramebuffer(GL_FRAMEBUFFER, _frameBuffer->getFBOId());
         glViewport(0, 0, bufferWidth, bufferHeight);
 
-        // Clear to 'sky': maximum depth, zero coverage
-        glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        // Clear to 'sky'. Without normals that is maximum depth and zero coverage; with them there
+        // is no coverage channel to spare, so the sky IS the depth the terrain is not allowed to
+        // write - (1, 0) decodes to exactly 1.0 - and the normal reads straight up so that a sky
+        // texel sampled by mistake is at least not a direction.
+        glClearColor(1.0f, withNormals ? 0.0f : 1.0f, withNormals ? 0.5f : 1.0f, withNormals ? 0.5f : 0.0f);
         glDepthMask(GL_TRUE);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -374,11 +435,20 @@ namespace massif {
         glDisable(GL_CULL_FACE); // displaced surfaces can face away near ridge crests
 
         bool result = false;
-        if (!_shader || !_shader->isValid()) {
-            _shader = glResourceManager->create<Shader>("terraindepth", TERRAIN_DEPTH_VERTEX_SHADER, TERRAIN_DEPTH_FRAGMENT_SHADER);
-        }
-        if (_shader) {
-            result = renderTiles(viewState, terrainOptions, glResourceManager, _shader, std::function<void(const MapTile&)>(), meshResolutionCap);
+        if (withNormals) {
+            if (!_normalShader || !_normalShader->isValid()) {
+                _normalShader = glResourceManager->create<Shader>("terrainnormaldepth", TERRAIN_NORMAL_DEPTH_VERTEX_SHADER, TERRAIN_NORMAL_DEPTH_FRAGMENT_SHADER);
+            }
+            if (_normalShader) {
+                result = renderTiles(viewState, terrainOptions, glResourceManager, _normalShader, std::function<void(const MapTile&)>(), meshResolutionCap, false, true);
+            }
+        } else {
+            if (!_shader || !_shader->isValid()) {
+                _shader = glResourceManager->create<Shader>("terraindepth", TERRAIN_DEPTH_VERTEX_SHADER, TERRAIN_DEPTH_FRAGMENT_SHADER);
+            }
+            if (_shader) {
+                result = renderTiles(viewState, terrainOptions, glResourceManager, _shader, std::function<void(const MapTile&)>(), meshResolutionCap);
+            }
         }
 
         // Restore state
@@ -660,22 +730,65 @@ namespace massif {
         // TileLayer::calculateVisibleTiles keeps its own cover inside TERRAIN_COVER_TILE_BUDGET. See
         // MAX_VISIBLE_MESH_TILES for what overflowing it costs - it is not the drawing, it is the
         // mesh cache being smaller than the frame's working set.
-        int maxZoom = Const::MAX_SUPPORTED_ZOOM_LEVEL;
+        // The SAME cut is asked for two to four times a frame - the surface, the depth pre-pass, the
+        // post-process depth texture, the occlusion read-back - and nothing between them changes it.
+        // Keyed on the camera and the elevation version, so it is recomputed exactly when it would
+        // differ.
+        unsigned int elevationVersion = elevationManager->getVersion();
+        {
+            std::lock_guard<std::mutex> lock(_visibleTilesMutex);
+            if (_visibleTilesValid && _visibleTilesMVP == viewState.getModelviewProjectionMat() && _visibleTilesElevationVersion == elevationVersion) {
+                tiles = _visibleTilesCache;
+                return;
+            }
+        }
+
+        // Seeded from the zoom the LAST cut settled on, not from MAX_SUPPORTED_ZOOM_LEVEL. Starting
+        // at 24 every time is the expensive part: a first-person camera near the ground subdivides
+        // the near tiles as deep as it is allowed, so the first walk returns thousands of tiles and
+        // the budget loop then re-walks the WHOLE quadtree from the root, once per level, until it
+        // fits - a dozen full walks, each one a frustum test plus a min/max height lookup plus a
+        // vertex transformer per node visited. Measured on a Crosscall: 129-150 ms of a 103-165 ms
+        // frame, and entirely independent of the mesh resolution, which is why coarsening the mesh
+        // changed nothing. From the previous answer it converges in one walk, or two when the view
+        // opens up. +1 so it can climb back when the view narrows.
+        int maxVisibleTiles = terrainOptions->getMeshCacheSize() / 2;
+        if (maxVisibleTiles <= 0) {
+            maxVisibleTiles = MAX_VISIBLE_MESH_TILES;
+        }
+        int maxZoom;
+        {
+            std::lock_guard<std::mutex> lock(_visibleTilesMutex);
+            maxZoom = std::min(Const::MAX_SUPPORTED_ZOOM_LEVEL, _budgetMaxZoom + 1);
+        }
+        // The app's own ceiling, which is what makes the height field SETTLE rather than keep
+        // refining under everything anchored to it - see TerrainOptions::setMaxZoom.
+        int zoomCap = terrainOptions->getMaxZoom();
+        if (zoomCap > 0) {
+            maxZoom = std::min(maxZoom, zoomCap);
+        }
         for (;;) {
             tiles.clear();
             calculateVisibleTiles(viewState, elevationManager, MapTile(0, 0, 0, 0), maxZoom, tiles);
-            if (static_cast<int>(tiles.size()) <= MAX_VISIBLE_MESH_TILES || maxZoom <= 0) {
-                return;
+            if (static_cast<int>(tiles.size()) <= maxVisibleTiles || maxZoom <= 0) {
+                break;
             }
             maxZoom--;
         }
+
+        std::lock_guard<std::mutex> lock(_visibleTilesMutex);
+        _budgetMaxZoom = maxZoom;
+        _visibleTilesMVP = viewState.getModelviewProjectionMat();
+        _visibleTilesElevationVersion = elevationVersion;
+        _visibleTilesCache = tiles;
+        _visibleTilesValid = true;
     }
 
-    void TerrainRenderer::evictLeastRecentlyUsedMeshes(unsigned int pass) {
+    void TerrainRenderer::evictLeastRecentlyUsedMeshes(unsigned int pass, int maxCachedMeshes) {
         // Evict the least-recently-used entries, NOT the whole cache (as
         // ElevationTextureCache::evictLeastRecentlyUsed does). Meshes already drawn in this pass are
         // never victims: dropping one would give the tile a flat mesh for the rest of the frame.
-        while (_meshCache.size() >= MAX_CACHED_MESHES) {
+        while (static_cast<int>(_meshCache.size()) >= maxCachedMeshes) {
             auto lru = _meshCache.end();
             for (auto entryIt = _meshCache.begin(); entryIt != _meshCache.end(); entryIt++) {
                 if (entryIt->second.lastUsed >= pass) {
@@ -688,6 +801,7 @@ namespace massif {
             if (lru == _meshCache.end()) {
                 break; // every entry belongs to this pass: let the cache exceed the cap for one pass
             }
+            VT_STAT_INC(terrainMeshEvictions);
             _meshCache.erase(lru);
         }
     }
@@ -724,6 +838,18 @@ namespace massif {
 
     void TerrainRenderer::collectTileMeshes(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, int meshResolutionCap, std::vector<std::pair<MapTile, std::shared_ptr<TileMesh> > >& tileMeshes) {
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+#if MASSIF_VT_RENDER_STATS
+        // THE DEM'S OWN CEILING, once. Whether normalSampleDistance is reachable at all depends on
+        // it, and inferring it from which zooms happen to appear in a short sample cannot tell "the
+        // source stops here" from "that is as far as loading had got".
+        if (elevationManager && elevationManager->getDataSource()) {
+            static std::once_flag sourceZoomOnce;
+            std::shared_ptr<TileDataSource> demSource = elevationManager->getDataSource();
+            std::call_once(sourceZoomOnce, [&demSource]() {
+                Log::Infof("TerrainRenderer: DEM source zoom range %d..%d", demSource->getMinZoom(), demSource->getMaxZoom());
+            });
+        }
+#endif
 
         // Calculate visible terrain tiles. Through collectVisibleTiles, so the meshes are built for
         // the SAME budgeted cut every other pass of this frame walks.
@@ -737,6 +863,13 @@ namespace massif {
             meshResolution = std::min(meshResolution, meshResolutionCap);
         }
 
+        int meshCacheSize = terrainOptions->getMeshCacheSize();
+        if (meshCacheSize <= 0) {
+            meshCacheSize = MAX_CACHED_MESHES;
+        }
+        // Anything the worker finished since the last frame, swapped in before the cut is walked so
+        // a refined tile uploads and draws in the same frame it lands.
+        applyRefinedAttribs();
         unsigned int pass = ++_meshCacheClock;
         // Only where the app asked for it: stitching costs a mesh variant per edge combination, and
         // this renderer's surfaces are already skirted, so it is an improvement rather than a fix
@@ -758,7 +891,37 @@ namespace massif {
             if (tile.getZoom() >= minZoom) {
                 grid = elevationManager->getTileGrid(tile, ElevationManager::LoadMode::CACHED_ONLY);
             }
-            int gridSize = calculateMeshGridSize(tile, grid, meshResolution);
+            // The same condition ensureSurfaceAttribs uses for its fixed-scale path, so the mesh
+            // density and the normal sampling agree about which regime they are in.
+            bool fixedScaleNormals = terrainOptions->getNormalSampleDistance() > 0 && !_tileTransformer->isSpherical();
+            // NO ELEVATION DATA, NO TILE.
+            //
+            // buildTileMesh starts from heights.assign(..., 0) and only fills them if it has a grid,
+            // so a tile whose DEM is not cached is built as a FLAT PLANE AT SEA LEVEL and drawn as
+            // if that were the ground. getTileGrid(CACHED_ONLY) already walks ancestors, so a null
+            // here means nothing is cached for this tile or any parent - there is no height to draw,
+            // only a guess of zero.
+            //
+            // In mountains that guess is a large false surface with perfectly flat normals, and
+            // WHICH tiles are in that state depends on what has finished loading - so it differs on
+            // every run at the same viewpoint, and the tile jumps from 0 m to its real elevation
+            // when the DEM lands. Every per-tile property reads correct meanwhile (gridSize,
+            // attribsRefined, demZoom and staleness are all right); the heights were simply absent.
+            //
+            // Skipping leaves a gap that fills in as data arrives, which is honest, instead of a
+            // plane at the wrong altitude. Only where the panorama's fixed-scale normals are in use:
+            // a draped map treats a missing DEM as flat ground by design, and this does not change it.
+            if (fixedScaleNormals && !grid && tile.getZoom() >= minZoom) {
+                continue;
+            }
+            int gridSize = calculateMeshGridSize(tile, grid, meshResolution, fixedScaleNormals);
+#if MASSIF_VT_RENDER_STATS
+            if (gridSize <= 1) { VT_STAT_INC(terrainMeshGrid1); }
+            else if (gridSize <= 4) { VT_STAT_INC(terrainMeshGrid4); }
+            else if (gridSize <= 16) { VT_STAT_INC(terrainMeshGrid16); }
+            else if (gridSize <= 48) { VT_STAT_INC(terrainMeshGrid48); }
+            else { VT_STAT_INC(terrainMeshGridFull); }
+#endif
             int edgeMask = stitching ? calculateEdgeMask(tile, visibleTileIds) : 0;
             // The mask belongs to the mesh, so it belongs in the key: the same tile at the same
             // resolution is a different surface once a neighbour coarsens, and a pan changes that
@@ -769,23 +932,159 @@ namespace massif {
             // every cached mesh each time a new elevation tile arrives during loading.
             auto it = _meshCache.find(std::make_pair(tileId, cacheKey));
             if (it == _meshCache.end() || it->second.grid != grid || it->second.exaggeration != exaggeration || it->second.gridSize != gridSize) {
-                if (it == _meshCache.end() && _meshCache.size() >= MAX_CACHED_MESHES) {
-                    evictLeastRecentlyUsedMeshes(pass);
+                if (it == _meshCache.end() && static_cast<int>(_meshCache.size()) >= meshCacheSize) {
+                    evictLeastRecentlyUsedMeshes(pass, meshCacheSize);
                 }
                 MeshCacheEntry entry;
                 entry.grid = grid;
                 entry.exaggeration = exaggeration;
                 entry.gridSize = gridSize;
+#if MASSIF_VT_RENDER_STATS
+                auto buildStart = std::chrono::steady_clock::now();
+#endif
                 entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize, edgeMask);
+                // CARRY THE REFINED NORMALS ACROSS THE REBUILD.
+                //
+                // A rebuild here is almost always "a finer DEM arrived for a tile already on
+                // screen", and the new mesh starts with no attribs at all - so renderTiles bakes the
+                // cheap mesh-gradient stand-in and queues the DEM-sampled ones. The tile therefore
+                // LOSES the relief it was already drawing and gets it back a moment later, which
+                // reads as shading dropping out of tiles as they come towards the middle of the view
+                // (they are the ones the prefetch is feeding, so they are the ones that get a better
+                // grid). Before the bake was split off the render thread this could not happen: the
+                // rebuild paid the 14 ms and had the right normals immediately.
+                //
+                // The old ones are a good stand-in and a far better one than the mesh gradient: the
+                // normals are sampled at a fixed GROUND distance, so they belong to the DEM rather
+                // than to this mesh, and the grid nodes have not moved. Only the elevation component
+                // is stale, by whatever the new DEM disagrees with the old about.
+                //
+                // attribsRefined stays FALSE, so the refine is still queued and the stale elevation
+                // is corrected - this only removes the visible gap, it does not skip the work.
+                // ANY cached variant of the SAME TILE will do, not just the one under this exact
+                // key. The key carries the edge-stitching mask as well as the grid size, and that
+                // mask is built from which NEIGHBOURS are in the visible cut - so simply turning the
+                // camera remints the key for every tile whose neighbour set changed, and the lookup
+                // above misses. The tile then gets a new mesh with no attribs and falls back to the
+                // mesh-gradient stand-in, which is visibly flatter, and it flips back when the old
+                // key comes round again. That is "some tiles render differently depending on which
+                // way I am looking".
+                //
+                // The mask only moves the SKIRT and the edge nodes; the interior grid is the same
+                // and the normals are sampled at a fixed ground distance anyway, so a sibling's
+                // refined attribs are the right answer for all but the tile's outermost ring.
+                // _meshCache is ordered by tile id first, so this is a short walk over one tile's
+                // own variants rather than a scan.
+                if (entry.mesh) {
+                    std::size_t wanted = static_cast<std::size_t>(entry.mesh->vertices.size() / 3) * 4;
+                    auto sibling = _meshCache.lower_bound(std::make_pair(tileId, std::numeric_limits<int>::min()));
+                    bool carried = false;
+                    bool sawSibling = false, sawRefinedSibling = false;
+                    for (; sibling != _meshCache.end() && sibling->first.first == tileId; sibling++) {
+                        if (!sibling->second.mesh) {
+                            continue;
+                        }
+                        sawSibling = true;
+                        if (sibling->second.mesh->attribsRefined) {
+                            sawRefinedSibling = true;
+                        }
+                        if (sibling->second.mesh->attribsRefined &&
+                            sibling->second.gridSize == gridSize &&
+                            sibling->second.mesh->surfaceAttribs.size() == wanted) {
+                            entry.mesh->surfaceAttribs = sibling->second.mesh->surfaceAttribs;
+                            entry.mesh->surfaceAttribSampleDistance = sibling->second.mesh->surfaceAttribSampleDistance;
+                            carried = true;
+                            break;
+                        }
+                    }
+#if MASSIF_VT_RENDER_STATS
+                    // A MISS is a tile that will draw from the mesh-gradient stand-in until the
+                    // worker gets to it - visibly flatter than its neighbours for that window.
+                    // Split by CAUSE, because they do not have the same fix: a tile with no cached
+                    // variant at all has nothing to carry and never will, while one whose sibling
+                    // was refined at a different grid size is a carry this code chose to decline.
+                    if (carried) {
+                        VT_STAT_INC(terrainAttribCarryHit);
+                    } else if (!sawSibling) {
+                        VT_STAT_INC(terrainAttribCarryMissNew);
+                    } else if (!sawRefinedSibling) {
+                        VT_STAT_INC(terrainAttribCarryMissUnrefined);
+                    } else {
+                        VT_STAT_INC(terrainAttribCarryMissGrid);
+                        // WARM-UP OR FLAP? The camera here is only ROTATING, so tile distances never
+                        // change and a tile should settle on its grid size once. A sustained rate of
+                        // these means it is instead oscillating - its elevation grid being evicted
+                        // and re-resolved under it - which is a cache problem, not a carry problem,
+                        // and has a far cheaper fix than reworking the carry.
+                        static std::chrono::steady_clock::time_point lastGridLog;
+                        std::chrono::steady_clock::time_point gridNow = std::chrono::steady_clock::now();
+                        if (gridNow - lastGridLog > std::chrono::milliseconds(250)) {
+                            lastGridLog = gridNow;
+                            int wasGridSize = 0;
+                            auto prev = _meshCache.lower_bound(std::make_pair(tileId, std::numeric_limits<int>::min()));
+                            for (; prev != _meshCache.end() && prev->first.first == tileId; prev++) {
+                                if (prev->second.mesh && prev->second.mesh->attribsRefined) {
+                                    wasGridSize = prev->second.gridSize;
+                                    break;
+                                }
+                            }
+                            Log::Infof("TerrainRenderer: grid size changed for tile %d/%d/%d: %d -> %d (own DEM grid %s)",
+                                       tile.getZoom(), tile.getX(), tile.getY(), wasGridSize, gridSize,
+                                       grid ? "present" : "MISSING, standing on an ancestor");
+                        }
+                    }
+#endif
+                }
+#if MASSIF_VT_RENDER_STATS
+                VT_STAT_INC(terrainMeshBuilds);
+                VT_STAT_ADD(terrainMeshBuildUs, std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - buildStart).count());
+                VT_STAT_ADD(terrainMeshVerts, (gridSize + 1) * (gridSize + 1));
+#endif
                 entry.lastUsed = pass;
+                // How far the DEM under this tile was STRETCHED, and what mesh that bought. Two
+                // neighbours at the same tile zoom can land on different numbers here - one resolved
+                // its own elevation tile, the other fell back to a cached ancestor covering four or
+                // sixteen times the ground - and then they are built from different height fields
+                // and meet along an edge neither of them agrees about. That is a seam between tiles
+                // of EQUAL zoom, which no LOD reasoning explains.
+                if (TERRAIN_MESH_TRACE && grid) {
+                    double tileSize = Const::WORLD_SIZE / (1 << tile.getZoom());
+                    double gridWidth = grid->getInternalBounds().getMax().getX() - grid->getInternalBounds().getMin().getX();
+                    Log::Infof("TerrainRenderer::collectTileMeshes: tile %d/%d/%d mesh %d, DEM %d texels stretched over %.2f tiles, edgeMask %d",
+                               tile.getZoom(), tile.getX(), tile.getY(), gridSize, grid->getWidth(),
+                               tileSize > 0 ? gridWidth / tileSize : 0.0, edgeMask);
+                }
                 it = _meshCache.insert_or_assign(std::make_pair(tileId, cacheKey), std::move(entry)).first;
             }
+            else {
+                VT_STAT_INC(terrainMeshCacheHits);
+            }
             it->second.lastUsed = pass;
+            // Every emitted tile, cached ones included - a cache hit is the common case, and the
+            // debug views are useless if they only describe the tiles rebuilt this frame.
+            if (it->second.mesh) {
+                it->second.mesh->demZoom = (grid ? grid->getTile().getZoom() : -1);
+#if MASSIF_VT_RENDER_STATS
+                // STALE NORMALS: the attribs were baked from a coarser DEM than this tile resolves
+                // NOW. ensureSurfaceAttribs early-returns once surfaceAttribSampleDistance matches,
+                // so a tile refined while standing on an ancestor keeps those normals for good -
+                // and gridSize, attribsRefined and demZoom all still read correct, which is why the
+                // per-tile debug views showed nothing wrong. Which tiles lose that race is decided
+                // by load order, so it changes every run: "same tile, different shading each time".
+                int staleBy = (it->second.mesh->attribsDemZoom < 0 || it->second.mesh->demZoom < 0
+                                   ? -1
+                                   : it->second.mesh->demZoom - it->second.mesh->attribsDemZoom);
+                if (staleBy <= 0) { VT_STAT_INC(terrainAttribStaleFresh); }
+                else if (staleBy == 1) { VT_STAT_INC(terrainAttribStale1); }
+                else if (staleBy == 2) { VT_STAT_INC(terrainAttribStale2); }
+                else { VT_STAT_INC(terrainAttribStale3); }
+#endif
+            }
             tileMeshes.emplace_back(tile, it->second.mesh);
         }
     }
 
-    bool TerrainRenderer::renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn, int meshResolutionCap, bool surfaceAttribs) {
+    bool TerrainRenderer::renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn, int meshResolutionCap, bool surfaceAttribs, bool normalAttrib, bool skipSkirts) {
         std::vector<std::pair<MapTile, std::shared_ptr<TileMesh> > > tileMeshes;
         collectTileMeshes(viewState, terrainOptions, meshResolutionCap, tileMeshes);
 
@@ -800,9 +1099,16 @@ namespace massif {
             glUniform1f(shader->getUniformLoc("u_far"), viewState.getFar());
         }
 
+        // Per-tile properties for the debug views, on whichever pass is drawing. Set from the MESH,
+        // so it says what this tile actually is rather than what the cut asked for.
+        GLint uTileDebug = glGetUniformLocation(progId, "u_tileDebug");
+
         GLint aNormal = -1, aElevation = -1;
         std::shared_ptr<ElevationManager> elevationManager;
-        if (surfaceAttribs) {
+        // The normal-packing depth pass wants the same per-vertex attributes and not the rest of
+        // what a surface pass is: it keeps u_far above, and its shader declares no a_elevation, so
+        // the location comes back negative and the array is simply not enabled.
+        if (surfaceAttribs || normalAttrib) {
             aNormal = glGetAttribLocation(progId, "a_normal");
             aElevation = glGetAttribLocation(progId, "a_elevation");
             elevationManager = terrainOptions->getElevationManager();
@@ -826,19 +1132,124 @@ namespace massif {
             if (tileUniformsFn) {
                 tileUniformsFn(tileMesh.first);
             }
-            if (surfaceAttribs && elevationManager) {
-                ensureSurfaceAttribs(tileMesh.first, elevationManager, *mesh);
-                if (aNormal >= 0) {
-                    glVertexAttribPointer(aNormal, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), mesh->surfaceAttribs.data());
+            if (uTileDebug >= 0) {
+                // .w was attribsDemZoom, which measured staleness - now proven zero on every tile, so
+                // the slot is reused for TILE PARITY. Every per-tile property has come back uniform
+                // while regions still differ, so the next thing to test is the assumption underneath
+                // all of them: that those regions are tiles at all.
+                int parity = ((tileMesh.first.getX() + tileMesh.first.getY()) & 1);
+                glUniform4f(uTileDebug, static_cast<float>(mesh->gridSize), mesh->attribsRefined ? 1.0f : 0.0f, static_cast<float>(mesh->demZoom), static_cast<float>(parity));
+            }
+            // The mesh is cached and its geometry never changes, so it is uploaded once. Creating
+            // the resource HERE means create() runs inline - this is the GL thread - and the
+            // buffers exist by the time the upload below needs them.
+            if (!mesh->buffer && glResourceManager) {
+                mesh->buffer = glResourceManager->create<TerrainMeshBuffer>();
+            }
+            if (mesh->buffer && !mesh->buffer->hasGeometry()) {
+                mesh->buffer->uploadGeometry(mesh->vertices, mesh->indices);
+            }
+            if ((surfaceAttribs || normalAttrib) && elevationManager) {
+                float normalSampleDistance = terrainOptions->getNormalSampleDistance();
+#if MASSIF_VT_RENDER_STATS
+                auto attribStart = std::chrono::steady_clock::now();
+                bool attribMiss = mesh->surfaceAttribs.empty() || mesh->surfaceAttribSampleDistance != normalSampleDistance;
+#endif
+                // INLINE, but only the cheap half: the mesh-gradient normals, which are pure
+                // arithmetic over heights this mesh already holds. The tile therefore draws
+                // correctly the frame its mesh is built, with no DEM reads on the render thread.
+                bool wasEmpty = mesh->surfaceAttribs.empty();
+                ensureSurfaceAttribs(tileMesh.first, elevationManager, *mesh, normalSampleDistance, false);
+                if (wasEmpty && !mesh->surfaceAttribs.empty()) {
+                    mesh->attribsRefined = false;
                 }
-                if (aElevation >= 0) {
-                    glVertexAttribPointer(aElevation, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), mesh->surfaceAttribs.data() + 3);
+#if MASSIF_VT_RENDER_STATS
+                if (attribMiss) {
+                    VT_STAT_INC(terrainAttribBakes);
+                    VT_STAT_ADD(terrainAttribUs, std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - attribStart).count());
+                }
+#endif
+                // ...and the DEM-sampled ones on the worker. They replace the stand-in when they
+                // land, which is what makes neighbouring tiles at different LOD agree about their
+                // normals - the gradient becomes a property of the DEM instead of of the mesh.
+                // ...and again whenever the bake was PROVISIONAL and elevation data has landed since.
+                // Without this the first bake wins for good, and since it reads the DEM cached-only,
+                // what it finds there is decided by arrival order: half the normals on screen were
+                // measured on an ancestor grid, a different half each run. That is the whole of "the
+                // same tile is shaded differently every time I open the panorama".
+                //
+                // It terminates: a re-bake only happens when the elevation version has MOVED, the
+                // version stops moving when loading settles, and the count is capped besides - a
+                // tile over ground the source genuinely has no data for would otherwise retry for
+                // ever, since its reads can never resolve at the zoom asked for.
+                bool attribsStale = mesh->attribsRefined && mesh->attribsProvisional &&
+                                    mesh->attribsRebakes < MAX_ATTRIB_REBAKES &&
+                                    mesh->attribsDataVersion != elevationManager->getDataVersion();
+                if (normalSampleDistance > 0 && (!mesh->attribsRefined || attribsStale) &&
+                    !mesh->attribsPending && !_tileTransformer->isSpherical()) {
+#if MASSIF_VT_RENDER_STATS
+                    if (attribsStale) { VT_STAT_INC(terrainAttribRebakes); }
+#endif
+                    queueAttribRefine(tileMesh.first, elevationManager, mesh, normalSampleDistance);
+                }
+                if (mesh->buffer && mesh->uploadedAttribSampleDistance != mesh->surfaceAttribSampleDistance) {
+#if MASSIF_VT_RENDER_STATS
+                    // COUNTED HERE, not inside the bake: the first version of this stat ran halfway
+                    // through ensureSurfaceAttribs, before the skirt fill, and so reported every
+                    // skirt vertex as a zero normal every time. It measured the middle of a
+                    // function rather than what the GPU is handed. This is the buffer GL gets.
+                    {
+                        std::size_t gridVerts = static_cast<std::size_t>(mesh->gridSize + 1) * (mesh->gridSize + 1);
+                        long long zeroGrid = 0, zeroSkirt = 0;
+                        for (std::size_t i = 0; i * 4 + 2 < mesh->surfaceAttribs.size(); i++) {
+                            const float* normal = &mesh->surfaceAttribs[i * 4];
+                            if (std::abs(normal[0]) + std::abs(normal[1]) + std::abs(normal[2]) <= 0.0001f) {
+                                if (i < gridVerts) { zeroGrid++; } else { zeroSkirt++; }
+                            }
+                        }
+                        VT_STAT_ADD(terrainAttribZeroGrid, zeroGrid);
+                        VT_STAT_ADD(terrainAttribZeroSkirt, zeroSkirt);
+                    }
+#endif
+                    mesh->buffer->uploadAttribs(mesh->surfaceAttribs);
+                    mesh->uploadedAttribSampleDistance = mesh->surfaceAttribSampleDistance;
+                }
+                if (mesh->buffer && mesh->buffer->hasAttribs()) {
+                    glBindBuffer(GL_ARRAY_BUFFER, mesh->buffer->getAttribVBO());
+                    if (aNormal >= 0) {
+                        glVertexAttribPointer(aNormal, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
+                    }
+                    if (aElevation >= 0) {
+                        glVertexAttribPointer(aElevation, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<const GLvoid*>(3 * sizeof(float)));
+                    }
+                } else {
+                    glBindBuffer(GL_ARRAY_BUFFER, 0);
+                    if (aNormal >= 0) {
+                        glVertexAttribPointer(aNormal, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), mesh->surfaceAttribs.data());
+                    }
+                    if (aElevation >= 0) {
+                        glVertexAttribPointer(aElevation, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), mesh->surfaceAttribs.data() + 3);
+                    }
                 }
             }
-            glVertexAttribPointer(aCoord, 3, GL_FLOAT, GL_FALSE, 0, mesh->vertices.data());
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(mesh->indices.size()), GL_UNSIGNED_SHORT, mesh->indices.data());
+            std::size_t drawCount = (skipSkirts && mesh->gridIndexCount > 0 ? mesh->gridIndexCount : mesh->indices.size());
+            if (mesh->buffer && mesh->buffer->hasGeometry()) {
+                glBindBuffer(GL_ARRAY_BUFFER, mesh->buffer->getVertexVBO());
+                glVertexAttribPointer(aCoord, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->buffer->getIndexVBO());
+                glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(drawCount), GL_UNSIGNED_SHORT, nullptr);
+            } else {
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                glVertexAttribPointer(aCoord, 3, GL_FLOAT, GL_FALSE, 0, mesh->vertices.data());
+                glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(drawCount), GL_UNSIGNED_SHORT, mesh->indices.data());
+            }
         }
 
+        // Unbound before anything else draws: the rest of the renderer still uses client-side
+        // arrays in places, and a bound ARRAY_BUFFER silently reinterprets their pointers as offsets.
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         if (aNormal >= 0) {
             glDisableVertexAttribArray(aNormal);
         }
@@ -849,9 +1260,129 @@ namespace massif {
         return true;
     }
 
-    void TerrainRenderer::ensureSurfaceAttribs(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, TileMesh& mesh) const {
+    void TerrainRenderer::startAttribWorker() {
+        if (_attribWorker.joinable()) {
+            return;
+        }
+        _attribWorkerStop.store(false);
+        _attribWorker = std::thread([this]() {
+            for (;;) {
+                AttribJob job;
+                {
+                    std::unique_lock<std::mutex> lock(_attribMutex);
+                    _attribCondition.wait(lock, [this]() { return _attribWorkerStop.load() || !_attribJobs.empty(); });
+                    if (_attribWorkerStop.load()) {
+                        return;
+                    }
+                    // NEWEST FIRST. The queue is a record of where the camera HAS been, and while it
+                    // drains the camera keeps moving - so the front of it is the least likely tile to
+                    // still be on screen. Taking the back means a pan is refined from where the eye
+                    // is now outwards.
+                    job = std::move(_attribJobs.back());
+                    _attribJobs.pop_back();
+                }
+                if (!job.mesh || !job.elevationManager) {
+                    continue;
+                }
+                // Into a COPY: the render thread is drawing out of job.mesh->surfaceAttribs right
+                // now. Only the vectors the mesh build filled are read here, and those never change
+                // after it - the mesh is replaced rather than edited when its inputs do.
+                TileMesh scratch;
+                scratch.vertices = job.mesh->vertices;
+                scratch.heights = job.mesh->heights;
+                scratch.skirtSources = job.mesh->skirtSources;
+                scratch.gridSize = job.mesh->gridSize;
+#if MASSIF_VT_RENDER_STATS
+                auto refineStart = std::chrono::steady_clock::now();
+#endif
+                ensureSurfaceAttribs(job.tile, job.elevationManager, scratch, job.normalSampleDistance, true);
+#if MASSIF_VT_RENDER_STATS
+                VT_STAT_INC(terrainAttribRefines);
+                VT_STAT_ADD(terrainAttribRefineUs, std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - refineStart).count());
+#endif
+                if (scratch.surfaceAttribs.empty()) {
+                    continue;
+                }
+                std::lock_guard<std::mutex> lock(_attribMutex);
+                _attribResults.push_back(AttribResult { job.mesh, std::move(scratch.surfaceAttribs), job.normalSampleDistance,
+                                                       scratch.attribsDemZoom, scratch.attribsProvisional,
+                                                       scratch.attribsWorstZoom, scratch.attribsDataVersion });
+            }
+        });
+    }
+
+    void TerrainRenderer::stopAttribWorker() {
+        if (!_attribWorker.joinable()) {
+            return;
+        }
+        _attribWorkerStop.store(true);
+        _attribCondition.notify_all();
+        _attribWorker.join();
+        std::lock_guard<std::mutex> lock(_attribMutex);
+        _attribJobs.clear();
+        _attribResults.clear();
+    }
+
+    void TerrainRenderer::queueAttribRefine(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, const std::shared_ptr<TileMesh>& mesh, float normalSampleDistance) {
+        startAttribWorker();
+        {
+            std::lock_guard<std::mutex> lock(_attribMutex);
+            // Bounded, and the OLDEST go: see the worker for why the newest job is the useful one.
+            while (_attribJobs.size() >= MAX_PENDING_ATTRIB_JOBS) {
+                _attribJobs.front().mesh->attribsPending = false;
+                _attribJobs.pop_front();
+            }
+            _attribJobs.push_back(AttribJob { tile, elevationManager, mesh, normalSampleDistance });
+        }
+        // Set on the render thread, which is the only thread that reads it - the worker never
+        // touches the mesh's own fields.
+        mesh->attribsPending = true;
+        _attribCondition.notify_one();
+    }
+
+    void TerrainRenderer::applyRefinedAttribs() {
+        std::vector<AttribResult> results;
+        {
+            std::lock_guard<std::mutex> lock(_attribMutex);
+            if (_attribResults.empty()) {
+                return;
+            }
+            results.swap(_attribResults);
+        }
+        for (AttribResult& result : results) {
+            if (!result.mesh) {
+                continue;
+            }
+            result.mesh->attribsPending = false;
+            // Dropped if the mesh has been re-baked at a different sample distance meanwhile: the
+            // job answered a question nobody is asking any more.
+            if (result.attribs.size() != result.mesh->surfaceAttribs.size()) {
+                continue;
+            }
+            result.mesh->surfaceAttribs = std::move(result.attribs);
+            result.mesh->surfaceAttribSampleDistance = result.normalSampleDistance;
+            result.mesh->attribsRefined = true;
+            result.mesh->attribsDemZoom = result.attribsDemZoom;
+            result.mesh->attribsProvisional = result.attribsProvisional;
+            result.mesh->attribsWorstZoom = result.attribsWorstZoom;
+            result.mesh->attribsDataVersion = result.attribsDataVersion;
+            if (result.attribsProvisional) {
+                result.mesh->attribsRebakes++;
+            }
+            // Forces the re-upload in renderTiles, which compares these two.
+            result.mesh->uploadedAttribSampleDistance = result.normalSampleDistance - 1.0f;
+            // ...and the PACKED texture has to be redrawn, or the post-process goes on reading the
+            // normals this mesh was first drawn with. Nothing else in its cache key moves here.
+            _depthTextureAttribsDirty = true;
+        }
+    }
+
+    void TerrainRenderer::ensureSurfaceAttribs(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, TileMesh& mesh, float normalSampleDistance, bool allowFixedScale) const {
         std::size_t vertexCount = mesh.vertices.size() / 3;
-        if (!mesh.surfaceAttribs.empty() || vertexCount == 0 || mesh.gridSize < 1) {
+        if (vertexCount == 0 || mesh.gridSize < 1) {
+            return;
+        }
+        if (!mesh.surfaceAttribs.empty() && mesh.surfaceAttribSampleDistance == normalSampleDistance) {
             return;
         }
 
@@ -859,35 +1390,242 @@ namespace massif {
         int rowSize = gridSize + 1;
         int tileMask = (1 << tile.getZoom()) - 1;
         double zoomScale = 1.0 / (1 << tile.getZoom());
+        double originX = (tile.getX() * zoomScale - 0.5) * Const::WORLD_SIZE;
         double originY = ((tileMask - tile.getY()) * zoomScale - 0.5) * Const::WORLD_SIZE;
         double size = zoomScale * Const::WORLD_SIZE;
         float exaggeration = elevationManager->getExaggeration();
-
-        // The tile-local frame scales x, y and z by the same factor (calculateTileMatrix), so a
-        // normal built from the local height field is already a world-space direction.
-        auto localZ = [&](int gx, int gy) {
-            gx = std::min(std::max(gx, 0), gridSize);
-            gy = std::min(std::max(gy, 0), gridSize);
-            return mesh.heights[gy * rowSize + gx];
-        };
 
         // On a sphere the tile-local axes are not the world's, so the slope normal has to be
         // rotated into the local east/north/up frame. On a plane that frame IS the identity, and
         // the branch below keeps the exact expression it always had.
         bool spherical = _tileTransformer->isSpherical();
+
+        // The tile-local frame scales x, y and z by the same factor (calculateTileMatrix), so a
+        // normal built from the local height field is already a world-space direction.
+        //
+        // The central difference at a tile EDGE reaches past this mesh, and the node it wants is the
+        // neighbour's. It used to clamp to this tile's own edge node instead, which halves the
+        // gradient there and leaves every tile boundary carrying a normal that disagrees with the
+        // one a pixel away - a seam, one vertex wide on each side of every tile. Invisible while
+        // nothing read the normals across a pixel; a drawn line as soon as something does
+        // (PostProcessEffect::setTerrainNormalsRequired). The height comes from the elevation
+        // manager, which is where buildTileMesh got this tile's own from, so the two agree by
+        // construction. CACHED only - a blocking load per edge vertex is not payable - and the old
+        // clamp is the fallback where the neighbour's DEM has not arrived.
+        auto localZ = [&](int gx, int gy) -> float {
+            if (gx >= 0 && gx <= gridSize && gy >= 0 && gy <= gridSize) {
+                return mesh.heights[gy * rowSize + gx];
+            }
+            double nodeY = originY + (static_cast<double>(gy) / gridSize) * size;
+            double internalHeight = 0;
+            if (elevationManager->getDisplayHeightCached(originX + (static_cast<double>(gx) / gridSize) * size, nodeY, internalHeight)) {
+                double localPerInternal = (spherical ? sphericalLocalPerInternal(tile, nodeY) : 1.0 / size);
+                return static_cast<float>(internalHeight * localPerInternal);
+            }
+            int clampedX = std::min(std::max(gx, 0), gridSize);
+            int clampedY = std::min(std::max(gy, 0), gridSize);
+            return mesh.heights[clampedY * rowSize + clampedX];
+        };
+
         std::shared_ptr<const vt::TileTransformer::VertexTransformer> vertexTransformer;
         if (spherical) {
             vertexTransformer = _tileTransformer->createTileVertexTransformer(vt::TileId(tile.getZoom(), tile.getX(), tile.getY()));
         }
 
+        // A gradient measured over the MESH is measured over a step that halves with every zoom
+        // level, because a tile carries the same number of cells whatever ground it covers. Two
+        // tiles meeting at an LOD boundary therefore smooth the same hillside by different amounts,
+        // and their normals disagree along the whole shared edge - which is a drawn line as soon as
+        // anything reads the normals across a pixel, and no edge lookup can fix it: the heights
+        // agree, the SCALE does not.
+        //
+        // Sampling at a fixed ground distance instead makes the normal a property of the DEM rather
+        // than of the mesh, so both sides of a boundary return the same value and there is nothing
+        // to draw. It is what peakfinder.com gets for free by having no tiles in its geometry at all
+        // (one panorama mesh over a DEM texture array). The detail is still bounded by the DEM that
+        // is loaded out there - but it is bounded CONTINUOUSLY.
+        //
+        // 0 keeps the mesh-derived gradient, which is what a draped 2D/3D map wants: there the
+        // normals are shaded, never differentiated, and the mesh step is both cheaper and sharper.
+        bool fixedScale = allowFixedScale && normalSampleDistance > 0 && !spherical;
+        // The DEM is read CACHED_ONLY, and a panorama asks for ground a hundred kilometres out that
+        // no grid covers yet - so the fixed-scale path can silently decline for most of a mesh and
+        // leave the mesh gradient, and the seam, exactly where they were. Counted so that is visible
+        // rather than guessed at.
+        int fixedScaleVertices = 0;
+        // The coarsest grid any stencil read fell back to, over the whole tile. -1 until one answers.
+        int worstStencilZoom = -1;
+        // The DEM texel under this tile, in internal units: what the central difference below may
+        // not go finer than. Taken from the grid the tile actually resolved, which is the one that
+        // decides how much detail there is to read - an ancestor stretched over sixteen tiles
+        // answers at a sixteenth of its nominal resolution.
+        double gridTexelInternal = 0;
+        int resolvedGridZoom = -1;
+        std::shared_ptr<ElevationTileGrid> attribGrid = elevationManager->getTileGrid(tile, ElevationManager::LoadMode::CACHED_ONLY);
+        if (attribGrid) {
+            double gridSpan = attribGrid->getInternalBounds().getMax().getX() - attribGrid->getInternalBounds().getMin().getX();
+            if (attribGrid->getWidth() > 1 && gridSpan > 0) {
+                gridTexelInternal = gridSpan / (attribGrid->getWidth() - 1);
+            }
+            resolvedGridZoom = attribGrid->getTile().getZoom();
+        }
+#if MASSIF_VT_RENDER_STATS
+        // HOW MUCH COARSER THAN ASKED this tile's normals actually are. The step below can never go
+        // finer than the DEM texel under the tile, so a tile standing on a stretched ANCESTOR gets
+        // smoother normals than its neighbour that resolved its own grid - less turn across a pixel,
+        // less ridge ink, a visibly LIGHTER tile right beside a fully drawn one. This is the number
+        // behind "why are they not the same LOD as the tiles next to them"; the mesh cut cannot
+        // explain it, because its zoom cap is global.
+        if (fixedScale && gridTexelInternal > 0) {
+            double centreScale = elevationManager->getDisplayScale(originY + size * 0.5);
+            double asked = normalSampleDistance * centreScale;
+            double stretch = (asked > 0 ? gridTexelInternal / asked : 0);
+            if (stretch <= 1.01) { VT_STAT_INC(terrainAttribStretch1); }
+            else if (stretch <= 2.01) { VT_STAT_INC(terrainAttribStretch2); }
+            else if (stretch <= 4.01) { VT_STAT_INC(terrainAttribStretch4); }
+            else { VT_STAT_INC(terrainAttribStretchBig); }
+            // WHICH tiles are coarse decides the fix, and the totals cannot say. A far tile is drawn
+            // from a low-zoom DEM whose texels are kilometres wide whatever the cache holds - nothing
+            // to fix there. A tile at the cut's FINEST zoom coming back stretched means it is
+            // standing on an ancestor it should not be, which is the prefetch/cache and IS fixable.
+            if (stretch > 2.01) {
+                static std::chrono::steady_clock::time_point lastStretchLog;
+                std::chrono::steady_clock::time_point stretchNow = std::chrono::steady_clock::now();
+                if (stretchNow - lastStretchLog > std::chrono::milliseconds(300)) {
+                    lastStretchLog = stretchNow;
+                    // resolvedGridZoom is the DEM tile it ACTUALLY got. Well below the requested
+                    // zoom over a whole area means the source has no data there and the pin in
+                    // ElevationManager is telling the truth; scattered means it is a cache/prefetch
+                    // failure that the pin then makes permanent.
+                    // THREE zooms, because they are three different things and only their gaps say
+                    // where the detail is lost: the terrain tile, the DEM tile actually REQUESTED
+                    // for it (clampTileZoom walks up by the source's grid-size hint, then the
+                    // dataMaxZoom cap), and the one that came back. requested < terrain means the
+                    // detail was never asked for; resolved < requested means it was asked for and
+                    // has not arrived.
+                    Log::Infof("TerrainRenderer: DEM coarser than asked for tile z%d %d/%d: asked %.0f m, DEM texel %.0f m (%.1fx), gridSize %d, DEM requested z%d resolved z%d (sampling is still the asked step)",
+                               tile.getZoom(), tile.getX(), tile.getY(), normalSampleDistance,
+                               normalSampleDistance * stretch, stretch, gridSize,
+                               elevationManager->getDataTile(tile).getZoom(), resolvedGridZoom);
+                }
+            }
+        }
+#endif
         mesh.surfaceAttribs.resize(vertexCount * 4);
+        mesh.surfaceAttribSampleDistance = normalSampleDistance;
+        mesh.attribsDemZoom = resolvedGridZoom;
         for (int gy = 0; gy <= gridSize; gy++) {
             double internalY = originY + (static_cast<double>(gy) / gridSize) * size;
             double displayScale = elevationManager->getDisplayScale(internalY);
             double metersPerLocalZ = (exaggeration > 0 && displayScale > 0 ? size / (exaggeration * displayScale) : 0);
+            // Metres into internal units at this latitude, Mercator stretch included. The gradient
+            // below is internal z over internal x, which is the same dimensionless slope the local
+            // frame's one is - the tile scales all three axes alike.
+            // NEVER FINER THAN THE DEM'S OWN TEXEL, which is what left whole tiles perfectly flat.
+            //
+            // The four reads below are a central difference at +/- this step. If the step lands
+            // inside ONE texel of the grid the tile is standing on, all four return the same height,
+            // the gradient is exactly zero and the normal comes out exactly vertical - so the tile
+            // draws with no slope shading and no ridge ink at all, only its silhouette. A tile that
+            // resolved its own elevation tile has texels of tens of metres and 90 m clears them
+            // easily; one standing on a cached ANCESTOR covering four or sixteen times the ground
+            // has texels of hundreds of metres, and 90 m falls inside one.
+            //
+            // Which tiles those are depends on what the prefetch has fed, so it changes as the
+            // camera moves - hence "some tiles are flat, and which ones depends on orientation".
+            //
+            // Sampling at the grid's own resolution instead gives a real gradient. It is coarser
+            // than asked for, but it is the finest the data under that tile can actually answer.
+            // THE CLAMP IS A PER-VERTEX FALLBACK, NOT A PER-TILE RULE.
+            //
+            // Raising the step to the tile's own texel for the WHOLE tile makes the sampling rate a
+            // property of the grid that tile happens to be standing on - which is exactly the
+            // per-tile dependence fixed-scale normals exist to remove. At an LOD boundary a z9 tile
+            // sampled at 210 m against its z8 neighbour's 419 m, so the two smoothed the same
+            // hillside by different amounts and inked differently along the whole shared edge. The
+            // guard defeated the feature it was guarding.
+            //
+            // It also binds when nothing is wrong: 90 m is under the texel of every FAR tile, so the
+            // clamp was active on 82% of the cut (measured 1x=23 2x=24 4x=17 8x+=62) and the fixed
+            // scale was effectively never in use.
+            //
+            // Both DEM sampling paths are BILINEAR (ElevationNodeField::sample, and
+            // ElevationTileGrid::sampleHeight), so a sub-texel central difference returns the cell's
+            // own gradient rather than zero - the flat tiles this clamp was added for cannot come
+            // from step size alone. Where a vertex does still come back exactly flat, it retries at
+            // the texel below, which keeps that fix without spending it on the whole tile.
+            double stepInternal = 0;
+            double texelStepInternal = 0;
+            if (fixedScale) {
+                stepInternal = normalSampleDistance * displayScale;
+                if (gridTexelInternal > stepInternal) {
+                    texelStepInternal = gridTexelInternal;
+                }
+            }
+            // THIS TILE'S OWN GRID, not a lookup by position.
+            //
+            // getDisplayHeightCached resolves the point to a tile at the source's MAX zoom and then
+            // accepts any cached ancestor of it. Thirty kilometres out no z12 elevation tile is ever
+            // loaded, so every read there walks up to whichever ancestor the prefetch happens to have
+            // fetched - z8, z9 or z10, differing between runs and between neighbouring vertices. The
+            // normals were therefore a function of what the cache held at the instant of the bake,
+            // which is exactly the reported fault: the same tile, at the same zoom and the same
+            // distance, shaded differently on each opening. Measured at 1.1 M ancestor fallbacks
+            // against 1.1 M exact reads in one panorama.
+            //
+            // Reading the grid the tile is standing on makes the normal a function of (tile, grid)
+            // alone, so it is the same on every run. The step can reach past that grid near an edge;
+            // clamping there costs a bounded flattening on the outermost vertex, where the old code
+            // paid an unbounded and random one over the whole tile. Cross-tile agreement is kept by
+            // the step being a fixed GROUND distance, which is what the seam fix turned on.
+            auto internalHeightAt = [&](double internalX, double internalYAt, double& height) {
+                if (!attribGrid) {
+                    return false;
+                }
+                const MapBounds& gridBounds = attribGrid->getInternalBounds();
+                double sampleX = std::min(std::max(internalX, gridBounds.getMin().getX()), gridBounds.getMax().getX());
+                double sampleY = std::min(std::max(internalYAt, gridBounds.getMin().getY()), gridBounds.getMax().getY());
+                height = attribGrid->sampleNodeHeight(sampleX, sampleY) * exaggeration *
+                         elevationManager->getDisplayScale(sampleY);
+                worstStencilZoom = attribGrid->getTile().getZoom();
+                return true;
+            };
             for (int gx = 0; gx <= gridSize; gx++) {
                 float dzdx = (localZ(gx + 1, gy) - localZ(gx - 1, gy)) * 0.5f * gridSize;
                 float dzdy = (localZ(gx, gy + 1) - localZ(gx, gy - 1)) * 0.5f * gridSize;
+                if (stepInternal > 0) {
+                    double internalX = originX + (static_cast<double>(gx) / gridSize) * size;
+                    double west = 0, east = 0, south = 0, north = 0;
+                    // All four or none: a half-resolved stencil is a gradient measured over the
+                    // wrong baseline, which is the artefact this exists to remove.
+                    if (internalHeightAt(internalX - stepInternal, internalY, west) && internalHeightAt(internalX + stepInternal, internalY, east) &&
+                        internalHeightAt(internalX, internalY - stepInternal, south) && internalHeightAt(internalX, internalY + stepInternal, north)) {
+                        dzdx = static_cast<float>((east - west) / (2 * stepInternal));
+                        dzdy = static_cast<float>((north - south) / (2 * stepInternal));
+                        // Counted only when the stencil actually RESOLVED A SLOPE. Counting the
+                        // lookups succeeding instead reported 99.8% while whole tiles were coming
+                        // out perfectly flat - the reads worked, they just all landed in the same
+                        // DEM texel and returned the same height. A stat that cannot distinguish
+                        // "answered" from "answered zero" confirmed the wrong thing.
+                        if (dzdx != 0.0f || dzdy != 0.0f) {
+                            fixedScaleVertices++;
+                        } else if (texelStepInternal > 0) {
+                            // Exactly flat at the asked-for step, and the grid under this vertex is
+                            // coarser than that step: retry once at the texel. Per vertex and only
+                            // where it actually came back flat, so a tile keeps the uniform sampling
+                            // rate everywhere else and only the degenerate spots pay.
+                            if (internalHeightAt(internalX - texelStepInternal, internalY, west) && internalHeightAt(internalX + texelStepInternal, internalY, east) &&
+                                internalHeightAt(internalX, internalY - texelStepInternal, south) && internalHeightAt(internalX, internalY + texelStepInternal, north)) {
+                                dzdx = static_cast<float>((east - west) / (2 * texelStepInternal));
+                                dzdy = static_cast<float>((north - south) / (2 * texelStepInternal));
+                                if (dzdx != 0.0f || dzdy != 0.0f) {
+                                    fixedScaleVertices++;
+                                }
+                                VT_STAT_INC(terrainAttribTexelRetry);
+                            }
+                        }
+                    }
+                }
                 cglib::vec3<float> normal = cglib::unit(cglib::vec3<float>(-dzdx, -dzdy, 1.0f));
                 if (spherical) {
                     cglib::vec2<float> tilePos(static_cast<float>(gx) / gridSize, 1.0f - static_cast<float>(gy) / gridSize);
@@ -904,10 +1642,67 @@ namespace massif {
             }
         }
 
+        // PROVISIONAL: at least one stencil read was answered by a grid coarser than the source
+        // could have given for this tile, so these normals are smoother than the data allows and
+        // have to be rebuilt once the missing grids land. Measured at 1.1 M ancestor fallbacks
+        // against 1.1 M exact reads in a single panorama - half of every normal on screen.
+        mesh.attribsWorstZoom = worstStencilZoom;
+        mesh.attribsProvisional = false;
+        if (fixedScale && worstStencilZoom >= 0) {
+            mesh.attribsProvisional = (worstStencilZoom < elevationManager->getDataTile(tile).getZoom());
+        }
+        mesh.attribsDataVersion = elevationManager->getDataVersion();
+
+#if MASSIF_VT_RENDER_STATS
+        if (fixedScale) {
+            VT_STAT_ADD(terrainAttribFixedVerts, fixedScaleVertices);
+            VT_STAT_ADD(terrainAttribTotalVerts, static_cast<long long>(gridSize + 1) * (gridSize + 1));
+            if (mesh.attribsProvisional) { VT_STAT_INC(terrainAttribProvisional); }
+            else { VT_STAT_INC(terrainAttribFinal); }
+        }
+#endif
+        if (TERRAIN_MESH_TRACE && fixedScale) {
+            int gridVertexCount = (gridSize + 1) * (gridSize + 1);
+            Log::Infof("TerrainRenderer::ensureSurfaceAttribs: tile %d/%d/%d took the DEM gradient for %d of %d vertices (%.0f m step)",
+                       tile.getZoom(), tile.getX(), tile.getY(), fixedScaleVertices, gridVertexCount, normalSampleDistance);
+        }
+
+#if MASSIF_VT_RENDER_STATS
+        // WHICH TILES BAKED FLAT, BY NAME. Every per-tile counter so far describes ONE run and they
+        // all come back uniform - but the complaint is that the SAME tile, at the same zoom and
+        // distance, renders differently on different runs. Terrain does not change between runs, so
+        // that is non-determinism, and a per-run snapshot cannot see it. Naming the flat tiles lets
+        // two runs be compared: if the SET changes, the bake depends on load timing rather than on
+        // the ground, and these tile ids say exactly which ones to chase.
+        {
+            double slopeSum = 0;
+            std::size_t gridNodes = static_cast<std::size_t>(rowSize) * rowSize;
+            for (std::size_t i = 0; i < gridNodes; i++) {
+                const float* normal = &mesh.surfaceAttribs[i * 4];
+                slopeSum += std::sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+            }
+            double meanSlope = (gridNodes > 0 ? slopeSum / gridNodes : 0);
+            if (meanSlope < 0.02) {
+                Log::Infof("TerrainRenderer: BAKED FLAT tile %d/%d/%d mean slope %.4f, gridSize %d, DEM z%d, step %.0f m",
+                           tile.getZoom(), tile.getX(), tile.getY(), meanSlope, gridSize, resolvedGridZoom, normalSampleDistance);
+            }
+        }
+#endif
+
         // Skirt vertices duplicate a grid vertex's x/y at a lower z: give them that vertex's
         // values, so the crack-filling walls shade like the edge they hang from instead of
         // showing up as flat-lit bands.
         std::size_t gridVertices = static_cast<std::size_t>(rowSize) * rowSize;
+        if (vertexCount > gridVertices && mesh.skirtSources.size() < vertexCount - gridVertices) {
+            static std::chrono::steady_clock::time_point lastSkirtLog;
+            std::chrono::steady_clock::time_point skirtNow = std::chrono::steady_clock::now();
+            if (skirtNow - lastSkirtLog > std::chrono::seconds(1)) {
+                lastSkirtLog = skirtNow;
+                Log::Infof("TerrainRenderer::ensureSurfaceAttribs: SKIRT SOURCES SHORT - tile %d/%d/%d gridSize %d, vertices %zu, grid %zu, skirts %zu, sources %zu",
+                           tile.getZoom(), tile.getX(), tile.getY(), gridSize,
+                           vertexCount, gridVertices, vertexCount - gridVertices, mesh.skirtSources.size());
+            }
+        }
         for (std::size_t i = gridVertices; i < vertexCount; i++) {
             std::size_t skirtIndex = i - gridVertices;
             if (skirtIndex >= mesh.skirtSources.size()) {
@@ -915,6 +1710,9 @@ namespace massif {
             }
             std::size_t source = static_cast<std::size_t>(mesh.skirtSources[skirtIndex]) * 4;
             if (source + 4 > mesh.surfaceAttribs.size()) {
+                // The OTHER way a skirt keeps its zero-filled default, and the one the first
+                // diagnostic here did not cover: a source index past the end of the attribs.
+                VT_STAT_INC(terrainAttribSkirtOutOfRange);
                 continue;
             }
             std::copy(mesh.surfaceAttribs.begin() + source, mesh.surfaceAttribs.begin() + source + 4, mesh.surfaceAttribs.begin() + i * 4);
@@ -987,9 +1785,27 @@ namespace massif {
         }
     }
 
-    int TerrainRenderer::calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution) const {
-        if (!grid || grid->getMaxHeight() - grid->getMinHeight() <= 0) {
+    int TerrainRenderer::calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution, bool fixedScaleNormals) const {
+        // THESE TWO CASES ARE NOT THE SAME THING, and treating them alike drew whole tiles as a
+        // single flat quad.
+        //
+        // A grid that is present and has no relief is genuinely flat - sea, a salt pan - and one
+        // quad is the right mesh for it. NO grid means only that this tile's own DEM is not in the
+        // cache yet; buildTileMesh still reads every node's height from the elevation manager, which
+        // answers from a cached ANCESTOR. So the relief is available, and collapsing to four
+        // vertices throws it away: the tile becomes one plane, with a valid but CONSTANT normal.
+        //
+        // That shades correctly in the surface pass and produces exactly zero normal gradient in the
+        // post-process, so it takes no ridge ink at all - a large, straight-edged, flat-looking
+        // region whose neighbours are fully drawn. Which tiles are in that state follows the
+        // prefetch, so it moves as the camera turns.
+        //
+        // Note this bypassed the MIN_MESH_GRID_SIZE floor below, which exists to stop precisely this.
+        if (grid && grid->getMaxHeight() - grid->getMinHeight() <= 0) {
             return 1;
+        }
+        if (!grid) {
+            return MIN_MESH_GRID_SIZE;
         }
 
         // The pre-pass mesh must never be FINER than the draped tile surfaces: a coarser draped
@@ -1001,10 +1817,24 @@ namespace massif {
         if (gridWidth > 0) {
             texelsPerTile = static_cast<int>(grid->getWidth() * tileSize / gridWidth + 0.5);
         }
-        // No distance-based coarsening: a pre-pass mesh coarser than the draped surfaces
-        // smooths out ridges in the depth buffer and lets geometry behind them show
-        // through (weak occlusion, visible especially at low zoom levels/grazing angles).
-        int gridSize = std::min(std::min(texelsPerTile, meshResolution), MAX_MESH_GRID_SIZE);
+        // WITH FIXED-SCALE NORMALS, THE DEM'S TEXEL COUNT MUST NOT SET THE MESH DENSITY.
+        //
+        // The mesh grid is not only geometry: ensureSurfaceAttribs stores ONE NORMAL PER VERTEX and
+        // the rasteriser interpolates between them, so gridSize is also the resolution of the normal
+        // field the ridge term differentiates. Capping it by the DEM under the tile therefore makes
+        // the NORMAL density per-tile - a tile on a 32x ancestor carries a 16x16 normal field, and
+        // linear interpolation across those cells is smooth whatever distance each normal was
+        // measured over. It takes almost no ridge ink while its 96-grid neighbour takes plenty.
+        //
+        // That is the tile-to-tile discontinuity, and it survived making the SAMPLE DISTANCE uniform
+        // because the sample distance was never what carried it. It also explains the flicker and
+        // the height jump: gridSize steps 16 -> 96 as the DEM converges, which is a different mesh.
+        //
+        // Only while the normals are sampled at a fixed ground distance. Without that the normal IS
+        // the mesh gradient, and a mesh finer than the DEM would just interpolate the same plane at
+        // more vertices - the cap is right there, and the draped path keeps it.
+        int gridSize = (fixedScaleNormals ? std::min(meshResolution, MAX_MESH_GRID_SIZE)
+                                          : std::min(std::min(texelsPerTile, meshResolution), MAX_MESH_GRID_SIZE));
         return std::max(gridSize, MIN_MESH_GRID_SIZE);
     }
 
@@ -1136,10 +1966,28 @@ namespace massif {
             }
         }
 
+        mesh->gridIndexCount = mesh->indices.size();
+
         // Skirts: extrude the tile edges downwards to cover cracks between neighboring
         // tiles of different resolutions in the depth buffer.
+        //
+        // The drop is in METRES, and it used to be 0.05 in TILE-LOCAL z - where 1.0 is the tile's
+        // own width. That is 5% of a tile, so it scaled with the tile: 244 m at z13, 976 m at z11,
+        // 3.9 km at z9 and 31 km at z6. Looking down at a map nobody ever sees a skirt. Looking
+        // ALONG the ground, as a panorama does, every tile edge on the horizon carries a vertical
+        // wall kilometres deep, seen nearly edge-on - and the terrain depth texture carries it too,
+        // so an effect drawing lines from that depth inks a straight line along every tile boundary.
+        // Which is a seam between tiles of EQUAL zoom, on any DEM, that no normal can smooth: the
+        // skirt vertices copy their edge's normal, so the shading is continuous while the geometry
+        // is a cliff.
+        //
+        // What the skirt has to cover is the crack between a coarse sampling of a hillside and a
+        // fine one, which is bounded by the local relief - hundreds of metres, not tens of
+        // kilometres.
         if (grid) {
-            double skirtZ = minLocalZ - 0.05;
+            double displayScale = elevationManager->getDisplayScale(originY + size * 0.5);
+            double localPerMeter = (exaggeration > 0 ? exaggeration : 1.0) * displayScale * localFromInternal;
+            double skirtZ = minLocalZ - SKIRT_DEPTH_METERS * localPerMeter;
             auto addSkirt = [&](const std::vector<unsigned short>& edge, bool flip) {
                 for (std::size_t i = 0; i + 1 < edge.size(); i++) {
                     unsigned short i0 = edge[i];
@@ -1203,6 +2051,10 @@ namespace massif {
         // The vertices carry the shape, so a cached mesh built on the other surface is wrong.
         _tileTransformer = tileTransformer;
         _meshCache.clear();
+        {
+            std::lock_guard<std::mutex> lock(_visibleTilesMutex);
+            _visibleTilesValid = false; // the cut is walked against the surface too
+        }
     }
 
     cglib::mat4x4<double> TerrainRenderer::calculateTileMatrix(const MapTile& tile) const {
@@ -1324,6 +2176,55 @@ namespace massif {
             enc = fract(enc);
             enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
             gl_FragColor = vec4(enc, 1.0);
+        }
+    )GLSL";
+
+    const std::string TerrainRenderer::TERRAIN_NORMAL_DEPTH_VERTEX_SHADER = R"GLSL(
+        #version 100
+        attribute vec3 a_coord;
+        attribute vec3 a_normal;
+        uniform mat4 u_mvpMat;
+        uniform float u_far;
+        varying float v_depth;
+        varying vec3 v_normal;
+        void main() {
+            vec4 pos = u_mvpMat * vec4(a_coord, 1.0);
+            v_depth = pos.w / u_far;
+            v_normal = a_normal;
+            gl_Position = pos;
+        }
+    )GLSL";
+
+    // Half the channels for the depth and the other half for the normal. See
+    // PostProcessEffect::setTerrainNormalsRequired for what reads this and why.
+    const std::string TerrainRenderer::TERRAIN_NORMAL_DEPTH_FRAGMENT_SHADER = R"GLSL(
+        #version 100
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+        #else
+        precision mediump float;
+        #endif
+        varying float v_depth;
+        varying vec3 v_normal;
+        void main() {
+            // SQRT, so that the sixteen bits are spent where the relief is rather than spread flat
+            // over a far plane that is mostly empty. Never quite 1: that value is the sky, and the
+            // pass has no coverage channel left to say so with.
+            float depth = min(sqrt(clamp(v_depth, 0.0, 1.0)), 0.9995);
+            vec2 enc = fract(vec2(1.0, 255.0) * depth);
+            enc.x -= enc.y * (1.0 / 255.0);
+            // Octahedral, upper hemisphere only - a height field's normal never points down, so the
+            // L1 normalisation IS the encoding and the usual fold is unreachable. Degenerate
+            // normals (a zero attribute on a mesh built before the attributes existed) fall back to
+            // straight up rather than to a division by zero.
+            float l1 = abs(v_normal.x) + abs(v_normal.y) + abs(v_normal.z);
+            // DIAGNOSTIC FALLBACK, not the shipping one. Straight up (0, 0) is what a genuinely flat
+            // surface encodes to AND what the sky is cleared to, so a degenerate normal used to be
+            // indistinguishable from both - which is why three rounds of debugging could not tell
+            // "the attribute is zero" from "this pixel was never drawn". (1, -1) has an L1 norm of
+            // two, so no real normal can produce it, and it shows up as its own colour.
+            vec2 oct = l1 > 0.0001 ? v_normal.xy / l1 : vec2(1.0, -1.0);
+            gl_FragColor = vec4(enc, oct * 0.5 + 0.5);
         }
     )GLSL";
 }

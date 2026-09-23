@@ -18,6 +18,7 @@
 #include "ui/WebMapView.h"
 #include "api/MassifInterop.h"
 #include "core/MapPos.h"
+#include "graphics/Color.h"
 #include "components/Layers.h"
 #include "components/Options.h"
 #include "datasources/HTTPTileDataSource.h"
@@ -255,6 +256,19 @@ EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float 
 /** Must be called BEFORE massifSetReliefShader: the layout is fixed when the effect is built. */
 EMSCRIPTEN_KEEPALIVE void massifSetReliefNormals(int wanted) {
     _reliefWantsNormals = (wanted != 0);
+}
+
+/**
+ * The terrain's own base fill. Transparent by default, which means the terrain is see-through
+ * wherever no layer has painted yet - and while the tiles load that is a lot of it, so the clear
+ * colour shows through as hard black patches that settle into the picture as the drape arrives.
+ * Filling with the paper colour makes the unpainted state the same colour as the finished one.
+ */
+EMSCRIPTEN_KEEPALIVE void massifSetTerrainBackground(int r, int g, int b, int a) {
+    if (_terrainOptions) {
+        _terrainOptions->setBackgroundColor(massif::Color(static_cast<unsigned char>(r), static_cast<unsigned char>(g),
+                                                          static_cast<unsigned char>(b), static_cast<unsigned char>(a)));
+    }
 }
 
 EMSCRIPTEN_KEEPALIVE void massifSetSurfaceShader(const char* source) {

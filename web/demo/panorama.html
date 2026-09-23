@@ -140,6 +140,12 @@
   // and nothing else. ?ink=normals is the old one, kept so the two can be compared in one build.
   const inkMode = query.get('ink') ?? 'depth';
 
+  // Paper, not transparent: see massifSetTerrainBackground. ?background=0 turns it off to see the
+  // state it fixes.
+  if (query.get('background') !== '0') {
+    module.ccall('massifSetTerrainBackground', null, ['number', 'number', 'number', 'number'], [247, 247, 244, 255]);
+  }
+
   function applyAll() {
     str('massifSetSurfaceShader', RELIEF_SURFACE_SHADER);
     module.ccall('massifSetReliefNormals', null, ['number'], [inkMode === 'depth' ? 0 : 1]);

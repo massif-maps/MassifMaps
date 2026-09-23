@@ -1181,8 +1181,21 @@ namespace massif {
                 // from the texture rather than from the tile: a tile standing on a z8 grid samples
                 // one sixteenth of it, and the shader must be told which sixteenth.
                 vt::GLTileRenderer::TerrainTexture demTexture;
-                bool haveDem = _elevationTextureCache->getTexture(vt::TileId(tileMesh.first.getZoom(), tileMesh.first.getX(), tileMesh.first.getY()), demTexture)
-                               && demTexture.textureId != 0 && demTexture.textureSize(0) > 0 && demTexture.textureSize(1) > 0;
+                // internalSize is the one that was missing: a texture still being prepared can come
+                // back with a zero world extent, and the shader's uv divide then goes infinite, so
+                // the four taps sample nothing meaningful and the normal comes out near-horizontal.
+                // That is the hard paper/shade blotching visible while the tiles load.
+                // AND THE MESH MUST ALREADY CARRY ELEVATION. The texture arrives before the mesh is
+                // rebuilt from the same grid, and a per-fragment normal on a mesh that is still flat
+                // paints mountain relief onto flat ground - hard paper/shade blotches with the
+                // geometry nowhere near them, which is what the load looks like. demZoom below zero
+                // is a mesh with no grid behind it yet; until then the interpolated mesh normal is
+                // the one that agrees with what is actually drawn.
+                bool meshHasElevation = (mesh->demZoom >= 0);
+                bool haveDem = meshHasElevation && _elevationTextureCache->getTexture(vt::TileId(tileMesh.first.getZoom(), tileMesh.first.getX(), tileMesh.first.getY()), demTexture)
+                               && demTexture.textureId != 0 && demTexture.textureSize(0) > 0 && demTexture.textureSize(1) > 0
+                               && demTexture.internalSize(0) > 0 && demTexture.internalSize(1) > 0
+                               && demTexture.metersPerTexel > 0;
                 glUniform1f(uDemValid, haveDem ? 1.0f : 0.0f);
                 if (haveDem) { VT_STAT_INC(terrainDemTextureHits); } else { VT_STAT_INC(terrainDemTextureMisses); }
                 if (haveDem) {

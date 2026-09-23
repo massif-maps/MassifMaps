@@ -6,6 +6,7 @@ namespace massif {
         _name(name),
         _fragmentShader(fragmentShader),
         _terrainDepthRequired(false),
+        _terrainNormalsRequired(false),
         _floatParameters(),
         _colorParameters(),
         _mutex()
@@ -31,6 +32,21 @@ namespace massif {
     void PostProcessEffect::setTerrainDepthRequired(bool required) {
         std::lock_guard<std::mutex> lock(_mutex);
         _terrainDepthRequired = required;
+    }
+
+    bool PostProcessEffect::isTerrainNormalsRequired() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _terrainNormalsRequired;
+    }
+
+    void PostProcessEffect::setTerrainNormalsRequired(bool required) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _terrainNormalsRequired = required;
+        if (required) {
+            // There is one texture. Asking for the normals without the pre-pass that packs them
+            // would silently leave the effect sampling whatever was there last.
+            _terrainDepthRequired = true;
+        }
     }
 
     float PostProcessEffect::getFloatParameter(const std::string& name) const {

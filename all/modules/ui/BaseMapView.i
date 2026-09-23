@@ -48,6 +48,11 @@
 %attribute(massif::BaseMapView, float, FlightProgress, getFlightProgress)
 
 !method(massif::BaseMapView, moveTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), returns(void))
+// The counterpart to CameraPos being readable: moveTo places the FOCUS, and a first-person or
+// panorama view means "stand HERE", which no combination of the calls above could express. A
+// binding cannot solve it either - the offset needs the projection surface, and the focus is
+// clamped, so translating it from outside and reading back diverges instead of converging.
+!method(massif::BaseMapView, moveCameraTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), returns(void))
 !method(massif::BaseMapView, flyTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), arg(climbHeight, float), arg(durationSeconds, float), returns(void))
 !method(massif::BaseMapView, fitBounds, arg(bounds, json), arg(screenBounds, json), arg(integerZoom, bool), arg(resetRotation, bool), arg(resetTilt, bool), arg(durationSeconds, float), returns(void))
 !method(massif::BaseMapView, screenToMap, arg(x, float), arg(y, float), returns(json))

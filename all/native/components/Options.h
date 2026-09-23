@@ -488,7 +488,36 @@ namespace massif {
          * @param viewDistance The new label view distance, or 0 for no limit.
          */
         void setLabelViewDistance(float viewDistance);
-    
+
+        /**
+         * Returns how far outside the viewport labels are placed, in screen pixels.
+         * @return The label padding, or a negative value while it follows the tilt.
+         */
+        float getLabelPadding() const;
+        /**
+         * Sets how far outside the viewport a label may be placed, in screen pixels.
+         *
+         * Placement only packs the labels it can SEE: one outside the band is never given a slot, so
+         * it arrives at the edge with the screen already full and has to evict a neighbour to appear.
+         * That eviction is what reads as names blinking in and out while a view is turned. Padding is
+         * the fix - a label that enters the band a screen early has already won or lost its slot by
+         * the time it is visible, and nothing changes on screen. maplibre pads a flat 100 and says so
+         * itself: "increases label stability, but it's expensive".
+         *
+         * The default is negative, which keeps the built-in rule: 100 pixels scaled by sin(tilt),
+         * with a floor of 20. That rule reasons about the GROUND - 100 pixels near the horizon are
+         * kilometres of map and thousands of labels - and for a map being panned it is right. A
+         * panorama is the case it gets wrong: tilt is ~0, so it takes the floor, and the view TURNS
+         * rather than panning, so the band it wants is a horizontal one over ground that is already
+         * loaded. Half a screen width is the useful setting there.
+         *
+         * Expensive in two places: the tiles filling the band are culled in as label tiles rather
+         * than preloading ones (TileLayer), and every label in it is a placement and a collision test
+         * per pass.
+         * @param padding The new label padding in screen pixels, or a negative value to follow the tilt.
+         */
+        void setLabelPadding(float padding);
+
         /**
          * Returns the vertial field of view angle.
          * @return The vertical field of view angle in degrees.
@@ -979,7 +1008,8 @@ namespace massif {
     
         float _drawDistance;
         float _labelViewDistance;
-    
+        float _labelPadding;
+
         float _fovY;
     
         PanningMode::PanningMode _panningMode;

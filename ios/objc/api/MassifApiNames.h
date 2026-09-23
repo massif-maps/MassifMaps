@@ -151,6 +151,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraChanged;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClampDuration;
 /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClearance;
+/** Returns the share of the camera's altitude that the terrain clearance takes. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClearanceFraction;
 /** Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraPos;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCapacity;
@@ -255,6 +257,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyDescriptionFontSize;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDescriptionMargins;
 /** Returns the state of the description wrap parameter. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDescriptionWrap;
+/** Returns the zoom whose tiles are read. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyDetailZoom;
 /** Returns the full path of the directory containing the assets. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDirPath;
 /** Returns true if the object is anchored by direction, false if by geographic position. */
@@ -269,7 +273,6 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyDoubleClickDetection;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDoubleClickMaxDuration;
 /** Returns the drape cache budget in megabytes. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeCacheSize;
-/** Returns whether polygon fills are draped as a render-to-texture surface. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeFillsEnabled;
 /** Returns whether vt tile lines are also draped (in addition to fills). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDrapeLinesEnabled;
@@ -289,6 +292,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyElementClickPos;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyElementInfo;
 /** Returns the list of vector elements. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyElements;
+/** Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyElevationCacheSize;
 /** Returns whether the normal map encodes absolute elevation (so a custom normal-map lighting shader can call getElevation()). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyElevationEncodingEnabled;
 /** Returns whether elevation tile prefetching is enabled. */
@@ -431,6 +436,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyKineticZoom;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelBlendingSpeed;
 /** Returns the contour interval used for label stubs. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelInterval;
+/** Returns how far outside the viewport labels are placed, in screen pixels. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelPadding;
 /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelPerspectiveScaling;
 /** Returns the current display order of the labels. */
@@ -508,6 +515,10 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMax;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxAge;
 /** Returns true/false based on whether the max-age header check is used. If this is enabled, SDK will automatically refresh the tiles when tiles have expired. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxAgeHeaderCheck;
+/** Returns how many zoom levels below the requested tile this will reach. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxDetailLevels;
+/** Returns how many features a rebuilt tile may carry. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxFeatures;
 /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxOverzoomLevel;
 /** Returns the maximum number of results the search service returns. */
@@ -518,12 +529,14 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxTileZoomCoarsening;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxTileZoomOffset;
 /** Gets the current maximum underzoom level for this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxUnderzoomLevel;
-/** Returns the maximum zoom level supported by this data source. */
+/** Returns the maximum tile zoom level the terrain mesh is cut at. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxZoom;
 /** Returns maximum zoom level encoded in this tilemask. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxZoomLevel;
 /** Returns the maximum zoom level when clusters are shown. If zoom level is greater, then clusters are replaced with individual elements. Default is 24. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaximumClusterZoom;
+/** Returns how many terrain surface meshes may be cached. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMeshCacheSize;
 /** Returns the terrain mesh resolution. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMeshResolution;
 /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -553,6 +566,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyNeighbourhood;
 /** Returns the style layers that are kept out of the terrain drape bake. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyNoDrapeLayerFilter;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyNormalMapLightingShader;
+/** Returns the ground distance the surface normals are measured over, in meters. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyNormalSampleDistance;
 /** Creates a new map vector by normalizing this map vector. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyNormalized;
 /** Returns all the keys in the object. */
@@ -642,6 +657,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyRangeEnd;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRangeStart;
 /** Returns the rank of the result. The rank is a normalized number between 0 and 1, 1 meaning a perfect match. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRank;
+/** Returns the property a rebuilt tile's features are ranked by. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyRankProperty;
 /** Returns the raster tile event listener. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRasterTileEventListener;
 /** Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding. */
@@ -742,6 +759,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowNormalOffset;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowSoftness;
 /** Returns the shadow strength. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShadowStrength;
+/** Returns whether the shared ground pass draws the terrain a second time. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertySharedGroundEnabled;
 /** Returns the state of internal debug message logging. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyShowDebug;
 /** Returns the state of error logging. */
@@ -828,6 +847,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyTargetProjection;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainDepthRequired;
 /** Returns whether the sun lights the 3D terrain surface. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainLightingEnabled;
+/** Returns true if the effect wants the terrain SURFACE NORMAL in the depth pre-pass. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainNormalsRequired;
 /** Returns the terrain options whose elevation manager the label stubs read. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTerrainOptions;
 /** Returns whether the layer may shade the 3D terrain's own elevation texture instead of loading a DEM tile set of its own. */
@@ -1022,6 +1043,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodInsert;
 FOUNDATION_EXPORT MassifMethod const MassifMethodLoadTile;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMapToScreen;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMatchRoute;
+FOUNDATION_EXPORT MassifMethod const MassifMethodMoveCameraTo;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMoveTo;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRefresh;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRemove;
@@ -1033,6 +1055,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceMaxOverzoomLevel;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceZoomLevelBias;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetFloatParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
@@ -1128,6 +1151,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMulti;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceOrdered;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourcePersistentCache;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourcePmtiles;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourcePointDetail;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeStyleMbvt;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeStylesetCartocss;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeStylesetProject;

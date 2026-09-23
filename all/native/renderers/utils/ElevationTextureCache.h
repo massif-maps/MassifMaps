@@ -105,9 +105,9 @@ namespace massif {
          *
          * maxAncestorLevels bounds how far above `zoom` the answer may come from. An extrusion BAKES
          * its base into its vertices, so a far ancestor is a wrong answer rather than a coarse one -
-         * hence the tight default. A LABEL anchor is re-anchored whenever the elevation changes and a
-         * few metres is invisible, so it passes a generous bound: with the elevation three levels
-         * coarser than the render tiles (RenderStats zoomGap), one level answered for nothing at all.
+         * hence the tight default. A LABEL is re-anchored whenever the elevation changes and a few
+         * metres is invisible, so it walks further: with the elevation three levels coarser than the
+         * render tiles (RenderStats zoomGap), one level answered for nothing at all.
          *
          * @return False when the renderer has no elevation for the tile holding the point.
          */
@@ -115,9 +115,11 @@ namespace massif {
         // cache" frame; beyond that the answer is a smoothed average of a region, not the ground
         // under the point - which a vertex cannot be given, but a re-anchored label can.
         static const int BASE_MAX_ANCESTOR_LEVELS = 1;
-        // What a label anchor passes: any cached ancestor, which is what the grid path already grants
-        // through LoadMode::CACHED_ONLY.
-        static const int ANY_CACHED_ANCESTOR = 32;
+        // What a label anchor passes when the GPU can place it instead (labelVsh's applyTerrain, which
+        // needs the terrain texture provider): the measured zoomGap of 3, plus the frame the texture
+        // lags the grid by. Past that an entry is one a PREVIOUS camera left behind - after a 2D/3D
+        // switch a single coarse texel answered the whole screen and hung every POI in the air.
+        static const int LABEL_MAX_ANCESTOR_LEVELS = 4;
 
         bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels = BASE_MAX_ANCESTOR_LEVELS) const;
 

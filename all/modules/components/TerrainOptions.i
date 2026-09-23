@@ -49,6 +49,8 @@
 %attribute(massif::TerrainOptions, bool, ElevationPrefetchEnabled, isElevationPrefetchEnabled, setElevationPrefetchEnabled)
 %attribute(massif::TerrainOptions, int, MeshResolution, getMeshResolution, setMeshResolution)
 %attribute(massif::TerrainOptions, bool, TileEdgeStitchingEnabled, isTileEdgeStitchingEnabled, setTileEdgeStitchingEnabled)
+%attribute(massif::TerrainOptions, int, MeshCacheSize, getMeshCacheSize, setMeshCacheSize)
+%attribute(massif::TerrainOptions, bool, SharedGroundEnabled, isSharedGroundEnabled, setSharedGroundEnabled)
 %attribute(massif::TerrainOptions, bool, DrapeFillsEnabled, isDrapeFillsEnabled, setDrapeFillsEnabled)
 %attribute(massif::TerrainOptions, bool, DrapeLinesEnabled, isDrapeLinesEnabled, setDrapeLinesEnabled)
 %attribute(massif::TerrainOptions, bool, Bridges3DEnabled, isBridges3DEnabled, setBridges3DEnabled)
@@ -61,6 +63,10 @@
 %attribute(massif::TerrainOptions, float, ViewDistance, getViewDistance, setViewDistance)
 %attribute(massif::TerrainOptions, float, ViewDistanceMax, getViewDistanceMax, setViewDistanceMax)
 %attribute(massif::TerrainOptions, int, DrapeCacheSize, getDrapeCacheSize, setDrapeCacheSize)
+// The elevation GRID cache, megabytes. A wide-view mode (a panorama) has a working set several times
+// the default grid-count rule, so the cache sits full and every eviction is refetched - which keeps
+// all of the manager's prefetch threads busy for as long as the mode is open.
+%attribute(massif::TerrainOptions, int, ElevationCacheSize, getElevationCacheSize, setElevationCacheSize)
 %attribute(massif::TerrainOptions, int, DrapeWorkingSet, getDrapeWorkingSet, setDrapeWorkingSet)
 %attribute(massif::TerrainOptions, int, MaxTileZoomCoarsening, getMaxTileZoomCoarsening, setMaxTileZoomCoarsening)
 %attribute(massif::TerrainOptions, float, DepthBias, getDepthBias, setDepthBias)
@@ -68,10 +74,15 @@
 // existed in C++ only, so no binding could get a camera close to a slope - which is exactly what
 // composing a 3D view needs.
 %attribute(massif::TerrainOptions, float, CameraClearance, getCameraClearance, setCameraClearance)
+// 0 turns the altitude-relative rule off and leaves CameraClearance as a fixed height - what a
+// first-person view needs, where the orbiting-camera model holds the eye off the summit it stands on.
+%attribute(massif::TerrainOptions, float, CameraClearanceFraction, getCameraClearanceFraction, setCameraClearanceFraction)
 %attribute(massif::TerrainOptions, float, FocusLift, getFocusLift, setFocusLift)
 %attribute(massif::TerrainOptions, float, CameraClampDuration, getCameraClampDuration, setCameraClampDuration)
 %attribute(massif::TerrainOptions, bool, BillboardOcclusionEnabled, isBillboardOcclusionEnabled, setBillboardOcclusionEnabled)
 %attribute(massif::TerrainOptions, float, BillboardOcclusionTolerance, getBillboardOcclusionTolerance, setBillboardOcclusionTolerance)
+%attribute(massif::TerrainOptions, float, NormalSampleDistance, getNormalSampleDistance, setNormalSampleDistance)
+%attribute(massif::TerrainOptions, int, MaxZoom, getMaxZoom, setMaxZoom)
 %attribute(massif::TerrainOptions, float, TextOcclusionOpacity, getTextOcclusionOpacity, setTextOcclusionOpacity)
 %attributestring(massif::TerrainOptions, std::string, SurfaceShaderSource, getSurfaceShaderSource, setSurfaceShaderSource)
 %std_exceptions(massif::TerrainOptions::TerrainOptions)

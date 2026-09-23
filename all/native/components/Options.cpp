@@ -42,6 +42,7 @@ namespace massif {
         _dpi(160.0f),
         _drawDistance(16),
         _labelViewDistance(static_cast<float>(vt::LabelDistance::DEFAULT_VIEW_DISTANCE)),
+        _labelPadding(-1.0f),
         _fovY(70),
         _panningMode(PanningMode::PANNING_MODE_FREE),
         _pivotMode(PivotMode::PIVOT_MODE_TOUCHPOINT),
@@ -442,7 +443,23 @@ namespace massif {
         }
         notifyOptionChanged("LabelViewDistance");
     }
-    
+
+    float Options::getLabelPadding() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _labelPadding;
+    }
+
+    void Options::setLabelPadding(float padding) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_labelPadding == padding) {
+                return;
+            }
+            _labelPadding = padding;
+        }
+        notifyOptionChanged("LabelPadding");
+    }
+
     float Options::getFieldOfViewY() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _fovY;

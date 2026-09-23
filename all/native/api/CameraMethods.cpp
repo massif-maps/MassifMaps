@@ -35,6 +35,23 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        // The counterpart to moveTo, and the reason CameraPos is readable: moveTo places the FOCUS,
+        // which at a panorama's tilt sits kilometres in front of where the user meant to STAND.
+        // Missing here is not a compile error anywhere - the facade calls it by name, so an
+        // unregistered method is a throw at runtime and a silent fall back to moveTo.
+        Result moveCameraTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            auto view = static_cast<BaseMapView*>(obj);
+            MapPos pos;
+            double zoom = 0, rotation = 0, tilt = 0;
+            if (!args.getPos(0, pos) || !args.getDouble(1, zoom) || !args.getDouble(2, rotation) ||
+                !args.getDouble(3, tilt)) {
+                return RESULT_BAD_SPEC;
+            }
+            view->moveCameraTo(pos, static_cast<float>(zoom), static_cast<float>(rotation),
+                               static_cast<float>(tilt));
+            return RESULT_OK;
+        }
+
         Result flyTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             auto view = static_cast<BaseMapView*>(obj);
             MapPos pos;
@@ -105,6 +122,7 @@ namespace massif { namespace api {
 
     void registerCameraMethods() {
         Methods::registerMethod("massif::BaseMapView", "moveTo", &moveTo);
+        Methods::registerMethod("massif::BaseMapView", "moveCameraTo", &moveCameraTo);
         Methods::registerMethod("massif::BaseMapView", "flyTo", &flyTo);
         Methods::registerMethod("massif::BaseMapView", "fitBounds", &fitBounds);
         Methods::registerMethod("massif::BaseMapView", "screenToMap", &screenToMap);

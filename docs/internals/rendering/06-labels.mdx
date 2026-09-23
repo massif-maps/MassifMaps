@@ -587,6 +587,19 @@ foreshortening of the ground plane, and the band stays roughly constant in WORLD
 live: `padding=100.0` top-down, `padding=50.0` at pitch 60, and 1–4 labels per pass taking the
 skip-fade path.
 
+**And a view that turns rather than pans is the case that rule gets wrong.** It reasons about the
+ground, so it is right for a map being dragged; a panorama sits at tilt ~0, takes the floor of 20,
+and packs only what it can see. A summit name therefore reaches the screen edge with the row already
+full, evicts a neighbour to claim it, and that eviction — several times a second while the view is
+turned — is what reads as names blinking in and out. The ground it wants was already loaded: the
+band it needs is a horizontal one, over the same horizon.
+
+`Options::setLabelPadding` overrides the formula outright (negative keeps it), and
+`calculateLabelPadding(tilt, override)` is the single place both `graphics::ViewState` and
+`TileRenderer::cullLabels` take it from, so the tile bucket below and the culler's grid never
+disagree about where the band is. Half a screen width is the useful setting for a panorama — every
+name in it is then a placement and a collision test per pass, which is the price.
+
 **The band is worth nothing without the tiles that fill it.** A label cannot be placed early if it
 does not exist, and it does not exist until its tile reaches the renderer. `TileLayer` sorted every
 leaf tile into two buckets — inside the plain frustum it is a *visible* tile, otherwise a
@@ -1057,13 +1070,19 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   elevation sits three levels coarser than the render tiles, so a one-level walk refused the only data
   there was and returned false for every label at every position. The cap is right for its original
   caller — an extrusion bakes its base into its vertices, so a far ancestor is a wrong answer rather
-  than a coarse one — so the bound is now the caller's, and a label passes `ANY_CACHED_ANCESTOR`,
-  which is what the grid path already grants through `LoadMode::CACHED_ONLY`. Confirmed on the
-  Crosscall: **19 misses in 746 584 queries**, and `elevReanchor` non-zero for the first time.
-  `smooth = true` is the building-BASE variant and
-  resolves through the manager's LRU alone, so it fails in exactly the case this is for. The LRU
-  remains the fallback for a map with no texture cache at all, and the provider returns **NaN** when
-  neither has data. `Label::applyElevation` leaves a non-finite vertex at the height it had and
+  than a coarse one — so the bound is now the caller's, and a label passes
+  `LABEL_MAX_ANCESTOR_LEVELS`, the measured gap of 3 plus the frame the texture lags the grid by.
+  Confirmed on the Crosscall: **19 misses in 746 584 queries**, and `elevReanchor` non-zero for the
+  first time. It was briefly unbounded, and that is the other half of the floating-POI bug below: an
+  entry further up than the gap is one a *previous* camera left in the cache, and after a 2D/3D
+  switch — nothing loads the DEM while the map is flat — one such texel answered for the whole
+  screen. Bounding it is only safe because a label that gets no answer is **not** worse off: with
+  GPU draping `labelVsh` elevates it from the same texture the ground is drawn from, so refusing is
+  better than answering wrong. Without a texture cache there is no GPU height either, so that device
+  takes the manager LRU's own unbounded walk instead — coarse beats nothing when nothing else comes.
+  `smooth = true` is the building-BASE variant and resolves through the manager's LRU alone, so it
+  fails in exactly the case this is for. The provider returns **NaN** when neither source has data.
+  `Label::applyElevation` leaves a non-finite vertex at the height it had and
   returns false, which leaves it **un-anchored**. Zero stays a legal height.
   Extrusions hit this first and were fixed the same way — see
   [04-terrain.md](04-terrain.md#cpu-height-queries).

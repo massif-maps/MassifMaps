@@ -178,6 +178,41 @@ namespace massif {
          * @param tilt The tilt in degrees.
          */
         void moveTo(const MapPos& pos, float zoom, float rotation, float tilt);
+
+        /**
+         * Puts the CAMERA at a position, rather than what the camera looks at.
+         *
+         * moveTo and setFocusPos both take a FOCUS, and the camera sits behind it by a distance the
+         * zoom and tilt decide - a few metres looking straight down, kilometres at the near-
+         * horizontal tilt a first-person or panorama view uses. So an app that means "stand HERE
+         * and look around" cannot express it with moveTo: it ends up somewhere else, looking at the
+         * place it meant to be.
+         *
+         * getCameraPos has always been readable and there was no setter, so apps solved it by
+         * translating the focus and reading the camera back until it converged. That cannot be made
+         * reliable from outside: the focus is clamped (restricted panning, pan bounds), so a step's
+         * delta is not necessarily applied and the walk diverges instead of closing.
+         *
+         * Here it is one step and no iteration. Translating the camera leaves the camera-to-focus
+         * offset unchanged, so the focus this needs is the current focus plus (target - camera),
+         * taken in INTERNAL coordinates where that is a straight translation. Exact on a planar
+         * projection; on the globe the offset turns with the surface, so a very long move lands
+         * close rather than exact.
+         *
+         * Rotation and tilt are applied first, because they are what the offset depends on.
+         * @param pos The target camera position in base projection coordinate system.
+         * @param zoom The target zoom level.
+         * @param rotation The rotation in degrees.
+         * @param tilt The tilt in degrees.
+         */
+        void moveCameraTo(const MapPos& pos, float zoom, float rotation, float tilt);
+        /**
+         * The same, keeping the current rotation and tilt. See moveCameraTo.
+         * @param pos The target camera position in base projection coordinate system.
+         * @param zoom The target zoom level.
+         */
+        void moveCameraTo(const MapPos& pos, float zoom);
+
         /**
          * Moves the camera to a position and a zoom level in ONE animation, pulling back over a
          * long move and coming down at the target (Van Wijk & Nuij's optimal path). Unlike
@@ -438,6 +473,8 @@ namespace massif {
     private:
         // Rotation and tilt optional, so both public moveTo overloads are the same code.
         void moveTo(const MapPos& pos, float zoom, const float* rotation, const float* tilt);
+        /** Null rotation/tilt keeps the current one, as with moveTo. */
+        void moveCameraTo(const MapPos& pos, float zoom, const float* rotation, const float* tilt);
 
         std::shared_ptr<CancelableThreadPool> _envelopeThreadPool;
         std::shared_ptr<CancelableThreadPool> _tileThreadPool;

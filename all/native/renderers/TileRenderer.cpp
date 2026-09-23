@@ -1037,19 +1037,21 @@ namespace massif {
             // bounded ancestor and prefetches what is missing, so it answers where the manager's LRU
             // has already dropped the grid out from under a tile that is still being drawn. The
             // smoothed variant is for a building BASE and resolves through that LRU alone.
-            // The LRU is still the fallback for a map with no texture cache (no GPU draping).
             // NaN only when neither has data: returning 0 there anchored the label under the terrain,
             // and the caller then marked it clean for good.
             std::shared_ptr<ElevationTextureCache> labelTextureCache = _elevationTextureCache;
             int labelZoom = static_cast<int>(viewState.getZoom());
             tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom](const cglib::vec3<double>& pos) {
                 double height = 0;
-                bool fromTexture = labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::ANY_CACHED_ANCESTOR);
-                bool fromGrid = false;
-                if (!fromTexture) {
-                    fromGrid = elevationManager->getDisplayHeightCached(pos(0), pos(1), height);
-                }
-                if (fromTexture || fromGrid) {
+                // With the texture cache there is GPU draping, so labelVsh draws an UN-anchored label
+                // on the ground itself: no answer beats a distant ancestor's, and the walk already
+                // tries the exact grid at each level. The LRU's own walk is unbounded, so it is the
+                // fallback for the other device, where the CPU height is all a label will ever get.
+                if (labelTextureCache) {
+                    if (labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
+                        return height;
+                    }
+                } else if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
                     return height;
                 }
                 return std::numeric_limits<double>::quiet_NaN();
@@ -1385,6 +1387,13 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // and it is the one that runs first: an unplaced label never reaches the culler's own test.
         if (auto options = _options.lock()) {
             cullViewState.labelViewDistance = options->getLabelViewDistance();
+            // The band placement packs into, which has to be the SAME one the tile culler filled
+            // (ViewState::getLabelFrustum) - a label placed early whose tile was never fetched is
+            // a label that is not there.
+            float labelPadding = options->getLabelPadding();
+            if (labelPadding >= 0.0f) {
+                cullViewState.setLabelPadding(labelPadding);
+            }
         }
         culler.setViewState(cullViewState);
 

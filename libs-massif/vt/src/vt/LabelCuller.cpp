@@ -3,6 +3,7 @@
 #include "RenderStats.h"
 
 #include <array>
+#include <cmath>
 #include <vector>
 #include <list>
 #include <unordered_map>
@@ -510,9 +511,25 @@ namespace massif::vt {
         }
         float calloutOffset = style->calloutOffset * calloutPixel;
         float lift = calloutOffset;
-        if (style->calloutScreenAnchor >= 0) {
+        bool banded = style->calloutScreenAnchor >= 0;
+        if (banded) {
             float bandY = (1.0f - style->calloutScreenAnchor) * _viewState.resolution;
-            lift = std::max(lift, bandY - anchorY);
+            float bandLift = bandY - anchorY;
+            // THE BAND IS THE HEIGHT, NOT A FLOOR. `std::max(lift, bandLift)` here meant that a
+            // feature already ABOVE the band line got `calloutOffset` instead - its name placed just
+            // over its own summit, which is the NO-BAND arrangement (omit the anchor for that). So a
+            // banded style silently became a skyline one, label by label, for whichever summits
+            // happened to sit high on screen: tilt down and rows of names left the band and appeared
+            // under each other. Two placements from one style, switching as the camera moved.
+            //
+            // A name below its own summit is not wanted either, so there is nothing to fall back TO:
+            // if the band cannot be reached while staying clear of the feature, the name is dropped.
+            // The row loop and `minLift` below keep the same invariant for the stacked rows.
+            if (bandLift < calloutOffset) {
+                label->setCalloutFailures(0);
+                return false;
+            }
+            lift = bandLift;
         }
         // Whatever the band asks for, the label has to stay on screen: lifted away from its anchor, its
         // own position is no evidence that it is in view. The margin is a CONSTANT - one proportional to
@@ -528,16 +545,27 @@ namespace massif::vt {
             label->setCalloutFailures(0);
             return false;
         }
-        // The BAND asking for more room than the screen has is a different matter, and not the
-        // label's fault: the row is a preference, the name is not. Hold it as high as fits.
+        // A BANDED style gets the band or nothing. `maxLift` is built from `top`, the label's OWN
+        // upper extent, so clamping down to it moves each name by its own height - and at a 55
+        // degree orientation a plate is as tall as the name is long. That is why a band looked like
+        // several: short names reached it, long ones stopped short, and tilting changed which. The
+        // comment above aimed at a constant margin for exactly this reason, but `top` reintroduces
+        // the dependence.
         //
-        // This is what a band pinned near the top does in LANDSCAPE. `resolution` is the normalized
-        // screen and is the same in both orientations, so a label occupies a much larger fraction of
-        // a short screen - on a phone about 2.2x - while the band's anchor stays the same fraction.
-        // A 3% top offset is 32 device pixels of a 1080-pixel landscape screen, less than a name and
-        // its plate, so `lift > maxLift` held for every label the band lifted and the whole row was
-        // dropped rather than moved down by the few pixels it needed.
-        lift = std::max(std::min(lift, maxLift), minLift);
+        // The cost is the landscape case this clamp was added for: a band pinned 3% from the top is
+        // 32 device pixels of a 1080-pixel short screen, less than a name and its plate, so every
+        // label wants more room than there is and the whole row drops. That is now a style being
+        // asked for something impossible rather than something to paper over - a top offset has to
+        // leave room for a plate, and `peakFinderLabelBand` is the knob.
+        if (banded) {
+            if (lift > maxLift) {
+                label->setCalloutFailures(0);
+                return false;
+            }
+            lift = std::max(lift, minLift);
+        } else {
+            lift = std::max(std::min(lift, maxLift), minLift);
+        }
 
         // NOT '> 0': a NEGATIVE step is how a style says its rows go DOWN, which is the only direction
         // a band pinned near the top of the screen has room in - and taking the default instead sent
@@ -553,7 +581,25 @@ namespace massif::vt {
             // The rows this pass offers run from minLift to maxLift whichever way the step points:
             // comparing against `lift` alone refused every row BELOW the band, so a downward-stepping
             // style lost its held row on every pass and re-flowed the whole band.
-            if (previousOffset >= minLift - 0.5f && previousOffset <= maxLift + 0.5f) {
+            bool holdsOfferedRow = previousOffset >= minLift - 0.5f && previousOffset <= maxLift + 0.5f;
+            // A BAND has NAMED rows, and that range is not them. Any offset the screen could hold
+            // passed here, so a label kept whatever lift it was last placed at - and the lift the
+            // band asks for MOVES as the camera tilts, because it is measured from the label's own
+            // anchor. Tilting therefore left a row of names at last frame's heights and the band
+            // looked broken; panning sideways "fixed" it only because the labels left the view, lost
+            // `wasVisible`, and came back through the fresh placement below.
+            //
+            // So the held offset has to BE one of this pass's rows, or the label is re-placed.
+            if (holdsOfferedRow && banded) {
+                holdsOfferedRow = false;
+                for (int row = 0; row < std::max(1, style->calloutMaxRows); row++) {
+                    if (std::abs(previousOffset - (lift + row * step)) < 0.5f) {
+                        holdsOfferedRow = true;
+                        break;
+                    }
+                }
+            }
+            if (holdsOfferedRow) {
                 if (envelopeAt(previousOffset) && testGridOverlap(labelInfo) && testGroupDistance(labelInfo)) {
                     label->setCalloutFailures(0);
                     return true;

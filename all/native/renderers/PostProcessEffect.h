@@ -71,6 +71,45 @@ namespace massif {
         void setTerrainDepthRequired(bool required);
 
         /**
+         * Returns true if the effect wants the terrain SURFACE NORMAL in the depth pre-pass.
+         * @return True if the pre-pass packs normals. The default is false.
+         */
+        bool isTerrainNormalsRequired() const;
+        /**
+         * Sets whether the effect wants the terrain surface normal in the depth pre-pass.
+         *
+         * This CHANGES THE LAYOUT of uTerrainDepthTex, so an effect that asks for it has to decode
+         * the other one. Implies setTerrainDepthRequired: there is one texture, not two.
+         *
+         *   off (the default): RGB = 24-bit LINEAR depth over the far plane, A = 1 on terrain and
+         *                      0 on sky.
+         *   on:                RG  = 16-bit SQRT depth (decode dot(rg, vec2(1.0, 1.0/255.0)) and
+         *                      SQUARE it), BA = the surface normal, octahedral, z up.
+         *
+         *     float enc    = dot(texel.rg, vec2(1.0, 1.0 / 255.0));
+         *     float depth  = enc * enc;             // 0..1 over the far plane
+         *     bool  sky    = enc >= 1.0;            // no coverage channel: 1 IS the sky
+         *     vec2  oct    = texel.ba * 2.0 - 1.0;
+         *     vec3  normal = normalize(vec3(oct, 1.0 - abs(oct.x) - abs(oct.y)));
+         *
+         * Why the depth gets shorter and curved rather than simply losing a byte: an effect reads
+         * this buffer for its GRADIENT, and a linear 16-bit depth over a 300 km far plane quantises
+         * the near field into a handful of steps. The square root spends the bits where the picture
+         * is - sub-metre at a hundred metres, ten-odd metres at the far plane - and a threshold
+         * expressed against it is naturally relative, which is what an edge test wants anyway.
+         *
+         * The normal is the MESH's, the same per-vertex world-space normal the surface shader is
+         * given, so it is continuous where the mesh is and does not have to be guessed back out of
+         * the depth. That is the point: a normal reconstructed from a half-resolution depth cannot
+         * tell a ridge from the LOD kink where two tiles of different resolution meet, and inks
+         * both. A height field's normal always points up, so the octahedral encoding is exact here
+         * and needs no hemisphere fold.
+         *
+         * @param required True if the pre-pass should pack normals.
+         */
+        void setTerrainNormalsRequired(bool required);
+
+        /**
          * Returns the value of a float parameter.
          * @param name The name of the parameter.
          * @return The value of the parameter, or 0 if not set.
@@ -114,6 +153,7 @@ namespace massif {
         const std::string _fragmentShader;
 
         bool _terrainDepthRequired;
+        bool _terrainNormalsRequired;
         std::map<std::string, float> _floatParameters;
         std::map<std::string, Color> _colorParameters;
 

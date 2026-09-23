@@ -239,8 +239,9 @@ namespace massif {
          * the clearance is CameraClearance::minHeight over it, with the app's floor.
          * @param terrainZ The terrain height under the camera.
          * @param clearanceFloor The app's minimum camera clearance, 0 for none.
+         * @param clearanceFraction The app's share of the camera altitude, negative for the default.
          */
-        void setTerrainCameraReference(double terrainZ, double clearanceFloor);
+        void setTerrainCameraReference(double terrainZ, double clearanceFloor, double clearanceFraction = -1);
         /**
          * Turns the terrain zoom bound off (no terrain, or a non-planar projection).
          */
@@ -537,6 +538,7 @@ namespace massif {
         float _terrainHeightMax = 0.0f;
         bool _terrainCameraBound = false;
         double _terrainClearanceFloor = 0.0; // the app's CameraClearance, internal units
+        double _terrainClearanceFraction = -1.0; // the app's share of the altitude, <0 for the default
         double _terrainCameraZ = 0.0; // terrain height under the camera, 0 = unknown
     
         float _fovY;

@@ -151,6 +151,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> CAMERA_CLAMP_DURATION = MassifObject.key("cameraClampDuration");
     /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     public static final MassifObject.Key<Double> CAMERA_CLEARANCE = MassifObject.key("cameraClearance");
+    /** Returns the share of the camera's altitude that the terrain clearance takes. */
+    public static final MassifObject.Key<Double> CAMERA_CLEARANCE_FRACTION = MassifObject.key("cameraClearanceFraction");
     /** Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
     public static final MassifObject.Key<String> CAMERA_POS = MassifObject.key("cameraPos");
     public static final MassifObject.Key<Long> CAPACITY = MassifObject.key("capacity");
@@ -255,6 +257,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> DESCRIPTION_MARGINS = MassifObject.key("descriptionMargins");
     /** Returns the state of the description wrap parameter. */
     public static final MassifObject.Key<Boolean> DESCRIPTION_WRAP = MassifObject.key("descriptionWrap");
+    /** Returns the zoom whose tiles are read. */
+    public static final MassifObject.Key<Long> DETAIL_ZOOM = MassifObject.key("detailZoom");
     /** Returns the full path of the directory containing the assets. */
     public static final MassifObject.Key<String> DIR_PATH = MassifObject.key("dirPath");
     /** Returns true if the object is anchored by direction, false if by geographic position. */
@@ -269,7 +273,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> DOUBLE_CLICK_MAX_DURATION = MassifObject.key("doubleClickMaxDuration");
     /** Returns the drape cache budget in megabytes. */
     public static final MassifObject.Key<Long> DRAPE_CACHE_SIZE = MassifObject.key("drapeCacheSize");
-    /** Returns whether polygon fills are draped as a render-to-texture surface. */
     public static final MassifObject.Key<Boolean> DRAPE_FILLS_ENABLED = MassifObject.key("drapeFillsEnabled");
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     public static final MassifObject.Key<Boolean> DRAPE_LINES_ENABLED = MassifObject.key("drapeLinesEnabled");
@@ -289,6 +292,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> ELEMENT_INFO = MassifObject.key("elementInfo");
     /** Returns the list of vector elements. */
     public static final MassifObject.Key<String> ELEMENTS = MassifObject.key("elements");
+    /** Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. */
+    public static final MassifObject.Key<Long> ELEVATION_CACHE_SIZE = MassifObject.key("elevationCacheSize");
     /** Returns whether the normal map encodes absolute elevation (so a custom normal-map lighting shader can call getElevation()). */
     public static final MassifObject.Key<Boolean> ELEVATION_ENCODING_ENABLED = MassifObject.key("elevationEncodingEnabled");
     /** Returns whether elevation tile prefetching is enabled. */
@@ -431,6 +436,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> LABEL_BLENDING_SPEED = MassifObject.key("labelBlendingSpeed");
     /** Returns the contour interval used for label stubs. */
     public static final MassifObject.Key<Double> LABEL_INTERVAL = MassifObject.key("labelInterval");
+    /** Returns how far outside the viewport labels are placed, in screen pixels. */
+    public static final MassifObject.Key<Double> LABEL_PADDING = MassifObject.key("labelPadding");
     /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
     public static final MassifObject.Key<Double> LABEL_PERSPECTIVE_SCALING = MassifObject.key("labelPerspectiveScaling");
     /** Returns the current display order of the labels. */
@@ -508,6 +515,10 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> MAX_AGE = MassifObject.key("maxAge");
     /** Returns true/false based on whether the max-age header check is used. If this is enabled, SDK will automatically refresh the tiles when tiles have expired. */
     public static final MassifObject.Key<Boolean> MAX_AGE_HEADER_CHECK = MassifObject.key("maxAgeHeaderCheck");
+    /** Returns how many zoom levels below the requested tile this will reach. */
+    public static final MassifObject.Key<Long> MAX_DETAIL_LEVELS = MassifObject.key("maxDetailLevels");
+    /** Returns how many features a rebuilt tile may carry. */
+    public static final MassifObject.Key<Long> MAX_FEATURES = MassifObject.key("maxFeatures");
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
     public static final MassifObject.Key<Long> MAX_OVERZOOM_LEVEL = MassifObject.key("maxOverzoomLevel");
     /** Returns the maximum number of results the search service returns. */
@@ -518,12 +529,14 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> MAX_TILE_ZOOM_OFFSET = MassifObject.key("maxTileZoomOffset");
     /** Gets the current maximum underzoom level for this layer. */
     public static final MassifObject.Key<Long> MAX_UNDERZOOM_LEVEL = MassifObject.key("maxUnderzoomLevel");
-    /** Returns the maximum zoom level supported by this data source. */
+    /** Returns the maximum tile zoom level the terrain mesh is cut at. */
     public static final MassifObject.Key<Long> MAX_ZOOM = MassifObject.key("maxZoom");
     /** Returns maximum zoom level encoded in this tilemask. */
     public static final MassifObject.Key<Long> MAX_ZOOM_LEVEL = MassifObject.key("maxZoomLevel");
     /** Returns the maximum zoom level when clusters are shown. If zoom level is greater, then clusters are replaced with individual elements. Default is 24. */
     public static final MassifObject.Key<Double> MAXIMUM_CLUSTER_ZOOM = MassifObject.key("maximumClusterZoom");
+    /** Returns how many terrain surface meshes may be cached. */
+    public static final MassifObject.Key<Long> MESH_CACHE_SIZE = MassifObject.key("meshCacheSize");
     /** Returns the terrain mesh resolution. */
     public static final MassifObject.Key<Long> MESH_RESOLUTION = MassifObject.key("meshResolution");
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -553,6 +566,8 @@ public final class ApiNames {
     /** Returns the style layers that are kept out of the terrain drape bake. */
     public static final MassifObject.Key<String> NO_DRAPE_LAYER_FILTER = MassifObject.key("noDrapeLayerFilter");
     public static final MassifObject.Key<String> NORMAL_MAP_LIGHTING_SHADER = MassifObject.key("normalMapLightingShader");
+    /** Returns the ground distance the surface normals are measured over, in meters. */
+    public static final MassifObject.Key<Double> NORMAL_SAMPLE_DISTANCE = MassifObject.key("normalSampleDistance");
     /** Creates a new map vector by normalizing this map vector. */
     public static final MassifObject.Key<String> NORMALIZED = MassifObject.key("normalized");
     /** Returns all the keys in the object. */
@@ -642,6 +657,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> RANGE_START = MassifObject.key("rangeStart");
     /** Returns the rank of the result. The rank is a normalized number between 0 and 1, 1 meaning a perfect match. */
     public static final MassifObject.Key<Double> RANK = MassifObject.key("rank");
+    /** Returns the property a rebuilt tile's features are ranked by. */
+    public static final MassifObject.Key<String> RANK_PROPERTY = MassifObject.key("rankProperty");
     /** Returns the raster tile event listener. */
     public static final MassifObject.Key<MassifObject> RASTER_TILE_EVENT_LISTENER = MassifObject.key("rasterTileEventListener");
     /** Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding. */
@@ -742,6 +759,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> SHADOW_SOFTNESS = MassifObject.key("shadowSoftness");
     /** Returns the shadow strength. */
     public static final MassifObject.Key<Double> SHADOW_STRENGTH = MassifObject.key("shadowStrength");
+    /** Returns whether the shared ground pass draws the terrain a second time. */
+    public static final MassifObject.Key<Boolean> SHARED_GROUND_ENABLED = MassifObject.key("sharedGroundEnabled");
     /** Returns the state of internal debug message logging. */
     public static final MassifObject.Key<Boolean> SHOW_DEBUG = MassifObject.key("showDebug");
     /** Returns the state of error logging. */
@@ -828,6 +847,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> TERRAIN_DEPTH_REQUIRED = MassifObject.key("terrainDepthRequired");
     /** Returns whether the sun lights the 3D terrain surface. */
     public static final MassifObject.Key<Boolean> TERRAIN_LIGHTING_ENABLED = MassifObject.key("terrainLightingEnabled");
+    /** Returns true if the effect wants the terrain SURFACE NORMAL in the depth pre-pass. */
+    public static final MassifObject.Key<Boolean> TERRAIN_NORMALS_REQUIRED = MassifObject.key("terrainNormalsRequired");
     /** Returns the terrain options whose elevation manager the label stubs read. */
     public static final MassifObject.Key<MassifObject> TERRAIN_OPTIONS = MassifObject.key("terrainOptions");
     /** Returns whether the layer may shade the 3D terrain's own elevation texture instead of loading a DEM tile set of its own. */
@@ -1021,6 +1042,7 @@ public final class ApiNames {
     public static final String METHOD_LOAD_TILE = "loadTile";
     public static final String METHOD_MAP_TO_SCREEN = "mapToScreen";
     public static final String METHOD_MATCH_ROUTE = "matchRoute";
+    public static final String METHOD_MOVE_CAMERA_TO = "moveCameraTo";
     public static final String METHOD_MOVE_TO = "moveTo";
     public static final String METHOD_REFRESH = "refresh";
     public static final String METHOD_REMOVE = "remove";
@@ -1032,6 +1054,7 @@ public final class ApiNames {
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_MAX_OVERZOOM_LEVEL = "setExternalDataSourceMaxOverzoomLevel";
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_ZOOM_LEVEL_BIAS = "setExternalDataSourceZoomLevelBias";
+    public static final String METHOD_SET_FLOAT_PARAMETER = "setFloatParameter";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
@@ -1121,6 +1144,7 @@ public final class ApiNames {
     public static final String TYPE_SOURCE_ORDERED = "ordered";
     public static final String TYPE_SOURCE_PERSISTENT_CACHE = "persistent-cache";
     public static final String TYPE_SOURCE_PMTILES = "pmtiles";
+    public static final String TYPE_SOURCE_POINT_DETAIL = "point-detail";
     public static final String TYPE_STYLE_MBVT = "mbvt";
     public static final String TYPE_STYLESET_CARTOCSS = "cartocss";
     public static final String TYPE_STYLESET_PROJECT = "project";

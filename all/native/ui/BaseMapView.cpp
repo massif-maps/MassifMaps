@@ -20,6 +20,7 @@
 #include "utils/Log.h"
 
 #include <list>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include <sstream>
@@ -174,6 +175,20 @@ namespace massif {
         if (!zoomIn) {
             setZoom(zoom, 0);
         }
+
+        // TEMPORARY DIAGNOSTIC, the twin of the one in moveCameraTo: the facade falls back to this
+        // when the native camera move is unavailable, so which of the two ran is itself a finding.
+        {
+            MapRange tiltRange = _options->getTiltRange();
+            const ViewState& applied = _mapRenderer->getViewState(); // holdView is held
+            Log::Infof("EYE moveTo: asked zoom %.2f rotation %s tilt %s | range [%.1f, %.1f] freeRoam %d | live zoom %.2f rotation %.1f tilt %.1f",
+                       zoom,
+                       rotation ? std::to_string(*rotation).c_str() : "keep",
+                       tilt ? std::to_string(*tilt).c_str() : "keep",
+                       tiltRange.getMin(), tiltRange.getMax(),
+                       static_cast<int>(_options->getFreeRoamMode()),
+                       applied.getZoom(), applied.getRotation(), applied.getTilt());
+        }
     }
 
     void BaseMapView::moveTo(const MapPos& pos, float zoom) {
@@ -182,6 +197,74 @@ namespace massif {
 
     void BaseMapView::moveTo(const MapPos& pos, float zoom, float rotation, float tilt) {
         moveTo(pos, zoom, &rotation, &tilt);
+    }
+
+    void BaseMapView::moveCameraTo(const MapPos& pos, float zoom, const float* rotation, const float* tilt) {
+        // ONE frame for the whole thing, like moveTo: the offset is read back between the
+        // orientation and the pan, so a render thread drawing the half-applied state would both
+        // flatten the move and read an offset that is about to change.
+        std::unique_lock<std::recursive_mutex> hold = _mapRenderer->holdView();
+
+        // Zoom, rotation and tilt FIRST - they are what the camera-to-focus offset is a function of,
+        // so the offset has to be measured on the orientation the caller asked for, not the one the
+        // view happens to be on. Zoom ordering follows moveTo's rule for restricted panning.
+        bool zoomIn = zoom > _mapRenderer->getViewState().getZoom();
+        if (zoomIn) {
+            setZoom(zoom, 0);
+        }
+        if (rotation) {
+            setRotation(*rotation, 0);
+        }
+        if (tilt) {
+            setTilt(*tilt, 0);
+        }
+
+        // A RIGID TRANSLATION, in all three axes. setFocusPos becomes a CameraPanEvent, which builds
+        // ONE translate matrix from the current focus to the position it is handed and applies it to
+        // the focus AND the camera - the camera is never placed, it is carried. So the focus this
+        // asks for is not the target and not the target's height: it is the focus displaced by the
+        // camera-to-target vector, which is what lands the camera exactly on the target.
+        //
+        // Both heights are wrong in their own way. The CURRENT focus height leaves the camera at the
+        // altitude it already had; the TARGET height translates the pair by (targetZ - focusZ), so a
+        // 4800 m summit lifted the camera 4800 m ABOVE wherever it was and left it looking down.
+        const std::shared_ptr<ProjectionSurface>& projectionSurface = _options->getProjectionSurface();
+        const ViewState& viewState = _mapRenderer->getViewState(); // holdView is held
+        cglib::vec3<double> focusVec = viewState.getFocusPos();
+        cglib::vec3<double> cameraVec = viewState.getCameraPos();
+        cglib::vec3<double> targetVec = projectionSurface->calculatePosition(_options->getBaseProjection()->toInternal(pos));
+        MapPos newFocusInternal = projectionSurface->calculateMapPos(focusVec + (targetVec - cameraVec));
+        setFocusPos(_options->getBaseProjection()->fromInternal(newFocusInternal), 0);
+
+        if (!zoomIn) {
+            setZoom(zoom, 0);
+        }
+
+        // TEMPORARY DIAGNOSTIC. Once per call, not per frame - this is an API entry point.
+        // The LIVE view state, not the getters: getTilt/getZoom/getRotation all read
+        // getViewStateSnapshot(), which is republished once per DRAWN frame, so on a map that has
+        // not drawn yet they answer for the previous view and would misreport this entirely.
+        {
+            MapRange tiltRange = _options->getTiltRange();
+            std::unique_lock<std::recursive_mutex> readHold = _mapRenderer->holdView();
+            const ViewState& applied = _mapRenderer->getViewState();
+            Log::Infof("EYE moveCameraTo: asked zoom %.2f rotation %s tilt %s | range [%.1f, %.1f] freeRoam %d | live zoom %.2f rotation %.1f tilt %.1f | snapshot tilt %.1f",
+                       zoom,
+                       rotation ? std::to_string(*rotation).c_str() : "keep",
+                       tilt ? std::to_string(*tilt).c_str() : "keep",
+                       tiltRange.getMin(), tiltRange.getMax(),
+                       static_cast<int>(_options->getFreeRoamMode()),
+                       applied.getZoom(), applied.getRotation(), applied.getTilt(),
+                       _mapRenderer->getViewStateSnapshot().getTilt());
+        }
+    }
+
+    void BaseMapView::moveCameraTo(const MapPos& pos, float zoom, float rotation, float tilt) {
+        moveCameraTo(pos, zoom, &rotation, &tilt);
+    }
+
+    void BaseMapView::moveCameraTo(const MapPos& pos, float zoom) {
+        moveCameraTo(pos, zoom, nullptr, nullptr);
     }
 
     void BaseMapView::flyTo(const MapPos& pos, float zoom, float durationSeconds) {

@@ -1,7 +1,9 @@
 #include "TerrainOptions.h"
 #include "components/Exceptions.h"
 #include "datasources/TileDataSource.h"
+#include "terrain/CameraClearance.h"
 #include "terrain/ElevationManager.h"
+#include "utils/Log.h"
 
 #include <algorithm>
 
@@ -39,11 +41,14 @@ namespace massif {
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
         _meshResolution(64),
         _tileEdgeStitchingEnabled(true),
+        _meshCacheSize(0),
+        _sharedGroundEnabled(true),
         _drapeFillsEnabled(true),
         _drapeLinesEnabled(true),
         _bridges3DEnabled(false),
         _drapeResolution(0),
         _minZoom(5),
+        _maxZoom(0),
         _maxTileZoomOffset(100),
         _backgroundColorARGB(0),
         _backgroundBitmapEnabled(false),
@@ -51,6 +56,7 @@ namespace massif {
         // 60 m, not 200: 200 stops the camera well short of the surface, so a close approach swings
         // the view into the nearest hillside instead of flying between the peaks.
         _cameraClearance(0.0f),
+        _cameraClearanceFraction(static_cast<float>(CameraClearance::FRACTION)),
         _focusLift(0.0f),
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
@@ -58,6 +64,7 @@ namespace massif {
         // slopes FACING the camera. The grazing term in TerrainOcclusion::isBehind covers the angle;
         // this covers what is left - the anchor-vs-drawn-surface error itself.
         _billboardOcclusionTolerance(0.2f),
+        _normalSampleDistance(0.0f),
         _textOcclusionOpacity(1.0f),
         _viewDistanceFactor(1.0f),
         _viewDistance(0.0f),
@@ -66,6 +73,7 @@ namespace massif {
         // default view distance it coarsens tiles that are still large on screen, leaving a blurred
         // band with a hard tile edge down the middle.
         _drapeCacheSize(0),
+        _elevationCacheSize(0),
         _drapeWorkingSet(0),
         _maxTileZoomCoarsening(3),
         _noDrapeLayerFilter(DEFAULT_NO_DRAPE_LAYER_FILTER),
@@ -82,6 +90,11 @@ namespace massif {
     }
 
     TerrainOptions::~TerrainOptions() {
+        // use_count AFTER this member is the number of OUTSIDE holders: 1 means only this, so the
+        // manager dies with us. More means something else pinned it - TerrainTileTransformer and
+        // TerrainProjectionSurface both keep a const shared_ptr, and Options::setTerrainOptions(null)
+        // touches neither.
+        Log::Infof("LIFE: TerrainOptions destroyed, elevationManager use_count=%ld", static_cast<long>(_elevationManager.use_count()));
     }
 
     std::shared_ptr<TileDataSource> TerrainOptions::getDataSource() const {
@@ -301,6 +314,27 @@ namespace massif {
         }
     }
 
+    int TerrainOptions::getMeshCacheSize() const {
+        return _meshCacheSize.load();
+    }
+
+    void TerrainOptions::setMeshCacheSize(int meshes) {
+        int clamped = std::max(0, meshes);
+        if (_meshCacheSize.exchange(clamped) != clamped) {
+            notifyOptionChanged("MeshCacheSize");
+        }
+    }
+
+    bool TerrainOptions::isSharedGroundEnabled() const {
+        return _sharedGroundEnabled.load();
+    }
+
+    void TerrainOptions::setSharedGroundEnabled(bool enabled) {
+        if (_sharedGroundEnabled.exchange(enabled) != enabled) {
+            notifyOptionChanged("SharedGroundEnabled");
+        }
+    }
+
     bool TerrainOptions::isDrapeFillsEnabled() const {
         return _drapeFillsEnabled.load();
     }
@@ -366,6 +400,25 @@ namespace massif {
         int zoom = std::min(24, std::max(0, minZoom));
         if (_minZoom.exchange(zoom) != zoom) {
             notifyOptionChanged("MinZoom");
+        }
+    }
+
+    int TerrainOptions::getMaxZoom() const {
+        return _maxZoom.load();
+    }
+
+    void TerrainOptions::setMaxZoom(int maxZoom) {
+        int zoom = std::min(24, std::max(0, maxZoom));
+        if (_maxZoom.exchange(zoom) != zoom) {
+            // The DATA too, not only the mesh cut. Pinning the cut alone measured no better: the
+            // cut stopped moving (RenderStats tileRecalc 0) while the elevation grid cache kept
+            // thrashing at capacity (elevGrid reinserts 2-6 per second, indefinitely), and every
+            // reload bumps the elevation version - so labels went on re-anchoring and the ground
+            // went on moving. See ElevationManager::setMaxDataZoomCap.
+            if (_elevationManager) {
+                _elevationManager->setMaxDataZoomCap(zoom);
+            }
+            notifyOptionChanged("MaxZoom");
         }
     }
 
@@ -439,6 +492,25 @@ namespace massif {
         int clamped = std::max(0, megabytes);
         if (_drapeCacheSize.exchange(clamped) != clamped) {
             notifyOptionChanged("DrapeCacheSize");
+        }
+    }
+
+    int TerrainOptions::getElevationCacheSize() const {
+        return _elevationCacheSize.load();
+    }
+
+    void TerrainOptions::setElevationCacheSize(int megabytes) {
+        int clamped = std::max(0, megabytes);
+        if (_elevationCacheSize.exchange(clamped) != clamped) {
+            // Straight through to the manager, like SetMaxZoom does for the data zoom cap: the
+            // budget belongs to the grid cache, and the manager is the only thing that owns one.
+            // ONLY when asked for: setCacheCapacity latches _gridCacheCapacityFixed, so passing 0
+            // through would pin the cache at zero bytes rather than restore the grid-count rule.
+            // 0 here therefore means "never told the manager anything", which is what the default is.
+            if (_elevationManager && clamped > 0) {
+                _elevationManager->setCacheCapacity(static_cast<std::size_t>(clamped) * 1024 * 1024);
+            }
+            notifyOptionChanged("ElevationCacheSize");
         }
     }
 
@@ -540,6 +612,18 @@ namespace massif {
         }
     }
 
+    float TerrainOptions::getCameraClearanceFraction() const {
+        return _cameraClearanceFraction.load();
+    }
+
+    void TerrainOptions::setCameraClearanceFraction(float fraction) {
+        // Below 1 strictly: the shell divides by (1 - fraction), and at 1 no camera height clears it.
+        float value = std::min(0.99f, std::max(0.0f, fraction));
+        if (_cameraClearanceFraction.exchange(value) != value) {
+            notifyOptionChanged("CameraClearanceFraction");
+        }
+    }
+
     float TerrainOptions::getFocusLift() const {
         return _focusLift.load();
     }
@@ -581,6 +665,17 @@ namespace massif {
         float value = std::min(1.0f, std::max(0.0f, tolerance));
         if (_billboardOcclusionTolerance.exchange(value) != value) {
             notifyOptionChanged("BillboardOcclusionTolerance");
+        }
+    }
+
+    float TerrainOptions::getNormalSampleDistance() const {
+        return _normalSampleDistance.load();
+    }
+
+    void TerrainOptions::setNormalSampleDistance(float distance) {
+        float value = std::max(0.0f, distance);
+        if (_normalSampleDistance.exchange(value) != value) {
+            notifyOptionChanged("NormalSampleDistance");
         }
     }
 

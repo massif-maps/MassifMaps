@@ -177,6 +177,7 @@ export type ClassName =
   | "massif::PersistentCacheTileDataSource"
   | "massif::PersistentTaskQueue"
   | "massif::Point"
+  | "massif::PointDetailTileDataSource"
   | "massif::PointGeometry"
   | "massif::PointStyle"
   | "massif::PointStyleBuilder"
@@ -1829,11 +1830,12 @@ export interface PropertyTypes {
     "terrainOptions.cameraClampDuration": number;
     /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "terrainOptions.cameraClearance": number;
+    /** Returns the share of the camera's altitude that the terrain clearance takes. */
+    "terrainOptions.cameraClearanceFraction": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "terrainOptions.depthBias": number;
     /** Returns the drape cache budget in megabytes. */
     "terrainOptions.drapeCacheSize": number;
-    /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "terrainOptions.drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "terrainOptions.drapeLinesEnabled": boolean;
@@ -1841,6 +1843,8 @@ export interface PropertyTypes {
     "terrainOptions.drapeResolution": number;
     /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
     "terrainOptions.drapeWorkingSet": number;
+    /** Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. */
+    "terrainOptions.elevationCacheSize": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "terrainOptions.elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -1859,14 +1863,22 @@ export interface PropertyTypes {
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "terrainOptions.maxTileZoomOffset": number;
+    /** Returns the maximum tile zoom level the terrain mesh is cut at. */
+    "terrainOptions.maxZoom": number;
+    /** Returns how many terrain surface meshes may be cached. */
+    "terrainOptions.meshCacheSize": number;
     /** Returns the terrain mesh resolution. */
     "terrainOptions.meshResolution": number;
     /** Returns the minimum tile zoom level with 3D terrain. */
     "terrainOptions.minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "terrainOptions.noDrapeLayerFilter": string;
+    /** Returns the ground distance the surface normals are measured over, in meters. */
+    "terrainOptions.normalSampleDistance": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "terrainOptions.seamlessTileEdgesEnabled": boolean;
+    /** Returns whether the shared ground pass draws the terrain a second time. */
+    "terrainOptions.sharedGroundEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -3973,6 +3985,8 @@ export interface PropertyTypes {
     "kineticRotation": boolean;
     /** Returns the state of kinetic zoom flag. */
     "kineticZoom": boolean;
+    /** Returns how far outside the viewport labels are placed, in screen pixels. */
+    "labelPadding": number;
     /** Returns how far labels are placed, in multiples of the camera-to-focus distance. */
     "labelViewDistance": number;
     /** Returns wether layers are processed in reversed order to process labels. */
@@ -4166,11 +4180,12 @@ export interface PropertyTypes {
     "terrain.cameraClampDuration": number;
     /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "terrain.cameraClearance": number;
+    /** Returns the share of the camera's altitude that the terrain clearance takes. */
+    "terrain.cameraClearanceFraction": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "terrain.depthBias": number;
     /** Returns the drape cache budget in megabytes. */
     "terrain.drapeCacheSize": number;
-    /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "terrain.drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "terrain.drapeLinesEnabled": boolean;
@@ -4178,6 +4193,8 @@ export interface PropertyTypes {
     "terrain.drapeResolution": number;
     /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
     "terrain.drapeWorkingSet": number;
+    /** Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. */
+    "terrain.elevationCacheSize": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "terrain.elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -4196,14 +4213,22 @@ export interface PropertyTypes {
     "terrain.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "terrain.maxTileZoomOffset": number;
+    /** Returns the maximum tile zoom level the terrain mesh is cut at. */
+    "terrain.maxZoom": number;
+    /** Returns how many terrain surface meshes may be cached. */
+    "terrain.meshCacheSize": number;
     /** Returns the terrain mesh resolution. */
     "terrain.meshResolution": number;
     /** Returns the minimum tile zoom level with 3D terrain. */
     "terrain.minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "terrain.noDrapeLayerFilter": string;
+    /** Returns the ground distance the surface normals are measured over, in meters. */
+    "terrain.normalSampleDistance": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "terrain.seamlessTileEdgesEnabled": boolean;
+    /** Returns whether the shared ground pass draws the terrain a second time. */
+    "terrain.sharedGroundEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrain.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4240,11 +4265,12 @@ export interface PropertyTypes {
     "terrainOptions.cameraClampDuration": number;
     /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "terrainOptions.cameraClearance": number;
+    /** Returns the share of the camera's altitude that the terrain clearance takes. */
+    "terrainOptions.cameraClearanceFraction": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "terrainOptions.depthBias": number;
     /** Returns the drape cache budget in megabytes. */
     "terrainOptions.drapeCacheSize": number;
-    /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "terrainOptions.drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "terrainOptions.drapeLinesEnabled": boolean;
@@ -4252,6 +4278,8 @@ export interface PropertyTypes {
     "terrainOptions.drapeResolution": number;
     /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
     "terrainOptions.drapeWorkingSet": number;
+    /** Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. */
+    "terrainOptions.elevationCacheSize": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "terrainOptions.elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -4270,14 +4298,22 @@ export interface PropertyTypes {
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "terrainOptions.maxTileZoomOffset": number;
+    /** Returns the maximum tile zoom level the terrain mesh is cut at. */
+    "terrainOptions.maxZoom": number;
+    /** Returns how many terrain surface meshes may be cached. */
+    "terrainOptions.meshCacheSize": number;
     /** Returns the terrain mesh resolution. */
     "terrainOptions.meshResolution": number;
     /** Returns the minimum tile zoom level with 3D terrain. */
     "terrainOptions.minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "terrainOptions.noDrapeLayerFilter": string;
+    /** Returns the ground distance the surface normals are measured over, in meters. */
+    "terrainOptions.normalSampleDistance": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "terrainOptions.seamlessTileEdgesEnabled": boolean;
+    /** Returns whether the shared ground pass draws the terrain a second time. */
+    "terrainOptions.sharedGroundEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4545,6 +4581,35 @@ export interface PropertyTypes {
     readonly "style.size": number;
     /** Returns the state of the visibility flag of this vector element. */
     "visible": boolean;
+  };
+  "massif::PointDetailTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** Returns the zoom whose tiles are read. */
+    "detailZoom": number;
+    /** (read-only) Returns the layer that is rebuilt. */
+    readonly "layerName": string;
+    /** Returns how many zoom levels below the requested tile this will reach. */
+    "maxDetailLevels": number;
+    /** Returns how many features a rebuilt tile may carry. */
+    "maxFeatures": number;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+    /** Returns the property a rebuilt tile's features are ranked by. */
+    "rankProperty": string;
   };
   "massif::PointGeometry": {
     /** (read-only) Returns the minimal bounds for the geometry. */
@@ -5091,6 +5156,8 @@ export interface PropertyTypes {
     readonly "name": string;
     /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
     "terrainDepthRequired": boolean;
+    /** Returns true if the effect wants the terrain SURFACE NORMAL in the depth pre-pass. */
+    "terrainNormalsRequired": boolean;
   };
   "massif::Projection": {
     /** (read-only) Returns the bounds of this projection. */
@@ -5479,11 +5546,12 @@ export interface PropertyTypes {
     "cameraClampDuration": number;
     /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
     "cameraClearance": number;
+    /** Returns the share of the camera's altitude that the terrain clearance takes. */
+    "cameraClearanceFraction": number;
     /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
     "depthBias": number;
     /** Returns the drape cache budget in megabytes. */
     "drapeCacheSize": number;
-    /** Returns whether polygon fills are draped as a render-to-texture surface. */
     "drapeFillsEnabled": boolean;
     /** Returns whether vt tile lines are also draped (in addition to fills). */
     "drapeLinesEnabled": boolean;
@@ -5491,6 +5559,8 @@ export interface PropertyTypes {
     "drapeResolution": number;
     /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
     "drapeWorkingSet": number;
+    /** Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. */
+    "elevationCacheSize": number;
     /** Returns whether elevation tile prefetching is enabled. */
     "elevationPrefetchEnabled": boolean;
     /** Returns the enabled state of the terrain. */
@@ -5509,14 +5579,22 @@ export interface PropertyTypes {
     "maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "maxTileZoomOffset": number;
+    /** Returns the maximum tile zoom level the terrain mesh is cut at. */
+    "maxZoom": number;
+    /** Returns how many terrain surface meshes may be cached. */
+    "meshCacheSize": number;
     /** Returns the terrain mesh resolution. */
     "meshResolution": number;
     /** Returns the minimum tile zoom level with 3D terrain. */
     "minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "noDrapeLayerFilter": string;
+    /** Returns the ground distance the surface normals are measured over, in meters. */
+    "normalSampleDistance": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "seamlessTileEdgesEnabled": boolean;
+    /** Returns whether the shared ground pass draws the terrain a second time. */
+    "sharedGroundEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -7494,11 +7572,12 @@ export interface OptionsSpec_terrain {
   cameraClampDuration?: number;
   /** Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. */
   cameraClearance?: number;
+  /** Returns the share of the camera's altitude that the terrain clearance takes. */
+  cameraClearanceFraction?: number;
   /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
   depthBias?: number;
   /** Returns the drape cache budget in megabytes. */
   drapeCacheSize?: number;
-  /** Returns whether polygon fills are draped as a render-to-texture surface. */
   drapeFillsEnabled?: boolean;
   /** Returns whether vt tile lines are also draped (in addition to fills). */
   drapeLinesEnabled?: boolean;
@@ -7506,6 +7585,8 @@ export interface OptionsSpec_terrain {
   drapeResolution?: number;
   /** Returns how many drape tiles the automatic resolution assumes are cached at once. */
   drapeWorkingSet?: number;
+  /** Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. */
+  elevationCacheSize?: number;
   /** Returns whether elevation tile prefetching is enabled. */
   elevationPrefetchEnabled?: boolean;
   /** Returns the enabled state of the terrain. */
@@ -7524,14 +7605,22 @@ export interface OptionsSpec_terrain {
   maxTileZoomCoarsening?: number;
   /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
   maxTileZoomOffset?: number;
+  /** Returns the maximum tile zoom level the terrain mesh is cut at. */
+  maxZoom?: number;
+  /** Returns how many terrain surface meshes may be cached. */
+  meshCacheSize?: number;
   /** Returns the terrain mesh resolution. */
   meshResolution?: number;
   /** Returns the minimum tile zoom level with 3D terrain. */
   minZoom?: number;
   /** Returns the style layers that are kept out of the terrain drape bake. */
   noDrapeLayerFilter?: string;
+  /** Returns the ground distance the surface normals are measured over, in meters. */
+  normalSampleDistance?: number;
   /** Returns whether seamless tile edge handling is enabled. */
   seamlessTileEdgesEnabled?: boolean;
+  /** Returns whether the shared ground pass draws the terrain a second time. */
+  sharedGroundEnabled?: boolean;
   source?: SourceSpec | string;
   /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
   surfaceShaderSource?: string;
@@ -7789,7 +7878,25 @@ export interface SourceSpec_pmtiles {
   path?: string;
 }
 
-export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_contour | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_maptiler | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_merged_mbvt | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache | SourceSpec_pmtiles;
+export interface SourceSpec_point_detail {
+  type: "point-detail";
+  /** Returns the zoom whose tiles are read. */
+  detailZoom?: number;
+  layer?: string;
+  /** Returns how many zoom levels below the requested tile this will reach. */
+  maxDetailLevels?: number;
+  /** Returns how many features a rebuilt tile may carry. */
+  maxFeatures?: number;
+  /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+  maxOverzoomLevel?: number;
+  /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+  metaData?: Record<string, Json>;
+  /** Returns the property a rebuilt tile's features are ranked by. */
+  rankProperty?: string;
+  source?: SourceSpec | string;
+}
+
+export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_contour | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_maptiler | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_merged_mbvt | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache | SourceSpec_pmtiles | SourceSpec_point_detail;
 
 export interface StyleSpec_mbvt {
   type: "mbvt";
@@ -7887,6 +7994,7 @@ export interface MethodTypes {
     fitBounds: (bounds: Json, screenBounds: Json, integerZoom: boolean, resetRotation: boolean, resetTilt: boolean, durationSeconds: number) => void;
     flyTo: (pos: Position, zoom: number, rotation: number, tilt: number, climbHeight: number, durationSeconds: number) => void;
     mapToScreen: (pos: Position) => Json;
+    moveCameraTo: (pos: Position, zoom: number, rotation: number, tilt: number) => void;
     moveTo: (pos: Position, zoom: number, rotation: number, tilt: number) => void;
     screenToMap: (x: number, y: number) => Json;
     stopFlight: () => void;
@@ -8277,6 +8385,11 @@ export interface MethodTypes {
   };
   "massif::Point": {
   };
+  "massif::PointDetailTileDataSource": {
+    getMetaDataElement: (key: string) => Json;
+    loadTile: (tile: Tile) => Handle<"massif::TileData">;
+    setMetaDataElement: (key: string, value: Json) => void;
+  };
   "massif::PointGeometry": {
   };
   "massif::PointStyle": {
@@ -8308,6 +8421,7 @@ export interface MethodTypes {
   "massif::PopupStyleBuilder": {
   };
   "massif::PostProcessEffect": {
+    setFloatParameter: (name: string, value: number) => void;
   };
   "massif::Projection": {
   };
@@ -8806,6 +8920,8 @@ export interface EventTypes {
   "massif::PersistentTaskQueue": {
   };
   "massif::Point": {
+  };
+  "massif::PointDetailTileDataSource": {
   };
   "massif::PointGeometry": {
   };

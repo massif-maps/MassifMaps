@@ -107,9 +107,23 @@ namespace massif::vt {
 
         // Tilt 90 is straight down and 0 is the horizon (graphics/ViewState.h), so sin(tilt) IS the
         // foreshortening of the ground plane - the factor the world size of a screen pixel grows by.
-        static float calculateLabelPadding(float tilt) {
+        //
+        // `paddingOverride` is Options::getLabelPadding: negative keeps the rule above, and anything
+        // else is taken as the padding outright. The rule reasons about the GROUND, and a view along
+        // the horizon turns rather than pans over it - see Options::setLabelPadding.
+        static float calculateLabelPadding(float tilt, float paddingOverride = -1.0f) {
+            if (paddingOverride >= 0.0f) {
+                return paddingOverride;
+            }
             float scale = std::sin(std::max(0.0f, tilt) * 3.14159265358979f / 180.0f);
             return std::max(MIN_LABEL_PADDING, MAX_LABEL_PADDING * scale);
+        }
+
+        // Re-pads an already-built view. The frustum is derived from the padding, so the two cannot
+        // be set apart from one another.
+        void setLabelPadding(float padding) {
+            labelPadding = std::max(0.0f, padding);
+            labelFrustum = cglib::gl_projection_frustum(paddedProjectionMatrix() * cameraMatrix);
         }
 
         // Clip space is [-1, 1] over the viewport, so fitting `padding` more pixels on each side is

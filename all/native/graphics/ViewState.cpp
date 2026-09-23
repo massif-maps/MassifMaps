@@ -109,12 +109,13 @@ namespace massif {
         }
     }
 
-    void ViewState::setTerrainCameraReference(double terrainZ, double clearanceFloor) {
+    void ViewState::setTerrainCameraReference(double terrainZ, double clearanceFloor, double clearanceFraction) {
         if (terrainZ != _terrainCameraZ) {
             _terrainCameraZ = terrainZ;
             _cameraChanged = true; // the near plane is built on it
         }
         _terrainClearanceFloor = clearanceFloor;
+        _terrainClearanceFraction = clearanceFraction;
         _terrainCameraBound = true;
     }
 
@@ -124,6 +125,7 @@ namespace massif {
             _cameraChanged = true;
         }
         _terrainClearanceFloor = 0;
+        _terrainClearanceFraction = -1;
         _terrainCameraBound = false;
     }
 
@@ -139,7 +141,8 @@ namespace massif {
         double focusZ = (_projectionSurface ? _projectionSurface->calculateMapPos(_focusPos).getZ() : _focusPos(2));
         double cameraZ = (_projectionSurface ? _projectionSurface->calculateMapPos(_cameraPos).getZ() : _cameraPos(2));
         return CameraClearance::maxZoom(_zoom, focusZ, cameraZ, _terrainCameraZ,
-                                        getOrbitDistance(_zoomRange.getMax()) / worldPerInternalZ, _terrainClearanceFloor);
+                                        getOrbitDistance(_zoomRange.getMax()) / worldPerInternalZ, _terrainClearanceFloor,
+                                        _terrainClearanceFraction);
     }
 
     float ViewState::getRenderZoom() const {
@@ -728,7 +731,7 @@ namespace massif {
 
             // A label is placed in a band that reaches past the viewport, so the tiles filling that
             // band have to be culled in too - a label cannot be placed early if its tile is absent.
-            float labelPadding = vt::ViewState::calculateLabelPadding(_tilt);
+            float labelPadding = vt::ViewState::calculateLabelPadding(_tilt, options.getLabelPadding());
             cglib::mat4x4<double> labelProjectionMat = vt::ViewState::paddedProjectionMatrix(_projectionMat, labelPadding, getAspectRatio(), _normalizedResolution);
             _labelFrustum = cglib::gl_projection_frustum(labelProjectionMat * _modelviewMat);
 
@@ -976,10 +979,13 @@ namespace massif {
      */
     void ViewState::logViewDistances(const Options& options, float near, float far, double rayFar, double maxDist, double viewDistance, double cameraHeight) const {
 #if MASSIF_FRAME_PROFILER
-        static std::atomic<long long> lastLogMs { 0 };
+        // One limiter PER TAG. A single global one let whichever ViewState ran first each second
+        // suppress the other, which is why only the cull worker's copy was ever in the log.
+        static std::atomic<long long> lastLogMs[2] = { { 0 }, { 0 } };
+        int logSlot = (_terrainHeightMax > _terrainHeightMin ? 0 : 1);
         long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        long long last = lastLogMs.load();
-        if (nowMs - last < 1000 || !lastLogMs.compare_exchange_strong(last, nowMs)) {
+        long long last = lastLogMs[logSlot].load();
+        if (nowMs - last < 1000 || !lastLogMs[logSlot].compare_exchange_strong(last, nowMs)) {
             return;
         }
         double toKm = Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE / 1000.0;
@@ -988,7 +994,13 @@ namespace massif {
             fogStart = static_cast<float>(fogOptions->getRangeStart() * calculateCameraDistance() * toKm);
             fogEnd = static_cast<float>(fogOptions->getRangeEnd() * calculateCameraDistance() * toKm);
         }
-        Log::Infof("PROF VIEW: zoom %.2f tilt %.1f | orbit %.2f alt %.2f height %.2f km | terrain %.2f..%.2f km | ray far %.2f ceiling %.2f rule %.2f -> near %.4f far %.2f km | fog %.2f..%.2f km",
+        // TAGGED, because there are two of these per frame and they answer different questions: the
+        // one the GL thread calls is the view the projection matrix is built from, and the one the
+        // cull worker calls is a COPY that setTerrainHeightRange has never run on - so it reports
+        // terrain 0..0 and a near plane derived from a flat world, which is not what gets drawn.
+        // Reading the wrong one sent a near-plane investigation down a blind alley.
+        Log::Infof("PROF VIEW[%s]: zoom %.2f tilt %.1f | orbit %.2f alt %.2f height %.2f km | terrain %.2f..%.2f km | ray far %.2f ceiling %.2f rule %.2f -> near %.4f far %.2f km | fog %.2f..%.2f km",
+            (_terrainHeightMax > _terrainHeightMin ? "render" : "no-terrain-range"),
             _zoom, _tilt, calculateCameraDistance() * toKm, _cameraPos(2) * toKm, cameraHeight * toKm,
             _terrainHeightMin * toKm, _terrainHeightMax * toKm,
             rayFar * toKm, maxDist * toKm, viewDistance * toKm, near * toKm, far * toKm, fogStart, fogEnd);

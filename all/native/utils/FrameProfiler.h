@@ -102,6 +102,11 @@ namespace massif {
         // prelude's own split: it holds five unrelated things and dominates a 3D pan, and its GPU
         // time is 0.0, so the answer is which CPU step - not which draw.
         static inline thread_local double preTerrainMs = 0;   // terrain surface / background fill, incl. its elevation walk
+        // preTerrain's own split: it holds an elevation prefetch walk over the cut and the surface
+        // draw, and they have nothing to do with each other.
+        static inline thread_local double preTerrainCutMs = 0;      // the budgeted cut itself (memoised per frame)
+        static inline thread_local double preTerrainPrefetchMs = 0; // prefetchTileGrid / getDataTileGrid over every cut tile
+        static inline thread_local double preTerrainSurfaceMs = 0;  // renderSurface: mesh build + draw
         static inline thread_local double preDepthMs = 0;     // occlusion depth buffer refresh (read-back when sync)
         static inline thread_local double preClearanceMs = 0; // camera clearance: one elevation lookup, on ElevationManager's lock
         static inline thread_local double prePaintMs = 0;     // terrain paint tile list, per frame, into the vt renderer
@@ -118,6 +123,14 @@ namespace massif {
         static inline thread_local double preTailWalkMs = 0;    // ... of which the drape/ground layer walk
         static inline thread_local double prepareMs = 0;    // per-layer startFrame (label re-anchoring, blending state)
         static inline thread_local double coverMs = 0;      // drape cover computation
+        // cover's own split. It measured 7-14 ms of a 35-48 ms panorama frame - the largest single
+        // item - and memoizing the stand-in walk's elevation lookups plus replacing its quadratic
+        // dedup moved it not at all, so the cost is in one of the other three and guessing which
+        // has already been wrong once.
+        static inline thread_local double coverSeedMs = 0;    // collectTerrainCoverTileIds: the terrain's own visible cut
+        static inline thread_local double coverCollectMs = 0; // collectTerrainCover over the ground/drape layers
+        static inline thread_local double coverStandInMs = 0; // the DEM stand-in walk and its dedup
+        static inline thread_local double coverShadowMs = 0;  // applyTerrainShadows
         static inline thread_local double drapeMs = 0;      // drape bakes + terrain surface draws
         static inline thread_local double layerMs = 0;      // base layer draw pass
         static inline thread_local double layer3DMs = 0;    // 3D layer draw pass
@@ -129,7 +142,9 @@ namespace massif {
 
         static void resetFrame() {
             skyMs = preludeMs = prepareMs = coverMs = drapeMs = layerMs = layer3DMs = billboardMs = 0;
+            coverSeedMs = coverCollectMs = coverStandInMs = coverShadowMs = 0;
             preTerrainMs = preDepthMs = preClearanceMs = prePaintMs = prePaintPushMs = 0;
+            preTerrainCutMs = preTerrainPrefetchMs = preTerrainSurfaceMs = 0;
             prePaintLayersMs = prePaintCoverMs = prePaintLayerLockMs = 0;
             prePaintConfigMs = prePaintApplyMs = 0;
             preHeadMs = preTailMs = preTailCacheMs = 0;
@@ -205,9 +220,9 @@ namespace massif {
             if (preludeMs < 20.0) {
                 return;
             }
-            Log::Infof("PROF PRELUDE: %.1f ms | head %.1f terrain %.1f depth %.1f clearance %.1f "
+            Log::Infof("PROF PRELUDE: %.1f ms | head %.1f terrain %.1f [cut %.1f prefetch %.1f surface %.1f] depth %.1f clearance %.1f "
                        "paintTiles %.1f (layers %.1f [lock %.1f config %.1f apply %.1f] cover %.1f push %.1f) tail %.1f (options %.1f walk %.1f cache %.1f) rest %.1f",
-                       preludeMs, preHeadMs, preTerrainMs, preDepthMs, preClearanceMs, prePaintMs,
+                       preludeMs, preHeadMs, preTerrainMs, preTerrainCutMs, preTerrainPrefetchMs, preTerrainSurfaceMs, preDepthMs, preClearanceMs, prePaintMs,
                        prePaintLayersMs, prePaintLayerLockMs, prePaintConfigMs, prePaintApplyMs, prePaintCoverMs, prePaintPushMs, preTailMs, preTailOptionsMs, preTailWalkMs, preTailCacheMs,
                        preludeMs - preHeadMs - preTerrainMs - preDepthMs - preClearanceMs - prePaintMs - preTailMs);
         }
@@ -219,6 +234,7 @@ namespace massif {
 
             static thread_local double sumMs = 0, maxMs = 0, sumSky = 0, sumPrelude = 0, sumPrepare = 0;
             static thread_local double sumCover = 0, sumDrape = 0, sumLayer = 0, sumLayer3D = 0, sumBillboard = 0;
+            static thread_local double sumCoverSeed = 0, sumCoverCollect = 0, sumCoverStandIn = 0, sumCoverShadow = 0;
             static thread_local int count = 0;
             static thread_local std::chrono::steady_clock::time_point lastLog = std::chrono::steady_clock::now();
 
@@ -226,6 +242,8 @@ namespace massif {
             maxMs = std::max(maxMs, frameMs);
             sumSky += skyMs; sumPrelude += preludeMs; sumPrepare += prepareMs; sumCover += coverMs;
             sumDrape += drapeMs; sumLayer += layerMs; sumLayer3D += layer3DMs; sumBillboard += billboardMs;
+            sumCoverSeed += coverSeedMs; sumCoverCollect += coverCollectMs;
+            sumCoverStandIn += coverStandInMs; sumCoverShadow += coverShadowMs;
             count++;
 
             std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
@@ -238,8 +256,16 @@ namespace massif {
                 sumSky / count, sumPrelude / count, sumPrepare / count, sumCover / count,
                 sumDrape / count, sumLayer / count, sumLayer3D / count, sumBillboard / count,
                 (sumMs - sumSky - sumPrelude - sumPrepare - sumCover - sumDrape - sumLayer - sumLayer3D - sumBillboard) / count);
+            // Only when cover is actually worth splitting, so an ordinary map's log is unchanged.
+            if (sumCover / count >= 2.0) {
+                Log::Infof("PROF COVER: %.1f ms | seed %.1f collect %.1f standIn %.1f shadow %.1f rest %.1f",
+                    sumCover / count, sumCoverSeed / count, sumCoverCollect / count,
+                    sumCoverStandIn / count, sumCoverShadow / count,
+                    (sumCover - sumCoverSeed - sumCoverCollect - sumCoverStandIn - sumCoverShadow) / count);
+            }
             GpuFrameProfiler::logInterval();
             sumMs = maxMs = sumSky = sumPrelude = sumPrepare = sumCover = sumDrape = sumLayer = sumLayer3D = sumBillboard = 0;
+            sumCoverSeed = sumCoverCollect = sumCoverStandIn = sumCoverShadow = 0;
             count = 0;
             lastLog = currentTime;
         }

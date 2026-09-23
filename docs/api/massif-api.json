@@ -1185,6 +1185,30 @@
         },
         {
           "cppClass": "massif::BaseMapView",
+          "name": "moveCameraTo",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            },
+            {
+              "name": "zoom",
+              "type": "float"
+            },
+            {
+              "name": "rotation",
+              "type": "float"
+            },
+            {
+              "name": "tilt",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
           "name": "moveTo",
           "args": [
             {
@@ -5618,6 +5642,15 @@
           "doc": "Returns the state of kinetic zoom flag."
         },
         {
+          "name": "labelPadding",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how far outside the viewport labels are placed, in screen pixels."
+        },
+        {
           "name": "labelViewDistance",
           "type": "FLOAT",
           "readOnly": false,
@@ -6372,6 +6405,59 @@
       "methods": [],
       "events": []
     },
+    "massif::PointDetailTileDataSource": {
+      "base": "massif::TileDataSource",
+      "properties": [
+        {
+          "name": "detailZoom",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the zoom whose tiles are read."
+        },
+        {
+          "name": "layerName",
+          "type": "STRING",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the layer that is rebuilt."
+        },
+        {
+          "name": "maxDetailLevels",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many zoom levels below the requested tile this will reach."
+        },
+        {
+          "name": "maxFeatures",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many features a rebuilt tile may carry."
+        },
+        {
+          "name": "rankProperty",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the property a rebuilt tile's features are ranked by."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
     "massif::PointGeometry": {
       "base": "massif::Geometry",
       "properties": [
@@ -6808,10 +6894,36 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex)."
+        },
+        {
+          "name": "terrainNormalsRequired",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns true if the effect wants the terrain SURFACE NORMAL in the depth pre-pass."
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::PostProcessEffect",
+          "name": "setFloatParameter",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::Projection": {
@@ -7903,6 +8015,15 @@
           "doc": "Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters."
         },
         {
+          "name": "cameraClearanceFraction",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the share of the camera's altitude that the terrain clearance takes."
+        },
+        {
           "name": "depthBias",
           "type": "FLOAT",
           "readOnly": false,
@@ -7926,8 +8047,7 @@
           "readOnly": false,
           "static": false,
           "position": false,
-          "cppType": "bool",
-          "doc": "Returns whether polygon fills are draped as a render-to-texture surface."
+          "cppType": "bool"
         },
         {
           "name": "drapeLinesEnabled",
@@ -7955,6 +8075,15 @@
           "position": false,
           "cppType": "int",
           "doc": "Returns how many drape tiles the automatic resolution assumes are cached at once."
+        },
+        {
+          "name": "elevationCacheSize",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule."
         },
         {
           "name": "elevationPrefetchEnabled",
@@ -8039,6 +8168,24 @@
           "doc": "Returns the maximum visible tile zoom offset, relative to the camera zoom level."
         },
         {
+          "name": "maxZoom",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the maximum tile zoom level the terrain mesh is cut at."
+        },
+        {
+          "name": "meshCacheSize",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many terrain surface meshes may be cached."
+        },
+        {
           "name": "meshResolution",
           "type": "INT",
           "readOnly": false,
@@ -8066,6 +8213,15 @@
           "doc": "Returns the style layers that are kept out of the terrain drape bake."
         },
         {
+          "name": "normalSampleDistance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the ground distance the surface normals are measured over, in meters."
+        },
+        {
           "name": "seamlessTileEdgesEnabled",
           "type": "BOOL",
           "readOnly": false,
@@ -8073,6 +8229,15 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns whether seamless tile edge handling is enabled."
+        },
+        {
+          "name": "sharedGroundEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the shared ground pass draws the terrain a second time."
         },
         {
           "name": "surfaceShaderSource",
@@ -11890,6 +12055,44 @@
             ]
           ]
         ]
+      ],
+      [
+        "point-detail",
+        "massif__PointDetailTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ],
+              [
+                "VALUE",
+                "layer",
+                "stringAt(spec, \"layer\", \"\")",
+                null
+              ],
+              [
+                "VALUE",
+                "detailZoom",
+                "static_cast<int>(intAt(spec, \"detailZoom\", 14))",
+                null
+              ]
+            ],
+            [
+              "source",
+              "layer"
+            ],
+            [
+              "source",
+              "layer",
+              "detailZoom"
+            ]
+          ]
+        ]
       ]
     ],
     "style": [
@@ -12087,6 +12290,7 @@
     "massif::PMTilesTileDataSource": "source",
     "massif::PersistentCacheTileDataSource": "source",
     "massif::Point": "element",
+    "massif::PointDetailTileDataSource": "source",
     "massif::PointGeometry": "geometry",
     "massif::PointStyle": "elementstyle",
     "massif::PointStyleBuilder": "elementstyle",
@@ -13646,6 +13850,46 @@
             "childKind": null,
             "childClass": null,
             "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::PointDetailTileDataSource",
+      "kind": "source",
+      "type": "point-detail",
+      "aliases": {
+        "dataSource": "source",
+        "layerName": "layer"
+      },
+      "defaults": {
+        "detailZoom": "14"
+      },
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "layer",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "detailZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
           }
         ]
       ]

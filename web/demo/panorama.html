@@ -141,6 +141,13 @@
     ['number', 'number', 'number', 'number', 'number', 'number'],
     [LON, LAT, num('zoom', 13), num('rotation', 0), num('tilt', 4), num('elevation', 50)]);
 
+  // Field of view is an Options attribute the facade already carries, so it needs no C hook - and it
+  // is the first thing to match against a reference panorama. The SDK's default is a map's wide
+  // angle; peakfinder frames about 46 degrees, which is most of why the same ground looks small here.
+  const optionsHandle = massif.find('options', 'map');
+  const setFov = (degrees) => massif.set(optionsHandle, 'fieldOfViewY', degrees);
+  setFov(num('fov', 46));
+
   const setCamera = (rotation, tilt) => module.ccall('massifSetPanoramaCamera', null,
     ['number', 'number', 'number', 'number', 'number', 'number'],
     [LON, LAT, num('zoom', 13), rotation, tilt, num('elevation', 50)]);
@@ -153,6 +160,7 @@
     // rebuilt, re-bakes its normals against whatever the cache holds NOW, and lands somewhere else
     // again - so a frame taken before and after a round trip is the test that matters.
     look: (rotation, tilt) => setCamera(rotation, tilt ?? num('tilt', 4)),
+    fov: setFov,
     ink: (name, value) => { INK[name] = value; param('massifSetReliefParam', name, value); },
     surface: (name, value) => { SURFACE[name] = value; param('massifSetSurfaceParam', name, value); },
     terrain: (name, value) => { TERRAIN[name] = value; param('massifSetTerrainFloat', name, value); },

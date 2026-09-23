@@ -299,8 +299,18 @@ EMSCRIPTEN_KEEPALIVE void massifSetSurfaceParam(const char* name, float value) {
 }
 
 EMSCRIPTEN_KEEPALIVE void massifSetReliefParam(const char* name, float value) {
-    if (_reliefEffect && name) {
-        _reliefEffect->setFloatParameter(name, value);
+    if (!_reliefEffect || !name) {
+        return;
+    }
+    _reliefEffect->setFloatParameter(name, value);
+    // AND ASK FOR A FRAME. An effect's parameters live on the effect object, which holds no
+    // reference back to the renderer (MapRenderer::setPostProcessEffect), so a write on its own
+    // cannot request a redraw - and on an on-demand renderer with a still camera nothing else will.
+    // Setting the same effect again is what the SDK documents as the way to publish a change; the
+    // app's applyReliefOutline ends with exactly that call. Without this every parameter swept here
+    // was a silent no-op, which is a bench that lies rather than a bench that measures.
+    if (_MapView) {
+        _MapView->getMapRenderer()->setPostProcessEffect(_reliefEffect);
     }
 }
 

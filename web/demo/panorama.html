@@ -121,6 +121,16 @@
     tileEdgeStitching: 0
   };
 
+  // Any uniform can be overridden from the query string, so a tuned look is a LINK rather than a
+  // list of console calls to retype: ink.uRidgeStrength=6, s.uShadeStrength=0.10, t.meshResolution=256.
+  for (const [key, value] of query) {
+    const [scope, name] = [key.slice(0, key.indexOf('.')), key.slice(key.indexOf('.') + 1)];
+    const target = scope === 'ink' ? INK : scope === 's' ? SURFACE : scope === 't' ? TERRAIN : null;
+    if (target && name) {
+      target[name] = parseFloat(value);
+    }
+  }
+
   function applyAll() {
     str('massifSetSurfaceShader', RELIEF_SURFACE_SHADER);
     str('massifSetReliefShader', RELIEF_OUTLINE_SHADER);

@@ -394,8 +394,12 @@ namespace massif {
             return false;
         }
 
-        int bufferWidth = std::max(1, viewState.getWidth() / BUFFER_DOWNSCALE);
-        int bufferHeight = std::max(1, viewState.getHeight() / BUFFER_DOWNSCALE);
+        // The POST-PROCESS buffer follows the option, where the occlusion read-back below keeps the
+        // constant: an effect that differentiates this buffer shows its texels as blocks and comb
+        // streaks at close range, and a read-back that samples points does not care.
+        int downscale = std::max(1, terrainOptions->getPostProcessDownscale());
+        int bufferWidth = std::max(1, viewState.getWidth() / downscale);
+        int bufferHeight = std::max(1, viewState.getHeight() / downscale);
         if (!_frameBuffer || !_frameBuffer->isValid() || _frameBuffer->getWidth() != bufferWidth || _frameBuffer->getHeight() != bufferHeight) {
             _frameBuffer = glResourceManager->create<FrameBuffer>(bufferWidth, bufferHeight, true, true, false);
             _depthTextureMVPMatrix = cglib::mat4x4<double>::zero();

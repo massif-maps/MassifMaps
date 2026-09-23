@@ -172,7 +172,7 @@ namespace massif {
         struct TileMesh;
         struct MeshCacheEntry;
 
-        static constexpr int BUFFER_DOWNSCALE = 2;    // packed depth texture runs at half resolution
+        static constexpr int BUFFER_DOWNSCALE = 2;    // occlusion read-back buffer, half resolution
         // The occlusion read-back is a glReadPixels, a full pipeline stall - 55-62 ms on an Adreno
         // 610 on top of the ~20 ms depth render. While the camera moves the data is refreshed at a
         // coarse interval only: a lagging occlusion depth is invisible, a stalled frame is not.

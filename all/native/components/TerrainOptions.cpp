@@ -40,6 +40,7 @@ namespace massif {
         // bench here was run at. 32 leaves draped content visibly floating over the ground; 128
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
         _meshResolution(64),
+        _postProcessDownscale(2),
         _tileEdgeStitchingEnabled(true),
         _meshCacheSize(0),
         _sharedGroundEnabled(true),
@@ -301,6 +302,17 @@ namespace massif {
         int resolution = std::min(256, std::max(2, meshResolution));
         if (_meshResolution.exchange(resolution) != resolution) {
             notifyOptionChanged("MeshResolution");
+        }
+    }
+
+    int TerrainOptions::getPostProcessDownscale() const {
+        return _postProcessDownscale.load();
+    }
+
+    void TerrainOptions::setPostProcessDownscale(int downscale) {
+        int scale = std::min(4, std::max(1, downscale));
+        if (_postProcessDownscale.exchange(scale) != scale) {
+            notifyOptionChanged("PostProcessDownscale");
         }
     }
 

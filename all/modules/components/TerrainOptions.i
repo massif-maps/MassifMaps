@@ -48,6 +48,7 @@
 %attribute(massif::TerrainOptions, bool, SeamlessTileEdgesEnabled, isSeamlessTileEdgesEnabled, setSeamlessTileEdgesEnabled)
 %attribute(massif::TerrainOptions, bool, ElevationPrefetchEnabled, isElevationPrefetchEnabled, setElevationPrefetchEnabled)
 %attribute(massif::TerrainOptions, int, MeshResolution, getMeshResolution, setMeshResolution)
+%attribute(massif::TerrainOptions, int, PostProcessDownscale, getPostProcessDownscale, setPostProcessDownscale)
 %attribute(massif::TerrainOptions, bool, TileEdgeStitchingEnabled, isTileEdgeStitchingEnabled, setTileEdgeStitchingEnabled)
 %attribute(massif::TerrainOptions, int, MeshCacheSize, getMeshCacheSize, setMeshCacheSize)
 %attribute(massif::TerrainOptions, bool, SharedGroundEnabled, isSharedGroundEnabled, setSharedGroundEnabled)

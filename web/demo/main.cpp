@@ -266,6 +266,8 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
         _terrainOptions->setNormalSampleDistance(value);
     } else if (key == "meshResolution") {
         _terrainOptions->setMeshResolution(static_cast<int>(value));
+    } else if (key == "postProcessDownscale") {
+        _terrainOptions->setPostProcessDownscale(static_cast<int>(value));
     } else if (key == "meshCacheSize") {
         _terrainOptions->setMeshCacheSize(static_cast<int>(value));
     } else if (key == "sharedGround") {

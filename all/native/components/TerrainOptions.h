@@ -289,6 +289,28 @@ namespace massif {
         void setMeshResolution(int meshResolution);
 
         /**
+         * Returns the downscale factor of the packed depth/normal texture post-process effects read.
+         * @return The divisor applied to the screen size for that buffer. The default is 2.
+         */
+        int getPostProcessDownscale() const;
+        /**
+         * Sets the downscale factor of the packed depth/normal texture that post-process effects
+         * read (PostProcessEffect::setTerrainDepthRequired / setTerrainNormalsRequired).
+         *
+         * 2 - the default - is a map's setting: the buffer is a quarter of the pixels, and an effect
+         * that SHADES it cannot tell. An effect that DIFFERENTIATES it can: a peak finder drawing
+         * ridge lines from the normals magnifies that buffer's texels at close range into visible
+         * blocks, stair-stepped crests and comb streaking down steep faces. 1 removes them, at four
+         * times the fill for a pass already measured at 9.5 ms of a 19.3 ms frame on an Adreno 610 -
+         * so it is worth it for a panorama and not for a map.
+         *
+         * The occlusion read-back keeps its own half-resolution buffer either way: it samples depth
+         * at points, and a full-resolution glReadPixels is a stall, not a detail.
+         * @param downscale The new downscale factor (clamped to 1..4).
+         */
+        void setPostProcessDownscale(int downscale);
+
+        /**
          * Returns whether cross-LOD tile edge stitching is enabled.
          * @return True if grid surface edges follow a coarser neighbour's lattice. The default is true.
          */
@@ -1043,6 +1065,7 @@ namespace massif {
         std::atomic<float> _autoFlattenDuration;
         std::atomic<float> _autoFlattenRiseDuration;
         std::atomic<int> _meshResolution;
+        std::atomic<int> _postProcessDownscale;
         std::atomic<bool> _tileEdgeStitchingEnabled;
         std::atomic<int> _meshCacheSize;
         std::atomic<bool> _sharedGroundEnabled;

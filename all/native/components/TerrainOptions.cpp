@@ -40,6 +40,9 @@ namespace massif {
         // bench here was run at. 32 leaves draped content visibly floating over the ground; 128
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
         _meshResolution(64),
+        // 0: the node field follows the mesh, which is what every caller got before it could be
+        // asked for separately. See setSurfaceNodeResolution for why the two are worth splitting.
+        _surfaceNodeResolution(0),
         _postProcessDownscale(2),
         _tileEdgeStitchingEnabled(true),
         _meshCacheSize(0),
@@ -302,6 +305,17 @@ namespace massif {
         int resolution = std::min(256, std::max(2, meshResolution));
         if (_meshResolution.exchange(resolution) != resolution) {
             notifyOptionChanged("MeshResolution");
+        }
+    }
+
+    int TerrainOptions::getSurfaceNodeResolution() const {
+        return _surfaceNodeResolution.load();
+    }
+
+    void TerrainOptions::setSurfaceNodeResolution(int resolution) {
+        int value = (resolution <= 0 ? 0 : std::min(512, std::max(2, resolution)));
+        if (_surfaceNodeResolution.exchange(value) != value) {
+            notifyOptionChanged("SurfaceNodeResolution");
         }
     }
 

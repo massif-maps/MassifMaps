@@ -164,7 +164,7 @@ namespace massif {
         // Grids are identified by their TILE, not by the pointer they live behind: the elevation
         // cache is an LRU, so the same DEM tile is re-decoded into a new object at any time and
         // comparing pointers made that look like new data.
-        using GridKey = long long; // grid tile id, or -1 for a missing neighbour
+        using GridKey = long long; // ElevationTileGrid::getSerial, or -1 for a missing neighbour
         static GridKey gridKey(const std::shared_ptr<ElevationTileGrid>& grid);
 
         // How good the border on one side is, and the ONLY reason to touch a texture already up:

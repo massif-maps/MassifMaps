@@ -6,11 +6,19 @@
 #include <vt/RenderStats.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 namespace massif {
 
+    namespace {
+        // Handed out in construction order and never reused, so a consumer holding an old grid can
+        // tell it apart from the one that replaced it. See ElevationTileGrid::getSerial.
+        std::atomic<unsigned long long> gridSerialCounter(0);
+    }
+
     ElevationTileGrid::ElevationTileGrid(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs, int nodesPerEdge, int boxCells) :
+        _serial(++gridSerialCounter),
         _tile(tile),
         _internalBounds(internalBounds),
         _bitmap(bitmap),

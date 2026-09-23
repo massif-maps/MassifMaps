@@ -71,7 +71,7 @@
    * the same source the app ships, not a copy that will drift.
    */
   import { Massif, MassifCamera } from '../js/massif.mjs';
-  import { RELIEF_SURFACE_SHADER, RELIEF_OUTLINE_SHADER } from './relief-shaders.js';
+  import { RELIEF_SURFACE_SHADER, RELIEF_OUTLINE_SHADER, RELIEF_DEPTH_OUTLINE_SHADER } from './relief-shaders.js';
 
   const query = new URLSearchParams(location.search);
   if (query.get('log')) { document.body.classList.add('show-log'); }
@@ -98,6 +98,8 @@
   // bug and exactly the kind this bench exists to avoid re-creating by hand.
   const INK = {
     uIntensity: 1, uOutlineWidth: 1, uHorizonBoost: 1, uDepthThreshold: 1,
+    // The depth-only outline's own: gain scales the laplacian, power is what makes the line thin.
+    uOutlineGain: 40, uOutlinePower: 0.6,
     uCreaseStrength: 0, uCreaseThreshold: 0.12,
     uRidgeStrength: 2, uRidgeThreshold: 0.05, uRidgeGroundSpan: 90,
     uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
@@ -111,7 +113,9 @@
   };
   const SURFACE = {
     uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35,
-    uHaze: 0.65, uHazeDistance: 60000, uDebugView: num('debug', 0)
+    uHaze: 0.65, uHazeDistance: 60000, uDebugView: num('debug', 0),
+    // The ridge ink, now drawn by the surface pass at full resolution.
+    uRidgeInkStrength: 60, uRidgeInkSpan: 120, uRidgeInkThreshold: 0.002
   };
   const TERRAIN = {
     normalSampleDistance: num('normalSampleDistance', 90),
@@ -131,9 +135,15 @@
     }
   }
 
+  // ?ink=depth is the geo-three-shaped pipeline: the surface shades and inks the ridges at full
+  // resolution off the elevation texture, and the post-process draws silhouettes from 24-bit depth
+  // and nothing else. ?ink=normals is the old one, kept so the two can be compared in one build.
+  const inkMode = query.get('ink') ?? 'depth';
+
   function applyAll() {
     str('massifSetSurfaceShader', RELIEF_SURFACE_SHADER);
-    str('massifSetReliefShader', RELIEF_OUTLINE_SHADER);
+    module.ccall('massifSetReliefNormals', null, ['number'], [inkMode === 'depth' ? 0 : 1]);
+    str('massifSetReliefShader', inkMode === 'depth' ? RELIEF_DEPTH_OUTLINE_SHADER : RELIEF_OUTLINE_SHADER);
     for (const [k, v] of Object.entries(TERRAIN)) param('massifSetTerrainFloat', k, v);
     for (const [k, v] of Object.entries(SURFACE)) param('massifSetSurfaceParam', k, v);
     for (const [k, v] of Object.entries(INK)) param('massifSetReliefParam', k, v);

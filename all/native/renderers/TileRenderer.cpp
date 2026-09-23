@@ -998,10 +998,15 @@ namespace massif {
             if (_maxVertexTextureUnits > 0) {
                 std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
                 if (elevationManager) {
-                    // Cap elevation levels at what the mesh can express - for every elevation
-                    // consumer, not just the drawn surface (billboard occlusion ray marching and
-                    // element placement query the same manager and must see the same heights).
-                    elevationManager->setSurfaceResolution(activeTerrainOptions->getMeshResolution());
+                    // The node field's density - for every elevation consumer, not just the drawn
+                    // surface (billboard occlusion ray marching and element placement query the same
+                    // manager and must see the same heights).
+                    //
+                    // The mesh resolution is the DEFAULT for it, not the rule: the lattice is per
+                    // render tile and the field is per DEM tile, so once the camera overzooms the
+                    // source they stop describing the same thing - see setSurfaceNodeResolution.
+                    int nodeResolution = activeTerrainOptions->getSurfaceNodeResolution();
+                    elevationManager->setSurfaceResolution(nodeResolution > 0 ? nodeResolution : activeTerrainOptions->getMeshResolution());
                 }
                 // One cache for the whole map, not one per layer: the encoded texture depends only on
                 // the elevation data and the tile id, so a cache each meant an encode THREAD each over

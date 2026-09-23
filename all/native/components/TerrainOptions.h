@@ -289,6 +289,33 @@ namespace massif {
         void setMeshResolution(int meshResolution);
 
         /**
+         * Returns the resolution the elevation node field is built at.
+         * @return Node field cells per tile edge, or 0 to follow MeshResolution. The default is 0.
+         */
+        int getSurfaceNodeResolution() const;
+        /**
+         * Sets the resolution of the height field the terrain is displaced from, independently of
+         * the mesh drawn over it.
+         *
+         * These are two different things and only one of them carries detail. The vertex stage does
+         * not sample the DEM: it samples the NODE FIELD, the DEM box-filtered to this many cells per
+         * tile edge (ElevationNodeField), sized per DEM tile. The mesh is a lattice per RENDER tile,
+         * and once the camera is overzoomed past the elevation source's maximum zoom the render tile
+         * covers a fraction of a DEM tile - at z16 on a z12 source, 32 texels - so even a 96-cell
+         * lattice is finer than the data and the node field is what the relief is limited by.
+         *
+         * Tied together, asking for detail meant paying for a lattice that was never the constraint:
+         * 256 cells per render tile is 7x the vertices of 96 for relief that comes from the field.
+         * Measured on a Crosscall, mesh 256 panned visibly slower than 96 at the same picture.
+         *
+         * The cost of this one is memory, not frames: the field is (resolution x tiles-per-edge + 1)^2
+         * texels per cached DEM grid, so 256 over a 512-texel source is ~790 KB a grid against
+         * ~150 KB at 96. 0 follows MeshResolution, which is what every caller got before.
+         * @param resolution Node cells per tile edge (clamped to 2..512), or 0 to follow MeshResolution.
+         */
+        void setSurfaceNodeResolution(int resolution);
+
+        /**
          * Returns the downscale factor of the packed depth/normal texture post-process effects read.
          * @return The divisor applied to the screen size for that buffer. The default is 2.
          */
@@ -1065,6 +1092,7 @@ namespace massif {
         std::atomic<float> _autoFlattenDuration;
         std::atomic<float> _autoFlattenRiseDuration;
         std::atomic<int> _meshResolution;
+        std::atomic<int> _surfaceNodeResolution;
         std::atomic<int> _postProcessDownscale;
         std::atomic<bool> _tileEdgeStitchingEnabled;
         std::atomic<int> _meshCacheSize;

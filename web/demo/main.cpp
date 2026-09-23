@@ -50,6 +50,7 @@ namespace {
     // on a reload, which is the whole point of driving this from JavaScript.
     std::shared_ptr<massif::TerrainOptions> _terrainOptions;
     std::shared_ptr<massif::PostProcessEffect> _reliefEffect;
+    bool _reliefWantsNormals = true;
 
     const char* const DEFAULT_SOURCE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
@@ -251,6 +252,11 @@ EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float 
     _MapView->moveCameraTo(pos, zoom, rotation, tilt);
 }
 
+/** Must be called BEFORE massifSetReliefShader: the layout is fixed when the effect is built. */
+EMSCRIPTEN_KEEPALIVE void massifSetReliefNormals(int wanted) {
+    _reliefWantsNormals = (wanted != 0);
+}
+
 EMSCRIPTEN_KEEPALIVE void massifSetSurfaceShader(const char* source) {
     if (_terrainOptions && source) {
         _terrainOptions->setSurfaceShaderSource(source);
@@ -289,7 +295,11 @@ EMSCRIPTEN_KEEPALIVE void massifSetReliefShader(const char* source) {
     }
     _reliefEffect = std::make_shared<massif::PostProcessEffect>("relief", source);
     _reliefEffect->setTerrainDepthRequired(true);
-    _reliefEffect->setTerrainNormalsRequired(true);
+    // Normals only when the shader asks for them. The depth-only outline wants the OTHER layout -
+    // all 24 bits spent on depth - because an outline is exactly the thing that needs depth
+    // precision, and the 16-bit sqrt depth the normal layout leaves room for quantises into visible
+    // steps over a panorama's far plane. The shading no longer comes from here at all.
+    _reliefEffect->setTerrainNormalsRequired(_reliefWantsNormals);
     _MapView->getMapRenderer()->setPostProcessEffect(_reliefEffect);
 }
 

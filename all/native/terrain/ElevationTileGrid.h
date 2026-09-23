@@ -69,6 +69,16 @@ namespace massif {
         /** Mesh nodes per grid edge the node field was built for, 0 for none. */
         int getNodesPerEdge() const { return _nodesPerEdge; }
         /**
+         * This decode's own identity, unique for the process and never reused.
+         *
+         * A grid is immutable, so a CONSUMER's copy is stale only when the grid itself was replaced -
+         * and a tile id cannot say that, because the replacement carries the same one. That is what
+         * kept a changed MeshResolution invisible until the app was restarted: setSurfaceResolution
+         * re-decodes every grid with a new node field (ElevationManager::tilesChanged), and a cache
+         * comparing tile ids saw no change and kept serving the old node texture.
+         */
+        unsigned long long getSerial() const { return _serial; }
+        /**
          * Elevation gradient (dh/dx, dh/dy) in meters per internal unit at the given internal coordinates.
          */
         void sampleGradient(double internalX, double internalY, float& dhdx, float& dhdy) const;
@@ -217,6 +227,7 @@ namespace massif {
 
         std::array<int, 4> edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
 
+        const unsigned long long _serial;
         const MapTile _tile;
         const MapBounds _internalBounds;
         const std::shared_ptr<Bitmap> _bitmap;

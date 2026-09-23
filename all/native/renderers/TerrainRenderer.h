@@ -121,7 +121,7 @@ namespace massif {
          * attribute. The occlusion read-back never asks for it: it samples depth at points, and the
          * layout it reads back is the 24-bit one.
          */
-        bool renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap = DEPTH_TEXTURE_MESH_RESOLUTION, bool withNormals = false);
+        bool renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap = DEPTH_TEXTURE_MESH_RESOLUTION, bool withNormals = false, bool forReadback = false);
 
         /**
          * The GPU elevation textures, shared with the tile renderer (MapRenderer owns one per
@@ -186,6 +186,12 @@ namespace massif {
         struct MeshCacheEntry;
 
         std::shared_ptr<ElevationTextureCache> _elevationTextureCache;
+        // The OCCLUSION read-back's own buffer, separate from the post-process one. They are two
+        // different sizes as soon as an app asks for a full-resolution post-process buffer
+        // (TerrainOptions::setPostProcessDownscale), and sharing one member then made the two
+        // callers resize it against each other every frame - and left glReadPixels asking for a
+        // rectangle the framebuffer no longer was.
+        std::shared_ptr<FrameBuffer> _readbackFrameBuffer;
 
         static constexpr int BUFFER_DOWNSCALE = 2;    // occlusion read-back buffer, half resolution
         // The occlusion read-back is a glReadPixels, a full pipeline stall - 55-62 ms on an Adreno

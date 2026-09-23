@@ -390,7 +390,7 @@ namespace massif {
         return _surfaceShader;
     }
 
-    bool TerrainRenderer::renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap, bool withNormals) {
+    bool TerrainRenderer::renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap, bool withNormals, bool forReadback) {
         if (!terrainOptions || !glResourceManager || viewState.getWidth() <= 0 || viewState.getHeight() <= 0) {
             return false;
         }
@@ -398,14 +398,17 @@ namespace massif {
         // The POST-PROCESS buffer follows the option, where the occlusion read-back below keeps the
         // constant: an effect that differentiates this buffer shows its texels as blocks and comb
         // streaks at close range, and a read-back that samples points does not care.
-        int downscale = std::max(1, terrainOptions->getPostProcessDownscale());
+        int downscale = (forReadback ? BUFFER_DOWNSCALE : std::max(1, terrainOptions->getPostProcessDownscale()));
         int bufferWidth = std::max(1, viewState.getWidth() / downscale);
         int bufferHeight = std::max(1, viewState.getHeight() / downscale);
-        if (!_frameBuffer || !_frameBuffer->isValid() || _frameBuffer->getWidth() != bufferWidth || _frameBuffer->getHeight() != bufferHeight) {
-            _frameBuffer = glResourceManager->create<FrameBuffer>(bufferWidth, bufferHeight, true, true, false);
+        // Two buffers, because the read-back's size does not follow the option: a full-resolution
+        // glReadPixels is a stall, and an effect's sampling resolution is not the occlusion query's.
+        std::shared_ptr<FrameBuffer>& target = (forReadback ? _readbackFrameBuffer : _frameBuffer);
+        if (!target || !target->isValid() || target->getWidth() != bufferWidth || target->getHeight() != bufferHeight) {
+            target = glResourceManager->create<FrameBuffer>(bufferWidth, bufferHeight, true, true, false);
             _depthTextureMVPMatrix = cglib::mat4x4<double>::zero();
         }
-        if (!_frameBuffer) {
+        if (!target) {
             return false;
         }
 
@@ -424,7 +427,7 @@ namespace massif {
 
         GLint prevFBO = 0;
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
-        glBindFramebuffer(GL_FRAMEBUFFER, _frameBuffer->getFBOId());
+        glBindFramebuffer(GL_FRAMEBUFFER, target->getFBOId());
         glViewport(0, 0, bufferWidth, bufferHeight);
 
         // Clear to 'sky'. Without normals that is maximum depth and zero coverage; with them there
@@ -602,7 +605,7 @@ namespace massif {
         _depthReadbackTime = now;
         _depthStale = false;
 
-        if (!renderDepthTexture(viewState, terrainOptions, glResourceManager)) {
+        if (!renderDepthTexture(viewState, terrainOptions, glResourceManager, DEPTH_TEXTURE_MESH_RESOLUTION, false, true)) {
             return false;
         }
         auto newDepthData = std::make_shared<TerrainDepthBuffer>();
@@ -610,7 +613,7 @@ namespace massif {
 
         GLint prevFBO = 0;
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
-        glBindFramebuffer(GL_FRAMEBUFFER, _frameBuffer->getFBOId());
+        glBindFramebuffer(GL_FRAMEBUFFER, _readbackFrameBuffer->getFBOId());
         glReadPixels(0, 0, bufferWidth, bufferHeight, GL_RGBA, GL_UNSIGNED_BYTE, newDepthData->data.data());
         glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
 

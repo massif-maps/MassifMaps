@@ -66,7 +66,15 @@ namespace massif {
 #endif
 
     ElevationTextureCache::GridKey ElevationTextureCache::gridKey(const std::shared_ptr<ElevationTileGrid>& grid) {
-        return grid ? grid->getTile().getTileId() : -1;
+        // The DECODE, not the tile it covers. A tile id cannot express "the same ground, decoded
+        // again": TerrainOptions::MeshResolution sizes the node field, so moving it re-decodes every
+        // grid (ElevationManager::setSurfaceResolution -> tilesChanged), and keyed by tile id every
+        // entry compared equal - gridChanged stayed false, no re-encode was requested, and the GPU
+        // kept the node texture built for the OLD lattice. The setting therefore did nothing until
+        // the app was restarted and the cache started empty, which is exactly how it was reported.
+        // The mesh cache next door never had this: it compares the grid POINTER (TerrainRenderer::
+        // collectTileMeshes), which a re-decode changes.
+        return grid ? static_cast<GridKey>(grid->getSerial()) : -1;
     }
 
     ElevationTextureCache::ElevationTextureCache(const std::shared_ptr<ElevationManager>& elevationManager, const std::shared_ptr<GLResourceManager>& glResourceManager) :

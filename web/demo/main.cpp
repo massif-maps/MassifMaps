@@ -22,6 +22,8 @@
 #include "components/Options.h"
 #include "datasources/HTTPTileDataSource.h"
 #include "layers/RasterTileLayer.h"
+#include "renderers/PostProcessEffect.h"
+#include "renderers/MapRenderer.h"
 #include "layers/VectorTileLayer.h"
 #include "projections/Projection.h"
 #include "styles/CartoCSSStyleSet.h"
@@ -43,6 +45,11 @@
 
 namespace {
     std::shared_ptr<massif::WebMapView> _MapView;
+    // Held so the relief hooks below can reach them. The peak finder's shaders are the thing being
+    // iterated on, so NONE of their source lives here - the page supplies both and can change them
+    // on a reload, which is the whole point of driving this from JavaScript.
+    std::shared_ptr<massif::TerrainOptions> _terrainOptions;
+    std::shared_ptr<massif::PostProcessEffect> _reliefEffect;
 
     const char* const DEFAULT_SOURCE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
@@ -187,6 +194,7 @@ int main() {
         terrainOptions->setAutoFlattenParallax(0.0f);
         terrainOptions->setMeshResolution(WEB_TERRAIN_MESH_RESOLUTION);
         _MapView->getOptions()->setTerrainOptions(terrainOptions);
+        _terrainOptions = terrainOptions;
     }
 
     massif::MapPos wgs84(queryNumber("lon", 2.3522), queryNumber("lat", 48.8566));
@@ -205,4 +213,95 @@ int main() {
     // The frame loop is requestAnimationFrame, so main() returning must not tear the runtime down.
     emscripten_exit_with_live_runtime();
     return 0;
+}
+
+/*
+ * THE RELIEF HOOKS: enough of the peak finder to reproduce it in a browser, driven from JavaScript.
+ *
+ * They exist because the C ABI facade cannot build one: PostProcessEffect has no kind and no spec,
+ * so a page can create a TerrainOptions but neither construct an effect nor attach it. Declaring a
+ * kind for it would change the SDK's public surface; three functions here do not.
+ *
+ * NO SHADER SOURCE LIVES IN C++. The page passes both shaders in, so editing them is a reload
+ * rather than a rebuild - which is the reason for running the panorama here at all. The parameters
+ * go the same way, so ridge strength, deadzone and ground span can be swept from a script.
+ */
+extern "C" {
+
+/*
+ * The panorama CAMERA, in one call.
+ *
+ * A map clamps tilt to its own range because it is a map; a panorama looks at the horizon, which is
+ * a few degrees, and a flyTo silently lands on the clamp instead - the first capture asked for 4 and
+ * came back 84.3. The range has to move before the camera does, and neither is a value the C ABI
+ * carries as a plain property.
+ */
+EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float zoom, float rotation,
+                                                  float tilt, float elevationMeters) {
+    if (!_MapView) {
+        return;
+    }
+    _MapView->getOptions()->setTiltRange(massif::MapRange(0.0f, 90.0f));
+    // moveCameraTo puts the CAMERA at the position rather than the focus point, which is what a
+    // first-person view needs - the eye goes on the summit, not the ground under it. z is the
+    // elevation in metres.
+    massif::MapPos wgs84(lon, lat, elevationMeters);
+    massif::MapPos pos = _MapView->getOptions()->getBaseProjection()->fromWgs84(wgs84);
+    pos.setZ(elevationMeters);
+    _MapView->moveCameraTo(pos, zoom, rotation, tilt);
+}
+
+EMSCRIPTEN_KEEPALIVE void massifSetSurfaceShader(const char* source) {
+    if (_terrainOptions && source) {
+        _terrainOptions->setSurfaceShaderSource(source);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
+    if (!_terrainOptions || !name) {
+        return;
+    }
+    std::string key(name);
+    if (key == "normalSampleDistance") {
+        _terrainOptions->setNormalSampleDistance(value);
+    } else if (key == "meshResolution") {
+        _terrainOptions->setMeshResolution(static_cast<int>(value));
+    } else if (key == "meshCacheSize") {
+        _terrainOptions->setMeshCacheSize(static_cast<int>(value));
+    } else if (key == "sharedGround") {
+        _terrainOptions->setSharedGroundEnabled(value != 0);
+    } else if (key == "tileEdgeStitching") {
+        _terrainOptions->setTileEdgeStitchingEnabled(value != 0);
+    }
+}
+
+/** Replaces the ink pass. A shader is compiled into an effect, so a new source is a new effect. */
+EMSCRIPTEN_KEEPALIVE void massifSetReliefShader(const char* source) {
+    if (!_MapView) {
+        return;
+    }
+    if (!source || !*source) {
+        _reliefEffect.reset();
+        _MapView->getMapRenderer()->setPostProcessEffect(nullptr);
+        return;
+    }
+    _reliefEffect = std::make_shared<massif::PostProcessEffect>("relief", source);
+    _reliefEffect->setTerrainDepthRequired(true);
+    _reliefEffect->setTerrainNormalsRequired(true);
+    _MapView->getMapRenderer()->setPostProcessEffect(_reliefEffect);
+}
+
+/** The SURFACE shader's own uniforms, which are terrain options rather than effect parameters. */
+EMSCRIPTEN_KEEPALIVE void massifSetSurfaceParam(const char* name, float value) {
+    if (_terrainOptions && name) {
+        _terrainOptions->setSurfaceParameter(name, value);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE void massifSetReliefParam(const char* name, float value) {
+    if (_reliefEffect && name) {
+        _reliefEffect->setFloatParameter(name, value);
+    }
+}
+
 }

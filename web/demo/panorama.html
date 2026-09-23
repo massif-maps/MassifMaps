@@ -1,0 +1,179 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>peak finder bench</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f7f7f4; }
+  #map { width: 100vw; height: 100vh; display: block; }
+  #hud { position: fixed; top: 8px; left: 8px; font: 12px/1.4 monospace; background: #fffc;
+         padding: 6px 8px; white-space: pre; }
+  /* Present in the DOM even when invisible, so --dump-dom reads it without disturbing a screenshot. */
+  #log { position: fixed; bottom: 0; left: 0; right: 0; max-height: 34vh; overflow: auto; margin: 0;
+         font: 10px/1.3 monospace; background: #000c; color: #0f0; padding: 6px; display: none; }
+  body.show-log #log { display: block; }
+</style>
+<canvas id="map"></canvas>
+<div id="hud"></div>
+<pre id="log"></pre>
+<script>
+  // A headless run has no console to read, and the SDK reports a shader that failed to compile
+  // through Log::Errorf - i.e. console. Mirroring it into the DOM is what makes --dump-dom a
+  // diagnostic: the page can be asked what went wrong without a debugger attached.
+  globalThis.__log = [];
+  for (const level of ['log', 'info', 'warn', 'error']) {
+    const original = console[level].bind(console);
+    console[level] = (...args) => {
+      globalThis.__log.push(level + ': ' + args.map((a) => String(a?.stack ?? a)).join(' '));
+      original(...args);
+    };
+  }
+  // "no tiles this frame" has two very different causes - the layer asked for nothing, or it asked
+  // and the request failed. Counting requests by host separates them without a debugger.
+  globalThis.__net = { count: 0, byHost: {}, status: {}, last: [] };
+  const note = (url, tag) => {
+    const net = globalThis.__net;
+    let host = 'relative';
+    try { host = new URL(url, location.href).host; } catch (error) { /* opaque url */ }
+    net.count += 1;
+    net.byHost[host] = (net.byHost[host] ?? 0) + 1;
+    net.status[tag] = (net.status[tag] ?? 0) + 1;
+    if (net.last.length < 40) { net.last.push(tag + ' ' + String(url).slice(0, 140)); }
+  };
+  // Bound: an unbound window.fetch throws "Illegal invocation", which kills the wasm load itself.
+  const originalFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = (input, init) => {
+    const url = typeof input === 'string' ? input : input?.url;
+    note(url, 'fetch');
+    return originalFetch(input, init).then((r) => { note(url, 'fetch:' + r.status); return r; },
+      (e) => { note(url, 'fetch:ERR'); throw e; });
+  };
+  if (new URLSearchParams(location.search).get('xhrtrace')) {
+    const originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+      note(url, 'xhr');
+      this.addEventListener('load', () => note(url, 'xhr:' + this.status));
+      this.addEventListener('error', () => note(url, 'xhr:ERR'));
+      return originalOpen.call(this, method, url, ...rest);
+    };
+  }
+  addEventListener('error', (e) => globalThis.__log.push('window.error: ' + (e.error?.stack ?? e.message)));
+  addEventListener('unhandledrejection', (e) => globalThis.__log.push('reject: ' + (e.reason?.stack ?? e.reason)));
+</script>
+<script src="./coi-serviceworker.js"></script>
+<script type="module">
+  /*
+   * The peak finder, in a browser.
+   *
+   * Why: its faults are RUN TO RUN - the same tile renders differently on different openings - and
+   * on device a single comparison costs a native build, an install, hand navigation and a screenshot
+   * read by eye. Here a run is a page load, the camera is scripted, and two runs can be diffed.
+   *
+   * The shaders are GENERATED from alpimaps' reliefShaders.ts (gen-relief-shaders.mjs), so this is
+   * the same source the app ships, not a copy that will drift.
+   */
+  import { Massif, MassifCamera } from '../js/massif.mjs';
+  import { RELIEF_SURFACE_SHADER, RELIEF_OUTLINE_SHADER } from './relief-shaders.js';
+
+  const query = new URLSearchParams(location.search);
+  if (query.get('log')) { document.body.classList.add('show-log'); }
+  const num = (name, fallback) => (query.has(name) ? parseFloat(query.get(name)) : fallback);
+
+  // Grenoble, the viewpoint the device reports the fault at.
+  const LAT = num('lat', 45.1885);
+  const LON = num('lon', 5.7245);
+  const DEM = query.get('terrain') ??
+    'https://download.mapterhorn.com/planet.pmtiles';
+
+  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13) };
+
+  const { default: Module } = await import('./massif-demo.mjs');
+  const module = await Module({ canvas: document.getElementById('map') });
+  const massif = new Massif(module);
+  const camera = await MassifCamera.attach(massif);
+
+  const str = (fn, text) => module.ccall(fn, null, ['string'], [text]);
+  const param = (fn, name, value) => module.ccall(fn, null, ['string', 'number'], [name, value]);
+
+  // The SDK supplies uColorTex, uTerrainDepthTex, uFar, uNear, uInvScreenSize and uProjInvScale.
+  // Everything else the shader declares has to be fed, or it reads zero - which is its own class of
+  // bug and exactly the kind this bench exists to avoid re-creating by hand.
+  const INK = {
+    uIntensity: 1, uOutlineWidth: 1, uHorizonBoost: 1, uDepthThreshold: 1,
+    uCreaseStrength: 0, uCreaseThreshold: 0.12,
+    uRidgeStrength: 2, uRidgeThreshold: 0.05, uRidgeGroundSpan: 90,
+    uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
+    uInkDistance: 50000, uInkShadeCap: 0, uDebugView: num('debug', 0),
+    uMetersPerUnit: 40075016.68558 / (1 << 20), uSilhouetteGate: 865,
+    uHazeDistance: 60000, uHaze: 0.65,
+    uDistortK1: 0, uDistortK2: 0, uDistortK3: 0, uDistortP1: 0, uDistortP2: 0,
+    uDistortCenterX: 0.5, uDistortCenterY: 0.5,
+    uDistortScreenTanX: 1, uDistortScreenTanY: 1,
+    uDistortRenderTanX: 1, uDistortRenderTanY: 1, uDistortRotate: 0
+  };
+  const SURFACE = {
+    uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35,
+    uHaze: 0.65, uHazeDistance: 60000, uDebugView: num('debug', 0)
+  };
+  const TERRAIN = {
+    normalSampleDistance: num('normalSampleDistance', 90),
+    meshResolution: num('meshResolution', 256),
+    meshCacheSize: num('meshCacheSize', 640),
+    sharedGround: 0,
+    tileEdgeStitching: 0
+  };
+
+  function applyAll() {
+    str('massifSetSurfaceShader', RELIEF_SURFACE_SHADER);
+    str('massifSetReliefShader', RELIEF_OUTLINE_SHADER);
+    for (const [k, v] of Object.entries(TERRAIN)) param('massifSetTerrainFloat', k, v);
+    for (const [k, v] of Object.entries(SURFACE)) param('massifSetSurfaceParam', k, v);
+    for (const [k, v] of Object.entries(INK)) param('massifSetReliefParam', k, v);
+  }
+  applyAll();
+
+  // THE TILT RANGE FIRST. A map clamps tilt to something like 30..90 because it is a map; a
+  // panorama looks at the HORIZON, which is a tilt of a few degrees, and flyTo silently lands on the
+  // clamp instead - the first capture came back at 84.3 asking for 4.
+  // A panorama is a near-horizontal camera, not a tilted map: tilt 90 is straight down, so the
+  // horizon is a SMALL number - and the map's own tilt range clamps it, which is why the first
+  // capture came back at 84.3 having been asked for 4. The hook widens the range and places the
+  // CAMERA (not the focus point) at the viewpoint, which is what first-person means.
+  module.ccall('massifSetPanoramaCamera', null,
+    ['number', 'number', 'number', 'number', 'number', 'number'],
+    [LON, LAT, num('zoom', 13), num('rotation', 0), num('tilt', 4), num('elevation', 50)]);
+
+  const setCamera = (rotation, tilt) => module.ccall('massifSetPanoramaCamera', null,
+    ['number', 'number', 'number', 'number', 'number', 'number'],
+    [LON, LAT, num('zoom', 13), rotation, tilt, num('elevation', 50)]);
+
+  // Driving surface for experiments: set a parameter, sweep it, or read the camera, from a script or
+  // the console. No rebuild, no device.
+  Object.assign(globalThis, {
+    massif, module, camera, applyAll,
+    // Pan away and back. The reported fault survives a return to the same camera - the tile is
+    // rebuilt, re-bakes its normals against whatever the cache holds NOW, and lands somewhere else
+    // again - so a frame taken before and after a round trip is the test that matters.
+    look: (rotation, tilt) => setCamera(rotation, tilt ?? num('tilt', 4)),
+    ink: (name, value) => { INK[name] = value; param('massifSetReliefParam', name, value); },
+    surface: (name, value) => { SURFACE[name] = value; param('massifSetSurfaceParam', name, value); },
+    terrain: (name, value) => { TERRAIN[name] = value; param('massifSetTerrainFloat', name, value); },
+    debug: (view) => { globalThis.ink('uDebugView', view); globalThis.surface('uDebugView', view); },
+    ready: () => true
+  });
+
+  const hud = document.getElementById('hud');
+  const logView = document.getElementById('log');
+  const tick = () => {
+    try {
+      hud.textContent = `zoom ${camera.zoom.toFixed(2)}  rot ${camera.rotation.toFixed(1)}  tilt ${camera.tilt.toFixed(1)}\n` +
+        `focus ${camera.focusPos.map((v) => v.toFixed(5)).join(', ')}\ndebug ${INK.uDebugView}`;
+    } catch (error) {
+      hud.textContent = String(error?.message ?? error);
+    }
+    // Only the tail, and only what a diagnosis needs: a shader that failed, a tile that did not load.
+    const net = globalThis.__net;
+    logView.textContent = `NET ${net.count} ${JSON.stringify(net.byHost)} ${JSON.stringify(net.status)}\n` +
+      net.last.join('\n') + '\n---\n' + globalThis.__log.slice(-400).join('\n');
+    requestAnimationFrame(tick);
+  };
+  tick();
+</script>

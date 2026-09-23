@@ -39,6 +39,7 @@ namespace massif {
     class Texture;
     class GLResourceManager;
     class TerrainDepthWorker;
+    class ElevationTextureCache;
     struct TerrainDepthBuffer;
 
     /**
@@ -123,6 +124,18 @@ namespace massif {
         bool renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap = DEPTH_TEXTURE_MESH_RESOLUTION, bool withNormals = false);
 
         /**
+         * The GPU elevation textures, shared with the tile renderer (MapRenderer owns one per
+         * elevation manager). Set once per frame before the passes below; without it the surface
+         * and normal passes fall back to the per-vertex mesh normal.
+         *
+         * A mesh carries ONE normal per cell corner, so relief finer than a cell is not in it at
+         * all - and at 64 cells a tile that is hundreds of metres of ground per cell. Sampling the
+         * DEM per FRAGMENT is what geo-three's terrain material does, and it is most of why its
+         * hillshade and ridge lines are sharp where ours are soft.
+         */
+        void setElevationTextureCache(const std::shared_ptr<ElevationTextureCache>& cache) { _elevationTextureCache = cache; }
+
+        /**
          * Returns the GL texture id of the packed depth buffer (0 if not rendered).
          */
         unsigned int getDepthTextureId() const;
@@ -171,6 +184,8 @@ namespace massif {
     private:
         struct TileMesh;
         struct MeshCacheEntry;
+
+        std::shared_ptr<ElevationTextureCache> _elevationTextureCache;
 
         static constexpr int BUFFER_DOWNSCALE = 2;    // occlusion read-back buffer, half resolution
         // The occlusion read-back is a glReadPixels, a full pipeline stall - 55-62 ms on an Adreno

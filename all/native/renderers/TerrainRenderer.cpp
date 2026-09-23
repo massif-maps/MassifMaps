@@ -14,6 +14,7 @@
 #include "terrain/ElevationManager.h"
 #include "terrain/TerrainOcclusion.h"
 #include "terrain/ElevationTileGrid.h"
+#include "renderers/utils/ElevationTextureCache.h"
 
 #include <vt/RenderStats.h>
 #include <vt/TileTransformer.h>
@@ -771,6 +772,15 @@ namespace massif {
         if (zoomCap > 0) {
             maxZoom = std::min(maxZoom, zoomCap);
         }
+        // And the LOD ring cap, relative to the camera, the SAME option TileLayer applies to the
+        // draped cut (TileLayer::calculateVisibleTiles). 100 or more disables it, which is the
+        // default: terrain LOD is distance based, so a tile close to the camera is meant to sit
+        // above the level flat rendering would pick. calculateVisibleTiles used to clamp to the bare
+        // camera zoom instead, which is that option pinned at 0 and unreachable - see the note there.
+        int zoomOffset = terrainOptions->getMaxTileZoomOffset();
+        if (zoomOffset < 100) {
+            maxZoom = std::min(maxZoom, static_cast<int>(viewState.getZoom() + 0.001f) + zoomOffset);
+        }
         for (;;) {
             tiles.clear();
             calculateVisibleTiles(viewState, elevationManager, MapTile(0, 0, 0, 0), maxZoom, tiles);
@@ -1106,6 +1116,28 @@ namespace massif {
         // Per-tile properties for the debug views, on whichever pass is drawing. Set from the MESH,
         // so it says what this tile actually is rather than what the cut asked for.
         GLint uTileDebug = glGetUniformLocation(progId, "u_tileDebug");
+        // Set here rather than only in renderSurface's callback: the normal/depth pass needs the
+        // world position as well now, to find itself in the elevation texture.
+        GLint uTileMatAll = glGetUniformLocation(progId, "u_tileMat");
+
+        // The DEM texture this pass samples its normals from, per tile. Looked up once here: a
+        // uniform that is not in the shader answers -1 and the whole block then costs nothing.
+        GLint uDemTex = glGetUniformLocation(progId, "u_demTex");
+        GLint uDemOriginSize = glGetUniformLocation(progId, "u_demOriginSize");
+        GLint uDemInvTexSize = glGetUniformLocation(progId, "u_demInvTexSize");
+        GLint uDemDecode = glGetUniformLocation(progId, "u_demDecode");
+        GLint uDemDecodeOffset = glGetUniformLocation(progId, "u_demDecodeOffset");
+        GLint uDemMetersPerTexel = glGetUniformLocation(progId, "u_demMetersPerTexel");
+        GLint uDemMercatorYScale = glGetUniformLocation(progId, "u_demMercatorYScale");
+        GLint uDemValid = glGetUniformLocation(progId, "u_demValid");
+        GLint uDemNormalStep = glGetUniformLocation(progId, "u_demNormalStep");
+        bool wantsDem = (uDemValid >= 0 && _elevationTextureCache);
+        if (uDemTex >= 0) {
+            glUniform1i(uDemTex, 7); // its own unit: the surface pass binds the drape on 0
+        }
+        if (uDemNormalStep >= 0) {
+            glUniform1f(uDemNormalStep, terrainOptions->getNormalSampleDistance());
+        }
 
         GLint aNormal = -1, aElevation = -1;
         std::shared_ptr<ElevationManager> elevationManager;
@@ -1131,10 +1163,50 @@ namespace massif {
                 continue;
             }
 
-            cglib::mat4x4<float> tileMVPMat = cglib::mat4x4<float>::convert(mvpMat * calculateTileMatrix(tileMesh.first));
+            cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileMesh.first);
+            cglib::mat4x4<float> tileMVPMat = cglib::mat4x4<float>::convert(mvpMat * tileMatrix);
             glUniformMatrix4fv(uMVPMat, 1, GL_FALSE, tileMVPMat.data());
+            if (uTileMatAll >= 0) {
+                cglib::mat4x4<float> tileMat = cglib::mat4x4<float>::convert(tileMatrix);
+                glUniformMatrix4fv(uTileMatAll, 1, GL_FALSE, tileMat.data());
+            }
             if (tileUniformsFn) {
                 tileUniformsFn(tileMesh.first);
+            }
+            if (wantsDem) {
+                // The grid may cover an ANCESTOR of this tile, which is why the uv transform comes
+                // from the texture rather than from the tile: a tile standing on a z8 grid samples
+                // one sixteenth of it, and the shader must be told which sixteenth.
+                vt::GLTileRenderer::TerrainTexture demTexture;
+                bool haveDem = _elevationTextureCache->getTexture(vt::TileId(tileMesh.first.getZoom(), tileMesh.first.getX(), tileMesh.first.getY()), demTexture)
+                               && demTexture.textureId != 0 && demTexture.textureSize(0) > 0 && demTexture.textureSize(1) > 0;
+                glUniform1f(uDemValid, haveDem ? 1.0f : 0.0f);
+                if (haveDem) { VT_STAT_INC(terrainDemTextureHits); } else { VT_STAT_INC(terrainDemTextureMisses); }
+                if (haveDem) {
+                    glActiveTexture(GL_TEXTURE7);
+                    glBindTexture(GL_TEXTURE_2D, demTexture.textureId);
+                    glActiveTexture(GL_TEXTURE0);
+                    if (uDemOriginSize >= 0) {
+                        glUniform4f(uDemOriginSize,
+                                    static_cast<float>(demTexture.internalOrigin(0)), static_cast<float>(demTexture.internalOrigin(1)),
+                                    static_cast<float>(demTexture.internalSize(0)), static_cast<float>(demTexture.internalSize(1)));
+                    }
+                    if (uDemInvTexSize >= 0) {
+                        glUniform2f(uDemInvTexSize, 1.0f / demTexture.textureSize(0), 1.0f / demTexture.textureSize(1));
+                    }
+                    if (uDemDecode >= 0) {
+                        glUniform4f(uDemDecode, demTexture.decode(0), demTexture.decode(1), demTexture.decode(2), demTexture.decode(3));
+                    }
+                    if (uDemDecodeOffset >= 0) {
+                        glUniform1f(uDemDecodeOffset, demTexture.decodeOffset);
+                    }
+                    if (uDemMetersPerTexel >= 0) {
+                        glUniform1f(uDemMetersPerTexel, demTexture.metersPerTexel);
+                    }
+                    if (uDemMercatorYScale >= 0) {
+                        glUniform1f(uDemMercatorYScale, demTexture.mercatorYScale);
+                    }
+                }
             }
             if (uTileDebug >= 0) {
                 // .w was attribsDemZoom, which measured staleness - now proven zero on every tile, so
@@ -1775,7 +1847,19 @@ namespace massif {
         if (std::shared_ptr<TileDataSource> dataSource = elevationManager->getDataSource()) {
             maxUsefulZoom = dataSource->getMaxZoom() + 3;
         }
-        int targetTileZoom = std::min({ maxUsefulZoom, maxZoom, static_cast<int>(viewState.getZoom() + 0.001f) });
+        // The camera's zoom is NOT one of the bounds. It was, and it is the wrong measure for a
+        // ground-level camera: an orbiting camera's zoom IS its distance, so on a map the clamp only
+        // repeated what the distance rule above already said, but a first-person camera STANDS on the
+        // ground with the horizon in frame - its zoom describes what one screen width of that horizon
+        // covers (13.6 in the panorama) while the ridge a kilometre in front of it wants z15. Clamped
+        // to it, the near ground was cut at z13 whatever the app asked for: 3.4 km tiles, and at the
+        // 96-cell grid cap 36 m triangles off a 13.5 m DEM.
+        //
+        // TerrainOptions::MaxTileZoomOffset is the knob for this, and TileLayer already honours it on
+        // the draped path - which is why the same view is finer there. It is folded into maxZoom by
+        // collectVisibleTiles, so the two paths now cap the cut by the same rule and the default (100,
+        // no cap) leaves the distance rule, the data and the budget to decide.
+        int targetTileZoom = std::min(maxUsefulZoom, maxZoom);
         if (targetTileZoom <= tile.getZoom()) {
             subDivide = false;
         }
@@ -2147,6 +2231,58 @@ namespace massif {
         varying vec3 v_worldPos;
         varying float v_elevation;
         varying float v_dist;
+
+        // THE DEM, PER FRAGMENT.
+        //
+        // v_worldPos.xy is the internal position, so a fragment can find itself in the elevation
+        // texture the tile is standing on and measure the slope THERE, instead of interpolating a
+        // normal baked at the mesh's corners. A mesh carries one normal per cell corner; at 64 cells
+        // a tile that is hundreds of metres of ground per sample, so every ridge narrower than a
+        // cell is smoothed away before any shader sees it. This is what geo-three's terrain material
+        // does (MaterialHeightShader: vComputedNormal from d-f, b-h taps of the height texture) and
+        // it is most of why its relief is sharp where ours is soft.
+        uniform sampler2D u_demTex;
+        uniform vec4 u_demOriginSize;   // xy: internal origin of uv (0,0), zw: internal size of uv [0,1]
+        uniform vec2 u_demInvTexSize;   // 1 / texture size, in texels
+        uniform vec4 u_demDecode;       // texel -> metres, linear part
+        uniform float u_demDecodeOffset;
+        uniform float u_demMetersPerTexel; // ground metres per texel AT THE EQUATOR
+        uniform float u_demMercatorYScale;
+        uniform float u_demValid;       // 0 when no elevation texture is bound for this tile
+        uniform float u_demNormalStep;  // ground metres between the taps; <= 0 is one texel
+
+        float terrainHeightMetres(vec2 internalPos) {
+            vec2 uv = (internalPos - u_demOriginSize.xy) / u_demOriginSize.zw;
+            return dot(texture2D(u_demTex, uv), u_demDecode) + u_demDecodeOffset;
+        }
+
+        /**
+         * The surface normal measured at THIS fragment. stepMetres <= 0 samples at one texel, which
+         * is the finest the data can answer; a larger step is a deliberately smoother normal.
+         *
+         * Mercator: a fixed internal distance covers cos(latitude) as much ground, and
+         * cos(latitude) is exactly 1/cosh(mercator y) - so the true ground step is the equator's
+         * scaled by that. Without it a slope at latitude 45 comes out 1.41x too steep. GLSL ES 1.0
+         * has no cosh, hence the exponentials.
+         */
+        vec3 terrainNormal(float stepMetres) {
+            if (u_demValid < 0.5) {
+                return normalize(v_normal);
+            }
+            vec2 texelInternal = u_demOriginSize.zw * u_demInvTexSize;
+            float stepTexels = (stepMetres > 0.0 ? max(stepMetres / max(u_demMetersPerTexel, 0.0001), 1.0) : 1.0);
+            vec2 stepInternal = texelInternal * stepTexels;
+            float west  = terrainHeightMetres(v_worldPos.xy - vec2(stepInternal.x, 0.0));
+            float east  = terrainHeightMetres(v_worldPos.xy + vec2(stepInternal.x, 0.0));
+            float south = terrainHeightMetres(v_worldPos.xy - vec2(0.0, stepInternal.y));
+            float north = terrainHeightMetres(v_worldPos.xy + vec2(0.0, stepInternal.y));
+            float mercatorY = v_worldPos.y * u_demMercatorYScale;
+            float cosLat = 2.0 / (exp(mercatorY) + exp(-mercatorY));
+            float groundStep = max(u_demMetersPerTexel * stepTexels * cosLat, 0.0001);
+            return normalize(vec3(-(east - west) / (2.0 * groundStep),
+                                  -(north - south) / (2.0 * groundStep),
+                                  1.0));
+        }
         uniform vec3 u_sunDir;
         uniform vec4 u_sunColor;
         uniform float u_sunIntensity;
@@ -2188,13 +2324,18 @@ namespace massif {
         attribute vec3 a_coord;
         attribute vec3 a_normal;
         uniform mat4 u_mvpMat;
+        uniform mat4 u_tileMat;
         uniform float u_far;
         varying float v_depth;
         varying vec3 v_normal;
+        varying vec3 v_worldPos;
         void main() {
             vec4 pos = u_mvpMat * vec4(a_coord, 1.0);
             v_depth = pos.w / u_far;
             v_normal = a_normal;
+            // The post-process differentiates what this pass packs, so it has to read the SAME
+            // per-fragment normal the surface is shaded with, or the ink goes on drawing the mesh.
+            v_worldPos = (u_tileMat * vec4(a_coord, 1.0)).xyz;
             gl_Position = pos;
         }
     )GLSL";
@@ -2210,6 +2351,59 @@ namespace massif {
         #endif
         varying float v_depth;
         varying vec3 v_normal;
+        varying vec3 v_worldPos;
+
+        // THE DEM, PER FRAGMENT.
+        //
+        // v_worldPos.xy is the internal position, so a fragment can find itself in the elevation
+        // texture the tile is standing on and measure the slope THERE, instead of interpolating a
+        // normal baked at the mesh's corners. A mesh carries one normal per cell corner; at 64 cells
+        // a tile that is hundreds of metres of ground per sample, so every ridge narrower than a
+        // cell is smoothed away before any shader sees it. This is what geo-three's terrain material
+        // does (MaterialHeightShader: vComputedNormal from d-f, b-h taps of the height texture) and
+        // it is most of why its relief is sharp where ours is soft.
+        uniform sampler2D u_demTex;
+        uniform vec4 u_demOriginSize;   // xy: internal origin of uv (0,0), zw: internal size of uv [0,1]
+        uniform vec2 u_demInvTexSize;   // 1 / texture size, in texels
+        uniform vec4 u_demDecode;       // texel -> metres, linear part
+        uniform float u_demDecodeOffset;
+        uniform float u_demMetersPerTexel; // ground metres per texel AT THE EQUATOR
+        uniform float u_demMercatorYScale;
+        uniform float u_demValid;       // 0 when no elevation texture is bound for this tile
+        uniform float u_demNormalStep;  // ground metres between the taps; <= 0 is one texel
+
+        float terrainHeightMetres(vec2 internalPos) {
+            vec2 uv = (internalPos - u_demOriginSize.xy) / u_demOriginSize.zw;
+            return dot(texture2D(u_demTex, uv), u_demDecode) + u_demDecodeOffset;
+        }
+
+        /**
+         * The surface normal measured at THIS fragment. stepMetres <= 0 samples at one texel, which
+         * is the finest the data can answer; a larger step is a deliberately smoother normal.
+         *
+         * Mercator: a fixed internal distance covers cos(latitude) as much ground, and
+         * cos(latitude) is exactly 1/cosh(mercator y) - so the true ground step is the equator's
+         * scaled by that. Without it a slope at latitude 45 comes out 1.41x too steep. GLSL ES 1.0
+         * has no cosh, hence the exponentials.
+         */
+        vec3 terrainNormal(float stepMetres) {
+            if (u_demValid < 0.5) {
+                return normalize(v_normal);
+            }
+            vec2 texelInternal = u_demOriginSize.zw * u_demInvTexSize;
+            float stepTexels = (stepMetres > 0.0 ? max(stepMetres / max(u_demMetersPerTexel, 0.0001), 1.0) : 1.0);
+            vec2 stepInternal = texelInternal * stepTexels;
+            float west  = terrainHeightMetres(v_worldPos.xy - vec2(stepInternal.x, 0.0));
+            float east  = terrainHeightMetres(v_worldPos.xy + vec2(stepInternal.x, 0.0));
+            float south = terrainHeightMetres(v_worldPos.xy - vec2(0.0, stepInternal.y));
+            float north = terrainHeightMetres(v_worldPos.xy + vec2(0.0, stepInternal.y));
+            float mercatorY = v_worldPos.y * u_demMercatorYScale;
+            float cosLat = 2.0 / (exp(mercatorY) + exp(-mercatorY));
+            float groundStep = max(u_demMetersPerTexel * stepTexels * cosLat, 0.0001);
+            return normalize(vec3(-(east - west) / (2.0 * groundStep),
+                                  -(north - south) / (2.0 * groundStep),
+                                  1.0));
+        }
         void main() {
             // SQRT, so that the sixteen bits are spent where the relief is rather than spread flat
             // over a far plane that is mostly empty. Never quite 1: that value is the sky, and the
@@ -2221,13 +2415,18 @@ namespace massif {
             // L1 normalisation IS the encoding and the usual fold is unreachable. Degenerate
             // normals (a zero attribute on a mesh built before the attributes existed) fall back to
             // straight up rather than to a division by zero.
-            float l1 = abs(v_normal.x) + abs(v_normal.y) + abs(v_normal.z);
+            // PER FRAGMENT, from the elevation texture - the same normal the surface is shaded
+            // with. Packing the interpolated vertex normal here left the post-process
+            // differentiating the MESH, so its ridge lines could never be finer than a mesh cell
+            // however sharp the operator on top of it was.
+            vec3 n = terrainNormal(u_demNormalStep);
+            float l1 = abs(n.x) + abs(n.y) + abs(n.z);
             // DIAGNOSTIC FALLBACK, not the shipping one. Straight up (0, 0) is what a genuinely flat
             // surface encodes to AND what the sky is cleared to, so a degenerate normal used to be
             // indistinguishable from both - which is why three rounds of debugging could not tell
             // "the attribute is zero" from "this pixel was never drawn". (1, -1) has an L1 norm of
             // two, so no real normal can produce it, and it shows up as its own colour.
-            vec2 oct = l1 > 0.0001 ? v_normal.xy / l1 : vec2(1.0, -1.0);
+            vec2 oct = l1 > 0.0001 ? n.xy / l1 : vec2(1.0, -1.0);
             gl_FragColor = vec4(enc, oct * 0.5 + 0.5);
         }
     )GLSL";

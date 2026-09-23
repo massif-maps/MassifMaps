@@ -276,6 +276,8 @@ namespace massif {
                 Log::Infof("RenderStats: terrainAttribs provisional=%lld final=%lld rebakes=%lld (a provisional bake read a DEM coarser than the source has; cumulative)",
                            RenderStats::terrainAttribProvisional.load(), RenderStats::terrainAttribFinal.load(),
                            RenderStats::terrainAttribRebakes.load());
+                Log::Infof("RenderStats: terrainDemTexture hits=%lld misses=%lld (tiles measuring their normal from the GPU elevation texture; cumulative)",
+                           RenderStats::terrainDemTextureHits.load(), RenderStats::terrainDemTextureMisses.load());
                 long long texelRetry = RenderStats::terrainAttribTexelRetry.load();
                 Log::Infof("RenderStats: terrainAttribs texel retries=%lld (vertices exactly flat at the asked step) (per interval)",
                            texelRetry - lastTexelRetry);
@@ -1768,6 +1770,9 @@ namespace massif {
                 }
                 // Full mesh resolution: an effect drawing lines from this depth would otherwise
                 // draw the coarse depth mesh's own triangulation.
+                if (std::shared_ptr<ElevationManager> depthElevation = terrainOptions->getElevationManager()) {
+                    _terrainRenderer->setElevationTextureCache(getElevationTextureCache(depthElevation));
+                }
                 if (_terrainRenderer->renderDepthTexture(viewState, terrainOptions, _glResourceManager, 0, effect->isTerrainNormalsRequired())) {
                     terrainDepthTex = _terrainRenderer->getDepthTextureId();
                 }
@@ -3043,6 +3048,11 @@ namespace massif {
                             }
                             ResolvedLighting surfaceLighting = resolveLighting(_options->getLightOptions(), _frameStyleEnvironment);
                             FRAME_PROF_NOW(profSurfaceStart);
+                            // The GPU elevation textures, so the surface measures its normal per
+                            // FRAGMENT rather than interpolating one baked at the mesh's corners.
+                            if (std::shared_ptr<ElevationManager> surfaceElevation = terrainOptions->getElevationManager()) {
+                                _terrainRenderer->setElevationTextureCache(getElevationTextureCache(surfaceElevation));
+                            }
                             backgroundRendered = _terrainRenderer->renderSurface(viewState, terrainOptions, _glResourceManager, surfaceLighting, _frameFog, keepDepth);
                             FRAME_PROF_ADD(preTerrainSurfaceMs, profSurfaceStart);
                         }

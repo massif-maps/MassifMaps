@@ -159,6 +159,12 @@ namespace massif::vt {
         static inline std::atomic<long long> terrainAttribProvisional{0};
         static inline std::atomic<long long> terrainAttribFinal{0};
         static inline std::atomic<long long> terrainAttribRebakes{0};
+        // Tiles whose pass found a GPU elevation texture to measure its normal from, against those
+        // that fell back to the interpolated mesh normal. A fallback is not an error - the texture
+        // is encoded on a worker and lands a frame or two late - but a miss RATE that stays high
+        // means the per-fragment path is not the one drawing the picture.
+        static inline std::atomic<long long> terrainDemTextureHits{0};
+        static inline std::atomic<long long> terrainDemTextureMisses{0};
         // Tiles whose stored normals were baked from a COARSER DEM than they now resolve, by how
         // many zoom levels. Nothing else per-tile distinguishes them - the flags all read correct.
         static inline std::atomic<long long> terrainAttribStaleFresh{0};

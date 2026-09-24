@@ -1196,6 +1196,19 @@ namespace massif {
                                && demTexture.textureId != 0 && demTexture.textureSize(0) > 0 && demTexture.textureSize(1) > 0
                                && demTexture.internalSize(0) > 0 && demTexture.internalSize(1) > 0
                                && demTexture.metersPerTexel > 0;
+                // AND NO FINER THAN THE MESH'S OWN GRID. The texture for a tile arrives before the
+                // mesh is rebuilt from the same level, so during a load the shading is routinely a
+                // level or more ahead of the geometry - fine relief painted onto ground that has
+                // not been displaced yet, which saturates into hard-edged patches sitting nowhere
+                // near the shape under them. A texture covers a whole tile, so its level follows
+                // from the ground it spans.
+                if (haveDem && mesh->demZoom >= 0) {
+                    double span = demTexture.internalSize(0);
+                    int textureZoom = (span > 0 ? static_cast<int>(std::lround(std::log2(Const::WORLD_SIZE / span))) : -1);
+                    if (textureZoom > mesh->demZoom) {
+                        haveDem = false;
+                    }
+                }
                 glUniform1f(uDemValid, haveDem ? 1.0f : 0.0f);
                 if (haveDem) { VT_STAT_INC(terrainDemTextureHits); } else { VT_STAT_INC(terrainDemTextureMisses); }
                 if (haveDem) {

@@ -105,7 +105,9 @@
     uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
     uInkDistance: 50000, uInkShadeCap: 0, uDebugView: num('debug', 0),
     uMetersPerUnit: 40075016.68558 / (1 << 20), uSilhouetteGate: 865,
-    uHazeDistance: 60000, uHaze: 0.65,
+    // No haze: the far ranges are the point of a panorama, and fading them into the paper is what
+    // hid them. ?ink.uHaze=0.65 puts the aerial perspective back.
+    uHazeDistance: 60000, uHaze: 0,
     uDistortK1: 0, uDistortK2: 0, uDistortK3: 0, uDistortP1: 0, uDistortP2: 0,
     uDistortCenterX: 0.5, uDistortCenterY: 0.5,
     uDistortScreenTanX: 1, uDistortScreenTanY: 1,
@@ -113,7 +115,7 @@
   };
   const SURFACE = {
     uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35,
-    uHaze: 0.65, uHazeDistance: 60000, uDebugView: num('debug', 0),
+    uHaze: 0, uHazeDistance: 60000, uDebugView: num('debug', 0),
     // The ridge ink, now drawn by the surface pass at full resolution.
     uRidgeInkStrength: 60, uRidgeInkSpan: 120, uRidgeInkThreshold: 0.002
   };

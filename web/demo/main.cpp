@@ -228,6 +228,16 @@ int main() {
         // at the horizon - so it is the real limit on how far a panorama can see detail, not
         // viewDistance. At init because the cut is cached on the camera and the elevation version,
         // not on the budget, so a later change measures as 0 pixels.
+        // geo-three's terrain cut and mesh (TerrainOptions::setSubdivideDistance), and the level it
+        // stops at. The cut is cached on the camera, so the level cap is set here too.
+        const double subdivideDistance = queryNumber("subdivideDistance", 0);
+        if (subdivideDistance > 0) {
+            terrainOptions->setSubdivideDistance(static_cast<float>(subdivideDistance));
+        }
+        const double cutMaxZoom = queryNumber("cutMaxZoom", 0);
+        if (cutMaxZoom > 0) {
+            terrainOptions->setMaxZoom(static_cast<int>(cutMaxZoom));
+        }
         const double meshCacheSize = queryNumber("meshCacheSize", 0);
         if (meshCacheSize > 0) {
             terrainOptions->setMeshCacheSize(static_cast<int>(meshCacheSize));
@@ -422,6 +432,8 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
         _terrainOptions->setViewDistanceFactor(value);
     } else if (key == "tileEdgeStitching") {
         _terrainOptions->setTileEdgeStitchingEnabled(value != 0);
+    } else if (key == "subdivideDistance") {
+        _terrainOptions->setSubdivideDistance(value);
     }
 }
 

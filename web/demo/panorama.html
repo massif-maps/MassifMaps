@@ -97,6 +97,9 @@
 
   const query = new URLSearchParams(location.search);
   if (query.get('log')) { document.body.classList.add('show-log'); }
+  // BEFORE the module boots: the canvas buffer is sized from its CSS box at start and on a WINDOW
+  // resize only, so a class added later left a full-width buffer squashed into half the page.
+  if (query.get('split') === '1') { document.body.classList.add('split'); }
   const num = (name, fallback) => (query.has(name) ? parseFloat(query.get(name)) : fallback);
 
   // Grenoble, the viewpoint the device reports the fault at.
@@ -108,6 +111,11 @@
   // softer than the reference's however fine the mesh grid is. ?terrain= overrides.
   const DEM = query.get('terrain') ??
     'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+  // THE REFERENCE'S WORLD IS WEB MERCATOR SIDEWAYS AND TRUE METRES UP. Its ground is mercator metres,
+  // its heights are not (MaterialHeightShader: elevation * exageration), so at exageration 1 its
+  // relief is flattened by cos(lat) - 0.70 here - and its near/far of 10 m .. 173 km are mercator
+  // metres, 122 km of real ground. Everything compared against it goes through this factor.
+  const MERCATOR_COS = Math.cos(LAT * Math.PI / 180);
 
   // NO TILE LAYER by default. A draped raster or vector layer paints the terrain itself, so the
   // surface shader's output never reaches the screen and every surface parameter reads as a no-op -
@@ -115,16 +123,25 @@
   // ?source=<url> puts one back.
   // ?look=drape needs a tile LAYER, so the source has to be decided here - before the module
   // loads and reads it. See the look handling below for what that render is.
+  // geo-three's terrain CUT AND MESH under its look (TerrainOptions::setSubdivideDistance): its
+  // LODFrustum subdivideDistance of 70, levels to 17 (DEM z15 plus its overzoom of 2), and its
+  // getGeometry mesh - geometrySize 512 over three, 171 cells to z12, halved above - without our
+  // edge stitching, which it does not have. ?lod=ours keeps the SDK's own cut to compare against.
+  const REFERENCE_LOD = query.get('look') === 'geothree' && query.get('lod') !== 'ours';
   globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13),
+    subdivideDistance: num('subdivideDistance', REFERENCE_LOD ? 70 : 0),
+    cutMaxZoom: num('cutMaxZoom', REFERENCE_LOD ? 17 : 0),
     source: query.get('look') === 'drape' ? './paper.png' : 'none',
     terrainMaxZoom: num('terrainMaxZoom', 15),
     // Read by main() at init, which is the only time the mesh grid can be set: the meshes and the
     // tile transformer both capture it when they are built. 512 is the reference's geometrySize.
-    meshResolution: num('meshResolution', 512),
+    meshResolution: num('meshResolution', REFERENCE_LOD ? 171 : 512),
     // Init-time too: a stitched mesh is a different mesh, and the cache holds the one it was built
     // as. Setting this after the fact changed 0 pixels.
-    tileEdgeStitching: num('tileEdgeStitching', 1),
-    viewDistance: num('viewDistance', 173000),
+    tileEdgeStitching: num('tileEdgeStitching', REFERENCE_LOD ? 0 : 1),
+    // The reference clips at 173 km of MERCATOR, which is less real ground; under its look the same
+    // ranges are drawn, so a ridge it cannot see is not one ours inks.
+    viewDistance: num('viewDistance', query.get('look') === 'geothree' ? 173000 * MERCATOR_COS : 173000),
     meshCacheSize: num('meshCacheSize', 640),
     exaggeration: num('exaggeration', 1) };
 
@@ -146,6 +163,10 @@
     // leans on the same thing (geo-three: gain 11, power 0.23). uOutlineFloor turns it into a pure
     // edge detector instead; 0 keeps the reference look. ?ink.uOutlineFloor=0.05 to see the other.
     uOutlineGain: 11, uOutlinePower: 0.6, uOutlineFloor: 0,
+    // How far an edge may go past 1 before uIntensity scales it. 1 is our own look; see geothree.
+    uOutlineCeiling: 1,
+    // 1 runs the operator on sky pixels too, which is how the reference draws its skyline.
+    uInkSky: 0,
     // The skyline, which a depth operator cannot draw: the sky is not in the depth buffer, so the
     // ridge against it comes out the weight of an interior fold. Its own width, so it is a fatter
     // stroke and not just a darker one.
@@ -159,6 +180,8 @@
     // The camera range the outline measures depth over, metres. 0 keeps our own relative operator
     // (divide by the depth); ?look=geothree sets the reference's 10 .. 173000.
     uDepthNear: 0, uDepthFar: 0,
+    // The reference's 24-bit perspective depth, emulated: bits (0 keeps ours) and its units per metre.
+    uDepthBits: 0, uDepthUnit: 0,
     uInkShadeCap: 0, uDebugView: num('debug', 0),
     uMetersPerUnit: 40075016.68558 / (1 << 20), uSilhouetteGate: 865,
     // No haze: the far ranges are the point of a panorama, and fading them into the paper is what
@@ -194,7 +217,7 @@
     // HOW FAR THE PANORAMA REACHES. The factor rule is the camera's height over the cosine of the
     // angle to the horizon, so from high up the far ranges can fall outside it and the horizon ends
     // up with nothing behind it. The reference's far plane is 173 km, so ask for the same.
-    viewDistance: num('viewDistance', 173000)
+    viewDistance: globalThis.MASSIF_DEFAULTS.viewDistance
   };
 
   // ?look=drape is THE RENDER FROM BEFORE THE PER-FRAGMENT NORMALS, kept because it is the one
@@ -231,35 +254,44 @@
   //   - the outline measures a LINEAR depth over the camera's near..far, 10 m .. 173 km, with no
   //     division by anything. Ours divides by a far plane that reaches 1229 km in a panorama, which
   //     is why its depthMultiplier of 11 never meant the same thing here.
-  //   - BlendFunction.AVERAGE halves the effect against the input, so its uniforms land at half the
-  //     strength they read. uIntensity 0.5.
+  //   - its terrain is TRANSPARENT BLACK (generateColor off, so MaterialHeightShader writes
+  //     vec4(0)) and the paper is the page behind the canvas. The outline mixes vec4(black, d) into
+  //     it by d, ALPHA INCLUDED, so the alpha is d * d, and BlendFunction.AVERAGE - the whole vec4 -
+  //     halves that: its ink is min(d * d / 2, 1). Squaring is what keeps a gentle slope paper
+  //     (d 0.24 inks 0.03, not 0.12) while a ridge in front of far ground still reaches black.
+  //     Power 0.46 is its 0.23 squared, uIntensity 0.5 the average, uOutlineCeiling 2 the headroom.
   //   - geometrySize 512, its mesh resolution.
   //   - depthMultiplier 11, depthBiais 0.23 (the power), outlineStroke 1.
   //
   // NOT its exageration of 1.6225, by request: the terrain is rendered true.
   if (query.get('look') === 'geothree') {
     Object.assign(INK, {
-      // THEIR NUMBERS, unchanged: depthMultiplier 11, depthBiais 0.23, outlineStroke 1, and
-      // uIntensity 0.5 for the BlendFunction.AVERAGE that halves the effect against the input.
-      // A previous revision "calibrated" the gain to 60 because 11 looked faint - that was
-      // calibrating against OUR old render, not against the reference, which is light: captured
-      // side by side at this viewpoint the reference is mean luminance 243 with 1.7% of it below
-      // mid-grey, and gain 60 gave 127 and 39%. At 11 it is 177 and 17%.
-      uOutlineGain: 11, uOutlinePower: 0.23, uOutlineFloor: 0, uOutlineWidth: 1,
-      uIntensity: 0.5, uDepthNear: 10, uDepthFar: 173000,
+      // THEIR NUMBERS: depthMultiplier 11, outlineStroke 1, and depthBiais 0.23 doubled by the
+      // alpha mix above. Power 0.23 alone drew every slope as a grey wash (mean 223 against their
+      // 243 at the split viewpoint) - that was the whole of the "too dark" gap.
+      uOutlineGain: 11, uOutlinePower: 0.46, uOutlineCeiling: 2, uOutlineFloor: 0, uOutlineWidth: 1,
+      // Its 10 m .. 173 km are mercator metres; ours are real ones.
+      uIntensity: 0.5, uDepthNear: 10 * MERCATOR_COS, uDepthFar: 173000 * MERCATOR_COS,
+      // Its depth buffer is DEPTH_COMPONENT24 over a world of 1e-5 per mercator metre, linearised in
+      // float - which bands the far slopes instead of shading them. ?depth=linear reads ours.
+      uDepthBits: query.get('depth') === 'linear' ? 0 : 24, uDepthUnit: 1e-5 / MERCATOR_COS,
       // No distance fade: the reference has none, and a fade is the first thing that makes two
       // renders diverge at exactly the range this is being compared over.
       uInkFar: 1, uInkFalloff: 1,
-      // The one deliberate DEVIATION, by request: the reference draws the skyline no heavier than
-      // an interior fold, and a panorama wants it heavier.
-      uHorizonBoost: 1, uHorizonWidth: 3
+      // ITS SKYLINE: the sky is depth 1, so the operator inks both sides of the ridge and the jump
+      // saturates to black. ?skyline=heavy is our deviation instead - a coverage stroke 3 texels wide.
+      ...(query.get('skyline') === 'heavy'
+        ? { uInkSky: 0, uHorizonBoost: 1, uHorizonWidth: 3 }
+        : { uInkSky: 1, uHorizonBoost: 0, uHorizonWidth: 1 })
     });
     Object.assign(SURFACE, { uShadeStrength: 0, uSlopeShade: 0, uRidgeInkStrength: 0 });
-    // Its geometrySize is 512. WE CANNOT MATCH IT: setMeshResolution clamps to 256, and the
-    // surface mesh reads getMeshResolution (TerrainRenderer.cpp:878), not surfaceNodeResolution -
-    // setting the latter to 512 changed 0 pixels. Left at the default; raising the ceiling is an
-    // SDK change, and it is the reason our folds are softer than the reference's.
-    TERRAIN.meshResolution = 256;
+    // It differentiates a FULL resolution depth buffer. At our default of 2 a one-pixel tap lands in
+    // the same depth texel half the time, and the skyline comes out as a staircase.
+    TERRAIN.postProcessDownscale = 1;
+    // applyAll pushes these at runtime too, and the mesh is rebuilt from getMeshResolution every
+    // frame - so they have to say what the init said, or the runtime 256 replaces its 171.
+    TERRAIN.meshResolution = globalThis.MASSIF_DEFAULTS.meshResolution;
+    TERRAIN.tileEdgeStitching = globalThis.MASSIF_DEFAULTS.tileEdgeStitching;
   }
 
   // Any uniform can be overridden from the query string, so a tuned look is a LINK rather than a
@@ -286,10 +318,18 @@
     module.ccall('massifSetTerrainBackground', null, ['number', 'number', 'number', 'number'], [247, 247, 244, 255]);
   }
 
+  // The palette is baked into the generated shaders as constants (gen-relief-shaders.mjs), so a look
+  // that needs other colours rewrites them. The reference's are white paper - its terrain is
+  // transparent over a #fff page - and pure black ink; ?palette=ours keeps the app's under that look.
+  const COLOURS = query.get('look') === 'geothree' && query.get('palette') !== 'ours'
+    ? { uPaperColor: [1, 1, 1, 1], uInkColor: [0, 0, 0, 1] } : {};
+  const withColours = (shader) => Object.entries(COLOURS).reduce((glsl, [name, rgba]) =>
+    glsl.replace(new RegExp(`const vec4 ${name} = vec4\\([^)]*\\);`), `const vec4 ${name} = vec4(${rgba.map((v) => v.toFixed(3)).join(', ')});`), shader);
+
   function applyAll() {
-    str('massifSetSurfaceShader', RELIEF_SURFACE_SHADER);
+    str('massifSetSurfaceShader', withColours(RELIEF_SURFACE_SHADER));
     module.ccall('massifSetReliefNormals', null, ['number'], [inkMode === 'depth' ? 0 : 1]);
-    str('massifSetReliefShader', inkMode === 'depth' ? RELIEF_DEPTH_OUTLINE_SHADER : RELIEF_OUTLINE_SHADER);
+    str('massifSetReliefShader', withColours(inkMode === 'depth' ? RELIEF_DEPTH_OUTLINE_SHADER : RELIEF_OUTLINE_SHADER));
     for (const [k, v] of Object.entries(TERRAIN)) param('massifSetTerrainFloat', k, v);
     for (const [k, v] of Object.entries(SURFACE)) param('massifSetSurfaceParam', k, v);
     for (const [k, v] of Object.entries(INK)) param('massifSetReliefParam', k, v);
@@ -372,32 +412,55 @@
   // steered. Its settings are also all query parameters (it JSON.parses every one into `settings`),
   // which is how the field of view and the elevation are matched at load.
   const refFrame = document.getElementById('ref');
+  // ITS ALTITUDE IS ABOVE THE SEA, ours is above the ground (focusLift). Passing ours through put its
+  // eye a whole valley floor lower. The ground is read off the same terrarium tile both render from.
+  let groundMetres = null;
+  const readGround = async () => {
+    const zoom = 15;
+    const tiles = 2 ** zoom;
+    const latRad = LAT * Math.PI / 180;
+    const tileX = (LON + 180) / 360 * tiles;
+    const tileY = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * tiles;
+    const url = DEM.replace('{z}', zoom).replace('{x}', Math.floor(tileX)).replace('{y}', Math.floor(tileY));
+    const bitmap = await createImageBitmap(await (await fetch(url)).blob());
+    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
+    context.drawImage(bitmap, 0, 0);
+    const [red, green, blue] = context.getImageData(Math.floor((tileX % 1) * bitmap.width),
+      Math.floor((tileY % 1) * bitmap.height), 1, 1).data;
+    return red * 256 + green + blue / 256 - 32768;
+  };
   const refReady = () => {
-    try { return typeof refFrame.contentWindow?.setPosition === 'function'; }
+    try { return groundMetres !== null && typeof refFrame.contentWindow?.setPosition === 'function'; }
     catch (error) { return false; }
   };
   syncRef = () => {
     if (!refReady()) { return false; }
     try {
-      refFrame.contentWindow.setPosition({ lat: LAT, lon: LON, altitude: eyeMetres });
-      // NEGATED. Their azimuth is a HEADING and ours is a map ROTATION, which is its opposite -
-      // turning the view right turns the map left. Measured by correlating the two skylines at this
-      // viewpoint: +11.22 gives -0.105, -11.22 gives +0.381. Passing it straight through is why the
-      // two panes were looking at different mountains.
-      refFrame.contentWindow.setAzimuth(-lastRotation);
+      refFrame.contentWindow.setPosition({ lat: LAT, lon: LON, altitude: groundMetres + eyeMetres });
+      // NOT NEGATED. Both are the opposite of a heading: fitted against the skyline raymarched off
+      // the DEM, our rotation 11.22 looks at heading -11.7 and their setAzimuth(11.22) at -11.2.
+      // An earlier correlation said to negate, but it was taken with the eye at the wrong altitude
+      // and our pane squashed, which is two errors that happened to agree.
+      refFrame.contentWindow.setAzimuth(lastRotation, false);
       return true;
     } catch (error) { return false; }
   };
   if (query.get('split') === '1') {
-    document.body.classList.add('split');
+    groundMetres = await readGround().catch(() => 0);
     // fovFactor is its field of view, and outline/mesh settings come across too so the two are
     // being compared on the same configuration rather than on its defaults and ours.
     const refQuery = new URLSearchParams({
-      elevation: String(eyeMetres),
+      elevation: String(groundMetres + eyeMetres),
       fovFactor: String(num('fov', 46)),
       outline: 'true',
-      exageration: '1',
+      // Its heights are true metres on a mercator ground, so the TRUE shape is 1 / cos(lat), not 1.
+      exageration: String(TERRAIN.exaggeration / MERCATOR_COS),
       generateColor: 'false',
+      // Its stickToGround keeps the eye at least 60 m over the ground, which is camera placement,
+      // not rendering: off, so an eye of 20 m on a summit is 20 m in both.
+      stickToGround: 'false',
+      // Its peak labels and their leader lines are ink the terrain did not draw; ?labels=1 for them.
+      readFeatures: String(query.get('labels') === '1'),
       dayNightCycle: 'false'
     });
     refFrame.src = '/geo-three/index.html?' + refQuery.toString();

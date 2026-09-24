@@ -55,17 +55,42 @@ different renderers.
   outline operator's slope term IS the shading. Continuous, no seams, but it cannot light, haze
   or sun-shade anything because there is no surface in it. **Use it as the control**: if a change
   is meant to fix seams, it has to close the gap to this.
-- **`geothree`** — geo-three's pipeline ported term for term: flat-lit surface, outline over a
-  linear depth across 10 m .. 173 km, power 0.23, stroke 1, no exaggeration.
+- **`geothree`** — geo-three's webapp ported term for term, and now matching it to a mean
+  absolute difference of 1.6-2.5 grey levels at three viewpoints (was 6-20). See "Parity with
+  geo-three" below for every term and its toggle.
 - **(default)** — the current pipeline: per-fragment DEM normals in the surface pass plus the
   depth outline.
 
 `?split=1` puts geo-three's own build in a frame beside ours on one camera. It is served from
 this origin (`web/geo-three` -> `geo-three/example`) because the reference takes its camera from
 `window.setPosition`/`setAzimuth` and cross-origin it can be shown but not steered.
-**The split is not yet correctly synchronised** — at azimuth 0 with the same position the two
-panes show different terrain, and no field of view correlates. Its `setPosition` does not place
-the eye the way the page assumes. Fixing that is worth doing first if you intend to compare.
+The split is synchronised: both panes fit the skyline raymarched off the DEM at the same heading,
+pitch and field of view to 0.1 degrees. What it took: its altitude is ABOVE THE SEA (ours is above
+the ground), its azimuth is NOT negated, its `stickToGround` (eye at least 60 m up) is off, labels
+are off (`?labels=1`), and the `split` class goes on before the wasm boots or our canvas buffer
+stays full-width, squashed into half the page.
+
+Its world is Web Mercator sideways and true metres up, so at `exageration` 1 its relief is
+flattened by cos(lat). The split passes `1 / cos(lat)`: both render true terrain.
+
+## Parity with geo-three (`?look=geothree`)
+
+Source: `alpimaps/geo-three/webapp` (`app.ts`, `MaterialHeightShader.ts`, `source/lod/LODFrustum.ts`).
+Each term, and what reverts it for comparison:
+
+| term | geo-three | how we match | toggle |
+|---|---|---|---|
+| ink | terrain TRANSPARENT (generateColor off writes `vec4(0)`), outline mixed in alpha included, AVERAGE blend: ink = `min(d*d/2, 1)` | power 0.46, `uIntensity` 0.5, `uOutlineCeiling` 2 | - |
+| skyline | sky is depth 1, operator inks both sides, saturates black | `uInkSky` 1, no horizon boost | `?skyline=heavy` |
+| palette | white page, pure black ink | constants rewritten in the page | `?palette=ours` |
+| depth | DEPTH_COMPONENT24 perspective, linearised in float | `uDepthBits` 24, `uDepthUnit` 1e-5/cos | `?depth=linear` |
+| depth range | 10 m .. 173 km MERCATOR | ×cos(lat), `viewDistance` too | - |
+| resolution | full | `postProcessDownscale` 1 | - |
+| terrain cut | LODFrustum: subdivide while centre < `70·2^(20-z)` m, to z17 | `TerrainOptions::setSubdivideDistance(70)`, `setMaxZoom(17)` | `?lod=ours` |
+| mesh | `512/3` cells to z12, halved above, min 16; bilinear heights; no stitching | same option; `meshResolution` 171 | `?lod=ours` |
+
+The terrain cut is what the 1.8 px "pitch" offset was: our coarse far tiles and box-averaged
+heights shaved the ridges down. With the cut ported the skylines coincide to 0 px.
 
 ## Debug views
 
@@ -135,40 +160,17 @@ edge however well their heights are stitched. Continuity of the per-fragment nor
 tile edge is the thing to fix — either by sampling a common level near edges, by making the
 neighbour's texture reachable, or by bounding how far apart adjacent tiles' DEM levels may be.
 
-## Open problem 2: the render is much darker than the reference
+## Solved: the render was much darker than the reference
 
-**Symptom.** Side by side with geo-three at the same viewpoint:
-
-| | mean luminance | stdev | fraction below mid-grey |
-|---|---|---|---|
-| reference | 243 | 30 | 1.7% |
-| ours | 177 | 84 | 17% |
-
-Theirs is paper with thin lines; ours greys out.
-
-**What is already known.**
-
-- It is not the outline parameters. The gap survives using the reference's own numbers
-  (`depthMultiplier` 11, `depthBiais` 0.23, `outlineStroke` 1) on the ported operator.
-- It is not the field of view. Measured by rotating 10 degrees and cross-correlating skylines:
-  ours 61.0 degrees horizontal against the reference's 64.9 at the same nominal setting.
-- It is not exaggeration. The SDK defaults to 1.0; the reference's own default is 1.6225.
-- It is not `postProcessDownscale`.
-- With `s.uShadeStrength=0` and `s.uSlopeShade=0` the surface draws flat paper, so under
-  `look=geothree` **every bit of the grey is the ink pass**. `pow(relative * 11, 0.23)` turns a
-  very small gradient into ~0.37 of ink, so whatever the depth buffer feeds it decides the
-  picture.
-- `look=drape` does not have the problem, and it has no per-fragment normals in it.
-
-**Where to look next.** Most likely the same root cause as problem 1: per-fragment normals taken
-off nine different DEM levels across one view produce patchy shading that a reference sampling
-one consistent height texture does not have. Test the two together — a fix for the normal
-continuity should move both numbers, and if it moves neither they are genuinely separate.
+It was the ink formula, not the depth or the normals: geo-three mixes its outline into a
+transparent terrain, alpha included, which squares it. See the parity table. Mean luminance at
+the Grenoble split is now 241 against its 243 (was 177).
 
 ## Things deliberately not done
 
-- The reference's `exageration` of 1.6225 is not matched, by request.
-- The split's camera sync, as above.
+- The reference's `exageration` of 1.6225 is not matched, by request: both sides render true.
+- The app does not use this look yet: `peakFinder.ts` runs the NORMALS outline
+  (`reliefOutlineShader`), not the depth one.
 - The surface-pass ridge ink is off: at every strength tried it draws blobs rather than crests
   (the laplacian aliases against the DEM texel grid).
 - Nothing in any of this is verified on device. The gesture changes in `TouchHandler` and

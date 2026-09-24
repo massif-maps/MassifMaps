@@ -530,12 +530,18 @@ namespace massif {
                 if (_options->isTiltGestureReversed()) {
                     scale = -scale;
                 }
-                // The vertical half of the same rule. Tilt 90 is straight down, so a drag that
-                // brings the sky into the screen is a NEGATIVE delta - the sign the rate rule
-                // already had, kept.
+                // The vertical half of the same rule, and the MOUSE-LOOK sense: dragging down
+                // looks down, as the reference and every first person control scheme do. It read
+                // the other way round because the rate rule it inherited was the map's, where the
+                // gesture drags the GROUND. Tilt 90 is straight down, so looking down is positive.
                 float tiltDelta = dy * scale;
                 if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON && viewHeight > 0) {
-                    tiltDelta = -(dy / viewHeight * lookDegrees);
+                    // HALF the horizontal rate. The heading wraps, so a full turn across the
+                    // viewport is the right feel there; the tilt does not - it runs zenith to
+                    // nadir over 180 degrees - so the same number vertically flips you over twice
+                    // in one drag. Measured: a 160 px drag up from tilt 4 ran straight into the
+                    // -90 clamp.
+                    tiltDelta = dy / viewHeight * lookDegrees * 0.5f;
                     if (_options->isTiltGestureReversed()) {
                         tiltDelta = -tiltDelta;
                     }

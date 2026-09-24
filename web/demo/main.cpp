@@ -284,7 +284,10 @@ EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float 
     if (!_MapView) {
         return;
     }
-    _MapView->getOptions()->setTiltRange(massif::MapRange(0.0f, 90.0f));
+    // ABOVE THE HORIZON TOO. The range stops at 0 by default, which is the horizon, so a look up
+    // was clamped the moment it left the horizontal - and a panorama looks at summits. Negative
+    // tilt is up (90 is straight down), so the range has to open on that side.
+    _MapView->getOptions()->setTiltRange(massif::MapRange(-90.0f, 90.0f));
     // THE GROUND POSITION, and the height through focusLift - which is the app's way and the only
     // one that survives in first person. MapRenderer holds the eye at cameraTerrainZ + focusLift
     // every frame under FREE_ROAM_MODE_FIRST_PERSON (MapRenderer.cpp:1449), so a z written into the

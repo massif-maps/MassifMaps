@@ -217,12 +217,16 @@ namespace massif {
         // The LOD stitching mask: how many levels COARSER the neighbour on each side is, two bits
         // each, in the MESH's frame - gy = 0 is the south edge, since internal y runs north while a
         // tile's y runs south. 0 on a side means the neighbour is at this tile's own zoom.
+        // THREE bits a side, not two. Two held a difference of 3 levels, and a panorama's cut is
+        // far wider than that: debug view 10 at a valley viewpoint shows neighbouring terrain at
+        // z12 and z8, four levels apart, and everything past the clamp was stitched as if it were
+        // three - which leaves the step it was meant to close.
         static constexpr int EDGE_SHIFT_SOUTH = 0;
-        static constexpr int EDGE_SHIFT_NORTH = 2;
-        static constexpr int EDGE_SHIFT_WEST = 4;
-        static constexpr int EDGE_SHIFT_EAST = 6;
-        static constexpr int EDGE_LEVELS_MASK = 3;
-        static constexpr int EDGE_MAX_LEVELS = 3; // 8x the node spacing, and what two bits hold
+        static constexpr int EDGE_SHIFT_NORTH = 3;
+        static constexpr int EDGE_SHIFT_WEST = 6;
+        static constexpr int EDGE_SHIFT_EAST = 9;
+        static constexpr int EDGE_LEVELS_MASK = 7;
+        static constexpr int EDGE_MAX_LEVELS = 7; // 128x the node spacing, and what three bits hold
         static constexpr int MAX_CACHED_MESHES = 160;
         // How many tiles the visible cut may hold, and why it is HALF the cache: one frame walks the
         // same cut two or three times (the surface, the depth pre-pass, the occlusion depth texture)

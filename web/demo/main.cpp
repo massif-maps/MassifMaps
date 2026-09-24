@@ -222,6 +222,16 @@ int main() {
         if (viewDistance > 0) {
             terrainOptions->setViewDistance(static_cast<float>(viewDistance));
         }
+        // The VISIBLE TILE BUDGET, which is maxVisibleTiles = meshCacheSize / 2 in
+        // collectVisibleTiles: the cut is coarsened a level at a time until it fits. From high up
+        // over a long view that is what flattens the distance - debug view 10 shows z11 near and z7
+        // at the horizon - so it is the real limit on how far a panorama can see detail, not
+        // viewDistance. At init because the cut is cached on the camera and the elevation version,
+        // not on the budget, so a later change measures as 0 pixels.
+        const double meshCacheSize = queryNumber("meshCacheSize", 0);
+        if (meshCacheSize > 0) {
+            terrainOptions->setMeshCacheSize(static_cast<int>(meshCacheSize));
+        }
         const double exaggeration = queryNumber("exaggeration", 0);
         if (exaggeration > 0) {
             terrainOptions->setExaggeration(static_cast<float>(exaggeration));

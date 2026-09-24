@@ -4,6 +4,15 @@
 <style>
   html, body { margin: 0; height: 100%; background: #f7f7f4; }
   #map { width: 100vw; height: 100vh; display: block; }
+  /* ?split=1: the reference on the left, ours on the right, one camera driving both. Served from
+     this origin (web/geo-three -> geo-three/example) so its setPosition/setAzimuth are callable -
+     cross-origin the frame can be shown but not steered, which makes the comparison worthless. */
+  body.split #map { width: 50vw; position: absolute; right: 0; top: 0; }
+  body.split #ref { position: absolute; left: 0; top: 0; width: 50vw; height: 100vh; border: 0;
+                    border-right: 1px solid #888; }
+  #ref { display: none; }
+  body.split #ref { display: block; }
+  body.split #panel { top: auto; bottom: 8px; }
   #hud { position: fixed; top: 8px; left: 8px; font: 12px/1.4 monospace; background: #fffc;
          padding: 6px 8px; white-space: pre; }
   /* The tuning panel. Hidden from a capture (?panel=0) so a screenshot is the render and nothing
@@ -23,6 +32,7 @@
   body.show-log #log { display: block; }
 </style>
 <canvas id="map"></canvas>
+<iframe id="ref"></iframe>
 <div id="hud"></div>
 <div id="panel"></div>
 <pre id="log"></pre>
@@ -92,14 +102,22 @@
   // Grenoble, the viewpoint the device reports the fault at.
   const LAT = num('lat', 45.1885);
   const LON = num('lon', 5.7245);
+  // THE SAME DEM THE REFERENCE READS, at the same max zoom. geo-three's LocalHeightProvider is
+  // s3 elevation-tiles-prod terrarium with heightMaxZoom 15; mapterhorn's planet archive stops at
+  // z12, which is three levels - 8x - coarser height data, and that is most of why our folds read
+  // softer than the reference's however fine the mesh grid is. ?terrain= overrides.
   const DEM = query.get('terrain') ??
-    'https://download.mapterhorn.com/planet.pmtiles';
+    'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
   // NO TILE LAYER by default. A draped raster or vector layer paints the terrain itself, so the
   // surface shader's output never reaches the screen and every surface parameter reads as a no-op -
   // which is how a post-process tuned to be the whole picture got mistaken for a shading bug.
   // ?source=<url> puts one back.
-  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13), source: 'none' };
+  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13), source: 'none',
+    terrainMaxZoom: num('terrainMaxZoom', 15),
+    // Read by main() at init, which is the only time the mesh grid can be set: the meshes and the
+    // tile transformer both capture it when they are built. 512 is the reference's geometrySize.
+    meshResolution: num('meshResolution', 512) };
 
   const { default: Module } = await import('./massif-demo.mjs');
   const module = await Module({ canvas: document.getElementById('map') });
@@ -158,7 +176,9 @@
     meshCacheSize: num('meshCacheSize', 640),
     surfaceNodeResolution: num('surfaceNodeResolution', 0),
     sharedGround: 0,
-    tileEdgeStitching: 0
+    // ON. It was off, and the breaks between tiles at different levels are exactly what it exists
+    // to close - a skirt hides the gap but not the step in the surface across it.
+    tileEdgeStitching: num('tileEdgeStitching', 1)
   };
 
   // ?look=geothree is the REFERENCE PIPELINE, ported term for term rather than approximated:
@@ -252,6 +272,9 @@
   const setFov = (degrees) => massif.set(optionsHandle, 'fieldOfViewY', degrees);
   setFov(num('fov', 46));
 
+  // Assigned once the split is set up; a no-op until then. `let`, not a const declared later: a
+  // const in its temporal dead zone throws on `typeof`, so setCamera could not guard on it.
+  let syncRef = () => false;
   let lastRotation = num('rotation', 0);
   let lastTilt = num('tilt', 4);
   let eyeMetres = num('elevation', 50);
@@ -261,6 +284,8 @@
     module.ccall('massifSetPanoramaCamera', null,
       ['number', 'number', 'number', 'number', 'number', 'number'],
       [LON, LAT, num('zoom', 13), rotation, tilt, eyeMetres]);
+    // The reference follows every camera change, so the split never drifts out of step.
+    syncRef();
   };
 
   // AFTER the camera is placed. First person changes what moving the camera MEANS - setTilt and
@@ -295,6 +320,50 @@
     eyeMetres = Math.max(0, metres);
     setCamera(lastRotation, lastTilt);
   };
+
+
+  // THE REFERENCE, SIDE BY SIDE, ON ONE CAMERA (?split=1).
+  //
+  // Comparing two renders from two screenshots taken by hand is how four rounds of "still not the
+  // same" happened: the viewpoint, the field of view and the load state all differ a little and any
+  // of the three can explain a difference on its own. Here both are on screen at once and the same
+  // numbers drive both, so what is left is the renderer.
+  //
+  // Same origin (web/geo-three -> geo-three/example) is not a convenience: the reference takes its
+  // camera from window.setPosition/setAzimuth, so cross-origin the frame could be shown but never
+  // steered. Its settings are also all query parameters (it JSON.parses every one into `settings`),
+  // which is how the field of view and the elevation are matched at load.
+  const refFrame = document.getElementById('ref');
+  const refReady = () => {
+    try { return typeof refFrame.contentWindow?.setPosition === 'function'; }
+    catch (error) { return false; }
+  };
+  syncRef = () => {
+    if (!refReady()) { return false; }
+    try {
+      refFrame.contentWindow.setPosition({ lat: LAT, lon: LON, altitude: eyeMetres });
+      refFrame.contentWindow.setAzimuth(lastRotation);
+      return true;
+    } catch (error) { return false; }
+  };
+  if (query.get('split') === '1') {
+    document.body.classList.add('split');
+    // fovFactor is its field of view, and outline/mesh settings come across too so the two are
+    // being compared on the same configuration rather than on its defaults and ours.
+    const refQuery = new URLSearchParams({
+      elevation: String(eyeMetres),
+      fovFactor: String(num('fov', 46)),
+      outline: 'true',
+      exageration: '1',
+      generateColor: 'false',
+      dayNightCycle: 'false'
+    });
+    refFrame.src = '/geo-three/index.html?' + refQuery.toString();
+    // It loads its own terrain asynchronously and only exposes setPosition once it has booted, so
+    // the sync is retried rather than fired once on load.
+    const pump = setInterval(() => { if (syncRef()) { clearInterval(pump); } }, 500);
+    setTimeout(() => clearInterval(pump), 30000);
+  }
 
   // Driving surface for experiments: set a parameter, sweep it, or read the camera, from a script or
   // the console. No rebuild, no device.

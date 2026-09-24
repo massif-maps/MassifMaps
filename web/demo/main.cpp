@@ -58,7 +58,8 @@ namespace {
 
     const char* const DEFAULT_SOURCE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-    // TerrainOptions clamps this to 2..256; 64 is the SDK's phone-sized default.
+    // 64 is the SDK's phone-sized default; ?meshResolution= overrides this at init, which is the
+    // only time it can be changed (see where it is applied).
     const int WEB_TERRAIN_MESH_RESOLUTION = 128;
 
     // Enough to see that a vector tile decoded: land, water, roads, buildings.
@@ -204,7 +205,11 @@ int main() {
         // "off". The mesh doubles for the same reason - 64 cells per tile edge is a phone budget.
         terrainOptions->setAutoFlattenTilt(0.0f);
         terrainOptions->setAutoFlattenParallax(0.0f);
-        terrainOptions->setMeshResolution(WEB_TERRAIN_MESH_RESOLUTION);
+        // AT INIT, from the query string. A later setMeshResolution does not rebuild the meshes or
+        // the tile transformer - both read the value when they are created - so every runtime change
+        // measured as 0 pixels, and the panorama was quietly running at this 128 while the bench
+        // reported 256. Raising the clamp alone changed nothing for the same reason.
+        terrainOptions->setMeshResolution(static_cast<int>(queryNumber("meshResolution", WEB_TERRAIN_MESH_RESOLUTION)));
         _MapView->getOptions()->setTerrainOptions(terrainOptions);
         _terrainOptions = terrainOptions;
     }

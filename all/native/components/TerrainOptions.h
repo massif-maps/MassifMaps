@@ -278,13 +278,15 @@ namespace massif {
         /**
          * Returns the terrain mesh resolution.
          * @return The maximum number of grid cells per tile edge used for terrain geometry. The default is 64.
+         *         The effective detail is capped by the ELEVATION SOURCE's zoom as well: a z12 DEM
+         *         has no more to give a 512 grid than a 256 one.
          */
         int getMeshResolution() const;
         /**
          * Sets the terrain mesh resolution. Higher values give more detailed terrain
          * at the cost of memory and CPU. The effective resolution is also limited by
          * the resolution of the elevation tiles.
-         * @param meshResolution The new mesh resolution (clamped to 2..256).
+         * @param meshResolution The new mesh resolution (clamped to 2..1024).
          */
         void setMeshResolution(int meshResolution);
 

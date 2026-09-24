@@ -302,7 +302,11 @@ namespace massif {
     }
 
     void TerrainOptions::setMeshResolution(int meshResolution) {
-        int resolution = std::min(256, std::max(2, meshResolution));
+        // The ceiling was 256, which silently turned a request for 512 into no change at all - and
+        // 256 is half the grid the reference this is compared against uses. The caller decides; 1024
+        // is left as a guard against an allocation that would take the process down, not as a
+        // judgement about what is useful.
+        int resolution = std::min(1024, std::max(2, meshResolution));
         if (_meshResolution.exchange(resolution) != resolution) {
             notifyOptionChanged("MeshResolution");
         }

@@ -23,6 +23,7 @@
 #include "utils/Log.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <limits>
 #include <mutex>
@@ -91,8 +92,247 @@ namespace massif {
         int gridSize = 0;
         std::shared_ptr<TileMesh> mesh;
         unsigned int lastUsed = 0; // _meshCacheClock value of the last pass that drew this mesh
+        unsigned long long edgeSignature = 0; // EdgeHeightResolver::signature the edges were built for
         bool bilinearHeights = false; // read off the DEM rather than the box-averaged node field
     };
+
+    namespace {
+        // THE HEIGHT A TILE EDGE MUST HAVE, computed so that the two tiles sharing it get the same
+        // polyline.
+        //
+        // A tile's own grid cannot give that. Its node field is clamped at the DEM tile border (the
+        // GPU node texture reads the neighbour there, the CPU field does not), and a neighbour may
+        // stand on another DEM level entirely. Measured at a valley viewpoint: 76 of 88 same-zoom
+        // edges between two DEM grids and 43 of 44 edges against a coarser tile were more than 1 m
+        // apart, the worst by 221 m - a step the skirts showed as a pale wall along the tile edge.
+        // Matching only the node SPACING, as the stitching mask did, left every one of them.
+        //
+        // The rule, which each side evaluates without knowing which side it is:
+        // - against a coarser tile, the coarser tile's edge polyline wins, and it only ever looks
+        //   at its own grid there (it cannot see finer tiles), so both agree;
+        // - at equal zoom, the coarser node lattice of the two carries the edge and its heights
+        //   are the MEAN of the two grids. Each grid's edge node averages only its own half of the
+        //   node box, so on a slope each is off by the slope over a quarter box, in opposite
+        //   directions; picking either one moved that step into the other tile's last cell;
+        // - a corner goes to the coarsest tiles touching it: if it lies inside one's edge, that
+        //   edge's polyline; otherwise the mean over the quadrants they cover.
+        // Every recursion step moves to a strictly coarser tile, so it terminates.
+        class EdgeHeightResolver {
+        public:
+            struct Participant {
+                MapTile tile;
+                std::shared_ptr<ElevationTileGrid> grid;
+                int gridSize;
+            };
+
+            // bilinearHeights: the surface buildTileMesh reads, so an edge is on the same one.
+            EdgeHeightResolver(const std::shared_ptr<ElevationManager>& elevationManager, bool bilinearHeights) :
+                _elevationManager(elevationManager),
+                _exaggeration(elevationManager->getExaggeration()),
+                _bilinearHeights(bilinearHeights)
+            {
+            }
+
+            void add(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int gridSize) {
+                _participants.emplace(tile.getTileId(), Participant { tile, grid, std::max(1, gridSize) });
+            }
+
+            const Participant* find(const MapTile& tile) const {
+                auto it = _participants.find(tile.getTileId());
+                return (it != _participants.end() ? &it->second : nullptr);
+            }
+
+            // Everything the tile's edge heights are read from: a mesh built for another value is
+            // stale. Neighbours across each side and every tile touching a corner.
+            unsigned long long signature(const Participant& participant) const {
+                unsigned long long hash = 1469598103934665603ULL;
+                auto mix = [&hash](const Participant* other) {
+                    unsigned long long values[3] = { other ? static_cast<unsigned long long>(other->tile.getTileId()) : 0ULL,
+                                                     other ? other->grid->getSerial() : 0ULL,
+                                                     other ? static_cast<unsigned long long>(other->gridSize) : 0ULL };
+                    for (unsigned long long value : values) {
+                        hash = (hash ^ value) * 1099511628211ULL;
+                    }
+                };
+                mix(&participant);
+                for (int side = 0; side < 4; side++) {
+                    mix(neighbour(participant, side));
+                }
+                double size = tileSize(participant.tile.getZoom());
+                for (int corner = 0; corner < 4; corner++) {
+                    double x = originX(participant.tile) + (corner & 1 ? size : 0.0);
+                    double y = originY(participant.tile) + (corner & 2 ? size : 0.0);
+                    for (const Participant* leaf : quadrantLeaves(x, y, participant.tile)) {
+                        mix(leaf);
+                    }
+                }
+                return hash;
+            }
+
+            // side: 0 south, 1 north, 2 west, 3 east. Heights of nodes 0..gridSize, internal units.
+            std::vector<double> sideHeights(const Participant& participant, int side) const {
+                std::vector<double> heights(participant.gridSize + 1);
+                for (int index = 0; index <= participant.gridSize; index++) {
+                    heights[index] = nodeHeight(participant, side, index);
+                }
+                return heights;
+            }
+
+        private:
+            static double tileSize(int zoom) {
+                return Const::WORLD_SIZE / (1 << zoom);
+            }
+
+            static double originX(const MapTile& tile) {
+                return tile.getX() * tileSize(tile.getZoom()) - Const::WORLD_SIZE * 0.5;
+            }
+
+            static double originY(const MapTile& tile) {
+                return ((1 << tile.getZoom()) - 1 - tile.getY()) * tileSize(tile.getZoom()) - Const::WORLD_SIZE * 0.5;
+            }
+
+            static double alongOrigin(const MapTile& tile, int side) {
+                return (side < 2 ? originX(tile) : originY(tile));
+            }
+
+            static double fixedCoordinate(const MapTile& tile, int side) {
+                double size = tileSize(tile.getZoom());
+                switch (side) {
+                case 0: return originY(tile);
+                case 1: return originY(tile) + size;
+                case 2: return originX(tile);
+                default: return originX(tile) + size;
+                }
+            }
+
+            double internalAt(const Participant& participant, double x, double y) const {
+                double meters = (_bilinearHeights ? participant.grid->sampleHeight(x, y) : participant.grid->sampleNodeHeight(x, y));
+                return meters * _exaggeration * _elevationManager->getDisplayScale(y);
+            }
+
+            // The tile across 'side', at this tile's zoom or coarser. The cut is a quadtree
+            // partition, so walking the neighbour's ancestry finds it; a finer neighbour is not
+            // found, and that is correct - it follows this tile, not the other way round.
+            const Participant* neighbour(const Participant& participant, int side) const {
+                static const int DX[4] = { 0, 0, -1, 1 };
+                static const int DY[4] = { 1, -1, 0, 0 }; // tile y runs south, the mesh's gy north
+                const MapTile& tile = participant.tile;
+                int zoom = tile.getZoom();
+                int tileCount = 1 << zoom;
+                int nx = tile.getX() + DX[side];
+                int ny = tile.getY() + DY[side];
+                if (ny < 0 || ny >= tileCount) {
+                    return nullptr;
+                }
+                nx = (nx % tileCount + tileCount) % tileCount;
+                for (int nzoom = zoom; nzoom >= 0; nzoom--) {
+                    auto it = _participants.find(MapTile(nx >> (zoom - nzoom), ny >> (zoom - nzoom), nzoom, tile.getFrameNr()).getTileId());
+                    if (it != _participants.end()) {
+                        return &it->second;
+                    }
+                }
+                return nullptr;
+            }
+
+            // The tile in each of the four quadrants around a point, at 'from's zoom or coarser, in
+            // a fixed order so every caller sums them alike. Finer ones are left out: they never
+            // decide a corner, and a coarse tile could not see them.
+            std::array<const Participant*, 4> quadrantLeaves(double x, double y, const MapTile& from) const {
+                std::array<const Participant*, 4> leaves {};
+                double epsilon = tileSize(from.getZoom()) * 1.0e-6;
+                for (int quadrant = 0; quadrant < 4; quadrant++) {
+                    double probeX = x + (quadrant & 1 ? epsilon : -epsilon);
+                    double probeY = y + (quadrant & 2 ? epsilon : -epsilon);
+                    for (int zoom = from.getZoom(); zoom >= 0; zoom--) {
+                        double size = tileSize(zoom);
+                        int tileCount = 1 << zoom;
+                        long long column = static_cast<long long>(std::floor((probeX + Const::WORLD_SIZE * 0.5) / size));
+                        long long row = static_cast<long long>(std::floor((probeY + Const::WORLD_SIZE * 0.5) / size));
+                        if (row < 0 || row >= tileCount) {
+                            break;
+                        }
+                        column = (column % tileCount + tileCount) % tileCount;
+                        auto it = _participants.find(MapTile(static_cast<int>(column), static_cast<int>(tileCount - 1 - row), zoom, from.getFrameNr()).getTileId());
+                        if (it != _participants.end()) {
+                            leaves[quadrant] = &it->second;
+                            break;
+                        }
+                    }
+                }
+                return leaves;
+            }
+
+            double nodeHeight(const Participant& participant, int side, int index) const {
+                double size = tileSize(participant.tile.getZoom());
+                double along = alongOrigin(participant.tile, side) + size * index / participant.gridSize;
+                double fixed = fixedCoordinate(participant.tile, side);
+                double x = (side < 2 ? along : fixed);
+                double y = (side < 2 ? fixed : along);
+                if (index == 0 || index == participant.gridSize) {
+                    return cornerHeight(x, y, participant.tile);
+                }
+                const Participant* other = neighbour(participant, side);
+                if (!other) {
+                    return internalAt(participant, x, y);
+                }
+                if (other->tile.getZoom() < participant.tile.getZoom() || other->gridSize < participant.gridSize) {
+                    return polylineHeight(*other, side ^ 1, along);
+                }
+                return (internalAt(participant, x, y) + internalAt(*other, x, y)) * 0.5;
+            }
+
+            // What the tile's mesh draws along 'side' at 'along': linear between its edge nodes.
+            double polylineHeight(const Participant& participant, int side, double along) const {
+                double position = (along - alongOrigin(participant.tile, side)) / tileSize(participant.tile.getZoom()) * participant.gridSize;
+                position = std::min(std::max(position, 0.0), static_cast<double>(participant.gridSize));
+                int first = std::min(static_cast<int>(std::floor(position)), participant.gridSize - 1);
+                double ratio = position - first;
+                if (ratio < 1.0e-9) {
+                    return nodeHeight(participant, side, first);
+                }
+                if (ratio > 1.0 - 1.0e-9) {
+                    return nodeHeight(participant, side, first + 1);
+                }
+                return nodeHeight(participant, side, first) * (1.0 - ratio) + nodeHeight(participant, side, first + 1) * ratio;
+            }
+
+            double cornerHeight(double x, double y, const MapTile& from) const {
+                std::array<const Participant*, 4> leaves = quadrantLeaves(x, y, from);
+                int coarsest = from.getZoom();
+                for (const Participant* leaf : leaves) {
+                    if (leaf) {
+                        coarsest = std::min(coarsest, leaf->tile.getZoom());
+                    }
+                }
+                double sum = 0;
+                int count = 0;
+                for (const Participant* leaf : leaves) {
+                    if (!leaf || leaf->tile.getZoom() != coarsest) {
+                        continue;
+                    }
+                    double size = tileSize(coarsest);
+                    double tolerance = size * 1.0e-9;
+                    double left = originX(leaf->tile), bottom = originY(leaf->tile);
+                    bool onVertical = std::abs(x - left) < tolerance || std::abs(x - (left + size)) < tolerance;
+                    bool onHorizontal = std::abs(y - bottom) < tolerance || std::abs(y - (bottom + size)) < tolerance;
+                    if (onVertical && !onHorizontal) {
+                        return polylineHeight(*leaf, std::abs(x - left) < tolerance ? 2 : 3, y);
+                    }
+                    if (onHorizontal && !onVertical) {
+                        return polylineHeight(*leaf, std::abs(y - bottom) < tolerance ? 0 : 1, x);
+                    }
+                    sum += internalAt(*leaf, x, y);
+                    count++;
+                }
+                return (count > 0 ? sum / count : 0.0);
+            }
+
+            std::shared_ptr<ElevationManager> _elevationManager;
+            double _exaggeration;
+            bool _bilinearHeights;
+            std::unordered_map<long long, Participant> _participants;
+        };
+    }
 
     TerrainRenderer::TerrainRenderer() :
         _frameBuffer(),
@@ -831,57 +1071,6 @@ namespace massif {
         }
     }
 
-    int TerrainRenderer::calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds,
-                                          const std::map<long long, int>& demZooms, int ownDemZoom) {
-        // The visible set is a quadtree cut, so a neighbour is either at this tile's zoom or is one
-        // of its ANCESTORS. Walking the neighbour's ancestry up from this zoom therefore finds it,
-        // and the zoom it is found at is the neighbour's LOD.
-        //
-        // The cut is NOT restricted - nothing stops two adjacent tiles being several levels apart -
-        // so the mask carries the DIFFERENCE per side, three bits each, and not just a flag.
-        //
-        // AND THE DEM ZOOM, which is the difference that actually produces the seams. A tile's
-        // heights come from whatever elevation tile it RESOLVED, not from its own zoom: two
-        // neighbours at the same tile zoom can land on different levels, one on its own grid and
-        // one on a cached ancestor covering four or sixteen times the ground. They are then built
-        // from different height fields and meet along an edge neither agrees about - a seam of
-        // EQUAL zoom, which no LOD reasoning explains and which a mask keyed on tile zoom alone
-        // cannot see. Measured at a valley viewpoint: neighbours on z12 and z8, and stitching on
-        // against off changed 162 pixels of 500000 because the mask was almost always zero.
-        //
-        // The coarser of the two differences wins: the edge has to be laid out along whichever
-        // neighbour spacing is wider, whether it is wider because of the cut or because of the DEM.
-        int zoom = tile.getZoom();
-        int frameNr = tile.getFrameNr();
-        int tileCount = 1 << zoom;
-        auto neighbourLevels = [&](int dx, int dy) {
-            int nx = tile.getX() + dx;
-            int ny = tile.getY() + dy;
-            if (ny < 0 || ny >= tileCount) {
-                return 0; // off the top or the bottom of the world: nothing to meet
-            }
-            nx = (nx % tileCount + tileCount) % tileCount; // x wraps
-            for (int nzoom = zoom; nzoom >= 0; nzoom--) {
-                long long neighbourId = MapTile(nx >> (zoom - nzoom), ny >> (zoom - nzoom), nzoom, frameNr).getTileId();
-                if (visibleTileIds.count(neighbourId) > 0) {
-                    int levels = zoom - nzoom;
-                    // Only when both sides actually resolved something: a tile with no grid has no
-                    // spacing to stitch to, and -1 would read as an enormous difference.
-                    auto demIt = demZooms.find(neighbourId);
-                    if (ownDemZoom >= 0 && demIt != demZooms.end() && demIt->second >= 0) {
-                        levels = std::max(levels, ownDemZoom - demIt->second);
-                    }
-                    return std::min(std::max(levels, 0), EDGE_MAX_LEVELS);
-                }
-            }
-            return 0; // not visible at all, so there is no seam to close
-        };
-
-        // Tile y runs south while the mesh's gy runs north, hence the swap.
-        return (neighbourLevels(0, 1) << EDGE_SHIFT_SOUTH) | (neighbourLevels(0, -1) << EDGE_SHIFT_NORTH) | (neighbourLevels(-1, 0) << EDGE_SHIFT_WEST) |
-               (neighbourLevels(1, 0) << EDGE_SHIFT_EAST);
-    }
-
     void TerrainRenderer::collectTileMeshes(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, int meshResolutionCap, std::vector<std::pair<MapTile, std::shared_ptr<TileMesh> > >& tileMeshes) {
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
 #if MASSIF_VT_RENDER_STATS
@@ -921,21 +1110,18 @@ namespace massif {
         // this renderer's surfaces are already skirted, so it is an improvement rather than a fix
         // for a hole. Same flag the draped path reads (TileRenderer).
         bool stitching = terrainOptions->isTileEdgeStitchingEnabled();
-        // Built once for the whole cut, not per tile: the neighbour lookup is a membership test and
-        // rebuilding the set inside the loop makes the pass quadratic in the tile count.
-        std::set<long long> visibleTileIds;
-        if (stitching) {
-            for (const MapTile& visibleTile : tiles) {
-                visibleTileIds.insert(visibleTile.getTileId());
-            }
-        }
+        // The same condition ensureSurfaceAttribs uses for its fixed-scale path, so the mesh
+        // density and the normal sampling agree about which regime they are in.
+        bool fixedScaleNormals = terrainOptions->getNormalSampleDistance() > 0 && !_tileTransformer->isSpherical();
+        bool referenceMesh = terrainOptions->getSubdivideDistance() > 0;
+        bool bilinearHeights = elevationManager->isBilinearSurface();
 
-        // EVERY TILE'S GRID FIRST, because a tile's edge mask depends on what its NEIGHBOURS
-        // resolved and the loop below would only know about the tiles it had already reached. The
-        // lookup is a cache read and the result is reused in the loop, so this costs one pass over
-        // the cut rather than a second round of lookups.
+        // EVERY TILE'S GRID FIRST, because a tile's edges depend on what its NEIGHBOURS resolved
+        // and the loop below would only know about the tiles it had already reached. The lookup is
+        // a cache read and the result is reused in the loop, so this costs one pass over the cut
+        // rather than a second round of lookups.
         std::map<long long, std::shared_ptr<ElevationTileGrid> > tileGrids;
-        std::map<long long, int> demZooms;
+        EdgeHeightResolver edgeResolver(elevationManager, bilinearHeights);
         for (const MapTile& tile : tiles) {
             if (tile.getZoom() < minZoom) {
                 continue;
@@ -943,7 +1129,9 @@ namespace massif {
             std::shared_ptr<ElevationTileGrid> grid = elevationManager->getTileGrid(tile, ElevationManager::LoadMode::CACHED_ONLY);
             if (grid) {
                 tileGrids[tile.getTileId()] = grid;
-                demZooms[tile.getTileId()] = grid->getTile().getZoom();
+                if (stitching) {
+                    edgeResolver.add(tile, grid, calculateMeshGridSize(tile, grid, meshResolution, fixedScaleNormals, referenceMesh));
+                }
             }
         }
 
@@ -955,11 +1143,6 @@ namespace massif {
                 auto gridIt = tileGrids.find(tileId);
                 grid = (gridIt != tileGrids.end() ? gridIt->second : std::shared_ptr<ElevationTileGrid>());
             }
-            // The same condition ensureSurfaceAttribs uses for its fixed-scale path, so the mesh
-            // density and the normal sampling agree about which regime they are in.
-            bool fixedScaleNormals = terrainOptions->getNormalSampleDistance() > 0 && !_tileTransformer->isSpherical();
-            bool referenceMesh = terrainOptions->getSubdivideDistance() > 0;
-            bool bilinearHeights = elevationManager->isBilinearSurface();
             // NO ELEVATION DATA, NO TILE.
             //
             // buildTileMesh starts from heights.assign(..., 0) and only fills them if it has a grid,
@@ -988,17 +1171,18 @@ namespace massif {
             else if (gridSize <= 48) { VT_STAT_INC(terrainMeshGrid48); }
             else { VT_STAT_INC(terrainMeshGridFull); }
 #endif
-            int edgeMask = stitching ? calculateEdgeMask(tile, visibleTileIds, demZooms,
-                                                         grid ? grid->getTile().getZoom() : -1) : 0;
-            // The mask belongs to the mesh, so it belongs in the key: the same tile at the same
-            // resolution is a different surface once a neighbour coarsens, and a pan changes that
-            // without changing anything else.
-            int cacheKey = gridSize | (edgeMask << 16);
+            const EdgeHeightResolver::Participant* participant = (stitching && grid ? edgeResolver.find(tile) : nullptr);
+            unsigned long long edgeSignature = (participant ? edgeResolver.signature(*participant) : 0);
+            // The edges belong to the mesh, so they belong in the key: the same tile at the same
+            // resolution is a different surface once a neighbour changes, and a pan changes that
+            // without changing anything else. Part of the signature in the key keeps a variant per
+            // neighbourhood, so turning back finds the old mesh; the entry holds all of it.
+            int cacheKey = gridSize | static_cast<int>((edgeSignature & 0x7fff) << 16);
 
             // Rebuild the mesh only when its inputs actually changed. This avoids rebuilding
             // every cached mesh each time a new elevation tile arrives during loading.
             auto it = _meshCache.find(std::make_pair(tileId, cacheKey));
-            if (it == _meshCache.end() || it->second.grid != grid || it->second.exaggeration != exaggeration || it->second.gridSize != gridSize || it->second.bilinearHeights != bilinearHeights) {
+            if (it == _meshCache.end() || it->second.grid != grid || it->second.exaggeration != exaggeration || it->second.gridSize != gridSize || it->second.edgeSignature != edgeSignature || it->second.bilinearHeights != bilinearHeights) {
                 if (it == _meshCache.end() && static_cast<int>(_meshCache.size()) >= meshCacheSize) {
                     evictLeastRecentlyUsedMeshes(pass, meshCacheSize);
                 }
@@ -1006,11 +1190,18 @@ namespace massif {
                 entry.grid = grid;
                 entry.exaggeration = exaggeration;
                 entry.gridSize = gridSize;
+                entry.edgeSignature = edgeSignature;
                 entry.bilinearHeights = bilinearHeights;
 #if MASSIF_VT_RENDER_STATS
                 auto buildStart = std::chrono::steady_clock::now();
 #endif
-                entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize, edgeMask, bilinearHeights);
+                std::array<std::vector<double>, 4> edgeHeights;
+                if (participant) {
+                    for (int side = 0; side < 4; side++) {
+                        edgeHeights[side] = edgeResolver.sideHeights(*participant, side);
+                    }
+                }
+                entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize, edgeHeights, bilinearHeights);
                 // CARRY THE REFINED NORMALS ACROSS THE REBUILD.
                 //
                 // A rebuild here is almost always "a finer DEM arrived for a tile already on
@@ -1030,15 +1221,15 @@ namespace massif {
                 // attribsRefined stays FALSE, so the refine is still queued and the stale elevation
                 // is corrected - this only removes the visible gap, it does not skip the work.
                 // ANY cached variant of the SAME TILE will do, not just the one under this exact
-                // key. The key carries the edge-stitching mask as well as the grid size, and that
-                // mask is built from which NEIGHBOURS are in the visible cut - so simply turning the
+                // key. The key carries the edge signature as well as the grid size, and that
+                // signature is built from which NEIGHBOURS are in the visible cut - so simply turning the
                 // camera remints the key for every tile whose neighbour set changed, and the lookup
                 // above misses. The tile then gets a new mesh with no attribs and falls back to the
                 // mesh-gradient stand-in, which is visibly flatter, and it flips back when the old
                 // key comes round again. That is "some tiles render differently depending on which
                 // way I am looking".
                 //
-                // The mask only moves the SKIRT and the edge nodes; the interior grid is the same
+                // The edges only move the SKIRT and the edge nodes; the interior grid is the same
                 // and the normals are sampled at a fixed ground distance anyway, so a sibling's
                 // refined attribs are the right answer for all but the tile's outermost ring.
                 // _meshCache is ordered by tile id first, so this is a short walk over one tile's
@@ -1118,9 +1309,9 @@ namespace massif {
                 if (TERRAIN_MESH_TRACE && grid) {
                     double tileSize = Const::WORLD_SIZE / (1 << tile.getZoom());
                     double gridWidth = grid->getInternalBounds().getMax().getX() - grid->getInternalBounds().getMin().getX();
-                    Log::Infof("TerrainRenderer::collectTileMeshes: tile %d/%d/%d mesh %d, DEM %d texels stretched over %.2f tiles, edgeMask %d",
+                    Log::Infof("TerrainRenderer::collectTileMeshes: tile %d/%d/%d mesh %d, DEM %d texels stretched over %.2f tiles, edges %llx",
                                tile.getZoom(), tile.getX(), tile.getY(), gridSize, grid->getWidth(),
-                               tileSize > 0 ? gridWidth / tileSize : 0.0, edgeMask);
+                               tileSize > 0 ? gridWidth / tileSize : 0.0, edgeSignature);
                 }
                 it = _meshCache.insert_or_assign(std::make_pair(tileId, cacheKey), std::move(entry)).first;
             }
@@ -1150,6 +1341,101 @@ namespace massif {
             }
             tileMeshes.emplace_back(tile, it->second.mesh);
         }
+#if MASSIF_VT_RENDER_STATS
+        // SEAM DIAGNOSTIC: how far apart, in metres, two neighbours' edge polylines are along the
+        // edge they share. A number to compare before and after a stitching change instead of a
+        // screenshot. Planar only; every neighbour at this tile's zoom or coarser is measured.
+        if (!_tileTransformer->isSpherical()) {
+            static std::chrono::steady_clock::time_point lastSeamLog;
+            std::chrono::steady_clock::time_point seamNow = std::chrono::steady_clock::now();
+            if (seamNow - lastSeamLog > std::chrono::seconds(2)) {
+                lastSeamLog = seamNow;
+                std::map<long long, std::pair<MapTile, std::shared_ptr<TileMesh> > > meshById;
+                for (const auto& tileMesh : tileMeshes) {
+                    meshById.emplace(tileMesh.first.getTileId(), tileMesh);
+                }
+                // side: 0 south (gy 0), 1 north, 2 west (gx 0), 3 east. Returns metres at 'along'.
+                auto edgeMeters = [&](const MapTile& edgeTile, const TileMesh& mesh, int side, double along) {
+                    double size = Const::WORLD_SIZE / (1 << edgeTile.getZoom());
+                    double originX = edgeTile.getX() * size - Const::WORLD_SIZE * 0.5;
+                    double originY = (((1 << edgeTile.getZoom()) - 1 - edgeTile.getY()) * size) - Const::WORLD_SIZE * 0.5;
+                    bool horizontal = side < 2;
+                    int rowSize = mesh.gridSize + 1;
+                    int fixedIndex = (side == 0 || side == 2 ? 0 : mesh.gridSize);
+                    double position = (along - (horizontal ? originX : originY)) / size * mesh.gridSize;
+                    position = std::min(std::max(position, 0.0), static_cast<double>(mesh.gridSize));
+                    int first = std::min(static_cast<int>(std::floor(position)), mesh.gridSize - 1);
+                    double ratio = position - first;
+                    auto nodeAt = [&](int index) {
+                        return horizontal ? fixedIndex * rowSize + index : index * rowSize + fixedIndex;
+                    };
+                    double local = mesh.heights[nodeAt(first)] * (1 - ratio) + mesh.heights[nodeAt(first + 1)] * ratio;
+                    double internalY = (horizontal ? originY + fixedIndex * size / mesh.gridSize : along);
+                    return local * size / (exaggeration * elevationManager->getDisplayScale(internalY));
+                };
+                // class: 0 same grid, 1 same DEM zoom other grid, 2 other DEM zoom, 3 coarser tile
+                std::array<int, 4> edges {}, bad {};
+                std::array<double, 4> worst {}, sum {};
+                for (const auto& tileMesh : tileMeshes) {
+                    const MapTile& tile = tileMesh.first;
+                    const TileMesh& mesh = *tileMesh.second;
+                    if (mesh.gridSize < 1 || mesh.heights.empty()) {
+                        continue;
+                    }
+                    int zoom = tile.getZoom();
+                    int tileCount = 1 << zoom;
+                    const int dxs[4] = { 0, 0, -1, 1 };
+                    const int dys[4] = { 1, -1, 0, 0 };
+                    for (int side = 0; side < 4; side++) {
+                        int nx = tile.getX() + dxs[side];
+                        int ny = tile.getY() + dys[side];
+                        if (ny < 0 || ny >= tileCount) {
+                            continue;
+                        }
+                        nx = (nx % tileCount + tileCount) % tileCount;
+                        for (int nzoom = zoom; nzoom >= 0; nzoom--) {
+                            MapTile neighbourTile(nx >> (zoom - nzoom), ny >> (zoom - nzoom), nzoom, tile.getFrameNr());
+                            auto found = meshById.find(neighbourTile.getTileId());
+                            if (found == meshById.end()) {
+                                continue;
+                            }
+                            const TileMesh& neighbourMesh = *found->second.second;
+                            if (neighbourMesh.gridSize < 1 || neighbourMesh.heights.empty()) {
+                                break;
+                            }
+                            auto ownGrid = tileGrids.find(tile.getTileId());
+                            auto neighbourGrid = tileGrids.find(neighbourTile.getTileId());
+                            if (ownGrid == tileGrids.end() || neighbourGrid == tileGrids.end()) {
+                                break;
+                            }
+                            int edgeClass = (nzoom < zoom ? 3 : ownGrid->second == neighbourGrid->second ? 0 : mesh.demZoom == neighbourMesh.demZoom ? 1 : 2);
+                            int opposite = side ^ 1;
+                            double size = Const::WORLD_SIZE / tileCount;
+                            double start = (side < 2 ? tile.getX() * size : (tileCount - 1 - tile.getY()) * size) - Const::WORLD_SIZE * 0.5;
+                            double edgeWorst = 0;
+                            int samples = mesh.gridSize * 2;
+                            for (int sample = 0; sample <= samples; sample++) {
+                                double along = start + size * sample / samples;
+                                double difference = std::abs(edgeMeters(tile, mesh, side, along) - edgeMeters(neighbourTile, neighbourMesh, opposite, along));
+                                edgeWorst = std::max(edgeWorst, difference);
+                            }
+                            edges[edgeClass]++;
+                            if (edgeWorst > 1.0) {
+                                bad[edgeClass]++;
+                            }
+                            worst[edgeClass] = std::max(worst[edgeClass], edgeWorst);
+                            sum[edgeClass] += edgeWorst;
+                            break;
+                        }
+                    }
+                }
+                Log::Infof("TerrainRenderer: SEAMS stitching %d | same grid %d edges, %d > 1 m, worst %.1f m | same DEM zoom %d, %d, %.1f m | other DEM zoom %d, %d, worst %.1f m, mean %.1f m | coarser tile %d, %d, worst %.1f m, mean %.1f m",
+                           stitching ? 1 : 0, edges[0], bad[0], worst[0], edges[1], bad[1], worst[1],
+                           edges[2], bad[2], worst[2], edges[2] > 0 ? sum[2] / edges[2] : 0.0,
+                           edges[3], bad[3], worst[3], edges[3] > 0 ? sum[3] / edges[3] : 0.0);
+            }
+        }
+#endif
     }
 
     bool TerrainRenderer::renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn, int meshResolutionCap, bool surfaceAttribs, bool normalAttrib, bool skipSkirts) {
@@ -2027,7 +2313,7 @@ namespace massif {
         return std::max(gridSize, MIN_MESH_GRID_SIZE);
     }
 
-    std::shared_ptr<TerrainRenderer::TileMesh> TerrainRenderer::buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, int edgeMask, bool bilinearHeights) const {
+    std::shared_ptr<TerrainRenderer::TileMesh> TerrainRenderer::buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, const std::array<std::vector<double>, 4>& edgeHeights, bool bilinearHeights) const {
         auto mesh = std::make_shared<TileMesh>();
 
         int tileMask = (1 << tile.getZoom()) - 1;
@@ -2071,56 +2357,23 @@ namespace massif {
             }
         }
 
-        // LOD stitching: where the neighbour is coarser its edge carries FEWER nodes, so the detail
-        // this tile has in between is exactly what opens the crack. Dropping our edge to the
-        // neighbour's spacing - a straight line between the nodes the two share - closes it, and
-        // only the one row of edge nodes moves, so nothing inside the tile is smoothed.
-        //
-        // The neighbour's spacing is assumed to be ours doubled per zoom level it is coarser by,
-        // which is what calculateMeshGridSize gives whenever both tiles land on the same cap.
-        if (grid && edgeMask != 0) {
-            auto stitchEdge = [&](int shift, bool horizontal, int fixedIndex) {
-                int levels = (edgeMask >> shift) & EDGE_LEVELS_MASK;
-                if (levels <= 0) {
-                    return;
+        // Edge stitching: the edge nodes take the heights both tiles sharing the edge agree on
+        // (EdgeHeightResolver), so the two surfaces meet instead of each ending on its own grid.
+        // Only the one row of edge nodes moves, so nothing inside the tile is smoothed.
+        if (grid) {
+            for (int side = 0; side < 4; side++) {
+                const std::vector<double>& edge = edgeHeights[side];
+                if (edge.size() != static_cast<std::size_t>(rowSize)) {
+                    continue;
                 }
-                // One level coarser is every second node interpolated away, two levels every
-                // fourth, and so on: the neighbour covers twice the ground per level with the same
-                // node count.
-                int step = 1 << levels;
-                auto nodeAt = [&](int index) {
-                    int gx = horizontal ? index : fixedIndex;
-                    int gy = horizontal ? fixedIndex : index;
-                    return gy * rowSize + gx;
-                };
-                // WHICH of our nodes the neighbour actually has depends on where this tile sits
-                // inside the ground the coarse one covers: as the second of two children, its
-                // nodes fall on our ODD indices. The tile's offset within that block gives the
-                // phase - and the mesh's own index runs north while a tile's y runs south, hence
-                // the flip on a vertical edge.
-                int block = step - 1;
-                int blockIndex = (horizontal ? tile.getX() & block : block - (tile.getY() & block));
-                int phase = (step - (blockIndex * gridSize) % step) % step;
-                for (int index = phase - step; index < gridSize; index += step) {
-                    // An anchor off the end of the edge is the edge's own end node: the corners are
-                    // shared with the neighbour in any case.
-                    int first = std::max(index, 0);
-                    int next = std::min(index + step, gridSize);
-                    if (next <= first) {
-                        continue;
-                    }
-                    float height0 = mesh->heights[nodeAt(first)];
-                    float height1 = mesh->heights[nodeAt(next)];
-                    for (int inner = first + 1; inner < next; inner++) {
-                        float ratio = static_cast<float>(inner - first) / static_cast<float>(next - first);
-                        mesh->heights[nodeAt(inner)] = height0 + (height1 - height0) * ratio;
-                    }
+                for (int index = 0; index <= gridSize; index++) {
+                    int gx = (side < 2 ? index : (side == 2 ? 0 : gridSize));
+                    int gy = (side < 2 ? (side == 0 ? 0 : gridSize) : index);
+                    double internalY = originY + (static_cast<double>(gy) / gridSize) * size;
+                    double localPerInternal = (spherical ? sphericalLocalPerInternal(tile, internalY) : localFromInternal);
+                    mesh->heights[gy * rowSize + gx] = static_cast<float>(edge[index] * localPerInternal);
                 }
-            };
-            stitchEdge(EDGE_SHIFT_SOUTH, true, 0);
-            stitchEdge(EDGE_SHIFT_NORTH, true, gridSize);
-            stitchEdge(EDGE_SHIFT_WEST, false, 0);
-            stitchEdge(EDGE_SHIFT_EAST, false, gridSize);
+            }
         }
 
         double minLocalZ = 0;

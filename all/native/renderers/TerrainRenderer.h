@@ -12,6 +12,7 @@
 #include "graphics/Color.h"
 #include "graphics/ViewState.h"
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -218,19 +219,6 @@ namespace massif {
         // zoom, halved per level above it, never under the floor.
         static constexpr int REFERENCE_MESH_FULL_ZOOM = 12;
         static constexpr int REFERENCE_MIN_MESH_GRID_SIZE = 16;
-        // The LOD stitching mask: how many levels COARSER the neighbour on each side is, two bits
-        // each, in the MESH's frame - gy = 0 is the south edge, since internal y runs north while a
-        // tile's y runs south. 0 on a side means the neighbour is at this tile's own zoom.
-        // THREE bits a side, not two. Two held a difference of 3 levels, and a panorama's cut is
-        // far wider than that: debug view 10 at a valley viewpoint shows neighbouring terrain at
-        // z12 and z8, four levels apart, and everything past the clamp was stitched as if it were
-        // three - which leaves the step it was meant to close.
-        static constexpr int EDGE_SHIFT_SOUTH = 0;
-        static constexpr int EDGE_SHIFT_NORTH = 3;
-        static constexpr int EDGE_SHIFT_WEST = 6;
-        static constexpr int EDGE_SHIFT_EAST = 9;
-        static constexpr int EDGE_LEVELS_MASK = 7;
-        static constexpr int EDGE_MAX_LEVELS = 7; // 128x the node spacing, and what three bits hold
         static constexpr int MAX_CACHED_MESHES = 160;
         // How many tiles the visible cut may hold, and why it is HALF the cache: one frame walks the
         // same cut two or three times (the surface, the depth pre-pass, the occlusion depth texture)
@@ -318,13 +306,11 @@ namespace massif {
         // `maxZoom` caps the cut, which is how the budget below coarsens the whole surface a level at
         // a time; Const::MAX_SUPPORTED_ZOOM_LEVEL means "no cap".
         void calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, int maxZoom, float subdivideDistance, std::vector<MapTile>& tiles) const;
-        std::shared_ptr<TileMesh> buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, int edgeMask, bool bilinearHeights) const;
+        // edgeHeights: per side (south, north, west, east - the MESH's frame, gy = 0 south) the
+        // height of each edge node in internal units, or empty to keep the tile's own. See
+        // EdgeHeightResolver in the .cpp for how both tiles sharing an edge agree on it.
+        std::shared_ptr<TileMesh> buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, const std::array<std::vector<double>, 4>& edgeHeights, bool bilinearHeights) const;
         int calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution, bool fixedScaleNormals, bool referenceMesh) const;
-        // How much coarser the visible neighbour on each of a tile's four edges is, as EDGE_SHIFT_*
-        // fields. The mesh drops those edges to the neighbour's node spacing so the two surfaces
-        // meet (see buildTileMesh); 0 means every neighbour is at this tile's own zoom.
-        static int calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds,
-                                     const std::map<long long, int>& demZooms, int ownDemZoom);
         cglib::mat4x4<double> calculateTileMatrix(const MapTile& tile) const;
         // Linear eye depth (view w, internal units) of the terrain at a buffer pixel. Returns a
         // huge value for sky pixels and for pixels outside the buffer.

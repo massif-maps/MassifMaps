@@ -102,16 +102,16 @@
   // bug and exactly the kind this bench exists to avoid re-creating by hand.
   const INK = {
     uIntensity: 1, uOutlineWidth: 1, uHorizonBoost: 1, uDepthThreshold: 1,
-    // The depth-only outline's own: gain scales the laplacian, power is what makes the line thin.
-    // Retuned once the surface pass was actually visible (?source=none). At 40/0.6 the operator was
-    // not drawing lines at all: it darkened whole regions, which is where the grey wash and the dark
-    // mid-distance band came from. It had to be that strong because a draped tile layer was covering
-    // the shaded surface, so the post-process was the entire picture.
-    uOutlineGain: 8, uOutlinePower: 1.5,
+    // The depth-only outline's own. Retuned once the surface pass was actually visible
+    // (?source=none). The FLOOR is the piece that was missing: this operator is a gradient
+    // magnitude, so without a floor it shades slopes instead of drawing edges - gain 40 darkened
+    // whole hillsides, which is where the grey wash and the dark mid-distance band came from, and
+    // the lines had to be read out of that wash.
+    uOutlineGain: 40, uOutlinePower: 0.3, uOutlineFloor: 0.05,
     uCreaseStrength: 0, uCreaseThreshold: 0.12,
     uRidgeStrength: 2, uRidgeThreshold: 0.05, uRidgeGroundSpan: 90,
     uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
-    uInkDistance: 50000, uInkShadeCap: 0, uDebugView: num('debug', 0),
+    uInkDistance: 200000, uInkShadeCap: 0, uDebugView: num('debug', 0),
     uMetersPerUnit: 40075016.68558 / (1 << 20), uSilhouetteGate: 865,
     // No haze: the far ranges are the point of a panorama, and fading them into the paper is what
     // hid them. ?ink.uHaze=0.65 puts the aerial perspective back.
@@ -122,7 +122,9 @@
     uDistortRenderTanX: 1, uDistortRenderTanY: 1, uDistortRotate: 0
   };
   const SURFACE = {
-    uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35,
+    // The hillshade the surface pass draws. 0.18/0.22 was tuned when the surface was covered by a
+    // draped tile layer and contributed nothing, so it read as near-white paper once uncovered.
+    uShadeStrength: 1.0, uSlopeShade: 0.7, uAmbient: 0.35,
     uHaze: 0, uHazeDistance: 60000, uDebugView: num('debug', 0),
     // The ridge ink, drawn by the surface pass at full resolution. OFF: at every strength tried it
     // draws blobs rather than crests - the laplacian over a 120 m span aliases against the DEM texel

@@ -486,13 +486,41 @@ namespace massif {
             float dx = screenPos.getX() - _prevScreenPos1.getX();
             float dy = screenPos.getY() - _prevScreenPos1.getY();
 
+            // THE ANGLE THE DRAG ACTUALLY SUBTENDS, not a rate per inch.
+            //
+            // A look is optics: the ray through the pixel under the cursor has a fixed angle from
+            // the view axis, so turning by the DIFFERENCE between the two rays' angles is what
+            // keeps the ground under the cursor under the cursor - which is what the reference and
+            // the app both do, and what a per-inch rate cannot do at any sensitivity because it
+            // does not know the field of view. It also made the look feel fast: at a 24 degree
+            // field of view a whole screen of drag should turn the view 24 degrees, and the rate
+            // rule turned it by whatever the sensitivity said.
+            //
+            // tan of the half angle is linear in the pixel offset, so the angle at a pixel is
+            // atan(offset / halfExtent * tanHalf).
+            float halfWidth = viewState.getHalfWidth(), halfHeight = viewState.getHalfHeight();
+            float tanHalfY = std::tan(viewState.getHalfFOVY() * Const::DEG_TO_RAD);
+            float tanHalfX = (halfHeight > 0 ? tanHalfY * halfWidth / halfHeight : tanHalfY);
+            auto subtended = [](float from, float to, float centre, float halfExtent, float tanHalf) {
+                if (halfExtent <= 0) {
+                    return 0.0f;
+                }
+                float a0 = std::atan((from - centre) / halfExtent * tanHalf);
+                float a1 = std::atan((to - centre) / halfExtent * tanHalf);
+                return static_cast<float>((a1 - a0) * Const::RAD_TO_DEG);
+            };
+
             // Sideways turns the heading, left-drag turning the view right as dragging the world
             // does. About the CAMERA, not the focus: rotating about the focus swings the camera
             // around a circle of the focus distance, which at a low tilt walks it through terrain.
             if (dx != 0) {
                 std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
                 CameraRotationEvent cameraEvent;
-                cameraEvent.setRotationDelta(dx * _options->getFreeRoamLookSensitivity() / dpi);
+                float lookDelta = subtended(_prevScreenPos1.getX(), screenPos.getX(), halfWidth, halfWidth, tanHalfX);
+                if (_options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                    lookDelta = dx * _options->getFreeRoamLookSensitivity() / dpi;
+                }
+                cameraEvent.setRotationDelta(lookDelta);
                 if (projectionSurface && _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
                     cameraEvent.setTargetPos(projectionSurface->calculateMapPos(viewState.getCameraPos()));
                 }
@@ -511,8 +539,18 @@ namespace massif {
                 if (_options->isTiltGestureReversed()) {
                     scale = -scale;
                 }
+                // The vertical half of the same optics. Tilt 90 is straight down, so a drag that
+                // brings the sky into the screen is a NEGATIVE delta - the sign the rate rule
+                // already had, kept.
+                float tiltDelta = dy * scale;
+                if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                    tiltDelta = -subtended(_prevScreenPos1.getY(), screenPos.getY(), halfHeight, halfHeight, tanHalfY);
+                    if (_options->isTiltGestureReversed()) {
+                        tiltDelta = -tiltDelta;
+                    }
+                }
                 CameraTiltEvent cameraEvent;
-                cameraEvent.setTiltDelta(dy * scale);
+                cameraEvent.setTiltDelta(tiltDelta);
                 _cameraEvents.fetch_or(CAMERA_TILT);
                 _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
@@ -698,15 +736,21 @@ namespace massif {
             }
             forward = cglib::unit(forward);
 
-            // Distance per inch of drag, as a fraction of the camera to focus distance, so a move
-            // covers the same part of the view at any zoom.
-            double perInch = _options->getFreeRoamMoveSpeed() * viewState.calculateCameraDistance();
-            double dpi = _options->getDPI();
+            // GROUND PER PIXEL, from the view frustum, so the ground travels with the cursor
+            // instead of at a speed somebody chose. At a distance d a pixel spans
+            // 2 * tan(fovY/2) * d / height, so a drag of n pixels moves n of those - exact for
+            // ground at that distance and far closer than a per-inch rate everywhere else. The
+            // FreeRoamMoveSpeed setting stays as a multiplier on it rather than as the rate itself.
+            double cameraDistance = viewState.calculateCameraDistance();
+            double viewHeight = viewState.getHeight();
+            double perPixel = (viewHeight > 0
+                ? 2.0 * std::tan(viewState.getHalfFOVY() * Const::DEG_TO_RAD) * cameraDistance / viewHeight
+                : 0.0) * _options->getFreeRoamMoveSpeed();
             // Dragging DOWN goes forward, which is the map's own pan read in first person: a one
             // finger drag moves the ground with the finger, so pulling the ground towards you walks
             // the camera away from you. Sideways keeps the same reading - dragging right pushes the
             // ground right, so the camera goes left - and only the forward axis had it backwards.
-            cglib::vec3<double> offset = forward * (dy / dpi * perInch) + right * (-dx / dpi * perInch);
+            cglib::vec3<double> offset = forward * (dy * perPixel) + right * (-dx * perPixel);
 
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(cameraMapPos, projectionSurface->calculateMapPos(cameraPos + offset)));

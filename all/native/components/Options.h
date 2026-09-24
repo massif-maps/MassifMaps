@@ -738,17 +738,24 @@ namespace massif {
         void setFreeRoamLookSensitivity(float degreesPerInch);
 
         /**
-         * Returns how far a first person move drag travels.
-         * @return The distance per inch of drag, as a fraction of the camera to focus distance.
+         * Returns the first person move multiplier.
+         * @return A multiplier on the ground the drag actually covers. 1 tracks the cursor.
          */
         float getFreeRoamMoveSpeed() const;
         /**
-         * Sets how far a two-finger move travels in FREE_ROAM_MODE_FIRST_PERSON, per inch of drag,
-         * as a fraction of the distance from the camera to its focus point - so a move covers the
-         * same part of the view at any zoom. The default is 0.5.
-         * @param distancePerInch The distance per inch of drag.
+         * Scales the two-finger move in FREE_ROAM_MODE_FIRST_PERSON.
+         *
+         * NOT a rate any more. The move now travels the ground the DRAG COVERS - a pixel spans
+         * 2 * tan(fovY / 2) * distance / height, so the ground follows the cursor instead of
+         * moving at a speed somebody chose - and this scales that. 1, the default, tracks; below 1
+         * the ground lags the cursor and above 1 it runs ahead.
+         *
+         * It used to be a distance per inch of drag as a fraction of the camera-to-focus distance,
+         * defaulting to 0.5, which could not track at any value because it did not know the field
+         * of view.
+         * @param multiplier The multiplier on the tracked distance.
          */
-        void setFreeRoamMoveSpeed(float distancePerInch);
+        void setFreeRoamMoveSpeed(float multiplier);
 
         /**
          * Returns the state of the kinetic panning flag.

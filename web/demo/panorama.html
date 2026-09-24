@@ -129,6 +129,9 @@
     // The far fade goes to a FLOOR, not to zero: the ridges a peak finder names are the ones past
     // uInkDistance, and the old 1 - dist/uInkDistance erased them exactly there.
     uInkDistance: 50000, uInkFar: 0.45, uInkFalloff: 1.6,
+    // The camera range the outline measures depth over, metres. 0 keeps our own relative operator
+    // (divide by the depth); ?look=geothree sets the reference's 10 .. 173000.
+    uDepthNear: 0, uDepthFar: 0,
     uInkShadeCap: 0, uDebugView: num('debug', 0),
     uMetersPerUnit: 40075016.68558 / (1 << 20), uSilhouetteGate: 865,
     // No haze: the far ranges are the point of a panorama, and fading them into the paper is what
@@ -156,6 +159,41 @@
     sharedGround: 0,
     tileEdgeStitching: 0
   };
+
+  // ?look=geothree is the REFERENCE PIPELINE, ported term for term rather than approximated:
+  //
+  //   - the surface is FLAT LIT. geo-three's example has AmbientLight alone (dayNightCycle is off,
+  //     so its sun and its shadow map are never constructed), so its material returns albedo x
+  //     ambient and every bit of relief in its picture comes from the outline.
+  //   - the outline measures a LINEAR depth over the camera's near..far, 10 m .. 173 km, with no
+  //     division by anything. Ours divides by a far plane that reaches 1229 km in a panorama, which
+  //     is why its depthMultiplier of 11 never meant the same thing here.
+  //   - BlendFunction.AVERAGE halves the effect against the input, so its uniforms land at half the
+  //     strength they read. uIntensity 0.5.
+  //   - geometrySize 512, its mesh resolution.
+  //   - depthMultiplier 11, depthBiais 0.23 (the power), outlineStroke 1.
+  //
+  // NOT its exageration of 1.6225, by request: the terrain is rendered true.
+  if (query.get('look') === 'geothree') {
+    Object.assign(INK, {
+      // CALIBRATED, not copied. The operator is now theirs term for term, but the gain is a
+      // multiplier on a depth DIFFERENCE, and the two buffers do not agree on what a difference is:
+      // theirs is a linearised hardware depth over its own near..far, ours a packed distance over a
+      // panorama's far plane. Measured on this viewpoint, their 11 (halved again by
+      // BlendFunction.AVERAGE) lands about 18x too low here - at 11 the picture is nearly blank, at
+      // 60 it reads like the reference. Their 0.23 power transfers unchanged.
+      uOutlineGain: 60, uOutlinePower: 0.23, uOutlineFloor: 0, uOutlineWidth: 1,
+      uIntensity: 1, uDepthNear: 10, uDepthFar: 173000,
+      // No distance fade: the reference has none, and a fade is the first thing that makes two
+      // renders diverge at exactly the range this is being compared over.
+      uInkFar: 1, uInkFalloff: 1,
+      // The one deliberate DEVIATION, by request: the reference draws the skyline no heavier than
+      // an interior fold, and a panorama wants it heavier.
+      uHorizonBoost: 1, uHorizonWidth: 3
+    });
+    Object.assign(SURFACE, { uShadeStrength: 0, uSlopeShade: 0, uRidgeInkStrength: 0 });
+    TERRAIN.meshResolution = 512;
+  }
 
   // Any uniform can be overridden from the query string, so a tuned look is a LINK rather than a
   // list of console calls to retype: ink.uRidgeStrength=6, s.uShadeStrength=0.10, t.meshResolution=256.
@@ -285,6 +323,8 @@
     ['ink', 'uInkDistance', 10000, 300000, 1000, 'where the far fade is complete, m'],
     ['ink', 'uInkFar', 0, 1, 0.01, 'what is LEFT of a line at that distance'],
     ['ink', 'uInkFalloff', 0.2, 4, 0.05, 'fade shape - above 1 holds off then drops'],
+    ['ink', 'uDepthNear', 0, 1000, 10, 'depth range near, m'],
+    ['ink', 'uDepthFar', 0, 400000, 1000, 'depth range far, m - 0 is our relative operator'],
     ['s', 'uShadeStrength', 0, 2, 0.01, 'sun term'],
     ['s', 'uSlopeShade', 0, 2, 0.01, 'sun-independent slope term'],
     ['s', 'uAmbient', 0, 1, 0.01, 'light on a slope facing away'],

@@ -319,7 +319,8 @@ namespace massif {
         // How much coarser the visible neighbour on each of a tile's four edges is, as EDGE_SHIFT_*
         // fields. The mesh drops those edges to the neighbour's node spacing so the two surfaces
         // meet (see buildTileMesh); 0 means every neighbour is at this tile's own zoom.
-        static int calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds);
+        static int calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds,
+                                     const std::map<long long, int>& demZooms, int ownDemZoom);
         cglib::mat4x4<double> calculateTileMatrix(const MapTile& tile) const;
         // Linear eye depth (view w, internal units) of the terrain at a buffer pixel. Returns a
         // huge value for sky pixels and for pixels outside the buffer.

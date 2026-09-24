@@ -823,13 +823,26 @@ namespace massif {
         }
     }
 
-    int TerrainRenderer::calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds) {
+    int TerrainRenderer::calculateEdgeMask(const MapTile& tile, const std::set<long long>& visibleTileIds,
+                                          const std::map<long long, int>& demZooms, int ownDemZoom) {
         // The visible set is a quadtree cut, so a neighbour is either at this tile's zoom or is one
         // of its ANCESTORS. Walking the neighbour's ancestry up from this zoom therefore finds it,
         // and the zoom it is found at is the neighbour's LOD.
         //
         // The cut is NOT restricted - nothing stops two adjacent tiles being several levels apart -
-        // so the mask carries the DIFFERENCE per side, two bits each, and not just a flag.
+        // so the mask carries the DIFFERENCE per side, three bits each, and not just a flag.
+        //
+        // AND THE DEM ZOOM, which is the difference that actually produces the seams. A tile's
+        // heights come from whatever elevation tile it RESOLVED, not from its own zoom: two
+        // neighbours at the same tile zoom can land on different levels, one on its own grid and
+        // one on a cached ancestor covering four or sixteen times the ground. They are then built
+        // from different height fields and meet along an edge neither agrees about - a seam of
+        // EQUAL zoom, which no LOD reasoning explains and which a mask keyed on tile zoom alone
+        // cannot see. Measured at a valley viewpoint: neighbours on z12 and z8, and stitching on
+        // against off changed 162 pixels of 500000 because the mask was almost always zero.
+        //
+        // The coarser of the two differences wins: the edge has to be laid out along whichever
+        // neighbour spacing is wider, whether it is wider because of the cut or because of the DEM.
         int zoom = tile.getZoom();
         int frameNr = tile.getFrameNr();
         int tileCount = 1 << zoom;
@@ -841,8 +854,16 @@ namespace massif {
             }
             nx = (nx % tileCount + tileCount) % tileCount; // x wraps
             for (int nzoom = zoom; nzoom >= 0; nzoom--) {
-                if (visibleTileIds.count(MapTile(nx >> (zoom - nzoom), ny >> (zoom - nzoom), nzoom, frameNr).getTileId()) > 0) {
-                    return std::min(zoom - nzoom, EDGE_MAX_LEVELS);
+                long long neighbourId = MapTile(nx >> (zoom - nzoom), ny >> (zoom - nzoom), nzoom, frameNr).getTileId();
+                if (visibleTileIds.count(neighbourId) > 0) {
+                    int levels = zoom - nzoom;
+                    // Only when both sides actually resolved something: a tile with no grid has no
+                    // spacing to stitch to, and -1 would read as an enormous difference.
+                    auto demIt = demZooms.find(neighbourId);
+                    if (ownDemZoom >= 0 && demIt != demZooms.end() && demIt->second >= 0) {
+                        levels = std::max(levels, ownDemZoom - demIt->second);
+                    }
+                    return std::min(std::max(levels, 0), EDGE_MAX_LEVELS);
                 }
             }
             return 0; // not visible at all, so there is no seam to close
@@ -901,12 +922,30 @@ namespace massif {
             }
         }
 
+        // EVERY TILE'S GRID FIRST, because a tile's edge mask depends on what its NEIGHBOURS
+        // resolved and the loop below would only know about the tiles it had already reached. The
+        // lookup is a cache read and the result is reused in the loop, so this costs one pass over
+        // the cut rather than a second round of lookups.
+        std::map<long long, std::shared_ptr<ElevationTileGrid> > tileGrids;
+        std::map<long long, int> demZooms;
+        for (const MapTile& tile : tiles) {
+            if (tile.getZoom() < minZoom) {
+                continue;
+            }
+            std::shared_ptr<ElevationTileGrid> grid = elevationManager->getTileGrid(tile, ElevationManager::LoadMode::CACHED_ONLY);
+            if (grid) {
+                tileGrids[tile.getTileId()] = grid;
+                demZooms[tile.getTileId()] = grid->getTile().getZoom();
+            }
+        }
+
         tileMeshes.reserve(tiles.size());
         for (const MapTile& tile : tiles) {
             long long tileId = tile.getTileId();
             std::shared_ptr<ElevationTileGrid> grid;
             if (tile.getZoom() >= minZoom) {
-                grid = elevationManager->getTileGrid(tile, ElevationManager::LoadMode::CACHED_ONLY);
+                auto gridIt = tileGrids.find(tileId);
+                grid = (gridIt != tileGrids.end() ? gridIt->second : std::shared_ptr<ElevationTileGrid>());
             }
             // The same condition ensureSurfaceAttribs uses for its fixed-scale path, so the mesh
             // density and the normal sampling agree about which regime they are in.
@@ -939,7 +978,8 @@ namespace massif {
             else if (gridSize <= 48) { VT_STAT_INC(terrainMeshGrid48); }
             else { VT_STAT_INC(terrainMeshGridFull); }
 #endif
-            int edgeMask = stitching ? calculateEdgeMask(tile, visibleTileIds) : 0;
+            int edgeMask = stitching ? calculateEdgeMask(tile, visibleTileIds, demZooms,
+                                                         grid ? grid->getTile().getZoom() : -1) : 0;
             // The mask belongs to the mesh, so it belongs in the key: the same tile at the same
             // resolution is a different surface once a neighbour coarsens, and a pan changes that
             // without changing anything else.

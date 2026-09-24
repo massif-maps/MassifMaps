@@ -1808,6 +1808,15 @@ namespace massif {
                 continue;
             }
             std::copy(mesh.surfaceAttribs.begin() + source, mesh.surfaceAttribs.begin() + source + 4, mesh.surfaceAttribs.begin() + i * 4);
+            // MARKED AS A SKIRT, in the sign of z. A height field's normal always points up, so a
+            // negative z is unreachable for real ground and costs no extra attribute to carry.
+            //
+            // The shader needs to know because a skirt is a VERTICAL wall: every fragment down one
+            // of its columns has the same ground position, so a normal sampled per fragment from the
+            // elevation texture is constant down the column and jumps between columns - the wall
+            // comes out in vertical black and white bands. A skirt has to keep the normal of the
+            // edge it hangs from, which is what was copied above.
+            mesh.surfaceAttribs[i * 4 + 2] = -std::abs(mesh.surfaceAttribs[i * 4 + 2]);
         }
     }
 
@@ -2282,6 +2291,12 @@ namespace massif {
          * has no cosh, hence the exponentials.
          */
         vec3 terrainNormal(float stepMetres) {
+            // A SKIRT (z marked negative by the attribute bake): a vertical crack-filling wall, whose
+            // fragments all share one ground position. Sampling the DEM per fragment there bands it
+            // vertically; it keeps the normal of the edge it hangs from.
+            if (v_normal.z < 0.0) {
+                return normalize(vec3(v_normal.xy, -v_normal.z));
+            }
             if (u_demValid < 0.5) {
                 return normalize(v_normal);
             }
@@ -2403,6 +2418,12 @@ namespace massif {
          * has no cosh, hence the exponentials.
          */
         vec3 terrainNormal(float stepMetres) {
+            // A SKIRT (z marked negative by the attribute bake): a vertical crack-filling wall, whose
+            // fragments all share one ground position. Sampling the DEM per fragment there bands it
+            // vertically; it keeps the normal of the edge it hangs from.
+            if (v_normal.z < 0.0) {
+                return normalize(vec3(v_normal.xy, -v_normal.z));
+            }
             if (u_demValid < 0.5) {
                 return normalize(v_normal);
             }

@@ -34,6 +34,7 @@
 #include "utils/Log.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "components/TerrainOptions.h"
+#include "components/FogOptions.h"
 #include "rastertiles/TerrariumElevationDataDecoder.h"
 #include "rastertiles/MapBoxElevationDataDecoder.h"
 
@@ -269,6 +270,32 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainBackground(int r, int g, int b, int a)
         _terrainOptions->setBackgroundColor(massif::Color(static_cast<unsigned char>(r), static_cast<unsigned char>(g),
                                                           static_cast<unsigned char>(b), static_cast<unsigned char>(a)));
     }
+}
+
+/**
+ * The frame's haze. A panorama draws its own aerial perspective in the surface shader, over a
+ * distance it chooses, so the SDK's fog on top of that is a second wash nobody asked for. ANDed with
+ * the style, so switching it off here cannot be re-enabled by a style.
+ */
+EMSCRIPTEN_KEEPALIVE void massifSetFogEnabled(int enabled) {
+    if (_MapView && _MapView->getOptions()->getFogOptions()) {
+        _MapView->getOptions()->getFogOptions()->setEnabled(enabled != 0);
+    }
+}
+
+/**
+ * 0 off, 1 look, 2 first person. First person is the one a panorama wants: a drag turns the view
+ * about the CAMERA on both axes and the position never moves, which is a mouse in a first person
+ * game rather than a map being spun about a point on the ground.
+ */
+EMSCRIPTEN_KEEPALIVE void massifSetFreeRoamMode(int mode) {
+    if (!_MapView) {
+        return;
+    }
+    massif::FreeRoamMode::FreeRoamMode modes[] = { massif::FreeRoamMode::FREE_ROAM_MODE_OFF,
+                                                   massif::FreeRoamMode::FREE_ROAM_MODE_LOOK,
+                                                   massif::FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON };
+    _MapView->getOptions()->setFreeRoamMode(modes[mode < 0 || mode > 2 ? 0 : mode]);
 }
 
 EMSCRIPTEN_KEEPALIVE void massifSetSurfaceShader(const char* source) {

@@ -140,6 +140,9 @@
   // and nothing else. ?ink=normals is the old one, kept so the two can be compared in one build.
   const inkMode = query.get('ink') ?? 'depth';
 
+  // No SDK fog: the surface shader draws the aerial perspective itself, over its own distance, so
+  // the frame's haze on top of it is a second wash. ?fog=1 puts it back.
+  module.ccall('massifSetFogEnabled', null, ['number'], [query.get('fog') === '1' ? 1 : 0]);
   // Paper, not transparent: see massifSetTerrainBackground. ?background=0 turns it off to see the
   // state it fixes.
   if (query.get('background') !== '0') {
@@ -177,6 +180,20 @@
   const setCamera = (rotation, tilt) => module.ccall('massifSetPanoramaCamera', null,
     ['number', 'number', 'number', 'number', 'number', 'number'],
     [LON, LAT, num('zoom', 13), rotation, tilt, num('elevation', 50)]);
+
+  // AFTER the camera is placed. First person changes what moving the camera MEANS - setTilt and
+  // setMapRotation turn the view in place rather than orbiting a focus point - so switching it on
+  // first left massifSetPanoramaCamera aiming at nothing (focus z -12232).
+  // ?roam=0 restores the map gestures, ?roam=1 is the orbiting 'look' mode.
+  // ?roam=2 is FIRST PERSON - a drag turns the view about the camera and the position never moves.
+  // OPT-IN, not the default: switching the camera model moves the eye, and massifSetPanoramaCamera
+  // does not yet co-operate with it - in either order the eye lands below the ground looking into a
+  // wall of skirts (focus z -328 setting it after, -12232 before). The mode itself works; placing
+  // the camera under it is what still needs doing.
+  if (query.has('roam')) {
+    module.ccall('massifSetFreeRoamMode', null, ['number'], [num('roam', 2)]);
+    setCamera(num('rotation', 0), num('tilt', 4));
+  }
 
   // Driving surface for experiments: set a parameter, sweep it, or read the camera, from a script or
   // the console. No rebuild, no device.

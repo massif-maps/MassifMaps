@@ -214,6 +214,18 @@ int main() {
         // leaves every cached mesh unstitched - which is why setting it at runtime measured as 0
         // pixels and the steps between levels stayed exactly where they were.
         terrainOptions->setTileEdgeStitchingEnabled(queryNumber("tileEdgeStitching", 1) != 0);
+        // AT INIT as well. Several TerrainOptions setters do not invalidate what has already been
+        // built or culled, so a value written after the map is running measures as 0 pixels - which
+        // has now been true of meshResolution, tileEdgeStitching and viewDistance in turn. Anything
+        // that decides the shape of the world is set here, before anything reads it.
+        const double viewDistance = queryNumber("viewDistance", 0);
+        if (viewDistance > 0) {
+            terrainOptions->setViewDistance(static_cast<float>(viewDistance));
+        }
+        const double exaggeration = queryNumber("exaggeration", 0);
+        if (exaggeration > 0) {
+            terrainOptions->setExaggeration(static_cast<float>(exaggeration));
+        }
         _MapView->getOptions()->setTerrainOptions(terrainOptions);
         _terrainOptions = terrainOptions;
     }
@@ -384,6 +396,17 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
         _terrainOptions->setMeshCacheSize(static_cast<int>(value));
     } else if (key == "sharedGround") {
         _terrainOptions->setSharedGroundEnabled(value != 0);
+    } else if (key == "exaggeration") {
+        _terrainOptions->setExaggeration(value);
+    } else if (key == "viewDistance") {
+        // How far the map is drawn AT LEAST, metres. The factor rule is proportional to the
+        // camera's height over the cosine of the angle to the horizon, so from a summit the far
+        // ranges can fall outside it - which reads as a horizon with nothing behind it.
+        _terrainOptions->setViewDistance(value);
+    } else if (key == "viewDistanceMax") {
+        _terrainOptions->setViewDistanceMax(value);
+    } else if (key == "viewDistanceFactor") {
+        _terrainOptions->setViewDistanceFactor(value);
     } else if (key == "tileEdgeStitching") {
         _terrainOptions->setTileEdgeStitchingEnabled(value != 0);
     }

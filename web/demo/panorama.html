@@ -120,7 +120,9 @@
     meshResolution: num('meshResolution', 512),
     // Init-time too: a stitched mesh is a different mesh, and the cache holds the one it was built
     // as. Setting this after the fact changed 0 pixels.
-    tileEdgeStitching: num('tileEdgeStitching', 1) };
+    tileEdgeStitching: num('tileEdgeStitching', 1),
+    viewDistance: num('viewDistance', 173000),
+    exaggeration: num('exaggeration', 1) };
 
   const { default: Module } = await import('./massif-demo.mjs');
   const module = await Module({ canvas: document.getElementById('map') });
@@ -181,7 +183,14 @@
     sharedGround: 0,
     // ON. It was off, and the breaks between tiles at different levels are exactly what it exists
     // to close - a skirt hides the gap but not the step in the surface across it.
-    tileEdgeStitching: num('tileEdgeStitching', 1)
+    tileEdgeStitching: num('tileEdgeStitching', 1),
+    // The reference renders true; 1 is the SDK default too, so this is here to be compared rather
+    // than because it needs changing.
+    exaggeration: num('exaggeration', 1),
+    // HOW FAR THE PANORAMA REACHES. The factor rule is the camera's height over the cosine of the
+    // angle to the horizon, so from high up the far ranges can fall outside it and the horizon ends
+    // up with nothing behind it. The reference's far plane is 173 km, so ask for the same.
+    viewDistance: num('viewDistance', 173000)
   };
 
   // ?look=geothree is the REFERENCE PIPELINE, ported term for term rather than approximated:
@@ -407,17 +416,22 @@
     ['s', 'uAmbient', 0, 1, 0.01, 'light on a slope facing away'],
     ['s', 'uRidgeInkStrength', 0, 20, 0.1, 'crest ink drawn by the surface pass'],
     ['s', 'uRidgeInkSpan', 20, 400, 10, 'crest span, m'],
-    ['s', 'uRidgeInkThreshold', 0, 0.5, 0.005, 'crest threshold']
+    ['s', 'uRidgeInkThreshold', 0, 0.5, 0.005, 'crest threshold'],
+    ['t', 'exaggeration', 0.5, 2.5, 0.025, 'vertical exaggeration'],
+    ['t', 'viewDistance', 20000, 300000, 5000, 'how far the map is drawn, m']
   ];
   const panel = document.getElementById('panel');
   const link = document.createElement('a');
   const setParam = (scope, name, value) => {
-    if (scope === 'ink') { globalThis.ink(name, value); } else { globalThis.surface(name, value); }
+    if (scope === 'ink') { globalThis.ink(name, value); }
+    else if (scope === 't') { globalThis.terrain(name, value); }
+    else { globalThis.surface(name, value); }
   };
   const refreshLink = () => {
     const next = new URLSearchParams(query);
     for (const [scope, name] of CONTROLS) {
-      next.set(scope + '.' + name, String(scope === 'ink' ? INK[name] : SURFACE[name]));
+      const from = scope === 'ink' ? INK : scope === 't' ? TERRAIN : SURFACE;
+      next.set(scope + '.' + name, String(from[name]));
     }
     next.set('elevation', String(Math.round(eyeMetres)));
     link.href = location.pathname + '?' + next.toString();
@@ -463,7 +477,7 @@
       title.textContent = head;
       panel.append(title);
     }
-    const value = scope === 'ink' ? INK[name] : SURFACE[name];
+    const value = (scope === 'ink' ? INK : scope === 't' ? TERRAIN : SURFACE)[name];
     slider(panel, name + ' - ' + hint, value, min, max, step, (next) => setParam(scope, name, next));
   }
   panel.append(link);

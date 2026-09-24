@@ -2310,8 +2310,12 @@ namespace massif {
             if (v_normal.z < 0.0) {
                 return normalize(vec3(v_normal.xy, -v_normal.z));
             }
+            // NO MESH-NORMAL FALLBACK. Returning normalize(v_normal) here was the pre-per-fragment
+            // shading, so a tile without an elevation texture yet drew in a visibly different style
+            // and the picture appeared to change shader as it loaded. Flat is the honest answer to
+            // "no height data": the tile shades as ground until its texture arrives.
             if (u_demValid < 0.5) {
-                return normalize(v_normal);
+                return vec3(0.0, 0.0, 1.0);
             }
             vec2 texelInternal = u_demOriginSize.zw * u_demInvTexSize;
             float stepTexels = (stepMetres > 0.0 ? max(stepMetres / max(u_demMetersPerTexel, 0.0001), 1.0) : 1.0);
@@ -2437,8 +2441,12 @@ namespace massif {
             if (v_normal.z < 0.0) {
                 return normalize(vec3(v_normal.xy, -v_normal.z));
             }
+            // NO MESH-NORMAL FALLBACK. Returning normalize(v_normal) here was the pre-per-fragment
+            // shading, so a tile without an elevation texture yet drew in a visibly different style
+            // and the picture appeared to change shader as it loaded. Flat is the honest answer to
+            // "no height data": the tile shades as ground until its texture arrives.
             if (u_demValid < 0.5) {
-                return normalize(v_normal);
+                return vec3(0.0, 0.0, 1.0);
             }
             vec2 texelInternal = u_demOriginSize.zw * u_demInvTexSize;
             float stepTexels = (stepMetres > 0.0 ? max(stepMetres / max(u_demMetersPerTexel, 0.0001), 1.0) : 1.0);

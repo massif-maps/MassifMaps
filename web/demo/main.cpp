@@ -138,7 +138,14 @@ int main() {
     int maxZoom = static_cast<int>(queryNumber("maxzoom", 19));
     auto dataSource = std::make_shared<massif::HTTPTileDataSource>(minZoom, maxZoom, source);
 
-    if (isRasterSource(source)) {
+    // ?source=none adds NO tile layer at all, which a panorama needs: a draped raster or vector
+    // layer paints the terrain itself, so with one in the scene the surface shader's output is
+    // covered and every surface parameter reads as a no-op. Measured: with a raster source, setting
+    // uShadeStrength and uSlopeShade to 0 or to 1.5 both changed 33 pixels (the HUD), and turning
+    // the ink off left a flat sheet of paper - the picture was the post-process alone.
+    if (source == "none") {
+        // nothing
+    } else if (isRasterSource(source)) {
         _MapView->getLayers()->add(std::make_shared<massif::RasterTileLayer>(dataSource));
     } else {
         std::shared_ptr<massif::MBVectorTileDecoder> decoder;

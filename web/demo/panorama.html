@@ -83,7 +83,11 @@
   const DEM = query.get('terrain') ??
     'https://download.mapterhorn.com/planet.pmtiles';
 
-  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13) };
+  // NO TILE LAYER by default. A draped raster or vector layer paints the terrain itself, so the
+  // surface shader's output never reaches the screen and every surface parameter reads as a no-op -
+  // which is how a post-process tuned to be the whole picture got mistaken for a shading bug.
+  // ?source=<url> puts one back.
+  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13), source: 'none' };
 
   const { default: Module } = await import('./massif-demo.mjs');
   const module = await Module({ canvas: document.getElementById('map') });
@@ -99,7 +103,11 @@
   const INK = {
     uIntensity: 1, uOutlineWidth: 1, uHorizonBoost: 1, uDepthThreshold: 1,
     // The depth-only outline's own: gain scales the laplacian, power is what makes the line thin.
-    uOutlineGain: 40, uOutlinePower: 0.6,
+    // Retuned once the surface pass was actually visible (?source=none). At 40/0.6 the operator was
+    // not drawing lines at all: it darkened whole regions, which is where the grey wash and the dark
+    // mid-distance band came from. It had to be that strong because a draped tile layer was covering
+    // the shaded surface, so the post-process was the entire picture.
+    uOutlineGain: 8, uOutlinePower: 1.5,
     uCreaseStrength: 0, uCreaseThreshold: 0.12,
     uRidgeStrength: 2, uRidgeThreshold: 0.05, uRidgeGroundSpan: 90,
     uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
@@ -116,8 +124,10 @@
   const SURFACE = {
     uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35,
     uHaze: 0, uHazeDistance: 60000, uDebugView: num('debug', 0),
-    // The ridge ink, now drawn by the surface pass at full resolution.
-    uRidgeInkStrength: 60, uRidgeInkSpan: 120, uRidgeInkThreshold: 0.002
+    // The ridge ink, drawn by the surface pass at full resolution. OFF: at every strength tried it
+    // draws blobs rather than crests - the laplacian over a 120 m span aliases against the DEM texel
+    // grid - and the depth outline already draws the interior folds. ?s.uRidgeInkStrength=1 to look.
+    uRidgeInkStrength: 0, uRidgeInkSpan: 120, uRidgeInkThreshold: 0.15
   };
   const TERRAIN = {
     normalSampleDistance: num('normalSampleDistance', 90),

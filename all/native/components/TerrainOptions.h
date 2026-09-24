@@ -291,6 +291,25 @@ namespace massif {
         void setMeshResolution(int meshResolution);
 
         /**
+         * Returns the distance geo-three's terrain LOD subdivides at.
+         * @return Mercator metres at zoom 20, or 0 while the SDK's own rule is in use. The default is 0.
+         */
+        float getSubdivideDistance() const;
+        /**
+         * Cuts and meshes the terrain the way geo-three's webapp does (LODFrustum and
+         * MaterialHeightShader.getGeometry), so the two can render the same picture:
+         *
+         *  - a tile at zoom z is subdivided while the camera is closer to its centre than
+         *    distance * 2^(20 - z) Mercator metres - geo-three's desktop value is 70 - with no tile
+         *    budget. setMaxZoom is its maximum level: the DEM's maximum plus its overzoom of 2.
+         *  - a tile's mesh is MeshResolution cells per edge up to zoom 12, halved per level above
+         *    it and never under 16, without the usual cap of 96.
+         *  - the heights are read bilinearly off the DEM, not averaged over a box of cells.
+         * @param distance Mercator metres at zoom 20, or 0 for the SDK's own rule.
+         */
+        void setSubdivideDistance(float distance);
+
+        /**
          * Returns the resolution the elevation node field is built at.
          * @return Node field cells per tile edge, or 0 to follow MeshResolution. The default is 0.
          */
@@ -1094,6 +1113,7 @@ namespace massif {
         std::atomic<float> _autoFlattenDuration;
         std::atomic<float> _autoFlattenRiseDuration;
         std::atomic<int> _meshResolution;
+        std::atomic<float> _subdivideDistance;
         std::atomic<int> _surfaceNodeResolution;
         std::atomic<int> _postProcessDownscale;
         std::atomic<bool> _tileEdgeStitchingEnabled;

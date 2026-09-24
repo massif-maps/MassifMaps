@@ -76,6 +76,7 @@ namespace massif {
         _surfaceResolution(32),
         _gridSizeHint(256),
         _maxDataZoom(0),
+        _bilinearSurface(false),
         _neighbourPrefetch(true),
         _version(1),
         _dataVersion(1),
@@ -166,6 +167,20 @@ namespace massif {
         return _maxDataZoom.load();
     }
 
+    bool ElevationManager::isBilinearSurface() const {
+        return _bilinearSurface.load();
+    }
+
+    void ElevationManager::setBilinearSurface(bool bilinear) {
+        if (_bilinearSurface.exchange(bilinear) != bilinear) {
+            tilesChanged();
+        }
+    }
+
+    float ElevationManager::sampleSurfaceHeight(const ElevationTileGrid& grid, double internalX, double internalY) const {
+        return (_bilinearSurface.load() ? grid.sampleHeight(internalX, internalY) : grid.sampleNodeHeight(internalX, internalY));
+    }
+
     void ElevationManager::setMaxDataZoomCap(int maxZoom) {
         int value = std::max(0, std::min(maxZoom, Const::MAX_SUPPORTED_ZOOM_LEVEL));
         if (_maxDataZoom.exchange(value) != value) {
@@ -235,7 +250,7 @@ namespace massif {
         if (!grid) {
             return 0.0;
         }
-        return grid->sampleNodeHeight(wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
+        return sampleSurfaceHeight(*grid, wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
     }
 
     bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height) const {
@@ -255,7 +270,7 @@ namespace massif {
         // ancestor, so it can succeed and still hand back a height off a DEM several levels too
         // coarse - and a caller differentiating two of these cannot otherwise tell.
         resolvedZoom = grid->getTile().getZoom();
-        height = grid->sampleNodeHeight(wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
+        height = sampleSurfaceHeight(*grid, wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
         return true;
     }
 
@@ -703,7 +718,7 @@ namespace massif {
             if (!cachedGrid) {
                 return 0.0;
             }
-            return cachedGrid->sampleNodeHeight(wrappedX, internalY) * exaggeration * getDisplayScale(internalY);
+            return sampleSurfaceHeight(*cachedGrid, wrappedX, internalY) * exaggeration * getDisplayScale(internalY);
         };
 
         // Conservative display-space search interval. Use the largest latitude scale along the ray

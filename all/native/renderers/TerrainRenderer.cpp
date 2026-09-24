@@ -91,6 +91,7 @@ namespace massif {
         int gridSize = 0;
         std::shared_ptr<TileMesh> mesh;
         unsigned int lastUsed = 0; // _meshCacheClock value of the last pass that drew this mesh
+        bool bilinearHeights = false; // read off the DEM rather than the box-averaged node field
     };
 
     TerrainRenderer::TerrainRenderer() :
@@ -743,9 +744,10 @@ namespace massif {
         // Keyed on the camera and the elevation version, so it is recomputed exactly when it would
         // differ.
         unsigned int elevationVersion = elevationManager->getVersion();
+        float subdivideDistance = terrainOptions->getSubdivideDistance();
         {
             std::lock_guard<std::mutex> lock(_visibleTilesMutex);
-            if (_visibleTilesValid && _visibleTilesMVP == viewState.getModelviewProjectionMat() && _visibleTilesElevationVersion == elevationVersion) {
+            if (_visibleTilesValid && _visibleTilesMVP == viewState.getModelviewProjectionMat() && _visibleTilesElevationVersion == elevationVersion && _visibleTilesSubdivideDistance == subdivideDistance) {
                 tiles = _visibleTilesCache;
                 return;
             }
@@ -769,6 +771,11 @@ namespace massif {
             std::lock_guard<std::mutex> lock(_visibleTilesMutex);
             maxZoom = std::min(Const::MAX_SUPPORTED_ZOOM_LEVEL, _budgetMaxZoom + 1);
         }
+        // geo-three's cut has no budget: its levels are the distance rule's and setMaxZoom's alone.
+        if (subdivideDistance > 0) {
+            maxZoom = Const::MAX_SUPPORTED_ZOOM_LEVEL;
+            maxVisibleTiles = std::numeric_limits<int>::max();
+        }
         // The app's own ceiling, which is what makes the height field SETTLE rather than keep
         // refining under everything anchored to it - see TerrainOptions::setMaxZoom.
         int zoomCap = terrainOptions->getMaxZoom();
@@ -786,7 +793,7 @@ namespace massif {
         }
         for (;;) {
             tiles.clear();
-            calculateVisibleTiles(viewState, elevationManager, MapTile(0, 0, 0, 0), maxZoom, tiles);
+            calculateVisibleTiles(viewState, elevationManager, MapTile(0, 0, 0, 0), maxZoom, subdivideDistance, tiles);
             if (static_cast<int>(tiles.size()) <= maxVisibleTiles || maxZoom <= 0) {
                 break;
             }
@@ -797,6 +804,7 @@ namespace massif {
         _budgetMaxZoom = maxZoom;
         _visibleTilesMVP = viewState.getModelviewProjectionMat();
         _visibleTilesElevationVersion = elevationVersion;
+        _visibleTilesSubdivideDistance = subdivideDistance;
         _visibleTilesCache = tiles;
         _visibleTilesValid = true;
     }
@@ -950,6 +958,8 @@ namespace massif {
             // The same condition ensureSurfaceAttribs uses for its fixed-scale path, so the mesh
             // density and the normal sampling agree about which regime they are in.
             bool fixedScaleNormals = terrainOptions->getNormalSampleDistance() > 0 && !_tileTransformer->isSpherical();
+            bool referenceMesh = terrainOptions->getSubdivideDistance() > 0;
+            bool bilinearHeights = elevationManager->isBilinearSurface();
             // NO ELEVATION DATA, NO TILE.
             //
             // buildTileMesh starts from heights.assign(..., 0) and only fills them if it has a grid,
@@ -970,7 +980,7 @@ namespace massif {
             if (fixedScaleNormals && !grid && tile.getZoom() >= minZoom) {
                 continue;
             }
-            int gridSize = calculateMeshGridSize(tile, grid, meshResolution, fixedScaleNormals);
+            int gridSize = calculateMeshGridSize(tile, grid, meshResolution, fixedScaleNormals, referenceMesh);
 #if MASSIF_VT_RENDER_STATS
             if (gridSize <= 1) { VT_STAT_INC(terrainMeshGrid1); }
             else if (gridSize <= 4) { VT_STAT_INC(terrainMeshGrid4); }
@@ -988,7 +998,7 @@ namespace massif {
             // Rebuild the mesh only when its inputs actually changed. This avoids rebuilding
             // every cached mesh each time a new elevation tile arrives during loading.
             auto it = _meshCache.find(std::make_pair(tileId, cacheKey));
-            if (it == _meshCache.end() || it->second.grid != grid || it->second.exaggeration != exaggeration || it->second.gridSize != gridSize) {
+            if (it == _meshCache.end() || it->second.grid != grid || it->second.exaggeration != exaggeration || it->second.gridSize != gridSize || it->second.bilinearHeights != bilinearHeights) {
                 if (it == _meshCache.end() && static_cast<int>(_meshCache.size()) >= meshCacheSize) {
                     evictLeastRecentlyUsedMeshes(pass, meshCacheSize);
                 }
@@ -996,10 +1006,11 @@ namespace massif {
                 entry.grid = grid;
                 entry.exaggeration = exaggeration;
                 entry.gridSize = gridSize;
+                entry.bilinearHeights = bilinearHeights;
 #if MASSIF_VT_RENDER_STATS
                 auto buildStart = std::chrono::steady_clock::now();
 #endif
-                entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize, edgeMask);
+                entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize, edgeMask, bilinearHeights);
                 // CARRY THE REFINED NORMALS ACROSS THE REBUILD.
                 //
                 // A rebuild here is almost always "a finer DEM arrived for a tile already on
@@ -1873,7 +1884,7 @@ namespace massif {
         }
     }
 
-    void TerrainRenderer::calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, int maxZoom, std::vector<MapTile>& tiles) const {
+    void TerrainRenderer::calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, int maxZoom, float subdivideDistance, std::vector<MapTile>& tiles) const {
         if (tile.getZoom() > Const::MAX_SUPPORTED_ZOOM_LEVEL) {
             return;
         }
@@ -1919,6 +1930,12 @@ namespace massif {
         // so a planar threshold here stopped the pre-pass mesh a level short (18-globe.md).
         double worldWidth = (viewState.getProjectionSurface() ? viewState.getProjectionSurface()->getWorldWidth() : static_cast<double>(Const::WORLD_SIZE));
         bool subDivide = zoomDistance < worldWidth * Const::SQRT_2;
+        if (subdivideDistance > 0) {
+            // geo-three's LODFrustum: the straight-line distance from the eye to the centre, in
+            // Mercator metres, against a threshold that doubles per level coarser.
+            double metres = cglib::length(lodCenter - viewState.getCameraPos()) * Const::EARTH_CIRCUMFERENCE / worldWidth;
+            subDivide = metres < subdivideDistance * std::pow(2.0, 20.0 - tile.getZoom());
+        }
 
         // No point in subdividing beyond the resolution of the elevation data + mesh grid
         int maxUsefulZoom = Const::MAX_SUPPORTED_ZOOM_LEVEL;
@@ -1944,14 +1961,14 @@ namespace massif {
 
         if (subDivide) {
             for (int n = 0; n < 4; n++) {
-                calculateVisibleTiles(viewState, elevationManager, tile.getChild(n), maxZoom, tiles);
+                calculateVisibleTiles(viewState, elevationManager, tile.getChild(n), maxZoom, subdivideDistance, tiles);
             }
         } else {
             tiles.push_back(tile);
         }
     }
 
-    int TerrainRenderer::calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution, bool fixedScaleNormals) const {
+    int TerrainRenderer::calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution, bool fixedScaleNormals, bool referenceMesh) const {
         // THESE TWO CASES ARE NOT THE SAME THING, and treating them alike drew whole tiles as a
         // single flat quad.
         //
@@ -1972,6 +1989,12 @@ namespace massif {
         }
         if (!grid) {
             return MIN_MESH_GRID_SIZE;
+        }
+        if (referenceMesh) {
+            // geo-three's getGeometry: the same cells per edge up to REFERENCE_MESH_FULL_ZOOM, so a
+            // near tile is no denser on the ground than a far one, and no DEM or 96 cap.
+            int size = meshResolution >> std::max(0, tile.getZoom() - REFERENCE_MESH_FULL_ZOOM);
+            return std::max(size, REFERENCE_MIN_MESH_GRID_SIZE);
         }
 
         // The pre-pass mesh must never be FINER than the draped tile surfaces: a coarser draped
@@ -2004,7 +2027,7 @@ namespace massif {
         return std::max(gridSize, MIN_MESH_GRID_SIZE);
     }
 
-    std::shared_ptr<TerrainRenderer::TileMesh> TerrainRenderer::buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, int edgeMask) const {
+    std::shared_ptr<TerrainRenderer::TileMesh> TerrainRenderer::buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, int edgeMask, bool bilinearHeights) const {
         auto mesh = std::make_shared<TileMesh>();
 
         int tileMask = (1 << tile.getZoom()) - 1;
@@ -2038,7 +2061,8 @@ namespace massif {
                 double localPerInternal = (spherical ? sphericalLocalPerInternal(tile, internalY) : localFromInternal);
                 for (int gx = 0; gx <= gridSize; gx++) {
                     double internalX = originX + (static_cast<double>(gx) / gridSize) * size;
-                    double meters = grid->sampleNodeHeight(internalX, internalY); // the drawn surface, which this depth stands in for
+                    // the drawn surface, which this depth stands in for - or geo-three's bilinear read
+                    double meters = (bilinearHeights ? grid->sampleHeight(internalX, internalY) : grid->sampleNodeHeight(internalX, internalY));
                     // The height in INTERNAL units is the same on either surface (18-globe.md);
                     // only the internal-to-tile-local factor differs, and the plane's is written
                     // out rather than derived so its depth mesh keeps the values it had.

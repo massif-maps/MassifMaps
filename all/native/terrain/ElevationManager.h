@@ -102,6 +102,15 @@ namespace massif {
         void setMaxDataZoomCap(int maxZoom);
 
         /**
+         * Whether the surface is the DEM read bilinearly rather than its node field. geo-three's
+         * mesh is (TerrainOptions::setSubdivideDistance), and every display-height query has to
+         * answer off the surface that is drawn, or a camera standing on a summit stands inside it.
+         * Changing it bumps the version.
+         */
+        bool isBilinearSurface() const;
+        void setBilinearSurface(bool bilinear);
+
+        /**
          * Sets the terrain surface resolution (mesh cells per tile edge). Every decoded grid
          * carries a node field built for it - the DEM box-filtered to one mesh cell
          * (ElevationNodeField) - which is what the surface is displaced from and what every
@@ -308,6 +317,7 @@ namespace massif {
     private:
 
         void tilesChanged();
+        float sampleSurfaceHeight(const ElevationTileGrid& grid, double internalX, double internalY) const;
         void bumpGlobalVersion();
         void notifyDataChanged() const;
         double wrapInternalX(double internalX) const;
@@ -341,6 +351,7 @@ namespace massif {
         std::atomic<int> _surfaceResolution;      // terrain mesh cells per tile edge
         mutable std::atomic<int> _gridSizeHint;   // texels per elevation tile edge, from the last decoded grid
         std::atomic<int> _maxDataZoom;            // setMaxDataZoomCap; 0 = the source maximum
+        std::atomic<bool> _bilinearSurface;       // setBilinearSurface
         std::atomic<bool> _neighbourPrefetch;
         mutable std::atomic<unsigned int> _version;
         mutable std::atomic<float> _maxSeenElevation;

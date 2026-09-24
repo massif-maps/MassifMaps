@@ -40,6 +40,7 @@ namespace massif {
         // bench here was run at. 32 leaves draped content visibly floating over the ground; 128
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
         _meshResolution(64),
+        _subdivideDistance(0.0f),
         // 0: the node field follows the mesh, which is what every caller got before it could be
         // asked for separately. See setSurfaceNodeResolution for why the two are worth splitting.
         _surfaceNodeResolution(0),
@@ -309,6 +310,20 @@ namespace massif {
         int resolution = std::min(1024, std::max(2, meshResolution));
         if (_meshResolution.exchange(resolution) != resolution) {
             notifyOptionChanged("MeshResolution");
+        }
+    }
+
+    float TerrainOptions::getSubdivideDistance() const {
+        return _subdivideDistance.load();
+    }
+
+    void TerrainOptions::setSubdivideDistance(float distance) {
+        float value = std::max(0.0f, distance);
+        if (_subdivideDistance.exchange(value) != value) {
+            if (_elevationManager) {
+                _elevationManager->setBilinearSurface(value > 0);
+            }
+            notifyOptionChanged("SubdivideDistance");
         }
     }
 

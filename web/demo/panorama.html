@@ -117,7 +117,10 @@
     terrainMaxZoom: num('terrainMaxZoom', 15),
     // Read by main() at init, which is the only time the mesh grid can be set: the meshes and the
     // tile transformer both capture it when they are built. 512 is the reference's geometrySize.
-    meshResolution: num('meshResolution', 512) };
+    meshResolution: num('meshResolution', 512),
+    // Init-time too: a stitched mesh is a different mesh, and the cache holds the one it was built
+    // as. Setting this after the fact changed 0 pixels.
+    tileEdgeStitching: num('tileEdgeStitching', 1) };
 
   const { default: Module } = await import('./massif-demo.mjs');
   const module = await Module({ canvas: document.getElementById('map') });
@@ -342,7 +345,11 @@
     if (!refReady()) { return false; }
     try {
       refFrame.contentWindow.setPosition({ lat: LAT, lon: LON, altitude: eyeMetres });
-      refFrame.contentWindow.setAzimuth(lastRotation);
+      // NEGATED. Their azimuth is a HEADING and ours is a map ROTATION, which is its opposite -
+      // turning the view right turns the map left. Measured by correlating the two skylines at this
+      // viewpoint: +11.22 gives -0.105, -11.22 gives +0.381. Passing it straight through is why the
+      // two panes were looking at different mountains.
+      refFrame.contentWindow.setAzimuth(-lastRotation);
       return true;
     } catch (error) { return false; }
   };
@@ -447,6 +454,10 @@
   panel.append(eyeHead);
   slider(panel, 'elevation, m above ground', eyeMetres, 0, 4000, 10, setEye);
   slider(panel, 'field of view', num('fov', 46), 5, 120, 1, setFov);
+  // Their pitch cannot be set from outside - only setPosition and setAzimuth are on their window -
+  // so the vertical is matched from OUR side. Measured at this viewpoint their skyline sits about
+  // 20 px of 470 higher than ours at tilt 4, which at a 24 degree vertical field of view is ~1 deg.
+  slider(panel, 'tilt', lastTilt, -10, 30, 0.25, (next) => setCamera(lastRotation, next));
   let section = '';
   for (const [scope, name, min, max, step, hint] of CONTROLS) {
     const head = scope === 'ink' ? 'outline (post-process)' : 'surface (shading)';

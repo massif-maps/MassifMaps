@@ -210,6 +210,10 @@ int main() {
         // measured as 0 pixels, and the panorama was quietly running at this 128 while the bench
         // reported 256. Raising the clamp alone changed nothing for the same reason.
         terrainOptions->setMeshResolution(static_cast<int>(queryNumber("meshResolution", WEB_TERRAIN_MESH_RESOLUTION)));
+        // AT INIT for the same reason: a mesh is built once and cached, so flipping stitching later
+        // leaves every cached mesh unstitched - which is why setting it at runtime measured as 0
+        // pixels and the steps between levels stayed exactly where they were.
+        terrainOptions->setTileEdgeStitchingEnabled(queryNumber("tileEdgeStitching", 1) != 0);
         _MapView->getOptions()->setTerrainOptions(terrainOptions);
         _terrainOptions = terrainOptions;
     }

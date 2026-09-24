@@ -361,7 +361,11 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
     if (key == "normalSampleDistance") {
         _terrainOptions->setNormalSampleDistance(value);
     } else if (key == "meshResolution") {
+        // CLAMPED TO 256 by setMeshResolution, which is why asking for 512 here reads back as no
+        // change at all. surfaceNodeResolution is the surface's own grid and goes to 512.
         _terrainOptions->setMeshResolution(static_cast<int>(value));
+    } else if (key == "surfaceNodeResolution") {
+        _terrainOptions->setSurfaceNodeResolution(static_cast<int>(value));
     } else if (key == "postProcessDownscale") {
         _terrainOptions->setPostProcessDownscale(static_cast<int>(value));
     } else if (key == "meshCacheSize") {

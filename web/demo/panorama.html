@@ -156,6 +156,7 @@
     normalSampleDistance: num('normalSampleDistance', 90),
     meshResolution: num('meshResolution', 256),
     meshCacheSize: num('meshCacheSize', 640),
+    surfaceNodeResolution: num('surfaceNodeResolution', 0),
     sharedGround: 0,
     tileEdgeStitching: 0
   };
@@ -176,14 +177,14 @@
   // NOT its exageration of 1.6225, by request: the terrain is rendered true.
   if (query.get('look') === 'geothree') {
     Object.assign(INK, {
-      // CALIBRATED, not copied. The operator is now theirs term for term, but the gain is a
-      // multiplier on a depth DIFFERENCE, and the two buffers do not agree on what a difference is:
-      // theirs is a linearised hardware depth over its own near..far, ours a packed distance over a
-      // panorama's far plane. Measured on this viewpoint, their 11 (halved again by
-      // BlendFunction.AVERAGE) lands about 18x too low here - at 11 the picture is nearly blank, at
-      // 60 it reads like the reference. Their 0.23 power transfers unchanged.
-      uOutlineGain: 60, uOutlinePower: 0.23, uOutlineFloor: 0, uOutlineWidth: 1,
-      uIntensity: 1, uDepthNear: 10, uDepthFar: 173000,
+      // THEIR NUMBERS, unchanged: depthMultiplier 11, depthBiais 0.23, outlineStroke 1, and
+      // uIntensity 0.5 for the BlendFunction.AVERAGE that halves the effect against the input.
+      // A previous revision "calibrated" the gain to 60 because 11 looked faint - that was
+      // calibrating against OUR old render, not against the reference, which is light: captured
+      // side by side at this viewpoint the reference is mean luminance 243 with 1.7% of it below
+      // mid-grey, and gain 60 gave 127 and 39%. At 11 it is 177 and 17%.
+      uOutlineGain: 11, uOutlinePower: 0.23, uOutlineFloor: 0, uOutlineWidth: 1,
+      uIntensity: 0.5, uDepthNear: 10, uDepthFar: 173000,
       // No distance fade: the reference has none, and a fade is the first thing that makes two
       // renders diverge at exactly the range this is being compared over.
       uInkFar: 1, uInkFalloff: 1,
@@ -192,7 +193,11 @@
       uHorizonBoost: 1, uHorizonWidth: 3
     });
     Object.assign(SURFACE, { uShadeStrength: 0, uSlopeShade: 0, uRidgeInkStrength: 0 });
-    TERRAIN.meshResolution = 512;
+    // Its geometrySize is 512. WE CANNOT MATCH IT: setMeshResolution clamps to 256, and the
+    // surface mesh reads getMeshResolution (TerrainRenderer.cpp:878), not surfaceNodeResolution -
+    // setting the latter to 512 changed 0 pixels. Left at the default; raising the ceiling is an
+    // SDK change, and it is the reason our folds are softer than the reference's.
+    TERRAIN.meshResolution = 256;
   }
 
   // Any uniform can be overridden from the query string, so a tuned look is a LINK rather than a

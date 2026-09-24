@@ -35,6 +35,8 @@
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "components/TerrainOptions.h"
 #include "components/FogOptions.h"
+#include "components/SkyOptions.h"
+#include "graphics/Bitmap.h"
 #include "rastertiles/TerrariumElevationDataDecoder.h"
 #include "rastertiles/MapBoxElevationDataDecoder.h"
 
@@ -252,9 +254,11 @@ EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float 
         return;
     }
     _MapView->getOptions()->setTiltRange(massif::MapRange(0.0f, 90.0f));
-    // moveCameraTo puts the CAMERA at the position rather than the focus point, which is what a
-    // first-person view needs - the eye goes on the summit, not the ground under it. z is the
-    // elevation in metres.
+    // moveCameraTo places the CAMERA at the position, z included - it translates focus and camera
+    // together by the camera-to-target vector rather than seating a focus point - so the eye goes on
+    // the summit rather than on the ground under it, which is what first person means. focusLift is
+    // the OTHER way to do this (the app's), and the two must not both be used or the eye is lifted
+    // twice: this hook owns the height here, and massifSetFocusLift is left for comparing them.
     massif::MapPos wgs84(lon, lat, elevationMeters);
     massif::MapPos pos = _MapView->getOptions()->getBaseProjection()->fromWgs84(wgs84);
     pos.setZ(elevationMeters);
@@ -303,6 +307,44 @@ EMSCRIPTEN_KEEPALIVE void massifSetFreeRoamMode(int mode) {
                                                    massif::FreeRoamMode::FREE_ROAM_MODE_LOOK,
                                                    massif::FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON };
     _MapView->getOptions()->setFreeRoamMode(modes[mode < 0 || mode > 2 ? 0 : mode]);
+}
+
+/**
+ * No sky, the way the app does it (peakFinder.ts applyAtmosphere). THREE things draw a band above
+ * the horizon and each one alone leaves a gradient: the shader sky, the legacy sky BITMAP (whose
+ * switch is a transparent skyColor - any real colour there generates a gradient), and the
+ * BackgroundRenderer's plane, which falls back to the SDK's own block pattern when no style has an
+ * opinion, so it has to be nulled rather than coloured. With all three off, the clear colour is
+ * what shows.
+ */
+EMSCRIPTEN_KEEPALIVE void massifSetSkyEnabled(int enabled, int r, int g, int b) {
+    if (!_MapView) {
+        return;
+    }
+    std::shared_ptr<massif::Options> options = _MapView->getOptions();
+    if (std::shared_ptr<massif::SkyOptions> sky = options->getSkyOptions()) {
+        sky->setEnabled(enabled != 0);
+    }
+    if (enabled == 0) {
+        massif::Color paper(static_cast<unsigned char>(r), static_cast<unsigned char>(g),
+                            static_cast<unsigned char>(b), 255);
+        options->setSkyColor(massif::Color(0, 0, 0, 0));
+        options->setBackgroundBitmap(std::shared_ptr<massif::Bitmap>());
+        options->setClearColor(paper);
+    }
+}
+
+/**
+ * How high the eye stands above the ground, in metres - the panorama's one viewpoint control.
+ *
+ * NOT a camera z. With a terrain attached the renderer OWNS the focus height: it sits the focus on
+ * the ground every frame, so an altitude written into the focus position lasts until the next one.
+ * focusLift is ADDED on top of that rule, so it survives and means the same thing at every zoom.
+ */
+EMSCRIPTEN_KEEPALIVE void massifSetFocusLift(float metres) {
+    if (_terrainOptions) {
+        _terrainOptions->setFocusLift(metres < 0.0f ? 0.0f : metres);
+    }
 }
 
 EMSCRIPTEN_KEEPALIVE void massifSetSurfaceShader(const char* source) {

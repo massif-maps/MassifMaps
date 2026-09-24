@@ -6,6 +6,17 @@
   #map { width: 100vw; height: 100vh; display: block; }
   #hud { position: fixed; top: 8px; left: 8px; font: 12px/1.4 monospace; background: #fffc;
          padding: 6px 8px; white-space: pre; }
+  /* The tuning panel. Hidden from a capture (?panel=0) so a screenshot is the render and nothing
+     else, and every control writes the query string back so a tuned look is a LINK. */
+  #panel { position: fixed; top: 8px; right: 8px; width: 250px; max-height: 92vh; overflow: auto;
+           font: 11px/1.5 monospace; background: #fffe; padding: 8px; }
+  #panel h4 { margin: 8px 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  #panel label { display: block; margin-bottom: 4px; }
+  #panel .row { display: flex; align-items: center; gap: 6px; }
+  #panel input[type=range] { flex: 1; min-width: 0; }
+  #panel .val { width: 52px; text-align: right; }
+  #panel a { display: block; margin-top: 8px; word-break: break-all; }
+  body.no-panel #panel { display: none; }
   /* Present in the DOM even when invisible, so --dump-dom reads it without disturbing a screenshot. */
   #log { position: fixed; bottom: 0; left: 0; right: 0; max-height: 34vh; overflow: auto; margin: 0;
          font: 10px/1.3 monospace; background: #000c; color: #0f0; padding: 6px; display: none; }
@@ -13,6 +24,7 @@
 </style>
 <canvas id="map"></canvas>
 <div id="hud"></div>
+<div id="panel"></div>
 <pre id="log"></pre>
 <script>
   // A headless run has no console to read, and the SDK reports a shader that failed to compile
@@ -106,7 +118,7 @@
     // this operator returns everywhere is NOT an artefact - it is the hillshade, and the reference
     // leans on the same thing (geo-three: gain 11, power 0.23). uOutlineFloor turns it into a pure
     // edge detector instead; 0 keeps the reference look. ?ink.uOutlineFloor=0.05 to see the other.
-    uOutlineGain: 40, uOutlinePower: 0.6, uOutlineFloor: 0,
+    uOutlineGain: 11, uOutlinePower: 0.6, uOutlineFloor: 0,
     // The skyline, which a depth operator cannot draw: the sky is not in the depth buffer, so the
     // ridge against it comes out the weight of an interior fold. Its own width, so it is a fatter
     // stroke and not just a darker one.
@@ -114,7 +126,10 @@
     uCreaseStrength: 0, uCreaseThreshold: 0.12,
     uRidgeStrength: 2, uRidgeThreshold: 0.05, uRidgeGroundSpan: 90,
     uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
-    uInkDistance: 50000, uInkShadeCap: 0, uDebugView: num('debug', 0),
+    // The far fade goes to a FLOOR, not to zero: the ridges a peak finder names are the ones past
+    // uInkDistance, and the old 1 - dist/uInkDistance erased them exactly there.
+    uInkDistance: 50000, uInkFar: 0.45, uInkFalloff: 1.6,
+    uInkShadeCap: 0, uDebugView: num('debug', 0),
     uMetersPerUnit: 40075016.68558 / (1 << 20), uSilhouetteGate: 865,
     // No haze: the far ranges are the point of a panorama, and fading them into the paper is what
     // hid them. ?ink.uHaze=0.65 puts the aerial perspective back.
@@ -194,9 +209,16 @@
   const setFov = (degrees) => massif.set(optionsHandle, 'fieldOfViewY', degrees);
   setFov(num('fov', 46));
 
-  const setCamera = (rotation, tilt) => module.ccall('massifSetPanoramaCamera', null,
-    ['number', 'number', 'number', 'number', 'number', 'number'],
-    [LON, LAT, num('zoom', 13), rotation, tilt, num('elevation', 50)]);
+  let lastRotation = num('rotation', 0);
+  let lastTilt = num('tilt', 4);
+  let eyeMetres = num('elevation', 50);
+  const setCamera = (rotation, tilt) => {
+    lastRotation = rotation;
+    lastTilt = tilt;
+    module.ccall('massifSetPanoramaCamera', null,
+      ['number', 'number', 'number', 'number', 'number', 'number'],
+      [LON, LAT, num('zoom', 13), rotation, tilt, eyeMetres]);
+  };
 
   // AFTER the camera is placed. First person changes what moving the camera MEANS - setTilt and
   // setMapRotation turn the view in place rather than orbiting a focus point - so switching it on
@@ -207,10 +229,29 @@
   // does not yet co-operate with it - in either order the eye lands below the ground looking into a
   // wall of skirts (focus z -328 setting it after, -12232 before). The mode itself works; placing
   // the camera under it is what still needs doing.
+  // FIRST PERSON is ?roam=2, and it is the control scheme a panorama wants - a drag turns the view
+  // about the EYE and the position never moves, rather than swinging the camera around a point on
+  // the ground. STILL OPT-IN, because the eye cannot yet be PLACED under it: measured at this
+  // viewpoint (451 m, tilt 4), switching the mode on before moveCameraTo leaves focus z -15379 and
+  // after it -623, and both put the camera under the terrain. The same placement in map mode is
+  // correct, so the camera z is fine and the mode switch is what moves the eye. ?roam=1 is the
+  // orbiting 'look' mode.
   if (query.has('roam')) {
     module.ccall('massifSetFreeRoamMode', null, ['number'], [num('roam', 2)]);
-    setCamera(num('rotation', 0), num('tilt', 4));
   }
+
+  // No sky: a panorama is read against the paper, and every band above the horizon is something
+  // drawn. ?sky=1 puts it back.
+  if (query.get('sky') !== '1') {
+    module.ccall('massifSetSkyEnabled', null, ['number', 'number', 'number', 'number'], [0, 255, 255, 255]);
+  }
+
+  // The eye's height, the panorama's one viewpoint control. Re-places the camera rather than
+  // touching focusLift: massifSetPanoramaCamera owns the height here, and using both lifts twice.
+  const setEye = (metres) => {
+    eyeMetres = Math.max(0, metres);
+    setCamera(lastRotation, lastTilt);
+  };
 
   // Driving surface for experiments: set a parameter, sweep it, or read the camera, from a script or
   // the console. No rebuild, no device.
@@ -227,6 +268,85 @@
     debug: (view) => { globalThis.ink('uDebugView', view); globalThis.surface('uDebugView', view); },
     ready: () => true
   });
+
+
+  // THE TUNING PANEL. Every number that decides the look, on a slider, writing the query string back
+  // as it moves - so a look that works is a LINK to paste rather than a list of values to retype,
+  // and the same link reproduces it headless. ?panel=0 hides it for a capture.
+  if (query.get('panel') === '0') { document.body.classList.add('no-panel'); }
+  const CONTROLS = [
+    ['ink', 'uOutlineGain', 0, 80, 1, 'gain'],
+    ['ink', 'uOutlinePower', 0.05, 2, 0.01, 'power - low draws the slope wash, high draws lines only'],
+    ['ink', 'uOutlineFloor', 0, 0.2, 0.002, 'floor - cuts the slope wash, leaves the steps'],
+    ['ink', 'uIntensity', 0, 1, 0.01, 'overall ink'],
+    ['ink', 'uOutlineWidth', 1, 4, 1, 'line width, texels'],
+    ['ink', 'uHorizonWidth', 1, 8, 1, 'skyline stroke width'],
+    ['ink', 'uHorizonBoost', 0, 1, 0.01, 'skyline strength'],
+    ['ink', 'uInkDistance', 10000, 300000, 1000, 'where the far fade is complete, m'],
+    ['ink', 'uInkFar', 0, 1, 0.01, 'what is LEFT of a line at that distance'],
+    ['ink', 'uInkFalloff', 0.2, 4, 0.05, 'fade shape - above 1 holds off then drops'],
+    ['s', 'uShadeStrength', 0, 2, 0.01, 'sun term'],
+    ['s', 'uSlopeShade', 0, 2, 0.01, 'sun-independent slope term'],
+    ['s', 'uAmbient', 0, 1, 0.01, 'light on a slope facing away'],
+    ['s', 'uRidgeInkStrength', 0, 20, 0.1, 'crest ink drawn by the surface pass'],
+    ['s', 'uRidgeInkSpan', 20, 400, 10, 'crest span, m'],
+    ['s', 'uRidgeInkThreshold', 0, 0.5, 0.005, 'crest threshold']
+  ];
+  const panel = document.getElementById('panel');
+  const link = document.createElement('a');
+  const setParam = (scope, name, value) => {
+    if (scope === 'ink') { globalThis.ink(name, value); } else { globalThis.surface(name, value); }
+  };
+  const refreshLink = () => {
+    const next = new URLSearchParams(query);
+    for (const [scope, name] of CONTROLS) {
+      next.set(scope + '.' + name, String(scope === 'ink' ? INK[name] : SURFACE[name]));
+    }
+    next.set('elevation', String(Math.round(eyeMetres)));
+    link.href = location.pathname + '?' + next.toString();
+    link.textContent = 'link to this look';
+  };
+  const slider = (parent, label, value, min, max, step, onInput) => {
+    const wrap = document.createElement('label');
+    wrap.textContent = label;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const input = document.createElement('input');
+    Object.assign(input, { type: 'range', min, max, step, value });
+    const readout = document.createElement('span');
+    readout.className = 'val';
+    readout.textContent = String(value);
+    input.addEventListener('input', () => {
+      const next = parseFloat(input.value);
+      readout.textContent = String(next);
+      onInput(next);
+      refreshLink();
+    });
+    row.append(input, readout);
+    wrap.append(row);
+    parent.append(wrap);
+    return input;
+  };
+  // The eye first: it is the control a panorama is actually about, and the one the app exposes.
+  const eyeHead = document.createElement('h4');
+  eyeHead.textContent = 'viewpoint';
+  panel.append(eyeHead);
+  slider(panel, 'elevation, m above ground', eyeMetres, 0, 4000, 10, setEye);
+  slider(panel, 'field of view', num('fov', 46), 5, 120, 1, setFov);
+  let section = '';
+  for (const [scope, name, min, max, step, hint] of CONTROLS) {
+    const head = scope === 'ink' ? 'outline (post-process)' : 'surface (shading)';
+    if (head !== section) {
+      section = head;
+      const title = document.createElement('h4');
+      title.textContent = head;
+      panel.append(title);
+    }
+    const value = scope === 'ink' ? INK[name] : SURFACE[name];
+    slider(panel, name + ' - ' + hint, value, min, max, step, (next) => setParam(scope, name, next));
+  }
+  panel.append(link);
+  refreshLink();
 
   const hud = document.getElementById('hud');
   const logView = document.getElementById('log');

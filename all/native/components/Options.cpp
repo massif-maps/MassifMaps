@@ -62,7 +62,7 @@ namespace massif {
         _userInput(true),
         _panningSpeedMode(PanningSpeedMode::PANNING_SPEED_MODE_ANCHORED),
         _freeRoamMode(FreeRoamMode::FREE_ROAM_MODE_OFF),
-        _freeRoamLookSensitivity(90.0f),
+        _freeRoamLookSensitivity(360.0f),
         _freeRoamMoveSpeed(1.0f),
         _kineticPan(true),
         _kineticRotation(true),

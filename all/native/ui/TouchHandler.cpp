@@ -486,29 +486,20 @@ namespace massif {
             float dx = screenPos.getX() - _prevScreenPos1.getX();
             float dy = screenPos.getY() - _prevScreenPos1.getY();
 
-            // THE ANGLE THE DRAG ACTUALLY SUBTENDS, not a rate per inch.
+            // A FRACTION OF THE VIEWPORT, not a rate per inch - which is the reference's rule
+            // (camera-controls turns 2 PI per element width) and is what a first person look wants.
             //
-            // A look is optics: the ray through the pixel under the cursor has a fixed angle from
-            // the view axis, so turning by the DIFFERENCE between the two rays' angles is what
-            // keeps the ground under the cursor under the cursor - which is what the reference and
-            // the app both do, and what a per-inch rate cannot do at any sensitivity because it
-            // does not know the field of view. It also made the look feel fast: at a 24 degree
-            // field of view a whole screen of drag should turn the view 24 degrees, and the rate
-            // rule turned it by whatever the sensitivity said.
+            // The obvious alternative, turning by the angle the drag SUBTENDS, was tried and is
+            // wrong for a look even though it is exactly right for a move: it holds the ground
+            // under the cursor, so the view turns only as far as the lens is wide. Measured with a
+            // 250 px drag on a 1000 px canvas it gave 15.2 degrees, and the same drag in the
+            // reference gives about six times that. A look is not a drag on the world; the world
+            // being dragged is what the MOVE gesture is for.
             //
-            // tan of the half angle is linear in the pixel offset, so the angle at a pixel is
-            // atan(offset / halfExtent * tanHalf).
-            float halfWidth = viewState.getHalfWidth(), halfHeight = viewState.getHalfHeight();
-            float tanHalfY = std::tan(viewState.getHalfFOVY() * Const::DEG_TO_RAD);
-            float tanHalfX = (halfHeight > 0 ? tanHalfY * halfWidth / halfHeight : tanHalfY);
-            auto subtended = [](float from, float to, float centre, float halfExtent, float tanHalf) {
-                if (halfExtent <= 0) {
-                    return 0.0f;
-                }
-                float a0 = std::atan((from - centre) / halfExtent * tanHalf);
-                float a1 = std::atan((to - centre) / halfExtent * tanHalf);
-                return static_cast<float>((a1 - a0) * Const::RAD_TO_DEG);
-            };
+            // Per viewport rather than per inch so it does not depend on the screen's density, and
+            // per axis so a square drag turns the same amount either way.
+            float viewWidth = viewState.getWidth(), viewHeight = viewState.getHeight();
+            float lookDegrees = _options->getFreeRoamLookSensitivity();
 
             // Sideways turns the heading, left-drag turning the view right as dragging the world
             // does. About the CAMERA, not the focus: rotating about the focus swings the camera
@@ -516,9 +507,9 @@ namespace massif {
             if (dx != 0) {
                 std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
                 CameraRotationEvent cameraEvent;
-                float lookDelta = subtended(_prevScreenPos1.getX(), screenPos.getX(), halfWidth, halfWidth, tanHalfX);
-                if (_options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
-                    lookDelta = dx * _options->getFreeRoamLookSensitivity() / dpi;
+                float lookDelta = dx * _options->getFreeRoamLookSensitivity() / dpi;
+                if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON && viewWidth > 0) {
+                    lookDelta = dx / viewWidth * lookDegrees;
                 }
                 cameraEvent.setRotationDelta(lookDelta);
                 if (projectionSurface && _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
@@ -539,12 +530,12 @@ namespace massif {
                 if (_options->isTiltGestureReversed()) {
                     scale = -scale;
                 }
-                // The vertical half of the same optics. Tilt 90 is straight down, so a drag that
+                // The vertical half of the same rule. Tilt 90 is straight down, so a drag that
                 // brings the sky into the screen is a NEGATIVE delta - the sign the rate rule
                 // already had, kept.
                 float tiltDelta = dy * scale;
-                if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
-                    tiltDelta = -subtended(_prevScreenPos1.getY(), screenPos.getY(), halfHeight, halfHeight, tanHalfY);
+                if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON && viewHeight > 0) {
+                    tiltDelta = -(dy / viewHeight * lookDegrees);
                     if (_options->isTiltGestureReversed()) {
                         tiltDelta = -tiltDelta;
                     }

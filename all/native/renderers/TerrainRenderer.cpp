@@ -1674,17 +1674,32 @@ namespace massif {
                     }
                 }
             }
-            std::size_t drawCount = (skipSkirts && mesh->gridIndexCount > 0 ? mesh->gridIndexCount : mesh->indices.size());
+            std::size_t gridCount = (mesh->gridIndexCount > 0 ? mesh->gridIndexCount : mesh->indices.size());
+            std::size_t skirtCount = (skipSkirts ? 0 : mesh->indices.size() - gridCount);
+            const GLvoid* indexBase = nullptr;
             if (mesh->buffer && mesh->buffer->hasGeometry()) {
                 glBindBuffer(GL_ARRAY_BUFFER, mesh->buffer->getVertexVBO());
                 glVertexAttribPointer(aCoord, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->buffer->getIndexVBO());
-                glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(drawCount), GL_UNSIGNED_SHORT, nullptr);
             } else {
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
                 glVertexAttribPointer(aCoord, 3, GL_FLOAT, GL_FALSE, 0, mesh->vertices.data());
-                glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(drawCount), GL_UNSIGNED_SHORT, mesh->indices.data());
+                indexBase = mesh->indices.data();
+            }
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(gridCount), GL_UNSIGNED_SHORT, indexBase);
+            // THE SKIRTS ARE CULLED, the grid is not. A skirt faces out of its tile, so it is drawn
+            // only from the side a crack would be seen from. Unculled, the wall hanging off a near
+            // tile's FAR edge stood in front of the far tile wherever the ground drops away across
+            // the edge, and drew a pale band along the tile boundary.
+            if (skirtCount > 0) {
+                GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+                glEnable(GL_CULL_FACE);
+                glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(skirtCount), GL_UNSIGNED_SHORT,
+                               reinterpret_cast<const GLvoid*>(reinterpret_cast<const unsigned short*>(indexBase) + gridCount));
+                if (!cullEnabled) {
+                    glDisable(GL_CULL_FACE);
+                }
             }
         }
 
@@ -2469,10 +2484,11 @@ namespace massif {
                 west.push_back(static_cast<unsigned short>(g * rowSize));
                 east.push_back(static_cast<unsigned short>(g * rowSize + gridSize));
             }
-            addSkirt(south, false);
-            addSkirt(north, true);
-            addSkirt(west, true);
-            addSkirt(east, false);
+            // Wound to face OUT of the tile, which the skirt draw in renderTiles culls on.
+            addSkirt(south, true);
+            addSkirt(north, false);
+            addSkirt(west, false);
+            addSkirt(east, true);
         }
 
         return mesh;

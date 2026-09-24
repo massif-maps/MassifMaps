@@ -113,7 +113,10 @@
   // surface shader's output never reaches the screen and every surface parameter reads as a no-op -
   // which is how a post-process tuned to be the whole picture got mistaken for a shading bug.
   // ?source=<url> puts one back.
-  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13), source: 'none',
+  // ?look=drape needs a tile LAYER, so the source has to be decided here - before the module
+  // loads and reads it. See the look handling below for what that render is.
+  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13),
+    source: query.get('look') === 'drape' ? './paper.png' : 'none',
     terrainMaxZoom: num('terrainMaxZoom', 15),
     // Read by main() at init, which is the only time the mesh grid can be set: the meshes and the
     // tile transformer both capture it when they are built. 512 is the reference's geometrySize.
@@ -193,6 +196,32 @@
     // up with nothing behind it. The reference's far plane is 173 km, so ask for the same.
     viewDistance: num('viewDistance', 173000)
   };
+
+  // ?look=drape is THE RENDER FROM BEFORE THE PER-FRAGMENT NORMALS, kept because it is the one
+  // that was approved and because it is the control the other two are judged against.
+  //
+  // Its whole picture is the post-process. A draped raster layer paints the terrain, so the
+  // surface shader contributes nothing at all and the outline operator's slope term - the thing a
+  // gradient magnitude returns everywhere - IS the shading. That is why it needed gain 40: it was
+  // not drawing lines, it was drawing the relief. It has no per-fragment DEM normals in it, so it
+  // has none of the shading seams they introduce, and no per-tile DEM level shows in it either.
+  //
+  // It is not a target to go back to - it cannot light a surface, haze it or shade it from the sun,
+  // because there is no surface in it - but until the normal continuity is fixed it is the only
+  // configuration here with a continuous picture, and comparing against it says whether a change
+  // helped.
+  if (query.get('look') === 'drape') {
+    Object.assign(INK, {
+      uOutlineGain: 40, uOutlinePower: 0.6, uOutlineFloor: 0, uOutlineWidth: 1,
+      uIntensity: 1, uInkDistance: 50000, uInkFar: 0, uInkFalloff: 1,
+      // OUR operator, not the reference's: divide by the depth rather than measure over a camera
+      // range. uDepthFar 0 selects it.
+      uDepthNear: 0, uDepthFar: 0,
+      uHorizonBoost: 1, uHorizonWidth: 3
+    });
+    // The surface is under the drape and invisible; these are what it had.
+    Object.assign(SURFACE, { uShadeStrength: 0.18, uSlopeShade: 0.22, uRidgeInkStrength: 0 });
+  }
 
   // ?look=geothree is the REFERENCE PIPELINE, ported term for term rather than approximated:
   //

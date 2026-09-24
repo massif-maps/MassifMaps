@@ -1,0 +1,175 @@
+# The panorama bench: how to run it, and the two problems still open
+
+For whoever picks up the peak-finder render next. Read the "How not to waste a day" section
+before you form a theory — most of the time lost on this has gone to measuring the wrong thing.
+
+## Running it
+
+Serve the SDK's `web/` directory on 8099 (any static server; it is already running in most
+sessions). The page is `demo/panorama.html`.
+
+Rebuild after touching any C++:
+
+```
+cd /Volumes/dev/carto/mobile-sdk
+EMSDK=/Volumes/dev/carto/emsdk python3 scripts/build-web.py --profile full --build-demo \
+  --cmake-options "CMAKE_CXX_FLAGS=-DMASSIF_VT_RENDER_STATS=1"
+```
+
+Incremental builds are about 2.5 minutes. `MASSIF_VT_RENDER_STATS` gates the `RenderStats`
+counters and their once-a-second `Log::Infof`, which the page mirrors into the DOM (`?log=1`).
+
+The shaders are GENERATED from alpimaps, not copied. After editing
+`app/mapModules/terrain/reliefShaders.ts`:
+
+```
+node web/demo/gen-relief-shaders.mjs
+```
+
+No rebuild needed for that — it writes `web/demo/relief-shaders.js`, which the page imports.
+**Do not put a backtick in a GLSL comment**: the generator scans the template literal and a
+backtick silently truncates the shader (it took a "EOF while in a comment" compile error to find).
+
+### Capturing headlessly
+
+`demo/bench.mjs` drives Chromium over CDP with no dependencies:
+
+```
+node demo/bench.mjs --url "<url>" --width 1000 --height 470 --wait 15000 --out /tmp/a.png
+```
+
+`--step` runs a script: `wait:<ms>`, `shot:<path>`, `eval:<expr>`. One page load can shoot, pan
+and shoot again. Console output, exceptions and the network log come back on stdout. Terrain
+needs 15-20 s to settle at most viewpoints; anything shorter captures a load frame.
+
+Useful globals on the page: `camera`, `look(rotation, tilt)`, `fov(deg)`, `ink(name, value)`,
+`surface(name, value)`, `terrain(name, value)`, `debug(view)`.
+
+## The three looks
+
+`?look=` selects a whole configuration. They are not variations on a theme; they are three
+different renderers.
+
+- **`drape`** — the render from before per-fragment normals, and the one that was approved. A
+  draped raster layer paints the terrain, so the surface shader contributes nothing and the
+  outline operator's slope term IS the shading. Continuous, no seams, but it cannot light, haze
+  or sun-shade anything because there is no surface in it. **Use it as the control**: if a change
+  is meant to fix seams, it has to close the gap to this.
+- **`geothree`** — geo-three's pipeline ported term for term: flat-lit surface, outline over a
+  linear depth across 10 m .. 173 km, power 0.23, stroke 1, no exaggeration.
+- **(default)** — the current pipeline: per-fragment DEM normals in the surface pass plus the
+  depth outline.
+
+`?split=1` puts geo-three's own build in a frame beside ours on one camera. It is served from
+this origin (`web/geo-three` -> `geo-three/example`) because the reference takes its camera from
+`window.setPosition`/`setAzimuth` and cross-origin it can be shown but not steered.
+**The split is not yet correctly synchronised** — at azimuth 0 with the same position the two
+panes show different terrain, and no field of view correlates. Its `setPosition` does not place
+the eye the way the page assumes. Fixing that is worth doing first if you intend to compare.
+
+## Debug views
+
+`&debug=N`, on the surface shader. They only work when the surface is actually visible — see
+below.
+
+| N | shows |
+|---|---|
+| 9 | mesh density per tile, one colour per bucket |
+| 10 | **DEM zoom per tile**, one hue per level. The most useful view here. |
+| 13 | tile boundaries over the real shading |
+| 20 | the DEM uv a fragment resolves to; blue means outside the texture |
+| 21 | metres per texel |
+| 22 | which normal path a fragment took |
+
+## How not to waste a day
+
+Four failure modes have each cost hours. All of them look like "the change had no effect".
+
+1. **A tile layer hides the surface entirely.** With a draped raster or vector layer in the
+   scene the surface shader's output never reaches the screen, and every surface parameter reads
+   as a no-op — `uShadeStrength` at 0 and at 1.5 both changed 33 pixels (the HUD). The panorama
+   page defaults to `source=none` for this reason. Every debug view is dead in that state too.
+2. **Many `TerrainOptions` setters do not invalidate what is already built or culled.** Measured
+   as 0 pixels changed at runtime: `meshResolution`, `tileEdgeStitching`, `viewDistance`,
+   `meshCacheSize`. The page passes these through `MASSIF_DEFAULTS` so `main()` applies them at
+   init. If a terrain knob "does nothing", check that before concluding anything.
+3. **`setMeshResolution` used to clamp at 256** (now 1024). Asking for 512 silently became no
+   change.
+4. **Verify the instrument before trusting it.** A whole round of conclusions came from
+   `debug=22` while `uDebugView` was not reaching the shader at all. Diff two captures and count
+   changed pixels; do not read screenshots for anything quantitative.
+
+Measuring: compare captures with PIL and count non-identical pixels. A settled frame should be
+bit-identical across runs — if it is not, something is load-order dependent and that is its own
+bug. Luminance statistics (`mean`, `stdev`, fraction below mid-grey) are how the render gap is
+quantified; see below.
+
+## Open problem 1: seams between tiles
+
+**Symptom.** Creases and steps along tile boundaries. Reproduce at:
+
+```
+http://localhost:8099/demo/panorama.html?lat=45.17173&lon=5.72455&elevation=790&tilt=4&rotation=11.22&fov=24&zoom=13&t.postProcessDownscale=1&look=geothree
+```
+
+`&debug=13` confirms they follow tile boundaries; `&debug=10` shows why.
+
+**What is already known, with measurements.**
+
+- Edge stitching used to key on TILE zoom. Neighbours are usually at the same tile zoom, so the
+  mask was almost always zero and stitching on against off changed 97 pixels of 470000.
+- A tile's heights come from the DEM zoom it RESOLVED, which moves independently of its tile
+  zoom: one tile lands on its own grid, the neighbour on a cached ancestor covering sixteen times
+  the ground. `calculateEdgeMask` now takes the cut's resolved DEM zooms and uses the coarser of
+  the two differences per side. Instrumented: the mask now fires on **6150 of 8250 tiles**, DEM
+  zooms spanning **6..15**.
+- **That fix does not close the visible seams.** The render is bit-identical before and after,
+  and stitching on against off still moves 162 pixels. So the geometry was never what disagreed.
+- The mask is also widened from two bits a side to three (`EDGE_MAX_LEVELS` 3 -> 7), since
+  neighbours are measurably more than three levels apart.
+
+**Where to look next.** The seam is in the SHADING, not the geometry. Each tile binds its own
+elevation texture and `terrainNormal` (in the surface fragment prefix, `TerrainRenderer.cpp`)
+samples it per fragment. Two tiles on DEM z15 and z6 compute different normals along a shared
+edge however well their heights are stitched. Continuity of the per-fragment normal across a
+tile edge is the thing to fix — either by sampling a common level near edges, by making the
+neighbour's texture reachable, or by bounding how far apart adjacent tiles' DEM levels may be.
+
+## Open problem 2: the render is much darker than the reference
+
+**Symptom.** Side by side with geo-three at the same viewpoint:
+
+| | mean luminance | stdev | fraction below mid-grey |
+|---|---|---|---|
+| reference | 243 | 30 | 1.7% |
+| ours | 177 | 84 | 17% |
+
+Theirs is paper with thin lines; ours greys out.
+
+**What is already known.**
+
+- It is not the outline parameters. The gap survives using the reference's own numbers
+  (`depthMultiplier` 11, `depthBiais` 0.23, `outlineStroke` 1) on the ported operator.
+- It is not the field of view. Measured by rotating 10 degrees and cross-correlating skylines:
+  ours 61.0 degrees horizontal against the reference's 64.9 at the same nominal setting.
+- It is not exaggeration. The SDK defaults to 1.0; the reference's own default is 1.6225.
+- It is not `postProcessDownscale`.
+- With `s.uShadeStrength=0` and `s.uSlopeShade=0` the surface draws flat paper, so under
+  `look=geothree` **every bit of the grey is the ink pass**. `pow(relative * 11, 0.23)` turns a
+  very small gradient into ~0.37 of ink, so whatever the depth buffer feeds it decides the
+  picture.
+- `look=drape` does not have the problem, and it has no per-fragment normals in it.
+
+**Where to look next.** Most likely the same root cause as problem 1: per-fragment normals taken
+off nine different DEM levels across one view produce patchy shading that a reference sampling
+one consistent height texture does not have. Test the two together — a fix for the normal
+continuity should move both numbers, and if it moves neither they are genuinely separate.
+
+## Things deliberately not done
+
+- The reference's `exageration` of 1.6225 is not matched, by request.
+- The split's camera sync, as above.
+- The surface-pass ridge ink is off: at every strength tried it draws blobs rather than crests
+  (the laplacian aliases against the DEM texel grid).
+- Nothing in any of this is verified on device. The gesture changes in `TouchHandler` and
+  `Options` affect the app on device as well as this bench.

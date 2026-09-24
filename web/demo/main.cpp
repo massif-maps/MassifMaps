@@ -263,15 +263,18 @@ EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float 
         return;
     }
     _MapView->getOptions()->setTiltRange(massif::MapRange(0.0f, 90.0f));
-    // moveCameraTo places the CAMERA at the position, z included - it translates focus and camera
-    // together by the camera-to-target vector rather than seating a focus point - so the eye goes on
-    // the summit rather than on the ground under it, which is what first person means. focusLift is
-    // the OTHER way to do this (the app's), and the two must not both be used or the eye is lifted
-    // twice: this hook owns the height here, and massifSetFocusLift is left for comparing them.
-    massif::MapPos wgs84(lon, lat, elevationMeters);
+    // THE GROUND POSITION, and the height through focusLift - which is the app's way and the only
+    // one that survives in first person. MapRenderer holds the eye at cameraTerrainZ + focusLift
+    // every frame under FREE_ROAM_MODE_FIRST_PERSON (MapRenderer.cpp:1449), so a z written into the
+    // camera position is overwritten on the next frame and the eye drops to the ground - which is
+    // what put it inside a hillside in every earlier attempt at this.
+    massif::MapPos wgs84(lon, lat, 0.0);
     massif::MapPos pos = _MapView->getOptions()->getBaseProjection()->fromWgs84(wgs84);
-    pos.setZ(elevationMeters);
+    pos.setZ(0.0);
     _MapView->moveCameraTo(pos, zoom, rotation, tilt);
+    if (_terrainOptions) {
+        _terrainOptions->setFocusLift(elevationMeters < 0.0f ? 0.0f : elevationMeters);
+    }
 }
 
 /** Must be called BEFORE massifSetReliefShader: the layout is fixed when the effect is built. */

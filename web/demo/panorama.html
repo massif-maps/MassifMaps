@@ -264,6 +264,10 @@
   // horizon is a SMALL number - and the map's own tilt range clamps it, which is why the first
   // capture came back at 84.3 having been asked for 4. The hook widens the range and places the
   // CAMERA (not the focus point) at the viewpoint, which is what first-person means.
+  // FIRST PERSON FIRST, then the camera. This is the control scheme the panorama is about and the
+  // one the app uses: the position IS the eye, a drag turns the view about it, and the eye never
+  // moves. ?roam=0 restores the map gestures, ?roam=1 is the orbiting 'look' mode.
+  module.ccall('massifSetFreeRoamMode', null, ['number'], [num('roam', 2)]);
   module.ccall('massifSetPanoramaCamera', null,
     ['number', 'number', 'number', 'number', 'number', 'number'],
     [LON, LAT, num('zoom', 13), num('rotation', 0), num('tilt', 4), num('elevation', 50)]);
@@ -300,17 +304,6 @@
   // does not yet co-operate with it - in either order the eye lands below the ground looking into a
   // wall of skirts (focus z -328 setting it after, -12232 before). The mode itself works; placing
   // the camera under it is what still needs doing.
-  // FIRST PERSON is ?roam=2, and it is the control scheme a panorama wants - a drag turns the view
-  // about the EYE and the position never moves, rather than swinging the camera around a point on
-  // the ground. STILL OPT-IN, because the eye cannot yet be PLACED under it: measured at this
-  // viewpoint (451 m, tilt 4), switching the mode on before moveCameraTo leaves focus z -15379 and
-  // after it -623, and both put the camera under the terrain. The same placement in map mode is
-  // correct, so the camera z is fine and the mode switch is what moves the eye. ?roam=1 is the
-  // orbiting 'look' mode.
-  if (query.has('roam')) {
-    module.ccall('massifSetFreeRoamMode', null, ['number'], [num('roam', 2)]);
-  }
-
   // No sky: a panorama is read against the paper, and every band above the horizon is something
   // drawn. ?sky=1 puts it back.
   if (query.get('sky') !== '1') {
@@ -319,9 +312,12 @@
 
   // The eye's height, the panorama's one viewpoint control. Re-places the camera rather than
   // touching focusLift: massifSetPanoramaCamera owns the height here, and using both lifts twice.
+  // focusLift, not a camera re-placement: in first person the renderer reads it every frame, so
+  // this is the live control and nothing else has to move.
   const setEye = (metres) => {
     eyeMetres = Math.max(0, metres);
-    setCamera(lastRotation, lastTilt);
+    module.ccall('massifSetFocusLift', null, ['number'], [eyeMetres]);
+    syncRef();
   };
 
 

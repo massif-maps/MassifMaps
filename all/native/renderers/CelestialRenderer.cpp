@@ -344,6 +344,9 @@ namespace massif {
         // Depth-tested but not depth-writing: the map in front covers a sky object, and the object
         // never occludes anything itself.
         glEnable(GL_DEPTH_TEST);
+        // LEQUAL, not whatever the layer before left: the tile layers end on LESS, and an object parked
+        // at the far plane then lost to the cleared depth of the empty sky around it.
+        glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

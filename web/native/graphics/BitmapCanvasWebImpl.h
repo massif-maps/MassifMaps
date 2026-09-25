@@ -8,17 +8,22 @@
 #define _MASSIF_BITMAPCANVASWEBIMPL_H_
 
 #include "graphics/BitmapCanvas.h"
+#include "graphics/Color.h"
+
+#include <string>
 
 namespace massif {
 
     /**
-     * NOT IMPLEMENTED on the web: the browser's 2D text API is async and main-thread only, which
-     * this synchronous interface cannot reach. Only Text and BalloonPopup use it, so the web build
-     * does not carry them - every call warns once and returns an empty bitmap.
+     * The browser's own 2D canvas: an OffscreenCanvas where there is one (any thread, a worker
+     * included), a DOM canvas otherwise. Both are synchronous - text is measured, laid out and
+     * rasterized in the call, and read back with getImageData - so the synchronous interface holds.
+     * The fonts are the browser's: a font list names CSS families.
      */
     class BitmapCanvas::WebImpl : public BitmapCanvas::Impl {
     public:
         WebImpl(int width, int height);
+        virtual ~WebImpl();
 
         virtual void setDrawMode(DrawMode mode);
         virtual void setColor(const Color& color);
@@ -38,10 +43,16 @@ namespace massif {
         virtual std::shared_ptr<Bitmap> buildBitmap() const;
 
     private:
-        static void WarnUnsupported();
+        void applyPaint() const;
 
         const int _width;
         const int _height;
+        int _canvasId;
+        DrawMode _drawMode;
+        Color _color;
+        float _strokeWidth;
+        std::string _font;
+        float _fontSize;
     };
 
 }

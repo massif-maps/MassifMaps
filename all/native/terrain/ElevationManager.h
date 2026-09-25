@@ -282,6 +282,13 @@ namespace massif {
         virtual int getMaxDataZoom() const override;
         virtual bool intersectRay(const cglib::ray3<double>& ray, double& t) const override;
         /**
+         * Whether the terrain stands in the way between two display-space points, over the first
+         * maxFraction of the way from the first. Unlike intersectRay, the segment may climb: from a
+         * valley, the line of sight to a summit does, and a ridge between the two still hides it.
+         * Loaded elevation only.
+         */
+        bool isSegmentBlocked(const cglib::vec3<double>& from, const cglib::vec3<double>& to, double maxFraction) const;
+        /**
          * The tile must be in XYZ convention (y=0 north, same as vt::TileId).
          */
         virtual void getMinMaxDisplayHeight(const MapTile& tile, double& minZ, double& maxZ) const override;

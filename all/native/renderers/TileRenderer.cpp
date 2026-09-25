@@ -1723,10 +1723,13 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             }
         }
 
-        // The ray path lifts the target above the anchor by the same relative tolerance, so
-        // both occlusion paths answer the same question.
-        double rayTolerance = 0.005 + 0.5 * terrainOptions->getBillboardOcclusionTolerance();
-        auto rayTest = [state, elevationManager, cameraPos, rayTolerance](const cglib::vec3<double>& pos) -> bool {
+        // The SAME question the depth path answers (TerrainOcclusion::isBehind): is there terrain in
+        // front of the anchor nearer than 1 / (1 + tolerance) of its distance. The ray used to aim at
+        // a point lifted by half the tolerance times the distance instead - 8% at 0.15, some four
+        // degrees - which let a summit just behind a ridge through: a name entering from the side,
+        // where only this path answers, was shown, then hidden when the depth covering it landed.
+        double rayHitLimit = 1.0 / (1.0 + std::max(static_cast<double>(MIN_OCCLUSION_TOLERANCE), static_cast<double>(terrainOptions->getBillboardOcclusionTolerance())));
+        auto rayTest = [state, elevationManager, cameraPos, rayHitLimit](const cglib::vec3<double>& pos) -> bool {
             // Quantize the position for caching (roughly 4m grid)
             const double QUANT = 10.0;
             long long key = (static_cast<long long>(pos(0) * QUANT) * 73856093LL) ^ (static_cast<long long>(pos(1) * QUANT) * 19349663LL) ^ (static_cast<long long>(pos(2) * QUANT) * 83492791LL);
@@ -1738,11 +1741,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 }
             }
 
-            double dist = cglib::length(pos - cameraPos);
-            cglib::vec3<double> target = pos + cglib::vec3<double>(0, 0, dist * rayTolerance);
-            cglib::ray3<double> ray(cameraPos, target - cameraPos);
-            double t = 0;
-            bool occluded = elevationManager->intersectRay(ray, t) && t > 0 && t < 0.995;
+            // A segment, not intersectRay: that one ignores a rising ray, and from a valley every
+            // line of sight to a summit rises - so this path never hid a summit at all.
+            bool occluded = elevationManager->isSegmentBlocked(cameraPos, pos, rayHitLimit);
             {
                 std::lock_guard<std::mutex> lock(state->mutex);
                 state->results[key] = occluded;

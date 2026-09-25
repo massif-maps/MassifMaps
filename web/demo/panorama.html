@@ -589,6 +589,7 @@
     rows: num('peakRows', 1),
     minDistance: num('peakMinDistance', 1),
     size: num('peakSize', 13),
+    wrap: num('peakWrap', 0),
     persist: num('peakPersist', 10)
   };
   let rebuildPeaks = () => {};
@@ -625,7 +626,7 @@
       generation += 1;
       const css = peaksStyle({
         eyeElevation: (groundMetres ?? 0) + eyeMetres, minDistance: PEAK_STYLE.minDistance, persistPasses: PEAK_STYLE.persist,
-        textAngle: PEAK_STYLE.angle, maxRows: PEAK_STYLE.rows, textSize: PEAK_STYLE.size,
+        textAngle: PEAK_STYLE.angle, maxRows: PEAK_STYLE.rows, textSize: PEAK_STYLE.size, wrapWidth: PEAK_STYLE.wrap,
         pinTop: PEAK_STYLE.layout === 'top', band: PEAK_STYLE.band, topOffset: PEAK_STYLE.band, followSkyline: PEAK_STYLE.layout === 'skyline'
       })
         // The app's style names no face, so a device draws its system font; a browser has none, and
@@ -770,7 +771,7 @@
     if (query.get('look') === 'peakfinder') { next.set('paper', String(paperGrey)); }
     if (PEAKS) {
       next.set('peakLayout', PEAK_STYLE.layout);
-      for (const [name, key] of [['band', 'peakBand'], ['angle', 'peakAngle'], ['minDistance', 'peakMinDistance'], ['rows', 'peakRows'], ['size', 'peakSize']]) {
+      for (const [name, key] of [['band', 'peakBand'], ['angle', 'peakAngle'], ['minDistance', 'peakMinDistance'], ['rows', 'peakRows'], ['size', 'peakSize'], ['wrap', 'peakWrap']]) {
         next.set(key, String(PEAK_STYLE[name]));
       }
     }
@@ -862,6 +863,7 @@
     slider(panel, 'min distance between names, px', PEAK_STYLE.minDistance, 0, 30, 1, (next) => setPeak('minDistance', next));
     slider(panel, 'rows', PEAK_STYLE.rows, 1, 5, 1, (next) => setPeak('rows', next));
     slider(panel, 'text size', PEAK_STYLE.size, 8, 24, 0.5, (next) => setPeak('size', next));
+    slider(panel, 'wrap names longer than, px (0 never)', PEAK_STYLE.wrap, 0, 300, 5, (next) => setPeak('wrap', next));
   }
   panel.append(link, pfLink);
   refreshLink();

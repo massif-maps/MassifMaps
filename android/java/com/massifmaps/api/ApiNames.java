@@ -364,11 +364,11 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> FRAME_COUNT = MassifObject.key("frameCount");
     /** Returns the time of this map tile. */
     public static final MassifObject.Key<Long> FRAME_NR = MassifObject.key("frameNr");
-    /** Returns how fast a free roam drag turns the view. */
+    /** Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view. */
     public static final MassifObject.Key<Double> FREE_ROAM_LOOK_SENSITIVITY = MassifObject.key("freeRoamLookSensitivity");
     /** Returns the free roam mode. */
     public static final MassifObject.Key<String> FREE_ROAM_MODE = MassifObject.key("freeRoamMode");
-    /** Returns how far a first person move drag travels. */
+    /** Returns the first person move multiplier. */
     public static final MassifObject.Key<Double> FREE_ROAM_MOVE_SPEED = MassifObject.key("freeRoamMoveSpeed");
     /** Returns the green component of this map color. */
     public static final MassifObject.Key<Long> G = MassifObject.key("g");
@@ -627,6 +627,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> POSITION = MassifObject.key("position");
     /** Returns the altitude of a position-anchored object. */
     public static final MassifObject.Key<Double> POSITION_ALTITUDE = MassifObject.key("positionAltitude");
+    /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
+    public static final MassifObject.Key<Long> POST_PROCESS_DOWNSCALE = MassifObject.key("postProcessDownscale");
     /** Returns whether this layer goes through the post-process effect. */
     public static final MassifObject.Key<Boolean> POST_PROCESSED = MassifObject.key("postProcessed");
     /** Returns the postcode of the address. */
@@ -819,6 +821,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> STYLE_PARAMETERS = MassifObject.key("styleParameters");
     /** Returns the current style set used by the decoder. */
     public static final MassifObject.Key<MassifObject> STYLE_SET = MassifObject.key("styleSet");
+    /** Returns the distance geo-three's terrain LOD subdivides at. */
+    public static final MassifObject.Key<Double> SUBDIVIDE_DISTANCE = MassifObject.key("subdivideDistance");
     /** Returns the subdomains for {s} tag. The default is ["a", "b", "c", "d"]. */
     public static final MassifObject.Key<String> SUBDOMAINS = MassifObject.key("subdomains");
     /** Returns the sun altitude in degrees above the horizon. */
@@ -1020,6 +1024,7 @@ public final class ApiNames {
     public static final String METHOD_ADD_LOCALE = "addLocale";
     public static final String METHOD_ADD_VECTOR_DATA_SOURCE = "addVectorDataSource";
     public static final String METHOD_CALCULATE_ADDRESSES = "calculateAddresses";
+    public static final String METHOD_CALCULATE_HORIZON = "calculateHorizon";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
     public static final String METHOD_CLEAR = "clear";
     public static final String METHOD_CLEAR_TILE_CACHES = "clearTileCaches";
@@ -1050,13 +1055,17 @@ public final class ApiNames {
     public static final String METHOD_REMOVE_FEATURE = "removeFeature";
     public static final String METHOD_SCREEN_TO_MAP = "screenToMap";
     public static final String METHOD_SET = "set";
+    public static final String METHOD_SET_CIRCLE = "setCircle";
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
+    public static final String METHOD_SET_DIRECTION = "setDirection";
+    public static final String METHOD_SET_DIRECTIONS = "setDirections";
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_MAX_OVERZOOM_LEVEL = "setExternalDataSourceMaxOverzoomLevel";
     public static final String METHOD_SET_EXTERNAL_DATA_SOURCE_ZOOM_LEVEL_BIAS = "setExternalDataSourceZoomLevelBias";
     public static final String METHOD_SET_FLOAT_PARAMETER = "setFloatParameter";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
+    public static final String METHOD_SET_SEGMENTS = "setSegments";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
     public static final String METHOD_SET_SUN_POSITION_FROM_TIME = "setSunPositionFromTime";
@@ -1082,6 +1091,7 @@ public final class ApiNames {
     // --- kinds and spec types --------------------------------------------
 
     public static final String KIND_ASSETS = "assets";
+    public static final String KIND_CELESTIAL = "celestial";
     public static final String KIND_ELEMENT = "element";
     public static final String KIND_ELEMENTSTYLE = "elementstyle";
     public static final String KIND_FEATURE = "feature";
@@ -1097,6 +1107,8 @@ public final class ApiNames {
     public static final String TYPE_ASSETS_BUNDLE = "bundle";
     public static final String TYPE_ASSETS_DIR = "dir";
     public static final String TYPE_ASSETS_ZIP = "zip";
+    public static final String TYPE_CELESTIAL_ARC = "arc";
+    public static final String TYPE_CELESTIAL_SPRITE = "sprite";
     public static final String TYPE_ELEMENT_BALLOON = "balloon";
     public static final String TYPE_ELEMENT_LINE = "line";
     public static final String TYPE_ELEMENT_MARKER = "marker";
@@ -1115,6 +1127,7 @@ public final class ApiNames {
     public static final String TYPE_GEOMETRY_LINE = "line";
     public static final String TYPE_GEOMETRY_POINT = "point";
     public static final String TYPE_GEOMETRY_POLYGON = "polygon";
+    public static final String TYPE_LAYER_CELESTIAL = "celestial";
     public static final String TYPE_LAYER_COMPOSITE_VECTOR = "composite-vector";
     public static final String TYPE_LAYER_ELEMENTS = "elements";
     public static final String TYPE_LAYER_HILLSHADE = "hillshade";

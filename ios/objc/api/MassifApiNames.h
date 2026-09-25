@@ -364,11 +364,11 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFragmentShader;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFrameCount;
 /** Returns the time of this map tile. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFrameNr;
-/** Returns how fast a free roam drag turns the view. */
+/** Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFreeRoamLookSensitivity;
 /** Returns the free roam mode. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFreeRoamMode;
-/** Returns how far a first person move drag travels. */
+/** Returns the first person move multiplier. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFreeRoamMoveSpeed;
 /** Returns the green component of this map color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyG;
@@ -627,6 +627,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPoses;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPosition;
 /** Returns the altitude of a position-anchored object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPositionAltitude;
+/** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessDownscale;
 /** Returns whether this layer goes through the post-process effect. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessed;
 /** Returns the postcode of the address. */
@@ -819,6 +821,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyStyleName;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyStyleParameters;
 /** Returns the current style set used by the decoder. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyStyleSet;
+/** Returns the distance geo-three's terrain LOD subdivides at. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertySubdivideDistance;
 /** Returns the subdomains for {s} tag. The default is ["a", "b", "c", "d"]. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySubdomains;
 /** Returns the sun altitude in degrees above the horizon. */
@@ -1021,6 +1025,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodAddFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddLocale;
 FOUNDATION_EXPORT MassifMethod const MassifMethodAddVectorDataSource;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateAddresses;
+FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateHorizon;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClear;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearTileCaches;
@@ -1051,13 +1056,17 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodRemoveExternalDataSource;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRemoveFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodScreenToMap;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSet;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetCircle;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetDirection;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetDirections;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceMaxOverzoomLevel;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceZoomLevelBias;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetFloatParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetSegments;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSunPositionFromTime;
@@ -1085,6 +1094,7 @@ FOUNDATION_EXPORT MassifEvent const MassifEventVectortileClicked;
 typedef NSString *MassifKind NS_TYPED_ENUM;
 
 FOUNDATION_EXPORT MassifKind const MassifKindAssets;
+FOUNDATION_EXPORT MassifKind const MassifKindCelestial;
 FOUNDATION_EXPORT MassifKind const MassifKindElement;
 FOUNDATION_EXPORT MassifKind const MassifKindElementstyle;
 FOUNDATION_EXPORT MassifKind const MassifKindFeature;
@@ -1104,6 +1114,8 @@ typedef NSString *MassifSpecType NS_TYPED_ENUM;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsBundle;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsDir;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsZip;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialArc;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialSprite;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementBalloon;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementLine;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementMarker;
@@ -1122,6 +1134,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeocodingMultiOsmOfflineRev
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryLine;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPoint;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPolygon;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCelestial;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCompositeVector;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerElements;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerHillshade;

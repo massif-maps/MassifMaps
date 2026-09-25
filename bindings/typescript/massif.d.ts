@@ -1875,10 +1875,14 @@ export interface PropertyTypes {
     "terrainOptions.noDrapeLayerFilter": string;
     /** Returns the ground distance the surface normals are measured over, in meters. */
     "terrainOptions.normalSampleDistance": number;
+    /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
+    "terrainOptions.postProcessDownscale": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "terrainOptions.seamlessTileEdgesEnabled": boolean;
     /** Returns whether the shared ground pass draws the terrain a second time. */
     "terrainOptions.sharedGroundEnabled": boolean;
+    /** Returns the distance geo-three's terrain LOD subdivides at. */
+    "terrainOptions.subdivideDistance": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -3973,11 +3977,11 @@ export interface PropertyTypes {
     "fogOptions.verticalRangeEnd": number;
     /** Returns the altitude the fog starts fading out at. */
     "fogOptions.verticalRangeStart": number;
-    /** Returns how fast a free roam drag turns the view. */
+    /** Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view. */
     "freeRoamLookSensitivity": number;
     /** Returns the free roam mode. */
     "freeRoamMode": "FREE_ROAM_MODE_OFF" | "FREE_ROAM_MODE_LOOK" | "FREE_ROAM_MODE_FIRST_PERSON";
-    /** Returns how far a first person move drag travels. */
+    /** Returns the first person move multiplier. */
     "freeRoamMoveSpeed": number;
     /** Returns the state of the kinetic panning flag. */
     "kineticPan": boolean;
@@ -4225,10 +4229,14 @@ export interface PropertyTypes {
     "terrain.noDrapeLayerFilter": string;
     /** Returns the ground distance the surface normals are measured over, in meters. */
     "terrain.normalSampleDistance": number;
+    /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
+    "terrain.postProcessDownscale": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "terrain.seamlessTileEdgesEnabled": boolean;
     /** Returns whether the shared ground pass draws the terrain a second time. */
     "terrain.sharedGroundEnabled": boolean;
+    /** Returns the distance geo-three's terrain LOD subdivides at. */
+    "terrain.subdivideDistance": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrain.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4310,10 +4318,14 @@ export interface PropertyTypes {
     "terrainOptions.noDrapeLayerFilter": string;
     /** Returns the ground distance the surface normals are measured over, in meters. */
     "terrainOptions.normalSampleDistance": number;
+    /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
+    "terrainOptions.postProcessDownscale": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "terrainOptions.seamlessTileEdgesEnabled": boolean;
     /** Returns whether the shared ground pass draws the terrain a second time. */
     "terrainOptions.sharedGroundEnabled": boolean;
+    /** Returns the distance geo-three's terrain LOD subdivides at. */
+    "terrainOptions.subdivideDistance": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -5591,10 +5603,14 @@ export interface PropertyTypes {
     "noDrapeLayerFilter": string;
     /** Returns the ground distance the surface normals are measured over, in meters. */
     "normalSampleDistance": number;
+    /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
+    "postProcessDownscale": number;
     /** Returns whether seamless tile edge handling is enabled. */
     "seamlessTileEdgesEnabled": boolean;
     /** Returns whether the shared ground pass draws the terrain a second time. */
     "sharedGroundEnabled": boolean;
+    /** Returns the distance geo-three's terrain LOD subdivides at. */
+    "subdivideDistance": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -6790,6 +6806,40 @@ export interface AssetsSpec_zip {
 
 export type AssetsSpec = AssetsSpec_bundle | AssetsSpec_dir | AssetsSpec_zip;
 
+export interface CelestialSpec_arc {
+  type: "arc";
+  /** Returns whether the part of the curve below the horizon is drawn. */
+  belowHorizonVisible?: boolean;
+  /** Returns the click radius of the curve. */
+  clickRadius?: number;
+  /** Returns the color of the object. */
+  color?: number;
+  /** Returns the visibility of the object. */
+  visible?: boolean;
+  /** Returns the line width. */
+  width?: number;
+}
+
+export interface CelestialSpec_sprite {
+  type: "sprite";
+  /** Returns the angular size of the sprite. */
+  angularSize?: number;
+  /** Returns the bitmap of the sprite. */
+  bitmap?: Handle<"massif::Bitmap">;
+  /** Returns the extra radius that responds to a click. */
+  clickRadius?: number;
+  /** Returns the color of the object. */
+  color?: number;
+  /** Returns the screen size of the sprite. */
+  screenSize?: number;
+  /** Returns the edge softness of a disc sprite. */
+  softness?: number;
+  /** Returns the visibility of the object. */
+  visible?: boolean;
+}
+
+export type CelestialSpec = CelestialSpec_arc | CelestialSpec_sprite;
+
 export interface ElementSpec_balloon {
   type: "balloon";
   /** Returns the horizontal anchor point of this popup. */
@@ -7152,6 +7202,26 @@ export interface GeometrySpec_polygon {
 
 export type GeometrySpec = GeometrySpec_line | GeometrySpec_point | GeometrySpec_polygon;
 
+export interface LayerSpec_celestial {
+  type: "celestial";
+  /** Returns the object event listener. */
+  celestialEventListener?: Handle<"massif::CelestialEventListener">;
+  /** Returns the culling delay of the layer in milliseconds. */
+  cullDelay?: number;
+  /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+  metaData?: Record<string, Json>;
+  /** Returns the opacity of this layer. */
+  opacity?: number;
+  /** Returns whether this layer goes through the post-process effect. */
+  postProcessed?: boolean;
+  /** Returns the layer task priority of this layer. */
+  updatePriority?: number;
+  /** Returns the visibility of this layer. */
+  visible?: boolean;
+  /** Returns the visible zoom range of this layer. */
+  visibleZoomRange?: [number, number];
+}
+
 export interface LayerSpec_composite_vector {
   type: "composite-vector";
   /** Returns the tile data source of the associated UTF grid. By default this is null. */
@@ -7450,7 +7520,7 @@ export interface LayerSpec_vector {
   zoomLevelBias?: number;
 }
 
-export type LayerSpec = LayerSpec_composite_vector | LayerSpec_elements | LayerSpec_hillshade | LayerSpec_raster | LayerSpec_solid | LayerSpec_vector;
+export type LayerSpec = LayerSpec_celestial | LayerSpec_composite_vector | LayerSpec_elements | LayerSpec_hillshade | LayerSpec_raster | LayerSpec_solid | LayerSpec_vector;
 
 export interface OptionsSpec_fog {
   type: "fog";
@@ -7617,11 +7687,15 @@ export interface OptionsSpec_terrain {
   noDrapeLayerFilter?: string;
   /** Returns the ground distance the surface normals are measured over, in meters. */
   normalSampleDistance?: number;
+  /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
+  postProcessDownscale?: number;
   /** Returns whether seamless tile edge handling is enabled. */
   seamlessTileEdgesEnabled?: boolean;
   /** Returns whether the shared ground pass draws the terrain a second time. */
   sharedGroundEnabled?: boolean;
   source?: SourceSpec | string;
+  /** Returns the distance geo-three's terrain LOD subdivides at. */
+  subdivideDistance?: number;
   /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
   surfaceShaderSource?: string;
   /** Returns the opacity a label keeps while its anchor is behind 3D content. */
@@ -7941,6 +8015,7 @@ export type ProjectionSpec = { type: string; [key: string]: Json | undefined };
 
 export interface SpecOf {
   "assets": AssetsSpec;
+  "celestial": CelestialSpec;
   "element": ElementSpec;
   "elementstyle": ElementstyleSpec;
   "feature": FeatureSpec;
@@ -8024,15 +8099,24 @@ export interface MethodTypes {
   "massif::CartoCSSStyleSet": {
   };
   "massif::CelestialArc": {
+    setCircle: (axisAzimuth: number, axisAltitude: number, radius: number) => void;
+    setDirection: (azimuth: number, altitude: number, distance: number) => void;
+    setDirections: (directions: Json) => void;
+    setSegments: (directions: Json) => void;
   };
   "massif::CelestialEventListener": {
   };
   "massif::CelestialLayer": {
+    add: (object: Handle) => void;
+    clear: () => void;
     refresh: () => void;
+    remove: (object: Handle) => boolean;
   };
   "massif::CelestialObject": {
+    setDirection: (azimuth: number, altitude: number, distance: number) => void;
   };
   "massif::CelestialSprite": {
+    setDirection: (azimuth: number, altitude: number, distance: number) => void;
   };
   "massif::ClickInfo": {
   };
@@ -8484,6 +8568,7 @@ export interface MethodTypes {
   "massif::StyleBuilder": {
   };
   "massif::TerrainOptions": {
+    calculateHorizon: (pos: Position, eyeHeight: number, azimuths: Json, maxDistance: number) => number[];
   };
   "massif::TerrariumElevationDataDecoder": {
   };

@@ -52,10 +52,17 @@ mapView.layers.insert(0, layer)    // FIRST: the map and the terrain then draw o
 ```
 
 :::note Surface API
-`CelestialLayer`, `CelestialSprite` and `CelestialArc` have no spec types, so this is object-API
-today. `Massif.adopt("sky-objects", layer)` gives the layer an id, and its properties — including
-`postProcessed` and `visible` — are then reachable by path. What is readable per class is in
-[value types](/docs/api/reference/types#celestiallayer).
+The same through the [surface API](/docs/api/): a `celestial` layer, `sprite` and `arc` objects of
+the `celestial` kind, `add` / `remove` / `clear` on the layer, `setDirection` on an object and
+`setDirections` / `setSegments` / `setCircle` on an arc (directions flat: `[az0, alt0, az1, alt1, …]`).
+
+```js
+const sky = massif.create('layer', 'sky', { type: 'celestial' });
+const sun = massif.create('celestial', 'sun', { type: 'sprite', angularSize: 0.53, color: '#ffb300' });
+massif.call(sun, 'setDirection', [168, 42, 0]);
+massif.call(sky, 'add', [sun]);
+massif.call(massif.find('layers', 'map'), 'insert', [0, sky]);
+```
 :::
 
 - **Distance 0 means infinitely far** — the object keeps its direction whatever the camera does, so
@@ -89,6 +96,15 @@ val sunPath = CelestialArc().apply {
 `setDirections(...)` takes an explicit azimuth/altitude list for anything else, and
 `setSegments(...)` reads that list as **disjoint pairs** instead of a path — so a whole constellation
 figure is ONE object: one draw call, one clickable thing, one name.
+
+## Where the terrain meets the sky
+
+`TerrainOptions.calculateHorizon(pos, eyeHeight, azimuths, maxDistance)` answers the skyline from a
+viewpoint: for each azimuth, the apparent altitude of the highest terrain out to `maxDistance`
+metres, with the earth's curvature and standard refraction. That is what a sunrise behind a range is
+timed against - the web peak finder writes the rise and set times where the sun's path meets it.
+It reads the elevation already loaded and never blocks; what is missing is requested, so a second
+call a moment later answers with it.
 
 ## Clicking
 

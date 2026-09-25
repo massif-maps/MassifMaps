@@ -1691,7 +1691,52 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CelestialArc",
+          "name": "setCircle",
+          "args": [
+            {
+              "name": "axisAzimuth",
+              "type": "float"
+            },
+            {
+              "name": "axisAltitude",
+              "type": "float"
+            },
+            {
+              "name": "radius",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialArc",
+          "name": "setDirections",
+          "args": [
+            {
+              "name": "directions",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialArc",
+          "name": "setSegments",
+          "args": [
+            {
+              "name": "directions",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialEventListener": {
@@ -1716,7 +1761,39 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "add",
+          "args": [
+            {
+              "name": "object",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "clear",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "remove",
+          "args": [
+            {
+              "name": "object",
+              "type": "handle"
+            }
+          ],
+          "returns": "bool",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialObject": {
@@ -1796,7 +1873,28 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CelestialObject",
+          "name": "setDirection",
+          "args": [
+            {
+              "name": "azimuth",
+              "type": "float"
+            },
+            {
+              "name": "altitude",
+              "type": "float"
+            },
+            {
+              "name": "distance",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialSprite": {
@@ -5593,7 +5691,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns how fast a free roam drag turns the view."
+          "doc": "Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view."
         },
         {
           "name": "freeRoamMode",
@@ -5612,7 +5710,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns how far a first person move drag travels."
+          "doc": "Returns the first person move multiplier."
         },
         {
           "name": "kineticPan",
@@ -8222,6 +8320,15 @@
           "doc": "Returns the ground distance the surface normals are measured over, in meters."
         },
         {
+          "name": "postProcessDownscale",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the downscale factor of the packed depth/normal texture post-process effects read."
+        },
+        {
           "name": "seamlessTileEdgesEnabled",
           "type": "BOOL",
           "readOnly": false,
@@ -8238,6 +8345,15 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns whether the shared ground pass draws the terrain a second time."
+        },
+        {
+          "name": "subdivideDistance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the distance geo-three's terrain LOD subdivides at."
         },
         {
           "name": "surfaceShaderSource",
@@ -8304,7 +8420,32 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "calculateHorizon",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            },
+            {
+              "name": "eyeHeight",
+              "type": "float"
+            },
+            {
+              "name": "azimuths",
+              "type": "json"
+            },
+            {
+              "name": "maxDistance",
+              "type": "float"
+            }
+          ],
+          "returns": "doubles",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::TerrariumElevationDataDecoder": {
@@ -10422,6 +10563,32 @@
         ]
       ]
     ],
+    "celestial": [
+      [
+        "arc",
+        "massif__CelestialArc",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
+        "sprite",
+        "massif__CelestialSprite",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ]
+    ],
     "element": [
       [
         "balloon",
@@ -11187,6 +11354,18 @@
       ]
     ],
     "layer": [
+      [
+        "celestial",
+        "massif__CelestialLayer",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
       [
         "composite-vector",
         "massif__CompositeVectorTileLayer",
@@ -12250,6 +12429,10 @@
     "massif::BundleAssetPackage": "assets",
     "massif::CacheTileDataSource": "source",
     "massif::CartoCSSStyleSet": "styleset",
+    "massif::CelestialArc": "celestial",
+    "massif::CelestialLayer": "layer",
+    "massif::CelestialObject": "celestial",
+    "massif::CelestialSprite": "celestial",
     "massif::CombinedTileDataSource": "source",
     "massif::CompiledStyleSet": "styleset",
     "massif::CompositeVectorTileLayer": "layer",
@@ -12448,6 +12631,26 @@
             "required": true
           }
         ]
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialArc",
+      "kind": "celestial",
+      "type": "arc",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialSprite",
+      "kind": "celestial",
+      "type": "sprite",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
       ]
     },
     {
@@ -13071,6 +13274,16 @@
             "required": true
           }
         ]
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialLayer",
+      "kind": "layer",
+      "type": "celestial",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
       ]
     },
     {

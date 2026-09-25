@@ -139,6 +139,11 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        Result buildCelestial(Context& context, const Variant& spec, ObjectRef& object,
+                              std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "celestial", spec, object, consumed);
+        }
+
         Result buildFeature(Context& context, const Variant& spec, ObjectRef& object,
                             std::set<std::string>& consumed) {
             return buildFromConstructor(context, "feature", spec, object, consumed);
@@ -368,6 +373,7 @@ namespace massif { namespace api {
         registerFactory("bitmap", &buildBitmap);
         registerElementFactories();
         registerFactory("feature", &buildFeature);
+        registerFactory("celestial", &buildCelestial);
 #ifdef _MASSIF_ROUTING_SUPPORT
         registerFactory("routing", &buildRouting);
 #endif

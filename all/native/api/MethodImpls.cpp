@@ -19,6 +19,11 @@
 #include "core/Variant.h"
 #include "components/Layers.h"
 #include "components/LightOptions.h"
+#include "components/TerrainOptions.h"
+#include "celestial/CelestialArc.h"
+#include "celestial/CelestialObject.h"
+#include "layers/CelestialLayer.h"
+#include "terrain/ElevationManager.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
 #include "datasources/MultiTileDataSource.h"
@@ -391,6 +396,120 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        // A JSON array of numbers, as an argument - a direction list or a set of azimuths.
+        bool getNumbers(const CallArgs& args, int index, std::vector<double>& numbers) {
+            Variant list = args.get(index);
+            if (list.getType() != VariantType::VARIANT_TYPE_ARRAY) {
+                return false;
+            }
+            numbers.clear();
+            for (int i = 0; i < list.getArraySize(); i++) {
+                Variant number = list.getArrayElement(i);
+                if (number.getType() == VariantType::VARIANT_TYPE_INTEGER) {
+                    numbers.push_back(static_cast<double>(number.getLong()));
+                } else if (number.getType() == VariantType::VARIANT_TYPE_DOUBLE) {
+                    numbers.push_back(number.getDouble());
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * add(objectHandle) / remove(objectHandle) / clear() on a sky layer - how a sprite or an arc
+         * built from a spec reaches the sky, as an element reaches a local source.
+         */
+        Result addCelestialObject(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto object = std::static_pointer_cast<CelestialObject>(context.getObject(handle, "massif::CelestialObject"));
+            if (!object) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<CelestialLayer*>(obj)->add(object);
+            return RESULT_OK;
+        }
+
+        Result removeCelestialObject(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto object = std::static_pointer_cast<CelestialObject>(context.getObject(handle, "massif::CelestialObject"));
+            if (!object) {
+                return RESULT_BAD_HANDLE;
+            }
+            result = PropertyValue::ofBool(static_cast<CelestialLayer*>(obj)->remove(object));
+            return RESULT_OK;
+        }
+
+        Result clearCelestialObjects(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<CelestialLayer*>(obj)->clear();
+            return RESULT_OK;
+        }
+
+        /** setDirection(azimuth, altitude, distance) - distance 0 is infinitely far. */
+        Result setCelestialDirection(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            double azimuth = 0, altitude = 0, distance = 0;
+            if (!args.getDouble(0, azimuth) || !args.getDouble(1, altitude) || !args.getDouble(2, distance)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialObject*>(obj)->setDirection(static_cast<float>(azimuth), static_cast<float>(altitude), distance);
+            return RESULT_OK;
+        }
+
+        /** setDirections([az0, alt0, az1, alt1, ...]) - a path through the sky. */
+        Result setArcDirections(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::vector<double> directions;
+            if (!getNumbers(args, 0, directions) || directions.size() % 2 != 0) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialArc*>(obj)->setDirections(directions);
+            return RESULT_OK;
+        }
+
+        /** setSegments([...]) - the same list read as disjoint pairs of directions. */
+        Result setArcSegments(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::vector<double> directions;
+            if (!getNumbers(args, 0, directions) || directions.size() % 4 != 0) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialArc*>(obj)->setSegments(directions);
+            return RESULT_OK;
+        }
+
+        /** setCircle(axisAzimuth, axisAltitude, radius) - a body's daily path is one. */
+        Result setArcCircle(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            double axisAzimuth = 0, axisAltitude = 0, radius = 0;
+            if (!args.getDouble(0, axisAzimuth) || !args.getDouble(1, axisAltitude) || !args.getDouble(2, radius)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialArc*>(obj)->setCircle(static_cast<float>(axisAzimuth), static_cast<float>(axisAltitude), static_cast<float>(radius));
+            return RESULT_OK;
+        }
+
+        /**
+         * calculateHorizon(pos, eyeHeight, [azimuths], maxDistance) -> a handle onto one apparent
+         * altitude per azimuth (ElevationManager::calculateHorizon). WGS84, like getElevation.
+         */
+        Result calculateHorizon(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            MapPos pos;
+            double eyeHeight = 0, maxDistance = 0;
+            std::vector<double> azimuths;
+            if (!args.getPosWgs84(0, pos) || !args.getDouble(1, eyeHeight) || !getNumbers(args, 2, azimuths) || !args.getDouble(3, maxDistance)) {
+                return RESULT_BAD_SPEC;
+            }
+            std::shared_ptr<ElevationManager> elevationManager = static_cast<TerrainOptions*>(obj)->getElevationManager();
+            if (!elevationManager) {
+                return RESULT_FAILED;
+            }
+            auto horizon = std::make_shared<std::vector<double> >(elevationManager->calculateHorizon(pos, eyeHeight, azimuths, maxDistance));
+            return objectResult(context, horizon, Context::DOUBLE_VECTOR_CLASS, result);
+        }
+
         /**
          * The GeoJSON source's layers: createLayer(name) -> index, then setLayerGeoJSON(index,
          * geojson) with the document as a string.
@@ -719,6 +838,14 @@ namespace massif { namespace api {
         registerMethod("massif::LocalVectorDataSource", "add", &addElement);
         registerMethod("massif::LocalVectorDataSource", "remove", &removeElement);
         registerMethod("massif::LocalVectorDataSource", "clear", &clearElements);
+        registerMethod("massif::CelestialLayer", "add", &addCelestialObject);
+        registerMethod("massif::CelestialLayer", "remove", &removeCelestialObject);
+        registerMethod("massif::CelestialLayer", "clear", &clearCelestialObjects);
+        registerMethod("massif::CelestialObject", "setDirection", &setCelestialDirection);
+        registerMethod("massif::CelestialArc", "setDirections", &setArcDirections);
+        registerMethod("massif::CelestialArc", "setSegments", &setArcSegments);
+        registerMethod("massif::CelestialArc", "setCircle", &setArcCircle);
+        registerMethod("massif::TerrainOptions", "calculateHorizon", &calculateHorizon);
         registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);

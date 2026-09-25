@@ -28,6 +28,8 @@
 // 3D terrain from an elevation source. Only the source is a constructor argument: the elevation
 // decoder is picked from the source's own `encoding`, so a spec never names one.
 !spec(massif::TerrainOptions, options, terrain, alias(source, dataSource))
+// The skyline from a viewpoint, per azimuth, in apparent altitude degrees (ElevationManager::calculateHorizon).
+!method(massif::TerrainOptions, calculateHorizon, arg(pos, pos), arg(eyeHeight, float), arg(azimuths, json), arg(maxDistance, float), returns(doubles))
 
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)
 // The 2D/3D switch. Flattened is the state, written by the app or by the auto-flatten rule;

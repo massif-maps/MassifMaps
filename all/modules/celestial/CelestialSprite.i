@@ -18,6 +18,7 @@
 %import "graphics/Bitmap.i"
 
 !polymorphic_shared_ptr(massif::CelestialSprite, celestial.CelestialSprite)
+!spec(massif::CelestialSprite, celestial, sprite)
 
 %attribute(massif::CelestialSprite, float, AngularSize, getAngularSize, setAngularSize)
 %attribute(massif::CelestialSprite, float, ScreenSize, getScreenSize, setScreenSize)

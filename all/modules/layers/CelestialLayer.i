@@ -20,6 +20,10 @@
 %import "celestial/CelestialObject.i"
 
 !polymorphic_shared_ptr(massif::CelestialLayer, layers.CelestialLayer)
+!spec(massif::CelestialLayer, layer, celestial)
+!method(massif::CelestialLayer, add, arg(object, handle), returns(void))
+!method(massif::CelestialLayer, remove, arg(object, handle), returns(bool))
+!method(massif::CelestialLayer, clear, returns(void))
 
 !attributestring_polymorphic(massif::CelestialLayer, layers.CelestialEventListener, CelestialEventListener, getCelestialEventListener, setCelestialEventListener)
 %std_exceptions(massif::CelestialLayer::add)

@@ -171,9 +171,12 @@ namespace massif {
          * A position that camera cannot see - behind it, or outside its viewport - is UNANSWERABLE
          * rather than visible, and gets the verdict it was last given (see _occlusionVerdicts).
          * Fails open only when there is no data at all, or when nothing is known about the
-         * position yet.
+         * position yet. `answered`, when given, says which it was.
          */
-        bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance) const;
+        bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, bool* answered = nullptr) const;
+
+        /** Bumped each time a new occlusion depth is published: the verdicts may have changed. */
+        unsigned int getDepthSnapshotVersion() const { return _depthSnapshotVersion.load(); }
 
         /**
          * The terrain tile cover for this camera - the tiles the surface would be drawn from.
@@ -398,6 +401,7 @@ namespace massif {
         // sees the previous read-back or the new one, never half of each.
         std::unique_ptr<TerrainDepthWorker> _depthWorker;
         std::shared_ptr<const TerrainDepthBuffer> _depthDataSnapshot;
+        std::atomic<unsigned int> _depthSnapshotVersion{0};
         mutable std::mutex _depthMutex;
         cglib::mat4x4<double> _depthMVPMatrix = cglib::mat4x4<double>::zero(); // camera state of the last read-back
         unsigned int _depthElevationVersion = 0;

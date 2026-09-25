@@ -271,6 +271,7 @@ namespace massif {
 
         std::shared_ptr<VTRenderer> _vtRenderer;
         bool _labelPlacementOwed = false; // see consumeLabelPlacementOwed
+        unsigned int _labelOcclusionDepthVersion = 0; // the terrain occlusion depth the labels were last placed against
         bool _interactionMode;
         float _layerBlendingSpeed;
         float _labelBlendingSpeed;

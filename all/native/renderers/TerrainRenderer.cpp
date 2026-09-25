@@ -744,6 +744,7 @@ namespace massif {
             }
             std::lock_guard<std::mutex> lock(_depthMutex);
             _depthDataSnapshot = std::move(result);
+            _depthSnapshotVersion++;
         }
 
         unsigned int elevationVersion = (terrainOptions->getElevationManager() ? terrainOptions->getElevationManager()->getVersion() : 0);
@@ -865,6 +866,7 @@ namespace massif {
         {
             std::lock_guard<std::mutex> lock(_depthMutex);
             _depthDataSnapshot = std::move(newDepthData);
+            _depthSnapshotVersion++;
         }
         if (_depthElevationVersion != elevationVersion) {
             resetOcclusionVerdicts(); // new ground, so what a position was last told may be wrong
@@ -918,7 +920,10 @@ namespace massif {
         _occlusionVerdicts.clear();
     }
 
-    bool TerrainRenderer::isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance) const {
+    bool TerrainRenderer::isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, bool* answered) const {
+        if (answered) {
+            *answered = false;
+        }
         std::shared_ptr<const TerrainDepthBuffer> depthData;
         {
             std::lock_guard<std::mutex> lock(_depthMutex);
@@ -941,6 +946,9 @@ namespace massif {
         // there' for both.
         if (x < 0 || y < 0 || x >= depthData->width || y >= depthData->height) {
             return cachedOcclusionVerdict(verdictKey);
+        }
+        if (answered) {
+            *answered = true;
         }
         float depthW = sampleDepthW(*depthData, x, y);
         if (depthW == std::numeric_limits<float>::max()) {

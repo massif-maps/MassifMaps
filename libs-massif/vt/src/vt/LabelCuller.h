@@ -44,14 +44,13 @@ namespace massif::vt {
          */
         void setLabelViewDistance(double viewDistance);
         /**
-         * Whether a label's anchor is hidden by 3D content, and the layer's default occluded opacity.
-         * Applied DURING placement: a label that is fully hidden reserves no collision slot, so it
-         * cannot suppress a visible neighbour. mapbox returns an empty collision box for an occluded
-         * symbol for the same reason (symbol/collision_index.ts). A label the style keeps partly
-         * visible when occluded is still drawn, so it keeps its slot and is not tested here.
-         * An empty test restores the previous behaviour exactly.
+         * Whether a label's anchor is hidden by the terrain - the same test the GL renderer fades an
+         * occluded label out with, whatever its style (GLTileRenderer::updateLabel).
+         * Applied DURING placement: a hidden label reserves no collision slot, so it cannot suppress
+         * a visible neighbour. mapbox returns an empty collision box for an occluded symbol for the
+         * same reason (symbol/collision_index.ts). An empty test restores the previous behaviour.
          */
-        void setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test, float defaultOccludedOpacity);
+        void setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test);
         void reset();
         /**
          * Opens a slice of a placement cycle, giving every process() call after it a shared
@@ -133,7 +132,6 @@ namespace massif::vt {
         double _metersToInternal = 0;
         double _labelViewDistance = LabelDistance::DEFAULT_VIEW_DISTANCE;
         std::function<bool(const cglib::vec3<double>&)> _occlusionTest;
-        float _defaultOccludedOpacity = 0.0f;
         std::chrono::steady_clock::time_point _sliceDeadline;
         bool _sliceBudgeted = false;
         bool _sliceExhausted = false;

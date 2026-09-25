@@ -1381,7 +1381,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
         // Placement answers the occlusion question itself now, so a hidden label takes no collision
         // slot from a visible one. The test is whatever updateLabelOcclusionTest installed.
-        culler.setOcclusionTest(getLabelOcclusionTest(), _textOcclusionOpacity.load());
+        culler.setOcclusionTest(getLabelOcclusionTest());
         cullViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
@@ -1665,38 +1665,6 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             return;
         }
 
-        // Preferred path: pixel-exact occlusion against the read-back terrain depth buffer
-        // (rendered by MapRenderer each frame) - matches what is actually on screen and is
-        // much cheaper than ray-marching the elevation grids per label.
-        if (auto mapRenderer = _mapRenderer.lock()) {
-            if (mapRenderer->getTerrainRenderer() != nullptr) {
-                {
-                    _labelOcclusionState.reset();
-                    std::weak_ptr<MapRenderer> mapRendererWeak = _mapRenderer;
-                    // The tolerance is relative to distance: at its default it only absorbs the
-                    // anchor-vs-terrain mismatch, and raising it lets partly hidden features label.
-                    // The projection belongs to the depth buffer's own camera, so it lives with it.
-                    float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
-                    // The culler needs the SAME question answered during placement - see
-                    // LabelCuller::setOcclusionTest - so it is kept rather than only installed.
-                    auto depthTest = [mapRendererWeak, occlusionTolerance](const cglib::vec3<double>& pos) {
-                        auto mapRenderer = mapRendererWeak.lock();
-                        if (!mapRenderer) {
-                            return false;
-                        }
-                        TerrainRenderer* terrainRenderer = mapRenderer->getTerrainRenderer();
-                        if (!terrainRenderer) {
-                            return false;
-                        }
-                        return terrainRenderer->isOccludedByTerrain(pos, occlusionTolerance);
-                    };
-                    tileRenderer->setLabelOcclusionTest(depthTest);
-                    setLabelOcclusionTestCopy(depthTest);
-                    return;
-                }
-            }
-        }
-
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         if (!_labelOcclusionState) {
             _labelOcclusionState = std::make_shared<LabelOcclusionState>();
@@ -1742,6 +1710,49 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             }
             return occluded;
         };
+
+        // Preferred path: pixel-exact occlusion against the read-back terrain depth buffer
+        // (rendered by MapRenderer each frame) - matches what is actually on screen and is
+        // much cheaper than ray-marching the elevation grids per label.
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            if (TerrainRenderer* terrainRenderer = mapRenderer->getTerrainRenderer()) {
+                // A new depth changes the verdicts, and a still camera asks for no placement pass:
+                // without one a label placed against the previous depth - a name that turned into
+                // view before the terrain in front of it had been read back - kept its slot.
+                unsigned int depthVersion = terrainRenderer->getDepthSnapshotVersion();
+                if (depthVersion != _labelOcclusionDepthVersion) {
+                    _labelOcclusionDepthVersion = depthVersion;
+                    _labelPlacementOwed = true;
+                }
+                std::weak_ptr<MapRenderer> mapRendererWeak = _mapRenderer;
+                // The tolerance is relative to distance: at its default it only absorbs the
+                // anchor-vs-terrain mismatch, and raising it lets partly hidden features label.
+                // The projection belongs to the depth buffer's own camera, so it lives with it.
+                float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
+                // The culler needs the SAME question answered during placement - see
+                // LabelCuller::setOcclusionTest - so it is kept rather than only installed.
+                // Where the depth cannot answer - a name entering from the side is placed in the
+                // padding outside the read-back viewport - the elevation ray does, rather than the
+                // name being shown until a depth covering it lands and then fading out again.
+                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest](const cglib::vec3<double>& pos) {
+                    auto mapRenderer = mapRendererWeak.lock();
+                    if (!mapRenderer) {
+                        return false;
+                    }
+                    TerrainRenderer* terrainRenderer = mapRenderer->getTerrainRenderer();
+                    if (!terrainRenderer) {
+                        return false;
+                    }
+                    bool answered = false;
+                    bool occluded = terrainRenderer->isOccludedByTerrain(pos, occlusionTolerance, &answered);
+                    return answered ? occluded : rayTest(pos);
+                };
+                tileRenderer->setLabelOcclusionTest(depthTest);
+                setLabelOcclusionTestCopy(depthTest);
+                return;
+            }
+        }
+
         tileRenderer->setLabelOcclusionTest(rayTest);
         setLabelOcclusionTestCopy(rayTest);
     }

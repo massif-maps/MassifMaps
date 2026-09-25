@@ -1549,11 +1549,22 @@ namespace massif {
             // A span reference tile is fetched as a preloading tile but wanted NOW: nothing reads
             // it until the next cull, and with the camera still there is none - the deck it was
             // fetched for stayed stranded until the user panned.
+            //
+            // So is a tile of the label band or of the preloading ring: both are handed to the
+            // renderer for their LABELS, and with terrain the ring holds names standing ON screen -
+            // a tile is culled on its flat footprint, so a far range 4 km up belongs to a ring tile.
+            // After a decoder change the visible tiles land first and the cull they ask for runs
+            // before these arrive: the names on them stayed missing until the camera moved.
             if (loaded && _preloadingTile) {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
-                for (const MapTile& referenceTile : layer->_spanReferenceTiles) {
-                    if (layer->getTileId(referenceTile) == _tileId) {
-                        refresh = true;
+                for (const std::vector<MapTile>* wantedTiles : { &layer->_spanReferenceTiles, &layer->_labelTiles, &layer->_preloadingTiles }) {
+                    for (const MapTile& wantedTile : *wantedTiles) {
+                        if (layer->getTileId(wantedTile) == _tileId) {
+                            refresh = true;
+                            break;
+                        }
+                    }
+                    if (refresh) {
                         break;
                     }
                 }

@@ -1032,58 +1032,26 @@
     const sun = add('celestial', 'sky.sun', { type: 'sprite', screenSize: 20 * ratio, color: '#f59e0b', softness: 0.15 }, skyTop);
     const marks = add('celestial', 'sky.marks', { type: 'arc', color: '#b45309', width: 2 * ratio, belowHorizonVisible: true });
 
-    // Text in the sky is a sprite with a bitmap, as the Android demo's star names: drawn here on a
-    // canvas, handed over as a PNG in the module's file system. The sprite is a square centred on
-    // its direction and sized in DEVICE pixels, so the canvas is drawn at the device ratio and the
-    // sprite given its full width; the text sits in the upper half, above the point it names.
-    try { module.FS.mkdir('/sky'); } catch (error) { /* already there */ }
-    const bitmaps = new Map();
-    const textBitmap = async (text, style) => {
-      const key = `${style}|${text}`;
-      if (bitmaps.has(key)) { return bitmaps.get(key); }
-      const plate = style === 'plate';
-      const font = `${plate ? 700 : 600} ${plate ? 15 : 13}px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`;
-      const measure = document.createElement('canvas').getContext('2d');
-      measure.font = font;
-      const textWidth = Math.ceil(measure.measureText(text).width);
-      const lineHeight = plate ? 24 : 18;
-      const side = Math.max(textWidth + 20, 2 * (lineHeight + 6));
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = Math.ceil(side * ratio);
-      const context = canvas.getContext('2d');
-      context.scale(ratio, ratio);
-      context.font = font;
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      // the text's box ends a few pixels above the middle: the point named is just under it
-      const centreY = side / 2 - lineHeight / 2 - 4;
-      if (plate) {
-        context.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        context.beginPath();
-        context.roundRect(side / 2 - textWidth / 2 - 7, centreY - lineHeight / 2, textWidth + 14, lineHeight, 7);
-        context.fill();
-        context.fillStyle = '#92400e';
-      } else {
-        context.lineJoin = 'round';
-        context.lineWidth = 4;
-        context.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-        context.strokeText(text, side / 2, centreY);
-        context.fillStyle = '#b45309';
-      }
-      context.fillText(text, side / 2, centreY);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-      const file = `/sky/label${bitmaps.size}.png`;
-      module.FS.writeFile(file, new Uint8Array(await blob.arrayBuffer()));
-      const bitmap = { handle: massif.create('bitmap', `sky.bitmap.${bitmaps.size}`, { url: 'file://' + file }), size: canvas.width };
-      bitmaps.set(key, bitmap);
-      return bitmap;
+    // Text in the sky is a celestial LABEL: the SDK draws it, with the platform's text API, from a
+    // string and a style - nothing is painted here. Anchored by the middle of its bottom edge, so it
+    // stands above the point it names; a rise or a set a little higher, clear of the ridge (the
+    // rendered terrain is flat where the times take the earth's curve, so it draws the ridge a touch
+    // higher than the point computed).
+    const PLATE = { fontName: 'sans-serif Bold', fontSize: 15, textColor: '#92400e', backgroundColor: '#ffffffe6', backgroundRadius: 7, paddingX: 7, paddingY: 3 };
+    const HALO = { fontName: 'sans-serif Medium', fontSize: 13, textColor: '#b45309', haloColor: '#fffffff2', haloWidth: 4 };
+    const skyLabel = (id, style, lift) => {
+      const label = add('celestial', id, { type: 'label', visible: false, ...style }, skyTop);
+      massif.call(label, 'setOffset', [0, lift]);
+      return label;
     };
-    // A label is one sprite for good: a new text swaps its bitmap, never the sprite, so an old one
-    // cannot be left behind.
-    const skyLabel = (id) => add('celestial', id, { type: 'sprite', screenSize: 1, visible: false }, skyTop);
-    const hourLabels = Array.from({ length: 24 }, (unused, hour) => skyLabel(`sky.hour.${hour}`));
-    const riseLabel = skyLabel('sky.rise');
-    const setLabelSprite = skyLabel('sky.set');
+    const hourLabels = Array.from({ length: 24 }, (unused, hour) => skyLabel(`sky.hour.${hour}`, HALO, 4));
+    const riseLabel = skyLabel('sky.rise', PLATE, 14);
+    const setLabelSprite = skyLabel('sky.set', PLATE, 14);
+    // The rise and the set are drawn OVER the terrain, not hidden by the ridge they name.
+    // ?suntimes=behind lets the terrain cover them like the rest of the sky.
+    if (query.get('suntimes') !== 'behind') {
+      for (const sprite of [riseLabel, setLabelSprite]) { massif.set(sprite, 'occludedByMap', false); }
+    }
 
     const bar = document.getElementById('sunbar');
     const dateInput = bar.querySelector('.date');
@@ -1120,22 +1088,11 @@
     const hoursButton = bar.querySelector('.hours');
     hoursButton.classList.toggle('on', showHours);
 
-    // A label's bitmap arrives asynchronously the first time a text is seen: only the latest call for
-    // a sprite may apply, or a slow old one would overwrite a fast new one.
-    const labelCalls = new Map();
-    const setLabel = (sprite, text, style, az, alt) => {
-      const call = (labelCalls.get(sprite) ?? 0) + 1;
-      labelCalls.set(sprite, call);
-      if (!text) { massif.set(sprite, 'visible', false); return; }
-      massif.call(sprite, 'setDirection', [az, alt, 0]);
-      const apply = (bitmap) => {
-        if (labelCalls.get(sprite) !== call) { return; }
-        massif.setObject(sprite, 'bitmap', bitmap.handle);
-        massif.set(sprite, 'screenSize', bitmap.size);
-        massif.set(sprite, 'visible', true);
-      };
-      const cached = bitmaps.get(`${style}|${text}`);
-      if (cached) { apply(cached); } else { textBitmap(text, style).then(apply); }
+    const setLabel = (label, text, az, alt) => {
+      if (!text) { massif.set(label, 'visible', false); return; }
+      massif.set(label, 'text', text);
+      massif.call(label, 'setDirection', [az, alt, 0]);
+      massif.set(label, 'visible', true);
     };
 
     // The day's path: the WHOLE circle the sun runs through, down under the horizon as well. The
@@ -1215,8 +1172,8 @@
       const riseText = rise ? `↑ ${clock(rise.time)}` : '';
       const setText = set ? `↓ ${clock(set.time)}` : '';
       bar.querySelector('.riseset').textContent = rise || set ? [riseText, setText].filter(Boolean).join('  ·  ') : 'no sun over the terrain';
-      setLabel(riseLabel, riseText, 'plate', rise?.az, rise?.alt);
-      setLabel(setLabelSprite, setText, 'plate', set?.az, set?.alt);
+      setLabel(riseLabel, riseText, rise?.az, rise?.alt);
+      setLabel(setLabelSprite, setText, set?.az, set?.alt);
 
       // On the hour, a short stroke across the path and its time, where the sun is over the skyline
       // and not next to a rise or a set, whose own label is there.
@@ -1225,8 +1182,8 @@
         const sample = samples[hour * 30];
         const next = samples[hour * 30 + 1];
         const clear = [rise, set].every((crossing) => !crossing || Math.abs(crossing.time - sample.time) > 40 * 60000);
-        if (!showHours || !clear || margin(sample) < 0.5) { setLabel(hourLabels[hour], '', ''); continue; }
-        setLabel(hourLabels[hour], clock(sample.time), 'halo', sample.az, sample.alt);
+        if (!showHours || !clear || margin(sample) < 0.5) { setLabel(hourLabels[hour], ''); continue; }
+        setLabel(hourLabels[hour], clock(sample.time), sample.az, sample.alt);
         const dAz = (next.az - sample.az) * Math.cos(sample.alt * deg);
         const dAlt = next.alt - sample.alt;
         const length = Math.hypot(dAz, dAlt) || 1;
@@ -1235,18 +1192,16 @@
         ticks.push(sample.az - nAz, sample.alt - nAlt, sample.az + nAz, sample.alt + nAlt);
       }
       massif.call(marks, 'setSegments', [ticks]);
-      return coarseSkyline.map((value) => value.toFixed(2)).join(',');
     };
 
-    // Replanned in the frame the viewpoint, the eye height or the day changes, and then once a second
-    // for a few seconds, while the terrain the skyline is measured on is still arriving.
+    // Replanned in the frame the viewpoint, the eye height or the day changes, and once a second
+    // besides: the terrain the skyline is measured on keeps arriving for a while after a change, and
+    // a skyline measured early (on the few tiles loaded at startup) is lower than the real one.
     let planKey = '';
-    let settleUntil = 0;
-    let settledAt = 0;
-    let lastSignature = '';
+    let plannedAt = 0;
     const plan = () => {
       planPath();
-      lastSignature = planCrossings();
+      planCrossings();
       placeSun();
     };
     dateInput.addEventListener('change', () => { planKey = ''; });
@@ -1261,16 +1216,10 @@
       const { lat, lon } = viewpoint();
       const key = `${dateInput.value}|${lat.toFixed(5)}|${lon.toFixed(5)}|${eyeMetres.toFixed(1)}`;
       const now = performance.now();
-      if (key !== planKey) {
+      if (key !== planKey || now - plannedAt > 1000) {
         planKey = key;
-        settleUntil = now + 6000;
+        plannedAt = now;
         plan();
-        settledAt = now;
-      } else if (now < settleUntil && now - settledAt > 1000) {
-        settledAt = now;
-        const previous = lastSignature;
-        plan();
-        if (lastSignature === previous) { settleUntil = 0; }
       }
     };
   }

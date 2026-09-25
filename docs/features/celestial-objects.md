@@ -97,6 +97,9 @@ val sunPath = CelestialArc().apply {
 `setSegments(...)` reads that list as **disjoint pairs** instead of a path — so a whole constellation
 figure is ONE object: one draw call, one clickable thing, one name.
 
+`width` is in device pixels and honoured everywhere, WebGL included: the curve is a strip of quads
+widened on screen, with mitred joins and an anti-aliased edge, not a `GL_LINES` strip.
+
 ## Where the terrain meets the sky
 
 `TerrainOptions.calculateHorizon(pos, eyeHeight, azimuths, maxDistance)` answers the skyline from a

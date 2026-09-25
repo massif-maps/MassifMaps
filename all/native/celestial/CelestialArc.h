@@ -24,7 +24,7 @@ namespace massif {
      *  - as an explicit list of directions, for a path that is not a circle: a satellite track, a
      *    flight plan, a sampled trajectory.
      *
-     * The curve is generated once and drawn as a line strip; its width is in pixels, so it stays
+     * The curve is generated once and drawn as a strip widened on screen; its width is in pixels, so it stays
      * legible at any field of view.
      */
     class CelestialArc : public CelestialObject {

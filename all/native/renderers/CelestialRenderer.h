@@ -34,7 +34,7 @@ namespace massif {
      *
      * Sprites are billboards expanded in the vertex shader and batched by bitmap, so any number of
      * objects sharing one bitmap - or none, the plain disc case - is a single draw call. Arcs are
-     * line strips built once per change and drawn together.
+     * strips of quads widened on screen in the vertex shader, so a width is honoured on WebGL too.
      *
      * Depth: objects are drawn depth-TESTED but do not write depth. A direction-anchored object is
      * placed just inside the far plane, so the map and the terrain in front of it cover it exactly

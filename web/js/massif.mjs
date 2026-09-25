@@ -189,6 +189,13 @@ export class Massif {
     try {
       const text = this.getString(resultHandle, '');
       if (!text) {
+        // A number or a boolean has no text - createLayer's index read as undefined - so it is asked
+        // for as one.
+        for (const read of [() => this.getNumber(resultHandle, ''), () => this.getBool(resultHandle, '')]) {
+          try {
+            return read();
+          } catch (error) { /* not that kind */ }
+        }
         return undefined;
       }
       try {

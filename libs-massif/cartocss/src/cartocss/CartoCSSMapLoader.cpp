@@ -375,6 +375,7 @@ namespace massif::css {
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::StyleParameter>& styleParameters, std::map<std::string, Value>& constantFieldMap) const {
         // Map properties
         mvt::Map::Settings mapSettings;
+        std::vector<mvt::StyleParameter> declaredStyleParameters;
         {
             try {
                 CartoCSSCompiler compiler;
@@ -382,6 +383,24 @@ namespace massif::css {
                 compiler.compileMap(styleSheet, mapProperties, constantFieldMap);
 
                 mapSettings = loadMapSettings(mapProperties);
+
+                // A plain CartoCSS string has no project.json to declare its parameters in, so it may
+                // declare them itself, one scalar each - Map { param-selected: ''; } is what
+                // "styleparameters": { "selected": "" } is to a project. Enums and tables still need
+                // the project: their JSON has no CartoCSS spelling.
+                if (styleParameters.empty()) {
+                    static const std::string PARAM_PREFIX = "param-";
+                    for (const std::pair<const std::string, Expression>& mapProperty : mapProperties) {
+                        if (mapProperty.first.compare(0, PARAM_PREFIX.size(), PARAM_PREFIX) != 0) {
+                            continue;
+                        }
+                        const Value* defaultValue = std::get_if<Value>(&mapProperty.second);
+                        if (!defaultValue) {
+                            throw LoaderException("Map " + mapProperty.first + " needs a constant default");
+                        }
+                        declaredStyleParameters.emplace_back(mapProperty.first.substr(PARAM_PREFIX.size()), CartoCSSMapnikTranslator::buildValue(*defaultValue), std::map<std::string, mvt::Value>());
+                    }
+                }
             }
             catch (const std::exception& ex) {
                 throw LoaderException(std::string("Error while building/loading map properties: ") + ex.what());
@@ -391,7 +410,7 @@ namespace massif::css {
         
         // Set parameters
         map->setParameters(parameters);
-        map->setStyleParameters(styleParameters);
+        map->setStyleParameters(styleParameters.empty() ? declaredStyleParameters : styleParameters);
 
         // What each entry of the project's `layers` draws. An entry may name ONE attachment, so a source
         // layer can be drawn at several DEPTHS - a pedestrian area under the parks and its road casings

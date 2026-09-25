@@ -41,6 +41,14 @@ Table parameters and the repaint paths were added in PRs
 | `[a, b, c]` | an **enum**: the allowed values, the last one is the default |
 | `{ "default": <object \| array> }` | a **table** the style indexes into |
 
+A plain CartoCSS string has no `project.json`, so it declares its scalar parameters in its `Map`
+block instead - one `param-<name>` each, its value the default:
+
+```css
+Map { param-selected_peak: ''; }
+#mountain_peak { text-fill: [name] = [param::selected_peak] ? #2f4f9e : #222; }
+```
+
 ```java
 decoder.setStyleParameter("show_relief", "true");
 decoder.setStyleParameters(Map.of("lang", "fr", "buildings", "1"));

@@ -68,6 +68,19 @@
   #peak .fly { background: var(--primary); color: #fff; }
   #peak .close { background: transparent; color: var(--muted); padding: 0; width: 36px; justify-content: center; }
   #peak button:hover { filter: brightness(.95); }
+  /* THE SUN BAR: the day and the hour the sun is drawn for, and the day's rise and set over the
+     terrain in front of the viewpoint. */
+  #sunbar { position: fixed; left: 12px; bottom: 28px; display: flex; align-items: center; gap: 10px;
+            font: var(--ui); color: var(--ink); background: var(--surface); border-radius: 20px;
+            padding: 8px 14px 8px 10px; box-shadow: var(--shadow); }
+  #sunbar svg { width: 22px; height: 22px; color: #f59e0b; flex: none; }
+  #sunbar input[type=date] { font: inherit; border: 0; background: transparent; color: var(--ink); }
+  #sunbar input[type=range] { width: 160px; accent-color: #f59e0b; }
+  #sunbar .time { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 44px; white-space: nowrap; }
+  #sunbar .riseset { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #sunbar button { border: 0; background: #f59e0b1f; color: #b45309; font: 600 12px/1 system-ui, sans-serif;
+                   border-radius: 14px; height: 28px; padding: 0 10px; cursor: pointer; }
+  body.no-sun #sunbar { display: none; }
   #attribution { position: fixed; right: 8px; bottom: 4px; font: 10px/1.4 system-ui, sans-serif; color: #6b7280cc; }
   #attribution a { color: inherit; }
   /* Present in the DOM even when invisible, so --dump-dom reads it without disturbing a screenshot. */
@@ -95,6 +108,14 @@
     <button class="fly" title="Stand on the summit"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>Fly to</button>
     <button class="close" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
+</div>
+<div id="sunbar">
+  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
+  <input type="date" class="date" title="Day">
+  <input type="range" class="minute" min="0" max="1439" step="1" title="Time of day">
+  <span class="time"></span>
+  <span class="riseset"></span>
+  <button class="now" title="Back to now">Now</button>
 </div>
 <div id="attribution">MassifMaps · terrain <a href="https://mapterhorn.com" target="_blank">Mapterhorn</a> · summits <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org" target="_blank">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</div>
 <pre id="log"></pre>
@@ -953,10 +974,233 @@
   panel.append(link, pfLink);
   refreshLink();
 
+
+  // THE SUN, as peakfinder.com draws it: the day's path across the sky, an hour mark on it, the sun
+  // where it is at the chosen time, and where it rises and sets over the TERRAIN in front of the
+  // viewpoint - not over the flat horizon - with the time next to it.
+  //
+  // All of it through the facade (celestial kind, CelestialLayer methods, TerrainOptions'
+  // calculateHorizon): the SDK knows directions and the skyline, the astronomy lives here, which is
+  // the split the celestial layer was designed around. Sky objects are depth-tested against the map,
+  // so a ridge in front of the path hides it with no work on this side. ?sun=0 turns it off.
+  const SUN = query.get('sun') !== '0';
+  let sunTick = () => {};
+  if (!SUN) { document.body.classList.add('no-sun'); }
+  if (SUN) {
+    const deg = Math.PI / 180;
+    // NOAA's low-accuracy solar position - the SDK's own (LightOptions::setSunPositionFromTime).
+    const sunAt = (time, lat, lon) => {
+      const n = time / 86400000 + 2440587.5 - 2451545.0;
+      const meanLong = (280.460 + 0.9856474 * n) % 360;
+      const meanAnom = ((357.528 + 0.9856003 * n) % 360) * deg;
+      const eclipticLong = (meanLong + 1.915 * Math.sin(meanAnom) + 0.020 * Math.sin(2 * meanAnom)) * deg;
+      const obliquity = (23.439 - 0.0000004 * n) * deg;
+      const rightAsc = Math.atan2(Math.cos(obliquity) * Math.sin(eclipticLong), Math.cos(eclipticLong));
+      const decl = Math.asin(Math.sin(obliquity) * Math.sin(eclipticLong));
+      const gmst = (((18.697374558 + 24.06570982441908 * n) % 24) + 24) % 24;
+      const hourAngle = gmst * 15 * deg + lon * deg - rightAsc;
+      const phi = lat * deg;
+      const alt = Math.asin(Math.sin(phi) * Math.sin(decl) + Math.cos(phi) * Math.cos(decl) * Math.cos(hourAngle));
+      const az = Math.atan2(Math.sin(hourAngle), Math.cos(hourAngle) * Math.sin(phi) - Math.tan(decl) * Math.cos(phi));
+      return { az: (az / deg + 540) % 360, alt: alt / deg };
+    };
+    // Where the air lifts the sun to (Saemundsson), so it is compared with an APPARENT skyline.
+    const apparent = (alt) => alt + (alt > -2 ? 1.02 / Math.tan((alt + 10.3 / (alt + 5.11)) * deg) / 60 : 0);
+    const clock = (time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const layers = massif.find('layers', 'map');
+    const sky = massif.create('layer', 'sky', { type: 'celestial' });
+    massif.call(layers, 'insert', [0, sky]); // FIRST: the terrain then draws over it
+    const add = (kind, id, spec) => { const handle = massif.create(kind, id, spec); massif.call(sky, 'add', [handle]); return handle; };
+    const path = add('celestial', 'sky.path', { type: 'arc', color: '#f59e0bd0', width: 2, belowHorizonVisible: false });
+    const glow = add('celestial', 'sky.glow', { type: 'sprite', angularSize: 2.2, color: '#fbbf2455', softness: 1 });
+    const sun = add('celestial', 'sky.sun', { type: 'sprite', angularSize: 0.6, color: '#f59e0b', softness: 0.15 });
+    const marks = add('celestial', 'sky.marks', { type: 'arc', color: '#b45309', width: 2, belowHorizonVisible: false });
+
+    // Text in the sky is a sprite with a bitmap: drawn here on a canvas, handed over as a PNG in the
+    // module's file system, sized in screen pixels. The sprite is centred on its direction, so the
+    // text sits in the upper half, above the point it names.
+    try { module.FS.mkdir('/sky'); } catch (error) { /* already there */ }
+    const LABEL_SIZE = 128;
+    let labelSeq = 0;
+    const textSprite = async (text, color, bold) => {
+      const ratio = Math.min(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = LABEL_SIZE * ratio;
+      const context = canvas.getContext('2d');
+      context.scale(ratio, ratio);
+      context.font = `${bold ? 700 : 600} ${bold ? 13 : 11}px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`;
+      context.textAlign = 'center';
+      context.textBaseline = 'alphabetic';
+      context.lineJoin = 'round';
+      context.lineWidth = 3.5;
+      context.strokeStyle = '#ffffff';
+      context.strokeText(text, LABEL_SIZE / 2, LABEL_SIZE / 2 - 9);
+      context.fillStyle = color;
+      context.fillText(text, LABEL_SIZE / 2, LABEL_SIZE / 2 - 9);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      const id = `sky.label.${labelSeq += 1}`;
+      const file = `/sky/${id}.png`;
+      module.FS.writeFile(file, new Uint8Array(await blob.arrayBuffer()));
+      const bitmap = massif.create('bitmap', `${id}.bitmap`, { url: 'file://' + file });
+      const sprite = add('celestial', id, { type: 'sprite', screenSize: LABEL_SIZE });
+      massif.setObject(sprite, 'bitmap', bitmap);
+      return { sprite, id, file };
+    };
+    const dropSprite = (label) => {
+      if (!label) { return; }
+      massif.call(sky, 'remove', [label.sprite]);
+      try { massif.destroy('celestial', label.id); massif.destroy('bitmap', `${label.id}.bitmap`); module.FS.unlink(label.file); } catch (error) { /* gone */ }
+    };
+
+    // The hour labels read the same every day, so they are drawn once and only moved.
+    const hourLabels = [];
+    const hoursReady = Promise.all(Array.from({ length: 24 }, (unused, hour) =>
+      textSprite(clock(new Date(2000, 0, 1, hour).getTime()), '#b45309', false).then((label) => { hourLabels[hour] = label; })));
+
+    const bar = document.getElementById('sunbar');
+    const dateInput = bar.querySelector('.date');
+    const minuteInput = bar.querySelector('.minute');
+    const pad = (value) => String(value).padStart(2, '0');
+    const setNow = () => {
+      const now = new Date();
+      dateInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      minuteInput.value = String(now.getHours() * 60 + now.getMinutes());
+    };
+    setNow();
+    const dayStart = () => { const [y, m, d] = dateInput.value.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+
+    // The sun at the chosen minute: the disc and its glow, under the ground when it is down.
+    const placeSun = () => {
+      const time = dayStart() + Number(minuteInput.value) * 60000;
+      bar.querySelector('.time').textContent = clock(time);
+      const { az, alt } = sunAt(time, LAT, LON);
+      for (const handle of [sun, glow]) {
+        massif.call(handle, 'setDirection', [az, apparent(alt), 0]);
+        massif.set(handle, 'visible', alt > -1.5);
+      }
+    };
+
+    // The day: its path, its hour marks, and its rise and set against the skyline.
+    let riseLabel = null;
+    let setLabel = null;
+    let dayKey = '';
+    let horizonRetries = 0;
+    const planDay = async () => {
+      const start = dayStart();
+      const samples = [];
+      for (let minute = 0; minute <= 1440; minute += 2) {
+        const time = start + minute * 60000;
+        const { az, alt } = sunAt(time, LAT, LON);
+        samples.push({ time, az, alt: apparent(alt) });
+      }
+      massif.call(path, 'setDirections', [samples.flatMap((sample) => [sample.az, sample.alt])]);
+
+      // A short stroke across the path on the hour, with its time beside it.
+      await hoursReady;
+      const ticks = [];
+      for (let hour = 0; hour < 24; hour++) {
+        const sample = samples[hour * 30];
+        const next = samples[hour * 30 + 1];
+        const label = hourLabels[hour];
+        const up = sample.alt > 0.5;
+        massif.set(label.sprite, 'visible', up);
+        if (!up) { continue; }
+        massif.call(label.sprite, 'setDirection', [sample.az, sample.alt, 0]);
+        // Perpendicular to the path, half a degree each way.
+        const dAz = (next.az - sample.az) * Math.cos(sample.alt * deg);
+        const dAlt = next.alt - sample.alt;
+        const length = Math.hypot(dAz, dAlt) || 1;
+        const nAz = -dAlt / length / Math.cos(sample.alt * deg) * 0.35;
+        const nAlt = dAz / length * 0.35;
+        ticks.push(sample.az - nAz, sample.alt - nAlt, sample.az + nAz, sample.alt + nAlt);
+      }
+      massif.call(marks, 'setSegments', [ticks]);
+
+      // The skyline, measured only where the sun can meet it: between just under the flat horizon
+      // and 40 degrees up. One call for the whole day, from the terrain the SDK has loaded - what it
+      // has not is requested, and the next call answers with it.
+      const near = samples.filter((sample) => sample.alt > -2 && sample.alt < 40);
+      const terrain = massif.getObject(optionsHandle, 'terrainOptions');
+      const horizon = near.length && terrain
+        ? massif.call(terrain, 'calculateHorizon', [[LON, LAT], eyeMetres, near.map((sample) => sample.az), 200000])
+        : [];
+      const skyline = new Map(near.map((sample, index) => [sample.time, horizon[index] ?? -90]));
+      const above = (sample) => sample.alt >= 40 || (sample.alt > -2 && sample.alt >= skyline.get(sample.time));
+      let rise = null;
+      let set = null;
+      for (let index = 1; index < samples.length; index++) {
+        const before = samples[index - 1];
+        const after = samples[index];
+        if (above(before) === above(after)) { continue; }
+        // Linear between the two samples, on how far each is above its skyline.
+        const margin = (sample) => sample.alt - (skyline.get(sample.time) ?? sample.alt);
+        const fraction = Math.max(0, Math.min(1, margin(before) / (margin(before) - margin(after) || 1)));
+        const crossing = {
+          time: before.time + fraction * (after.time - before.time),
+          az: before.az + fraction * (after.az - before.az),
+          alt: before.alt + fraction * (after.alt - before.alt)
+        };
+        if (!above(before)) { rise = rise ?? crossing; } else { set = crossing; }
+      }
+      const riseText = rise ? `↑ ${clock(rise.time)}` : '';
+      const setText = set ? `↓ ${clock(set.time)}` : '';
+      bar.querySelector('.riseset').textContent = rise || set ? [riseText, setText].filter(Boolean).join('  ·  ') : 'no sun over the terrain';
+
+      // Rise and set, written where the path meets the skyline.
+      const key = `${riseText}|${setText}|${rise?.az.toFixed(2)}|${set?.az.toFixed(2)}`;
+      if (key !== dayKey) {
+        dayKey = key;
+        dropSprite(riseLabel);
+        dropSprite(setLabel);
+        riseLabel = rise ? await textSprite(riseText, '#92400e', true) : null;
+        setLabel = set ? await textSprite(setText, '#92400e', true) : null;
+        if (riseLabel) { massif.call(riseLabel.sprite, 'setDirection', [rise.az, rise.alt, 0]); }
+        if (setLabel) { massif.call(setLabel.sprite, 'setDirection', [set.az, set.alt, 0]); }
+      }
+      placeSun();
+      return horizon;
+    };
+
+    // Replanned when the viewpoint moves - a fly-to, a new eye height - or the day changes; and a few
+    // times after, while the terrain the skyline is measured on is still arriving.
+    let planKey = '';
+    let planTimer = 0;
+    let planning = false;
+    const replan = () => {
+      clearTimeout(planTimer);
+      planTimer = setTimeout(async () => {
+        if (planning) { replan(); return; }
+        planning = true;
+        let horizon = [];
+        try { horizon = await planDay(); } catch (error) { console.warn('sun:', error.message); }
+        planning = false;
+        const signature = Array.from(horizon, (value) => value.toFixed(2)).join(',');
+        if (horizonRetries < 6 && signature !== planDay.lastSignature) {
+          horizonRetries += 1;
+          planDay.lastSignature = signature;
+          planTimer = setTimeout(replan, 1500);
+        }
+      }, 200);
+    };
+    dateInput.addEventListener('change', () => { horizonRetries = 0; replan(); });
+    minuteInput.addEventListener('input', placeSun);
+    bar.querySelector('.now').addEventListener('click', () => { setNow(); horizonRetries = 0; replan(); });
+    sunTick = () => {
+      const key = `${LAT.toFixed(5)},${LON.toFixed(5)},${Math.round(eyeMetres)}`;
+      if (key !== planKey) {
+        planKey = key;
+        horizonRetries = 0;
+        replan();
+      }
+    };
+  }
+
   const hud = document.getElementById('hud');
   const logView = document.getElementById('log');
   let compassHeading = NaN;
   const tick = () => {
+    sunTick();
     try {
       hud.textContent = `zoom ${camera.zoom.toFixed(2)}  rot ${camera.rotation.toFixed(1)}  tilt ${camera.tilt.toFixed(1)}\n` +
         `focus ${camera.focusPos.map((v) => v.toFixed(5)).join(', ')}\ndebug ${INK.uDebugView}`;

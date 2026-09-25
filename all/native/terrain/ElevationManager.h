@@ -133,6 +133,20 @@ namespace massif {
         std::vector<double> getElevations(const std::vector<MapPos>& poses) const;
 
         /**
+         * The skyline seen from a viewpoint: for each azimuth (degrees clockwise from north), the
+         * apparent altitude in degrees of the highest terrain out to maxDistance metres, with the
+         * earth's curvature and standard refraction - what a sunrise behind a range is timed against.
+         * From the grids already decoded, never blocking: what is missing is requested, so a
+         * second call once it has arrived answers with it.
+         * @param pos The viewpoint, WGS84.
+         * @param eyeHeight Metres above the ground at the viewpoint.
+         * @param azimuths The directions to measure.
+         * @param maxDistance How far out, in metres.
+         * @return One altitude per azimuth, in degrees; -90 where no terrain is known.
+         */
+        std::vector<double> calculateHorizon(const MapPos& pos, double eyeHeight, const std::vector<double>& azimuths, double maxDistance) const;
+
+        /**
          * Returns the elevation in meters at the given internal coordinates, from the DEM itself.
          * Returns 0 if no data is available.
          */

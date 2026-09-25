@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <unordered_set>
 #include <limits>
 
 #ifdef __ANDROID__
@@ -213,6 +214,61 @@ namespace massif {
         }
         MapPos internalPos = _projection->toInternal(dataSourcePos);
         return grid->sampleHeight(internalPos.getX(), internalPos.getY());
+    }
+
+    std::vector<double> ElevationManager::calculateHorizon(const MapPos& pos, double eyeHeight, const std::vector<double>& azimuths, double maxDistance) const {
+        // Standard refraction bends a grazing ray with the earth, as if the earth were 1/(1 - k)
+        // times larger.
+        static const double REFRACTION_COEFFICIENT = 0.13;
+        static const double FIRST_SAMPLE_METERS = 30.0;
+        static const double SAMPLE_GROWTH = 1.008; // ~0.05 degree of the ray a step, near and far alike
+        double effectiveRadius = Const::EARTH_RADIUS / (1.0 - REFRACTION_COEFFICIENT);
+
+        MapPos eye = _projection->toInternal(_projection->fromWgs84(pos));
+        double metersToInternal = getDisplayScale(eye.getY());
+        std::vector<double> horizon(azimuths.size(), -90.0);
+        if (!(metersToInternal > 0)) {
+            return horizon;
+        }
+        std::shared_ptr<ElevationTileGrid> eyeGrid = getGridForInternalPos(eye.getX(), eye.getY(), LoadMode::CACHED_ONLY);
+        if (!eyeGrid) {
+            return horizon;
+        }
+        double eyeZ = eyeGrid->sampleHeight(eye.getX(), eye.getY()) + eyeHeight;
+
+        // The level each distance deserves: a posting of about a thousandth of the distance, which
+        // is well under a pixel of a panorama. Coarser than that is requested, once per tile.
+        int maxZoom = dataMaxZoom();
+        double worldMeters = Const::EARTH_CIRCUMFERENCE * std::cos(pos.getY() * Const::DEG_TO_RAD);
+        std::unordered_set<long long> requested;
+        for (std::size_t i = 0; i < azimuths.size(); i++) {
+            double azimuth = azimuths[i] * Const::DEG_TO_RAD;
+            double dx = std::sin(azimuth), dy = std::cos(azimuth);
+            double best = -90.0;
+            for (double distance = FIRST_SAMPLE_METERS; distance <= maxDistance; distance = std::max(distance * SAMPLE_GROWTH, distance + FIRST_SAMPLE_METERS)) {
+                double x = eye.getX() + dx * distance * metersToInternal;
+                double y = eye.getY() + dy * distance * metersToInternal;
+                std::shared_ptr<ElevationTileGrid> grid = getGridForInternalPos(x, y, LoadMode::CACHED_ONLY);
+                int wantedZoom = std::max(0, std::min(maxZoom, static_cast<int>(std::floor(std::log2(worldMeters / (DEM_TEXELS_PER_TILE_UNIT * std::max(FIRST_SAMPLE_METERS, distance * 0.001)))))));
+                if (!grid || grid->getTile().getZoom() < wantedZoom) {
+                    MapTile tile = getTileForInternalPos(x, y);
+                    while (tile.getZoom() > wantedZoom) {
+                        tile = tile.getParent();
+                    }
+                    if (requested.insert(tile.getTileId()).second) {
+                        requestTileGrid(tile, 0);
+                    }
+                }
+                if (!grid) {
+                    continue;
+                }
+                double drop = distance * distance / (2.0 * effectiveRadius);
+                double altitude = std::atan2(grid->sampleHeight(x, y) - drop - eyeZ, distance) * Const::RAD_TO_DEG;
+                best = std::max(best, altitude);
+            }
+            horizon[i] = best;
+        }
+        return horizon;
     }
 
     std::vector<double> ElevationManager::getElevations(const std::vector<MapPos>& poses) const {

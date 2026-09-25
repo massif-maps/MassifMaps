@@ -4668,6 +4668,9 @@ namespace massif::vt {
             }
         }
         markDeckAnchoredLabels(dirty);
+        if (anchored) {
+            _labelsReanchored = true;
+        }
         return anchored;
     }
 

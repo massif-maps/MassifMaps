@@ -362,6 +362,12 @@ namespace massif {
         pushTerrainDrapeState();
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
+            // A label moved onto terrain that just arrived was placed - collided, occluded, put on
+            // its row - at its OLD height, and on a still camera nothing asks again: the names a
+            // decode brought stayed judged at their flat heights until the user moved.
+            if (tileRenderer->consumeLabelsReanchored()) {
+                _labelPlacementOwed = true;
+            }
         }
         catch (const std::exception& ex) {
             Log::Errorf("TileRenderer::prepareFrame: Failed: %s", ex.what());

@@ -461,6 +461,8 @@ namespace massif::vt {
         /** Returns false when the culler's slice ran out before this layer's labels did. */
         bool cullLabels(LabelCuller& culler);
         void restartLabelPlacement();
+        /** Whether labels were moved onto newly arrived terrain since the last call. */
+        bool consumeLabelsReanchored() { return _labelsReanchored.exchange(false); }
         void snapLabelTransition();
 
         bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
@@ -1068,6 +1070,7 @@ namespace massif::vt {
         std::vector<std::shared_ptr<Label>> _labels;
         std::atomic<bool> _snapLabelTransition = false; // commit the next placement without a fade
         std::size_t _labelCullCursor = 0; // how far the current placement cycle got through _labels
+        std::atomic<bool> _labelsReanchored { false }; // see consumeLabelsReanchored
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
         // The label tile set the maps were last built from: buildLabelMaps depends on nothing else,

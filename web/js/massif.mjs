@@ -47,6 +47,8 @@ export class Massif {
       getObject: cwrap('mm_get_object', 'number', ['number', 'number', 'string']),
       call: cwrap('mm_call', 'number', ['number', 'number', 'string', 'string', 'number']),
       destroyHandle: cwrap('mm_destroy_handle', 'number', ['number', 'number']),
+      doublesCount: cwrap('mm_doubles_count', 'number', ['number', 'number', 'number']),
+      doublesCopy: cwrap('mm_doubles_copy', 'number', ['number', 'number', 'number', 'number', 'number']),
       on: cwrap('mm_on', 'number', ['number', 'number', 'string', 'number', 'number', 'string', 'number']),
       off: cwrap('mm_off', 'number', ['number', 'number']),
       drain: cwrap('mm_drain', 'number', ['number', 'number']),
@@ -187,6 +189,11 @@ export class Massif {
       return undefined; // the method produced nothing, which is most of them
     }
     try {
+      // A bulk numeric result (getElevations, calculateHorizon) is a Float64Array, copied in one go.
+      const numbers = this.#readDoubles(resultHandle);
+      if (numbers) {
+        return numbers;
+      }
       const text = this.getString(resultHandle, '');
       if (!text) {
         // A number or a boolean has no text - createLayer's index read as undefined - so it is asked
@@ -206,6 +213,18 @@ export class Massif {
     } finally {
       this.#fn.destroyHandle(this.#ctx, resultHandle);
     }
+  }
+
+  #readDoubles(handle) {
+    const count = this.#withBuffer(4, (out) =>
+      this.#fn.doublesCount(this.#ctx, handle, out) === RESULT_OK ? this.#module.getValue(out, 'i32') : -1);
+    if (count < 0) {
+      return null;
+    }
+    return this.#withBuffer(Math.max(8, count * 8), (buffer) => this.#withBuffer(4, (copied) => {
+      this.#check(this.#fn.doublesCopy(this.#ctx, handle, buffer, count, copied), 'doubles');
+      return new Float64Array(this.#module.HEAPF64.buffer, buffer, count).slice();
+    }));
   }
 
   /**

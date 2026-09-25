@@ -22,7 +22,7 @@ const CHROMIUM = process.env.CHROMIUM ?? '/Applications/Chromium.app/Contents/Ma
 const DEFAULT_URL = 'http://localhost:8099/demo/panorama.html';
 
 function parseArgs(argv) {
-    const args = { wait: 25000, out: null, url: DEFAULT_URL, eval: [], step: [], width: 900, height: 600, keep: false };
+    const args = { wait: 25000, out: null, url: DEFAULT_URL, eval: [], step: [], width: 900, height: 600, scale: 0, keep: false };
     for (let i = 0; i < argv.length; i += 1) {
         const key = argv[i].replace(/^--/, '');
         if (key === 'eval') { args.eval.push(argv[++i]); } else if (key === 'step') { args.step.push(argv[++i]); } else if (key === 'keep') { args.keep = true; } else if (key in args) { args[key] = argv[++i]; }
@@ -94,6 +94,8 @@ const chromium = spawn(CHROMIUM, [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profile}`,
     `--window-size=${args.width},${args.height}`,
+    // --scale 2: a retina screen, where the page's device-pixel sizes are what differ
+    ...(Number(args.scale) > 0 ? [`--force-device-scale-factor=${args.scale}`] : []),
     'about:blank'
 ], { stdio: ['ignore', 'ignore', 'pipe'] });
 chromium.stderr.on('data', () => { /* chromium is noisy on stderr; the page's console is what matters */ });

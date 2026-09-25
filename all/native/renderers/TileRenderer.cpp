@@ -1046,18 +1046,42 @@ namespace massif {
             // and the caller then marked it clean for good.
             std::shared_ptr<ElevationTextureCache> labelTextureCache = _elevationTextureCache;
             int labelZoom = static_cast<int>(viewState.getZoom());
-            tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom](const cglib::vec3<double>& pos) {
+            // FIRST PERSON: what the terrain already holds - see below.
+            bool firstPerson = false;
+            if (auto options = _options.lock()) {
+                firstPerson = options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
+            }
+            int firstPersonZoom = elevationManager->getDetailZoomLimit();
+            tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos) {
                 double height = 0;
                 // With the texture cache there is GPU draping, so labelVsh draws an UN-anchored label
                 // on the ground itself: no answer beats a distant ancestor's, and the walk already
                 // tries the exact grid at each level. The LRU's own walk is unbounded, so it is the
                 // fallback for the other device, where the CPU height is all a label will ever get.
-                if (labelTextureCache) {
+                //
+                // In FIRST PERSON the finest elevation the terrain already holds, and nothing is asked
+                // for. At the CAMERA's zoom - which a first person camera's cut does not follow (z15-17
+                // near, z8-10 far in a panorama) - the texture answered almost nowhere, so the label
+                // kept its sea-level anchor and the placement's frustum test refused it. And a miss
+                // PREFETCHED that zoom's detail tile, for every label of the layer, on screen or not: a
+                // summit layer asked for ~300 full-resolution DEM tiles the view never draws,
+                // overflowed the grid cache and evicted the terrain's own, which kept the DEM loading
+                // on a still camera. The texture entries come first because the manager's LRU drops a
+                // grid the terrain still draws: asked alone, a summit seen again after a look away sat
+                // on a coarse ancestor, a hundred metres under the drawn one, for good.
+                // Not on an ordinary map, where the camera zoom IS the tiles' and an unbounded walk is
+                // what hung POIs in the air off a coarse ancestor.
+                if (labelTextureCache && !firstPerson) {
                     if (labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
                         return height;
                     }
-                } else if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
-                    return height;
+                } else {
+                    if (labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), firstPersonZoom, false, height, firstPersonZoom, false)) {
+                        return height;
+                    }
+                    if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
+                        return height;
+                    }
                 }
                 return std::numeric_limits<double>::quiet_NaN();
             });

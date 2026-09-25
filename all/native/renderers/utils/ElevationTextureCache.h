@@ -109,6 +109,8 @@ namespace massif {
          * metres is invisible, so it walks further: with the elevation three levels coarser than the
          * render tiles (RenderStats zoomGap), one level answered for nothing at all.
          *
+         * prefetch false asks for nothing that is missing: the answer is what is already there.
+         *
          * @return False when the renderer has no elevation for the tile holding the point.
          */
         // Default for a BAKED query. One level covers the common "decoded but not yet in the texture
@@ -121,7 +123,7 @@ namespace massif {
         // switch a single coarse texel answered the whole screen and hung every POI in the air.
         static const int LABEL_MAX_ANCESTOR_LEVELS = 4;
 
-        bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels = BASE_MAX_ANCESTOR_LEVELS) const;
+        bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels = BASE_MAX_ANCESTOR_LEVELS, bool prefetch = true) const;
 
         /**
          * Resolves every tile at the elevation source's own maximum detail instead of at the level

@@ -566,7 +566,7 @@ namespace massif {
         }
     }
 
-    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels) const {
+    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels, bool prefetch) const {
         if (zoom < 0) {
             return false;
         }
@@ -595,7 +595,9 @@ namespace massif {
                 // insisting on the exact level left every building on the sentinel for good.
                 grid = _elevationManager->getDataTileGrid(coarse, ElevationManager::LoadMode::CACHED_ONLY);
                 if (!grid) {
-                    _elevationManager->prefetchTileGrid(coarse, 2);
+                    if (prefetch) {
+                        _elevationManager->prefetchTileGrid(coarse, 2);
+                    }
                     return false;
                 }
                 double posting = Const::WORLD_SIZE / (1 << grid->getTile().getZoom()) / std::max(1, grid->getWidth()) * metersPerInternal;
@@ -638,7 +640,7 @@ namespace massif {
                 height = grid->sampleNodeHeight(internalX, internalY) * displayScale;
                 return true;
             }
-            if (dataTile.getZoom() == dataZoom) {
+            if (prefetch && dataTile.getZoom() == dataZoom) {
                 _elevationManager->prefetchTileGrid(dataTile, 2);
             }
             if (tileId.zoom <= 0) {

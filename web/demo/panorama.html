@@ -662,6 +662,9 @@
   // (text-callout-screen-anchor), the row coming down to just above the highest summit on screen
   // (text-callout-band-follow) with peakBand the highest it goes. 'top' is the row held at peakBand
   // whatever the skyline does. 'skyline' is no row, each name over its own summit.
+  // How far behind the terrain a summit may sit and keep its name, as a fraction of its distance:
+  // TerrainOptions' billboardOcclusionTolerance, the app's default.
+  let peakOcclusion = num('peakOcclusion', 0.15);
   const PEAK_STYLE = {
     layout: query.get('peakLayout') ?? 'band',
     band: num('peakBand', 0.12),
@@ -756,13 +759,13 @@
     rebuildPeaks();
     // The app's panorama terrain options for a label layer (features/peakFinder.ts): NO DRAPE and no
     // shared ground - the one layer is billboards, and a drape bakes it over the terrain, which
-    // hides the surface shader (the notes' failure mode 1) - occlusion tolerance 0.15, coarsening 4.
+    // hides the surface shader (the notes' failure mode 1) - occlusion tolerance as set (below), coarsening 4.
     tryDo('terrain label options', () => {
       massif.set(optionsHandle, 'terrainOptions.drapeFillsEnabled', false);
       massif.set(optionsHandle, 'terrainOptions.drapeLinesEnabled', false);
       massif.set(optionsHandle, 'terrainOptions.sharedGroundEnabled', false);
       massif.set(optionsHandle, 'terrainOptions.billboardOcclusionEnabled', query.get('peakOcclude') !== '0');
-      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionTolerance', num('peakOcclusion', 0.15));
+      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionTolerance', peakOcclusion);
       massif.set(optionsHandle, 'terrainOptions.maxTileZoomCoarsening', 4);
     });
     tryDo('label padding', () => massif.set(optionsHandle, 'labelPadding', 200));
@@ -884,6 +887,7 @@
     if (query.get('look') === 'peakfinder') { next.set('paper', String(paperGrey)); }
     if (PEAKS) {
       next.set('peakLayout', PEAK_STYLE.layout);
+      next.set('peakOcclusion', String(peakOcclusion));
       for (const [name, key] of [['band', 'peakBand'], ['angle', 'peakAngle'], ['minDistance', 'peakMinDistance'], ['rows', 'peakRows'], ['size', 'peakSize'], ['wrap', 'peakWrap']]) {
         next.set(key, String(PEAK_STYLE[name]));
       }
@@ -977,6 +981,12 @@
     slider(panel, 'rows', PEAK_STYLE.rows, 1, 5, 1, (next) => setPeak('rows', next));
     slider(panel, 'text size', PEAK_STYLE.size, 8, 24, 0.5, (next) => setPeak('size', next));
     slider(panel, 'wrap names longer than, px (0 never)', PEAK_STYLE.wrap, 0, 300, 5, (next) => setPeak('wrap', next));
+    // Live: the terrain options are read every placement pass, no rebuild.
+    slider(panel, 'occlusion tolerance, fraction of the distance a summit may sit behind the terrain', peakOcclusion, 0, 1, 0.01, (next) => {
+      peakOcclusion = next;
+      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionTolerance', next);
+      refreshLink();
+    });
   }
   panel.append(link, pfLink);
   refreshLink();

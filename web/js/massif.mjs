@@ -47,7 +47,7 @@ export class Massif {
       getObject: cwrap('mm_get_object', 'number', ['number', 'number', 'string']),
       call: cwrap('mm_call', 'number', ['number', 'number', 'string', 'string', 'number']),
       destroyHandle: cwrap('mm_destroy_handle', 'number', ['number', 'number']),
-      on: cwrap('mm_on', 'number', ['number', 'number', 'string', 'number', 'number', 'number']),
+      on: cwrap('mm_on', 'number', ['number', 'number', 'string', 'number', 'number', 'string', 'number']),
       off: cwrap('mm_off', 'number', ['number', 'number']),
       drain: cwrap('mm_drain', 'number', ['number', 'number']),
     };
@@ -203,15 +203,20 @@ export class Massif {
 
   /**
    * Subscribes to an event. Returns an unsubscribe function.
+   *
+   * The handler gets the event's PAYLOAD HANDLE, valid for the call: read it with getString,
+   * getNumber and the rest (`getString(payload, 'featurePos', 'EPSG:4326')`). A truthy return
+   * consumes the event when `options.consume` is set.
+   *
+   * `options` is mm_on's: delivery 'ui' by default, because an event is produced on a worker thread
+   * (a click on the click worker) and a JS handler is only callable on the page's - the demo installs
+   * the dispatcher that posts it there. 'origin' is for handlers that are not JavaScript.
    * The handler is added to the wasm table, so it must be removed again or the table only grows.
    */
-  on(handle, event, callback) {
-    const pointer = this.#module.addFunction((ctx, subscription, jsonPointer, userData) => {
-      const json = jsonPointer ? this.#module.UTF8ToString(jsonPointer) : '';
-      callback(json ? JSON.parse(json) : {});
-    }, 'viiii');
+  on(handle, event, callback, options = { delivery: 'ui' }) {
+    const pointer = this.#module.addFunction((userData, target, eventName, payload) => (callback(payload) ? 1 : 0), 'iiiii');
     const subscription = this.#withBuffer(4, (out) => {
-      this.#check(this.#fn.on(this.#ctx, handle, event, pointer, 0, out), `on ${event}`);
+      this.#check(this.#fn.on(this.#ctx, handle, event, pointer, 0, JSON.stringify(options ?? {}), out), `on ${event}`);
       return this.#module.getValue(out, 'i32');
     });
     this.#handlers.set(subscription, pointer);

@@ -26,6 +26,11 @@
   #panel .val { width: 52px; text-align: right; }
   #panel a { display: block; margin-top: 8px; word-break: break-all; }
   body.no-panel #panel { display: none; }
+  #peak { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: none;
+          font: 13px/1.4 sans-serif; background: #fff; border: 1px solid #0003; border-radius: 8px;
+          padding: 8px 12px; box-shadow: 0 2px 8px #0002; }
+  #peak .name { font-weight: bold; }
+  #peak .meta { color: #6b7280; margin-bottom: 6px; }
   /* Present in the DOM even when invisible, so --dump-dom reads it without disturbing a screenshot. */
   #log { position: fixed; bottom: 0; left: 0; right: 0; max-height: 34vh; overflow: auto; margin: 0;
          font: 10px/1.3 monospace; background: #000c; color: #0f0; padding: 6px; display: none; }
@@ -35,6 +40,8 @@
 <iframe id="ref"></iframe>
 <div id="hud"></div>
 <div id="panel"></div>
+<div id="peak"><div class="name"></div><div class="meta"></div>
+  <button class="look">look at</button> <button class="fly">fly to</button> <button class="close">x</button></div>
 <pre id="log"></pre>
 <script>
   // A headless run has no console to read, and the SDK reports a shader that failed to compile
@@ -103,8 +110,9 @@
   const num = (name, fallback) => (query.has(name) ? parseFloat(query.get(name)) : fallback);
 
   // Grenoble, the viewpoint the device reports the fault at.
-  const LAT = num('lat', 45.1885);
-  const LON = num('lon', 5.7245);
+  // `let`: the fly-to moves the viewpoint.
+  let LAT = num('lat', 45.1885);
+  let LON = num('lon', 5.7245);
   // THE SAME DEM THE REFERENCE READS, at the same max zoom. geo-three's LocalHeightProvider is
   // s3 elevation-tiles-prod terrarium with heightMaxZoom 15; mapterhorn's planet archive stops at
   // z12, which is three levels - 8x - coarser height data, and that is most of why our folds read
@@ -132,7 +140,12 @@
   // edge stitching, which it does not have. ?lod=ours keeps the SDK's own cut to compare against.
   // ?look=peakfinder stands on the same cut: it is what the app ships, and the look is about shading.
   const REFERENCE_LOD = ['geothree', 'peakfinder'].includes(query.get('look')) && query.get('lod') !== 'ours';
+  // THE TILE CACHES, persistent as the app's are (persistent-cache): /cache is IndexedDB, loaded
+  // before main() runs - it opens the DEM's database - and written back every few seconds and when
+  // the page goes away. ?cache=0 for a cold run.
+  const CACHE = query.get('cache') !== '0';
   globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13),
+    demCache: CACHE ? '/cache/dem.db' : '',
     subdivideDistance: num('subdivideDistance', REFERENCE_LOD ? 70 : 0),
     cutMaxZoom: num('cutMaxZoom', REFERENCE_LOD ? 17 : 0),
     source: query.get('look') === 'drape' ? './paper.png' : 'none',
@@ -151,7 +164,30 @@
     exaggeration: num('exaggeration', 1) };
 
   const { default: Module } = await import('./massif-demo.mjs');
-  const module = await Module({ canvas: document.getElementById('map') });
+  const module = await Module({
+    canvas: document.getElementById('map'),
+    preRun: [(m) => {
+      if (!CACHE) { return; }
+      m.FS.mkdir('/cache');
+      m.FS.mount(m.FS.filesystems.IDBFS, {}, '/cache');
+      m.addRunDependency('idbfs');
+      m.FS.syncfs(true, (error) => {
+        if (error) { console.warn('cache: load failed', error); }
+        m.removeRunDependency('idbfs');
+      });
+    }]
+  });
+  if (CACHE) {
+    let syncing = false;
+    const persist = () => {
+      if (syncing) { return; }
+      syncing = true;
+      module.FS.syncfs(false, (error) => { syncing = false; if (error) { console.warn('cache: save failed', error); } });
+    };
+    setInterval(persist, 10000);
+    addEventListener('pagehide', persist);
+    globalThis.clearTileCache = () => indexedDB.deleteDatabase('/cache');
+  }
   const massif = new Massif(module);
   const camera = await MassifCamera.attach(massif);
 
@@ -433,6 +469,7 @@
     // The reference follows every camera change, so the split never drifts out of step.
     syncRef();
   };
+  globalThis.__setCamera = setCamera; // the headless bench steers with it
 
   // AFTER the camera is placed. First person changes what moving the camera MEANS - setTilt and
   // setMapRotation turn the view in place rather than orbiting a focus point - so switching it on
@@ -532,6 +569,146 @@
     setTimeout(() => clearInterval(pump), 30000);
   }
 
+  // THE SUMMIT LABELS, as the app draws them (alpimaps features/peakFinder.ts, createPeaks):
+  // OpenMapTiles' mountain_peak off OpenFreeMap, through the point-detail source that rebuilds a
+  // coarse tile out of the fine ones (so a far range keeps its summits), a memory cache, and the
+  // app's own callout style - generated from its peaksStyle.ts into peaks-style.js. On by default
+  // under ?look=peakfinder; ?peaks=1 / ?peaks=0 either way. The eye's altitude is baked into the
+  // style's rank, as in the app, so it is the one at load.
+  const PEAKS = query.has('peaks') ? query.get('peaks') === '1' : query.get('look') === 'peakfinder';
+  // The label layout, every knob a query parameter and a panel control. The default is
+  // peakfinder.com's: ONE ROW, a leader line up from each summit to a line just above the skyline,
+  // each name standing on it by its bottom-left corner and reading up at 45 degrees
+  // (text-callout-screen-anchor), the row coming down to just above the highest summit on screen
+  // (text-callout-band-follow) with peakBand the highest it goes. 'top' is the row held at peakBand
+  // whatever the skyline does. 'skyline' is no row, each name over its own summit.
+  const PEAK_STYLE = {
+    layout: query.get('peakLayout') ?? 'band',
+    band: num('peakBand', 0.12),
+    angle: num('peakAngle', 45),
+    rows: num('peakRows', 1),
+    minDistance: num('peakMinDistance', 1),
+    size: num('peakSize', 13),
+    persist: num('peakPersist', 10)
+  };
+  let rebuildPeaks = () => {};
+  let selectPeak = () => {};
+  if (PEAKS) {
+    const { peaksStyle } = await import('./peaks-style.js');
+    const tryDo = (what, fn) => { try { return fn(); } catch (error) { console.warn('peaks:', what, error.message); return 0; } };
+    const http = massif.create('source', 'peaks.http',
+      { type: 'http', url: 'https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf', maxZoom: 14 });
+    // On disk like the app's: the detail source rebuilds a coarse tile out of up to 64 fine ones, and
+    // over the network that is most of why the names are slow to appear.
+    const tiles = (CACHE && tryDo('persistent cache', () => massif.create('source', 'peaks.tiles',
+      { type: 'persistent-cache', source: http, databasePath: '/cache/peaks.db' }))) || http;
+    // The app's detail source (terrainStore: detail zoom 12, 3 levels, 32 features a tile, ranked by
+    // height) is OFF here unless ?peakDetail=1: it rebuilds a coarse tile out of up to 64 fine ones,
+    // which on a device reads local tiles and here reads IndexedDB or the network - measured, the
+    // raw tiles put ~16 names up by 5 s from a warm cache, the detail source ~9.
+    const detail = query.get('peakDetail') !== '1' ? 0 : tryDo('point-detail', () => massif.create('source', 'peaks.detail',
+      { type: 'point-detail', source: tiles, layer: 'mountain_peak', detailZoom: num('peakZoom', 12) }));
+    if (detail) {
+      tryDo('detail options', () => {
+        massif.set(detail, 'maxDetailLevels', num('peakDetailLevels', 3));
+        massif.set(detail, 'maxFeatures', num('peakFeatures', 32));
+        massif.set(detail, 'rankProperty', 'ele');
+      });
+    }
+    const cache = detail ? massif.create('source', 'peaks.cache', { type: 'memory-cache', source: detail, capacity: 32 * 1024 * 1024 }) : tiles;
+    const layers = massif.find('layers', 'map');
+    let generation = 0;
+    let current = null;
+    rebuildPeaks = () => {
+      // The style is TEXT - the eye's altitude is baked into its rank - so a change is a new decoder
+      // and a new layer, put up before the old one comes down.
+      generation += 1;
+      const css = peaksStyle({
+        eyeElevation: (groundMetres ?? 0) + eyeMetres, minDistance: PEAK_STYLE.minDistance, persistPasses: PEAK_STYLE.persist,
+        textAngle: PEAK_STYLE.angle, maxRows: PEAK_STYLE.rows, textSize: PEAK_STYLE.size,
+        pinTop: PEAK_STYLE.layout === 'top', band: PEAK_STYLE.band, topOffset: PEAK_STYLE.band, followSkyline: PEAK_STYLE.layout === 'skyline'
+      })
+        // The app's style names no face, so a device draws its system font; a browser has none, and
+        // the page preloads Roboto into /fonts (SystemFontUtils).
+        .replace('  text-name: [name];', "  text-name: [name];\n  text-face-name: 'Roboto';");
+      massif.create('style', `peaks.style.${generation}`, { type: 'mbvt', cartocss: { type: 'cartocss', css } });
+      const layer = massif.create('layer', `peaks.layer.${generation}`, {
+        type: 'vector', source: cache, style: `peaks.style.${generation}`, preloading: true,
+        labelRenderOrder: 'VECTOR_TILE_RENDER_ORDER_LAST', tileSubstitutionPolicy: 'TILE_SUBSTITUTION_POLICY_VISIBLE'
+      });
+      // A tap on a name selects that summit, as in the app (onPeakClicked).
+      const off = tryDo('click', () => massif.on(layer, 'vectortile.clicked', (payload) => {
+        let properties = {};
+        try { properties = JSON.parse(massif.getString(payload, 'feature.properties') || '{}'); } catch (error) { /* no properties */ }
+        const position = tryDo('featurePos', () => JSON.parse(massif.getString(payload, 'featurePos', 'EPSG:4326')));
+        if (!properties.name || !position) { return false; }
+        selectPeak({ name: properties.name, ele: properties.ele, lon: position[0] ?? position.x, lat: position[1] ?? position.y });
+        return true;
+      }, { delivery: 'ui' }));
+      // On device the plugin installs the click bridge on the layer; here the demo exports it.
+      if (!module.ccall('massifBridgeLayerClicks', 'number', ['number'], [layer])) { console.warn('peaks: no click bridge'); }
+      massif.call(layers, 'add', [layer]);
+      if (current) {
+        massif.call(layers, 'remove', [current.layer]);
+        current.off?.();
+      }
+      current = { layer, off };
+    };
+    rebuildPeaks();
+    // The app's panorama terrain options for a label layer (features/peakFinder.ts): NO DRAPE and no
+    // shared ground - the one layer is billboards, and a drape bakes it over the terrain, which
+    // hides the surface shader (the notes' failure mode 1) - occlusion tolerance 0.15, coarsening 4.
+    tryDo('terrain label options', () => {
+      massif.set(optionsHandle, 'terrainOptions.drapeFillsEnabled', false);
+      massif.set(optionsHandle, 'terrainOptions.drapeLinesEnabled', false);
+      massif.set(optionsHandle, 'terrainOptions.sharedGroundEnabled', false);
+      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionEnabled', query.get('peakOcclude') !== '0');
+      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionTolerance', num('peakOcclusion', 0.15));
+      massif.set(optionsHandle, 'terrainOptions.maxTileZoomCoarsening', 4);
+    });
+    tryDo('label padding', () => massif.set(optionsHandle, 'labelPadding', 200));
+  }
+
+  // THE SELECTED SUMMIT, as the app's card (PeakFinderOverlay): name, height, distance, and the two
+  // actions - LOOK AT turns the view to it where you stand (focusSelectedPeak), FLY TO stands you on
+  // it (flyToSelectedPeak), at the same eye height and heading.
+  const card = document.getElementById('peak');
+  const toRad = Math.PI / 180;
+  const bearingTo = (lat, lon) => {
+    const y = Math.sin((lon - LON) * toRad) * Math.cos(lat * toRad);
+    const x = Math.cos(LAT * toRad) * Math.sin(lat * toRad) - Math.sin(LAT * toRad) * Math.cos(lat * toRad) * Math.cos((lon - LON) * toRad);
+    return Math.atan2(y, x) / toRad;
+  };
+  const distanceTo = (lat, lon) => {
+    const a = Math.sin((lat - LAT) * toRad / 2) ** 2 + Math.cos(LAT * toRad) * Math.cos(lat * toRad) * Math.sin((lon - LON) * toRad / 2) ** 2;
+    return 2 * 6371008.8 * Math.asin(Math.sqrt(a));
+  };
+  let selected = null;
+  selectPeak = (peak) => {
+    selected = peak;
+    if (!peak) { card.style.display = 'none'; return; }
+    const km = distanceTo(peak.lat, peak.lon) / 1000;
+    card.querySelector('.name').textContent = peak.name;
+    card.querySelector('.meta').textContent = `${peak.ele !== undefined ? Math.round(peak.ele) + ' m - ' : ''}${km.toFixed(km < 10 ? 1 : 0)} km`;
+    card.style.display = 'block';
+  };
+  card.querySelector('.look').onclick = () => {
+    // Our rotation is minus the heading.
+    if (selected) { setCamera(-bearingTo(selected.lat, selected.lon), lastTilt); }
+  };
+  card.querySelector('.fly').onclick = async () => {
+    if (!selected) { return; }
+    const heading = bearingTo(selected.lat, selected.lon);
+    LAT = selected.lat;
+    LON = selected.lon;
+    selectPeak(null);
+    groundMetres = await readGround().catch(() => groundMetres);
+    setCamera(-heading, lastTilt);
+    rebuildPeaks(); // the eye's altitude is in the labels' rank
+    refreshLink?.();
+  };
+  card.querySelector('.close').onclick = () => selectPeak(null);
+
   // Driving surface for experiments: set a parameter, sweep it, or read the camera, from a script or
   // the console. No rebuild, no device.
   Object.assign(globalThis, {
@@ -591,6 +768,14 @@
     }
     next.set('elevation', String(Math.round(eyeMetres)));
     if (query.get('look') === 'peakfinder') { next.set('paper', String(paperGrey)); }
+    if (PEAKS) {
+      next.set('peakLayout', PEAK_STYLE.layout);
+      for (const [name, key] of [['band', 'peakBand'], ['angle', 'peakAngle'], ['minDistance', 'peakMinDistance'], ['rows', 'peakRows'], ['size', 'peakSize']]) {
+        next.set(key, String(PEAK_STYLE[name]));
+      }
+    }
+    next.set('lat', String(LAT));
+    next.set('lon', String(LON));
     link.href = location.pathname + '?' + next.toString();
     link.textContent = 'link to this look';
     // The same view on peakfinder.com, to compare against by eye (it cannot be framed or steered).
@@ -651,6 +836,32 @@
     }
     const value = (scope === 'ink' ? INK : scope === 't' ? TERRAIN : SURFACE)[name];
     slider(panel, name + ' - ' + hint, value, min, max, step, (next) => setParam(scope, name, next));
+  }
+  if (PEAKS) {
+    // Rebuilding the labels is a new decoder and layer, so a drag waits until it settles.
+    let rebuildTimer = 0;
+    const setPeak = (name, value) => {
+      PEAK_STYLE[name] = value;
+      clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(rebuildPeaks, 250);
+    };
+    const head = document.createElement('h4');
+    head.textContent = 'summit names';
+    panel.append(head);
+    const layoutLabel = document.createElement('label');
+    layoutLabel.textContent = 'layout ';
+    const layoutSelect = document.createElement('select');
+    for (const [value, text] of [['band', 'row above the skyline (peakfinder)'], ['top', 'row pinned at a fixed height'], ['skyline', 'over each summit']]) {
+      layoutSelect.append(new Option(text, value, false, PEAK_STYLE.layout === value));
+    }
+    layoutSelect.addEventListener('change', () => { setPeak('layout', layoutSelect.value); refreshLink(); });
+    layoutLabel.append(layoutSelect);
+    panel.append(layoutLabel);
+    slider(panel, 'row height, fraction from the top (a following row: the highest it goes)', PEAK_STYLE.band, 0.05, 0.9, 0.01, (next) => setPeak('band', next));
+    slider(panel, 'name angle, degrees', PEAK_STYLE.angle, 0, 90, 1, (next) => setPeak('angle', next));
+    slider(panel, 'min distance between names, px', PEAK_STYLE.minDistance, 0, 30, 1, (next) => setPeak('minDistance', next));
+    slider(panel, 'rows', PEAK_STYLE.rows, 1, 5, 1, (next) => setPeak('rows', next));
+    slider(panel, 'text size', PEAK_STYLE.size, 8, 24, 0.5, (next) => setPeak('size', next));
   }
   panel.append(link, pfLink);
   refreshLink();

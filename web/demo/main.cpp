@@ -22,6 +22,8 @@
 #include "components/Layers.h"
 #include "components/Options.h"
 #include "datasources/HTTPTileDataSource.h"
+#include "datasources/PersistentCacheTileDataSource.h"
+#include "api/MassifApiC.h"
 #include "layers/RasterTileLayer.h"
 #include "renderers/PostProcessEffect.h"
 #include "renderers/MapRenderer.h"
@@ -46,6 +48,7 @@
 
 #include <emscripten/emscripten.h>
 #include <emscripten/em_asm.h>
+#include <emscripten/threading.h>
 
 namespace {
     std::shared_ptr<massif::WebMapView> _MapView;
@@ -188,7 +191,13 @@ int main() {
     // only the tiles actually looked at.
     std::string terrain = queryParam("terrain", "");
     if (!terrain.empty()) {
-        auto elevationSource = std::make_shared<massif::HTTPTileDataSource>(0, static_cast<int>(queryNumber("terrainMaxZoom", 12)), terrain);
+        std::shared_ptr<massif::TileDataSource> elevationSource = std::make_shared<massif::HTTPTileDataSource>(0, static_cast<int>(queryNumber("terrainMaxZoom", 12)), terrain);
+        // ?demCache=<path> keeps the DEM tiles in a database there - on a directory the page has
+        // mounted on IndexedDB, across reloads, as the app keeps its own (persistent-cache).
+        std::string demCache = queryParam("demCache", "");
+        if (!demCache.empty()) {
+            elevationSource = std::make_shared<massif::PersistentCacheTileDataSource>(elevationSource, demCache);
+        }
         // ?demEncoding=mapbox for Terrain-RGB, the default is Terrarium.
         std::shared_ptr<massif::ElevationDecoder> elevationDecoder;
         if (queryParam("demEncoding", "terrarium") == "mapbox") {
@@ -262,6 +271,12 @@ int main() {
     // And the layer list, which is what makes the whole map replaceable from JavaScript: the style
     // preview clears this and adds a layer it built from a spec of its own.
     massif::api::MassifInterop::adopt("layers", "map", _MapView->getLayers());
+    // Handlers that asked for "ui" delivery run on the page's thread, not on whichever worker
+    // produced the event - a click is detected on the click worker, and a JS handler is only
+    // callable where the page's function table lives.
+    mm_set_ui_dispatcher(mm_context_default(), [](void*, void (*function)(void*), void* argument) {
+        emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VI, reinterpret_cast<void*>(function), argument);
+    }, nullptr);
 
     // The frame loop is requestAnimationFrame, so main() returning must not tear the runtime down.
     emscripten_exit_with_live_runtime();
@@ -310,6 +325,20 @@ EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float 
     if (_terrainOptions) {
         _terrainOptions->setFocusLift(elevationMeters < 0.0f ? 0.0f : elevationMeters);
     }
+}
+
+/**
+ * Makes a vector tile layer's clicks facade events ("vectortile.clicked" on its handle) - what the
+ * native plugins do for a layer they subscribe on (MassifInterop::createVectorTileEventBridge). The
+ * page cannot build that listener itself, so it names the layer by handle.
+ */
+EMSCRIPTEN_KEEPALIVE int massifBridgeLayerClicks(int handle) {
+    auto layer = std::dynamic_pointer_cast<massif::VectorTileLayer>(massif::api::MassifInterop::getLayerByHandle(handle));
+    if (!layer) {
+        return 0;
+    }
+    layer->setVectorTileEventListener(massif::api::MassifInterop::createVectorTileEventBridge(handle, layer->getVectorTileEventListener()));
+    return 1;
 }
 
 /** Must be called BEFORE massifSetReliefShader: the layout is fixed when the effect is built. */

@@ -1471,6 +1471,7 @@ namespace massif {
         GLint uDemMercatorYScale = glGetUniformLocation(progId, "u_demMercatorYScale");
         GLint uDemValid = glGetUniformLocation(progId, "u_demValid");
         GLint uDemNormalStep = glGetUniformLocation(progId, "u_demNormalStep");
+        GLint uDemUvMat = glGetUniformLocation(progId, "u_demUvMat");
         bool wantsDem = (uDemValid >= 0 && _elevationTextureCache);
         if (uDemTex >= 0) {
             glUniform1i(uDemTex, 7); // its own unit: the surface pass binds the drape on 0
@@ -1553,6 +1554,17 @@ namespace massif {
                     glActiveTexture(GL_TEXTURE7);
                     glBindTexture(GL_TEXTURE_2D, demTexture.textureId);
                     glActiveTexture(GL_TEXTURE0);
+                    if (uDemUvMat >= 0) {
+                        // Tile-local vertex to DEM uv, composed in DOUBLE so the float the shader
+                        // gets is a small tile-relative transform rather than an absolute position.
+                        cglib::mat4x4<double> toUv = cglib::mat4x4<double>::identity();
+                        toUv(0, 0) = 1.0 / demTexture.internalSize(0);
+                        toUv(1, 1) = 1.0 / demTexture.internalSize(1);
+                        toUv(0, 3) = -demTexture.internalOrigin(0) / demTexture.internalSize(0);
+                        toUv(1, 3) = -demTexture.internalOrigin(1) / demTexture.internalSize(1);
+                        cglib::mat4x4<float> demUvMat = cglib::mat4x4<float>::convert(toUv * tileMatrix);
+                        glUniformMatrix4fv(uDemUvMat, 1, GL_FALSE, demUvMat.data());
+                    }
                     if (uDemOriginSize >= 0) {
                         glUniform4f(uDemOriginSize,
                                     static_cast<float>(demTexture.internalOrigin(0)), static_cast<float>(demTexture.internalOrigin(1)),
@@ -2577,15 +2589,18 @@ namespace massif {
         attribute float a_elevation;
         uniform mat4 u_mvpMat;
         uniform mat4 u_tileMat;
+        uniform mat4 u_demUvMat;
         uniform float u_metersPerUnit;
         varying vec3 v_normal;
         varying vec3 v_worldPos;
+        varying vec2 v_demUv;
         varying float v_elevation;
         varying float v_dist;
         void main() {
             vec4 pos = u_mvpMat * vec4(a_coord, 1.0);
             v_normal = a_normal;
             v_worldPos = (u_tileMat * vec4(a_coord, 1.0)).xyz;
+            v_demUv = (u_demUvMat * vec4(a_coord, 1.0)).xy;
             v_elevation = a_elevation;
             v_dist = pos.w * u_metersPerUnit;
             gl_Position = pos;
@@ -2601,6 +2616,7 @@ namespace massif {
         #endif
         varying vec3 v_normal;
         varying vec3 v_worldPos;
+        varying vec2 v_demUv;
         varying float v_elevation;
         varying float v_dist;
 
@@ -2623,9 +2639,11 @@ namespace massif {
         uniform float u_demValid;       // 0 when no elevation texture is bound for this tile
         uniform float u_demNormalStep;  // ground metres between the taps; <= 0 is one texel
 
-        float terrainHeightMetres(vec2 internalPos) {
-            vec2 uv = (internalPos - u_demOriginSize.xy) / u_demOriginSize.zw;
+        float terrainHeightUv(vec2 uv) {
             return dot(texture2D(u_demTex, uv), u_demDecode) + u_demDecodeOffset;
+        }
+        float terrainHeightMetres(vec2 internalPos) {
+            return terrainHeightUv((internalPos - u_demOriginSize.xy) / u_demOriginSize.zw);
         }
 
         /**
@@ -2651,13 +2669,15 @@ namespace massif {
             if (u_demValid < 0.5) {
                 return vec3(0.0, 0.0, 1.0);
             }
-            vec2 texelInternal = u_demOriginSize.zw * u_demInvTexSize;
+            // In the texture's own uv (v_demUv), NOT off v_worldPos: that is an absolute internal
+            // position in float, whose ulp at a mid latitude is half a z15 texel and more than a
+            // z17 one, so taps a texel apart landed on quantised positions and the normal banded.
             float stepTexels = (stepMetres > 0.0 ? max(stepMetres / max(u_demMetersPerTexel, 0.0001), 1.0) : 1.0);
-            vec2 stepInternal = texelInternal * stepTexels;
-            float west  = terrainHeightMetres(v_worldPos.xy - vec2(stepInternal.x, 0.0));
-            float east  = terrainHeightMetres(v_worldPos.xy + vec2(stepInternal.x, 0.0));
-            float south = terrainHeightMetres(v_worldPos.xy - vec2(0.0, stepInternal.y));
-            float north = terrainHeightMetres(v_worldPos.xy + vec2(0.0, stepInternal.y));
+            vec2 stepUv = u_demInvTexSize * stepTexels;
+            float west  = terrainHeightUv(v_demUv - vec2(stepUv.x, 0.0));
+            float east  = terrainHeightUv(v_demUv + vec2(stepUv.x, 0.0));
+            float south = terrainHeightUv(v_demUv - vec2(0.0, stepUv.y));
+            float north = terrainHeightUv(v_demUv + vec2(0.0, stepUv.y));
             float mercatorY = v_worldPos.y * u_demMercatorYScale;
             float cosLat = 2.0 / (exp(mercatorY) + exp(-mercatorY));
             float groundStep = max(u_demMetersPerTexel * stepTexels * cosLat, 0.0001);
@@ -2707,10 +2727,12 @@ namespace massif {
         attribute vec3 a_normal;
         uniform mat4 u_mvpMat;
         uniform mat4 u_tileMat;
+        uniform mat4 u_demUvMat;
         uniform float u_far;
         varying float v_depth;
         varying vec3 v_normal;
         varying vec3 v_worldPos;
+        varying vec2 v_demUv;
         void main() {
             vec4 pos = u_mvpMat * vec4(a_coord, 1.0);
             v_depth = pos.w / u_far;
@@ -2718,6 +2740,7 @@ namespace massif {
             // The post-process differentiates what this pass packs, so it has to read the SAME
             // per-fragment normal the surface is shaded with, or the ink goes on drawing the mesh.
             v_worldPos = (u_tileMat * vec4(a_coord, 1.0)).xyz;
+            v_demUv = (u_demUvMat * vec4(a_coord, 1.0)).xy;
             gl_Position = pos;
         }
     )GLSL";
@@ -2734,6 +2757,7 @@ namespace massif {
         varying float v_depth;
         varying vec3 v_normal;
         varying vec3 v_worldPos;
+        varying vec2 v_demUv;
 
         // THE DEM, PER FRAGMENT.
         //
@@ -2754,9 +2778,11 @@ namespace massif {
         uniform float u_demValid;       // 0 when no elevation texture is bound for this tile
         uniform float u_demNormalStep;  // ground metres between the taps; <= 0 is one texel
 
-        float terrainHeightMetres(vec2 internalPos) {
-            vec2 uv = (internalPos - u_demOriginSize.xy) / u_demOriginSize.zw;
+        float terrainHeightUv(vec2 uv) {
             return dot(texture2D(u_demTex, uv), u_demDecode) + u_demDecodeOffset;
+        }
+        float terrainHeightMetres(vec2 internalPos) {
+            return terrainHeightUv((internalPos - u_demOriginSize.xy) / u_demOriginSize.zw);
         }
 
         /**
@@ -2782,13 +2808,15 @@ namespace massif {
             if (u_demValid < 0.5) {
                 return vec3(0.0, 0.0, 1.0);
             }
-            vec2 texelInternal = u_demOriginSize.zw * u_demInvTexSize;
+            // In the texture's own uv (v_demUv), NOT off v_worldPos: that is an absolute internal
+            // position in float, whose ulp at a mid latitude is half a z15 texel and more than a
+            // z17 one, so taps a texel apart landed on quantised positions and the normal banded.
             float stepTexels = (stepMetres > 0.0 ? max(stepMetres / max(u_demMetersPerTexel, 0.0001), 1.0) : 1.0);
-            vec2 stepInternal = texelInternal * stepTexels;
-            float west  = terrainHeightMetres(v_worldPos.xy - vec2(stepInternal.x, 0.0));
-            float east  = terrainHeightMetres(v_worldPos.xy + vec2(stepInternal.x, 0.0));
-            float south = terrainHeightMetres(v_worldPos.xy - vec2(0.0, stepInternal.y));
-            float north = terrainHeightMetres(v_worldPos.xy + vec2(0.0, stepInternal.y));
+            vec2 stepUv = u_demInvTexSize * stepTexels;
+            float west  = terrainHeightUv(v_demUv - vec2(stepUv.x, 0.0));
+            float east  = terrainHeightUv(v_demUv + vec2(stepUv.x, 0.0));
+            float south = terrainHeightUv(v_demUv - vec2(0.0, stepUv.y));
+            float north = terrainHeightUv(v_demUv + vec2(0.0, stepUv.y));
             float mercatorY = v_worldPos.y * u_demMercatorYScale;
             float cosLat = 2.0 / (exp(mercatorY) + exp(-mercatorY));
             float groundStep = max(u_demMetersPerTexel * stepTexels * cosLat, 0.0001);

@@ -202,31 +202,47 @@ namespace massif::vt {
             float maxDistance = style->maxDistance;
             float distance = 0; // meters, 0 when it could not be resolved
             double cameraToCenter = _viewState.focusDistance;
-            if ((maxDistance > 0 || ranked || cameraToCenter > 0) && (_metersToInternal > 0 || cameraToCenter > 0)) {
+            bool measurable = (maxDistance > 0 || ranked || cameraToCenter > 0) && (_metersToInternal > 0 || cameraToCenter > 0);
+            bool measured = false;
+            // Returns false when the distance alone hides the label.
+            auto measureDistance = [&]() {
                 cglib::vec3<double> position(0, 0, 0);
-                if (label->calculateCenter(position)) {
-                    double internalDistance = cglib::length(position - _viewState.origin);
-                    // The perspective cut comes FIRST and costs one length: everything below it -
-                    // updatePlacement, the variant envelopes, the grid test - is per label, and the
-                    // horizon band is where most of the labels are (performance-log 27).
-                    if (LabelDistance::isTooFar(cameraToCenter, internalDistance, _labelViewDistance)) {
-                        VT_STAT_INC(cullerDistanceCut);
+                if (!label->calculateCenter(position)) {
+                    return true;
+                }
+                measured = true;
+                double internalDistance = cglib::length(position - _viewState.origin);
+                if (LabelDistance::isTooFar(cameraToCenter, internalDistance, _labelViewDistance)) {
+                    VT_STAT_INC(cullerDistanceCut);
+                    label->setVisible(false);
+                    return false;
+                }
+                if (_metersToInternal > 0) {
+                    distance = static_cast<float>(internalDistance / _metersToInternal);
+                    if (maxDistance > 0 && distance > maxDistance) {
+                        VT_STAT_INC(cullerMaxDistanceCut);
                         label->setVisible(false);
-                        continue;
-                    }
-                    if (_metersToInternal > 0) {
-                        distance = static_cast<float>(internalDistance / _metersToInternal);
-                        if (maxDistance > 0 && distance > maxDistance) {
-                            VT_STAT_INC(cullerMaxDistanceCut);
-                            label->setVisible(false);
-                            continue;
-                        }
+                        return false;
                     }
                 }
+                return true;
+            };
+            // The perspective cut comes FIRST and costs one length: everything below it -
+            // updatePlacement, the variant envelopes, the grid test - is per label, and the
+            // horizon band is where most of the labels are (performance-log 27).
+            if (measurable && !measureDistance()) {
+                continue;
             }
 
             if (label->updatePlacement(_viewState)) {
                 label->setOpacity(0);
+            }
+            // A label placed for the FIRST time has no centre until updatePlacement, so it is measured
+            // after it. Left at 0 it was ranked by view::distance 0 - by raw height, for a summit rank -
+            // and a range a hundred kilometres out took the slots of the skyline in front of it: the
+            // names every decode brought were judged that way until the camera moved.
+            if (measurable && !measured && !measureDistance()) {
+                continue;
             }
 
             if (!label->isValid()) {

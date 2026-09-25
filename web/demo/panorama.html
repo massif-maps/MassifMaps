@@ -109,8 +109,11 @@
   // s3 elevation-tiles-prod terrarium with heightMaxZoom 15; mapterhorn's planet archive stops at
   // z12, which is three levels - 8x - coarser height data, and that is most of why our folds read
   // softer than the reference's however fine the mesh grid is. ?terrain= overrides.
-  const DEM = query.get('terrain') ??
-    'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+  // ?look=peakfinder reads mapterhorn instead, as the app does: its ridge ink is the DEM's own
+  // curvature, and the terrarium set here is upsampled into blobs and striations.
+  const DEM = query.get('terrain') ?? (query.get('look') === 'peakfinder'
+    ? 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'
+    : 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png');
   // THE REFERENCE'S WORLD IS WEB MERCATOR SIDEWAYS AND TRUE METRES UP. Its ground is mercator metres,
   // its heights are not (MaterialHeightShader: elevation * exageration), so at exageration 1 its
   // relief is flattened by cos(lat) - 0.70 here - and its near/far of 10 m .. 173 km are mercator
@@ -127,12 +130,14 @@
   // LODFrustum subdivideDistance of 70, levels to 17 (DEM z15 plus its overzoom of 2), and its
   // getGeometry mesh - geometrySize 512 over three, 171 cells to z12, halved above - without our
   // edge stitching, which it does not have. ?lod=ours keeps the SDK's own cut to compare against.
-  const REFERENCE_LOD = query.get('look') === 'geothree' && query.get('lod') !== 'ours';
+  // ?look=peakfinder stands on the same cut: it is what the app ships, and the look is about shading.
+  const REFERENCE_LOD = ['geothree', 'peakfinder'].includes(query.get('look')) && query.get('lod') !== 'ours';
   globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13),
     subdivideDistance: num('subdivideDistance', REFERENCE_LOD ? 70 : 0),
     cutMaxZoom: num('cutMaxZoom', REFERENCE_LOD ? 17 : 0),
     source: query.get('look') === 'drape' ? './paper.png' : 'none',
-    terrainMaxZoom: num('terrainMaxZoom', 15),
+    // 16 for mapterhorn: the app's source declares that (data/tilesources.ts).
+    terrainMaxZoom: num('terrainMaxZoom', query.get('look') === 'peakfinder' ? 16 : 15),
     // Read by main() at init, which is the only time the mesh grid can be set: the meshes and the
     // tile transformer both capture it when they are built. 512 is the reference's geometrySize.
     meshResolution: num('meshResolution', REFERENCE_LOD ? 171 : 512),
@@ -158,6 +163,9 @@
   // bug and exactly the kind this bench exists to avoid re-creating by hand.
   const INK = {
     uIntensity: 1, uOutlineWidth: 1, uHorizonBoost: 1, uDepthThreshold: 1,
+    // Which operator the depth outline runs: 0 geo-three's linear depth range, 1 ours relative to the
+    // depth, 2 silhouettes only (peakfinder's lines). The looks below each pick one.
+    uOperator: 1,
     // The depth-only outline's own, and the numbers the render is judged against. The slope term
     // this operator returns everywhere is NOT an artefact - it is the hillshade, and the reference
     // leans on the same thing (geo-three: gain 11, power 0.23). uOutlineFloor turns it into a pure
@@ -174,11 +182,11 @@
     uCreaseStrength: 0, uCreaseThreshold: 0.12,
     uRidgeStrength: 2, uRidgeThreshold: 0.05, uRidgeGroundSpan: 90,
     uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
-    // The far fade goes to a FLOOR, not to zero: the ridges a peak finder names are the ones past
-    // uInkDistance, and the old 1 - dist/uInkDistance erased them exactly there.
-    uInkDistance: 50000, uInkFar: 0.45, uInkFalloff: 1.6,
-    // The camera range the outline measures depth over, metres. 0 keeps our own relative operator
-    // (divide by the depth); ?look=geothree sets the reference's 10 .. 173000.
+    // Only the ink=normals outline still fades with distance; the depth outline has no fade or haze -
+    // the SDK fog is the one distance effect (?fog=1).
+    uInkDistance: 50000,
+    // The camera range the geo-three operator measures depth over, metres. uDepthFar 0 is the frame's
+    // own far plane; ?look=geothree sets the reference's 10 .. 173000.
     uDepthNear: 0, uDepthFar: 0,
     // The reference's 24-bit perspective depth, emulated: bits (0 keeps ours) and its units per metre.
     uDepthBits: 0, uDepthUnit: 0,
@@ -193,14 +201,12 @@
     uDistortRenderTanX: 1, uDistortRenderTanY: 1, uDistortRotate: 0
   };
   const SURFACE = {
-    // The hillshade the surface pass draws, deliberately faint: the outline's slope term already
-    // carries the relief, and a second full-strength one on top of it doubles every hillside.
-    uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35,
-    uHaze: 0, uHazeDistance: 60000, uDebugView: num('debug', 0),
-    // The ridge ink, drawn by the surface pass at full resolution. OFF: at every strength tried it
-    // draws blobs rather than crests - the laplacian over a 120 m span aliases against the DEM texel
-    // grid - and the depth outline already draws the interior folds. ?s.uRidgeInkStrength=1 to look.
-    uRidgeInkStrength: 0, uRidgeInkSpan: 120, uRidgeInkThreshold: 0.15
+    // peakfinder.com's model (RELIEF_SURFACE_SHADER): slope + ridge ink, capped by the light
+    // (uAmbient + uShadeStrength x the sun term) and by uInkCap.
+    uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35, uInkCap: 1, uHillshade: 0,
+    uRidgeInkStrength: 0, uDebugView: num('debug', 0),
+    // Radians per screen pixel, for the ridge term's tap spacing: kept in step with the field of view.
+    uPixelAngle: 0
   };
   const TERRAIN = {
     normalSampleDistance: num('normalSampleDistance', 90),
@@ -235,11 +241,9 @@
   // helped.
   if (query.get('look') === 'drape') {
     Object.assign(INK, {
-      uOutlineGain: 40, uOutlinePower: 0.6, uOutlineFloor: 0, uOutlineWidth: 1,
-      uIntensity: 1, uInkDistance: 50000, uInkFar: 0, uInkFalloff: 1,
-      // OUR operator, not the reference's: divide by the depth rather than measure over a camera
-      // range. uDepthFar 0 selects it.
-      uDepthNear: 0, uDepthFar: 0,
+      uOutlineGain: 40, uOutlinePower: 0.6, uOutlineFloor: 0, uOutlineWidth: 1, uIntensity: 1,
+      // OUR operator, not the reference's: divide by the depth rather than measure over a camera range.
+      uOperator: 1,
       uHorizonBoost: 1, uHorizonWidth: 3
     });
     // The surface is under the drape and invisible; these are what it had.
@@ -269,20 +273,17 @@
       // THEIR NUMBERS: depthMultiplier 11, outlineStroke 1, and depthBiais 0.23 doubled by the
       // alpha mix above. Power 0.23 alone drew every slope as a grey wash (mean 223 against their
       // 243 at the split viewpoint) - that was the whole of the "too dark" gap.
-      uOutlineGain: 11, uOutlinePower: 0.46, uOutlineCeiling: 2, uOutlineFloor: 0, uOutlineWidth: 1,
+      uOperator: 0, uOutlineGain: 11, uOutlinePower: 0.46, uOutlineCeiling: 2, uOutlineFloor: 0, uOutlineWidth: 1,
       // Its 10 m .. 173 km are mercator metres; ours are real ones.
       uIntensity: 0.5, uDepthNear: 10 * MERCATOR_COS, uDepthFar: 173000 * MERCATOR_COS,
       // Its depth buffer is DEPTH_COMPONENT24 over a world of 1e-5 per mercator metre, linearised in
       // float - which bands the far slopes instead of shading them. ?depth=linear reads ours.
       uDepthBits: query.get('depth') === 'linear' ? 0 : 24, uDepthUnit: 1e-5 / MERCATOR_COS,
-      // No distance fade: the reference has none, and a fade is the first thing that makes two
-      // renders diverge at exactly the range this is being compared over.
-      uInkFar: 1, uInkFalloff: 1,
       // ITS SKYLINE: the sky is depth 1, so the operator inks both sides of the ridge and the jump
-      // saturates to black. ?skyline=heavy is our deviation instead - a coverage stroke 3 texels wide.
-      ...(query.get('skyline') === 'heavy'
-        ? { uInkSky: 0, uHorizonBoost: 1, uHorizonWidth: 3 }
-        : { uInkSky: 1, uHorizonBoost: 0, uHorizonWidth: 1 })
+      // saturates to black. On top of it, our deviation: a coverage stroke on the terrain side,
+      // uHorizonWidth texels wide. ?skyline=ref is the reference alone, ?skyline=heavy the stroke alone.
+      uInkSky: query.get('skyline') === 'heavy' ? 0 : 1,
+      uHorizonBoost: query.get('skyline') === 'ref' ? 0 : 1, uHorizonWidth: 3
     });
     Object.assign(SURFACE, { uShadeStrength: 0, uSlopeShade: 0, uRidgeInkStrength: 0 });
     // It differentiates a FULL resolution depth buffer. At our default of 2 a one-pixel tap lands in
@@ -290,6 +291,35 @@
     TERRAIN.postProcessDownscale = 1;
     // applyAll pushes these at runtime too, and the mesh is rebuilt from getMeshResolution every
     // frame - so they have to say what the init said, or the runtime 256 replaces its 171.
+    TERRAIN.meshResolution = globalThis.MASSIF_DEFAULTS.meshResolution;
+    TERRAIN.tileEdgeStitching = globalThis.MASSIF_DEFAULTS.tileEdgeStitching;
+  }
+
+  // ?look=peakfinder is peakfinder.com's picture (cfg=es), from its shader and the uniform values read
+  // off its page (app/mapModules/terrain/peakfinder-reference-shader.md):
+  //
+  //   - the SURFACE is their shading pass: ridge ink 0.6 (the normal's turn across a pixel), slope 0,
+  //     capped by the light - sun 0.05, ambient 0, cap 0.3 - so a sunlit face is paper and only the
+  //     shadow side shows its gullies, at most a few percent grey. Paper is their 0.97.
+  //   - the LINES are theirs too, but theirs are a separate line pass, not a filter: silhouettes 1 px
+  //     at 0.2 grey and the skyline 3 px at 0.1. Ours are the depth outline's silhouette operator
+  //     (uOperator 2), which inks only the near side of an occlusion and nothing on a slope.
+  //   - their ridge taps are one pixel apart on screen, so ours are one pixel's ground apart - bounded
+  //     by normalSampleDistance, which is how far the DEM textures carry their neighbours' data.
+  if (query.get('look') === 'peakfinder') {
+    Object.assign(INK, {
+      uOperator: 2, uOutlineGain: 12, uOutlinePower: 1, uOutlineFloor: 0.008, uOutlineCeiling: 1,
+      uOutlineWidth: 1, uIntensity: 0.8, uInkSky: 0, uHorizonBoost: 0.9, uHorizonWidth: 2.5
+    });
+    // Their ridge 0.6 is over THEIR normal buffer; 0.3 over the mapterhorn curvature at 40 m lands on
+    // the same mountain luminance (243.1 against 243.8 at the Grenoble view). uAmbient 0.06 stands in
+    // for their shadow-buffer term (+0.05 x (0.5 - z) inside ~120 km), which we have no input for.
+    // The sun does not cap it, as the app ships it (PEAKFINDER_LOOK): at their 0.05 flipping the sun
+    // moved 0.11 grey levels, and strong enough to matter it blanks every sunlit face. It shades through
+    // uHillshade instead, after the cap, relative to flat ground so the ground stays paper.
+    Object.assign(SURFACE, { uShadeStrength: 0, uSlopeShade: 0, uAmbient: 0.06, uInkCap: 0.3, uRidgeInkStrength: 0.3, uHillshade: 0.15 });
+    TERRAIN.normalSampleDistance = num('normalSampleDistance', 40);
+    TERRAIN.postProcessDownscale = 1;
     TERRAIN.meshResolution = globalThis.MASSIF_DEFAULTS.meshResolution;
     TERRAIN.tileEdgeStitching = globalThis.MASSIF_DEFAULTS.tileEdgeStitching;
   }
@@ -321,8 +351,26 @@
   // The palette is baked into the generated shaders as constants (gen-relief-shaders.mjs), so a look
   // that needs other colours rewrites them. The reference's are white paper - its terrain is
   // transparent over a #fff page - and pure black ink; ?palette=ours keeps the app's under that look.
-  const COLOURS = query.get('look') === 'geothree' && query.get('palette') !== 'ours'
-    ? { uPaperColor: [1, 1, 1, 1], uInkColor: [0, 0, 0, 1] } : {};
+  const COLOURS = query.get('palette') === 'ours' ? {}
+    : query.get('look') === 'geothree' ? { uPaperColor: [1, 1, 1, 1], uInkColor: [0, 0, 0, 1] }
+    : query.get('look') === 'peakfinder' ? { uPaperColor: [1, 1, 1, 1], uInkColor: [0, 0, 0, 1], uShadeColor: [0, 0, 0, 1] }
+    : {};
+  // ?paper=<grey 0..1>, peakfinder look: the ground's colour, with the sky and the terrain background
+  // following it, so ground and sky stay one sheet. White by default; theirs is 0.97, with the sky the
+  // same 0.97 and sunlit flat ground a touch ABOVE it (250) - their ink goes negative under the sun.
+  let paperGrey = num('paper', 1);
+  const setPaper = (grey, recompile) => {
+    paperGrey = grey;
+    const byte = Math.round(grey * 255);
+    COLOURS.uPaperColor = [grey, grey, grey, 1];
+    if (query.get('background') !== '0') {
+      module.ccall('massifSetTerrainBackground', null, ['number', 'number', 'number', 'number'], [byte, byte, byte, 255]);
+    }
+    if (query.get('sky') !== '1') {
+      module.ccall('massifSetSkyEnabled', null, ['number', 'number', 'number', 'number'], [0, byte, byte, byte]);
+    }
+    if (recompile) { applyAll(); }
+  };
   const withColours = (shader) => Object.entries(COLOURS).reduce((glsl, [name, rgba]) =>
     glsl.replace(new RegExp(`const vec4 ${name} = vec4\\([^)]*\\);`), `const vec4 ${name} = vec4(${rgba.map((v) => v.toFixed(3)).join(', ')});`), shader);
 
@@ -355,7 +403,19 @@
   // is the first thing to match against a reference panorama. The SDK's default is a map's wide
   // angle; peakfinder frames about 46 degrees, which is most of why the same ground looks small here.
   const optionsHandle = massif.find('options', 'map');
-  const setFov = (degrees) => massif.set(optionsHandle, 'fieldOfViewY', degrees);
+  // ?sun=azimuth,altitude, degrees; the SDK's and the app's default is 315,45. It drives uHillshade and
+  // the uShadeStrength cap. Their reference capture had 123.5,27.6 (u_sunDirection).
+  const sunQuery = query.get('sun') ?? '315,45';
+  const [sunAzimuth, sunAltitude] = sunQuery.split(',').map(parseFloat);
+  const sunHandle = massif.create('options', 'sun', { type: 'light', sunAzimuth, sunAltitude });
+  massif.setObject(optionsHandle, 'lightOptions', sunHandle);
+  let fovDegrees = num('fov', 46);
+  const setFov = (degrees) => {
+    fovDegrees = degrees;
+    massif.set(optionsHandle, 'fieldOfViewY', degrees);
+    SURFACE.uPixelAngle = (degrees * Math.PI / 180) / Math.max(document.getElementById('map').height, 1);
+    param('massifSetSurfaceParam', 'uPixelAngle', SURFACE.uPixelAngle);
+  };
   setFov(num('fov', 46));
 
   // Assigned once the split is set up; a no-op until then. `let`, not a const declared later: a
@@ -388,6 +448,7 @@
   if (query.get('sky') !== '1') {
     module.ccall('massifSetSkyEnabled', null, ['number', 'number', 'number', 'number'], [0, 255, 255, 255]);
   }
+  if (query.get('look') === 'peakfinder') { setPaper(paperGrey, true); }
 
   // The eye's height, the panorama's one viewpoint control. Re-places the camera rather than
   // touching focusLift: massifSetPanoramaCamera owns the height here, and using both lifts twice.
@@ -445,8 +506,9 @@
       return true;
     } catch (error) { return false; }
   };
+  // Read whether or not the split is on: the peakfinder link below needs it too.
+  groundMetres = await readGround().catch(() => 0);
   if (query.get('split') === '1') {
-    groundMetres = await readGround().catch(() => 0);
     // fovFactor is its field of view, and outline/mesh settings come across too so the two are
     // being compared on the same configuration rather than on its defaults and ours.
     const refQuery = new URLSearchParams({
@@ -499,22 +561,23 @@
     ['ink', 'uOutlineWidth', 1, 4, 1, 'line width, texels'],
     ['ink', 'uHorizonWidth', 1, 8, 1, 'skyline stroke width'],
     ['ink', 'uHorizonBoost', 0, 1, 0.01, 'skyline strength'],
-    ['ink', 'uInkDistance', 10000, 300000, 1000, 'where the far fade is complete, m'],
-    ['ink', 'uInkFar', 0, 1, 0.01, 'what is LEFT of a line at that distance'],
-    ['ink', 'uInkFalloff', 0.2, 4, 0.05, 'fade shape - above 1 holds off then drops'],
-    ['ink', 'uDepthNear', 0, 1000, 10, 'depth range near, m'],
-    ['ink', 'uDepthFar', 0, 400000, 1000, 'depth range far, m - 0 is our relative operator'],
-    ['s', 'uShadeStrength', 0, 2, 0.01, 'sun term'],
-    ['s', 'uSlopeShade', 0, 2, 0.01, 'sun-independent slope term'],
-    ['s', 'uAmbient', 0, 1, 0.01, 'light on a slope facing away'],
-    ['s', 'uRidgeInkStrength', 0, 20, 0.1, 'crest ink drawn by the surface pass'],
-    ['s', 'uRidgeInkSpan', 20, 400, 10, 'crest span, m'],
-    ['s', 'uRidgeInkThreshold', 0, 0.5, 0.005, 'crest threshold'],
+    ['ink', 'uOperator', 0, 2, 1, 'operator - 0 geo-three, 1 relative, 2 silhouettes only'],
+    ['ink', 'uDepthNear', 0, 1000, 10, 'depth range near, m (operator 0)'],
+    ['ink', 'uDepthFar', 0, 400000, 1000, 'depth range far, m (operator 0) - 0 is the frame far plane'],
+    ['s', 'uRidgeInkStrength', 0, 3, 0.01, 'ridge ink - the normal turn across a pixel'],
+    ['s', 'uSlopeShade', 0, 2, 0.01, 'slope ink - sine of the tilt'],
+    ['s', 'uShadeStrength', 0, 2, 0.01, 'sun: how much ink a face turned away allows'],
+    ['s', 'uAmbient', 0, 1, 0.01, 'ink allowed whatever the sun'],
+    ['s', 'uInkCap', 0, 1, 0.01, 'most ink the surface may carry'],
+    ['s', 'uHillshade', 0, 1, 0.01, 'hillshade - faces turned from the sun, added after the cap'],
+    ['t', 'normalSampleDistance', 0, 200, 5, 'ground span of the normal and the ridge curvature, m'],
     ['t', 'exaggeration', 0.5, 2.5, 0.025, 'vertical exaggeration'],
     ['t', 'viewDistance', 20000, 300000, 5000, 'how far the map is drawn, m']
   ];
   const panel = document.getElementById('panel');
   const link = document.createElement('a');
+  const pfLink = document.createElement('a');
+  pfLink.target = '_blank';
   const setParam = (scope, name, value) => {
     if (scope === 'ink') { globalThis.ink(name, value); }
     else if (scope === 't') { globalThis.terrain(name, value); }
@@ -527,8 +590,19 @@
       next.set(scope + '.' + name, String(from[name]));
     }
     next.set('elevation', String(Math.round(eyeMetres)));
+    if (query.get('look') === 'peakfinder') { next.set('paper', String(paperGrey)); }
     link.href = location.pathname + '?' + next.toString();
     link.textContent = 'link to this look';
+    // The same view on peakfinder.com, to compare against by eye (it cannot be framed or steered).
+    // Its azi is a heading, ours the opposite; its fov is HORIZONTAL; its alt is a pitch, and at the
+    // Grenoble viewpoint our tilt had to be ~0.8 deg more than its alt to fit the same skyline.
+    const canvas = document.getElementById('map');
+    const fovX = 2 * Math.atan(Math.tan(fovDegrees * Math.PI / 360) * canvas.width / canvas.height) * 180 / Math.PI;
+    pfLink.href = 'https://www.peakfinder.com/?' + new URLSearchParams({
+      lat: String(LAT), lng: String(LON), ele: String(Math.round(groundMetres ?? 0)), off: String(Math.round(eyeMetres)),
+      azi: String(-lastRotation), alt: String(lastTilt), fov: fovX.toFixed(2), cfg: 'es'
+    }).toString() + '&name';
+    pfLink.textContent = 'this view on peakfinder.com';
   };
   const slider = (parent, label, value, min, max, step, onInput) => {
     const wrap = document.createElement('label');
@@ -561,6 +635,11 @@
   // so the vertical is matched from OUR side. Measured at this viewpoint their skyline sits about
   // 20 px of 470 higher than ours at tilt 4, which at a 24 degree vertical field of view is ~1 deg.
   slider(panel, 'tilt', lastTilt, -10, 30, 0.25, (next) => setCamera(lastRotation, next));
+  slider(panel, 'sun azimuth', sunAzimuth, 0, 360, 1, (next) => massif.set(sunHandle, 'sunAzimuth', next));
+  slider(panel, 'sun altitude', sunAltitude, 0, 90, 0.5, (next) => massif.set(sunHandle, 'sunAltitude', next));
+  if (query.get('look') === 'peakfinder') {
+    slider(panel, 'paper grey - ground, sky and background', paperGrey, 0.8, 1, 0.005, (next) => setPaper(next, true));
+  }
   let section = '';
   for (const [scope, name, min, max, step, hint] of CONTROLS) {
     const head = scope === 'ink' ? 'outline (post-process)' : 'surface (shading)';
@@ -573,7 +652,7 @@
     const value = (scope === 'ink' ? INK : scope === 't' ? TERRAIN : SURFACE)[name];
     slider(panel, name + ' - ' + hint, value, min, max, step, (next) => setParam(scope, name, next));
   }
-  panel.append(link);
+  panel.append(link, pfLink);
   refreshLink();
 
   const hud = document.getElementById('hud');

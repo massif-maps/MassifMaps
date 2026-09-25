@@ -45,10 +45,10 @@ needs 15-20 s to settle at most viewpoints; anything shorter captures a load fra
 Useful globals on the page: `camera`, `look(rotation, tilt)`, `fov(deg)`, `ink(name, value)`,
 `surface(name, value)`, `terrain(name, value)`, `debug(view)`.
 
-## The three looks
+## The looks
 
-`?look=` selects a whole configuration. They are not variations on a theme; they are three
-different renderers.
+`?look=` selects a whole configuration. They are not variations on a theme; they are different
+renderers.
 
 - **`drape`** — the render from before per-fragment normals, and the one that was approved. A
   draped raster layer paints the terrain, so the surface shader contributes nothing and the
@@ -58,7 +58,8 @@ different renderers.
 - **`geothree`** — geo-three's webapp ported term for term, and now matching it to a mean
   absolute difference of 1.6-2.5 grey levels at three viewpoints (was 6-20). See "Parity with
   geo-three" below for every term and its toggle.
-- **(default)** — the current pipeline: per-fragment DEM normals in the surface pass plus the
+- **`peakfinder`** — peakfinder.com's picture (`cfg=es`), see "Toward peakfinder" below.
+- **(default)** — the older pipeline: per-fragment DEM normals in the surface pass plus the
   depth outline.
 
 `?split=1` puts geo-three's own build in a frame beside ours on one camera. It is served from
@@ -81,7 +82,7 @@ Each term, and what reverts it for comparison:
 | term | geo-three | how we match | toggle |
 |---|---|---|---|
 | ink | terrain TRANSPARENT (generateColor off writes `vec4(0)`), outline mixed in alpha included, AVERAGE blend: ink = `min(d*d/2, 1)` | power 0.46, `uIntensity` 0.5, `uOutlineCeiling` 2 | - |
-| skyline | sky is depth 1, operator inks both sides, saturates black | `uInkSky` 1, no horizon boost | `?skyline=heavy` |
+| skyline | sky is depth 1, operator inks both sides, saturates black | `uInkSky` 1, plus our terrain-side stroke (`uHorizonBoost` 1, `uHorizonWidth` 3) | `?skyline=ref` reference alone, `?skyline=heavy` stroke alone |
 | palette | white page, pure black ink | constants rewritten in the page | `?palette=ours` |
 | depth | DEPTH_COMPONENT24 perspective, linearised in float | `uDepthBits` 24, `uDepthUnit` 1e-5/cos | `?depth=linear` |
 | depth range | 10 m .. 173 km MERCATOR | ×cos(lat), `viewDistance` too | - |
@@ -91,6 +92,50 @@ Each term, and what reverts it for comparison:
 
 The terrain cut is what the 1.8 px "pitch" offset was: our coarse far tiles and box-averaged
 heights shaved the ridges down. With the cut ported the skylines coincide to 0 px.
+
+`uOutlineWidth` DILATES the one-pixel operator (max over a cross of that radius); it used to space
+the taps wider, which measured the slope over more ground and greyed the whole picture. Width 3 now
+moves the slope grey by 1 level. `uDepthFar` no longer clips: ground past it keeps its lines, so
+the reach is `viewDistance` alone (0 = the frame's far plane). The depth outline has no distance
+fade and the surface no haze any more; the SDK fog (`?fog=1`) is the one distance effect.
+
+## Toward peakfinder (`?look=peakfinder`)
+
+Their shader is in `alpimaps/app/mapModules/terrain/peakfinder-reference-shader.md`. Their runtime
+values, read off the live page's WebGL state (`gl.getUniform` on the programs it binds):
+`u_fragmentParams0 [1.297, 1, 0, 1]`, `params1 [0.6, 0, 0, 8]` (ridge 0.6, slope 0, silhouette 8),
+`params2 [0.3, 0, 0, 0.05]` (cap 0.3, sun 0.05), `params3 [0.05, 1, 0, 0]`, `u_fragmentColors
+[0, 0.97]`. So their shading is FAINT: ink is capped by the light, a sunlit face stays paper and the
+shadow side carries a few percent of ridge texture. Their black lines are a separate LINE pass
+(`u_linewidth` 6 @ 0.1 grey, 2 @ 0.2 grey, in device pixels), not the shading.
+
+Ours: the surface shader is their model (slope + ridge ADDED, capped by `uAmbient + uShadeStrength *
+max(-0.2, -dot(n, sun))` and `uInkCap`), plus a hillshade after the cap - `uHillshade * max(sun.z -
+dot(n, sun), 0)`, zero on flat ground - which is what the sun azimuth moves (their sun only caps, and
+flipping it at their strength moved the picture 0.11 grey levels); the ridge is the DEM's curvature over `normalSampleDistance`,
+scaled to one pixel's ground (`uPixelAngle`, set from the field of view); the lines are the depth
+outline's `uOperator` 2 - the laplacian of inverse depth, near side only, which is zero on any plane
+and so inks occlusions and nothing else. DEM is mapterhorn z16 (the app's). The camera for their
+capture: `?lat=45.17173&lon=5.72455&elevation=234&tilt=4.62&rotation=-11.3&fov=24`; the panel links
+the current view on peakfinder.com (their `azi` is minus our rotation, `fov` is horizontal, and
+their `alt` was 0.8 deg less than our tilt at this viewpoint).
+
+Measured against their capture (mountain crops, mean grey): 243.1 vs 243.8 and 238.7 vs 239.3.
+Their sky is their paper, 247, and sunlit flat ground 250 (their ink goes negative under the sun);
+ours stays on paper. Paper is `?paper=<grey>` (panel slider), sky and terrain background follow it:
+1 by default, 0.97 is theirs. Their texture is streakier - their
+cast-shadow term (`+0.05 * (0.5 - z)`) has no input here; `uAmbient` 0.06 stands in for it.
+
+Two DEM precision faults found on the way, both of which drew contour-like stripes:
+
+- `v_worldPos` is an absolute internal position in float; its ulp at Grenoble is 0.0625 units, half
+  a z15 texel and twice a z17 one. The shaders now get `v_demUv`, computed per vertex from a
+  per-tile matrix built in double (`u_demUvMat`), and `terrainNormal` taps in uv.
+- The texture's own bilinear filter is NOT exact on a packed height: terrarium's R channel carries
+  every 256 m, and the filtered result is ~1 m off there. Invisible in a height, a spike in any
+  derivative - dotted bands along every 256 m contour. The ridge term interpolates by hand
+  (`exactHeightUv`, four texel-centre reads). The SDK's `terrainNormal` still reads the filter; at a
+  90 m span the error is a 0.5% slope, at one texel it is visible.
 
 ## Debug views
 
@@ -169,9 +214,8 @@ the Grenoble split is now 241 against its 243 (was 177).
 ## Things deliberately not done
 
 - The reference's `exageration` of 1.6225 is not matched, by request: both sides render true.
-- The app does not use this look yet: `peakFinder.ts` runs the NORMALS outline
-  (`reliefOutlineShader`), not the depth one.
-- The surface-pass ridge ink is off: at every strength tried it draws blobs rather than crests
-  (the laplacian aliases against the DEM texel grid).
+- The app runs `?look=peakfinder` (`PEAKFINDER_LOOK` in `reliefShaders.ts`); `geothree` stays here to compare.
+- The surface-pass ridge ink is only on under `?look=peakfinder`. The old laplacian drew blobs; the
+  blobs were mostly the two precision faults above.
 - Nothing in any of this is verified on device. The gesture changes in `TouchHandler` and
   `Options` affect the app on device as well as this bench.

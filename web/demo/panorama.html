@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>peak finder bench</title>
+<title>Peak finder - MassifMaps</title>
 <style>
   html, body { margin: 0; height: 100%; background: #f7f7f4; }
   #map { width: 100vw; height: 100vh; display: block; }
@@ -12,25 +12,64 @@
                     border-right: 1px solid #888; }
   #ref { display: none; }
   body.split #ref { display: block; }
-  body.split #panel { top: auto; bottom: 8px; }
-  #hud { position: fixed; top: 8px; left: 8px; font: 12px/1.4 monospace; background: #fffc;
-         padding: 6px 8px; white-space: pre; }
-  /* The tuning panel. Hidden from a capture (?panel=0) so a screenshot is the render and nothing
-     else, and every control writes the query string back so a tuned look is a LINK. */
-  #panel { position: fixed; top: 8px; right: 8px; width: 250px; max-height: 92vh; overflow: auto;
-           font: 11px/1.5 monospace; background: #fffe; padding: 8px; }
-  #panel h4 { margin: 8px 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-  #panel label { display: block; margin-bottom: 4px; }
-  #panel .row { display: flex; align-items: center; gap: 6px; }
-  #panel input[type=range] { flex: 1; min-width: 0; }
-  #panel .val { width: 52px; text-align: right; }
-  #panel a { display: block; margin-top: 8px; word-break: break-all; }
-  body.no-panel #panel { display: none; }
-  #peak { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: none;
-          font: 13px/1.4 sans-serif; background: #fff; border: 1px solid #0003; border-radius: 8px;
-          padding: 8px 12px; box-shadow: 0 2px 8px #0002; }
-  #peak .name { font-weight: bold; }
-  #peak .meta { color: #6b7280; margin-bottom: 6px; }
+  :root { --primary: #4465be; --ink: #1f2430; --muted: #6b7280; --surface: #ffffffee;
+          --shadow: 0 4px 18px #0000001f, 0 1px 3px #00000014; --ui: 13px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  /* The camera readout is for debugging: ?hud=1. It stays in the DOM, where the bench reads it. */
+  #hud { position: fixed; top: 8px; left: 80px; font: 12px/1.4 monospace; background: #fffc;
+         padding: 6px 8px; white-space: pre; display: none; }
+  body.show-hud #hud { display: block; }
+  /* THE SETTINGS DRAWER, closed by default and opened by the button in the top right corner (?panel=1
+     opens it at load). Every control writes the query string back, so a tuned look is a LINK.
+     ?panel=0 removes the drawer and its button, so a capture is the render and nothing else. */
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; overflow: auto; box-sizing: border-box;
+           font: 12px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--ink);
+           background: #fffffff5; padding: 64px 16px 16px; box-shadow: var(--shadow);
+           transform: translateX(105%); transition: transform .25s ease; z-index: 2; }
+  body.panel-open #panel { transform: none; }
+  #panel h4 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--muted);
+              text-transform: uppercase; letter-spacing: .08em; }
+  #panel label { display: block; margin-bottom: 6px; }
+  #panel .row { display: flex; align-items: center; gap: 8px; }
+  #panel input[type=range] { flex: 1; min-width: 0; accent-color: var(--primary); }
+  #panel .val { width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  #panel a { display: block; margin-top: 10px; word-break: break-all; color: var(--primary); }
+  body.no-panel #panel, body.no-panel #panel-toggle { display: none; }
+  .fab { position: fixed; width: 44px; height: 44px; border-radius: 22px; border: 0; padding: 0;
+         background: var(--surface); box-shadow: var(--shadow); color: var(--ink); cursor: pointer;
+         display: flex; align-items: center; justify-content: center; }
+  .fab:hover { color: var(--primary); }
+  #panel-toggle { top: 12px; right: 12px; z-index: 3; }
+  /* WHERE THE VIEW IS POINTED, as the app's (PeakFinderOverlay): the needle holds north, the text is
+     the direction looked at. A click turns the view to the north. */
+  #compass { position: fixed; top: 12px; left: 12px; width: 52px; padding: 6px 0 5px; border-radius: 26px;
+             background: var(--surface); box-shadow: var(--shadow); color: var(--ink); cursor: pointer;
+             display: flex; flex-direction: column; align-items: center; gap: 1px; font: 600 11px/1.2 system-ui, sans-serif;
+             user-select: none; }
+  #compass svg { width: 30px; height: 30px; }
+  #compass .heading { font-variant-numeric: tabular-nums; }
+  #compass .cardinal { color: var(--muted); font-weight: 500; }
+  /* THE SELECTED SUMMIT, as the app's card: what it is, how high and how far, and the two actions. */
+  #peak { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+          transition: opacity .2s ease, transform .2s ease; display: flex; align-items: center; gap: 12px;
+          font: var(--ui); color: var(--ink); background: var(--surface); border-radius: 20px;
+          padding: 10px 10px 10px 12px; box-shadow: var(--shadow); max-width: calc(100vw - 32px); box-sizing: border-box; }
+  #peak.open { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #peak .icon { flex: none; width: 42px; height: 42px; border-radius: 21px; background: var(--primary); color: #fff;
+                display: flex; align-items: center; justify-content: center; }
+  #peak .icon svg { width: 24px; height: 24px; }
+  #peak .text { min-width: 0; }
+  #peak .name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #peak .meta { color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #peak .actions { display: flex; gap: 6px; margin-left: 8px; }
+  #peak button { border: 0; cursor: pointer; font: 600 12px/1 system-ui, sans-serif; border-radius: 18px;
+                 height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 14px; }
+  #peak button svg { width: 18px; height: 18px; }
+  #peak .look { background: #4465be1a; color: var(--primary); }
+  #peak .fly { background: var(--primary); color: #fff; }
+  #peak .close { background: transparent; color: var(--muted); padding: 0; width: 36px; justify-content: center; }
+  #peak button:hover { filter: brightness(.95); }
+  #attribution { position: fixed; right: 8px; bottom: 4px; font: 10px/1.4 system-ui, sans-serif; color: #6b7280cc; }
+  #attribution a { color: inherit; }
   /* Present in the DOM even when invisible, so --dump-dom reads it without disturbing a screenshot. */
   #log { position: fixed; bottom: 0; left: 0; right: 0; max-height: 34vh; overflow: auto; margin: 0;
          font: 10px/1.3 monospace; background: #000c; color: #0f0; padding: 6px; display: none; }
@@ -39,9 +78,25 @@
 <canvas id="map"></canvas>
 <iframe id="ref"></iframe>
 <div id="hud"></div>
+<div id="compass" title="Look north">
+  <svg viewBox="0 0 24 24"><path class="needle" fill="currentColor" d="M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7z"/></svg>
+  <span class="heading">0°</span><span class="cardinal">N</span>
+</div>
+<button id="panel-toggle" class="fab" title="Settings">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+</button>
 <div id="panel"></div>
-<div id="peak"><div class="name"></div><div class="meta"></div>
-  <button class="look">look at</button> <button class="fly">fly to</button> <button class="close">x</button></div>
+<div id="peak">
+  <div class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/></svg></div>
+  <div class="text"><div class="name"></div><div class="meta"></div></div>
+  <div class="actions">
+    <button class="look" title="Turn the view to it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Look at</button>
+    <button class="fly" title="Stand on the summit"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>Fly to</button>
+    <button class="close" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+</div>
+<div id="attribution">MassifMaps · terrain <a href="https://mapterhorn.com" target="_blank">Mapterhorn</a> · summits <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org" target="_blank">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</div>
 <pre id="log"></pre>
 <script>
   // A headless run has no console to read, and the SDK reports a shader that failed to compile
@@ -594,6 +649,7 @@
   };
   let rebuildPeaks = () => {};
   let selectPeak = () => {};
+  let showSelectedPeak = () => {};
   if (PEAKS) {
     const { peaksStyle } = await import('./peaks-style.js');
     const tryDo = (what, fn) => { try { return fn(); } catch (error) { console.warn('peaks:', what, error.message); return 0; } };
@@ -618,6 +674,15 @@
     }
     const cache = detail ? massif.create('source', 'peaks.cache', { type: 'memory-cache', source: detail, capacity: 32 * 1024 * 1024 }) : tiles;
     const layers = massif.find('layers', 'map');
+    // THE SELECTED SUMMIT'S NAME, bold and in the card's blue: a style parameter the style declares
+    // itself (Map style-parameters) and compares with each summit, so selecting one is a parameter
+    // write on the live decoder - no second layer, no new style.
+    let selectedKey = '';
+    const withSelection = (css) => "Map { param-selected_peak: ''; }\n" +
+      "@selected: [name] + '|' + [ele] = [param::selected_peak];\n" + css
+      .replace("text-face-name: 'Roboto';", "text-face-name: @selected ? 'Roboto-Bold' : 'Roboto';")
+      .replace(/\n {2}text-fill: ([^;]+);/, '\n  text-fill: @selected ? #2f4f9e : $1;')
+      .replace(/text-placement-priority: ([^;]+);/, 'text-placement-priority: @selected ? 100000 : $1;');
     let generation = 0;
     let current = null;
     rebuildPeaks = () => {
@@ -632,7 +697,8 @@
         // The app's style names no face, so a device draws its system font; a browser has none, and
         // the page preloads Roboto into /fonts (SystemFontUtils).
         .replace('  text-name: [name];', "  text-name: [name];\n  text-face-name: 'Roboto';");
-      massif.create('style', `peaks.style.${generation}`, { type: 'mbvt', cartocss: { type: 'cartocss', css } });
+      const style = massif.create('style', `peaks.style.${generation}`, { type: 'mbvt', cartocss: { type: 'cartocss', css: withSelection(css) } });
+      tryDo('selection', () => massif.set(style, 'params.selected_peak', selectedKey));
       const layer = massif.create('layer', `peaks.layer.${generation}`, {
         type: 'vector', source: cache, style: `peaks.style.${generation}`, preloading: true,
         labelRenderOrder: 'VECTOR_TILE_RENDER_ORDER_LAST', tileSubstitutionPolicy: 'TILE_SUBSTITUTION_POLICY_VISIBLE'
@@ -653,7 +719,11 @@
         massif.call(layers, 'remove', [current.layer]);
         current.off?.();
       }
-      current = { layer, off };
+      current = { layer, off, style };
+    };
+    showSelectedPeak = (peak) => {
+      selectedKey = peak ? `${peak.name}|${peak.ele ?? ''}` : '';
+      if (current) { tryDo('selection', () => massif.set(current.style, 'params.selected_peak', selectedKey)); }
     };
     rebuildPeaks();
     // The app's panorama terrain options for a label layer (features/peakFinder.ts): NO DRAPE and no
@@ -684,14 +754,20 @@
     const a = Math.sin((lat - LAT) * toRad / 2) ** 2 + Math.cos(LAT * toRad) * Math.cos(lat * toRad) * Math.sin((lon - LON) * toRad / 2) ** 2;
     return 2 * 6371008.8 * Math.asin(Math.sqrt(a));
   };
+  const COMPASS_POINTS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const toCompass = (heading) => COMPASS_POINTS[Math.round((((heading % 360) + 360) % 360) / 22.5) % 16];
   let selected = null;
   selectPeak = (peak) => {
     selected = peak;
-    if (!peak) { card.style.display = 'none'; return; }
+    showSelectedPeak(peak);
+    if (!peak) { card.classList.remove('open'); return; }
     const km = distanceTo(peak.lat, peak.lon) / 1000;
+    const heading = (bearingTo(peak.lat, peak.lon) + 360) % 360;
+    const elevation = peak.ele !== undefined && peak.ele !== '' ? `${Math.round(Number(peak.ele)).toLocaleString('en')} m  ·  ` : '';
     card.querySelector('.name').textContent = peak.name;
-    card.querySelector('.meta').textContent = `${peak.ele !== undefined ? Math.round(peak.ele) + ' m - ' : ''}${km.toFixed(km < 10 ? 1 : 0)} km`;
-    card.style.display = 'block';
+    card.querySelector('.name').title = peak.name;
+    card.querySelector('.meta').textContent = `${elevation}${km.toFixed(km < 10 ? 1 : 0)} km  ·  ${Math.round(heading)}° ${toCompass(heading)}`;
+    card.classList.add('open');
   };
   card.querySelector('.look').onclick = () => {
     // Our rotation is minus the heading.
@@ -709,6 +785,11 @@
     refreshLink?.();
   };
   card.querySelector('.close').onclick = () => selectPeak(null);
+  addEventListener('keydown', (event) => { if (event.key === 'Escape') { selectPeak(null); document.body.classList.remove('panel-open'); } });
+
+  const compassElement = document.getElementById('compass');
+  const needle = compassElement.querySelector('.needle');
+  compassElement.onclick = () => setCamera(0, lastTilt);
 
   // Driving surface for experiments: set a parameter, sweep it, or read the camera, from a script or
   // the console. No rebuild, no device.
@@ -723,6 +804,7 @@
     surface: (name, value) => { SURFACE[name] = value; param('massifSetSurfaceParam', name, value); },
     terrain: (name, value) => { TERRAIN[name] = value; param('massifSetTerrainFloat', name, value); },
     debug: (view) => { globalThis.ink('uDebugView', view); globalThis.surface('uDebugView', view); },
+    select: (peak) => selectPeak(peak),
     ready: () => true
   });
 
@@ -731,6 +813,9 @@
   // as it moves - so a look that works is a LINK to paste rather than a list of values to retype,
   // and the same link reproduces it headless. ?panel=0 hides it for a capture.
   if (query.get('panel') === '0') { document.body.classList.add('no-panel'); }
+  if (query.get('panel') === '1') { document.body.classList.add('panel-open'); }
+  if (query.get('hud') === '1') { document.body.classList.add('show-hud'); }
+  document.getElementById('panel-toggle').onclick = () => document.body.classList.toggle('panel-open');
   const CONTROLS = [
     ['ink', 'uOutlineGain', 0, 80, 1, 'gain'],
     ['ink', 'uOutlinePower', 0.05, 2, 0.01, 'power - low draws the slope wash, high draws lines only'],
@@ -870,10 +955,19 @@
 
   const hud = document.getElementById('hud');
   const logView = document.getElementById('log');
+  let compassHeading = NaN;
   const tick = () => {
     try {
       hud.textContent = `zoom ${camera.zoom.toFixed(2)}  rot ${camera.rotation.toFixed(1)}  tilt ${camera.tilt.toFixed(1)}\n` +
         `focus ${camera.focusPos.map((v) => v.toFixed(5)).join(', ')}\ndebug ${INK.uDebugView}`;
+      // The compass: our rotation is minus the heading, and the needle holds north, so it turns by it.
+      const heading = ((-camera.rotation % 360) + 360) % 360;
+      if (heading !== compassHeading) {
+        compassHeading = heading;
+        needle.setAttribute('transform', `rotate(${-heading} 12 12)`);
+        compassElement.querySelector('.heading').textContent = `${Math.round(heading) % 360}°`;
+        compassElement.querySelector('.cardinal').textContent = toCompass(heading);
+      }
     } catch (error) {
       hud.textContent = String(error?.message ?? error);
     }

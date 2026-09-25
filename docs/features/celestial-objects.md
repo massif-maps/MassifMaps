@@ -100,6 +100,14 @@ figure is ONE object: one draw call, one clickable thing, one name.
 `width` is in device pixels and honoured everywhere, WebGL included: the curve is a strip of quads
 widened on screen, with mitred joins and an anti-aliased edge, not a `GL_LINES` strip.
 
+## Draw order
+
+A celestial layer draws in the same pass as the vector layers' labels, so the **layer order** is
+the z order: a celestial layer below a labelled vector layer goes under its labels, one above it
+goes over them. Two layers split one sky into a path under the place names and a sun and its
+times over them. Within a layer, curves draw first and sprites on top. The map in front still
+hides both, whatever the order: the depth test against the terrain does not depend on it.
+
 ## Where the terrain meets the sky
 
 `TerrainOptions.calculateHorizon(pos, eyeHeight, azimuths, maxDistance)` answers the skyline from a

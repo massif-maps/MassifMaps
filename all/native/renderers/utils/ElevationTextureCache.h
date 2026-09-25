@@ -155,6 +155,12 @@ namespace massif {
          * asked and applies it in beginFrame - a per-layer set would clear the cache on each change.
          */
         void requestDetailLevels(int extraLevels);
+        /**
+         * How far past a fragment the shaders sample the texture, in ground metres
+         * (TerrainOptions::getNormalSampleDistance): each texture's border is widened to keep those
+         * taps on real neighbour data. 0 keeps the 1-texel border. A change re-encodes everything.
+         */
+        void setBorderMetres(float metres);
 
         void clear();
 
@@ -177,6 +183,7 @@ namespace massif {
             std::shared_ptr<ElevationTileGrid> grid;
             GridKey gridKeyValue = -1;
             BorderQuality borderQuality = NO_BORDERS;
+            int border = 1; // texels of neighbour data around the raster (getTextureBorderTexels)
             // The grids each side's border came from, kept so a later patch can REUSE them: the LRU
             // drops and re-decodes constantly, and rebuilding the ring from whatever is cached lets
             // a side fall back and improve again for ever. Holding them keeps the quality monotone.
@@ -197,6 +204,7 @@ namespace massif {
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             BorderQuality borderQuality = NO_BORDERS;
             bool bordersOnly = false; // the entry already has this grid's texture; only its ring changed
+            int border = 1;
         };
         // The BITMAP, not the encoded bytes: building it copies the whole padded texture byte by
         // byte, and that copy has no reason to be on the render thread - measured at 20% of it on
@@ -209,9 +217,10 @@ namespace massif {
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             std::shared_ptr<BorderBitmap> bitmap;
             std::shared_ptr<BorderBitmap> nodeBitmap;
+            int border = 1;
         };
 
-        // A neighbour arriving changes ONLY the 2-texel ring of the texture, which during a pan is
+        // A neighbour arriving changes ONLY the (border + 1)-texel ring of the texture, which during a pan is
         // the common case by far. The ring is encoded on the worker and patched into the existing
         // texture and its bitmap - same result, ~1.5% of the texels.
         struct BorderPatch {
@@ -222,6 +231,7 @@ namespace massif {
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             ElevationTileGrid::BorderStrips strips;
             ElevationTileGrid::BorderStrips nodeStrips; // the node texture's edge rows/columns
+            int border = 1; // void unless the entry was encoded with the same one
         };
 
         // The texture carries the source raster's texels (3 bytes for an RGB DEM), so the cap is
@@ -240,7 +250,7 @@ namespace massif {
         // Queues an encode unless the same grid+neighbours is already queued, encoding or ready.
         // 'bordersOnly' when the entry already holds a texture built from this exact grid and only
         // the neighbours changed.
-        void requestEncode(long long gridTileId, const std::shared_ptr<ElevationTileGrid>& grid, const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, const BorderQuality& borderQuality, bool bordersOnly);
+        void requestEncode(long long gridTileId, const std::shared_ptr<ElevationTileGrid>& grid, const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, const BorderQuality& borderQuality, bool bordersOnly, int border);
         void uploadReadyTextures();
         void applyBorderPatches();
         void runEncodeWorker();
@@ -266,6 +276,7 @@ namespace massif {
         static const int SMOOTH_BASE_ZOOM_HINT = 12;
 
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
+        float _borderMetres = 0.0f; // see setBorderMetres
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame
 

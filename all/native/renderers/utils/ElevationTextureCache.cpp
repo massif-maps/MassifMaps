@@ -155,7 +155,7 @@ namespace massif {
             return false;
         }
 
-        // Fetch the neighbour grids: the texture takes a 1-texel border from them, so adjacent
+        // Fetch the neighbour grids: the texture takes its border from them, so adjacent
         // tiles interpolate across the seam from identical texel pairs. With seamless edges, coarser
         // ancestors are accepted too - real DEM data instead of a duplicated edge texel.
         bool seamless = _elevationManager->isSeamlessTileEdgesEnabled();
@@ -201,7 +201,8 @@ namespace massif {
         gridTileOut = gridTile;
         auto it = _cache.find(gridTile.getTileId());
         GridKey key = gridKey(grid);
-        bool gridChanged = (it == _cache.end() || it->second.gridKeyValue != key);
+        int border = grid->getTextureBorderTexels(_borderMetres);
+        bool gridChanged = (it == _cache.end() || it->second.gridKeyValue != key || it->second.border != border);
         if (!gridChanged) {
             // Keep every side that is already at least as good as what is cached right now, from
             // the grid the entry took it from - see CacheEntry::neighbours.
@@ -226,7 +227,7 @@ namespace massif {
             // being used until the new texture is uploaded, so a border refinement never blanks the
             // tile - and only the ring depends on neighbours, so a neighbour landing is a patch.
             bool bordersOnly = isBorderPatchEnabled() && !gridChanged && it->second.bitmap && it->second.texture;
-            requestEncode(gridTile.getTileId(), grid, neighbours, qualities, bordersOnly);
+            requestEncode(gridTile.getTileId(), grid, neighbours, qualities, bordersOnly, border);
             if (it == _cache.end()) {
                 return false;
             }
@@ -238,7 +239,7 @@ namespace massif {
         return it->second.texture && it->second.texture->getTexId() != 0;
     }
 
-    void ElevationTextureCache::requestEncode(long long gridTileId, const std::shared_ptr<ElevationTileGrid>& grid, const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, const BorderQuality& borderQuality, bool bordersOnly) {
+    void ElevationTextureCache::requestEncode(long long gridTileId, const std::shared_ptr<ElevationTileGrid>& grid, const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, const BorderQuality& borderQuality, bool bordersOnly, int border) {
         std::lock_guard<std::mutex> lock(_encodeMutex);
         if (_encodeStopped) {
             return;
@@ -248,7 +249,7 @@ namespace massif {
         }
         // Newest first (the queue is drained from the back): the newest request belongs to the
         // current viewport, while the oldest may already have scrolled away.
-        _encodeQueue.push_back(EncodeJob { gridTileId, grid, neighbours, borderQuality, bordersOnly });
+        _encodeQueue.push_back(EncodeJob { gridTileId, grid, neighbours, borderQuality, bordersOnly, border });
         while (_encodeQueue.size() > MAX_ENCODE_QUEUE) {
             _encodePending.erase(_encodeQueue.front().gridTileId);
             _encodeQueue.pop_front();
@@ -281,8 +282,9 @@ namespace massif {
                 patch.borderQuality = job.borderQuality;
                 patch.neighbours = job.neighbours;
                 patch.grid = job.grid;
+                patch.border = job.border;
                 VT_STAT_CLOCK(patchClock);
-                job.grid->encodeTextureBorders(job.neighbours, patch.strips);
+                job.grid->encodeTextureBorders(job.neighbours, job.border, patch.strips);
                 job.grid->encodeNodeTextureBorders(job.neighbours, patch.nodeStrips);
                 VT_STAT_SPLIT(demEncodeNs, patchClock);
                 VT_STAT_INC(demBorderPatches);
@@ -308,8 +310,9 @@ namespace massif {
             encoded.borderQuality = job.borderQuality;
             encoded.neighbours = job.neighbours;
             encoded.grid = job.grid;
-            int width = job.grid->getWidth() + 2;
-            int height = job.grid->getHeight() + 2;
+            encoded.border = job.border;
+            int width = job.grid->getWidth() + 2 * job.border;
+            int height = job.grid->getHeight() + 2 * job.border;
             // The scratch buffer belongs to this thread alone and is reused by every job, so the
             // megabyte behind it is allocated once instead of per encode.
             VT_STAT_CLOCK(totalClock); // the whole encode, so encodeWorkerMs keeps its meaning
@@ -319,7 +322,7 @@ namespace massif {
             clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpuStart);
 #endif
             VT_STAT_CLOCK(encodeClock); // and the three splits below, which must sum to it
-            job.grid->encodeTextureWithBorders(job.neighbours, _encodeScratch);
+            job.grid->encodeTextureWithBorders(job.neighbours, job.border, _encodeScratch);
             VT_STAT_ADD(demEncodeTexels, static_cast<long long>(width) * height);
             VT_STAT_SPLIT(demEncodeTextureNs, encodeClock);
             // The encoded rows are south-to-north, already bottom-up in the Bitmap convention, and
@@ -397,6 +400,7 @@ namespace massif {
             entry.grid = encoded.grid;
             entry.gridKeyValue = encoded.gridKeyValue;
             entry.borderQuality = encoded.borderQuality;
+            entry.border = encoded.border;
             entry.neighbours = encoded.neighbours;
             entry.lastUsed = (it != _cache.end() ? it->second.lastUsed : _accessCounter);
             entry.bitmap = encoded.bitmap;
@@ -414,7 +418,7 @@ namespace massif {
     }
 
     void ElevationTextureCache::applyBorderPatches() {
-        // Cheap enough not to need the upload budget: four glTexSubImage2D calls over a 2-texel
+        // Cheap enough not to need the upload budget: four glTexSubImage2D calls over the border
         // ring, against a full 514x514 upload for the same visual result.
         std::deque<BorderPatch> patches;
         {
@@ -423,24 +427,25 @@ namespace massif {
         }
         for (BorderPatch& patch : patches) {
             auto it = _cache.find(patch.gridTileId);
-            if (it == _cache.end() || it->second.gridKeyValue != patch.gridKeyValue || !it->second.bitmap || !it->second.texture) {
+            if (it == _cache.end() || it->second.gridKeyValue != patch.gridKeyValue || it->second.border != patch.border || !it->second.bitmap || !it->second.texture) {
                 continue; // the entry was rebuilt or evicted meanwhile; the patch is void
             }
-            int width = patch.grid->getWidth() + 2;
-            int height = patch.grid->getHeight() + 2;
+            int width = patch.grid->getWidth() + 2 * patch.border;
+            int height = patch.grid->getHeight() + 2 * patch.border;
+            int thickness = patch.border + 1;
             const std::shared_ptr<BorderBitmap>& bitmap = it->second.bitmap;
             const std::shared_ptr<Texture>& texture = it->second.texture;
             VT_STAT_CLOCK(patchUploadClock);
             // Both the CPU copy and the GPU texture: the bitmap is what the texture is rebuilt
             // from after a context loss.
-            bitmap->writeRect(0, 0, width, 2, patch.strips.south);
-            texture->updateSubImage(0, 0, width, 2, patch.strips.south.data());
-            bitmap->writeRect(0, height - 2, width, 2, patch.strips.north);
-            texture->updateSubImage(0, height - 2, width, 2, patch.strips.north.data());
-            bitmap->writeRect(0, 0, 2, height, patch.strips.west);
-            texture->updateSubImage(0, 0, 2, height, patch.strips.west.data());
-            bitmap->writeRect(width - 2, 0, 2, height, patch.strips.east);
-            texture->updateSubImage(width - 2, 0, 2, height, patch.strips.east.data());
+            bitmap->writeRect(0, 0, width, thickness, patch.strips.south);
+            texture->updateSubImage(0, 0, width, thickness, patch.strips.south.data());
+            bitmap->writeRect(0, height - thickness, width, thickness, patch.strips.north);
+            texture->updateSubImage(0, height - thickness, width, thickness, patch.strips.north.data());
+            bitmap->writeRect(0, 0, thickness, height, patch.strips.west);
+            texture->updateSubImage(0, 0, thickness, height, patch.strips.west.data());
+            bitmap->writeRect(width - thickness, 0, thickness, height, patch.strips.east);
+            texture->updateSubImage(width - thickness, 0, thickness, height, patch.strips.east.data());
             // The node texture's four edge rows/columns, the only node texels a neighbour changes.
             if (it->second.nodeBitmap && it->second.nodeTexture && !patch.nodeStrips.south.empty()) {
                 int nodeSize = patch.grid->getNodesPerEdge() + 1;
@@ -486,14 +491,16 @@ namespace massif {
     }
 
     void ElevationTextureCache::fillTexture(const CacheEntry& entry, float metersToInternal, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
-        // The texture covers the grid bounds extended by the 1-texel border
+        // The texture covers the grid bounds extended by the border
         const MapBounds& bounds = entry.grid->getInternalBounds();
         double texelX = (bounds.getMax().getX() - bounds.getMin().getX()) / entry.grid->getWidth();
         double texelY = (bounds.getMax().getY() - bounds.getMin().getY()) / entry.grid->getHeight();
+        int border = entry.border;
         terrainTexture.textureId = entry.texture->getTexId();
-        terrainTexture.textureSize = cglib::vec2<int>(entry.grid->getWidth() + 2, entry.grid->getHeight() + 2);
-        terrainTexture.internalOrigin = cglib::vec2<double>(bounds.getMin().getX() - texelX, bounds.getMin().getY() - texelY);
-        terrainTexture.internalSize = cglib::vec2<double>(bounds.getMax().getX() - bounds.getMin().getX() + 2 * texelX, bounds.getMax().getY() - bounds.getMin().getY() + 2 * texelY);
+        terrainTexture.textureSize = cglib::vec2<int>(entry.grid->getWidth() + 2 * border, entry.grid->getHeight() + 2 * border);
+        terrainTexture.borderTexels = border;
+        terrainTexture.internalOrigin = cglib::vec2<double>(bounds.getMin().getX() - border * texelX, bounds.getMin().getY() - border * texelY);
+        terrainTexture.internalSize = cglib::vec2<double>(bounds.getMax().getX() - bounds.getMin().getX() + 2 * border * texelX, bounds.getMax().getY() - bounds.getMin().getY() + 2 * border * texelY);
         std::array<float, 4> decode = entry.grid->getDecode();
         terrainTexture.decode = cglib::vec4<float>(decode[0], decode[1], decode[2], decode[3]);
         terrainTexture.decodeOffset = entry.grid->getDecodeOffset();
@@ -541,6 +548,14 @@ namespace massif {
 
     void ElevationTextureCache::requestDetailLevels(int extraLevels) {
         _requestedDetailLevels = std::max(_requestedDetailLevels, extraLevels);
+    }
+
+    void ElevationTextureCache::setBorderMetres(float metres) {
+        metres = std::max(0.0f, metres);
+        if (_borderMetres != metres) {
+            _borderMetres = metres;
+            clear(); // every texture was padded for the other reach
+        }
     }
 
     void ElevationTextureCache::setDetailLevels(int extraLevels) {

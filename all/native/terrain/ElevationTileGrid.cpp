@@ -1,6 +1,7 @@
 #include "ElevationTileGrid.h"
 #include "ElevationNodeField.h"
 #include "graphics/Bitmap.h"
+#include "utils/Const.h"
 #include "utils/Log.h"
 
 #include <vt/RenderStats.h>
@@ -207,7 +208,7 @@ namespace massif {
         std::vector<float> southEdge = edgeFilter(neighbours[2], false, 0);
         std::vector<float> northEdge = edgeFilter(neighbours[3], false, _height - 1);
 
-        // Texel at padded (gx, gy) in [-1, width/height]; border texels come from the neighbour
+        // Texel at padded (gx, gy), up to a border's width outside; border texels come from the neighbour
         // that covers them, falling back to edge clamping. Captured BY VALUE - the sampler outlives
         // this call, and the edge filters are the expensive part of it.
         return [this, neighbours, texelX, texelY, westEdge, eastEdge, southEdge, northEdge](int gx, int gy, std::uint8_t* dst) {
@@ -458,9 +459,23 @@ namespace massif {
         }
     }
 
-    void ElevationTileGrid::encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const {
-        int paddedWidth = _width + 2;
-        int paddedHeight = _height + 2;
+    int ElevationTileGrid::getTextureBorderTexels(double reachMetres) const {
+        if (!(reachMetres > 0) || _width < 1) {
+            return 1;
+        }
+        double texelMetres = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width * Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE;
+        if (!(texelMetres > 0)) {
+            return 1;
+        }
+        // The tap is a bilinear read, so the texel PAST its reach is sampled too.
+        int border = static_cast<int>(std::ceil(reachMetres / texelMetres)) + 1;
+        return std::max(1, std::min(border, std::min(MAX_TEXTURE_BORDER_TEXELS, std::min(_width, _height))));
+    }
+
+    void ElevationTileGrid::encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, std::vector<std::uint8_t>& textureData) const {
+        border = std::max(1, border);
+        int paddedWidth = _width + 2 * border;
+        int paddedHeight = _height + 2 * border;
         textureData.resize(static_cast<std::size_t>(paddedWidth) * paddedHeight * _bytesPerTexel);
 
         std::function<void(int, int, std::uint8_t*)> texelValue = makeTexelSampler(neighbours);
@@ -469,9 +484,9 @@ namespace massif {
         // coarser neighbour box-filters them); the rest is this grid's own texel at its own index,
         // so a whole row is one memcpy - it replaced a per-texel re-encode worth 4.3 ms a tile.
         std::size_t i = 0;
-        for (int gy = -1; gy <= _height; gy++) {
+        for (int gy = -border; gy < _height + border; gy++) {
             bool ownRow = (gy > 0 && gy < _height - 1);
-            for (int gx = -1; gx <= _width; gx++) {
+            for (int gx = -border; gx < _width + border; gx++) {
                 if (ownRow && gx == 1) {
                     // The row's own span, straight out of the source raster.
                     std::size_t span = static_cast<std::size_t>(_width - 2) * _bytesPerTexel;
@@ -485,29 +500,31 @@ namespace massif {
         }
     }
 
-    void ElevationTileGrid::encodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, BorderStrips& strips) const {
-        int paddedWidth = _width + 2;
-        int paddedHeight = _height + 2;
+    void ElevationTileGrid::encodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, BorderStrips& strips) const {
+        border = std::max(1, border);
+        int paddedWidth = _width + 2 * border;
+        int paddedHeight = _height + 2 * border;
+        int thickness = border + 1; // the ring, and the own outermost row/column a coarser neighbour filters
 
         std::function<void(int, int, std::uint8_t*)> texelValue = makeTexelSampler(neighbours);
 
-        // South and north: two full-width rows each (gy = -1, 0 and height-1, height).
-        strips.south.resize(static_cast<std::size_t>(paddedWidth) * 2 * _bytesPerTexel);
-        strips.north.resize(static_cast<std::size_t>(paddedWidth) * 2 * _bytesPerTexel);
-        for (int row = 0; row < 2; row++) {
+        // South and north: full-width rows (gy = -border .. 0 and height - 1 .. height + border - 1).
+        strips.south.resize(static_cast<std::size_t>(paddedWidth) * thickness * _bytesPerTexel);
+        strips.north.resize(static_cast<std::size_t>(paddedWidth) * thickness * _bytesPerTexel);
+        for (int row = 0; row < thickness; row++) {
             std::size_t s = static_cast<std::size_t>(row) * paddedWidth * _bytesPerTexel;
-            for (int gx = -1; gx <= _width; gx++, s += _bytesPerTexel) {
-                texelValue(gx, -1 + row, &strips.south[s]);
+            for (int gx = -border; gx < _width + border; gx++, s += _bytesPerTexel) {
+                texelValue(gx, -border + row, &strips.south[s]);
                 texelValue(gx, _height - 1 + row, &strips.north[s]);
             }
         }
-        // West and east: two full-height columns each (gx = -1, 0 and width-1, width).
-        strips.west.resize(static_cast<std::size_t>(paddedHeight) * 2 * _bytesPerTexel);
-        strips.east.resize(static_cast<std::size_t>(paddedHeight) * 2 * _bytesPerTexel);
-        for (int gy = -1; gy <= _height; gy++) {
-            std::size_t s = static_cast<std::size_t>(gy + 1) * 2 * _bytesPerTexel;
-            for (int col = 0; col < 2; col++) {
-                texelValue(-1 + col, gy, &strips.west[s + col * _bytesPerTexel]);
+        // West and east: full-height columns (gx = -border .. 0 and width - 1 .. width + border - 1).
+        strips.west.resize(static_cast<std::size_t>(paddedHeight) * thickness * _bytesPerTexel);
+        strips.east.resize(static_cast<std::size_t>(paddedHeight) * thickness * _bytesPerTexel);
+        for (int gy = -border; gy < _height + border; gy++) {
+            std::size_t s = static_cast<std::size_t>(gy + border) * thickness * _bytesPerTexel;
+            for (int col = 0; col < thickness; col++) {
+                texelValue(-border + col, gy, &strips.west[s + col * _bytesPerTexel]);
                 texelValue(_width - 1 + col, gy, &strips.east[s + col * _bytesPerTexel]);
             }
         }

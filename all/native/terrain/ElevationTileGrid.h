@@ -97,7 +97,7 @@ namespace massif {
         float getDecodeOffset() const { return static_cast<float>(_coeffs[3]); }
 
         /**
-         * Copies the source raster into a texture padded with a 1-texel border taken from the
+         * Copies the source raster into a texture padded with a 'border'-texel border taken from the
          * neighbouring grids (order: W, E, S, N, SW, SE, NW, NE). Same-level neighbours are copied
          * TEXEL-EXACTLY (the raw encoded bytes, so no round trip through metres); coarser
          * (ancestor) neighbour grids are sampled at the border texel centers and re-encoded, which
@@ -105,15 +105,26 @@ namespace massif {
          * duplicating this grid's edge texels.
          * Adjacent tiles then interpolate across the border from IDENTICAL texel pairs, making
          * same-level tile borders seam-free. The padded texture covers the grid bounds extended by
-         * one texel on each side.
+         * 'border' texels on each side (at least 1). A shader measuring a slope N texels either side
+         * of a fragment needs N + 1 of them, or its outer taps clamp and the slope flattens along
+         * every DEM tile edge - see TextureBorderTexels.
          * This padding is the one place this deliberately does more than tangram, which samples the
          * raster unpadded and extrapolates at the edges: without it, adjacent DEM tiles disagree
          * within the outermost half texel and the terrain shows a ridge along every tile border.
          */
-        void encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const;
+        void encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, std::vector<std::uint8_t>& textureData) const;
 
         /**
-         * The four 2-texel-thick strips of the padded texture that depend on the NEIGHBOURS:
+         * The texture border that keeps taps reaching 'reachMetres' of ground (at the equator, as
+         * TerrainTexture::metersPerTexel counts it) inside real data: one texel for a reach of 0,
+         * which is the 1-texel border every consumer relied on before, capped at
+         * MAX_TEXTURE_BORDER_TEXELS and at the grid's own size.
+         */
+        int getTextureBorderTexels(double reachMetres) const;
+        static constexpr int MAX_TEXTURE_BORDER_TEXELS = 32;
+
+        /**
+         * The four (border + 1)-texel-thick strips of the padded texture that depend on the NEIGHBOURS:
          * the border ring itself, plus this grid's own outermost row/column, which a coarser
          * neighbour box-filters (see encodeTextureWithBorders). Everything else in the texture
          * comes from this grid alone and cannot change when a neighbour arrives.
@@ -124,13 +135,14 @@ namespace massif {
          * the same result for ~1.5% of the texels.
          *
          * Strip layout, rows south-to-north and columns west-to-east, as in the padded texture:
-         * south/north are (width + 2) x 2, west/east are 2 x (height + 2). Corners are covered by
-         * south and north, so the strips overlap there and agree.
+         * south/north are (width + 2 * border) x (border + 1), west/east are (border + 1) x
+         * (height + 2 * border). Corners are covered by south and north, so the strips overlap
+         * there and agree.
          */
         struct BorderStrips {
             std::vector<std::uint8_t> south, north, west, east;
         };
-        void encodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, BorderStrips& strips) const;
+        void encodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, BorderStrips& strips) const;
 
         /**
          * The node field as a texture in this grid's own encoding: (nodes + 1)^2 texels, texel

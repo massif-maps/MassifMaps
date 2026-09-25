@@ -1540,7 +1540,8 @@ namespace massif {
                 // near the shape under them. A texture covers a whole tile, so its level follows
                 // from the ground it spans.
                 if (haveDem && mesh->demZoom >= 0) {
-                    double span = demTexture.internalSize(0);
+                    // The raster's own span, without the border around it.
+                    double span = demTexture.internalSize(0) * (demTexture.textureSize(0) - 2 * demTexture.borderTexels) / demTexture.textureSize(0);
                     int textureZoom = (span > 0 ? static_cast<int>(std::lround(std::log2(Const::WORLD_SIZE / span))) : -1);
                     if (textureZoom > mesh->demZoom) {
                         haveDem = false;

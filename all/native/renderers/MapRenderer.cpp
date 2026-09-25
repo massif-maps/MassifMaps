@@ -2988,6 +2988,8 @@ namespace massif {
                         // resets the per-frame resolution memo, so a call per layer would spend the
                         // upload budget five times over and throw the memo away four times.
                         if (auto elevationTextureCache = getElevationTextureCache(elevationManager)) {
+                            // Before the frame's uploads: a new reach re-pads every texture.
+                            elevationTextureCache->setBorderMetres(terrainOptions->getNormalSampleDistance());
                             elevationTextureCache->beginFrame(viewState.getZoom());
                         }
                         if (_redrawElevationManager.lock() != elevationManager) {

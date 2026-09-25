@@ -100,6 +100,7 @@ namespace massif::vt {
             cglib::vec2<int> textureSize = cglib::vec2<int>(0, 0);          // texture dimensions in texels (for the shader-side bilinear filter)
             cglib::vec2<double> internalOrigin = cglib::vec2<double>(0, 0); // world position of uv (0,0)
             cglib::vec2<double> internalSize = cglib::vec2<double>(0, 0);   // world size covered by uv [0,1]
+            int borderTexels = 1;          // neighbour texels around the raster on each side, inside textureSize
             cglib::vec4<float> decode = cglib::vec4<float>(0, 0, 0, 0);     // texture sample -> meters (linear part)
             float decodeOffset = 0.0f;                                      // ... plus this constant
             float metersToInternal = 0.0f; // meters -> world z units at the equator (exaggeration included)

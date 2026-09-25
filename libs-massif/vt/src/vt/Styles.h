@@ -320,6 +320,7 @@ namespace massif::vt {
         FloatFunction rankFunc;
         // CALLOUT orientation only, all in screen pixels except the anchor:
         float calloutScreenAnchor; // where the label band sits, as a fraction of the screen height from the top; < 0 stacks it from its own anchor instead
+        bool calloutBandFollow = false; // the band comes down to just above the highest anchor on screen, the screen anchor being the highest it may go
         float calloutOffset;       // minimum distance the label is lifted above its anchor
         float calloutStep;         // how much further the next stacking row is; NEGATIVE stacks downwards, which is what a band pinned to the top of the screen needs
         int calloutMaxRows;        // how many rows may be tried before the label is hidden

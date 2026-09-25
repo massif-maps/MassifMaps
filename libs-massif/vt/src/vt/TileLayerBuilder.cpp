@@ -624,6 +624,7 @@ namespace massif::vt {
             || _labelStyle->calloutLineAnchor != style.calloutLineAnchor
             || _labelStyle->calloutBandAnchor != style.calloutBandAnchor
             || _labelStyle->calloutScreenAnchor != style.calloutScreenAnchor
+            || _labelStyle->calloutBandFollow != style.calloutBandFollow
             || _labelStyle->calloutOffset != style.calloutOffset
             || _labelStyle->calloutStep != style.calloutStep
             || _labelStyle->calloutMaxRows != style.calloutMaxRows
@@ -670,6 +671,7 @@ namespace massif::vt {
             auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, massif::vt::resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
             labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
             labelStyle->collisionPadding = style.collisionPadding;
+            labelStyle->calloutBandFollow = style.calloutBandFollow;
             labelStyle->iconHaloColorFunc = style.iconHaloColorFunc;
             labelStyle->iconHaloRadiusFunc = style.iconHaloRadiusFunc;
             labelStyle->iconRefSize = formatter.getFontSize();

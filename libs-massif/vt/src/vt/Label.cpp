@@ -333,6 +333,8 @@ namespace massif::vt {
         _calloutOffset = label._calloutOffset;
         _calloutAnchorScreenY = label._calloutAnchorScreenY;
         _calloutAnchored = label._calloutAnchored;
+        _calloutLinePosition = label._calloutLinePosition;
+        _calloutLineScreenY = label._calloutLineScreenY;
         _calloutFailures = label._calloutFailures;
         // And the side its text is on: the culler re-tests it every pass anyway, but a rebuilt
         // label that starts at the first side draws one frame there before the next pass moves it
@@ -1177,7 +1179,11 @@ namespace massif::vt {
         if (!placement) {
             return 0.0f;
         }
-        cglib::vec3<double> pos = placement->position - viewState.origin;
+        return calculateScreenY(placement->position, viewState);
+    }
+
+    float Label::calculateScreenY(const cglib::vec3<double>& position, const ViewState& viewState) {
+        cglib::vec3<double> pos = position - viewState.origin;
         cglib::mat4x4<double> cameraMatrix = viewState.cameraMatrix;
         for (int i = 0; i < 3; i++) {
             cameraMatrix(i, 3) = 0; // the position is already camera-relative
@@ -1198,7 +1204,14 @@ namespace massif::vt {
             return _calloutOffset;
         }
         // The label holds its LINE, not its distance from a summit that has meanwhile moved.
-        return _calloutOffset + (_calloutAnchorScreenY - anchorScreenY);
+        float lift = _calloutOffset + (_calloutAnchorScreenY - anchorScreenY);
+        if (_calloutLinePosition) {
+            float lineScreenY = calculateScreenY(*_calloutLinePosition, viewState);
+            if (lineScreenY != 0.0f) {
+                lift += lineScreenY - _calloutLineScreenY;
+            }
+        }
+        return lift;
     }
 
     float Label::calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback, float resolution) const {

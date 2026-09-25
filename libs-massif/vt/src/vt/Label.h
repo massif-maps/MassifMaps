@@ -86,13 +86,24 @@ namespace massif::vt {
         // camera up axis. Owned by LabelCuller; the envelope and the vertex data both read it, so the
         // leader line always ends where the glyphs actually are.
         float getCalloutOffset() const { return _calloutOffset; }
-        void setCalloutOffset(float offset) { _calloutOffset = offset; }
+        // A callout that keeps this lift from its own anchor until the next pass: it moves WITH it.
+        void setCalloutOffset(float offset) { _calloutOffset = offset; _calloutAnchored = false; _calloutLinePosition.reset(); }
 
         // The screen line the culler put this callout on, and where its anchor was when it did. The
         // anchor MOVES between passes - elevation streams in, a tilt slides it - and a lift measured
         // against the old one takes the label off the row, which the draw path corrects for.
-        void setCalloutPlacement(float offset, float anchorScreenY) { _calloutOffset = offset; _calloutAnchorScreenY = anchorScreenY; _calloutAnchored = true; }
+        // With a line position the line is not held still but moves on screen with that point, as a
+        // band that follows the skyline moves with the summit it was put above.
+        void setCalloutPlacement(float offset, float anchorScreenY, const std::optional<cglib::vec3<double>>& linePosition = std::optional<cglib::vec3<double>>(), float lineScreenY = 0.0f) {
+            _calloutOffset = offset;
+            _calloutAnchorScreenY = anchorScreenY;
+            _calloutAnchored = true;
+            _calloutLinePosition = linePosition;
+            _calloutLineScreenY = lineScreenY;
+        }
         float calculateAnchorScreenY(const ViewState& viewState) const;
+        // Where a world position lands on screen, y up in normalized pixels; 0 behind the camera.
+        static float calculateScreenY(const cglib::vec3<double>& position, const ViewState& viewState);
 
         // Placement passes this callout has failed in a row while it was on screen. The style may allow
         // a few: a panning map rebuilds its label set constantly, and a name that loses its row for one
@@ -433,6 +444,8 @@ namespace massif::vt {
         float _calloutOffset = 0.0f; // screen pixels along the camera up axis, CALLOUT only (see setCalloutOffset)
         float _calloutAnchorScreenY = 0.0f;
         bool _calloutAnchored = false;
+        std::optional<cglib::vec3<double>> _calloutLinePosition;
+        float _calloutLineScreenY = 0.0f;
         int _calloutFailures = 0;
         float _opacity = 0.0f;
         float _textOpacity = 0.0f;

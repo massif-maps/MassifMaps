@@ -131,6 +131,10 @@ namespace massif::vt {
         ViewState _viewState;
         double _metersToInternal = 0;
         double _labelViewDistance = LabelDistance::DEFAULT_VIEW_DISTANCE;
+        // This pass's highest following-band callout anchor on screen (y up, resolution units), or
+        // < 0 for none, and where it is: such a row comes down to just above it. See placeCalloutLabel.
+        float _highestCalloutAnchorY = -1.0f;
+        cglib::vec3<double> _highestCalloutAnchorPosition = cglib::vec3<double>(0, 0, 0);
         std::function<bool(const cglib::vec3<double>&)> _occlusionTest;
         std::chrono::steady_clock::time_point _sliceDeadline;
         bool _sliceBudgeted = false;

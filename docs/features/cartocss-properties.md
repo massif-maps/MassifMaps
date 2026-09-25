@@ -285,6 +285,7 @@ Live-capable properties: 61 of 242.
 | `text-background-radius` | `background-radius` | float | `0.0` |  |  |
 | `text-background-width` | `background-width` | float | `0.0` |  |  |
 | `text-callout-align` | `callout-align` | string |  |  |  |
+| `text-callout-band-follow` | `callout-band-follow` | bool | `false` |  |  |
 | `text-callout-line-anchor` | `callout-line-anchor` | string |  |  |  |
 | `text-callout-line-width` | `callout-line-width` | float | `1.0` |  |  |
 | `text-callout-max-rows` | `callout-max-rows` | float | `8.0` |  |  |

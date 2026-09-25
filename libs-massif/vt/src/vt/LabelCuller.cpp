@@ -328,6 +328,23 @@ namespace massif::vt {
             return true;
         };
 
+        // THE ROW FOLLOWS THE SKYLINE. A banded callout row sits just above the highest summit it
+        // names, not at a fixed height: that is peakfinder.com's row, and at a fixed height every
+        // summit standing above the line was dropped - which, with the skyline high on screen, was
+        // all of them. The style's screen anchor is the highest the row may go.
+        _highestCalloutAnchorY = -1.0f;
+        for (const LabelInfo& labelInfo : validLabelList) {
+            const std::shared_ptr<const TileLabel::Style>& style = labelInfo.label->getStyle();
+            if (labelInfo.valid && style->orientation == LabelOrientation::CALLOUT && style->calloutScreenAnchor >= 0 && style->calloutBandFollow) {
+                float anchorY = labelInfo.label->calculateAnchorScreenY(_viewState);
+                cglib::vec3<double> anchorPosition(0, 0, 0);
+                if (anchorY > 0 && anchorY < _viewState.resolution && anchorY > _highestCalloutAnchorY && labelInfo.label->calculateCenter(anchorPosition)) {
+                    _highestCalloutAnchorY = anchorY;
+                    _highestCalloutAnchorPosition = anchorPosition;
+                }
+            }
+        }
+
         labelLock.acquire();
         for (LabelInfo& labelInfo : validLabelList) {
             labelLock.step();
@@ -460,8 +477,18 @@ namespace massif::vt {
         const std::shared_ptr<Label>& label = labelInfo.label;
         const std::shared_ptr<const TileLabel::Style>& style = label->getStyle();
 
-        auto envelopeAt = [this, &labelInfo, &label](float offset) {
-            label->setCalloutPlacement(offset, label->calculateAnchorScreenY(_viewState));
+        // Until the next pass the name moves with its own anchor, or holds its band line - which,
+        // for a band that follows the skyline, moves with the summit the band was put above.
+        bool banded = style->calloutScreenAnchor >= 0;
+        bool following = banded && style->calloutBandFollow && _highestCalloutAnchorY >= 0;
+        auto envelopeAt = [this, &labelInfo, &label, banded, following](float offset) {
+            if (!banded) {
+                label->setCalloutOffset(offset);
+            } else if (following) {
+                label->setCalloutPlacement(offset, label->calculateAnchorScreenY(_viewState), _highestCalloutAnchorPosition, _highestCalloutAnchorY);
+            } else {
+                label->setCalloutPlacement(offset, label->calculateAnchorScreenY(_viewState));
+            }
             labelInfo.valid = calculateScreenEnvelope(label, labelInfo.size, labelInfo.cullRecord);
             return labelInfo.valid;
         };
@@ -509,9 +536,11 @@ namespace massif::vt {
         }
         float calloutOffset = style->calloutOffset * calloutPixel;
         float lift = calloutOffset;
-        bool banded = style->calloutScreenAnchor >= 0;
         if (banded) {
             float bandY = (1.0f - style->calloutScreenAnchor) * _viewState.resolution;
+            if (following) {
+                bandY = std::min(bandY, _highestCalloutAnchorY + calloutOffset + calloutPixel);
+            }
             float bandLift = bandY - anchorY;
             // THE BAND IS THE HEIGHT, NOT A FLOOR. `std::max(lift, bandLift)` here meant that a
             // feature already ABOVE the band line got `calloutOffset` instead - its name placed just

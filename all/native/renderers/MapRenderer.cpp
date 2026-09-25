@@ -3006,7 +3006,11 @@ namespace massif {
                     int terrainRenderOrder = 0;
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
-                            bool depthWrite = !depthWriteAssigned && tileLayer->isVisible() && tileLayer->getOpacity() >= 1.0f;
+                            // A layer of labels alone draws no ground, so it cannot be the one that
+                            // writes the terrain's depth: given the role, it wrote nothing, the
+                            // surface fill dropped its own depth for it, and the sky objects drawn
+                            // after were no longer hidden behind the ridges.
+                            bool depthWrite = !depthWriteAssigned && tileLayer->isVisible() && tileLayer->getOpacity() >= 1.0f && tileLayer->hasGroundContent();
                             tileLayer->setTerrainDepthWriteMode(depthWrite);
                             // stacking order for the fixed per-layer depth separation in GPU draping mode
                             tileLayer->setTerrainRenderOrder(terrainRenderOrder++);

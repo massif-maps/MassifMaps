@@ -146,6 +146,7 @@ namespace massif {
         int renderTerrainShadowMask(const std::vector<vt::TileId>& tileIds);
         bool isGroundAOActive() const;
         bool isGroundAOBakeable() const;
+        bool hasGroundContent() const;
         void setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize);
         // Whether anything wants labels occluded by 3D content: the resolved TerrainOptions/Map
         // default, or a style layer with its own text-occlusion-opacity.

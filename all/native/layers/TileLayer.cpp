@@ -1376,6 +1376,10 @@ namespace massif {
         return _tileRenderer && _tileRenderer->isGroundAOActive();
     }
 
+    bool TileLayer::hasGroundContent() const {
+        return _tileRenderer && _tileRenderer->hasGroundContent();
+    }
+
     bool TileLayer::isGroundAOBakeable() const {
         return _tileRenderer && _tileRenderer->isGroundAOBakeable();
     }

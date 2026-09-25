@@ -229,6 +229,9 @@ namespace massif::vt {
         void setLabelOcclusionOpacity(float occludedOpacity);
         // True when some style layer asks for occlusion even though the default does not.
         bool hasStyledLabelOcclusion() const;
+        // Whether the visible tiles draw anything on the ground - a background, a bitmap or a
+        // geometry - rather than labels alone.
+        bool hasGroundContent() const;
         // Draws every visible extrusion into the bound depth target from the camera. The ground is
         // NOT drawn: labels are already tested against the terrain on the CPU, per label
         // (TileRenderer::setLabelOcclusionTest). Returns the number of geometries drawn.

@@ -620,6 +620,15 @@ namespace massif {
         return false;
     }
 
+    bool TileRenderer::hasGroundContent() const {
+        auto lock = lockTimed();
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            return tileRenderer->hasGroundContent();
+        }
+        return false;
+    }
+
     bool TileRenderer::isGroundAOBakeable() const {
         auto lock = lockTimed();
 

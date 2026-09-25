@@ -5432,6 +5432,32 @@ namespace massif::vt {
         return _labelOcclusionStyled;
     }
 
+    bool GLTileRenderer::hasGroundContent() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (!_renderTiles) {
+            return false;
+        }
+        for (const RenderTile& renderTile : *_renderTiles) {
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                const std::shared_ptr<const TileLayer>& layer = it->second.layer;
+                if (!it->second.active || !layer) {
+                    continue;
+                }
+                if (!layer->getBitmaps().empty() || !layer->getGeometries().empty()) {
+                    return true;
+                }
+                // Every decoded tile carries the style's background, transparent when it sets none.
+                for (const std::shared_ptr<TileBackground>& background : layer->getBackgrounds()) {
+                    if (background->getPattern() || background->getColorFunc().function() || background->getColorFunc().value().value() != 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     void GLTileRenderer::setLabelOcclusionOpacity(float occludedOpacity) {
         std::lock_guard<std::mutex> lock(_mutex);
 

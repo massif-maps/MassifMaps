@@ -505,6 +505,8 @@ class ProjectionSurface;
         int renderTerrainShadowMask(const std::vector<vt::TileId>& tileIds);
         bool isGroundAOActive() const;
         bool isGroundAOBakeable() const;
+        // Whether this layer's visible tiles draw anything on the ground, rather than labels alone.
+        bool hasGroundContent() const;
         void setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize);
         bool isLabelOcclusionWanted() const;
         int renderLabelOcclusionDepth();

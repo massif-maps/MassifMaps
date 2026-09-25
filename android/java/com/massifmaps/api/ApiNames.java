@@ -46,9 +46,9 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> AMBIENT_INTENSITY = MassifObject.key("ambientIntensity");
     /** Returns the color of the ambient light. */
     public static final MassifObject.Key<Integer> AMBIENT_LIGHT_COLOR = MassifObject.key("ambientLightColor");
-    /** Returns the horizontal anchor point of the label. */
+    /** Returns the horizontal anchor point. */
     public static final MassifObject.Key<Double> ANCHOR_POINT_X = MassifObject.key("anchorPointX");
-    /** Returns the vertical anchor point of the label. */
+    /** Returns the vertical anchor point. */
     public static final MassifObject.Key<Double> ANCHOR_POINT_Y = MassifObject.key("anchorPointY");
     /** Returns the screen position of the anchor point of this popup in pixels. */
     public static final MassifObject.Key<String> ANCHOR_SCREEN_POS = MassifObject.key("anchorScreenPos");
@@ -96,6 +96,8 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> BACKGROUND_BITMAP = MassifObject.key("backgroundBitmap");
     /** Returns the background color of the button. */
     public static final MassifObject.Key<Integer> BACKGROUND_COLOR = MassifObject.key("backgroundColor");
+    /** Returns the corner radius of the plate. */
+    public static final MassifObject.Key<Double> BACKGROUND_RADIUS = MassifObject.key("backgroundRadius");
     /** Returns the balloon popup event listener. */
     public static final MassifObject.Key<MassifObject> BALLOON_POPUP_EVENT_LISTENER = MassifObject.key("balloonPopupEventListener");
     /** Returns the base billboard this billboard is attached to. */
@@ -189,6 +191,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> CLICK_TYPE_DETECTION = MassifObject.key("clickTypeDetection");
     /** Returns the width of the line used for click detection. */
     public static final MassifObject.Key<Double> CLICK_WIDTH = MassifObject.key("clickWidth");
+    /** Returns whether a click on the label hits it. */
+    public static final MassifObject.Key<Boolean> CLICKABLE = MassifObject.key("clickable");
     /** Returns the current callback used for creating cluster elements. */
     public static final MassifObject.Key<MassifObject> CLUSTER_ELEMENT_BUILDER = MassifObject.key("clusterElementBuilder");
     /** Returns the color of the object. */
@@ -354,9 +358,9 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> FOG_OPTIONS = MassifObject.key("fogOptions");
     /** Returns the font's color. */
     public static final MassifObject.Key<Integer> FONT_COLOR = MassifObject.key("fontColor");
-    /** Returns the font's name. */
+    /** Returns the font list. */
     public static final MassifObject.Key<String> FONT_NAME = MassifObject.key("fontName");
-    /** Returns the font's size. */
+    /** Returns the font size. */
     public static final MassifObject.Key<Double> FONT_SIZE = MassifObject.key("fontSize");
     /** Returns the fragment shader source of the effect. */
     public static final MassifObject.Key<String> FRAGMENT_SHADER = MassifObject.key("fragmentShader");
@@ -386,8 +390,10 @@ public final class ApiNames {
     public static final MassifObject.Key<String> GEOMETRY_TAG = MassifObject.key("geometryTag");
     /** Returns the ground color. */
     public static final MassifObject.Key<Integer> GROUND_COLOR = MassifObject.key("groundColor");
-    /** Returns the tint applied to Mie scattering. */
+    /** Returns the halo colour. */
     public static final MassifObject.Key<Integer> HALO_COLOR = MassifObject.key("haloColor");
+    /** Returns the halo width. */
+    public static final MassifObject.Key<Double> HALO_WIDTH = MassifObject.key("haloWidth");
     /** Returns the height of the bitmap. */
     public static final MassifObject.Key<String> HEIGHT = MassifObject.key("height");
     /** Returns the height scale of the hillshade overlay. */
@@ -572,6 +578,12 @@ public final class ApiNames {
     public static final MassifObject.Key<String> NORMALIZED = MassifObject.key("normalized");
     /** Returns all the keys in the object. */
     public static final MassifObject.Key<String> OBJECT_KEYS = MassifObject.key("objectKeys");
+    /** Returns whether the map in front hides the object. */
+    public static final MassifObject.Key<Boolean> OCCLUDED_BY_MAP = MassifObject.key("occludedByMap");
+    /** Returns the horizontal offset. */
+    public static final MassifObject.Key<Double> OFFSET_X = MassifObject.key("offsetX");
+    /** Returns the vertical offset. */
+    public static final MassifObject.Key<Double> OFFSET_Y = MassifObject.key("offsetY");
     /** Returns the opacity of this layer. */
     public static final MassifObject.Key<Double> OPACITY = MassifObject.key("opacity");
     /** Returns the status of the cache database. */
@@ -585,6 +597,10 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> PACKAGE_MANAGER_LISTENER = MassifObject.key("packageManagerListener");
     /** Returns the package type. */
     public static final MassifObject.Key<String> PACKAGE_TYPE = MassifObject.key("packageType");
+    /** Returns the horizontal padding between the text and the plate's edge. */
+    public static final MassifObject.Key<Double> PADDING_X = MassifObject.key("paddingX");
+    /** Returns the vertical padding between the text and the plate's edge. */
+    public static final MassifObject.Key<Double> PADDING_Y = MassifObject.key("paddingY");
     /** Returns true if the interaction included a map pan action. */
     public static final MassifObject.Key<Boolean> PAN_ACTION = MassifObject.key("panAction");
     /** Returns the map panning bounds constraints. Map bounds minimum and maximum points are in the base projection's coordinate system. */
@@ -1055,6 +1071,7 @@ public final class ApiNames {
     public static final String METHOD_REMOVE_FEATURE = "removeFeature";
     public static final String METHOD_SCREEN_TO_MAP = "screenToMap";
     public static final String METHOD_SET = "set";
+    public static final String METHOD_SET_ANCHOR_POINT = "setAnchorPoint";
     public static final String METHOD_SET_CIRCLE = "setCircle";
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
@@ -1065,6 +1082,7 @@ public final class ApiNames {
     public static final String METHOD_SET_FLOAT_PARAMETER = "setFloatParameter";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
+    public static final String METHOD_SET_OFFSET = "setOffset";
     public static final String METHOD_SET_SEGMENTS = "setSegments";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
@@ -1108,6 +1126,7 @@ public final class ApiNames {
     public static final String TYPE_ASSETS_DIR = "dir";
     public static final String TYPE_ASSETS_ZIP = "zip";
     public static final String TYPE_CELESTIAL_ARC = "arc";
+    public static final String TYPE_CELESTIAL_LABEL = "label";
     public static final String TYPE_CELESTIAL_SPRITE = "sprite";
     public static final String TYPE_ELEMENT_BALLOON = "balloon";
     public static final String TYPE_ELEMENT_LINE = "line";

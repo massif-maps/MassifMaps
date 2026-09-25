@@ -111,6 +111,19 @@ namespace massif {
         void setVisible(bool visible);
 
         /**
+         * Returns whether the map in front hides the object.
+         * @return True if the terrain and the map cover the object where they are in front of it.
+         */
+        bool isOccludedByMap() const;
+        /**
+         * Sets whether the map in front hides the object. On by default: a body behind a ridge is
+         * behind the ridge. Off draws it over the map, which is what a label naming a point of the
+         * skyline wants - it sits on the ridge and would otherwise be half covered by it.
+         * @param occluded True to let the map in front cover the object.
+         */
+        void setOccludedByMap(bool occluded);
+
+        /**
          * Returns a meta data value.
          * @param key The key of the value.
          * @return The value, or an empty variant if the key does not exist.
@@ -150,6 +163,7 @@ namespace massif {
         double _positionAltitude;
         Color _color;
         bool _visible;
+        bool _occludedByMap;
         std::map<std::string, Variant> _metaData;
         std::weak_ptr<CelestialLayer> _layer;
     };

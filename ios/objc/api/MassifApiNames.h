@@ -46,9 +46,9 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAmbientColor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAmbientIntensity;
 /** Returns the color of the ambient light. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAmbientLightColor;
-/** Returns the horizontal anchor point of the label. */
+/** Returns the horizontal anchor point. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnchorPointX;
-/** Returns the vertical anchor point of the label. */
+/** Returns the vertical anchor point. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnchorPointY;
 /** Returns the screen position of the anchor point of this popup in pixels. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAnchorScreenPos;
@@ -96,6 +96,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyB;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBackgroundBitmap;
 /** Returns the background color of the button. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBackgroundColor;
+/** Returns the corner radius of the plate. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyBackgroundRadius;
 /** Returns the balloon popup event listener. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBalloonPopupEventListener;
 /** Returns the base billboard this billboard is attached to. */
@@ -189,6 +191,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyClickType;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickTypeDetection;
 /** Returns the width of the line used for click detection. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickWidth;
+/** Returns whether a click on the label hits it. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyClickable;
 /** Returns the current callback used for creating cluster elements. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClusterElementBuilder;
 /** Returns the color of the object. */
@@ -354,9 +358,9 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFocusPos;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFogOptions;
 /** Returns the font's color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFontColor;
-/** Returns the font's name. */
+/** Returns the font list. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFontName;
-/** Returns the font's size. */
+/** Returns the font size. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFontSize;
 /** Returns the fragment shader source of the effect. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFragmentShader;
@@ -386,8 +390,10 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometrySimplifier;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometryTag;
 /** Returns the ground color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGroundColor;
-/** Returns the tint applied to Mie scattering. */
+/** Returns the halo colour. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyHaloColor;
+/** Returns the halo width. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyHaloWidth;
 /** Returns the height of the bitmap. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyHeight;
 /** Returns the height scale of the hillshade overlay. */
@@ -572,6 +578,12 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyNormalSampleDistance;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyNormalized;
 /** Returns all the keys in the object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyObjectKeys;
+/** Returns whether the map in front hides the object. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyOccludedByMap;
+/** Returns the horizontal offset. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyOffsetX;
+/** Returns the vertical offset. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyOffsetY;
 /** Returns the opacity of this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyOpacity;
 /** Returns the status of the cache database. */
@@ -585,6 +597,10 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPackageManager;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPackageManagerListener;
 /** Returns the package type. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPackageType;
+/** Returns the horizontal padding between the text and the plate's edge. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPaddingX;
+/** Returns the vertical padding between the text and the plate's edge. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPaddingY;
 /** Returns true if the interaction included a map pan action. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPanAction;
 /** Returns the map panning bounds constraints. Map bounds minimum and maximum points are in the base projection's coordinate system. */
@@ -1056,6 +1072,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodRemoveExternalDataSource;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRemoveFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodScreenToMap;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSet;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetAnchorPoint;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCircle;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
@@ -1066,6 +1083,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetExternalDataSourceZoomLevelB
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetFloatParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetOffset;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSegments;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
@@ -1115,6 +1133,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsBundle;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsDir;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsZip;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialArc;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialLabel;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialSprite;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementBalloon;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementLine;

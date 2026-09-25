@@ -54,6 +54,7 @@ export type ClassName =
   | "massif::CartoCSSStyleSet"
   | "massif::CelestialArc"
   | "massif::CelestialEventListener"
+  | "massif::CelestialLabel"
   | "massif::CelestialLayer"
   | "massif::CelestialObject"
   | "massif::CelestialSprite"
@@ -1466,6 +1467,8 @@ export interface PropertyTypes {
     readonly "directionAnchored": boolean;
     /** (read-only) Returns the distance of a direction-anchored object. */
     readonly "distance": number;
+    /** Returns whether the map in front hides the object. */
+    "occludedByMap": boolean;
     /** (read-only) Returns the geographic position of a position-anchored object. */
     readonly "position": Position;
     /** (read-only) Returns the altitude of a position-anchored object. */
@@ -1480,6 +1483,56 @@ export interface PropertyTypes {
     "width": number;
   };
   "massif::CelestialEventListener": {
+  };
+  "massif::CelestialLabel": {
+    /** (read-only) Returns the altitude of a direction-anchored object. */
+    readonly "altitude": number;
+    /** (read-only) Returns the horizontal anchor point. */
+    readonly "anchorPointX": number;
+    /** (read-only) Returns the vertical anchor point. */
+    readonly "anchorPointY": number;
+    /** (read-only) Returns the azimuth of a direction-anchored object. */
+    readonly "azimuth": number;
+    /** Returns the background colour. */
+    "backgroundColor": number;
+    /** Returns the corner radius of the plate. */
+    "backgroundRadius": number;
+    /** Returns whether a click on the label hits it. */
+    "clickable": boolean;
+    /** Returns the color of the object. */
+    "color": number;
+    /** (read-only) Returns true if the object is anchored by direction, false if by geographic position. */
+    readonly "directionAnchored": boolean;
+    /** (read-only) Returns the distance of a direction-anchored object. */
+    readonly "distance": number;
+    /** Returns the font list. */
+    "fontName": string;
+    /** Returns the font size. */
+    "fontSize": number;
+    /** Returns the halo colour. */
+    "haloColor": number;
+    /** Returns the halo width. */
+    "haloWidth": number;
+    /** Returns whether the map in front hides the object. */
+    "occludedByMap": boolean;
+    /** (read-only) Returns the horizontal offset. */
+    readonly "offsetX": number;
+    /** (read-only) Returns the vertical offset. */
+    readonly "offsetY": number;
+    /** Returns the horizontal padding between the text and the plate's edge. */
+    "paddingX": number;
+    /** Returns the vertical padding between the text and the plate's edge. */
+    "paddingY": number;
+    /** (read-only) Returns the geographic position of a position-anchored object. */
+    readonly "position": Position;
+    /** (read-only) Returns the altitude of a position-anchored object. */
+    readonly "positionAltitude": number;
+    /** Returns the text. */
+    "text": string;
+    /** Returns the text colour. The object's own colour tints the whole label, plate included. */
+    "textColor": number;
+    /** Returns the visibility of the object. */
+    "visible": boolean;
   };
   "massif::CelestialLayer": {
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -1512,6 +1565,8 @@ export interface PropertyTypes {
     readonly "directionAnchored": boolean;
     /** (read-only) Returns the distance of a direction-anchored object. */
     readonly "distance": number;
+    /** Returns whether the map in front hides the object. */
+    "occludedByMap": boolean;
     /** (read-only) Returns the geographic position of a position-anchored object. */
     readonly "position": Position;
     /** (read-only) Returns the altitude of a position-anchored object. */
@@ -1544,6 +1599,8 @@ export interface PropertyTypes {
     readonly "directionAnchored": boolean;
     /** (read-only) Returns the distance of a direction-anchored object. */
     readonly "distance": number;
+    /** Returns whether the map in front hides the object. */
+    "occludedByMap": boolean;
     /** (read-only) Returns the geographic position of a position-anchored object. */
     readonly "position": Position;
     /** (read-only) Returns the altitude of a position-anchored object. */
@@ -6814,10 +6871,44 @@ export interface CelestialSpec_arc {
   clickRadius?: number;
   /** Returns the color of the object. */
   color?: number;
+  /** Returns whether the map in front hides the object. */
+  occludedByMap?: boolean;
   /** Returns the visibility of the object. */
   visible?: boolean;
   /** Returns the line width. */
   width?: number;
+}
+
+export interface CelestialSpec_label {
+  type: "label";
+  /** Returns the background colour. */
+  backgroundColor?: number;
+  /** Returns the corner radius of the plate. */
+  backgroundRadius?: number;
+  /** Returns whether a click on the label hits it. */
+  clickable?: boolean;
+  /** Returns the color of the object. */
+  color?: number;
+  /** Returns the font list. */
+  fontName?: string;
+  /** Returns the font size. */
+  fontSize?: number;
+  /** Returns the halo colour. */
+  haloColor?: number;
+  /** Returns the halo width. */
+  haloWidth?: number;
+  /** Returns whether the map in front hides the object. */
+  occludedByMap?: boolean;
+  /** Returns the horizontal padding between the text and the plate's edge. */
+  paddingX?: number;
+  /** Returns the vertical padding between the text and the plate's edge. */
+  paddingY?: number;
+  /** Returns the text. */
+  text?: string;
+  /** Returns the text colour. The object's own colour tints the whole label, plate included. */
+  textColor?: number;
+  /** Returns the visibility of the object. */
+  visible?: boolean;
 }
 
 export interface CelestialSpec_sprite {
@@ -6830,6 +6921,8 @@ export interface CelestialSpec_sprite {
   clickRadius?: number;
   /** Returns the color of the object. */
   color?: number;
+  /** Returns whether the map in front hides the object. */
+  occludedByMap?: boolean;
   /** Returns the screen size of the sprite. */
   screenSize?: number;
   /** Returns the edge softness of a disc sprite. */
@@ -6838,7 +6931,7 @@ export interface CelestialSpec_sprite {
   visible?: boolean;
 }
 
-export type CelestialSpec = CelestialSpec_arc | CelestialSpec_sprite;
+export type CelestialSpec = CelestialSpec_arc | CelestialSpec_label | CelestialSpec_sprite;
 
 export interface ElementSpec_balloon {
   type: "balloon";
@@ -8106,6 +8199,11 @@ export interface MethodTypes {
   };
   "massif::CelestialEventListener": {
   };
+  "massif::CelestialLabel": {
+    setAnchorPoint: (x: number, y: number) => void;
+    setDirection: (azimuth: number, altitude: number, distance: number) => void;
+    setOffset: (x: number, y: number) => void;
+  };
   "massif::CelestialLayer": {
     add: (object: Handle) => void;
     clear: () => void;
@@ -8747,6 +8845,8 @@ export interface EventTypes {
   "massif::CelestialArc": {
   };
   "massif::CelestialEventListener": {
+  };
+  "massif::CelestialLabel": {
   };
   "massif::CelestialLayer": {
   };

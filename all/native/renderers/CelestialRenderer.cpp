@@ -1,5 +1,6 @@
 #include "CelestialRenderer.h"
 #include "celestial/CelestialArc.h"
+#include "celestial/CelestialLabel.h"
 #include "celestial/CelestialObject.h"
 #include "celestial/CelestialSprite.h"
 #include "components/Options.h"
@@ -131,8 +132,26 @@ namespace massif {
         float halfHeight = std::max(1.0f, viewState.getHalfHeight());
 
         for (const std::shared_ptr<CelestialObject>& object : _objects) {
+            if (!object->isVisible()) {
+                continue;
+            }
+            if (auto label = std::dynamic_pointer_cast<CelestialLabel>(object)) {
+                cglib::vec3<double> worldPos;
+                double distance = 0;
+                SpriteInstance instance;
+                if (resolveWorldPos(object, viewState, worldPos, distance) && buildLabel(label, viewState, distance, instance)) {
+                    instance.worldPos = worldPos;
+                    Color color = label->getColor();
+                    instance.color[0] = static_cast<unsigned char>(color.getR() * opacity);
+                    instance.color[1] = static_cast<unsigned char>(color.getG() * opacity);
+                    instance.color[2] = static_cast<unsigned char>(color.getB() * opacity);
+                    instance.color[3] = static_cast<unsigned char>(color.getA() * opacity);
+                    instances.push_back(instance);
+                }
+                continue;
+            }
             auto sprite = std::dynamic_pointer_cast<CelestialSprite>(object);
-            if (!sprite || !sprite->isVisible()) {
+            if (!sprite) {
                 continue;
             }
             cglib::vec3<double> worldPos;
@@ -159,8 +178,12 @@ namespace massif {
             SpriteInstance instance;
             instance.object = object;
             instance.worldPos = worldPos;
-            instance.halfSize = halfSize;
+            instance.halfWidth = halfSize;
+            instance.halfHeight = halfSize;
+            instance.shiftRight = 0;
+            instance.shiftUp = 0;
             instance.softness = sprite->getSoftness();
+            instance.occluded = sprite->isOccludedByMap();
             instance.color[0] = static_cast<unsigned char>(color.getR() * opacity);
             instance.color[1] = static_cast<unsigned char>(color.getG() * opacity);
             instance.color[2] = static_cast<unsigned char>(color.getB() * opacity);
@@ -169,11 +192,33 @@ namespace massif {
             instances.push_back(instance);
         }
 
-        // Far to near, so overlapping discs blend in the order the eye expects.
+        // Far to near, so overlapping discs blend in the order the eye expects. Stable: sky objects
+        // are all equally far, and then the layer's own order decides.
         const cglib::vec3<double>& cameraPos = viewState.getCameraPos();
-        std::sort(instances.begin(), instances.end(), [&cameraPos](const SpriteInstance& a, const SpriteInstance& b) {
+        std::stable_sort(instances.begin(), instances.end(), [&cameraPos](const SpriteInstance& a, const SpriteInstance& b) {
             return cglib::norm(a.worldPos - cameraPos) > cglib::norm(b.worldPos - cameraPos);
         });
+    }
+
+    bool CelestialRenderer::buildLabel(const std::shared_ptr<CelestialLabel>& label, const ViewState& viewState, double distance, SpriteInstance& instance) const {
+        std::shared_ptr<Bitmap> bitmap = label->buildBitmap(viewState.getDPToPX());
+        if (!bitmap) {
+            return false;
+        }
+        // Drawn at the bitmap's own pixel size: one pixel is this many world units at that distance.
+        double tanHalfFovY = std::tan(viewState.getFOVY() * 0.5 * Const::DEG_TO_RAD);
+        double worldPerPixel = distance * tanHalfFovY / std::max(1.0f, viewState.getHalfHeight());
+        float dpToPx = viewState.getDPToPX();
+        instance.object = label;
+        instance.halfWidth = static_cast<float>(bitmap->getWidth() * 0.5 * worldPerPixel);
+        instance.halfHeight = static_cast<float>(bitmap->getHeight() * 0.5 * worldPerPixel);
+        // The anchor point goes on the direction, then the offset moves the whole label on screen.
+        instance.shiftRight = static_cast<float>(-label->getAnchorPointX() * instance.halfWidth + label->getOffsetX() * dpToPx * worldPerPixel);
+        instance.shiftUp = static_cast<float>(-label->getAnchorPointY() * instance.halfHeight + label->getOffsetY() * dpToPx * worldPerPixel);
+        instance.softness = 0;
+        instance.occluded = label->isOccludedByMap();
+        instance.bitmap = bitmap;
+        return true;
     }
 
     void CelestialRenderer::drawSprites(const std::vector<SpriteInstance>& instances, const ViewState& viewState) {
@@ -209,18 +254,19 @@ namespace massif {
         while (index < instances.size()) {
             const std::shared_ptr<Bitmap>& batchBitmap = instances[index].bitmap;
             float batchSoftness = instances[index].softness;
+            bool batchOccluded = instances[index].occluded;
             _coordBuf.clear();
             _colorBuf.clear();
             _texCoordBuf.clear();
             _indexBuf.clear();
 
             std::size_t count = 0;
-            while (index < instances.size() && instances[index].bitmap == batchBitmap && instances[index].softness == batchSoftness) {
+            while (index < instances.size() && instances[index].bitmap == batchBitmap && instances[index].softness == batchSoftness && instances[index].occluded == batchOccluded) {
                 const SpriteInstance& instance = instances[index++];
                 cglib::vec3<double> rel = instance.worldPos - cameraPos;
                 static const float CORNERS[4][2] = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
                 for (int i = 0; i < 4; i++) {
-                    cglib::vec3<double> corner = rel + right * static_cast<double>(CORNERS[i][0] * instance.halfSize) + up * static_cast<double>(CORNERS[i][1] * instance.halfSize);
+                    cglib::vec3<double> corner = rel + right * static_cast<double>(instance.shiftRight + CORNERS[i][0] * instance.halfWidth) + up * static_cast<double>(instance.shiftUp + CORNERS[i][1] * instance.halfHeight);
                     _coordBuf.push_back(static_cast<float>(corner(0)));
                     _coordBuf.push_back(static_cast<float>(corner(1)));
                     _coordBuf.push_back(static_cast<float>(corner(2)));
@@ -254,6 +300,11 @@ namespace massif {
                 glBindTexture(GL_TEXTURE_2D, texture->getTexId());
             }
 
+            if (batchOccluded) {
+                glEnable(GL_DEPTH_TEST);
+            } else {
+                glDisable(GL_DEPTH_TEST);
+            }
             glVertexAttribPointer(a_coord, 3, GL_FLOAT, GL_FALSE, 0, _coordBuf.data());
             glVertexAttribPointer(a_texCoord, 2, GL_FLOAT, GL_FALSE, 0, _texCoordBuf.data());
             glVertexAttribPointer(a_color, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, _colorBuf.data());
@@ -385,6 +436,11 @@ namespace massif {
                         color.getB() / 255.0f * opacity, color.getA() / 255.0f * opacity);
             // Half a pixel more each side, faded out in the fragment shader: the edge is smooth
             // without multisampling.
+            if (arc->isOccludedByMap()) {
+                glEnable(GL_DEPTH_TEST);
+            } else {
+                glDisable(GL_DEPTH_TEST);
+            }
             glUniform1f(_arcShader->getUniformLoc("u_halfWidth"), std::max(0.5f, arc->getWidth() * 0.5f) + 0.5f);
             glVertexAttribPointer(a_coord, 3, GL_FLOAT, GL_FALSE, 0, _coordBuf.data());
             glVertexAttribPointer(a_prev, 3, GL_FLOAT, GL_FALSE, 0, prevBuf.data());
@@ -426,6 +482,7 @@ namespace massif {
         buildSprites(viewState, opacity, instances);
         drawSprites(instances, viewState);
 
+        glEnable(GL_DEPTH_TEST);
         glDepthMask(GL_TRUE);
         glEnable(GL_CULL_FACE);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -437,7 +494,36 @@ namespace massif {
 
         cglib::vec3<double> rayDir = cglib::unit(ray.direction);
         calculateRayIntersectedArcs(layer, ray, rayDir, viewState, results);
+        const cglib::mat4x4<double>& mvMat = viewState.getModelviewMat();
+        cglib::vec3<double> right(mvMat(0, 0), mvMat(0, 1), mvMat(0, 2));
+        cglib::vec3<double> up(mvMat(1, 0), mvMat(1, 1), mvMat(1, 2));
         for (const std::shared_ptr<CelestialObject>& object : _objects) {
+            auto label = std::dynamic_pointer_cast<CelestialLabel>(object);
+            if (label) {
+                cglib::vec3<double> worldPos;
+                double distance = 0;
+                SpriteInstance instance;
+                if (!label->isVisible() || !label->isClickable() || !resolveWorldPos(object, viewState, worldPos, distance) || !buildLabel(label, viewState, distance, instance)) {
+                    continue;
+                }
+                // The label's rectangle, on the plane through its centre facing the camera.
+                cglib::vec3<double> centre = worldPos + right * static_cast<double>(instance.shiftRight) + up * static_cast<double>(instance.shiftUp);
+                cglib::vec3<double> toCentre = centre - ray.origin;
+                double centreDistance = cglib::length(toCentre);
+                if (!(centreDistance > 0)) {
+                    continue;
+                }
+                double along = cglib::dot_product(rayDir, toCentre / centreDistance);
+                if (!(along > 0)) {
+                    continue;
+                }
+                cglib::vec3<double> onPlane = rayDir * (centreDistance / along) - toCentre;
+                if (std::abs(cglib::dot_product(onPlane, right)) > instance.halfWidth || std::abs(cglib::dot_product(onPlane, up)) > instance.halfHeight) {
+                    continue;
+                }
+                results.push_back(RayIntersectedElement(std::static_pointer_cast<CelestialObject>(object), layer, ray.origin + rayDir * (centreDistance / along), worldPos, true));
+                continue;
+            }
             auto sprite = std::dynamic_pointer_cast<CelestialSprite>(object);
             if (!sprite || !sprite->isVisible()) {
                 continue;
@@ -573,7 +659,9 @@ namespace massif {
         void main() {
             vec4 color = v_color;
             if (u_hasTex > 0.5) {
-                color *= texture2D(u_tex, v_texCoord);
+                // A Bitmap is premultiplied; the colour here is straight until fogCelestial.
+                vec4 texel = texture2D(u_tex, v_texCoord);
+                color *= vec4(texel.a > 0.0 ? texel.rgb / texel.a : texel.rgb, texel.a);
             } else {
                 // No bitmap: a disc, soft at the edge by u_softness. Cheaper than a texture and
                 // enough for a disc or a point of light.

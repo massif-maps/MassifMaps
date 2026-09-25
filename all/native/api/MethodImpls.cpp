@@ -21,6 +21,7 @@
 #include "components/LightOptions.h"
 #include "components/TerrainOptions.h"
 #include "celestial/CelestialArc.h"
+#include "celestial/CelestialLabel.h"
 #include "celestial/CelestialObject.h"
 #include "layers/CelestialLayer.h"
 #include "terrain/ElevationManager.h"
@@ -491,6 +492,26 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** setAnchorPoint(x, y) - which point of a sky label sits on its direction, -1..1 each. */
+        Result setLabelAnchorPoint(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            double x = 0, y = 0;
+            if (!args.getDouble(0, x) || !args.getDouble(1, y)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialLabel*>(obj)->setAnchorPoint(static_cast<float>(x), static_cast<float>(y));
+            return RESULT_OK;
+        }
+
+        /** setOffset(x, y) - a sky label moved on screen from its anchor, dp, y up. */
+        Result setLabelOffset(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            double x = 0, y = 0;
+            if (!args.getDouble(0, x) || !args.getDouble(1, y)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialLabel*>(obj)->setOffset(static_cast<float>(x), static_cast<float>(y));
+            return RESULT_OK;
+        }
+
         /**
          * calculateHorizon(pos, eyeHeight, [azimuths], maxDistance) -> a handle onto one apparent
          * altitude per azimuth (ElevationManager::calculateHorizon). WGS84, like getElevation.
@@ -845,6 +866,8 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialArc", "setDirections", &setArcDirections);
         registerMethod("massif::CelestialArc", "setSegments", &setArcSegments);
         registerMethod("massif::CelestialArc", "setCircle", &setArcCircle);
+        registerMethod("massif::CelestialLabel", "setAnchorPoint", &setLabelAnchorPoint);
+        registerMethod("massif::CelestialLabel", "setOffset", &setLabelOffset);
         registerMethod("massif::TerrainOptions", "calculateHorizon", &calculateHorizon);
         registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);

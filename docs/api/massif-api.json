@@ -1746,6 +1746,182 @@
       "methods": [],
       "events": []
     },
+    "massif::CelestialLabel": {
+      "base": "massif::CelestialObject",
+      "properties": [
+        {
+          "name": "anchorPointX",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the horizontal anchor point."
+        },
+        {
+          "name": "anchorPointY",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the vertical anchor point."
+        },
+        {
+          "name": "backgroundColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the background colour."
+        },
+        {
+          "name": "backgroundRadius",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the corner radius of the plate."
+        },
+        {
+          "name": "clickable",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether a click on the label hits it."
+        },
+        {
+          "name": "fontName",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the font list."
+        },
+        {
+          "name": "fontSize",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the font size."
+        },
+        {
+          "name": "haloColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the halo colour."
+        },
+        {
+          "name": "haloWidth",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the halo width."
+        },
+        {
+          "name": "offsetX",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the horizontal offset."
+        },
+        {
+          "name": "offsetY",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the vertical offset."
+        },
+        {
+          "name": "paddingX",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the horizontal padding between the text and the plate's edge."
+        },
+        {
+          "name": "paddingY",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the vertical padding between the text and the plate's edge."
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the text."
+        },
+        {
+          "name": "textColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the text colour. The object's own colour tints the whole label, plate included."
+        }
+      ],
+      "aliases": {},
+      "methods": [
+        {
+          "cppClass": "massif::CelestialLabel",
+          "name": "setAnchorPoint",
+          "args": [
+            {
+              "name": "x",
+              "type": "float"
+            },
+            {
+              "name": "y",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialLabel",
+          "name": "setOffset",
+          "args": [
+            {
+              "name": "x",
+              "type": "float"
+            },
+            {
+              "name": "y",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
+      "events": []
+    },
     "massif::CelestialLayer": {
       "base": "massif::Layer",
       "properties": [
@@ -1843,6 +2019,15 @@
           "position": false,
           "cppType": "double",
           "doc": "Returns the distance of a direction-anchored object."
+        },
+        {
+          "name": "occludedByMap",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the map in front hides the object."
         },
         {
           "name": "position",
@@ -10577,6 +10762,18 @@
         ]
       ],
       [
+        "label",
+        "massif__CelestialLabel",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
         "sprite",
         "massif__CelestialSprite",
         [
@@ -12430,6 +12627,7 @@
     "massif::CacheTileDataSource": "source",
     "massif::CartoCSSStyleSet": "styleset",
     "massif::CelestialArc": "celestial",
+    "massif::CelestialLabel": "celestial",
     "massif::CelestialLayer": "layer",
     "massif::CelestialObject": "celestial",
     "massif::CelestialSprite": "celestial",
@@ -12637,6 +12835,16 @@
       "cppClass": "massif::CelestialArc",
       "kind": "celestial",
       "type": "arc",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialLabel",
+      "kind": "celestial",
+      "type": "label",
       "aliases": {},
       "defaults": {},
       "constructors": [

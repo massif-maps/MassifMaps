@@ -100,6 +100,28 @@ figure is ONE object: one draw call, one clickable thing, one name.
 `width` is in device pixels and honoured everywhere, WebGL included: the curve is a strip of quads
 widened on screen, with mitred joins and an anti-aliased edge, not a `GL_LINES` strip.
 
+## Labels
+
+`CelestialLabel` is text in the sky: a time on a path, the name of a figure, a rise over a ridge.
+The SDK draws it with the platform's text API (the same `BitmapCanvas` the `Text` vector element
+uses; the browser's 2D canvas on the web), so the app gives a string and a style instead of painting
+a bitmap:
+
+```js
+const rise = massif.create('celestial', 'sky.rise', {
+  type: 'label', text: '↑ 07:29', fontName: 'sans-serif Bold', fontSize: 15,
+  textColor: '#92400e', backgroundColor: '#ffffffe6', backgroundRadius: 7, paddingX: 7, paddingY: 3
+});
+massif.call(rise, 'setDirection', [azimuth, altitude, 0]);
+massif.call(rise, 'setOffset', [0, 14]);   // dp, up: clear of the ridge it names
+massif.set(rise, 'occludedByMap', false);  // over the terrain, not behind it
+```
+
+It faces the camera and keeps its pixel size. `setAnchorPoint(x, y)` (-1..1) picks the point of the
+label that sits on its direction; the default (0, -1) is the middle of its bottom edge. A halo is
+`haloColor` + `haloWidth`. Sizes are density-independent pixels; the bitmap is rebuilt only when the
+text, the style or the screen density changes.
+
 ## Draw order
 
 A celestial layer draws in the same pass as the vector layers' labels, so the **layer order** is
@@ -107,6 +129,9 @@ the z order: a celestial layer below a labelled vector layer goes under its labe
 goes over them. Two layers split one sky into a path under the place names and a sun and its
 times over them. Within a layer, curves draw first and sprites on top. The map in front still
 hides both, whatever the order: the depth test against the terrain does not depend on it.
+
+`occludedByMap = false` takes an object out of that depth test: it draws over the map. A label
+naming a point of the skyline wants it - it sits on the ridge and would otherwise be half covered.
 
 ## Where the terrain meets the sky
 

@@ -34,6 +34,7 @@
 %attribute(massif::CelestialObject, double, PositionAltitude, getPositionAltitude)
 %attributeval(massif::CelestialObject, massif::Color, Color, getColor, setColor)
 %attribute(massif::CelestialObject, bool, Visible, isVisible, setVisible)
+%attribute(massif::CelestialObject, bool, OccludedByMap, isOccludedByMap, setOccludedByMap)
 %ignore massif::CelestialObject::calculateDirectionVector;
 %ignore massif::CelestialObject::setComponents;
 %ignore massif::CelestialObject::getLayer;

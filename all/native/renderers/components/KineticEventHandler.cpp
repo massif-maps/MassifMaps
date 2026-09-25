@@ -9,6 +9,8 @@
 #include "utils/Log.h"
 #include "utils/GeneralUtils.h"
 
+#include <cmath>
+
 #include <numeric>
 
 namespace massif {
@@ -25,6 +27,9 @@ namespace massif {
         _zoomDelta(0),
         _zoomTargetPos(),
         _zoomDeltaSamples(AVERAGE_SAMPLE_COUNT + 1),
+        _look(false),
+        _lookRotationSpeed(0),
+        _lookTiltSpeed(0),
         _mapRenderer(mapRenderer),
         _options(options),
         _mutex()
@@ -38,6 +43,8 @@ namespace massif {
         std::optional<CameraPanEvent> cameraPanEvent;
         std::optional<CameraRotationEvent> cameraRotationEvent;
         std::optional<CameraZoomEvent> cameraZoomEvent;
+        std::optional<CameraRotationEvent> lookRotationEvent;
+        std::optional<CameraTiltEvent> lookTiltEvent;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             // An option switched off mid-flight would otherwise leave its flag set forever, as
@@ -45,9 +52,11 @@ namespace massif {
             _pan = _pan && _options.isKineticPan();
             _rotation = _rotation && _options.isKineticRotation();
             _zoom = _zoom && _options.isKineticZoom();
+            _look = _look && _options.isKineticRotation();
             cameraPanEvent = calculatePan(viewState, deltaSeconds);
             cameraRotationEvent = calculateRotation(viewState, deltaSeconds);
             cameraZoomEvent = calculateZoom(viewState, deltaSeconds);
+            calculateLook(deltaSeconds, lookRotationEvent, lookTiltEvent);
         }
         if (cameraPanEvent) {
             _mapRenderer.calculateCameraEvent(*cameraPanEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
@@ -57,6 +66,77 @@ namespace massif {
         }
         if (cameraZoomEvent) {
             _mapRenderer.calculateCameraEvent(*cameraZoomEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
+        }
+        if (lookRotationEvent) {
+            _mapRenderer.calculateCameraEvent(*lookRotationEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
+        }
+        if (lookTiltEvent) {
+            _mapRenderer.calculateCameraEvent(*lookTiltEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
+        }
+    }
+
+    bool KineticEventHandler::isLooking() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _look;
+    }
+
+    void KineticEventHandler::setLookDelta(float rotationDelta, float tiltDelta, float deltaSeconds) {
+        if (!_options.isKineticRotation() || !(deltaSeconds > 0)) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(_mutex);
+        // Smoothed over the last few moves, weighted by the time each took, so one short event
+        // interval does not decide the whole glide.
+        float weight = std::min(deltaSeconds / 0.05f, 1.0f);
+        _lookRotationSpeed += (rotationDelta / deltaSeconds - _lookRotationSpeed) * weight;
+        _lookTiltSpeed += (tiltDelta / deltaSeconds - _lookTiltSpeed) * weight;
+    }
+
+    void KineticEventHandler::startLook() {
+        if (!_options.isKineticRotation()) {
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            float speed = std::sqrt(_lookRotationSpeed * _lookRotationSpeed + _lookTiltSpeed * _lookTiltSpeed);
+            if (speed < KINETIC_LOOK_START_SPEED) {
+                _lookRotationSpeed = _lookTiltSpeed = 0;
+                return;
+            }
+            if (speed > KINETIC_LOOK_MAX_SPEED) {
+                _lookRotationSpeed *= KINETIC_LOOK_MAX_SPEED / speed;
+                _lookTiltSpeed *= KINETIC_LOOK_MAX_SPEED / speed;
+            }
+            _look = true;
+        }
+        _mapRenderer.requestRedraw();
+    }
+
+    void KineticEventHandler::stopLook() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _look = false;
+        _lookRotationSpeed = _lookTiltSpeed = 0;
+    }
+
+    void KineticEventHandler::calculateLook(float deltaSeconds, std::optional<CameraRotationEvent>& rotationEvent, std::optional<CameraTiltEvent>& tiltEvent) {
+        if (!_look || !(deltaSeconds > 0)) {
+            return;
+        }
+        // The distance covered over the step under an exponential slowdown, not speed x time, so
+        // a long frame does not overshoot.
+        float decay = std::exp(-deltaSeconds / KINETIC_LOOK_TIME_CONSTANT);
+        float travel = KINETIC_LOOK_TIME_CONSTANT * (1.0f - decay);
+        CameraRotationEvent rotation;
+        rotation.setRotationDelta(_lookRotationSpeed * travel);
+        rotationEvent = rotation;
+        CameraTiltEvent tilt;
+        tilt.setTiltDelta(_lookTiltSpeed * travel);
+        tiltEvent = tilt;
+        _lookRotationSpeed *= decay;
+        _lookTiltSpeed *= decay;
+        if (std::sqrt(_lookRotationSpeed * _lookRotationSpeed + _lookTiltSpeed * _lookTiltSpeed) < KINETIC_LOOK_STOP_SPEED) {
+            _look = false;
+            _lookRotationSpeed = _lookTiltSpeed = 0;
         }
     }
     
@@ -280,5 +360,12 @@ namespace massif {
     const float KineticEventHandler::KINETIC_ZOOM_DELTA_CLAMP = 1.0f;
 
     const unsigned int KineticEventHandler::AVERAGE_SAMPLE_COUNT = 7;
+
+    // Degrees a second. The glide loses 1/e of its speed every time constant: a flick at 90 deg/s
+    // coasts some 30 degrees.
+    const float KineticEventHandler::KINETIC_LOOK_TIME_CONSTANT = 0.35f;
+    const float KineticEventHandler::KINETIC_LOOK_STOP_SPEED = 1.0f;
+    const float KineticEventHandler::KINETIC_LOOK_START_SPEED = 5.0f;
+    const float KineticEventHandler::KINETIC_LOOK_MAX_SPEED = 360.0f;
 
 }

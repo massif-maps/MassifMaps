@@ -114,6 +114,7 @@ namespace massif {
         void singlePointerPan(const ScreenPos& screenPos, const ViewState& viewState);
         void panBetween(const ScreenPos& prevScreenPos, const ScreenPos& screenPos, const ViewState& viewState);
         void singlePointerLook(const ScreenPos& screenPos, const ViewState& viewState);
+        void firstPersonLook(const ScreenPos& screenPos, const ViewState& viewState);
         double calculatePanScale(const ScreenPos& screenPos, const ViewState& viewState) const;
         void updatePanScale(const ScreenPos& screenPos, const ViewState& viewState);
         void singlePointerZoom(const ScreenPos& screenPos, const ViewState& viewState);
@@ -174,6 +175,7 @@ namespace massif {
 
         // Determines how long to hold panning after one pointer is lifted
         static const std::chrono::milliseconds DUAL_STOP_HOLD_DURATION;
+        static const std::chrono::milliseconds LOOK_KINETIC_REST;
     
         // Determines how long zoom-in/out animations take
         static const std::chrono::milliseconds ZOOM_GESTURE_ANIMATION_DURATION;
@@ -206,6 +208,16 @@ namespace massif {
         std::atomic<bool> _idling;
         bool _noDualPointerYet;
         std::chrono::steady_clock::time_point _dualPointerReleaseTime;
+
+        // FIRST PERSON: the direction under the finger when the look started (heading and elevation,
+        // radians), and the camera the look has asked for since, so that direction stays under it.
+        bool _lookAnchored;
+        ScreenPos _lookAnchorPos; // where the finger went DOWN: the drag threshold is part of the look
+        double _lookAnchorHeading;
+        double _lookAnchorElevation;
+        float _lookRotation;
+        float _lookTilt;
+        std::chrono::steady_clock::time_point _lookSampleTime;
     
         ThreadSafeDirectorPtr<MapEventListener> _mapEventListener;
         

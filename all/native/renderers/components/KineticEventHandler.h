@@ -11,6 +11,7 @@
 #include "core/MapVec.h"
 #include "renderers/cameraevents/CameraPanEvent.h"
 #include "renderers/cameraevents/CameraRotationEvent.h"
+#include "renderers/cameraevents/CameraTiltEvent.h"
 #include "renderers/cameraevents/CameraZoomEvent.h"
 
 #include <optional>
@@ -44,10 +45,21 @@ namespace massif {
         void startZoom();
         void stopZoom();
 
+        /**
+         * The FIRST PERSON look's glide: a turn of the view about the camera, heading and tilt,
+         * at the speed the finger left with and slowing to a stop. Gated by the kinetic rotation
+         * option. setLookDelta takes each move of the drag and the seconds it took.
+         */
+        bool isLooking() const;
+        void setLookDelta(float rotationDelta, float tiltDelta, float deltaSeconds);
+        void startLook();
+        void stopLook();
+
     private:
         std::optional<CameraPanEvent> calculatePan(const ViewState& viewState, float deltaSeconds);
         std::optional<CameraRotationEvent> calculateRotation(const ViewState& viewState, float deltaSeconds);
         std::optional<CameraZoomEvent> calculateZoom(const ViewState& viewState, float deltaSeconds);
+        void calculateLook(float deltaSeconds, std::optional<CameraRotationEvent>& rotationEvent, std::optional<CameraTiltEvent>& tiltEvent);
     
         static const float KINETIC_PAN_START_TOLERANCE;
         static const float KINETIC_PAN_STOP_TOLERANCE;
@@ -68,6 +80,11 @@ namespace massif {
         static const float KINETIC_ZOOM_DELTA_CLAMP;
         
         static const unsigned int AVERAGE_SAMPLE_COUNT;
+
+        static const float KINETIC_LOOK_TIME_CONSTANT;
+        static const float KINETIC_LOOK_STOP_SPEED;
+        static const float KINETIC_LOOK_START_SPEED;
+        static const float KINETIC_LOOK_MAX_SPEED;
     
         bool _pan;
         float _panDelta;
@@ -82,6 +99,10 @@ namespace massif {
         float _zoomDelta;
         MapPos _zoomTargetPos;
         std::deque<float> _zoomDeltaSamples;
+
+        bool _look;
+        float _lookRotationSpeed; // degrees a second
+        float _lookTiltSpeed;
     
         MapRenderer& _mapRenderer;
         Options& _options;

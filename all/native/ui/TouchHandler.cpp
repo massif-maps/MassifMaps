@@ -36,6 +36,13 @@ namespace massif {
         _idling(true),
         _noDualPointerYet(true),
         _dualPointerReleaseTime(),
+        _lookAnchored(false),
+        _lookAnchorPos(0, 0),
+        _lookAnchorHeading(0),
+        _lookAnchorElevation(0),
+        _lookRotation(0),
+        _lookTilt(0),
+        _lookSampleTime(),
         _mapEventListener(),
         _clickHandlerWorker(std::make_shared<ClickHandlerWorker>(options)),
         _clickHandlerThread(),
@@ -130,9 +137,12 @@ namespace massif {
             }
             _clickHandlerWorker->pointer1Down(screenPos1);
             _noDualPointerYet = true;
+            _lookAnchored = false;
+            _lookAnchorPos = screenPos1;
             _mapRenderer->getKineticEventHandler().stopPan();
             _mapRenderer->getKineticEventHandler().stopRotation();
             _mapRenderer->getKineticEventHandler().stopZoom();
+            _mapRenderer->getKineticEventHandler().stopLook();
             break;
     
         case ACTION_POINTER_2_DOWN:
@@ -221,9 +231,13 @@ namespace massif {
             }
             case SINGLE_POINTER_PAN:
                 _gestureMode = SINGLE_POINTER_CLICK_GUESS;
-                // A first person drag is a look, and a look does not glide on after the finger
-                // leaves: every kinetic handler pans, rotates or zooms the MAP.
+                // A first person drag is a look, and it glides on as a look: the kinetic handler
+                // turns the view about the camera at the speed the finger left with - unless the
+                // finger rested before it lifted.
                 if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                    if (_lookAnchored && std::chrono::steady_clock::now() - _lookSampleTime < LOOK_KINETIC_REST) {
+                        _mapRenderer->getKineticEventHandler().startLook();
+                    }
                     break;
                 }
                 if (_noDualPointerYet) {
@@ -254,6 +268,8 @@ namespace massif {
             case DUAL_POINTER_FREE:
             case DUAL_POINTER_MOVE:
                 _dualPointerReleaseTime = std::chrono::steady_clock::now();
+                _lookAnchored = false;
+                _lookAnchorPos = screenPos2;
                 _prevScreenPos1 = screenPos2;
                 _gestureMode = SINGLE_POINTER_PAN;
                 updatePanScale(screenPos2, viewState); // a new pan starts here: a new speed
@@ -341,7 +357,7 @@ namespace massif {
     }
 
     void TouchHandler::checkMapStable() {
-        bool atRest = !_mapRenderer->getKineticEventHandler().isPanning() && !_mapRenderer->getKineticEventHandler().isRotating() && !_mapRenderer->getKineticEventHandler().isZooming();
+        bool atRest = !_mapRenderer->getKineticEventHandler().isPanning() && !_mapRenderer->getKineticEventHandler().isRotating() && !_mapRenderer->getKineticEventHandler().isZooming() && !_mapRenderer->getKineticEventHandler().isLooking();
 
         // Edge-triggered: the end of a movement, reported once, with what caused it. Taking the
         // reason IS the edge - a second at-rest check finds nothing pending and stays quiet, and a
@@ -474,7 +490,96 @@ namespace massif {
         _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
     }
 
+    namespace {
+        // The heading (clockwise from north) and elevation, radians, of the ray through a screen
+        // offset (a, b) - right and UP, in units of the focal length - for a camera at heading
+        // `heading` and pitch `pitch` (up positive). x east, y north, z up.
+        void lookRayDirection(double a, double b, double heading, double pitch, double& rayHeading, double& rayElevation) {
+            double forward = std::cos(pitch) - b * std::sin(pitch);
+            rayHeading = heading + std::atan2(a, forward);
+            rayElevation = std::atan2(std::sin(pitch) + b * std::cos(pitch), std::sqrt(a * a + forward * forward));
+        }
+    }
+
+    void TouchHandler::firstPersonLook(const ScreenPos& screenPos, const ViewState& viewState) {
+        // THE GROUND UNDER THE FINGER STAYS UNDER IT, as in peakfinder.com and geo-three: the look
+        // is a grab on the panorama. The direction under the finger is taken once, when the look
+        // starts, and every move solves the pitch and heading that put that same direction under
+        // the finger where it is now - so dragging down looks UP, and the view turns exactly as far
+        // as the finger travels across the lens. Solved against the camera the look has ASKED for,
+        // not the view state, which lags the queued events by a frame.
+        //
+        // Tilt 90 is straight down, so the pitch is minus the tilt; the heading is minus the
+        // rotation.
+        double focal = 0.5 * viewState.getHeight() / std::max(viewState.getTanHalfFOVY(), 1.0e-6);
+        if (!(focal > 0)) {
+            return;
+        }
+        auto offsets = [&](const ScreenPos& pos, double& a, double& b) {
+            a = (pos.getX() - 0.5 * viewState.getWidth()) / focal;
+            b = -(pos.getY() - 0.5 * viewState.getHeight()) / focal;
+        };
+        double a = 0, b = 0;
+        if (!_lookAnchored) {
+            _lookRotation = viewState.getRotation();
+            _lookTilt = viewState.getTilt();
+            offsets(_lookAnchorPos, a, b);
+            lookRayDirection(a, b, -_lookRotation * Const::DEG_TO_RAD, -_lookTilt * Const::DEG_TO_RAD, _lookAnchorHeading, _lookAnchorElevation);
+            _lookAnchored = true;
+            _lookSampleTime = std::chrono::steady_clock::now();
+        }
+        offsets(screenPos, a, b);
+        // The elevation of the ray rises with the pitch, so the pitch that meets the anchor's is a
+        // bisection, bounded by the tilt range.
+        double pitchMin = -_options->getTiltRange().getMax() * Const::DEG_TO_RAD;
+        double pitchMax = -_options->getTiltRange().getMin() * Const::DEG_TO_RAD;
+        double low = pitchMin, high = pitchMax;
+        double rayHeading = 0, rayElevation = 0;
+        for (int i = 0; i < 40; i++) {
+            double pitch = 0.5 * (low + high);
+            lookRayDirection(a, b, 0.0, pitch, rayHeading, rayElevation);
+            (rayElevation < _lookAnchorElevation ? low : high) = pitch;
+        }
+        double pitch = 0.5 * (low + high);
+        lookRayDirection(a, b, 0.0, pitch, rayHeading, rayElevation);
+        float rotation = static_cast<float>(-(_lookAnchorHeading - rayHeading) * Const::RAD_TO_DEG);
+        float tilt = static_cast<float>(-pitch * Const::RAD_TO_DEG);
+
+        float rotationDelta = std::remainder(rotation - _lookRotation, 360.0f);
+        float tiltDelta = tilt - _lookTilt;
+        _lookRotation = rotation;
+        _lookTilt = tilt;
+
+        auto now = std::chrono::steady_clock::now();
+        float seconds = std::chrono::duration<float>(now - _lookSampleTime).count();
+        _lookSampleTime = now;
+        _mapRenderer->getKineticEventHandler().setLookDelta(rotationDelta, tiltDelta, seconds);
+
+        if (rotationDelta != 0) {
+            CameraRotationEvent cameraEvent;
+            cameraEvent.setRotationDelta(rotationDelta);
+            _cameraEvents.fetch_or(CAMERA_ROTATE);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
+        }
+        if (tiltDelta != 0) {
+            CameraTiltEvent cameraEvent;
+            cameraEvent.setTiltDelta(tiltDelta);
+            _cameraEvents.fetch_or(CAMERA_TILT);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
+        }
+    }
+
     void TouchHandler::singlePointerLook(const ScreenPos& screenPos, const ViewState& viewState) {
+        if (_options->isUserInput() && _options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+            _mapRenderer->getAnimationHandler().stopPan();
+            _mapRenderer->getAnimationHandler().stopRotation();
+            _mapRenderer->getAnimationHandler().stopTilt();
+            _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
+            firstPersonLook(screenPos, viewState);
+            _prevScreenPos1 = screenPos;
+            return;
+        }
         if (_options->isUserInput()) {
             _mapRenderer->getAnimationHandler().stopPan();
             _mapRenderer->getAnimationHandler().stopRotation();
@@ -486,21 +591,7 @@ namespace massif {
             float dx = screenPos.getX() - _prevScreenPos1.getX();
             float dy = screenPos.getY() - _prevScreenPos1.getY();
 
-            // A FRACTION OF THE VIEWPORT, not a rate per inch - which is the reference's rule
-            // (camera-controls turns 2 PI per element width) and is what a first person look wants.
-            //
-            // The obvious alternative, turning by the angle the drag SUBTENDS, was tried and is
-            // wrong for a look even though it is exactly right for a move: it holds the ground
-            // under the cursor, so the view turns only as far as the lens is wide. Measured with a
-            // 250 px drag on a 1000 px canvas it gave 15.2 degrees, and the same drag in the
-            // reference gives about six times that. A look is not a drag on the world; the world
-            // being dragged is what the MOVE gesture is for.
-            //
-            // Per viewport rather than per inch so it does not depend on the screen's density, and
-            // per axis so a square drag turns the same amount either way.
-            float viewWidth = viewState.getWidth(), viewHeight = viewState.getHeight();
-            float lookDegrees = _options->getFreeRoamLookSensitivity();
-
+            // The orbiting 'look' mode; first person is firstPersonLook.
             // Sideways turns the heading, left-drag turning the view right as dragging the world
             // does. About the CAMERA, not the focus: rotating about the focus swings the camera
             // around a circle of the focus distance, which at a low tilt walks it through terrain.
@@ -508,11 +599,8 @@ namespace massif {
                 std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
                 CameraRotationEvent cameraEvent;
                 float lookDelta = dx * _options->getFreeRoamLookSensitivity() / dpi;
-                if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON && viewWidth > 0) {
-                    lookDelta = dx / viewWidth * lookDegrees;
-                }
                 cameraEvent.setRotationDelta(lookDelta);
-                if (projectionSurface && _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                if (projectionSurface) {
                     cameraEvent.setTargetPos(projectionSurface->calculateMapPos(viewState.getCameraPos()));
                 }
                 _cameraEvents.fetch_or(CAMERA_ROTATE);
@@ -530,22 +618,7 @@ namespace massif {
                 if (_options->isTiltGestureReversed()) {
                     scale = -scale;
                 }
-                // The vertical half of the same rule, and the MOUSE-LOOK sense: dragging down
-                // looks down, as the reference and every first person control scheme do. It read
-                // the other way round because the rate rule it inherited was the map's, where the
-                // gesture drags the GROUND. Tilt 90 is straight down, so looking down is positive.
                 float tiltDelta = dy * scale;
-                if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON && viewHeight > 0) {
-                    // HALF the horizontal rate. The heading wraps, so a full turn across the
-                    // viewport is the right feel there; the tilt does not - it runs zenith to
-                    // nadir over 180 degrees - so the same number vertically flips you over twice
-                    // in one drag. Measured: a 160 px drag up from tilt 4 ran straight into the
-                    // -90 clamp.
-                    tiltDelta = dy / viewHeight * lookDegrees * 0.5f;
-                    if (_options->isTiltGestureReversed()) {
-                        tiltDelta = -tiltDelta;
-                    }
-                }
                 CameraTiltEvent cameraEvent;
                 cameraEvent.setTiltDelta(tiltDelta);
                 _cameraEvents.fetch_or(CAMERA_TILT);
@@ -1195,6 +1268,8 @@ namespace massif {
     const std::chrono::milliseconds TouchHandler::DUAL_KINETIC_HOLD_DURATION = std::chrono::milliseconds(100);
 
     const std::chrono::milliseconds TouchHandler::DUAL_STOP_HOLD_DURATION = std::chrono::milliseconds(75);
+    // A finger that rested this long before lifting meant to stop there: no glide.
+    const std::chrono::milliseconds TouchHandler::LOOK_KINETIC_REST = std::chrono::milliseconds(80);
 
     const std::chrono::milliseconds TouchHandler::ZOOM_GESTURE_ANIMATION_DURATION = std::chrono::milliseconds(250);
 

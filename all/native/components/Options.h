@@ -726,27 +726,16 @@ namespace massif {
         void setFreeRoamMode(FreeRoamMode::FreeRoamMode mode);
 
         /**
-         * Returns how fast a free roam drag turns the view.
-         * @return In FREE_ROAM_MODE_FIRST_PERSON, the turn in degrees for a drag across the whole
-         *         viewport. In FREE_ROAM_MODE_LOOK, the turn in degrees per inch of drag.
+         * Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view.
+         * @return The turn in degrees per inch of drag.
          */
         float getFreeRoamLookSensitivity() const;
         /**
-         * Sets how fast a free roam drag turns the view.
+         * Sets how fast a FREE_ROAM_MODE_LOOK drag turns the view, in degrees per inch.
          *
-         * In FREE_ROAM_MODE_FIRST_PERSON this is degrees for a drag across the WHOLE VIEWPORT, per
-         * axis - the reference control scheme's rule (camera-controls turns 2 PI per element
-         * width), and independent of the screen's density. The default, 360, is that rule: a drag
-         * from one edge to the other turns all the way round.
-         *
-         * Turning by the angle the drag SUBTENDS was tried instead, so that the ground stays under
-         * the cursor. It is right for the move gesture and wrong for a look: it turns only as far
-         * as the lens is wide, which measured 15.2 degrees for a 250 px drag on a 1000 px canvas
-         * against roughly six times that in the reference. Set this to the horizontal field of view
-         * to get that behaviour back.
-         *
-         * FREE_ROAM_MODE_LOOK is unchanged and still reads this as degrees per inch.
-         * @param degrees The turn in degrees, per viewport in first person and per inch in look.
+         * FREE_ROAM_MODE_FIRST_PERSON does not read it: its look is a grab on the panorama, which
+         * keeps the ground under the finger, so the turn is whatever the lens makes it.
+         * @param degrees The turn in degrees per inch.
          */
         void setFreeRoamLookSensitivity(float degrees);
 

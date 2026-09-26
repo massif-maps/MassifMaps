@@ -793,9 +793,7 @@ namespace massif::vt {
         VT_STAT_SPLIT(labelTransformNs, labelClock);
         // labelVsh reads aVertexNormal only under LIGHTING_*, i.e. a non-planar projection.
         if (buildNormals) {
-            if (buildNormals) {
-                normals.fill(placement->normal, _cachedVertices.size());
-            }
+            normals.fill(placement->normal, _cachedVertices.size());
         }
         texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
 
@@ -819,7 +817,9 @@ namespace massif::vt {
             vertices.copy(vertices, vertices.size() - _cachedVertices.size(), _cachedVertices.size());
             offsets.copy(offsets, offsets.size() - _cachedVertices.size(), _cachedVertices.size());
 
-            normals.fill(placement->normal, _cachedVertices.size());
+            if (buildNormals) {
+                normals.fill(placement->normal, _cachedVertices.size());
+            }
             texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
         }
 

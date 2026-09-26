@@ -75,7 +75,6 @@
             padding: 8px 14px 8px 10px; box-shadow: var(--shadow); }
   #sunbar svg { width: 22px; height: 22px; color: #f59e0b; flex: none; }
   #sunbar input[type=date] { font: inherit; border: 0; background: transparent; color: var(--ink); }
-  #sunbar input[type=range] { width: 160px; accent-color: #f59e0b; }
   #sunbar .time { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 44px; white-space: nowrap; }
   #sunbar .riseset { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #sunbar button { border: 0; background: #f59e0b1f; color: #b45309; font: 600 12px/1 system-ui, sans-serif;
@@ -115,7 +114,6 @@
 <div id="sunbar">
   <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
   <input type="date" class="date" title="Day">
-  <input type="range" class="minute" min="0" max="1439" step="1" title="Time of day">
   <span class="time"></span>
   <span class="riseset"></span>
   <button class="hours" title="Hour marks on the path">Hours</button>
@@ -1065,12 +1063,10 @@
 
     const bar = document.getElementById('sunbar');
     const dateInput = bar.querySelector('.date');
-    const minuteInput = bar.querySelector('.minute');
     const pad = (value) => String(value).padStart(2, '0');
     const setNow = () => {
       const now = new Date();
       dateInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      minuteInput.value = String(now.getHours() * 60 + now.getMinutes());
     };
     setNow();
     const dayStart = () => { const [y, m, d] = dateInput.value.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
@@ -1081,9 +1077,10 @@
       return focus && Number.isFinite(focus[0]) && Number.isFinite(focus[1]) ? { lon: focus[0], lat: focus[1] } : { lon: LON, lat: LAT };
     };
 
-    // The sun at the chosen minute: the disc and its glow, under the ground when it is down.
+    // The sun at this minute of the chosen day: the disc and its glow, under the ground when it is down.
     const placeSun = () => {
-      const time = dayStart() + Number(minuteInput.value) * 60000;
+      const now = new Date();
+      const time = dayStart() + (now.getHours() * 60 + now.getMinutes()) * 60000;
       bar.querySelector('.time').textContent = clock(time);
       const { lat, lon } = viewpoint();
       const { az, alt } = sunAt(time, lat, lon);
@@ -1215,7 +1212,6 @@
       placeSun();
     };
     dateInput.addEventListener('change', () => { planKey = ''; });
-    minuteInput.addEventListener('input', placeSun);
     bar.querySelector('.now').addEventListener('click', () => { setNow(); planKey = ''; });
     hoursButton.addEventListener('click', () => {
       showHours = !showHours;

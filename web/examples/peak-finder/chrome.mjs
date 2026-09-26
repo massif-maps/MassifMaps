@@ -28,7 +28,6 @@ const CSS = `
 .pf-sun { position: absolute; left: 12px; bottom: 28px; display: flex; align-items: center; gap: 10px; background: var(--surface);
           border-radius: 20px; padding: 8px 14px; box-shadow: var(--shadow); flex-wrap: wrap; max-width: calc(100% - 48px); }
 .pf-sun input[type=date] { font: inherit; border: 0; background: transparent; color: var(--ink); }
-.pf-sun input[type=range] { width: 140px; accent-color: #f59e0b; }
 .pf-sun .time { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 44px; }
 .pf-sun .riseset { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .pf-sun button { height: 28px; padding: 0 10px; background: #f59e0b1f; color: #b45309; }
@@ -71,16 +70,14 @@ export function createChrome(root, on) {
   card.querySelector('.fly').onclick = () => on.flyTo();
   card.querySelector('.close').onclick = () => on.select(null);
 
-  const sun = html(root, `<div class="pf-sun"><input type="date" class="date"><input type="range" class="minute" min="0" max="1439">
+  const sun = html(root, `<div class="pf-sun"><input type="date" class="date">
     <span class="time"></span><span class="riseset"></span><button class="hours off">Hours</button><button class="now">Now</button></div>`);
   const date = sun.querySelector('.date');
-  const minute = sun.querySelector('.minute');
   const hours = sun.querySelector('.hours');
   const pad = (value) => String(value).padStart(2, '0');
   const setNow = () => {
     const now = new Date();
     date.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    minute.value = String(now.getHours() * 60 + now.getMinutes());
   };
   setNow();
   sun.querySelector('.now').onclick = setNow;
@@ -147,11 +144,13 @@ export function createChrome(root, on) {
         card.querySelector('.meta').textContent = meta;
       }
     },
-    /** The day (local midnight, ms), the minute of it and whether the hour marks are on. */
+    /** The day (local midnight, ms), the minute of it now, and whether the hour marks are on. */
     sunState() {
       const [y, m, d] = date.value.split('-').map(Number);
-      sun.querySelector('.time').textContent = `${pad(Math.floor(minute.value / 60))}:${pad(minute.value % 60)}`;
-      return { day: new Date(y, m - 1, d).getTime(), minute: Number(minute.value), hours: !hours.classList.contains('off') };
+      const now = new Date();
+      const minute = now.getHours() * 60 + now.getMinutes();
+      sun.querySelector('.time').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      return { day: new Date(y, m - 1, d).getTime(), minute, hours: !hours.classList.contains('off') };
     },
     showRiseSet(text) {
       sun.querySelector('.riseset').textContent = text;

@@ -6,6 +6,8 @@ set(TEST_MODULES
   # The sky carries the only WRITABLE enum in the reduced table (SkyType), which is what checks
   # that a constant NAME is accepted and an unknown one is rejected rather than read as 0.
   "${SDK_BASE_DIR}/all/modules/components/SkyOptions.i"
+  # The "effect" kind: a post-process effect is a name, a shader and flags, so it links on its own.
+  "${SDK_BASE_DIR}/all/modules/renderers/PostProcessEffect.i"
   "${SDK_BASE_DIR}/all/modules/geometry/Feature.i"
   "${SDK_BASE_DIR}/all/modules/geometry/Geometry.i"
   "${SDK_BASE_DIR}/all/modules/ui/VectorTileClickInfo.i"
@@ -115,6 +117,7 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/components/LightStop.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/components/SkyOptions.cpp"
+  "${SDK_BASE_DIR}/all/native/renderers/PostProcessEffect.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeature.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeatureBuilder.cpp"
@@ -207,6 +210,7 @@ add_executable(api_tests
   MetaDataTest.cpp
   BagTest.cpp
   FogSkyTest.cpp
+  EffectSpecTest.cpp
   # FogOptions is the class the colour-spelling bug bit, and the only COLOR property the reduced
   # table carries - so this needs nothing the list above does not already link.
   ColorValueTest.cpp

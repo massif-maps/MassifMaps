@@ -118,6 +118,11 @@ namespace massif { namespace api {
             return buildFromConstructor(context, "celestial", spec, object, consumed);
         }
 
+        Result buildEffect(Context& context, const Variant& spec, ObjectRef& object,
+                           std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "effect", spec, object, consumed);
+        }
+
         Result buildFeature(Context& context, const Variant& spec, ObjectRef& object,
                             std::set<std::string>& consumed) {
             return buildFromConstructor(context, "feature", spec, object, consumed);
@@ -318,6 +323,7 @@ namespace massif { namespace api {
         registerElementFactories();
         registerFactory("feature", &buildFeature);
         registerFactory("celestial", &buildCelestial);
+        registerFactory("effect", &buildEffect);
 #ifdef _MASSIF_ROUTING_SUPPORT
         registerFactory("routing", &buildRouting);
 #endif

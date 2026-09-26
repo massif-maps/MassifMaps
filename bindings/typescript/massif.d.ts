@@ -1263,6 +1263,20 @@ export interface PropertyTypes {
     readonly "flightProgress": number;
     /** (read-only) Returns the position that the camera is currently looking at. */
     readonly "focusPos": Position;
+    /** (read-only) Returns the MapRenderer object, that can be used for controlling rendering options. */
+    readonly "mapRenderer": Handle<"massif::MapRenderer">;
+    /** Returns the map renderer listener. Can be null. */
+    "mapRenderer.mapRendererListener": Handle<"massif::MapRendererListener">;
+    /** Returns the current post-process effect. Can be null. */
+    "mapRenderer.postProcessEffect": Handle<"massif::PostProcessEffect">;
+    /** (read-only) Returns the fragment shader source of the effect. */
+    readonly "mapRenderer.postProcessEffect.fragmentShader": string;
+    /** (read-only) Returns the name of the effect. */
+    readonly "mapRenderer.postProcessEffect.name": string;
+    /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
+    "mapRenderer.postProcessEffect.terrainDepthRequired": boolean;
+    /** Returns true if the effect wants the terrain surface normal in the depth pre-pass. */
+    "mapRenderer.postProcessEffect.terrainNormalsRequired": boolean;
     /** (read-only) Returns the map rotation in degrees. 0 means looking north, 90 means west, -90 means east and 180 means south. */
     readonly "rotation": number;
     /** (read-only) Returns the tilt angle in degrees. 0 means looking directly at the horizon, 90 means looking directly down. */
@@ -1940,6 +1954,8 @@ export interface PropertyTypes {
     "terrainOptions.sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "terrainOptions.subdivideDistance": number;
+    /** Returns the resolution the elevation node field is built at. */
+    "terrainOptions.surfaceNodeResolution": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -3331,6 +3347,16 @@ export interface PropertyTypes {
   "massif::MapRenderer": {
     /** Returns the map renderer listener. Can be null. */
     "mapRendererListener": Handle<"massif::MapRendererListener">;
+    /** Returns the current post-process effect. Can be null. */
+    "postProcessEffect": Handle<"massif::PostProcessEffect">;
+    /** (read-only) Returns the fragment shader source of the effect. */
+    readonly "postProcessEffect.fragmentShader": string;
+    /** (read-only) Returns the name of the effect. */
+    readonly "postProcessEffect.name": string;
+    /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
+    "postProcessEffect.terrainDepthRequired": boolean;
+    /** Returns true if the effect wants the terrain surface normal in the depth pre-pass. */
+    "postProcessEffect.terrainNormalsRequired": boolean;
   };
   "massif::MapRendererListener": {
   };
@@ -4297,6 +4323,8 @@ export interface PropertyTypes {
     "terrain.sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "terrain.subdivideDistance": number;
+    /** Returns the resolution the elevation node field is built at. */
+    "terrain.surfaceNodeResolution": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrain.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -4387,6 +4415,8 @@ export interface PropertyTypes {
     "terrainOptions.sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "terrainOptions.subdivideDistance": number;
+    /** Returns the resolution the elevation node field is built at. */
+    "terrainOptions.surfaceNodeResolution": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -5674,6 +5704,8 @@ export interface PropertyTypes {
     "sharedGroundEnabled": boolean;
     /** Returns the distance geo-three's terrain LOD subdivides at. */
     "subdivideDistance": number;
+    /** Returns the resolution the elevation node field is built at. */
+    "surfaceNodeResolution": number;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "surfaceShaderSource": string;
     /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -6942,6 +6974,18 @@ export interface CelestialSpec_sprite {
 
 export type CelestialSpec = CelestialSpec_arc | CelestialSpec_label | CelestialSpec_sprite;
 
+export interface EffectSpec_postprocess {
+  type: "postprocess";
+  fragmentShader?: string;
+  name?: string;
+  /** Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex). */
+  terrainDepthRequired?: boolean;
+  /** Returns true if the effect wants the terrain surface normal in the depth pre-pass. */
+  terrainNormalsRequired?: boolean;
+}
+
+export type EffectSpec = EffectSpec_postprocess;
+
 export interface ElementSpec_balloon {
   type: "balloon";
   /** Returns the horizontal anchor point of this popup. */
@@ -7801,6 +7845,8 @@ export interface OptionsSpec_terrain {
   source?: SourceSpec | string;
   /** Returns the distance geo-three's terrain LOD subdivides at. */
   subdivideDistance?: number;
+  /** Returns the resolution the elevation node field is built at. */
+  surfaceNodeResolution?: number;
   /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
   surfaceShaderSource?: string;
   /** Returns the opacity a label keeps while its anchor is behind 3D content. */
@@ -8121,6 +8167,7 @@ export type ProjectionSpec = { type: string; [key: string]: Json | undefined };
 export interface SpecOf {
   "assets": AssetsSpec;
   "celestial": CelestialSpec;
+  "effect": EffectSpec;
   "element": ElementSpec;
   "elementstyle": ElementstyleSpec;
   "feature": FeatureSpec;
@@ -8679,6 +8726,7 @@ export interface MethodTypes {
   };
   "massif::TerrainOptions": {
     calculateHorizon: (pos: Position, eyeHeight: number, azimuths: Json, maxDistance: number) => number[];
+    setSurfaceParameter: (name: string, value: number) => void;
   };
   "massif::TerrariumElevationDataDecoder": {
   };

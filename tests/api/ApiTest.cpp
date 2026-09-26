@@ -58,6 +58,7 @@ void testElevationDecoderResolve();
 void testBagProperties();
 void testFogOptions();
 void testSkyOptions();
+void testEffectSpec();
 void testFogSkyPaths();
 void testColorProperty();
 void testColorSpec();
@@ -442,6 +443,7 @@ int main() {
     testBagProperties();
     testFogOptions();
     testSkyOptions();
+    testEffectSpec();
     testFogSkyPaths();
     testColorProperty();
     testColorSpec();

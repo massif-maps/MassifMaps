@@ -1078,6 +1078,16 @@
           "doc": "Returns the position that the camera is currently looking at."
         },
         {
+          "name": "mapRenderer",
+          "type": "OBJECT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::shared_ptr<massif::MapRenderer>",
+          "objectClass": "massif::MapRenderer",
+          "doc": "Returns the MapRenderer object, that can be used for controlling rendering options."
+        },
+        {
           "name": "rotation",
           "type": "FLOAT",
           "readOnly": true,
@@ -5028,6 +5038,16 @@
           "cppType": "std::shared_ptr<massif::MapRendererListener>",
           "objectClass": "massif::MapRendererListener",
           "doc": "Returns the map renderer listener. Can be null."
+        },
+        {
+          "name": "postProcessEffect",
+          "type": "OBJECT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::shared_ptr<massif::PostProcessEffect>",
+          "objectClass": "massif::PostProcessEffect",
+          "doc": "Returns the current post-process effect. Can be null."
         }
       ],
       "aliases": {},
@@ -8532,6 +8552,15 @@
           "doc": "Returns the distance geo-three's terrain LOD subdivides at."
         },
         {
+          "name": "surfaceNodeResolution",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the resolution the elevation node field is built at."
+        },
+        {
           "name": "surfaceShaderSource",
           "type": "STRING",
           "readOnly": false,
@@ -8619,6 +8648,22 @@
             }
           ],
           "returns": "doubles",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "setSurfaceParameter",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
           "returnClass": null
         }
       ],
@@ -10778,6 +10823,39 @@
         ]
       ]
     ],
+    "effect": [
+      [
+        "postprocess",
+        "massif__PostProcessEffect",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "name",
+                "stringAt(spec, \"name\", \"\")",
+                null
+              ],
+              [
+                "VALUE",
+                "fragmentShader",
+                "stringAt(spec, \"fragmentShader\", \"\")",
+                null
+              ]
+            ],
+            [
+              "name",
+              "fragmentShader"
+            ],
+            [
+              "name",
+              "fragmentShader"
+            ]
+          ]
+        ]
+      ]
+    ],
     "element": [
       [
         "balloon",
@@ -12674,6 +12752,7 @@
     "massif::Popup": "element",
     "massif::PopupStyle": "elementstyle",
     "massif::PopupStyleBuilder": "elementstyle",
+    "massif::PostProcessEffect": "effect",
     "massif::Projection": "projection",
     "massif::RasterTileLayer": "layer",
     "massif::ReverseGeocodingRequest": "geocoding",
@@ -12851,6 +12930,33 @@
       "defaults": {},
       "constructors": [
         []
+      ]
+    },
+    {
+      "cppClass": "massif::PostProcessEffect",
+      "kind": "effect",
+      "type": "postprocess",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "name",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "fragmentShader",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
       ]
     },
     {

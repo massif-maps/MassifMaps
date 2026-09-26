@@ -508,6 +508,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMainLightColor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMainLightDirection;
 /** Returns the drag position in projection coordinate system of the layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMapPos;
+/** Returns the MapRenderer object, that can be used for controlling rendering options. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMapRenderer;
 /** Returns the map renderer listener. Can be null. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMapRendererListener;
 /** Returns the tile id of the clicked feature. */
@@ -646,6 +648,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPosition;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPositionAltitude;
 /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessDownscale;
+/** Returns the current post-process effect. Can be null. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessEffect;
 /** Returns whether this layer goes through the post-process effect. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPostProcessed;
 /** Returns the postcode of the address. */
@@ -852,6 +856,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertySunDiscEnabled;
 FOUNDATION_EXPORT MassifProperty const MassifPropertySunIntensity;
 /** Returns whether this sun overrides the one a style states. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySunOverridingStyle;
+/** Returns the resolution the elevation node field is built at. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceNodeResolution;
 /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceShaderSource;
 /** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -1087,6 +1093,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSetSegments;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetSunPositionFromTime;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetSurfaceParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStartDownloadArea;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopAllDownloads;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopFlight;
@@ -1112,6 +1119,7 @@ typedef NSString *MassifKind NS_TYPED_ENUM;
 
 FOUNDATION_EXPORT MassifKind const MassifKindAssets;
 FOUNDATION_EXPORT MassifKind const MassifKindCelestial;
+FOUNDATION_EXPORT MassifKind const MassifKindEffect;
 FOUNDATION_EXPORT MassifKind const MassifKindElement;
 FOUNDATION_EXPORT MassifKind const MassifKindElementstyle;
 FOUNDATION_EXPORT MassifKind const MassifKindFeature;
@@ -1134,6 +1142,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsZip;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialArc;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialLabel;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialSprite;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeEffectPostprocess;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementBalloon;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementLine;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementMarker;

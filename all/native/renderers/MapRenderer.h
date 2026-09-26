@@ -376,6 +376,9 @@ namespace massif {
         int _eyeGroundZoom = -1;
         double _eyeGroundZ = 0;
         double _eyeGroundOffset = 0;
+        double _eyeGroundTarget = 0; // the answer the glide heads for, and where it was asked
+        double _eyeGroundX = 0;
+        double _eyeGroundY = 0;
         std::optional<std::chrono::steady_clock::time_point> _lastElevationRefreshTime;
         // The moving bake budget lasts a settle window past a gesture, so chained quick zooms stay smooth.
         std::chrono::steady_clock::time_point _drapeBakeLastMoveTime = std::chrono::steady_clock::time_point();

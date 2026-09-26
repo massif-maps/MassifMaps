@@ -938,15 +938,26 @@ namespace massif {
         if (groundZoom < groundTile.getZoom()) {
             elevationManager.requestTileGrid(groundTile, 2);
         }
+        // A coarser answer for the same spot is whichever grid the lookup read last, not new ground.
+        double metre = elevationManager.getDisplayScale(cameraMapPos.getY());
+        bool sameSpot = _eyeGroundZoom >= 0 && std::abs(cameraMapPos.getX() - _eyeGroundX) < metre && std::abs(cameraMapPos.getY() - _eyeGroundY) < metre;
+        if (sameSpot && groundZoom < _eyeGroundZoom) {
+            groundZ = _eyeGroundTarget;
+            groundZoom = _eyeGroundZoom;
+        } else {
+            _eyeGroundX = cameraMapPos.getX();
+            _eyeGroundY = cameraMapPos.getY();
+        }
+        _eyeGroundTarget = groundZ;
         if (_eyeGroundZoom >= 0 && groundZoom != _eyeGroundZoom) {
             _eyeGroundOffset = _eyeGroundZ - groundZ;
 #if MASSIF_FRAME_PROFILER
-            Log::Infof("MapRenderer: eye ground z%d -> z%d, glides %.1f m", _eyeGroundZoom, groundZoom, _eyeGroundOffset / std::max(1e-12, elevationManager.getDisplayScale(cameraMapPos.getY())));
+            Log::Infof("MapRenderer: eye ground z%d -> z%d, glides %.1f m", _eyeGroundZoom, groundZoom, _eyeGroundOffset / std::max(1e-12, metre));
 #endif
         }
         _eyeGroundZoom = groundZoom;
         _eyeGroundOffset *= std::exp(-deltaSeconds / EYE_GROUND_SETTLE_TIME);
-        if (std::abs(_eyeGroundOffset) < 0.01 * elevationManager.getDisplayScale(cameraMapPos.getY())) {
+        if (std::abs(_eyeGroundOffset) < 0.01 * metre) {
             _eyeGroundOffset = 0;
         } else {
             requestRedraw();

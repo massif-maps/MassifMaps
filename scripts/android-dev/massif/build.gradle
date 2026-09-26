@@ -144,9 +144,12 @@ android {
                 // turns on the per-frame section timings (utils/FrameProfiler.h) and the vt
                 // draw/label/tile counters (vt/RenderStats.h), both printed to logcat as 'PROF'
                 // and 'RenderStats' lines. Neither exists in the binary otherwise.
+                // The demo always reads the 'adb shell setprop debug.massif.*' A/B switches; SDK builds never do.
+                def cxxDefines = ['-DMASSIF_DEBUG_PROPERTIES=1']
                 if (project.hasProperty('profileRender')) {
-                    arguments "-DCMAKE_CXX_FLAGS=-DMASSIF_FRAME_PROFILER=1 -DMASSIF_VT_RENDER_STATS=1"
+                    cxxDefines += ['-DMASSIF_FRAME_PROFILER=1', '-DMASSIF_VT_RENDER_STATS=1']
                 }
+                arguments "-DCMAKE_CXX_FLAGS=${cxxDefines.join(' ')}"
                 // Native optimization, ON by default - including from Android Studio, which
                 // passes no properties. AGP sets no CMAKE_BUILD_TYPE for the debug variant, so
                 // without this clang builds the whole SDK at -O0 and every number measured from

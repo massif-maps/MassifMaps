@@ -36,7 +36,7 @@
 
 namespace massif {
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     static bool isLineSourceDensityForced() {
         static const bool forced = [] {
             char property[PROP_VALUE_MAX] = { 0 };

@@ -116,7 +116,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
 
     // Measurement switch for the mipmapped drape textures: debug.massif.drapemip 0 goes back to
     // GL_LINEAR with no mipmap chain. Read once (Android only).
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TerrainDrapeCache::isMipmapEnabled() {
         static const bool enabled = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -281,7 +281,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
 
     // Measurement switch: debug.massif.drapebudget 0 caps the cache by tile COUNT again, as it did
     // before the budget existed. Read once (Android only).
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TerrainDrapeCache::isBudgetEnabled() {
         static const bool enabled = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -295,7 +295,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
     }
 #endif
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TerrainDrapeCache::isCoverageMaskEnabled() {
         static const bool enabled = [] {
             char property[PROP_VALUE_MAX] = { 0 };

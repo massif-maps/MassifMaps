@@ -923,7 +923,7 @@ namespace massif {
 
     // Mesh cells a node averages the DEM over (ElevationNodeField::DEFAULT_BOX_CELLS), with the
     // measurement override:  adb shell setprop debug.massif.nodebox <cells>
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int ElevationManager::nodeBoxCells() {
         static const int cells = [] {
             char property[PROP_VALUE_MAX] = { 0 };

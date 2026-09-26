@@ -23,7 +23,7 @@ namespace massif {
     // speed: 0.5-4 m all measure the same, and a draped line is lifted 25 m off the surface anyway
     // (DEFAULT_LINE_CLEARANCE_METERS). Numbers in docs/internals/rendering/04-terrain.md.
     static constexpr float DEFAULT_LINE_SAG_METERS = 2.0f;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     // The same for LINES - the expensive half, drawn as terrain geometry every frame.
     //   adb shell setprop debug.massif.linethreshold 4
     // Relief (m in the tile) under which the LATTICE split is skipped: the cell fold it guards

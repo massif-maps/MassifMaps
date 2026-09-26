@@ -39,7 +39,7 @@
 namespace massif
 {
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     // Interleaved A/B of the paint against the normal-map tile set, without a rebuild and
     // without reaching into a composite layer's internal hillshade child:
     //   adb shell setprop debug.massif.terrainpaint 0

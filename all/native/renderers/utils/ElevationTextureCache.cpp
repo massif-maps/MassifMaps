@@ -49,7 +49,7 @@ namespace massif {
         }
     };
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     // Patch a texture's border ring instead of re-encoding it whole when a neighbour lands.
     // Off with: adb shell setprop debug.massif.demborderpatch 0
     static bool isBorderPatchEnabled() {

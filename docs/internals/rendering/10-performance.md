@@ -850,3 +850,6 @@ is the culler doing the same work in a denser burst, not the mutex being held lo
 `paintdetail`, `asyncdepthms`, `gputimer`, `labelanchor` (0 = anchor labels in the frame, the
 pre-2026-09 path). They are read **once per process**, so restart the app
 after setting one, and **reset them when you are done** — they survive until reboot.
+
+They exist only in builds compiled with `-DMASSIF_DEBUG_PROPERTIES=1`, which `scripts/android-dev`
+always passes. An SDK build never reads them and runs each switch's default.

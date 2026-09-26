@@ -1553,7 +1553,7 @@ namespace massif {
         GLContext::CheckGLError("MapRenderer::onDrawFrame");
     }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool MapRenderer::isBackgroundEnabled() {
         static const bool enabled = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -3500,7 +3500,7 @@ namespace massif {
                     // overrides it for an A/B (0 = the at-rest budget the frame the camera stops).
                     static const double DRAPE_BAKE_SETTLE_MS = [] {
                         double settle = 300.0;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
                         char property[PROP_VALUE_MAX] = { 0 };
                         if (__system_property_get("debug.massif.drapesettle", property) > 0) {
                             settle = std::atof(property);

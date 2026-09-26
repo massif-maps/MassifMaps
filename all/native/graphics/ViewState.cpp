@@ -911,13 +911,14 @@ namespace massif {
         if (viewDistance > 0) {
             float viewDistanceFactor = 1.0f;
             bool absoluteViewDistance = false;
+            double maxDistance = 0;
             if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
                 viewDistanceFactor = terrainOptions->getViewDistanceFactor();
                 // Only when the absolute distance is the one that WON: it merely extends the rule
                 // now, and where the rule is longer this is the plain factor case. A ceiling below it
                 // rules it out: the cull envelope stops at the ceiling.
                 double absolute = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
-                double maxDistance = terrainOptions->getViewDistanceMax() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
+                maxDistance = terrainOptions->getViewDistanceMax() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
                 absoluteViewDistance = absolute > 0 && absolute >= viewDistance && !(maxDistance > 0 && maxDistance < absolute);
             }
             if (absoluteViewDistance || viewDistanceFactor > 1.0f) {
@@ -927,6 +928,13 @@ namespace massif {
                 far = std::max(far, static_cast<float>(viewDistance));
             } else {
                 far = std::min(far, std::max(static_cast<float>(viewDistance), terrainNear * 2.0f));
+            }
+            // The CEILING caps the far plane too, whichever branch ran: both of the ones above only
+            // ever extend it where the rule or the factor reach further, so with a factor over 1 the
+            // ground went on being drawn past the ceiling - its tiles clipped only where the walk had
+            // stopped, a coarse far tile carrying the whole range behind.
+            if (maxDistance > 0) {
+                far = std::min(far, std::max(static_cast<float>(maxDistance), terrainNear * 2.0f));
             }
         }
         if (_terrainHeightMax > _terrainHeightMin) {

@@ -773,7 +773,7 @@ namespace massif {
     //   debug.massif.groundpaint 1  paint drawn AS the ground (tangram): one draw per tile cheaper
     //   debug.massif.demtaps 4      elevation fetches per terrain vertex (16 / 4 / 1, tangram's)
     //   debug.massif.tilebg 1       per-layer per-tile background meshes tangram does not have
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TileRenderer::isTerrainTileBackgroundsForced() {
         static const bool forced = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -791,7 +791,7 @@ namespace massif {
     // off (0) instead of the renderer's own rule. They stop a retained proxy tile painting through
     // the gaps of its replacement, so the A/B to run is the zoom transitions, not the frame rate.
     //   adb shell setprop debug.massif.tilemasks 1
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int TileRenderer::tileMasksMode() {
         static const int mode = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -824,7 +824,7 @@ namespace massif {
     }
 #endif
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int TileRenderer::terrainDemTaps() {
         static const int taps = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -844,7 +844,7 @@ namespace massif {
     }
 #endif
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TileRenderer::isTerrainPaintOnGroundForced() {
         static const bool forced = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -1073,7 +1073,7 @@ namespace massif {
             // Label anchors come through in INTERNAL coordinates; the span chords are in vt's
             // normalized ones, and a deck lookup needs them in the same space.
             tileRenderer->setLabelPositionScale(1.0 / Const::WORLD_SIZE);
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
             {
                 // debug.massif.labelanchor 0: anchor labels in the frame, the pre-2026-09 path.
                 char property[PROP_VALUE_MAX] = { 0 };
@@ -1575,7 +1575,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
     }
 
     float TileRenderer::getTerrainContentDepthShift() {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         static const float depthShift = [] {
             char property[PROP_VALUE_MAX] = { 0 };
             if (__system_property_get("debug.massif.depthshift", property) > 0) {
@@ -1591,7 +1591,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
     std::optional<std::regex> TileRenderer::noDrapeLayerFilter(const std::string& optionFilter) {
         std::string pattern = optionFilter;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         char property[PROP_VALUE_MAX] = { 0 };
         if (__system_property_get("debug.massif.nodrapelayers", property) > 0 && property[0]) {
             pattern = (std::strcmp(property, "none") == 0 ? std::string() : property);
@@ -1617,7 +1617,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return cachedFilter;
     }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     float TileRenderer::terrainLineClearanceMeters() {
         static const float meters = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -1635,7 +1635,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 #endif
 
     int TileRenderer::terrainPaintDetailLevels() {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         // adb shell setprop debug.massif.paintdetail 0|1|2 - elevation levels beyond the mesh cap.
         static const int levels = [] {
             char property[PROP_VALUE_MAX] = { 0 };

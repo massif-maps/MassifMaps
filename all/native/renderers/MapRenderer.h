@@ -243,6 +243,9 @@ namespace massif {
         // Per camera event rather than one frame later (mapbox's transform._constrainCamera). Call with _mutex held.
         void constrainCameraToClearance();
 
+        // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
+        double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);
+
         // Dumps and resets the per-call-site redraw counts: tells which caller keeps the map rendering.
         static void logRedrawSources();
 
@@ -288,6 +291,7 @@ namespace massif {
         static const int LABEL_PLACEMENT_ZOOM_DELAY;
 
         static const int ELEVATION_REFRESH_DELAY; // milliseconds between vector layer refreshes caused by elevation data changes
+        static const float EYE_GROUND_SETTLE_TIME; // seconds for the first person eye to glide onto a refined ground
         static const float TERRAIN_SWITCH_WARM_TIMEOUT; // seconds the 2D/3D switch waits for the tiles 3D needs
 
         static const std::string BLEND_VERTEX_SHADER;
@@ -364,6 +368,10 @@ namespace massif {
         std::array<std::vector<vt::TileId>, 4> _shadowMapCasterTiles;
 
         unsigned int _layersElevationVersion = 0;
+        // settleEyeGround's state: the level that answered last frame, and the eye's ground minus that answer.
+        int _eyeGroundZoom = -1;
+        double _eyeGroundZ = 0;
+        double _eyeGroundOffset = 0;
         std::optional<std::chrono::steady_clock::time_point> _lastElevationRefreshTime;
         // The moving bake budget lasts a settle window past a gesture, so chained quick zooms stay smooth.
         std::chrono::steady_clock::time_point _drapeBakeLastMoveTime = std::chrono::steady_clock::time_point();

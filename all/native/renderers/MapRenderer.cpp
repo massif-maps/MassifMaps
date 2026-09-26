@@ -63,6 +63,7 @@
 #include <vt/GLTileRenderer.h> // the shadow cutout/fade constants, so the fade is not a second 4.5
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <cstdio>
 #include <cstring>
@@ -920,9 +921,38 @@ namespace massif {
         // Plus the application's lift, as in the frame's own rule.
         double lift = terrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, terrainOptions->getCameraClearanceFraction()) - orbitHeight + lift;
+        if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+            shellFocusZ += _eyeGroundOffset; // mid-glide the eye is meant to be off the newest answer
+        }
         if (shellFocusZ > focusMapPos.getZ()) {
             _viewState.setFocusHeight(shellFocusZ);
         }
+    }
+
+    /**
+     * A cached read answers from a coarse ancestor until the eye's own tile loads, so standing on each answer moved the
+     * whole panorama once per level. The eye's tile is requested at once, and a change of level is a glide, not a step.
+     */
+    double MapRenderer::settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds) {
+        MapTile groundTile = elevationManager.getDataTile(elevationManager.getTileForInternalPos(cameraMapPos.getX(), cameraMapPos.getY()));
+        if (groundZoom < groundTile.getZoom()) {
+            elevationManager.requestTileGrid(groundTile, 2);
+        }
+        if (_eyeGroundZoom >= 0 && groundZoom != _eyeGroundZoom) {
+            _eyeGroundOffset = _eyeGroundZ - groundZ;
+#if MASSIF_FRAME_PROFILER
+            Log::Infof("MapRenderer: eye ground z%d -> z%d, glides %.1f m", _eyeGroundZoom, groundZoom, _eyeGroundOffset / std::max(1e-12, elevationManager.getDisplayScale(cameraMapPos.getY())));
+#endif
+        }
+        _eyeGroundZoom = groundZoom;
+        _eyeGroundOffset *= std::exp(-deltaSeconds / EYE_GROUND_SETTLE_TIME);
+        if (std::abs(_eyeGroundOffset) < 0.01 * elevationManager.getDisplayScale(cameraMapPos.getY())) {
+            _eyeGroundOffset = 0;
+        } else {
+            requestRedraw();
+        }
+        _eyeGroundZ = groundZ + _eyeGroundOffset;
+        return _eyeGroundZ;
     }
 
     void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
@@ -1346,7 +1376,8 @@ namespace massif {
                     if (elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), terrainZ)) {
                         // Measured with the focus pinned, so the lift cannot feed back into its input.
                         double cameraTerrainZ = terrainZ;
-                        elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ);
+                        int cameraGroundZoom = -1;
+                        elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ, cameraGroundZoom);
                         double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ(); // invariant under the lift
                         double pinnedCameraZ = terrainZ + orbitHeight;
                         double clearanceFloor = focusTerrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
@@ -1360,8 +1391,11 @@ namespace massif {
                         double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
                         // First person stands on the ground under the camera; the far focus ground would bob the eye.
                         if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
-                            _viewState.setFocusHeight(cameraTerrainZ - orbitHeight + lift);
+                            double groundZ = settleEyeGround(*elevationManager, cameraMapPos, cameraTerrainZ, cameraGroundZoom, deltaSeconds);
+                            _viewState.setFocusHeight(groundZ - orbitHeight + lift);
                         } else {
+                            _eyeGroundZoom = -1;
+                            _eyeGroundOffset = 0;
                             _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
                         }
                     }
@@ -4064,6 +4098,7 @@ namespace massif {
     const float MapRenderer::DRAPE_REBAKE_ZOOM_THRESHOLD = 0.25f;
 
     const int MapRenderer::ELEVATION_REFRESH_DELAY = 500;
+    const float MapRenderer::EYE_GROUND_SETTLE_TIME = 0.3f;
 
     // Late 3D beats a map pinned flat by one tile that never loads.
     const float MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT = 2.5f;

@@ -28,7 +28,7 @@ removed entirely — see [What was removed](#what-was-removed).
 // before
 implementation 'com.carto:carto-mobile-sdk:4.4.+'
 // after — JitPack overrides the declared groupId, so the coordinate is the GitHub path
-implementation 'com.github.massif-maps:MassifMaps-android-aar:v6.0.0'
+implementation 'com.github.massif-maps:MassifMaps-android-aar:6.0.0'
 ```
 
 On iOS the CocoaPod is replaced by a Swift package:
@@ -54,7 +54,7 @@ grep -rl 'NT[A-Z]' Sources/ | xargs sed -i '' -E 's/\bNT([A-Z][A-Za-z0-9]*)/MSF\
 | Platform | Before | After |
 |---|---|---|
 | Java / Kotlin | `com.carto.*` | `com.massifmaps.*` |
-| Java (routing-lib) | `com.akylas.routing.*` | `com.massifmaps.routing.*` |
+| Java (routing-lib) | `com.akylas.routing.*` | `com.massifmaps.valhalla.*` |
 | Objective-C / Swift | `NTMapView`, `NTVectorTileLayer`, … | `MSFMapView`, `MSFVectorTileLayer`, … |
 | .NET | `Carto.Ui`, `Carto.Layers`, … | `Massif.Ui`, `Massif.Layers`, … |
 | Native library | `carto_mobile_sdk` (`libcarto_mobile_sdk.so`) | `massif` (`libmassif.so`) |

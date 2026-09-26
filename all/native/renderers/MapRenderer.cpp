@@ -4028,6 +4028,14 @@ namespace massif {
                 updateView = true;
             }
 
+            if (optionName.substr(0, 27) == "TerrainOptions.ViewDistance") {
+                // The near and far planes are only recomputed when the camera changes, so a new view
+                // distance (or its ceiling, or its factor) waited for the next look around to apply.
+                std::lock_guard<std::recursive_mutex> lock(mapRenderer->_mutex);
+                mapRenderer->_viewState.cameraChanged();
+                mapRenderer->_viewState.calculateViewState(*mapRenderer->_options);
+            }
+
             if (optionName.substr(0, 14) == "TerrainOptions") {
                 // Tile layers rebuild with/without terrain displacement on a cull pass.
                 updateView = true;

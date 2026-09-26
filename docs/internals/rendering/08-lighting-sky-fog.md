@@ -269,7 +269,7 @@ a shadow twice the bridge, displaced, under no visible bridge (Pont Neuf, 2026-0
 
 Design points, each measured:
 
-- **Cascades** (up to `TerrainShadowMap::MAX_CASCADES = 4`, default 2 × 1024, mapbox's count). Each cascade fits its
+- **Cascades** (up to `TerrainShadowMap::MAX_CASCADES = 4`, default 2 × 2048, mapbox's configuration). Each cascade fits its
   light box to **its own** piece of ground's relief, not the whole scene's — at a low sun that is
   what sets the box size.
 - **The shadow sun is not always the lighting sun.** A shadow is as long as the caster is tall over
@@ -393,7 +393,7 @@ Design points, each measured:
 
 - **The caster set has to stay a partition of the ground.** The cover is a quadtree partition, but the
   ring is generated at each cover tile's own zoom and the cover mixes zooms (up to
-  `TerrainMaxTileZoomCoarsening` levels), so the ring around a coarse tile lands on top of the fine
+  `TerrainOptions.MaxTileZoomCoarsening` levels), so the ring around a coarse tile lands on top of the fine
   tiles beside it. Two casters over the same ground at different DEM levels disagree by tens of
   metres, the shallower one wins the depth test, and the receiver — which uses the fine level — ends
   up in the shadow of *its own ground*. On screen: blocky, roughly axis-aligned dark patches that do
@@ -440,11 +440,11 @@ further (fewer tiles, coarser caster mesh, cheaper pages) is therefore not where
 
 ### The screen-space shadow mask
 
-`TerrainShadowMaskBuffer` (all/native/renderers/utils/) + `SHADOW_MASK_OUT` / `SHADOW_MASK_IN`.
+`ScreenMaskBuffer` (all/native/renderers/utils/) + `SHADOW_MASK_OUT` / `SHADOW_MASK_IN`.
 
 The terrain surface covers the whole screen, and where a paint is drawn on the drape it covers it
-twice, so the lookup ran once per covering draw per pixel. It is now resolved **once, at a quarter of the screen
-resolution**: the same surface tiles are drawn into a half-size target with a fragment shader that
+twice, so the lookup ran once per covering draw per pixel. It is now resolved **once, at a quarter of the screen's
+width and height** (`SHADOW_MASK_DIVISOR = 4`): the same surface tiles are drawn into that target with a fragment shader that
 stops at the shadow value (`renderTerrainShadowMask`, the fill path with `SHADOW_MASK_OUT`), and the
 real surface draws sample it by `gl_FragCoord.xy * uShadowMaskScale` — one fetch, no cascade choice,
 no matrices, no varyings, no taps. The reduced resolution is invisible in the result: a terrain
@@ -466,7 +466,7 @@ documents the same trap for the drape bake.
 **The range is a multiple of the camera-to-focus distance, never a number of metres.** mapbox's model
 verbatim (`3d-style/render/shadow_renderer.ts`: `cascadeSplitDist = cameraToCenterDistance * 1.5`,
 `shadowCutoutDist = cascadeSplitDist * 3.0`), which is also the unit `FogOptions` already uses for its
-range. `SHADOW_CUTOUT_DISTANCE_FACTOR = 4.5` in `GLTileRenderer.cpp`; `LightOptions.ShadowDistance`
+range. `SHADOW_CUTOUT_DISTANCE_FACTOR = 4.5` in `GLTileRenderer.h`; `LightOptions.ShadowDistance`
 overrides it, `0` takes the default.
 
 The camera-to-focus distance follows the **zoom alone** (`ViewState::_zoom0Distance / 2^zoom`), so one
@@ -492,9 +492,6 @@ The earlier texel-budget measurements (Crosscall, z14, per cascade + caster tile
 1.3/2.7/10.7 m 121 tiles) are kept for the shape of the effect, not as current numbers - the
 camera-relative range is longer at a low zoom and shorter at a high one. **Not re-measured.**
 
-Shadows are **present at every tilt** from 90 down to 5 (the demo clamps at 30; `--es freeRoam look`
-opens the range): `shadows ACTIVE`, boxes fitted, no dropouts.
-
 Known gap: the caster count still grows with the range at a low zoom, where 4.5 x the camera distance
 is tens of kilometres. It is bounded by the visible tile cover (the box only *culls* casters, it does
 not create them), but the per-cascade cost at z11-z12 has not been measured against the old cap.
@@ -504,26 +501,23 @@ opens the range): `shadows ACTIVE`, boxes fitted, no dropouts.
 
 ### The map is the depth buffer
 
-Where a depth texture can be sampled — ES3 core, or `GL_OES_depth_texture` / `GL_ANGLE_depth_texture`
-— `TerrainShadowMap` attaches a **`DEPTH_COMPONENT24` texture as the depth attachment and has no
-colour attachment at all**. The caster pass then writes depth alone; before, it wrote depth to a
+`TerrainShadowMap` attaches a **`DEPTH_COMPONENT24` texture as the depth attachment and has no
+colour attachment at all** — a sampleable depth texture is ES 3.0 core, which the SDK requires. The caster pass then writes depth alone; before, it wrote depth to a
 renderbuffer *and* a packed-RGB copy of `gl_FragCoord.z` to an RGBA8 target, and the receiver
 unpacked it with a `dot`. The atlas goes from RGBA8 + D16 to D24, the caster fragment shader's
 packing is masked off (`glColorMask(FALSE)`), and the receiver's `shadowDepth()` is a plain `.r`
 read under `SHADOW_DEPTH_TEXTURE`.
 
 24 bits, not 16: the packed path spread `gl_FragCoord.z` over three bytes, so a D16 texture would
-have *lost* precision and bought acne back. ES2 + `OES_depth_texture` has only the unsized form and
-takes `UNSIGNED_SHORT`.
+have *lost* precision and bought acne back.
 
 Two things worth knowing:
 
 - **A depth-only framebuffer is complete by the ES3 spec**, and is on the Metal-backed emulator
-  (`OpenGL ES 3.0 (4.1 Metal - 90.5)`). It is not guaranteed on ES2 drivers, so an incomplete
-  status falls back to the packed-colour map rather than to no shadows.
-- **The packed path stays.** iOS builds against MetalANGLE (`libs-external/angle-metal`), whose
-  README records the build being patched down to ES2 for 32-bit devices, and `MapView` still has an
-  ES2 fallback on both platforms.
+  (`OpenGL ES 3.0 (4.1 Metal - 90.5)`).
+- **The packed path stays, as a fallback only.** The ES2 contexts it was kept for are gone (#142,
+  ES 3.0 required on both platforms); what still reaches it is a driver reporting the depth-only
+  framebuffer incomplete, which falls back to the packed-colour map rather than to no shadows.
 
 ### Hardware PCF, and the ESSL 3.00 programs
 
@@ -538,9 +532,10 @@ the same shader sources as everything else. The version difference is a prelude 
 `out vec4 glFragColor`. mapbox does exactly this — their fragment shaders write `glFragColor`, which
 is one of those macros.
 
-The one source-level cost: **a fragment shader writes `glFragColor`, never `gl_FragColor`.** A name
-beginning with `gl_` cannot be `#define`d, so that one had to be a real rename (24 sites); the 1.00
-path defines `glFragColor` back to `gl_FragColor`.
+The one source-level cost: **a vt fragment shader writes `glFragColor`, never `gl_FragColor`** — a
+real rename (24 sites); the 1.00 path defines `glFragColor` back to `gl_FragColor`. It was made on
+the belief that a `gl_` name cannot be `#define`d, which turned out wrong: ANGLE accepts
+`#define gl_FragColor …` ([16-graphics-api-migration.md](16-graphics-api-migration.md)).
 
 `shadowTap()` then becomes one `texture(sampler2DShadow, vec3(uv, ref))` — four depth compares and
 their bilinear average, in the texture unit — where the 1.00 path does a fetch, an unpack and a
@@ -641,10 +636,11 @@ frame's value or none at all — the first version of this change failed to fit 
 that reason.
 
 **Resolution is a second-order knob, not the fix.** `shadowMapSize 2048` + `shadowCascades 2`
-(mapbox's configuration) is slightly sharper again and nearly free — 13.6 fps / 5.8 ms drape against
-14.1 / 5.8 for 1024 x 3 at z16 tilt 45, i.e. drift — because the per-cascade cost is matrices and
-varyings rather than sampling. Not the default only because of memory: ~33 MB of atlas at D24
-against ~12.6 MB. mapbox pays ~16 MB by using D16, which is worth trying and **untested**.
+(mapbox's configuration, and now the default) is slightly sharper again and nearly free — 13.6 fps /
+5.8 ms drape against 14.1 / 5.8 for 1024 x 3 at z16 tilt 45, i.e. drift — because the per-cascade
+cost is matrices and varyings rather than sampling. The price is memory: a 4096 x 2048 D24 atlas,
+~33 MB, against ~12.6 MB for 1024 x 3. mapbox pays ~16 MB by using D16, which is worth trying and
+**untested**.
 
 **Dead end: the screen-space mask is not the limiter.** `SHADOW_MASK_DIVISOR = 1` (full resolution)
 was tried on the theory that a quarter-resolution mask was blurring building shadow edges. It made
@@ -796,10 +792,10 @@ and without it a warm evening sun warmed the slope while the facade in front of 
 extrusions at all — see [migration.md](../../migration.md). `Polygon3DRenderer` (app-supplied
 `Polygon3D` vector elements, not tile extrusions) still carries a third, unrelated lighting model.
 
-It is installed **per vertex**
-(`LightingShader(true, ...)`). That has a consequence worth knowing before touching it: any function
-of height in there only reaches the screen through the values at the base ring and at the roof - the
-wall carries the linear interpolation between them, whatever curve the formula draws. A falloff
+The lighting runs per fragment (`LightingShader(false, ...)`, see the back-face trap above), but the
+facade gradient's input `wallT` is a **vertex attribute**. That has a consequence worth knowing before
+touching it: any function of height only reaches the screen through its values at the wall's vertex
+rows - the wall carries the linear interpolation between them, whatever curve the formula draws. A falloff
 "over the first metre" is therefore a full-height ramp on screen, and the only thing that changes the
 look is the endpoint value.
 
@@ -811,9 +807,10 @@ which read as too light).
 
 It is `mix(1 - buildingVerticalGradient, 1, wallT)`, and **`wallT` is baked into the vertex by the
 tesselator**, not computed in the shader: `clamp(h / building-vertical-gradient-height, 0, 1)` where
-`h` is the vertex's **absolute height above the ground** (`TileLayerBuilder::appendWallQuad`, packed
-0..127 in `_attribs[3]`). The style sets `building-vertical-gradient` (default `0.65`, the foot at
-35% of the wall colour) and `building-vertical-gradient-height` (default `20` m).
+`h` is the vertex's **absolute height above the ground** (`TileLayerBuilder::packGradientT`, packed
+0..127 in `_attribs[3]` by `appendWallColumn`). The style sets `building-vertical-gradient` (0 — no
+gradient — when unset, as `buildingVerticalGradient` above; `0.65` puts the foot at 35% of the wall
+colour) and `building-vertical-gradient-height` (default `20` m).
 
 Two things follow from where it is evaluated, and both were learned the hard way:
 
@@ -849,7 +846,7 @@ Worth knowing, because both look correct in isolation:
 
 ### The reach needs a vertex, not just a uniform
 
-The lighting is per vertex, and a wall has vertices only at its base ring and its roof — so any curve
+The gradient is per vertex, and a wall has vertices only at its base ring and its roof — so any curve
 in there reaches the screen as a straight line between those two values. A reach of 20 m on a 40 m
 wall does not stop at 20 m; it stretches the whole facade. The reach only bit on walls *shorter* than
 itself, which is a knob that silently does nothing on exactly the buildings you set it for.
@@ -860,10 +857,9 @@ ramp above it is flat. `TileReader` reads the value from the `Map` block with th
 zoom — this decides geometry, so it has to be fixed when the tile is built, and a zoom-dependent
 reach is sampled once per tile.
 
-Cost is one extra quad per wall taller than the reach (2 triangles → 4), nothing for shorter ones.
-That was chosen over moving the lighting per fragment, which is the general fix and is what A1 needs
-anyway for a metric AO falloff, a roof-edge term and emissive — none of which a vertex split
-approximates. Per-fragment lands as its own measured PR rather than smuggled in under a gradient fix.
+Cost is one extra row per wall taller than the reach, nothing for shorter ones. The lighting has
+since moved per fragment (for the shadow term), and that does not remove the row: `wallT` is still
+interpolated from the vertices.
 
 
 ### Rounded edges
@@ -1185,15 +1181,16 @@ Kept out on measurement, so the next person does not re-try them:
 The lookup is also **compiled for the cascade count in use** (`GLTileRenderer::shadowReceiverFlags`,
 `SHADOW_CASCADES_2/3/4`); it used to declare four matrices and four varyings whatever the count.
 Measured on the same scene: at one cascade 44.3 → 37 ms of drape, i.e. **~2.3 ms per cascade per
-frame**, so ~2 ms at the default 3 — real, but inside the run-to-run spread. The remaining ~26 ms is
+frame** (measured when the default was 3 cascades; it is 2 now) — real, but inside the run-to-run spread. The remaining ~26 ms is
 the single-cascade base cost. Getting that down means selecting the cascade in the fragment stage
 from view distance, so the vertex stage applies one matrix and interpolates one varying whatever the
 cascade count — not yet done.
 
-**Current state: cast shadows are switched OFF on the shared ground.**
-`applyTerrainShadows(..., castShadows = false, ...)` — the light, the boxes and the caster pass are
-all wired, but with the pass enabled the map reads as scattered **shadow acne** instead of cast
-shadows. Half-working shadows are worse than none. To work on it, flip that argument to true.
+**Current state: cast shadows are switched OFF on the shared ground** — the undraped cover path;
+the drape path casts them. `MapRenderer` calls `applyTerrainShadows(..., castShadows = false, ...)`
+there: the light, the boxes and the caster pass are all wired, but with it on the road overlay wears
+a fine speckle of **shadow acne** the drape path does not have. To work on it, flip that argument to
+true and diff against the drape path.
 
 Tangram-ng has **no** terrain shadows at all, so there is nothing to copy here — this is one of the
 few places the fork is ahead of the reference and therefore on its own.
@@ -1346,7 +1343,8 @@ overdraw. Tangram's sky mesh spans the top half and is translated onto the horiz
 (`core/src/util/skyManager.cpp`). A generous margin is kept below it for the fog band. The clip
 applies only when the horizon is what bounds the ground; when the terrain path draws the sky
 although the flat horizon says it is not visible (a peak exposing it), the quad stays full screen.
-`debug.massif.skyclip 0` turns it off, which is the measurement A/B.
+`debug.massif.skyclip 0` turns it off, which is the measurement A/B (a `MASSIF_DEBUG_PROPERTIES`
+build only, see [runtime switches](10-performance.md#runtime-switches-no-rebuild)).
 
 ## Fog: one block, every renderer
 
@@ -1508,7 +1506,7 @@ use them or ignore them entirely.
 - Zoom **blinking with fog on** is reported and not diagnosed: a terrain tile from the zoom being
   left behind stays drawn and is fogged (or lit) differently. The mismatch is a depth/stand-in
   problem that fog only makes visible — it also shows with daylight and no fog. Worth re-checking
-  now that the bake no longer burns fog into the cached drape.
+  now that the bake no longer burns fog into the cached drape, and that the fog is angular.
 - **The atmosphere raymarch has NOT been measured.** It runs per fragment of visible sky, and a
   low-tilt camera fills the screen with it. If it misses the 30 fps floor on the Adreno 610 the
   fallback is mapbox's: raymarch once into a small cubemap or a 2D (elevation × sun-angle) LUT,
@@ -1521,14 +1519,14 @@ use them or ignore them entirely.
 - **A fully-fogged label still holds its collision slot.** The shader fades it out, but
   `LabelCuller` does not know about the fog, so a visible label behind an invisible one can still
   lose the placement. Handing `ResolvedFog` to `VTLabelPlacementWorker` is the fix, and it touches
-  the flicker-sensitive path — see the placement-stability invariant in the root `CLAUDE.md`.
+  the flicker-sensitive path — see the placement-stability invariant in
+  [06-labels.mdx](06-labels.mdx#building-the-label-set).
 - **The FOV question is open.** Mapbox shifts its range by `0.5/tan(fov/2)` because its range unit
   is the viewport height at the focus; ours is the geometric camera-to-focus distance, so the shift
   may already be implicit. Check whether `_cameraPos` is recomputed on `Options::setFieldOfViewY`
   before adding any term.
-- Zoom **blinking with fog on** may look different now that the fog is angular. Re-check rather
-  than assume.
 - **What is checked:** the host suite (`tests/api/FogSkyTest.cpp`: the clamps, the enabled switch,
-  the vertical range, the facade paths and the sky type by constant name) and a clean compile of
+  the vertical range, the facade paths and the sky type by constant name; `FogPitchFadeTest.cpp` for
+  the pitch fade) and a clean compile of
   every touched translation unit. **Nothing here has been seen on a device or an emulator** — no
   screenshot, no seam sweep, no frame-time measurement.

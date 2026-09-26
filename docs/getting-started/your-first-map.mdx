@@ -34,8 +34,10 @@ view = mapView
 </TabItem>
 <TabItem value="nativescript" label="NativeScript">
 
-```html
-<massifmaps:MassifMapView loaded="{{ onMapReady }}" />
+```xml
+<Page xmlns:massifmaps="@nativescript-community/ui-massifmaps/ui">
+    <massifmaps:MassifMap mapReady="{{ onMapReady }}" />
+</Page>
 ```
 
 </TabItem>
@@ -61,30 +63,33 @@ map.addLayer("basemap", Spec.of("vector")
         .set("cartocss", Spec.of("cartocss").set("css", "#water { polygon-fill: #9cc3e0; }"))))
 
 // Longitude first, in degrees — no projection conversion to get wrong.
-map.camera().moveTo(Position(-0.8164, 51.2131), 5.0)
+map.camera().moveTo(Position(-0.8164, 51.2131), 5f)
 ```
 
 </TabItem>
 <TabItem value="swift" label="Swift">
 
 ```swift
-let map = MassifMap.attach(mapView)
+let map = MassifMap.attach(mapView)!
 
-map.addLayer("basemap", Spec("vector")
-    .set("source", Spec("http")
-        .set("url", "https://example.com/tiles/{z}/{x}/{y}.pbf")
-        .set("maxZoom", 14))
-    .set("style", Spec("mbvt")
-        .set("cartocss", Spec("cartocss").set("css", "#water { polygon-fill: #9cc3e0; }"))))
+try map.addLayer("basemap", spec: Spec.of("vector")
+    .set("source", value: Spec.of("http")
+        .set("url", value: "https://example.com/tiles/{z}/{x}/{y}.pbf")
+        .set("maxZoom", value: 14))
+    .set("style", value: Spec.of("mbvt")
+        .set("cartocss", value: Spec.of("cartocss").set("css", value: "#water { polygon-fill: #9cc3e0; }"))))
 
-map.camera().moveTo(Position(-0.8164, 51.2131), zoom: 5)
+map.camera.move(to: MSFPosition(lng: -0.8164, lat: 51.2131), zoom: 5)
 ```
 
 </TabItem>
 <TabItem value="ts" label="TypeScript (NativeScript)">
 
 ```ts
-const map = MassifMap.attach(mapView);
+import { api } from '@nativescript-community/ui-massifmaps';
+
+// In the view's mapReady handler: attaching before the map is ready throws.
+const map = api.attach(args.object);
 
 map.addLayer('basemap', {
     type: 'vector',
@@ -116,8 +121,8 @@ val style = CartoCSSStyleSet("#water { polygon-fill: #9cc3e0; }")
 val baseLayer = VectorTileLayer(source, MBVectorTileDecoder(style))
 mapView.layers.add(baseLayer)
 
-// Coordinates are in the layer's projection (EPSG:3857 by default), so they need converting.
-val proj = baseLayer.dataSource.projection
+// Coordinates are in the map's base projection (EPSG:3857 by default), so they need converting.
+val proj = mapView.options.baseProjection
 mapView.setFocusPos(proj.fromWgs84(MapPos(-0.8164, 51.2131)), 0f)
 mapView.setZoom(5f, 0f)
 ```
@@ -130,10 +135,10 @@ let source = MSFHTTPTileDataSource(minZoom: 0, maxZoom: 14,
                                    baseURL: "https://example.com/tiles/{z}/{x}/{y}.pbf")
 let style = MSFCartoCSSStyleSet(cartoCSS: "#water { polygon-fill: #9cc3e0; }")
 let baseLayer = MSFVectorTileLayer(dataSource: source,
-                                   decoder: MSFMBVectorTileDecoder(style: style))
+                                   decoder: MSFMBVectorTileDecoder(cartoCSSStyleSet: style))
 mapView.getLayers()?.add(baseLayer)
 
-let proj = baseLayer!.getDataSource()!.getProjection()!
+let proj = mapView.getOptions()!.getBaseProjection()!
 mapView.setFocus(proj.fromWgs84(MSFMapPos(x: -0.8164, y: 51.2131)), durationSeconds: 0)
 mapView.setZoom(5, durationSeconds: 0)
 ```

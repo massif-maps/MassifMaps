@@ -30,9 +30,9 @@ half-feature. Usually free — check, do not assume:
 | a getter/setter declared with `%attribute*` in a `.i` | nothing |
 | a new option class reached from an existing one | nothing |
 | a new **class** an app constructs | one `!spec(...)` line in its `.i` |
-| a new **event** on an existing listener | a bridge method in `MapEventBridge.cpp` |
+| a new **event** on an existing listener | a bridge method in `MapEventBridge.cpp`, plus an `!event(...)` line in the `.i` |
 | a new **listener interface** | a bridge class beside the others |
-| a new **method** (not a property) | a `call` entry, plus a converter for binary/bulk data |
+| a new **method** (not a property) | a `registerMethod` thunk and a `!method(...)` line in the `.i`, plus a converter for binary/bulk data |
 | a derived value a binding would otherwise compute | **an SDK method, not a facade one** — declare it as an attribute and both surfaces gain it |
 
 - **Add the flag, not the special case.** Behaviour that depends on what a property *is* belongs in
@@ -130,8 +130,8 @@ becomes a new path on the next build.
 
 `scripts/gen-api-tables.py` walks `all/modules` and emits
 `generated/api/PropertyTable.inc`; `all/native/api/PropertyTable.{h,cpp}` define the structures and
-the lookups. Current output for the full profile: **748 properties over 163 classes**, 239 classes
-in the chain — 598 with a value accessor, 116 with an object accessor, 6 of them bags.
+the lookups. Current output for the full profile: **820 properties over 166 classes**, 242 classes
+in the chain — 670 with a value accessor, 116 with an object accessor, 7 of them bags.
 
 Six macro forms carry the declarations, and they do not all mean the same thing — the table records
 a value type per row, not just an accessor. Counts below are every declaration in the tree; a build
@@ -139,15 +139,15 @@ sees fewer, because modules behind a support define it does not set are skipped:
 
 | macro | count | meaning |
 |---|---|---|
-| `%attribute` | 387 | a scalar — bool, int, float, `Color`, or an enum constant |
-| `%attributeval` | 151 | a by-value struct: `MapRange`, `MapBounds`, `MapPos`, a vector |
-| `%attributestring` | 131 | a `std::string` **or** a `shared_ptr` — string vs object reference |
-| `!attributestring_polymorphic` | 49 | an object reference, addressed by registry id |
+| `%attribute` | 458 | a scalar — bool, int, float, `Color`, or an enum constant |
+| `%attributeval` | 165 | a by-value struct: `MapRange`, `MapBounds`, `MapPos`, a vector |
+| `%attributestring` | 138 | a `std::string` **or** a `shared_ptr` — string vs object reference |
+| `!attributestring_polymorphic` | 51 | an object reference, addressed by registry id |
 | `%staticattribute` and friends | 6 | static, flagged and otherwise the same |
 
-Resulting distribution for the full profile: `FLOAT` 159, `OBJECT` 116, `INT` 107, `STRUCT` 101,
-`BOOL` 87, `STRING` 77, `ENUM` 48, `COLOR` 48, `VARIANT` 5. A `lite` build skips 56 modules and
-lands at 632; the default profile skips 45 and lands at 659.
+Resulting distribution for the full profile: `FLOAT` 191, `INT` 120, `OBJECT` 116, `STRUCT` 105,
+`BOOL` 97, `STRING` 80, `COLOR` 55, `ENUM` 51, `VARIANT` 5. A `lite` build skips 56 modules and
+lands at 704; the default (`standard`) profile skips 45 and lands at 731.
 
 Both tables are emitted sorted, so a lookup is a binary search over static data — no `std::map`, no
 allocation, nothing built at load time.
@@ -217,7 +217,7 @@ A lookup walks the class' base chain, because almost every useful property is de
 `MemoryCacheTileDataSource` declares none of its own and gets `capacity` from `CacheTileDataSource`.
 The generator reads `class X : public Y` from the headers the modules pull in, and emits an entry
 for **every** class it sees — with or without properties of its own, or the chain breaks at exactly
-the classes that need it. 159 classes declare a property; 234 are in the table.
+the classes that need it. 166 classes declare a property; 242 are in the table.
 
 This was not designed in. It shipped without inheritance, and the first spec-built source on a
 device answered `Context::create: demoApiSource.capacity ignored (2)` — `RESULT_UNKNOWN_CLASS`,
@@ -259,7 +259,8 @@ malformed spec cannot quietly write a default over a real value. Verified on a d
 
 `CODEC_TYPES` in the generator says which types get an accessor. It now also carries `MapTile`
 (`[x, y, zoom]` — the tile a click or a feature came from), `vector<string>` (a search's layer
-filter) and the string-keyed maps (`httpHeaders`, `Layer.metaData`, `TileDataSource.metaData`; a
+filter), `ClickInfo`, `LightStop` and its vector, and the string-keyed maps (`HTTPHeaders`,
+`Layer.metaData`, `TileDataSource.metaData`; a
 `Variant` map keeps each value's type, so `{"level":3}` reads back as a number, not `"3"`).
 
 Two deliberate exclusions, both because a property is the wrong channel for the size:
@@ -267,7 +268,7 @@ Two deliberate exclusions, both because a property is the wrong channel for the 
 - **`std::vector<MapPos>`** has codec functions — a routing spec's via points need them — but is
   kept **out** of `CODEC_TYPES`, so no accessor is emitted. A route is hundreds of positions; the
   flat `getDoubles` channel is the one way to read a path.
-- **`BalloonPopupMargins`, `TextMargins`, `ClickInfo`** are simply not needed yet. Adding one is a
+- **`BalloonPopupMargins`, `TextMargins`** are simply not needed yet. Adding one is a
   line in `CODEC_TYPES` plus an `encode`/`decode` pair; nothing about the mechanism changes.
 
 **A path walks INTO a struct**, the same way it walks into a `Variant` — a struct's value is JSON
@@ -291,11 +292,11 @@ two fields mean different things and neither order is natural — and the sugar 
 with nothing reported. The generator now **names what it cannot reach**, by type, on every run:
 
 ```
-725 properties over 157 classes … (570 value, 116 object)
-  39 properties have no accessor:
+820 properties over 166 classes … (670 value, 116 object)
+  32 properties have no accessor:
     massif::BalloonPopupMargins                12  e.g. massif::BalloonPopupButtonStyle.textMargins
-    massif::ClickInfo                           7  e.g. massif::BalloonPopupButtonClickInfo.clickInfo
     std::vector<massif::MapPos>                 7  e.g. massif::MapEnvelope.convexHull
+    massif::TextMargins                         2  e.g. massif::TextStyle.textMargins
     …
 ```
 
@@ -341,9 +342,9 @@ and nothing would say so. Two properties are writable positions today (`Options.
 Three pieces, none of them payload-specific:
 
 - **Which properties are coordinates.** The generator flags `MapPos` and `MapBounds` rows
-  `PF_POSITION` (24 rows). A `MapRange` or a `ScreenPos` is not a coordinate and is never converted.
+  `PF_POSITION` (29 rows). A `MapRange` or a `ScreenPos` is not a coordinate and is never converted.
 - **What projection the value is already in.** The generator also flags any `OBJECT` property
-  pointing at a `Projection` as `PF_PROJECTION` (7 rows) — `Options.baseProjection`,
+  pointing at a `Projection` as `PF_PROJECTION` (16 rows) — `Options.baseProjection`,
   `TileDataSource.projection`, `GeoJSONGeometryWriter.sourceProjection`. `findProjectionProperty`
   scans for the flag rather than looking a name up, so a class is free to call it whatever it likes
   and a new one costs nothing. A class that declares none — a click info — carries the projection
@@ -466,7 +467,7 @@ map.terrain({ type: 'terrain', source: { type: 'http', url: '…', 'metaData.dem
 set the encoding at the top level and dropped it one level down — with a warning in the log and
 nothing else. The DEM then fell back to the MapBox decoder on terrarium tiles, which puts the
 terrain hundreds of kilometres up and the camera inside it. `applySpecProperties` now splits at the
-first dot and uses the indexed setter, like `Context::lookup` does; `tests/api/FogSkyTest.cpp`
+first dot and uses the indexed setter, like `Context::lookup` does; `tests/api/SpecKeyTest.cpp`
 holds the regression. The whole-map form works in both and is what the generated typings declare:
 
 ```js
@@ -484,7 +485,7 @@ takes a JSON object — which is what makes `params` settable **in a spec**:
 {"type":"mbvt","project":{…},"params":{"water_color":"#0af","land_color":"#eee"}}
 ```
 
-The table cost is one pointer per row, null for all but the six that have one; the thunks live
+The table cost is one pointer per row, null for all but the seven that have one; the thunks live
 beside the others in `PropertyAccessors.inc`.
 
 ### Aliases: a second spelling of one segment
@@ -658,8 +659,9 @@ inline spec of that kind, and it is checked against the class the caller is abou
 
 | kind | types |
 |---|---|
-| `source` | `http` `assets` `mbtiles` `pmtiles` `maptiler` `memory-cache` `persistent-cache` `ordered` `combined` `merged-mbvt` `multi` `geojson` `local` |
+| `source` | `http` `assets` `mbtiles` `pmtiles` `maptiler` `memory-cache` `persistent-cache` `ordered` `combined` `merged-mbvt` `multi` `geojson` `local` `contour` `point-detail` |
 | `data` | `url` — bytes from `file://`, `assets://` or `http(s)://` |
+| `bitmap` | an image decoded from a `url` or a `data` child |
 | `assets` | `dir` (a directory), `bundle` (the app's own bundled assets), `zip` (a `data` archive) |
 | `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` — plus `point` (`pos`), `line` (`poses`) and `polygon` (`poses`, optional `holes`, or `rings`) |
 | `feature` | `feature` — a `geometry` and free-form `properties` |
@@ -667,7 +669,8 @@ inline spec of that kind, and it is checked against the class the caller is abou
 | `elementstyle` | `marker` `balloon` `point` `line` `polygon` `text` — built through the SDK's style BUILDER, see below |
 | `styleset` | `cartocss` (inline `css`), `project` (an asset package + the `name` of one style in it) |
 | `style` | `mbvt` — a vector tile decoder over a `cartocss` or a `project` style set |
-| `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` `elements` |
+| `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` `elements` `celestial` |
+| `celestial` | `arc` `label` `sprite` |
 | `options` | `fog` `sky` `light` `terrain` |
 | `projection` | any name in the projection registry |
 | `search` | `request`, `vectortile` (from a `layer`, or a `source` + `style`) |
@@ -723,14 +726,17 @@ One line per class in its `.i` says what to call it and how to spell the awkward
 - **The longest constructor the spec fully satisfies wins.** `MBTilesTileDataSource` has three;
   `{"type":"mbtiles","path":"x"}` picks the 3-argument one because `minZoom`/`maxZoom` have declared
   defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
-  hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
+  hand-written factory ever exposed. `HillshadeRasterTileLayer`'s `elevationDecoder` overload is
+  still skipped: no kind builds an `ElevationDecoder` (see the report below).
 
-Fifty-two classes over thirteen kinds build this way, and everything left hand-written in
-`SpecFactories.cpp` is genuinely adaptive rather than boilerplate:
+Fifty-eight classes over fourteen kinds build this way (full profile), and everything left
+hand-written in `SpecFactories.cpp` is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |
 |---|---|
 | `projection` | a name registry lookup, not a constructor |
+| `data` | bytes read through `URLFileLoader`, not a constructor |
+| `bitmap` | `Bitmap::CreateFromCompressed` is a static factory |
 | `geometry` **geojson** | a GeoJSON reader, not a constructor — the shapes themselves build from theirs |
 | `search` **from a layer** | the source and the decoder both come from a layer already on the map |
 | `routing` **request** / **match-request** | a projection by name, and a list of positions |
@@ -742,7 +748,7 @@ Fifty-two classes over thirteen kinds build this way, and everything left hand-w
 own class with its own constructor, so each is now its own declaration:
 
 ```
-!spec(massif::DirAssetPackage,  assets,   dir,      alias(path, dirPath))
+!spec(massif::DirAssetPackage,  assets,   dir,      alias(path, dirPath), alias(base, baseAssetPackage))
 !spec(massif::CartoCSSStyleSet, styleset, cartocss, alias(css, cartoCSS), alias(assets, assetPackage))
 !spec(massif::CompiledStyleSet, styleset, project,  alias(assets, assetPackage), alias(name, styleName))
 !spec(massif::MBVectorTileDecoder, style,  mbvt,    alias(cartocss, cartoCSSStyleSet),
@@ -818,9 +824,10 @@ constructors became buildable.
 The generator reports what it could not build, the same way it reports unreachable properties:
 
 ```
-17 classes build from their constructors, over 4 kinds
-  overload skipped, no reader for massif::SolidLayer: std::shared_ptr<Bitmap> bitmap
+58 classes build from their constructors, over 14 kinds
+  overload skipped, no reader for massif::ContourTileDataSource: std::shared_ptr<ElevationDecoder> elevationDecoder
   overload skipped, no reader for massif::HillshadeRasterTileLayer: std::shared_ptr<ElevationDecoder> elevationDecoder
+  overload skipped, no reader for massif::TerrainOptions: std::shared_ptr<ElevationDecoder> elevationDecoder
 ```
 
 Those are overloads whose parameter type no kind builds — not errors, just the next thing to
@@ -872,7 +879,7 @@ mm_data_copy(ctx, tile, "data", buffer, size, NULL);
 mm_destroy_handle(ctx, tile);
 ```
 
-**35 entry points, seven concepts.** The count grows with *types* — a scalar setter per C type, a
+**37 entry points, seven concepts.** The count grows with *types* — a scalar setter per C type, a
 size/copy pair per bulk shape — never with features. A new source type is a spec factory, a new
 option a table row, a new event a bridge, a new method a table row. None of them touches this
 header, which is what makes an ABI version worth having.
@@ -976,8 +983,9 @@ shipped library. `mm_*` is in the list now. Verified with `llvm-nm --dynamic` on
 ## The sugar layer
 
 The two surfaces above are complete and neither is pleasant to write an app against. `MassifApi`
-(`all/native/api/MassifApi.h`) is the generated verification surface — a handle on every call, a
-result code rather than an exception. On top of it sits a **hand-written, per-language layer**:
+(`all/native/api/MassifApi.h`) is the verification surface — a handle on every call, a result
+code rather than an exception from every property verb. On top of it sits a **hand-written,
+per-language layer**:
 
 | | where | entry point |
 |---|---|---|
@@ -1066,7 +1074,8 @@ base.onFeatureClick(e -> …);
 **The TYPE picks what is being adopted, not the kind string.** `kind` is only the id namespace —
 the same `Options` is legitimately adopted as `"map"` by `MassifMap.attach` and as `"options"` by
 the demo — so it cannot also mean "the C++ class". `adopt` is therefore one overload per adoptable
-base (`Options`, `Layer`, `Layers`, `TileDataSource`, `AssetPackage`), and that set is closed: SWIG
+base (`Options`, `BaseMapView`, `Layer`, `Layers`, `TileDataSource`, `VectorDataSource`,
+`AssetPackage`), and that set is closed: SWIG
 emits one thunk per signature, and those bases share no common root a single parameter could be
 declared as. Not spelled `register`, which is a C++ *and* C keyword and so not a legal Objective-C
 selector piece either.
@@ -1144,8 +1153,6 @@ visible without running it:
   `!polymorphic_shared_ptr` generates a `swigGetClassName` returning `std::string`; without the
   typemap it comes back as a pointer and the generated Java does not compile.
 
-What the log looks like once it works:
-
 What the logs look like once it works. Android, `--es apiSugar true`:
 
 ```
@@ -1178,20 +1185,9 @@ legitimately fail for another reason.
 now leaves an already-prefixed name alone.
 
 Both generators picked the new module up **with no change** — a new `.i` directory is found by the
-directory walk. Two platform details did need attention:
-
-- **`id` is a keyword in Objective-C.** A parameter called `id` makes SWIG emit `arg1:` selectors
-  (`adopt:kind:arg1:options:`), so the parameter is named `objectId`.
-- **`create` does not attach a layer to a map.** It builds and registers it; the demo adds it with
-  the object API through `getLayer`. Attaching needs the map verbs.
-- **Element styles and services are not buildable from a spec**, and `destroy` is
-  `unregisterObject`.
-- **A zipped asset package needs its archive as `BinaryData` first**, which no constructor
-  signature can say. The `data` factory over `URLFileLoader` closed that:
-  `{"type":"zip","data":{"type":"url","url":"assets://styles/osm.zip"}}`, with `file://` and
-  `http(s)://` reading the same way. A remote one is fetched on the CALLING thread.
-- **`ios/objc/MassifMaps.h` is hand-maintained**, not generated, so a new Objective-C class has to
-  be added to that umbrella by hand.
+directory walk. One platform detail did need attention: **`id` is a keyword in Objective-C.** A
+parameter called `id` makes SWIG emit `arg1:` selectors (`adopt:kind:arg1:options:`), so the
+parameter is named `objectId`.
 
 ```java
 int h = MassifInterop.adopt("options", "demo", mapView.getOptions());
@@ -1463,7 +1459,7 @@ where a dropped event is one the SDK is still waiting on an answer for.
 
 ```java
 int tile = MassifApi.call(source, "loadTile", "[[8467,5852,14]]");
-byte[] bytes = MassifApi.getData(tile, "data").getData();
+byte[] bytes = MassifApi.getData(tile, "data");
 MassifApi.destroy(tile);
 ```
 
@@ -1501,16 +1497,22 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 | `setCustomParameter(name, value)` | `RoutingRequest`, `RouteMatchingRequest` | free-form JSON, so not a property |
 | `insert(index, layer)`, `set(index, layer)`, `get(index)`, `clear()` | `Layers` | an app that orders its stack places a layer, not only appends one |
 | `add(source, tileMask)`, `remove(source)` | `MultiTileDataSource` | one package per downloaded area, discovered at run time |
-| `add(path)`, `remove(path)`, `addLocale(key, json)`, `setConfigurationParameter(param, value)` | `MultiValhallaOfflineRoutingService` | the same, for routing databases |
+| `add(path)`, `remove(path)`, `addLocale(key, json)` | `MultiValhallaOfflineRoutingService` | the same, for routing databases |
 | `add(path)`, `remove(path)` | `MultiOSMOfflineGeocodingService` and its reverse | the same, for geocoding databases |
 | `calculateAddresses([requestHandle])` | `GeocodingService`, `ReverseGeocodingService` | returns **GeoJSON**: `calculateAddresses` gives a vector the facade has no channel for, and each feature carrying its result's `address` and `rank` is the shape a caller rebuilt by hand |
 
-`findFeatures` and `getFeature` are not on that list — the app wraps them in its own service — but
-a search is the one thing an app cannot rebuild on top of the facade, so it is covered below.
+That was the first set. The table now holds 78 methods; later additions include the camera on
+`BaseMapView` (`moveTo`, `moveCameraTo`, `flyTo`, `fitBounds`, `screenToMap`, `mapToScreen`,
+`stopFlight`), feature editing on `GeoJSONVectorTileDataSource`, the external sources of
+`CompositeVectorTileLayer`, area downloads on `PersistentCacheTileDataSource`, and the celestial
+objects. `docs/api/massif-api.json` lists them all.
 
-`moveToFitBounds` and `screenToMap` are camera and view calls, so they went into the sugar
-(`camera().fitBounds(...)`, `map.screenToMap(x, y)`) rather than the method table — the object API
-already has them and the wrapper only has to reach them.
+`findFeatures` and `getFeature` are not on the counted list — the app wraps them in its own
+service — but a search is the one thing an app cannot rebuild on top of the facade, so it is
+covered below.
+
+`moveToFitBounds` and `screenToMap` are camera and view calls: they are methods on the adopted
+`BaseMapView`, which the sugar wraps as `camera().fitBounds(...)` and `map.screenToMap(x, y)`.
 
 The style-parameter methods are registered on `MBVectorTileDecoder` directly, and there is no
 `getStyleParameters()` method: `styleParameters` is an `%attributeval` on that class, and once
@@ -1546,7 +1548,10 @@ an ordinary C++ signature, and its arguments have to be decoded from JSON by som
 the types. So `Methods::registerMethod(cppClass, name, thunk)` and a thunk per method in
 `MethodImpls.cpp`, ~15 lines each (the geometry and routing ones live in
 `GeometryMethods.cpp` and `RoutingMethods.cpp`, split out so the host tests can link them without a
-tile source, a decoder or sqlite):
+tile source, a decoder or sqlite; camera, download and geocoding have files of their own). Each is
+also declared with a `!method(...)` line in its `.i`, for the bindings' typings, and
+`Methods::checkDeclarations` logs any method registered but undeclared, or declared but unregistered
+— see [autocompletion](api-autocompletion.md#the-four-schema-gaps-now-closed):
 
 - Lookup **walks the base chain** from the generated table, so `loadTile` registered on
   `massif::TileDataSource` is callable on every source without being registered again.
@@ -1858,7 +1863,7 @@ native signature with a `new DoubleVector(...)` body.
 cd tests && ./run.sh
 ```
 
-**443 checks**, one file per layer:
+The facade's files in `tests/api/` (the suite holds render tests too):
 
 | file | what it covers |
 |---|---|
@@ -1868,6 +1873,16 @@ cd tests && ./run.sh
 | `ProjectionTest.cpp` | the name registry, a declared source projection versus an attached one, the per-read argument, the per-subscription default and its expiry when the handler returns, the drain path, the non-finite refusal, and object writes — the subclass check in both directions, an unknown class failing closed, and the wrong kind of object leaving the property alone |
 | `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, a method addressed through a path and its failure modes, result ownership and `destroy`, the binary and flat-numeric channels, a thunk that throws being caught rather than propagated, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |
 | `CAbiTest.cpp` | the two-call buffer protocol, the option JSON, out-params being optional, handle liveness, object writes, a null context refused rather than dereferenced |
+| `BagTest.cpp` | bag entries and whole-bag writes, `setAll`, aliases, a write in a named projection |
+| `SpecKeyTest.cpp` | an indexed key (`metaData.dem_encoding`) inside a nested spec |
+| `SpecSchemaTest.cpp` | the schema the generator derives for a source spec (PMTiles, which cannot link here) |
+| `ColorValueTest.cpp` | colour spellings through a property, a spec key and the codec |
+| `AdoptTest.cpp` | an adopted `AssetPackage` resolved from a spec's `assets` id |
+| `BundleAssetsTest.cpp` | `BundleAssetPackage`'s walk over a fake platform asset listing |
+| `MetaDataTest.cpp` | tile meta data and the elevation decoder chosen from `dem_encoding` |
+| `CustomSourceTest.cpp` | `mm_source_create_custom` and its sink |
+| `FogSkyTest.cpp` | the generated fog and sky paths |
+| `GetterLockTest.cpp` | a getter run outside the context lock |
 
 Three things keep the link small, and all three are deliberate:
 
@@ -2014,9 +2029,9 @@ is the one piece of new API this path would want.
 
 ## Known gaps
 
-- **No binding uses the C ABI yet.** It is exercised by the host tests; the Java and Objective-C
-  sugar goes through `MassifApi` instead, because Swig already generates that. NativeScript and
-  React Native are what the ABI is there for.
+- **Only the web build uses the C ABI** (`web/js/massif.mjs`, over WASM); the host tests exercise
+  the rest. The Java and Objective-C sugar, and NativeScript over them, go through `MassifApi`
+  instead, because Swig already generates that.
 - **The sugar has no automated tests.** It is Java and Objective-C, which the host ctest suite
   cannot link, so it is covered by the demo knob and a device run — see above for what that caught.
   Everything it calls underneath is tested.
@@ -2036,23 +2051,24 @@ is the one piece of new API this path would want.
 - **The bulk numeric channel is doubles only.** Positions, colours or integers arriving in bulk
   would each want their own accessor and their own typemap per language. Nothing needs one yet.
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
-  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Sixteen exist — see the table
-  above for which and why.
+  the generator can read, so each one is a thunk in `MethodImpls.cpp` or a sibling file, plus a
+  `!method` declaration for the typings. 78 exist — see the table above for the first ones and why.
 - **A class the profile only forward-declares keeps its declared name in a traversal.** 14 of the
   116 object getters are in that position — `VectorTileClickInfo.layer` without `Layer.i` — because
   `typeid` needs a complete type. In the full profile they all have headers; in a reduced table they
   fall back, which is the old behaviour rather than a wrong answer.
-- **`matchRoute` and the offline routing services are not demoed.** `matchRoute` has no thunk;
-  `valhalla-offline` has a factory but needs a tile database the demo does not carry, so only
-  `valhalla-online` was actually run.
+- **`matchRoute` and the offline routing services are not demoed.** `matchRoute` is registered and
+  host-tested only; `valhalla-offline` has a factory but needs a tile database the demo does not
+  carry, so only `valhalla-online` was actually run.
 - **A collection is read one element per crossing.** A route's *path* has the flat channel, but its
   21 instructions are 21 calls plus a handful of property reads each. Fine at that size; the
   general answer is probably a bulk channel per collection type.
-- **32 properties still have no accessor**, listed by type on every generator run — and all but
-  three are in code slated for removal. `BalloonPopupMargins` (12) and `TextMargins` (2) go with the
+- **32 properties still have no accessor** (full profile), listed by type on every generator run.
+  `BalloonPopupMargins` (12), `TextMargins` (2) and `ScreenBounds` (1, `PopupDrawInfo`) go with the
   vector-element styles; `GeocodingAddress` and the routing-result vectors are being replaced by
   plain JSON. `vector<MapPos>` (7) is deliberate. What is genuinely left is `ViewState` (renderer
-  plumbing, reachable only through `CullState`) and two package-manager vectors.
+  plumbing, reachable only through `CullState`), `PolygonGeometry.holes` (2),
+  `VectorData.elements` and two package-manager vectors.
 - **`ElevationDecoder` is not a spec kind, and does not need to be.** `HillshadeRasterTileLayer`'s
   one-argument constructor leaves it null, and the layer reads the encoding from the tile's own
   `dem_encoding` meta data, falling back to MapBox. Set it with
@@ -2072,7 +2088,7 @@ is the one piece of new API this path would want.
   finishes.
 - **The worker pool is capped at four and not configurable.** No app has asked for a different
   number; if one does it is a property on the context, not a new verb.
-- **150 of the 748 rows have no value accessor** — every `OBJECT` (116, all of which are readable
+- **150 of the 820 rows have no value accessor** — every `OBJECT` (116, all of which are readable
   as a traversal step instead), the `STRUCT` types `StructCodec` does not know (vectors,
   `BalloonPopupMargins`), and the bags, whose accessors take a key. 32 rows have neither, and
   `set`/`get` on one returns `RESULT_UNSUPPORTED_TYPE`. Adding a struct type is a line in
@@ -2081,10 +2097,9 @@ is the one piece of new API this path would want.
   `ElevationManager`, `Bitmap` codecs and more — so the native harness covers `FogOptions` and the
   path-walking failure modes only. The `Options -> FogOptions` happy path is checked on a device
   instead, through the Java binding above. Anything needing `Options` has to be verified that way.
-- **`MassifApi` returns result codes, not exceptions**, which is not what the design calls for. It
-  is a verification surface and will be replaced by the six verbs and their closed sugar.
-- **The 6 static attributes are flagged but have no resolution path**, since a static has no target
-  object.
+- **`MassifApi`'s property verbs return result codes, not exceptions** (only `create`, `call` and
+  `callAsync` throw), which is not what the design calls for. It is a verification surface and will
+  be replaced by the six verbs and their closed sugar.
 - **The alias table is small on purpose.** Eight aliases (`fog`, `sky`, `terrain`, `light`,
   `projection`, `background`, `source`, `style`); a mapbox-shaped one that merges two properties
   into one (`fog-range` for the `rangeStart`/`rangeEnd` pair) is not a segment alias and has no
@@ -2093,6 +2108,6 @@ is the one piece of new API this path would want.
   at runtime, because the walk reports the concrete `MBVectorTileDecoder`; the TypeScript closure
   only knows the declared `VectorTileDecoder` and completes nothing past it. Same limitation as
   every other concrete-vs-declared path.
-- **One translation unit includes 220 class headers**, which is a heavy compile and couples
+- **One translation unit includes 231 class headers**, which is a heavy compile and couples
   `PropertyTable.cpp` to most of the SDK. Splitting the accessors per module directory is the
   obvious fix if build time becomes a problem; it has not been measured.

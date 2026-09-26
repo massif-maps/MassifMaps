@@ -131,16 +131,16 @@ horizon carries a vertical cliff kilometres deep, seen nearly edge-on — and it
 texture, so an effect drawing lines from that depth inks a straight line along every tile boundary.
 That is a seam between tiles of **equal zoom**, on any DEM, which no normal can smooth: the skirt
 vertices copy their edge's normal, so the shading is continuous while the geometry is a cliff. It is
-also why turning `crease_strength` down hid the seams and every other interior ridge with them —
+also why turning `uCreaseStrength` (the demo's "ridge lines" slider) down hid the seams and every other interior ridge with them —
 that term is what was drawing them.
 
 The drop is now `SKIRT_DEPTH_METERS` (500 m) converted through the tile's own display scale. What a
 skirt has to cover is the crack between a coarse sampling of a hillside and a fine one, which is
 bounded by the local relief.
 
-It is rendered by `TerrainRenderer::renderDepthTexture` at **half resolution**
-(`BUFFER_DOWNSCALE = 2`) with nearest filtering, and — for the effect path only — at the terrain's
-**full mesh resolution**. The occlusion read-back keeps the cheap 32-cell cap because it samples
+It is rendered by `TerrainRenderer::renderDepthTexture` at **half resolution** by default
+(`TerrainOptions::PostProcessDownscale` = 2; the occlusion read-back has its own `BUFFER_DOWNSCALE`)
+with nearest filtering, and — for the effect path only — at the terrain's **full mesh resolution**. The occlusion read-back keeps the cheap 32-cell cap because it samples
 points; an effect that draws *lines* from this depth would otherwise draw the depth mesh's own
 triangulation, which is what the first attempt did (bright facets all over the near field).
 
@@ -157,7 +157,7 @@ an SDK should have an opinion about.
 Three findings from making that shader match the reference (PeakFinder, and farfromrefug/geo-three)
 — they are about the depth texture, so they apply to any effect drawing from it:
 
-- **Sample at least one depth texel apart.** With a step below `BUFFER_DOWNSCALE` pixels the four
+- **Sample at least one depth texel apart.** With a step below `PostProcessDownscale` pixels the four
   neighbour samples land on the same texel, the tangent vectors come out zero, and
   `normalize(vec3(0))` is undefined — it painted the entire near field flat grey. `uDepthTexelSize`
   is the floor.
@@ -193,14 +193,15 @@ Crosscall HLTE556N (Adreno 610), Grenoble panorama z13.2 tilt 25, 8 pan swipes, 
 | peak-finder, `meshResolution 32` | 12.7 ms | 10.1 ms | `prelude` 3.3 ms |
 
 The effect's terrain depth texture is drawn at the terrain's **own** mesh resolution (see above:
-a coarser depth mesh draws its own triangulation as fold lines), from CPU meshes, **every frame** —
-so it scales with `TerrainOptions.MeshResolution`, and that is the knob to trade line quality for
-frames. There is no per-camera caching on this path, unlike the occlusion read-back.
+a coarser depth mesh draws its own triangulation as fold lines), from CPU meshes, on **every frame
+the camera or the elevation changes** — a still camera reuses the last texture — so it scales with
+`TerrainOptions.MeshResolution`, and that is the knob to trade line quality for frames.
 
 ## Known limits
 
-- The depth texture is half resolution, so lines are quantised at 2 px and slopes show occasional
-  dotted artefacts. A full-resolution depth pass would fix it and doubles the depth pass cost.
+- The depth texture is half resolution by default, so lines are quantised at 2 px and slopes show
+  occasional dotted artefacts. `TerrainOptions::setPostProcessDownscale(1)` gives a full-resolution
+  pass, at a larger depth pass cost (not measured).
 - The effect resolves once per frame over the whole screen; layer-level effects do not exist.
 - Verified on the emulator (Grenoble panorama, z13.2 tilt 25). Line quality on a device at high DPI
   has not been measured.

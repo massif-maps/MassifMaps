@@ -60,14 +60,16 @@ children included — so the ordinals are handed out in **draw order, one dense 
 `MapRenderer::drawLayers` gives each `TileLayer` an ordinal base and advances it by that layer's
 style layer count.
 
-The quantity that matters is **constant × span**, i.e. the total depth budget the stack gets, not the
-constant. A style with nine style layers at their 0.02 would spend a tenth of their budget. So the
-shift is derived from the budget instead: `TERRAIN_TANGRAM_DEPTH_BUDGET / span`, which gives back
-exactly 0.02 for a 93-layer style.
+The shift is tangram's flat **0.02 per ordinal step** (`TileRenderer::TERRAIN_TANGRAM_DEPTH_SHIFT`),
+unscaled. Its job is to separate coplanar style layers one step each; it is **not** a budget to
+spread over the stack. Deriving it from one (`budget / span`, 0.02 only for a 93-layer style) was
+tried and let far content over a near ridge. The **total** span, constant × ordinals, is what
+sets the leak threshold, which is why the numbering stays dense.
 
 Measured on device (45.244172/5.760595 z13.2 t26, 9 ordinals): **0.2 is the largest total with no
-see-through**; 0.3 opens pale wedges through ridges, 0.5 sees straight through Saint-Eynard. Their
-budget *is* the leak threshold. Do not raise it.
+see-through**; 0.3 opens pale wedges through ridges, 0.5 sees straight through Saint-Eynard. Do not
+raise it. `debug.massif.depthshift <value>` overrides the constant in demo builds
+([runtime switches](10-performance.md#runtime-switches-no-rebuild)).
 
 Numbering starts at **1**, not 0: the ground is a numbered draw at the bottom of the same list
 (tangram draws the terrain raster at `order: global.earth_order`), so content at ordinal 0 would
@@ -198,9 +200,12 @@ Build the demo with `-PprofileRender` (`-DMASSIF_FRAME_PROFILER=1`) and a `PROF 
 of the four ended the map, once a second, in kilometres:
 
 ```
-PROF VIEW: zoom 15.30 tilt 20.4 | orbit 1.42 alt 3.10 height 3.10 km | terrain 0.55..4.21 km
+PROF VIEW[render]: zoom 15.30 tilt 20.4 | orbit 1.42 alt 3.10 height 3.10 km | terrain 0.55..4.21 km
   | ray far 61.80 ceiling 49.60 rule 71.02 -> near 0.0620 far 49.60 km | fog 2.48..24.80 km
 ```
+
+Read the `[render]` line; `[no-terrain-range]` is the cull worker's copy of the view state, which
+never gets the terrain height range, so its near and terrain figures are a flat world's.
 
 `far` equal to `ceiling` means the draw ceiling cut it; equal to `rule` means tangram's rule did; well
 under both means the horizon is genuinely there. A `fog` end shorter than `far` means nothing was

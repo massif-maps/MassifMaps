@@ -70,7 +70,7 @@ planar caller will not, because below the horizon the plane is always ahead.
 - `SphericalTileTransformer` subdivides tile geometry against a zoom-0 grid so a straight segment
   follows the curve; the planar transformer passes geometry through untouched.
 - `BackgroundRenderer` and `SolidRenderer` carry their own spherical branches.
-- `Options::calculatePanBounds` skips the Mercator latitude clamp — there is no top or bottom edge.
+- `Options::getAdjustedInternalPanBounds` skips the Mercator latitude clamp — there is no top or bottom edge.
 
 ## What is missing
 
@@ -127,8 +127,9 @@ suite before the one that depends on it.
    the caller now converts — see the 2D/3D switch below.
    Vector ELEMENTS take the terrain surface here too now - `TerrainProjectionSurface` delegates
    every position to its base and only adds the height, so the one thing that stays planar is its
-   `calculateHitPoint`, which marches the height field in the planar frame. Picking on terrain over
-   a globe therefore falls back to the base surface: it hits the sphere, not the relief.
+   `calculateHitPoint`, which marches the height field in the planar frame; on a globe it falls
+   back to a bisection on the height above the terrain
+   ([below](#picking-and-panning-fell-through-to-sea-level)).
 
    The camera's ZOOM was wrong here in a way that made everything look wrong:
    `ViewState::calculateZoom0Distance` calibrated on `Const::WORLD_SIZE` whatever surface was
@@ -143,16 +144,16 @@ suite before the one that depends on it.
    atmosphere is a shell the ray is tested against, not a hemisphere overhead), fog that fades with
    altitude, back-face culling of the globe and a tile budget floor.
 
-Spans, bridges and 3D extrusions are **not** in that list. They carry their own anchor and chord
-machinery built around a flat frame ([3D bridges](17-bridges.md)) and will be wrong on the globe
-until they are done separately.
+Spans and bridges are **not** in that list. They carry their own chord machinery built around a
+flat frame ([3D bridges](17-bridges.md)) and will be wrong on the globe until they are done
+separately. 3D extrusions were, in the sections below.
 
 ## Terrain on the globe was WRONG on a device - two bugs, both found by reading
 
 Reported from emulator-5554 at Mont Blanc, zoom 13, tilted, with Mapbox Standard: the terrain
 surface was **flat**, and **large tile-sized quads floated in the sky** at assorted angles. Both
-causes were settled by reading the code rather than by logging, and both are fixed. **The device
-check is still owed** — nothing below has been seen on a screen.
+causes were settled by reading the code rather than by logging, and both are fixed — seen since on
+emulator-5554 ([What the device says](#what-the-device-says)); no physical device yet.
 
 ### The quads: the globe was drawing the flat shared grid as its ground
 
@@ -237,14 +238,10 @@ Open, in what is visibly left:
 - **the ground reads grey** where the plane has it near-white, so something in the drape's clear
   colour or the terrain lighting differs on the sphere;
 - **no labels**. They are not draped - they are screen-space, anchored through the elevation - so
-  this is its own path and its own bug.
+  this is its own path and its own bug. Fixed since, see the two label sections below.
 
-Two further gaps seen at the same time, both already on the list rather than new: the camera sits
-INSIDE the mountain at z13 (camera clearance is planar-only, step 4), and picking is still planar.
-
-Two further gaps seen at the same time, both already on the list rather than new: the camera sits
-INSIDE the mountain at z13 (camera clearance is planar-only, step 4), and there is no RTT drape on
-the globe by design (`MapRenderer` forces it off - the bake maps a tile's unit square).
+Two further gaps seen at the same time, both closed since: the camera sat INSIDE the mountain at
+z13 (the clearance, step 4), and picking fell through to sea level (below).
 
 ### Labels: sized in screen space, and in the globe's own world
 
@@ -349,7 +346,7 @@ the area is exactly 0, the tile is never subdivided, and the recursion stops at 
 map was then one zoom-0 tile.
 
 Terrain hid it: `_terrainMinTileZoom` forces subdivision whatever the area says. Turn the terrain
-off, or flatten it, and a globe map went blank — measured, `PROBE cull visible 1 (zoom 0..0)`
+off, or flatten it, and a globe map went blank — measured with a temporary probe, `PROBE cull visible 1 (zoom 0..0)`
 against the plane's `visible 8 (zoom 11..11)` at the same camera.
 
 The rule now samples the patch on a 3x3 grid and sums its four cells when the transformer is
@@ -589,6 +586,8 @@ was already data-driven — every attribute is present exactly when its array is
 planar vertex keeps its size, its offsets and its encoding, and the globe pays one float per vertex.
 `TerrainRenderer`'s mesh has its own skirts and its own shader, so it needs no attribute: it hangs
 them off the base surface point along its normal, which reduces to `(x, y, skirtZ)` on a plane.
+vt's own tile-surface skirts are currently never built (`GLTileRenderer::updateTerrainSkirts`,
+[04](04-terrain.md#skirts-absent-from-the-shared-ground-only)), so on the drawn ground this attribute is dormant.
 
 **The lattice clamp is off on a globe.** It locates a surface cell from tile-local xy, which is the
 one thing that stops meaning "position in the tile" there. Draped geometry then takes the plain
@@ -612,8 +611,8 @@ node sample, which is what the adaptive path already does.
   documented here rather than fixed is that changing it moves the planar lighting too, and that
   needs a device A/B.
 - There is no globe render check anywhere. `tests/api/SphericalSurfaceTest.cpp` and
-  `tests/api/SkyFrameTest.cpp` cover the arithmetic; that the globe *draws* is still an unverified
-  device check.
+  `tests/api/SkyFrameTest.cpp` cover the arithmetic; that the globe *draws* has been seen on
+  emulator-5554 only, never on a physical device.
 - `u_cameraHeight` omits the Mercator latitude scale — it is internal z times
   `EARTH_CIRCUMFERENCE / WORLD_SIZE` with no `cos(lat)`, so at latitude 60 the atmosphere marches
   from twice the real altitude. Both surfaces omit it alike, which is the only reason it is

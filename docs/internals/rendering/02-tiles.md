@@ -18,7 +18,7 @@ CullWorker (per layer, background)
                  └─ TileRenderer / GLTileRenderer::setVisibleTiles  (render tiles, labels)
 ```
 
-- `TileLayer::loadData` (all/native/layers/TileLayer.cpp:269) runs a cull state through the layer.
+- `TileLayer::loadData` (all/native/layers/TileLayer.cpp:313) runs a cull state through the layer.
 - `VectorTileLayer` decodes with mapnikvt + cartocss into a `vt::Tile`: a list of `vt::TileLayer`s,
   each with geometries (`TileGeometry`) and labels (`TileLabel`).
 - `RasterTileLayer` decodes to a bitmap; `HillshadeRasterTileLayer` additionally builds a normal map
@@ -135,25 +135,22 @@ tile-zoom behaviour everywhere.
 Two consequences worth knowing:
 
 - **The style zoom is part of a decoded tile's identity, and the cache key is not.** So a decoded
-  tile carries the style zoom it was built at and `tileValid` compares that stamp per tile. It must
-  NOT be a cache wipe: #238 originally had `onTargetTileZoomChanged` call `invalidateTiles(false)`
-  plus `clearTiles(true)`, which threw away every decoded tile and the whole preloading cache on
-  each integer zoom crossing — including the tiles the crossing could not possibly stale. A zoom-out
-  from 19 to 11 crosses eight of them, so the map re-decoded eight times and tiles arrived one by
-  one where 5.x had them instantly (bisected to #238, fixed 2026-09-13). The stamp invalidates
-  exactly the lifted tiles: one at or above the target, or past the lift, is untouched, and at lift
-  0 nothing is stale at all. mapbox instead keys tiles on `OverscaledTileID.overscaledZ` and keeps
-  both versions cached. Target zoom is clamped by `getMaxZoom()`, so above a source's max zoom it
-  never moves.
-- **And invalidation alone is not enough, because it cannot see a decode in flight.**
-  `onTargetTileZoomChanged` invalidates the cache but not the running tasks, and
-  `timed_lru_cache::put` clears the entry's expiration — so a tile queued under the old target lands
-  *after* the change looking perfectly fresh, and is never refetched. That is how a tile decoded for
-  zoom 13 survived a zoom-out to 11 and went on drawing its `#contour[zoom>=12]` lines, and why
-  zooming out again did not clear it. The decoded tile therefore carries the style zoom it was
-  decoded at (`VectorTileLayer::TileInfo`), and `tileValid` compares it against what the current
-  target would produce (`isStyleTileZoomCurrent`) — a stamp, not a clock. The stale tile keeps
-  drawing as a substitute while its replacement decodes, exactly as an invalidated one does.
+  tile carries the style zoom it was decoded at (`VectorTileLayer::TileInfo`), and `tileValid`
+  compares it against what the current target would produce (`isStyleTileZoomCurrent`) — a stamp,
+  not a clock. Only lifted tiles go stale: one at or above the target, or past the lift, is
+  untouched, and at lift 0 nothing is. A stale tile keeps drawing as a substitute while its
+  replacement decodes. mapbox instead keys tiles on `OverscaledTileID.overscaledZ` and keeps both
+  versions cached. The target is clamped at `getMaxZoom()` (plus the overzoom levels in terrain
+  mode), so above that it never moves.
+- **Both cache-level versions of this failed.** #238 had `onTargetTileZoomChanged` call
+  `invalidateTiles(false)` plus `clearTiles(true)`, which threw away every decoded tile and the whole
+  preloading cache on each integer zoom crossing — including tiles the crossing could not stale. A
+  zoom-out from 19 to 11 crosses eight, so the map re-decoded eight times and tiles arrived one by
+  one where 5.x had them instantly (bisected to #238, fixed 2026-09-13; the hook is now empty).
+  Invalidation alone was wrong too, because it cannot see a decode in flight: `timed_lru_cache::put`
+  clears the entry's expiration, so a tile queued under the old target landed *after* the change
+  looking fresh and was never refetched — a tile decoded for zoom 13 survived a zoom-out to 11 and
+  kept drawing its `#contour[zoom>=12]` lines.
 - **The style zoom is read when the tile decodes, not when it was queued (changed 2026-09-13).**
   `isStyleTileZoomCurrent` catches a task that landed under a moved target, but only *after* the
   decode is paid for, and a zoom-out makes that expensive: zooming out fast from 19, every z17 tile
@@ -300,10 +297,11 @@ as the horizon. That is why a mountain 10 km out stays coarse while ground at th
 under a steeper angle is refined, and why panning closer to it does so little: you are buying back
 one level per halving of distance against a 2-level foreshortening debt.
 
-`Options::TileLODForeshorteningLimit` bounds the second term only, as a floor on `cos θ`
-(`limit` levels ⇒ `cos θ ≥ 2^(−2·limit)`). The distance term is untouched, so genuinely far ground
-stays coarse — and it *must*, because beyond ~15 km those tiles would need `cos θ > 1` to refine at
-all. `0` (the default) is the area rule exactly as tangram wrote it.
+`Options::TileLODForeshorteningLimit` — since removed, `TileLODMaxZoomLevelsOnScreen` replaced it
+([above](#maplibres-two-numbers-on-top-of-the-area-rule)) — bounded the second term only, as a floor
+on `cos θ` (`limit` levels ⇒ `cos θ ≥ 2^(−2·limit)`). The distance term was untouched, so genuinely
+far ground stayed coarse — and it *must*, because beyond ~15 km those tiles would need `cos θ > 1`
+to refine at all. `0` (its default) was the area rule exactly as tangram wrote it.
 
 Measured at that camera, `TileLODFactor` 0.5 (the demo's value), threshold 212 337 px²:
 
@@ -382,10 +380,15 @@ reasonable can be ruinous multiplied together, and an app has no way to see that
 
 ## Geometry density: what gets subdivided, and why
 
-With the shared ground, content is displaced per vertex by the same elevation function the ground
-uses, so it does **not** need to be tesselated to follow the terrain — tangram does not subdivide at
-all. Ours subdivides **area fills only**, to two surface cells
-(`TerrainTileTransformer.cpp`, `AREA_THRESHOLD_CELLS = 2`, overridable with
+Draped content is baked flat into the drape texture, so it decodes at **source density**: with the
+defaults (`DrapeFillsEnabled` and `DrapeLinesEnabled` both true) neither fills nor lines are
+subdivided. What follows is content drawn LIVE — fills when `DrapeFillsEnabled` is false (tangram
+content mode, which also leaves lines at source density), lines when only `DrapeLinesEnabled` is.
+
+With the shared ground, live content is displaced per vertex by the same elevation function the
+ground uses, so it does **not** need to be tesselated to follow the terrain — tangram does not
+subdivide at all. Ours subdivides live **area fills**, to two surface cells
+(`TerrainTileTransformer.cpp`, `AREA_THRESHOLD_CELLS = 2`, overridable in a demo build with
 `adb shell setprop debug.massif.areathreshold N`).
 
 The reason is not the displacement, it is the depth model: an un-subdivided fill chords across the
@@ -399,24 +402,29 @@ displaced surface, and the constant clip-space `depth_shift` has to cover that c
 | 4 cells | 21.2 | 19k |
 | source density (none) | — | shows floating-fill patches |
 
-Lines are **not** subdivided by density: they are cut exactly where they cross a surface-lattice
+Lines are **not** subdivided by density. They were cut exactly where they cross a surface-lattice
 line (`x = k·cell`, `y = k·cell`, `x + y = k·cell` in tile uv), so every sub-segment lies inside one
-surface triangle. Exact, fewer vertices, and no depth slack needed. Tangram displaces line vertices
+surface triangle; they are now cut by their **sag** — only where the chord would leave the terrain
+by more than `DEFAULT_LINE_SAG_METERS` (2 m) — for 3.4× fewer indices
+([04](04-terrain.md#cutting-a-line-by-its-sag-instead-of-by-the-tiles-cell-count);
+`debug.massif.linesag 0` restores the lattice cut). Tangram displaces line vertices
 in the shader instead and subdivides nothing; that costs **13× the index throughput** here, and a
 coarse or proxy tile's roads chord straight across the terrain until the finer tile arrives — the
 "roads go straight when zooming out" report.
 
-**Fills are subdivided even when draping is on**, and that is deliberate. Draping bakes fills flat,
-so their subdivision is wasted work for a draped tile — but draping is decided **per tile at render
-time** while the density is decided **globally at decode time**. An un-subdivided fill that then
-does not get draped sags below the surface and leaves the bare background colour (the "landcover
+**Fills used to be subdivided even with draping on**, deliberately, and that was reversed —
+`TileLayer` now gates fill subdivision on `isDrapeFillsEnabled()`
+([04](04-terrain.md#a-draped-fill-is-not-subdivided-any-more)). The old argument is the risk the
+reversal still owes a device check for: draping is decided **per tile at render time** while the
+density is decided **globally at decode time**. An un-subdivided fill that then does not get
+draped sags below the surface and leaves the bare background colour (the "landcover
 holes"), and tiles fall through the drape cover constantly: the cover is capped at the camera zoom
 and a hillshade contributes its DEM-limited zoom, so render tiles finer than the cover are normal.
 Suppressing those tiles instead was tried — the map becomes a stretched coarse drape. The
 subdivision is not what costs: emulator, `meshResolution` 128, drape on, scripted 3-level zoom gives
 median 58–60 fps and the same worst-case bake spike either way.
 
-The decode-time density flags must match between `TileLayer::calculateDrawData` and
+The decode-time density flags must match between `TileLayer::loadData` and
 `resetTileTransformer`, or tiles decoded for the other mode stay in the cache forever.
 
 ## Where tiles come from

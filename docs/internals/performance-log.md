@@ -11,6 +11,10 @@ Dated rounds, raw numbers and dead ends, kept verbatim because the dead ends are
 For **how the renderer works today**, read [Render pipeline](/docs/internals/rendering/); for the
 current method and hot list, [Performance](/docs/internals/rendering/performance). Anything here may
 have been superseded by a later round on this page.
+
+Every `debug.massif.*` switch named here is read only by a build compiled with
+`-DMASSIF_DEBUG_PROPERTIES=1` (the demo app's), and several have since been removed — the live list
+is [Runtime switches](rendering/10-performance.md#runtime-switches-no-rebuild).
 :::
 
 Working document for the `perf/terrain-render` branch. It records what was **measured** (with the
@@ -39,7 +43,7 @@ under `rendering/`.
 > scaled by the projection (theirs is a flat `0.02`), a proxy push of 8 (theirs is 1 per level, ×48
 > for the terrain raster), an ordinal stride of 32 (theirs is the dense style-layer order).
 > **And port each piece whole**: half of their depth model is worse than none of it, three times
-> over (§10.6). Read the SCENE files, not only the shaders — `polygon.vs` sets `depth_shift = 0.0`
+> over (§10.1.2). Read the SCENE files, not only the shaders — `polygon.vs` sets `depth_shift = 0.0`
 > "to allow blocks to modify", and the value that matters is in `res/scenes/terrain-3d.yaml`.
 >
 > The full model now landed is §10. What it replaced: the RTT drape, the per-layer depth pre-pass,
@@ -50,6 +54,10 @@ back for an A/B). On the emulator and on Martin's device the two long-standing s
 snapping straight on zoom-out, and content see-through on mountains — are **fixed**, as is the
 terrain poking through contours. The SDK option `TerrainOptions.DrapeFillsEnabled` still defaults to
 the drape, so no app changes behaviour until it opts in.
+
+> **Since then:** the drape was not deleted. `DrapeFillsEnabled` still defaults to true and the demo
+> is back on the drape (`DemoConfig.TERRAIN_DRAPE_FILLS = true`); both paths are current, see
+> [04-terrain](rendering/04-terrain.md#the-shared-ground).
 
 **Next, in order** (rewritten after the render-thread profile of §12 — several older entries are
 now measured to be dead ends, see §11.4 and §12.1):
@@ -73,7 +81,7 @@ now measured to be dead ends, see §11.4 and §12.1):
    cast shadows. The drape path is clean on the same scene — diff against it. §10.5.
 6. **Delete the drape.** It now has the baseline it was waiting for.
 
-Do **not** re-run the dead ends in §6 and §10.6 — they are measured.
+Do **not** re-run the dead ends in §6 and §10.1.2 — they are measured.
 
 ---
 
@@ -164,7 +172,7 @@ uv space — the surface builder emits `y = 1 - v`, so the shader's `fg.x + fg.y
 approximate, with fewer vertices. Device screenshot diff at the ridge camera: 0.09% — unchanged.
 
 **Do not** instead add depth slack for lines in painter-order mode: a forward clip bias there is
-what leaks over ridges at range (`GLTileRenderer.cpp:2784`, and the rounds 45-56 history).
+what leaks over ridges at range (`GLTileRenderer.cpp`, and the rounds 45-56 history).
 
 ---
 
@@ -179,11 +187,11 @@ Verified in their source, not assumed.
 | **Content subdivision** | none at all | lines cut at the lattice (§2.2); fills subdivided to one cell |
 | **Content vs surface depth** | constant clip-space pull: `gl_Position.z += (proxy - layer) * (2⁻¹⁹·w + depth_shift)`, `depth_shift = -0.02·u_proj[2][3]` | content follows the surface exactly, no bias (painter-order) |
 | **Hillshade / contours / hypsometric** | fragment-shader blocks on the *same* terrain raster draw (`res/scenes/hillshade.yaml`) | separate tile layers, each with its own tile set, surface pass and stencil mask |
-| **Tile LOD** | subdivide while screen area > `(2·pixelScale·256)²` (`tileManager.cpp:214,231`) — ~920 px edge on this phone | distance rule `zoomDistance < SUBDIVISION_THRESHOLD·√2`, ~256 px tiles → one zoom level finer |
+| **Tile LOD** | subdivide while screen area > `(2·pixelScale·256)²` (`tileManager.cpp:214,231`) — ~920 px edge on this phone | distance rule `zoomDistance < SUBDIVISION_THRESHOLD·√2`, ~256 px tiles → one zoom level finer (since replaced by a screen-area rule, `TileLODRule.h`) |
 | **Elevation texture** | raster bound directly, ancestor sampled through uv offsets; edges clamped, extrapolated in-shader | per-tile CPU re-encode with a 1-texel border from up to 8 neighbour grids, re-uploaded when any neighbour changes |
 | **Terrain depth read-back** | worker thread, shared context, half res, never waited on | same now (§2.1) |
 | **Stencil tile masks** | none | one full grid draw per tile per layer |
-| **Tile decode threads** | 2 (`SceneOptions::numTileWorkers`) | 1 (`Options::setTileThreadPoolSize`) |
+| **Tile decode threads** | 2 (`SceneOptions::numTileWorkers`) | 1 (`Options::setTileThreadPoolSize`; 2 today) |
 
 ### 3.1 The depth shift, and why theirs is safe
 
@@ -261,7 +269,7 @@ Two independent problems:
    and ~0.6 s enumerating 220 system fonts + loading Roboto), then ~2.4 s until tiles are decoded
    and drawn.
 
-Tile decoding is **not** the limit: `Options::setTileThreadPoolSize` defaults to 1 where tangram
+Tile decoding is **not** the limit: `Options::setTileThreadPoolSize` defaulted to 1 (2 today) where tangram
 uses 2, but raising it to 4 changed nothing warm (3.8 → 3.9-4.7 s) or cold (3.2 → 3.6 s), and four
 workers really do start. The decoder holds its mutex only to copy `shared_ptr`s, so decode does
 parallelise. The remaining 2.4 s needs timestamps inside the fetch → decode → upload path; one-second
@@ -275,7 +283,7 @@ Each was an interleaved A/B at the demo camera unless stated.
 
 | hypothesis | result |
 |---|---|
-| Source-density fills (no fill subdivision) | 16.6 vs 16.7 fps — the existing comment in `TileLayer.cpp:280` was right |
+| Source-density fills (no fill subdivision) | 16.6 vs 16.7 fps — the existing comment in `TileLayer.cpp` was right |
 | Lattice clamp on surfaces (16 taps → 4) | 16.8 vs 16.9 — correct but unmeasurable, reverted |
 | Shadows off | no change (cached/snapped) |
 | Sky shader off | ~0 (−1 ms GPU) |
@@ -384,10 +392,11 @@ times instead of every frame.
 The terrain caps the elevation grid at what the MESH can express (`ElevationManager::clampTileZoom`:
 one texel per half surface cell), which drops two zoom levels. Shading is per fragment and resolves
 far more than that, so on the paint that cap is visible as blur from z15 up - it is why the hillshade
-"does not render to the DEM's max zoom". `getFullDetailDataTile` + `ElevationTextureCache::setFullDetail`
-lift it for the paint's own cache.
+"does not render to the DEM's max zoom". `ElevationManager::getFullDetailDataTile` +
+`ElevationTextureCache::setDetailLevels` lift it for the paint's own cache.
 
-It stays OFF by default, because the elevation texture pipeline cannot pay for it (Crosscall, north
+It stays OFF by default (today: `TileRenderer::terrainPaintDetailLevels` is 0 unless `paintdetail`
+is set, whatever `TerrainPaintFullDetailEnabled` says), because the elevation texture pipeline cannot pay for it (Crosscall, north
 pan, `debug.massif.paintdetail 1`): **2.5 fps against 6.7**, with `drape` at 172-218 ms. Measured
 cause: each DEM grid is 512², re-encoded into a 514² RGBA texture **on the render thread** and
 uploaded there (53 ms + 52 ms per texture at full detail), and the working set jumps ~16× past the
@@ -459,8 +468,8 @@ instead of magnifying a 256² normal map. No brightness shift.
   changes, so stitching follows the geometry that is drawn in every mode.
 
 **Open: a hillshade-only stack draws nothing under the paint.** With no vector layer there is no
-drape cover, so the paint is given the terrain's own cover (`TerrainRenderer::collectVisibleTiles`
-via `TileLayer::needsDrapeCover`) - but nothing in such a stack ever loads elevation, and the drape
+drape cover, so the paint is given the terrain's own cover (`TerrainRenderer::collectVisibleTiles`,
+then via `TileLayer::needsDrapeCover`, since removed) - but nothing in such a stack ever loads elevation, and the drape
 reports `tiles without elevation 12 of 12`. A DEM prefetch and a redraw pump from the seeding did not
 close it; the load path needs a look. Note the same stack on the normal-map path is also flat (faint
 shading, no relief), so 3D terrain in a hillshade-only stack is broken independently of the paint.
@@ -484,7 +493,8 @@ Active whenever 3D terrain is on and draped fills are off. **The demo now defaul
 (`DemoConfig.TERRAIN_DRAPE_FILLS = false`); `--es drape true` brings the drape back for an A/B.
 The SDK option `TerrainOptions.DrapeFillsEnabled` still defaults to on, so no app changes behaviour
 until it opts in — that default flips, and the drape code goes, once §10.2 lands and the device
-numbers are in. **The drape is being dropped, not kept as an option.**
+numbers are in. **The drape is being dropped, not kept as an option.** (It was not: see the note
+in §0.)
 
 ### 10.1 What each piece becomes
 
@@ -782,7 +792,7 @@ Everything that needs elevation on the CPU reads the texture instead of a mesh:
 regular-grid mode:
 
 ```cpp
-// GLTileRenderer.cpp:3528
+// GLTileRenderer.cpp
 for (const auto& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces()
                                          : buildCompiledTileSurfaces(tileId))) {
 ```
@@ -790,7 +800,7 @@ for (const auto& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces()
 But we *also* build per-tile CPU surface meshes in `setVisibleTiles` → `buildTileSurfaces(tileIds)`,
 and throw them away on every elevation change via `invalidateTileSurfaces`. In grid mode the draw
 does not use them at all — their remaining consumers are the raycast/picking path
-(`_tileSurfaceMap` at GLTileRenderer.cpp:1802, `findTileBitmapIntersections`) and the non-grid draw
+(`_tileSurfaceMap` in `GLTileRenderer.cpp`, `findTileBitmapIntersections`) and the non-grid draw
 path. So we are paying 21 ms on the render thread to rebuild geometry that the renderer does not
 draw.
 
@@ -835,7 +845,7 @@ RenderStats: ... | surfBuilt=0 surfInval=0 | ...        (every interval, whole n
 PROBE terrainstate: tiles=2 changed=0.03 invalSurf=0.00 invalLabel=0.01 ms
 ```
 
-`_tileSurfaceMap` is filled **only** by `buildCompiledTileSurfaces` (`GLTileRenderer.cpp:5631`),
+`_tileSurfaceMap` is filled **only** by `buildCompiledTileSurfaces` (`GLTileRenderer.cpp`),
 which only the NON-grid draw path calls — and every terrain configuration we ship is grid mode. So
 the map is empty, `invalidateTileSurfaces` iterates nothing, and the block costs 0.04 ms, not 21.
 (`surfBuilt` / `surfInval` were being collected but never printed; the `RenderStats` line carries
@@ -854,7 +864,7 @@ tree has to mirror it:
 ```sh
 D='/tmp/symfs/data/app/~~<hash>==/com.massifmaps.MassifDemo-<hash>==/lib/arm64'
 mkdir -p "$D"
-cp scripts/android-dev/massif/build/intermediates/cxx/Debug/*/obj/arm64-v8a/libmassif.so "$D/"
+cp scripts/android-dev/massif/build/intermediates/cxx/*/*/obj/arm64-v8a/libmassif.so "$D/"
 $NDK/simpleperf/bin/darwin/x86_64/simpleperf report -i /tmp/perf.data --symfs /tmp/symfs \
   --tids <gl-thread-tid> --children --sort symbol -n
 ```
@@ -908,7 +918,7 @@ z13.2 t20): 0.71% of pixels differ at all, 0.49% by more than 12, mean absolute 
 
 ### 12.5 What the profile says to do next
 
-- `Bitmap::loadFromUncompressedBytes` copies **one byte at a time** (`Bitmap.cpp:672`). It is off the
+- `Bitmap::loadFromUncompressedBytes` copies **one byte at a time** (`Bitmap.cpp`). It is off the
   render thread now, but the tile decode threads (28% of the process) run it for every tile bitmap.
   A row-wise `memcpy` is a small, contained change with a wide effect.
 - `HillshadeRasterTileLayer::onDrawFrame` at 10.5% of the render thread has not been broken down.
@@ -1418,6 +1428,7 @@ know: the proxy-tile behaviour of the mask-less arm was **never checked** (only 
 what the masks protect against is a retained tile painting through the gaps of its replacement
 during a **zoom**), and the early-Z result is specific to a tiler with idle fragment capacity — on
 an immediate-mode GPU it could read differently, which is not measurable from here.
+
 ### 16.9 Label draws: the style transform folded into the vertices (-43%)
 
 [16.7](#167-label-batches-the-floor-is-one-glyph-atlas-per-font-render-size) left two reasons a
@@ -1451,6 +1462,7 @@ camera usually shows, and it was **entirely label placement churn**. Running the
 measured **0.533%**, and a second run of it matched the baseline to **0.032%**. At a label-dense
 camera the churn floor is half a percent — establish it with a same-build control before reading a
 screenshot diff as a regression.
+
 ---
 
 ## 17. Lighting the undraped 2D content (2026-08-18)
@@ -1693,13 +1705,16 @@ per variant, first four samples dropped (tile decode), n≈25 each.
 
 **+0.35 ms**, ~15% of the extrusion pass and ~3% of an 8-12 ms GPU frame, repeatable across both
 run pairs. That buys buildings that are neither buried in a hillside nor bent down it; see
-[the terrain page](rendering/04-terrain.md#raising-the-prism-clear-of-the-hill) for the model and
+[the terrain page](rendering/04-terrain.md#extrusions-on-a-slope) for the model and
 for the two cheaper answers that do not work.
 
 The samples are `applyTerrain`, which is 4 `demMeters` under the lattice clamp - so this is 16
 extra DEM taps per above-ground vertex, not 4. The obvious optimisation is a lighter variant that
 skips the lattice clamp (the anchor only picks the highest ground, it never has to line up with the
 surface mesh); not done, and worth roughly three quarters of the 0.35 ms if it is.
+
+Superseded: the shader no longer samples the anchor. The base is resolved on the CPU (entries 25-26,
+[04-terrain](rendering/04-terrain.md#the-base-is-resolved-on-the-cpu-not-sampled-in-the-shader)).
 
 ## 21. Occluding labels with the 3D content (2026-08-20)
 
@@ -1724,6 +1739,8 @@ drape tile, and the extrusions are a small part of the geometry.
 The model and the two dead ends - a per-fragment depth test on the label pass, and a
 `GL_DEPTH_COMPONENT24` texture sampled from the vertex stage - are in
 [the labels page](rendering/06-labels.mdx#per-label-occlusion-by-3d-content).
+`debug.massif.labelocclusion` is gone: the pass now runs when `TerrainOptions::setTextOcclusionOpacity`
+or a style's `text-occlusion-opacity` is below 1.
 
 ## 22. Per-tile LOD height (2026-08-20)
 
@@ -1786,6 +1803,7 @@ Cost at limit 1.0, panning north at 45.2185/5.7346 z15.37 t29, 3 interleaved pai
 | limit 1.0 | 24.6 | 30.1 | 50.4 |
 
 **+26% tiles for −8% fps.** Off by default, so it costs nothing until an app opts in.
+`TileLODForeshorteningLimit` was later removed (#238), replaced by `Options::TileLODMaxZoomLevelsOnScreen`.
 
 **Method note — do not size an LOD change from a spreadsheet.** Applying the clamp to each accepted
 tile's measured area predicted 19 → 40 tiles, **7× the real cost**. The recursion boosts a parent
@@ -2010,8 +2028,8 @@ built. The count is tangram's mechanism, and the hard guarantee is the 2 ms budg
 second x 2 ms = 12 ms/s by construction). Both still to do.
 
 **Also unresolved:** `setVisibleTiles` holds the renderer mutex across `buildLabelMaps` and is
-reached from `TileLayer::loadData`, i.e. the cull worker — RenderStats.h claims it "runs inside the
-layer draw pass", which does not match that call chain. The GL thread's own measured wait for the
+reached from `TileLayer::loadData`, i.e. the cull worker — RenderStats.h then claimed it "runs inside the
+layer draw pass" (that comment is gone), which does not match that call chain. The GL thread's own measured wait for the
 mutex (`renderLabels`) is 0.0 ms/s at both tilts, so there is no lock stall to fix today.
 
 ## 28. Rationing label placement, so the culler has a ceiling (2026-09-08)
@@ -2019,6 +2037,10 @@ mutex (`renderLabels`) is 0.0 ms/s at both tilts, so there is no lock stall to f
 Crosscall `1cba1468`, `day-cycle-light` at Paris z16.5, pan bench, `shadow 1.0`, after entry 27.
 The objective was set as a ceiling rather than a saving: **`cullMs` under 100 ms a second at any
 tilt.**
+
+> **Since 2026-09-20 slicing is off** (`PLACEMENT_BUDGET_MS = 0` in `VTLabelPlacementWorker.cpp`,
+> `ef2424929`; `FULL_PLACEMENT_MS` removed): a slice inserts only its own labels, so the grid went to
+> whoever came first, not by priority, and the selection churned on a still map. §29's pacing stays.
 
 **Which phase to slice.** Splitting `LabelCuller::process` three ways settled it — the cost is
 `updatePlacement` plus the variant envelopes, at ~14.6 us per label:

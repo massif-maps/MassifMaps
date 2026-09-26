@@ -135,8 +135,8 @@ naming a point of the skyline wants it - it sits on the ridge and would otherwis
 
 ## Where the terrain meets the sky
 
-`TerrainOptions.calculateHorizon(pos, eyeHeight, azimuths, maxDistance)` answers the skyline from a
-viewpoint: for each azimuth, the apparent altitude of the highest terrain out to `maxDistance`
+`calculateHorizon(pos, eyeHeight, azimuths, maxDistance)` on the terrain options answers the skyline
+from a viewpoint (surface API only; the object API has no equivalent): for each azimuth, the apparent altitude of the highest terrain out to `maxDistance`
 metres, with the earth's curvature and standard refraction. That is what a sunrise behind a range is
 timed against - the web peak finder writes the rise and set times where the sun's path meets it.
 It reads the elevation already loaded and never blocks; what is missing is requested, so a second

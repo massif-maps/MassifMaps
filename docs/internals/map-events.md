@@ -130,8 +130,8 @@ The fix is to make pan do what its two siblings in the same file already did —
 `kineticStepFraction()` (`renderers/components/KineticStep.h`) and keep the rest. Because
 `_panDelta` now means *the whole distance left to travel* rather than one frame of it, the three
 constants that size it were multiplied by 12.535, which is what the old per-frame stepping summed
-to at 60 fps: `DELTA_MULTIPLIER` 7.0 → 87.75, `DELTA_CLAMP` 1.0 → 12.535, `STOP_TOLERANCE` 0.007 →
-0.0878. `START_TOLERANCE` is tested against the raw measured speed *before* the multiplier, so it
+to at 60 fps: `KINETIC_PAN_DELTA_MULTIPLIER` 7.0 → 87.75, `KINETIC_PAN_DELTA_CLAMP` 1.0 → 12.535,
+`KINETIC_PAN_STOP_TOLERANCE` 0.007 → 0.0878. `KINETIC_PAN_START_TOLERANCE` is tested against the raw measured speed *before* the multiplier, so it
 did not move. 60 fps behaviour is unchanged by construction; every lower frame rate now covers the
 same ground.
 

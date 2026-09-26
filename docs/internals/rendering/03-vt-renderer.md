@@ -31,7 +31,7 @@ renderLabels()      glyph quads, built fresh every frame, uploaded as batches
 endFrame()          sweep compiled resources whose owners expired
 ```
 
-`renderGeometry2D` (GLTileRenderer.cpp:2588) is the heart of it:
+`renderGeometry2D` (GLTileRenderer.cpp:3087) is the heart of it:
 
 1. Bucket every visible render tile's layers by **style layer index** into `renderLayerMap`.
 2. In terrain mode, sort each style layer's tiles **near to far** (content writes depth, so near
@@ -311,8 +311,9 @@ a long stretch of its neighbours' roads and draws it — displaced with *its own
 elevation texture and lattice, which is a different DEM level than the tile that overflow actually
 lies on. The same road is then painted twice at two different heights: from straight down the copies
 coincide and it looks perfect, and the moment the camera tilts they separate. That tilt-only
-signature is the tell. The stencil tile masks were what used to clip this, but they need a stencil
-buffer and the shared-ground target has none (`GL_STENCIL_BITS` reads **0**), so they never run.
+signature is the tell. The stencil tile masks were what used to clip this, but `renderGeometry2D` turns
+them off under the shared ground (`maskStencilBits = _terrainSharedGround ? 0 : stencilBits`), so
+they never run in terrain mode.
 `lineFsh` therefore discards outside the tile, using `uTileUnitScale` / `uTileUnitOffset`
 (vertex-frame units → TARGET tile units, set in `setupTerrainUniforms`; a **0 scale means no
 elevation**, which disables the test) and a `vTileUnit` varying. No attachment, no extra draw.
@@ -378,8 +379,8 @@ nothing at all in terrain mode while it drew fine on a flat map.
 > screen-space xy for the width, `mix(centerPos, edgePos, shrink)` for the depth.
 >
 > Ruled out first, each by measurement, before the cap was suspected: line tesselation and joins,
-> the route source's simplify tolerance (real but separate — it is applied per TILE ZOOM in
-> `MBVTTileBuilder::simplifyAndCacheLayers`, so a coarse tile collapses hairpins into chords),
+> the route source's simplify tolerance (real but separate — it is applied per TILE ZOOM by
+> `MBVTTileBuilder`'s [geojson-vt index](02-tiles.md#geojson-tiles-the-on-demand-pyramid), so a coarse tile collapses hairpins into chords),
 > `TerrainOptions::MeshResolution` (32/64/128, no effect) and `Options::TileLODFactor` (no effect).
 > The two A/Bs that settled it: with the content depth test disabled the casing is complete, and
 > with the cap disabled the casing is complete but every line is visibly fatter.

@@ -49,8 +49,8 @@ val dem = HTTPTileDataSource(0, 12, "https://your.tiles/dem/{z}/{x}/{y}.png").ap
 
 // Contour source. The decoder is resolved per tile from "dem_encoding".
 val contourSource = ContourTileDataSource(dem).apply {
-    baseInterval = 100          // metres between contour lines
-    resolution = 2              // DEM subsample factor (higher = coarser/faster)
+    baseInterval = 100          // metres: the finest interval, multiplied per zoom band
+    resolution = 0              // tracing grid samples per side; 0 = the DEM's own (use 0 over 3D terrain)
     minVisibleZoom = 11
     simplifyTolerance = 1.0f
     setSeamlessEdgesEnabled(true) // fetch E/N/NE neighbours so lines meet across tiles
@@ -64,12 +64,13 @@ mapView.layers.add(contourLayer)
 
 ### With the surface API
 
-`ContourTileDataSource` has no `!spec` declaration, so there is no `{"type": "contour"}`. Build it
-and [adopt](/docs/api/#bringing-an-existing-app-across) it — its properties, including
-`baseInterval`, are reachable through the id afterwards:
+The source is a `contour` spec wrapping the DEM (an id of kind `source`, or an inline spec); its
+properties, including `baseInterval`, stay reachable through the id afterwards:
 
 ```java
-Massif.adopt("contours-src", new ContourTileDataSource(dem));
+map.source("contours-src", Spec.of("contour")
+    .set("source", "dem")
+    .set("baseInterval", 100));
 
 map.addLayer("contours", Spec.of("vector")
     .set("source", "contours-src")
@@ -97,13 +98,13 @@ Example CartoCSS for the emitted `contour` layer (index vs intermediate lines vi
 
 | Property | Meaning |
 |---|---|
-| `BaseInterval` | Metres between contour lines. |
-| `Resolution` | DEM subsample factor — higher is coarser and faster. |
+| `BaseInterval` | Finest interval in metres (default `10`), multiplied per zoom band by `setIntervalMultiplier(maxZoom, m)`. |
+| `Resolution` | Tracing grid, max samples per side (default `128`, min `8`); lower is coarser and cheaper, `0` = the DEM's own. Per zoom: `setResolutionForZoom(maxZoom, r)`. |
 | `MinVisibleZoom` | Below this zoom, no contours are generated. |
-| `SimplifyTolerance` | Douglas–Peucker tolerance for the output polylines. |
+| `SimplifyTolerance` | Douglas–Peucker tolerance for the output polylines, in tile pixels; `0` disables. |
 | `SeamlessEdgesEnabled` | Fetch E/N/NE neighbours so lines join across tile boundaries. |
 | `LayerName` | Name of the generated vector layer (default `contour`). |
-| `getIntervalForZoom(z)` | The effective interval used at a given zoom. |
+| `LabelStubsEnabled` / `LabelInterval` | Emit only short label stubs (`stub` = 1) when the lines come from shader contours. |
 
 It drapes correctly over [3D terrain](/docs/features/3d-terrain) — the geometry is displaced and
 clamped to the terrain surface.

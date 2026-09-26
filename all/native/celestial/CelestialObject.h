@@ -22,18 +22,9 @@ namespace massif {
     class CelestialLayer;
 
     /**
-     * A base class for objects that are placed in the sky rather than on the map.
-     *
-     * An object is anchored in one of two ways:
-     *  - by DIRECTION (azimuth and altitude), with an optional distance. A distance of 0 means
-     *    infinitely far: the object keeps its direction whatever the camera does, which is what
-     *    a body at an effectively infinite distance needs. A finite distance gives real parallax
-     *    and is what an aircraft or a satellite overhead needs.
-     *  - by geographic POSITION plus an altitude in meters, for an object that belongs to a place
-     *    on the map but is above it.
-     *
-     * Objects are hit-tested against the touch ray like any other layer's elements, so a click on
-     * one is reported through the layer's listener, and terrain in front of it wins the hit.
+     * A base class for objects placed in the sky, anchored by direction (azimuth, altitude, optional
+     * distance; 0 = infinitely far, no parallax) or by map position plus an altitude in meters.
+     * Clicks are reported through the layer's listener; terrain in front wins the hit.
      */
     class CelestialObject {
     public:
@@ -61,8 +52,7 @@ namespace massif {
          */
         double getDistance() const;
         /**
-         * Anchors the object by direction. This is the anchor for anything that behaves like a
-         * celestial body.
+         * Anchors the object by direction.
          * @param azimuth The azimuth in degrees, clockwise from north.
          * @param altitude The altitude in degrees above the horizon.
          * @param distance The distance in meters. 0 means infinitely far, so the object never
@@ -81,8 +71,7 @@ namespace massif {
          */
         double getPositionAltitude() const;
         /**
-         * Anchors the object above a place on the map. Use this for aircraft, satellites, or
-         * anything else that has a real location.
+         * Anchors the object above a place on the map, e.g. an aircraft.
          * @param pos The position, in the coordinate system of the layer's data source projection.
          * @param altitude The altitude in meters above the ground.
          */
@@ -129,8 +118,7 @@ namespace massif {
          */
         Variant getMetaDataElement(const std::string& key) const;
         /**
-         * Sets a meta data value. Meta data is carried through to the click listener, which is how
-         * an application tells its objects apart.
+         * Sets a meta data value; carried through to the click listener.
          * @param key The key of the value.
          * @param element The value.
          */

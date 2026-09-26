@@ -107,10 +107,8 @@ namespace massif {
          */
         MapPos getFocusPos() const;
         /**
-         * Returns the position the camera itself is above, which at a low tilt is nowhere near the
-         * focus - the focus is what the camera looks AT, kilometres out in front of it. This is the
-         * viewpoint: where a first-person camera stands, and where a top-down view has to be centred
-         * to come back to the same place.
+         * Returns the position the camera itself is above (the viewpoint), which at a low tilt is far from the
+         * focus it looks at. Where a top-down view has to be centred to come back to the same place.
          * @return The camera's ground position in the coordinate system of the base projection.
          */
         MapPos getCameraPos() const;
@@ -133,39 +131,26 @@ namespace massif {
         float getZoom() const;
     
         /**
-         * Pans the view relative to the current focus position. The deltaPos vector is expected to be in 
-         * the coordinate system of the base projection. The new calculated focus position will be clamped to
-         * the world bounds and to the bounds set by Options::setPanBounds.
-         *
-         * If durationSeconds > 0 the panning operation will be animated over time. If the previous panning animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Pans the view relative to the current focus position, deltaPos in the base projection's coordinate system.
+         * The new focus is clamped to the world bounds and to Options::setPanBounds.
+         * If durationSeconds > 0 the pan is animated; a previous pan animation still running is stopped.
          * @param deltaPos The relative coordinate shift.
          * @param durationSeconds The duration in which the panning operation will be completed in seconds.
          */
         void pan(const MapVec& deltaPos, float durationSeconds);
         /**
-         * Sets the new absolute focus position. The new focus position is expected to be in
-         * the coordinate system of the base projection. The new focus position will be clamped to
-         * the world bounds and to the bounds set by Options::setPanBounds.
-         *
-         * If durationSeconds > 0 the panning operation will be animated over time. If the previous panning animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Sets the new absolute focus position, in the base projection's coordinate system, clamped to the world
+         * bounds and to Options::setPanBounds.
+         * If durationSeconds > 0 the pan is animated; a previous pan animation still running is stopped.
          * @param pos The new absolute focus position.
          * @param durationSeconds The duration in which the panning operation will be completed in seconds.
          */
         void setFocusPos(const MapPos& pos, float durationSeconds);
 
         /**
-         * Points the camera at a position and a zoom level IMMEDIATELY, with no animation.
-         *
-         * Prefer it over setFocusPos + setZoom: with restricted panning on, the focus is clamped so
-         * the viewport stays inside the pan bounds, so the same target is clamped hard at a world
-         * view and not at all up close. Setting the focus first therefore pins it to the middle of
-         * the bounds - the equator, on an opening map - and the zoom that follows does not undo it.
-         * This applies the two in whichever order avoids that.
-         *
-         * Unlike flyTo, it needs no frame, so it is also the call for pointing the camera before
-         * the map has drawn.
+         * Points the camera at a position and a zoom level immediately, with no animation, and before the first
+         * frame too. Prefer it over setFocusPos + setZoom: with restricted panning, a focus set at a world view
+         * is clamped to the middle of the pan bounds and the zoom that follows does not undo it.
          * @param pos The target position in base projection coordinate system.
          * @param zoom The target zoom level.
          */
@@ -197,19 +182,13 @@ namespace massif {
         void moveCameraTo(const MapPos& pos, float zoom);
 
         /**
-         * Moves the camera to a position and a zoom level in ONE animation, pulling back over a
-         * long move and coming down at the target (Van Wijk & Nuij's optimal path). Unlike
-         * setFocusPos + setZoom, which run on their own clocks and cross the map at the final
-         * zoom, this keeps the whole path in view.
+         * Moves the camera to a position and a zoom level in one animation, pulling back over a long move and
+         * coming down at the target (Van Wijk & Nuij's optimal path). Asked for before the first frame, the
+         * flight runs from that frame.
          * @param pos The target position in base projection coordinate system.
          * @param zoom The target zoom level.
-         * @param durationSeconds The duration in seconds, or 0 to derive it from the length of
-         *                        the path - a move twice as far then does not take twice as long.
-         *                        0 is NOT "immediate"; for that use moveTo.
-         *
-         * A flight asked for before the map has drawn its first frame RUNS FROM THAT FIRST FRAME:
-         * the path is set up against the view it actually starts from, which is not known until
-         * there is one. It is not dropped and it does not snap.
+         * @param durationSeconds The duration in seconds, or 0 to derive it from the length of the path.
+         *                        0 is not "immediate"; for that use moveTo.
          */
         void flyTo(const MapPos& pos, float zoom, float durationSeconds);
         /**
@@ -222,10 +201,8 @@ namespace massif {
          */
         void flyTo(const MapPos& pos, float zoom, float rotation, float tilt, float durationSeconds);
         /**
-         * Moves the camera to a position, zoom, rotation and tilt in one animation, climbing over
-         * the way there. The target position's Z is the height the viewpoint ends at, and the
-         * climb is added to it as a parabola: highest halfway, back to nothing at both ends - a
-         * plane's flight, which is also how you clear what stands between the two ends.
+         * Moves the camera to a position, zoom, rotation and tilt in one animation, climbing on the way: the
+         * climb is added to the target Z (the final viewpoint height) as a parabola, highest halfway.
          * @param pos The target position in base projection coordinate system; its Z is the target height.
          * @param zoom The target zoom level.
          * @param rotation The target rotation in degrees.
@@ -244,58 +221,41 @@ namespace massif {
          */
         bool isFlightActive() const;
         /**
-         * How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the
-         * value the camera is actually at, so an app animating its own state alongside the move
-         * (a layer fading in, a mode switching over) reads it rather than running its own clock.
+         * How far along a flyTo animation is, from 0 to 1, or -1 when none is running. The value the camera is
+         * actually at, so an app animating its own state alongside the move reads it rather than its own clock.
          * @return The flight progress, or -1.
          */
         float getFlightProgress() const;
         
         /**
-         * Rotates the view relative to the current rotation value. Positive values rotate clockwise, negative values counterclockwise.
-         * The new calculated rotation value will be wrapped to the range of (-180 .. 180]. Rotations are ignored if Options::setRotatable 
-         * is set to false.
-         *
-         * If durationSeconds > 0 the rotating operation will be animated over time. If the previous rotating animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Rotates the view relative to the current rotation, positive clockwise, wrapped to (-180 .. 180].
+         * Ignored if Options::setRotatable is false.
+         * If durationSeconds > 0 the rotation is animated; a previous rotation animation still running is stopped.
          * @param deltaAngle The delta rotation value in degrees.
          * @param durationSeconds The duration in which the rotation operation will be completed in seconds.
          */
         void rotate(float deltaAngle, float durationSeconds);
         /**
-         * Rotates the view relative to the current rotation value. Positive values rotate clockwise, negative values counterclockwise.
-         * The new calculated rotation value will be wrapped to the range of (-180 .. 180]. Rotations are ignored if Options::setRotatable
-         * is set to false.
-         *
-         * Rotating is done around the specified target position, keeping it at the same location on the screen.
-         *
-         * If durationSeconds > 0 the rotating operation will be animated over time. If the previous rotating animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Rotates the view relative to the current rotation, positive clockwise, wrapped to (-180 .. 180], around
+         * targetPos, which keeps its screen location. Ignored if Options::setRotatable is false.
+         * If durationSeconds > 0 the rotation is animated; a previous rotation animation still running is stopped.
          * @param deltaAngle The delta angle value in degrees.
          * @param targetPos The zooming target position in the coordinate system of the base projection.
          * @param durationSeconds The duration in which the rotation operation will be completed in seconds.
          */
         void rotate(float deltaAngle, const MapPos& targetPos, float durationSeconds);
         /**
-         * Sets the new absolute rotation value. 0 means look north, 90 means west, -90 means east and 180 means south.
-         * The rotation value will be wrapped to the range of (-180 .. 180]. Rotations are ignored if Options::setRotatable
-         * is set to false.
-         *
-         * If durationSeconds > 0 the rotating operation will be animated over time. If the previous rotating animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Sets the new absolute rotation: 0 looks north, 90 west, -90 east, 180 south; wrapped to (-180 .. 180].
+         * Ignored if Options::setRotatable is false.
+         * If durationSeconds > 0 the rotation is animated; a previous rotation animation still running is stopped.
          * @param angle The new absolute angle value in degrees.
          * @param durationSeconds The duration in which the rotation operation will be completed in seconds.
          */
         void setRotation(float angle, float durationSeconds);
         /**
-         * Sets the new absolute rotation value. 0 means look north, 90 means west, -90 means east and 180 means south.
-         * The rotation value will be wrapped to the range of (-180 .. 180]. Rotations are ignored if Options::setRotatable 
-         * is set to false.
-         *
-         * Rotating is done around the specified target position, keeping it at the same location on the screen.
-         *
-         * If durationSeconds > 0 the rotating operation will be animated over time. If the previous rotating animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Sets the new absolute rotation (0 north, 90 west, -90 east, 180 south; wrapped to (-180 .. 180]) around
+         * targetPos, which keeps its screen location. Ignored if Options::setRotatable is false.
+         * If durationSeconds > 0 the rotation is animated; a previous rotation animation still running is stopped.
          * @param angle The new absolute angle value in degrees.
          * @param targetPos The zooming target position in the coordinate system of the base projection.
          * @param durationSeconds The duration in which the rotation operation will be completed in seconds.
@@ -303,71 +263,50 @@ namespace massif {
         void setRotation(float angle, const MapPos& targetPos, float durationSeconds);
         
         /**
-         * Tilts the view relative to the current tilt value. Positive values tilt the view down towards the map, 
-         * negative values tilt the view up towards the horizon. The new calculated tilt value will be clamped to
-         * the range of [30 .. 90] and to the range set by Options::setZoomRange.
-         *
-         * If durationSeconds > 0 the tilting operation will be animated over time. If the previous tilting animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Tilts the view relative to the current tilt: positive down towards the map, negative up towards the horizon.
+         * The result is clamped to the range set by Options::setTiltRange.
+         * If durationSeconds > 0 the tilt is animated; a previous tilt animation still running is stopped.
          * @param deltaTilt The number of degrees the camera should be tilted by.
          * @param durationSeconds The duration in which the tilting operation will be completed in seconds.
          */
         void tilt(float deltaTilt, float durationSeconds);
         /**
-         * Sets the new absolute tilt value. 0 means look directly at the horizon, 90 means look directly down. The
-         * minimum tilt angle is 30 degrees and the maximum is 90 degrees. The tilt value can be further constrained
-         * by the Options::setTiltRange method. Values exceeding these ranges will be clamped.
-         *
-         * If durationSeconds > 0 the tilting operation will be animated over time. If the previous tilting animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Sets the new absolute tilt: 0 looks at the horizon, 90 straight down. Clamped to the range set by
+         * Options::setTiltRange.
+         * If durationSeconds > 0 the tilt is animated; a previous tilt animation still running is stopped.
          * @param tilt The new absolute tilt value in degrees.
          * @param durationSeconds The duration in which the tilting operation will be completed in seconds.
          */
         void setTilt(float tilt, float durationSeconds);
         
         /**
-         * Zooms the view relative to the current zoom value. Positive values zoom in, negative values zoom out.
-         * The new calculated zoom value will be clamped to the range of [0 .. 24] and to the range set by Options::setZoomRange.
-         *
-         * If durationSeconds > 0 the zooming operation will be animated over time. If the previous zooming animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Zooms the view relative to the current zoom, positive in, negative out; clamped to [0 .. 24] and to
+         * Options::setZoomRange.
+         * If durationSeconds > 0 the zoom is animated; a previous zoom animation still running is stopped.
          * @param deltaZoom The delta zoom value.
          * @param durationSeconds The duration in which the zooming operation will be completed in seconds.
          */
         void zoom(float deltaZoom, float durationSeconds);
         /**
-         * Zooms the view relative to the current zoom value. Positive values zoom in, negative values zoom out.
-         * The new calculated zoom value will be clamped to the range of [0 .. 24] and to the range set by Options::setZoomRange.
-         *
-         * Zooming is done towards the specified target position, keeping it at the same location on the screen.
-         *
-         * If durationSeconds > 0 the zooming operation will be animated over time. If the previous zooming animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Zooms the view relative to the current zoom (positive in, negative out; clamped to [0 .. 24] and to
+         * Options::setZoomRange) towards targetPos, which keeps its screen location.
+         * If durationSeconds > 0 the zoom is animated; a previous zoom animation still running is stopped.
          * @param deltaZoom The delta zoom value.
          * @param targetPos The zooming target position in the coordinate system of the base projection.
          * @param durationSeconds The duration in which the zooming operation will be completed in seconds.
          */
         void zoom(float deltaZoom, const MapPos& targetPos, float durationSeconds);
         /**
-         * Sets the new absolute zoom value. The minimum zoom value is 0, which means absolutely zoomed out and the maximum
-         * zoom value is 24. The zoom value can be further constrained by the Options::setZoomRange method. Values
-         * exceeding these ranges will be clamped. 
-         *
-         * If durationSeconds > 0 the zooming operation will be animated over time. If the previous zooming animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Sets the new absolute zoom, clamped to [0 .. 24] (0 is fully zoomed out) and to Options::setZoomRange.
+         * If durationSeconds > 0 the zoom is animated; a previous zoom animation still running is stopped.
          * @param zoom The new absolute zoom value.
          * @param durationSeconds The duration in which the zooming operation will be completed in seconds.
          */
         void setZoom(float zoom, float durationSeconds);
         /**
-         * Sets the new absolute zoom value. The minimum zoom value is 0, which means absolutely zoomed out and the maximum 
-         * zoom value is 24. The zoom value can be further constrained by the Options::setZoomRange method. Values 
-         * exceeding these ranges will be clamped.
-         *
-         * Zooming is done towards the specified target position, keeping it at the same location on the screen.
-         *
-         * If durationSeconds > 0, the zooming operation will be animated over time. If the previous zooming animation has not
-         * finished by the time this method is called, it will be stopped.
+         * Sets the new absolute zoom, clamped to [0 .. 24] and to Options::setZoomRange, towards targetPos, which
+         * keeps its screen location.
+         * If durationSeconds > 0 the zoom is animated; a previous zoom animation still running is stopped.
          * @param zoom The new absolute zoom value.
          * @param targetPos The zooming target position in the coordinate system of the base projection.
          * @param durationSeconds The duration in which the zooming operation will be completed in seconds.

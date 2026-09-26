@@ -14,33 +14,17 @@
 namespace massif {
 
     /**
-     * The height field the terrain SURFACE stands on: one height per mesh node, each the mean of
-     * the DEM over the node's own cell. The surface mesh is a regular lattice of
-     * TerrainOptions::MeshResolution cells per tile; a lidar-grade DEM carries relief far finer
-     * than that (a road's cut and fill in 0.8 m texels under a 6.7 m cell), and a lattice that
-     * samples such a DEM point by point aliases it - every road edge came out as a sawtooth at a
-     * grazing tilt. Averaging over the cell is the prefilter that removes what the lattice cannot
-     * carry; the per-fragment shading keeps the full DEM.
-     * Free of the grid and of GL on purpose, so the host tests reach it. See
-     * docs/internals/rendering/04-terrain.md, "The node texture".
+     * The height field the terrain surface stands on: one height per mesh node, the DEM box-filtered over
+     * the node's cell so the lattice does not alias relief finer than it (shading keeps the full DEM).
+     * See docs/internals/rendering/04-terrain.md, "The node texture".
      */
     struct ElevationNodeField {
         /**
-         * How many mesh cells the box spans. Two, not one: a one-cell box removes what the
-         * lattice cannot sample but leaves a road's cut as a full step within one cell, and a
-         * step of H over one cell is drawn as a staircase of H/2 at a grazing tilt. Measured on
-         * the Grenoble z15 DEM under a 64-cell mesh, the node field's roughness (p95 of the
-         * cell Laplacian) is 5.0 m unfiltered, 3.75 m at one cell, 2.36 m at two, 1.20 m at
-         * four; two is where the staircase stopped reading as one on screen. Wider trades real
-         * relief for it. Measurement override: adb shell setprop debug.massif.nodebox <cells>.
+         * How many mesh cells the box spans. Two, not one: a one-cell box leaves a road's cut as a full
+         * step within a cell, drawn as a staircase at a grazing tilt; wider trades real relief. See 04-terrain.md.
          */
         static constexpr int DEFAULT_BOX_CELLS = 2;
 
-        /**
-         * Box width in texels for `nodes` cells across a `width`-texel raster: `cells` mesh
-         * cells, so nothing narrower than that survives into a node. 1 when the raster is coarser
-         * than the box, where the box is a plain bilinear sample.
-         */
         /**
          * The slot of the neighbour in direction (dx, dy), in grid packing order W E S N SW SE NW NE;
          * -1 is this grid itself. Standalone so a test can pin it: a wrong slot is a seam.
@@ -53,6 +37,10 @@ namespace massif {
             return SLOT[(dy + 1) * 3 + (dx + 1)];
         }
 
+        /**
+         * Box width in texels spanning `cells` of the `nodes` cells across a `width`-texel raster.
+         * 1 when the raster is coarser than the box, where the box is a plain bilinear sample.
+         */
         static int boxTexels(int width, int nodes, int cells) {
             return std::max(1, std::max(1, cells) * width / std::max(1, nodes));
         }
@@ -67,11 +55,8 @@ namespace massif {
         }
 
         /**
-         * Area weights of the interval [a, a + box) over unit texel cells [t, t + 1): fully
-         * covered cells weigh 1, the two end cells their overlap. Sums to box. A box centred on a
-         * texel boundary with an even width is the plain block; an odd one (or a node between
-         * boundaries) takes half of each end cell, which is what keeps the mean centred on the
-         * node instead of half a texel off it.
+         * Area weights of [a, a + box) over unit texel cells: covered cells weigh 1, the two end cells
+         * their overlap; sums to box. Partial end cells keep the mean centred on the node, not half a texel off.
          * @return The first texel index; weights[i] is the weight of texel first + i.
          */
         static int boxWeights(double a, int box, std::vector<float>& weights) {
@@ -223,11 +208,9 @@ namespace massif {
         }
 
         /**
-         * Mean height over the boxX x boxY texel block centred on texel-space position (cx, cy).
-         * `texel(tx, ty)` must answer OUTSIDE the raster too - a neighbour's texel, or a clamped
-         * one - because a node on the tile edge reaches half a box into the next tile. Two tiles
-         * computing their shared edge node from the same texels get the same height, which is
-         * what keeps the surface seam-free.
+         * Mean height over the boxX x boxY texel block centred on (cx, cy). `texel` must answer outside the
+         * raster too (neighbour or clamped): an edge node reads half a box into the next tile, and two tiles
+         * reading the same texels there is what keeps the surface seam-free.
          */
         template <typename TexelFn>
         static float nodeHeight(double cx, double cy, int boxX, int boxY, const TexelFn& texel) {
@@ -334,10 +317,9 @@ namespace massif {
         }
 
         /**
-         * Every node of an N-cell lattice over a width x height raster, row-major, row j at
-         * texel-space y = j * height / N, (N + 1)^2 values. Node (i, j) sits on the cell corner
-         * (i * width / N, j * height / N): node 0 is the tile's west/south EDGE, node N its
-         * east/north edge, so adjacent tiles share their edge nodes.
+         * Every node of an N-cell lattice over a width x height raster, row-major, (N + 1)^2 values. Node (i, j)
+         * sits on the cell corner (i * width / N, j * height / N): nodes 0 and N are the tile edges, shared with
+         * the adjacent tiles.
          */
         template <typename TexelFn>
         static void build(int width, int height, int nodes, int cells, const TexelFn& texel, std::vector<float>& out) {

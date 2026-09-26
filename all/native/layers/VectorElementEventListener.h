@@ -20,12 +20,9 @@ namespace massif {
         virtual ~VectorElementEventListener() { }
     
         /**
-         * Listener method that gets called when a click is performed on a vector element.
-         * If there are multiple vector elements that are located at the click position, then the
-         * results will be sorted by their distance to the camera. The closest element will be called first.
-         * If the method returns true, all subsequent elements are ignored. Otherwise the method is called
-         * on the next element and so on.
-         * This method will NOT be called from the main thread.
+         * Listener method that gets called when a click is performed on a vector element. Elements at the click position
+         * are called closest to the camera first; returning true stops there, false passes the click to the next one.
+         * This method will not be called from the main thread.
          * @param clickInfo A container that provides information about the click.
          * @return True if the click is handled and subsequent elements should not be handled. False if the next element should be called.
          */

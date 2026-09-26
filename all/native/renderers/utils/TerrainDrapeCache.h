@@ -17,20 +17,9 @@
 namespace massif {
 
     /**
-     * Shared render-to-texture drape target for 3D terrain.
-     *
-     * Owns one offscreen framebuffer and a per-terrain-tile colour texture, ABOVE the tile
-     * layers. That is the point: every drapeable tile layer bakes into the same texture for a
-     * given tile, in layer order, so a hillshade layer and a vector tile layer share one drape,
-     * one terrain surface draw and one depth domain instead of each keeping their own.
-     *
-     * Textures are keyed by (tile, stack). Stack 0 is the RGBA colour drape - the only one the
-     * stack index was originally meant to have, a second one being reserved for a run of drapeable
-     * layers split by a non-drapeable one, which nothing produces. Stacks 1..K are now the R8
-     * COVERAGE MASKS a live no-drape layer is occluded by (#175) - one per cut in the style order,
-     * baked and invalidated with the colour drape they belong to.
-     *
-     * GL thread only.
+     * Shared render-to-texture drape target for 3D terrain: every drapeable tile layer bakes into one
+     * per-tile texture, sharing one surface draw and depth domain. Keyed by (tile, stack): stack 0 is the
+     * RGBA drape, 1..K the R8 coverage masks that occlude live no-drape layers (#175). GL thread only.
      */
     class TerrainDrapeCache {
     public:
@@ -39,20 +28,14 @@ namespace massif {
 
         int getResolution() const;
         /**
-         * Sets the per-tile texture resolution. Existing textures are dropped, since they are
-         * the old size.
+         * Sets the per-tile texture resolution; existing textures are dropped.
          */
         void setResolution(int resolution);
 
         /**
-         * Identifies the set of layers the textures are baked from. A tile's fingerprint only
-         * covers the CONTENT of the layers that are present, so replacing a layer (switching the
-         * base map's style rebuilds the layer) or removing one leaves every cached texture holding
-         * a picture of a stack that no longer exists - and those textures stay cached, off screen,
-         * until panning brings them back. That is the old style flashing back tile by tile.
-         * Changing the signature marks every entry stale: it may still be shown (it is better than
-         * a flat fill) but it is re-baked with priority and never seeds or stands in for another
-         * tile, so old content cannot spread into tiles that never had it.
+         * Identifies the layer stack the textures are baked from (fingerprints miss a replaced layer). A change
+         * marks every entry stale: still drawable, re-baked first, and never a seed or stand-in, so an old
+         * style cannot flash back or spread.
          */
         void setStackSignature(std::size_t signature);
         /**
@@ -65,55 +48,41 @@ namespace massif {
          */
         void beginFrame();
         /**
-         * Returns the texture for a tile, creating or recycling one if needed.
-         * needsBake is set when the texture does not match the given fingerprint, i.e. the caller
-         * should clear it and have every participating layer bake into it.
-         * hasContent is set when the texture has been baked at least once and is safe to sample -
-         * a recycled texture still holds another tile's picture until it is baked, so a caller
-         * that skips the bake (budget) must not draw it.
+         * Returns the texture for a tile, creating or recycling one. needsBake: fingerprint mismatch, clear
+         * and bake. hasContent: safe to sample; a recycled texture shows another tile until baked, so a
+         * caller skipping the bake must not draw it.
          */
         unsigned int acquire(const vt::TileId& tileId, int stack, std::size_t fingerprint, bool& needsBake, bool& hasContent);
-        /**
-         * Records that the caller actually baked this tile. Marking on acquire instead would
-         * poison the entry for good on any path that acquires and then does not bake.
-         * layerMask is the set of drape layers that actually put something in the texture.
-         */
-        // What the cached drape textures may cost in total, the DEFAULT for setMaxBytes. Public
-        // because the automatic bake resolution is chosen against it: the two have to agree, or the
-        // cache evicts what the resolution assumed would stay.
+        // Default budget for setMaxBytes; public because the automatic bake resolution must agree with it.
         static const std::size_t MAX_BYTES;
         /**
          * Overrides the byte budget (TerrainOptions::DrapeCacheSize). 0 restores MAX_BYTES.
          */
         void setMaxBytes(std::size_t maxBytes);
-        // debug.massif.drapebudget 0 restores the pre-budget behaviour - a tile COUNT cap and an
-        // uncapped bake resolution - so the two can be measured against each other in one build.
+        // debug.massif.drapebudget 0 restores the tile-count cap and uncapped resolution. Android demo builds only.
         static bool isBudgetEnabled();
-        // debug.massif.drapemask 0 turns the no-drape occlusion masks off (#175), so a run with a
-        // live layer back on top of the whole drape is one relaunch away. Read once (Android only).
+        // debug.massif.drapemask 0 turns the no-drape occlusion masks off (#175). Android demo builds only.
         static bool isCoverageMaskEnabled();
 
         /**
-         * Rebuilds the mipmap chain of a drape texture. Must follow every write to its level 0,
-         * which is what the tile surfaces then sample minified.
+         * Rebuilds the mipmap chain of a drape texture; must follow every write to its level 0.
          */
         static void generateMipmaps(unsigned int texture);
         static bool isMipmapEnabled();
 
+        /**
+         * Records an actual bake (not on acquire, which would poison entries never baked).
+         * layerMask is the set of drape layers that put something in the texture.
+         */
         void markBaked(const vt::TileId& tileId, int stack, std::size_t fingerprint, std::size_t layerMask);
         /**
-         * The layers the cached texture was baked from, or 0 if it has never been baked. A tile
-         * baked before one of its layers had loaded shows that layer's ground missing - visually
-         * a hillshade-only patch among finished tiles - so it is worth re-baking sooner than a
-         * tile whose content merely moved on.
+         * The layers the cached texture was baked from, or 0 if never baked. A tile missing a layer
+         * deserves an earlier re-bake.
          */
         std::size_t bakedLayerMask(const vt::TileId& tileId, int stack) const;
         /**
-         * Records that the caller filled this tile's texture from other cached tiles (a magnified
-         * ancestor, or the finer tiles it replaces) rather than by baking it. The texture is then
-         * safe to sample - it shows the right ground - but it is NOT a bake: it still needs one,
-         * and it must never become a source for another seed, or the picture degrades every time
-         * it is copied.
+         * Records a texture filled from other cached tiles rather than baked: safe to sample, still needs a
+         * bake, and never a seed source itself, or the picture degrades with every copy.
          */
         void markSeeded(const vt::TileId& tileId, int stack);
         /**
@@ -121,25 +90,13 @@ namespace massif {
          */
         bool isBaked(const vt::TileId& tileId, int stack) const;
         /**
-         * Returns the texture of an already-baked tile, or 0. Used to let a tile whose own bake
-         * has not landed yet stand in on an ancestor's texture instead of flashing a flat colour.
-         * A tile found this way counts as USED for this frame: it is about to be drawn, and an
-         * entry that is drawn but not marked would be evicted as unused at the end of the very
-         * frame it stood in on - which is what emptied the cache of the previous generation on
-         * every integer zoom step and left a screen of flat fills behind.
+         * Returns the texture of an already-baked tile, or 0, for a stand-in until a bake lands. Marks the
+         * entry used this frame, or it is evicted at the end of the frame it stood in on.
          */
         unsigned int findBaked(const vt::TileId& tileId, int stack);
         /**
-         * The COARSEST baked tiles inside this one, whatever their depth: what a tile zoomed out
-         * from stands in on until its own bake lands. Walking the tree a fixed number of levels
-         * instead costs 4^depth lookups, so it was capped at two - and a pinch that crosses three
-         * or more levels then found nothing, leaving half the ground painted in the flat clear
-         * colour for those frames. The cache holds at most MAX_ENTRIES tiles, so one pass over it
-         * answers this at any depth.
-         *
-         * Coarsest wins: a tile whose own ancestor is in the result is left out, so the result
-         * covers the ground once rather than several times over. Everything returned counts as
-         * USED for this frame, for the reason findBaked does.
+         * The coarsest baked tiles inside this one at any depth (one pass over the cache), covering the ground
+         * once: the stand-in for a zoomed-out tile until its bake lands. Marks them used, as findBaked does.
          */
         std::vector<std::pair<vt::TileId, unsigned int>> findBakedDescendants(const vt::TileId& tileId, int stack);
         /**

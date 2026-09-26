@@ -14,10 +14,8 @@
 %include <std_shared_ptr.i>
 %include <massifswig.i>
 
-// Held by shared_ptr like every other wrapped class, so MassifInterop.adopt can take one and the
-// camera is reachable from a binding. MapView still owns it: delete() drops the proxy's reference,
-// and an adopted handle holds the only other one - destroy it with the view, or the renderer's
-// resources outlive the surface.
+// shared_ptr so MassifInterop.adopt can take it. MapView still owns it: an adopted handle holds the
+// only other reference - destroy it with the view, or the renderer's resources outlive the surface.
 !shared_ptr(massif::BaseMapView, ui.BaseMapView)
 
 %import "core/MapPos.i"
@@ -31,12 +29,8 @@
 %import "renderers/RedrawRequestListener.i"
 %import "ui/MapEventListener.i"
 
-// THE CAMERA, on the facade (#159). Until these existed the typed sugar on both platforms called
-// MapView directly, which is why it was the only part of the facade that could not be reproduced
-// from the C ABI - and why NativeScript and React Native had no camera without a per-platform port.
-//
-// Read-only attributes: the camera is MOVED by the methods below, never by writing a property, so
-// that one flight is one command instead of four racing animations (see BaseMapView::moveTo).
+// The camera on the facade (#159). Read-only: it is moved by the methods below, so one flight is one
+// command instead of four racing animations (see BaseMapView::moveTo).
 %attributeval(massif::BaseMapView, massif::MapPos, FocusPos, getFocusPos)
 // Where the camera IS, as opposed to what it looks at. At a low tilt the two are kilometres apart,
 // and a binding cannot derive one from the other without the projection surface.

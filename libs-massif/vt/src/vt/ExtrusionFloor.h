@@ -10,20 +10,15 @@
 namespace massif::vt {
 
     /**
-     * Which few of a footprint's vertices the drawn ground under a building is read at.
-     *
-     * The floor is the MAX ground over the footprint, and asking every vertex for it was 3 M
-     * elevation queries a second while panning (performance-log 26). Eight support points bound it
-     * instead - and they are footprint vertices, unlike a bbox corner, which is why mapbox's
-     * corner-sampled lift is not what we take here (04-terrain.md).
+     * Which few of a footprint's vertices the drawn ground under a building is read at: the floor is the max
+     * ground over eight support points, footprint vertices unlike mapbox's bbox corners (04-terrain.md).
      */
     struct ExtrusionFloor {
         static constexpr int SUPPORT_DIRECTIONS = 8;
 
         /**
-         * How far a point reaches along one support direction. The vertex scoring highest is that
-         * direction's support point. The diagonals are the ones a bbox misses: a building at 45
-         * degrees has its extremes there and its axis-aligned box corners on its neighbours.
+         * How far a point reaches along one support direction; the highest-scoring vertex is its support point.
+         * The diagonals catch the extremes of a building at 45 degrees, which a bbox misses.
          */
         static float supportScore(int direction, float x, float y) {
             switch (direction) {

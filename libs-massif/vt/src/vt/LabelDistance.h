@@ -10,37 +10,26 @@
 namespace massif::vt {
 
     /**
-     * How far a label may be from the camera before it is not worth placing.
-     *
-     * A label glyph is SCREEN-SPACE: it does not shrink with distance the way the geometry it names
-     * does, so a pitched view fills its horizon band with full-size labels for features kilometres
-     * away. Geometry needs no such cut and does not get one - mapbox and maplibre both apply this
-     * inside the symbol collision index alone, never to fills, lines or extrusions.
-     *
-     * Ported from maplibre's `CollisionIndex.perspectiveRatioCutoff` and mapbox's
-     * `minPerspectiveRatio` (both `symbol/collision_index.ts`).
+     * How far a label may be from the camera before it is not worth placing: glyphs are screen-space,
+     * so a pitched view would fill its horizon with full-size labels. Labels only, never geometry.
+     * Ported from maplibre `perspectiveRatioCutoff` / mapbox `minPerspectiveRatio` (symbol/collision_index.ts).
      */
     struct LabelDistance {
         /**
-         * mapbox's ratio: 1 at the map centre, falling toward 0.5 with distance. Expressed against
-         * the CAMERA-TO-CENTRE distance rather than in metres, so one cutoff holds at every zoom -
-         * a metre cap would cut a city block at z18 and nothing at all at z10.
+         * mapbox's ratio: 1 at the map centre, falling toward 0.5 with distance. Relative to the
+         * camera-to-centre distance, not metres, so one cutoff holds at every zoom.
          */
         static float perspectiveRatio(double cameraToCenter, double distance) {
             if (!(distance > 0) || !(cameraToCenter > 0)) {
-                return 1.0f; // no view to measure against: place it, as before
+                return 1.0f; // no view to measure against: place it
             }
             return static_cast<float>(0.5 + 0.5 * (cameraToCenter / distance));
         }
 
-        /**
-         * maplibre's 0.6, which cuts past 5x the camera-to-centre distance. mapbox uses 0.55 (10x)
-         * and explains the choice: at 10x "the label would be drawn at 10% the size of the features
-         * around it". The tighter of the two, since our horizon band is what this is for.
-         */
+        /** maplibre's 0.6 (cut past 5x the camera-to-centre distance), the tighter of maplibre and mapbox (0.55, 10x). */
         static constexpr float PERSPECTIVE_RATIO_CUTOFF = 0.6f;
 
-        /** The same cut in multiples of the camera-to-centre distance, what PERSPECTIVE_RATIO_CUTOFF works out to. */
+        /** PERSPECTIVE_RATIO_CUTOFF in multiples of the camera-to-centre distance. */
         static constexpr double DEFAULT_VIEW_DISTANCE = 5.0;
 
         /** Whether a label is past `viewDistance` multiples of the camera-to-centre distance; 0 = never. */
@@ -51,7 +40,7 @@ namespace massif::vt {
             return distance > cameraToCenter * viewDistance;
         }
 
-        /** The distance the cutoff corresponds to, for a caller that wants to reason in world units. */
+        /** The distance the cutoff corresponds to, in the units of cameraToCenter. */
         static double cutoffDistance(double cameraToCenter, float cutoff) {
             if (!(cutoff > 0.5f)) {
                 return 0; // 0.5 is the limit of the ratio: nothing is ever cut

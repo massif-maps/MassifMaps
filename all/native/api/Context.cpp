@@ -15,8 +15,8 @@
 namespace massif { namespace api {
 
     namespace {
-        // The projection reads default to for the duration of one event handler. Per thread, so a
-        // GL-thread emit and a UI-thread drain do not overwrite each other's.
+        // The projection reads default to during one event handler; per thread, so a GL-thread
+        // emit and a UI-thread drain do not overwrite each other's.
         thread_local std::string tActiveProjection;
 
         /** Saves and restores, so a handler that emits another event nests correctly. */
@@ -71,17 +71,13 @@ namespace massif { namespace api {
         }
 
         bool finite(const MapPos& pos) {
-            // Mercator sends the poles to infinity, and "inf" is not JSON. Refused rather than
-            // handed over as a number that will not parse.
+            // Mercator sends the poles to infinity, and "inf" is not JSON.
             return std::isfinite(pos.getX()) && std::isfinite(pos.getY()) && std::isfinite(pos.getZ());
         }
 
         /**
-         * Rewrites an encoded MapPos or MapBounds into another projection.
-         *
-         * The two shapes are told apart by decoding: bounds are a pair of positions, and a
-         * position never parses as one. Corner-wise is right for the axis-aligned projections
-         * reachable by name here.
+         * Rewrites an encoded MapPos or MapBounds into another projection. Corner-wise is right
+         * for the axis-aligned projections reachable by name here.
          */
         bool reproject(std::string& json, const Projection& source, const Projection& target) {
             MapBounds bounds;
@@ -107,12 +103,8 @@ namespace massif { namespace api {
         }
 
         /**
-         * The projection a position crosses the facade in when nobody named one.
-         *
-         * WGS84, not the object's own, so `lng`/`lat`/`alt` are honest field names in every
-         * binding and app code never names a projection for the common case - the same default
-         * maplibre, mapbox and google picked (#159). A per-read name still wins, and so does the
-         * one the running event handler asked for.
+         * The projection a position crosses the facade in when nobody named one: WGS84, not the
+         * object's own, as maplibre and mapbox do (#159).
          */
         const std::string& defaultProjection() {
             static const std::string name = "EPSG:4326";
@@ -120,11 +112,8 @@ namespace massif { namespace api {
         }
 
         /**
-         * One entry of a bag property - a style parameter, an HTTP header.
-         *
-         * A key the bag does not hold is UNKNOWN_PROPERTY, never an empty value: an undeclared
-         * style parameter is a mistake, and a blank is what used to hide it. getStyleParameter
-         * throws for one, so the exception means the same thing as a false return.
+         * One entry of a bag property - a style parameter, an HTTP header. A missing key is
+         * UNKNOWN_PROPERTY, never an empty value; getStyleParameter throws for one.
          */
         Result readBagEntry(const PropertyEntry& entry, const ObjectRef& target,
                             const std::string& key, PropertyValue& value) {
@@ -141,7 +130,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /** The write side. Called UNLOCKED - a style parameter write re-decodes the tiles. */
+        /** The write side. Called unlocked - a style parameter write re-decodes the tiles. */
         Result writeBagEntry(const PropertyEntry& entry, const ObjectRef& target,
                              const std::string& key, const PropertyValue& value) {
             if (!entry.indexed || !entry.indexed->setter) {
@@ -193,16 +182,8 @@ namespace massif { namespace api {
         registerStaticClasses();
     }
 
-    /*
-     * A class whose properties are all static has no instance, and every verb here is addressed by
-     * handle - so it gets one at construction, under kind "static" and its short name:
-     *
-     *   set(findObject("static", "Log"), "showDebug", true)
-     *
-     * Derived from the table rather than named here, so a new static class is covered without the
-     * facade knowing about it. The sentinel exists only to be a non-null address; the generated
-     * static thunks do not take an obj at all.
-     */
+    // An all-static class has no instance, so it gets a handle under kind "static" and its short
+    // name, e.g. findObject("static", "Log"). The sentinel is only a non-null address.
     void Context::registerStaticClasses() {
         for (std::size_t index = 0; index < getClassCount(); index++) {
             const ClassEntry* entry = getClass(index);
@@ -251,9 +232,7 @@ namespace massif { namespace api {
         std::lock_guard<std::mutex> lock(_mutex);
         auto& kindIds = _ids[kind];
         if (kindIds.find(id) != kindIds.end()) {
-            // Said out loud: adopt() reports a duplicate as a handle of 0, and a binding can only
-            // turn that back into "could not register X" - which names neither the id nor the
-            // reason. This is the line that makes it a two-second diagnosis.
+            // adopt() reports a duplicate as a bare 0, so this log is the only place the id shows.
             Log::Errorf("Context::registerObject: '%s' is already registered under kind '%s'",
                         id.c_str(), kind.c_str());
             return RESULT_DUPLICATE_ID;
@@ -359,8 +338,7 @@ namespace massif { namespace api {
             return false;
         }
 
-        // Pending calls die with their target too, or a queued one keeps it alive - through the
-        // retain it took - long after the app dropped it.
+        // Pending calls die with their target, or a queued one's retain keeps it alive.
         cancelCallsLocked(idIt->second);
 
         std::uint32_t index = idIt->second & INDEX_MASK;
@@ -368,8 +346,7 @@ namespace massif { namespace api {
             _slots[index].idDropped = true;
             freeSlot(index);
         }
-        // Subscriptions die with their target: otherwise the first destroy on an object with a
-        // handler is a use-after-free, and that is not the app's job to prevent.
+        // Subscriptions die with their target, or its first destroy with a handler is a use-after-free.
         _events.unsubscribeAll(idIt->second);
         kindIt->second.erase(idIt);
         return true;
@@ -388,8 +365,7 @@ namespace massif { namespace api {
         slot.projection.reset();
         slot.kind.clear();
         slot.id.clear();
-        // Bumping the generation is what turns a stale handle into an error instead of a
-        // reference to whatever takes the slot next. Wrapping is the ABA window.
+        // A new generation turns a stale handle into an error; wrapping is the ABA window.
         slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;
         _freeSlots.push_back(index);
     }
@@ -434,14 +410,12 @@ namespace massif { namespace api {
             return NULL_SUBSCRIPTION;
         }
         if (!projection.empty() && !Projections::find(projection)) {
-            // Refused here rather than silently ignored: a typo would otherwise show up as
-            // coordinates that look plausible and are in the wrong system.
+            // Refused, or a typo reads as plausible coordinates in the wrong system.
             Log::Errorf("Context::subscribe: unknown projection '%s'", projection.c_str());
             return NULL_SUBSCRIPTION;
         }
         if (consume && delivery != DELIVERY_ORIGIN) {
-            // The SDK asks whether the event was consumed NOW; a queued handler answers later.
-            // Rejected at registration rather than discovered as a race.
+            // The SDK asks whether the event was consumed now; a queued handler answers later.
             Log::Error("Context::subscribe: a consuming handler must be DELIVERY_ORIGIN");
             return NULL_SUBSCRIPTION;
         }
@@ -484,9 +458,8 @@ namespace massif { namespace api {
     }
 
     bool Context::emit(Handle handle, const std::string& event, Handle payload) {
-        // Two phases: the handler list cannot be walked unlocked, and the handlers - app code - must
-        // not run under the lock. Each subscription is resolved again just before it is called, so a
-        // handler removed earlier in this pass is skipped and a recycled slot fails its generation.
+        // Two phases: handlers must not run under the lock. Each subscription is resolved again just
+        // before its call, so one removed earlier in this pass is skipped.
         std::vector<Subscription> subscriptions;
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -501,8 +474,7 @@ namespace massif { namespace api {
                 if (!_events.lookup(subscription, dispatch)) {
                     continue;
                 }
-                // Under the same lock as the lookup: the window is state on the entry, and two
-                // threads emitting at once would otherwise both find themselves due.
+                // Under the lookup's lock, or two threads emitting at once would both be due.
                 if (!_events.due(subscription, std::chrono::steady_clock::now())) {
                     continue;
                 }
@@ -621,9 +593,7 @@ namespace massif { namespace api {
 
     Result Context::call(Handle handle, const std::string& method, const std::string& argsJson,
                          PropertyValue& result) {
-        // A method may be addressed through a path, the same way a property is:
-        // "tileDecoder.setStyleParameter" on a layer. Everything before the last dot walks object
-        // properties; without it an app would have to register every intermediate just to call one.
+        // Everything before the last dot walks object properties: "tileDecoder.setStyleParameter".
         std::size_t dot = method.rfind('.');
         std::string path = dot == std::string::npos ? std::string() : method.substr(0, dot);
         std::string name = dot == std::string::npos ? method : method.substr(dot + 1);
@@ -651,9 +621,8 @@ namespace massif { namespace api {
         if (!CallArgs::parse(argsJson, args)) {
             return RESULT_BAD_SPEC;
         }
-        // A position argument arrives in the same projection a property read hands back, so
-        // moveTo takes what screenToMap returned. Resolved here rather than in the thunk: a
-        // method is not required to know that a projection exists (#159).
+        // Position arguments use the projection a read returns, so moveTo takes what screenToMap
+        // gave; resolved here so a method need not know projections exist (#159).
         args.setProjections(Projections::find(wantedProjection(std::string())), objectProjection);
         // Unlocked: loadTile does network I/O, and a method reaching back into the context - to
         // register its result, which every object-returning one does - would deadlock.
@@ -664,16 +633,13 @@ namespace massif { namespace api {
             Log::Errorf("Context::call: '%s' threw: %s", name.c_str(), ex.what());
             return RESULT_REJECTED;
         }
-        // BAD_SPEC from a thunk means it could not read an argument, and it has no way to say
-        // which - the caller gets a bare code and a log with nothing in it. The arguments ARE the
-        // diagnosis, so they are printed here rather than in every thunk.
+        // A thunk cannot say which argument it could not read, so the arguments are logged here.
         if (called == RESULT_BAD_SPEC) {
             Log::Errorf("Context::call: %s.%s rejected its arguments: %s",
                         cppClass ? cppClass : "?", name.c_str(), argsJson.c_str());
         }
-        // A result is expressed in whatever produced it - a search's features are in its data
-        // source's projection - and carrying that over is what makes the positions convertible.
-        // Only for a directly addressed method: an intermediate reached by a path has no handle.
+        // A result inherits its producer's projection so its positions stay convertible. Only for a
+        // directly addressed method: an intermediate reached by a path has no handle.
         if (called == RESULT_OK && result.type == PT_OBJECT && path.empty()) {
             Handle produced = static_cast<Handle>(result.intValue);
             if (!getObjectProjection(produced)) {
@@ -696,8 +662,7 @@ namespace massif { namespace api {
             result = static_cast<Handle>(value.intValue);
             return RESULT_OK;
         }
-        // A scalar has no handle of its own, so it travels as a Variant a path reads out of -
-        // the same shape a JSON result already has, and one rule instead of two.
+        // A scalar has no handle of its own, so it travels as a Variant, like a JSON result.
         auto variant = std::make_shared<Variant>(toVariant(value));
         return registerResult("result", variant, "massif::Variant", result);
     }
@@ -726,8 +691,7 @@ namespace massif { namespace api {
             if (!slot) {
                 return RESULT_BAD_HANDLE;
             }
-            // Checked before queueing, so a typo is an error the caller sees rather than a line
-            // in a log minutes later. The same path form as call.
+            // Checked before queueing, so a typo is an error the caller sees, not a log line later.
             std::size_t dot = method.rfind('.');
             ObjectRef target;
             Result resolved = resolveTarget(handle,
@@ -750,15 +714,13 @@ namespace massif { namespace api {
             _calls.push_back(pending);
             startWorkerIfNeeded();
         }
-        // notify_all, not notify_one: waitForCalls blocks on the same condition, and waking it
-        // instead of the worker would hang.
+        // notify_all: waitForCalls waits on the same condition, and waking it instead of a worker hangs.
         _callCondition.notify_all();
         return RESULT_OK;
     }
 
-    // Grown on demand: most apps make no async call at all, and one that makes them one at a time
-    // never needs a second thread. The measure is DISTINCT targets, not calls - three loadTiles on
-    // one source are serialised, so a second worker for them would only idle.
+    // Grown on demand, one worker per distinct target: calls on one target are serialised, so a
+    // second worker for them would only idle.
     void Context::startWorkerIfNeeded() {
         if (_stopping || _workers.size() >= MAX_WORKERS) {
             return;
@@ -797,8 +759,7 @@ namespace massif { namespace api {
             AsyncCall pending;
             {
                 std::unique_lock<std::mutex> lock(_mutex);
-                // Not "a call is queued": one whose target is already busy has to keep waiting, or
-                // the per-target order this exists to preserve is lost.
+                // A call whose target is busy must keep waiting, or the per-target order is lost.
                 _callCondition.wait(lock, [this]() {
                     return _stopping || claimableCall() != _calls.end();
                 });
@@ -836,13 +797,11 @@ namespace massif { namespace api {
                     }
                 }
             }
-            // Cancelled while it ran: the work could not be stopped, but the result is dropped
-            // rather than delivered to a caller that has moved on.
+            // Cancelled while it ran: the work could not be stopped, but the result is dropped.
             if (!cancelled) {
                 emit(pending.target, pending.event, payload);
             }
-            // The payload was the call's result and nobody else owns it; a queued handler holds
-            // its own retain through the emit, so this does not free it early.
+            // Nobody else owns the payload; a queued handler holds its own retain through the emit.
             if (payload != NULL_HANDLE) {
                 destroy(payload);
             }
@@ -893,8 +852,7 @@ namespace massif { namespace api {
                 ++it;
             }
         }
-        // A running one, if it is this object's, keeps running but delivers nothing. Only one can
-        // be, since calls on a target are serialised, but the loop costs nothing and says so.
+        // A running one keeps running but delivers nothing.
         for (RunningCall& running : _running) {
             if (running.target == handle && !running.cancelled) {
                 running.cancelled = true;
@@ -984,8 +942,7 @@ namespace massif { namespace api {
     namespace {
         /**
          * Walks the rest of a path inside a Variant: object keys, and a numeric segment indexes
-         * an array. This is what lets "properties.name" read one key without the caller having to
-         * materialise and parse the whole bag.
+         * an array, so "properties.name" reads one key without parsing the whole bag.
          */
         bool readVariantPath(const Variant& root, const std::string& path, std::size_t start,
                              PropertyValue& value) {
@@ -1073,9 +1030,8 @@ namespace massif { namespace api {
         if (!indexKey.empty()) {
             return readBagEntry(*entry, target, indexKey, value);
         }
-        // UNLOCKED, as the setter is: a getter takes the object's own lock, and the render thread
-        // takes that one first before reaching this context through a map-moved listener. Guarded,
-        // because an exception crossing a binding boundary kills the process.
+        // Unlocked: the render thread takes the object's lock before reaching this context through a
+        // map-moved listener. Guarded: an exception crossing a binding boundary kills the process.
         try {
             entry->getter(target.obj.get(), value);
         } catch (const std::exception& ex) {
@@ -1129,9 +1085,8 @@ namespace massif { namespace api {
             if (!entry->setter && !(entry->indexed && entry->indexed->setter)) {
                 return RESULT_UNSUPPORTED_TYPE;
             }
-            // An enum written as its constant name: JSON has no enums, so specs, URL queries and
-            // bindings all send text, and asLong would strtoll it to 0 - a real value for nearly
-            // every enum here. An unrecognised name is left alone, so a numeric string still parses.
+            // An enum may arrive as its constant name; asLong would strtoll it to 0, a real value.
+            // An unrecognised name is left alone, so a numeric string still parses.
             if (entry->type == PT_ENUM && value.type == PT_STRING) {
                 long long constant = 0;
                 if (enumValueOf(value.stringValue.c_str(), constant)) {
@@ -1139,9 +1094,7 @@ namespace massif { namespace api {
                     effective = &converted;
                 }
             }
-            // A position is WRITTEN in the projection the caller names, which is the one a read
-            // returns it in - or a value read and written back would land somewhere else
-            // entirely, silently. Reading names it per call; this is the write's half of it.
+            // Written in the projection a read returns, so a read-then-write round trip is exact.
             if ((entry->flags & PF_POSITION) &&
                 (value.type == PT_STRING || value.type == PT_STRUCT)) {
                 std::shared_ptr<Projection> from = Projections::find(wantedProjection(projection));
@@ -1162,9 +1115,8 @@ namespace massif { namespace api {
         if (!indexKey.empty()) {
             return writeBagEntry(*entry, target, indexKey, *effective);
         }
-        // The whole bag at once, from a JSON object - which is how a binding writes several style
-        // parameters in ONE crossing instead of one call per key. A map property has a real setter
-        // and goes through the struct codec below instead.
+        // The whole bag at once, from a JSON object. A map property has a real setter and goes
+        // through the struct codec below instead.
         if (entry->indexed && !entry->setter) {
             Variant object;
             try {
@@ -1186,9 +1138,8 @@ namespace massif { namespace api {
             }
             return first;
         }
-        // UNLOCKED, for the same reason call() is: the setter notifies SYNCHRONOUSLY and the
-        // notification reaches back into this context on a non-recursive mutex. Safe to keep using
-        // target and entry; guarded, because the thunk validates and can throw across a binding.
+        // Unlocked: the setter notifies synchronously, reaching back into this non-recursive mutex.
+        // Guarded, because the thunk validates and can throw across a binding.
         try {
             entry->setter(target.obj.get(), *effective);
         } catch (const std::exception& ex) {
@@ -1243,8 +1194,6 @@ namespace massif { namespace api {
             return NULL_HANDLE;
         }
         ObjectRef child;
-        // resolveTarget already walks to a child and reads it; registering the result is what
-        // turns "read through it" into "hold it".
         if (resolveTarget(handle, path, child) != RESULT_OK || !child.obj) {
             return NULL_HANDLE;
         }
@@ -1277,8 +1226,7 @@ namespace massif { namespace api {
                 if (!slot) {
                     return RESULT_BAD_HANDLE;
                 }
-                // Checked BEFORE the cast, which is from shared_ptr<void> and would otherwise be
-                // undefined for the wrong class.
+                // Checked before the cast from shared_ptr<void>, undefined for the wrong class.
                 if (!isSubclassOf(slot->cppClass, entry->objectClass)) {
                     return RESULT_UNKNOWN_CLASS;
                 }
@@ -1286,8 +1234,7 @@ namespace massif { namespace api {
                 assigned.cppClass = slot->cppClass;
             }
         }
-        // UNLOCKED - see setProperty. This is the call the deadlock was found on: setTerrainOptions
-        // notifies, the notification reaches onMapMoved, and emit() re-locks the same mutex on the
+        // Unlocked: setTerrainOptions notifies onMapMoved, whose emit() re-locks this mutex on the
         // same thread. Guarded, because setBaseProjection and others validate and throw.
         try {
             entry->objectSetter(target.obj.get(), assigned);
@@ -1337,16 +1284,14 @@ namespace massif { namespace api {
         target.obj = slot->obj;
         target.cppClass = slot->cppClass;
 
-        // A Variant handle IS a JSON document, so the whole path - including an empty one, meaning
-        // the document itself - is read inside it. This is what makes an async call's scalar
-        // result readable without inventing a result class for it.
+        // A Variant handle is a JSON document: the whole path, even an empty one, is read inside it.
         if (slot->cppClass && std::string(slot->cppClass) == "massif::Variant" && variantRest) {
             *variantRest = 0;
             return &VARIANT_ROOT;
         }
 
-        // A dotted path walks OBJECT properties: every segment but the last has to be one, and
-        // the reference keeps each intermediate alive while the walk continues.
+        // Every segment but the last must be an OBJECT property; the reference keeps each
+        // intermediate alive during the walk.
         std::size_t start = 0;
         while (true) {
             std::size_t dot = path.find('.', start);
@@ -1359,8 +1304,7 @@ namespace massif { namespace api {
             }
             const PropertyEntry* entry = findProperty(classEntry, segment.c_str());
             if (!entry) {
-                // A readable spelling - "fog" for "fogOptions" - resolves to the real property
-                // here, so nothing downstream has to know an alias was used.
+                // An alias ("fog" for "fogOptions") resolves here, so nothing downstream sees it.
                 if (const char* aliased = findAlias(classEntry, segment.c_str())) {
                     entry = findProperty(classEntry, aliased);
                 }
@@ -1372,15 +1316,13 @@ namespace massif { namespace api {
             if (dot == std::string::npos) {
                 return entry;
             }
-            // A Variant is where object traversal stops and JSON traversal begins: the caller
-            // reads the Variant, then walks what is left of the path inside it. A STRUCT carries
-            // JSON too, so clickInfo.clickType and bounds.0 walk the same way.
+            // Object traversal stops at a Variant or a STRUCT (both JSON); the caller walks the rest
+            // of the path inside it, e.g. clickInfo.clickType, bounds.0.
             if ((entry->type == PT_VARIANT || entry->type == PT_STRUCT) && variantRest) {
                 *variantRest = dot + 1;
                 return entry;
             }
-            // A bag is where the walk stops too: the rest of the path is the KEY, not another
-            // object. "params.water_color", "httpHeaders.User-Agent".
+            // At a bag the rest of the path is the key: "params.water_color".
             if (entry->indexed && indexKey) {
                 *indexKey = path.substr(dot + 1);
                 return entry;

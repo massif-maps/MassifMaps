@@ -12,15 +12,12 @@
 namespace massif {
 
     /**
-     * What a zoom NUMBER means: how far the camera sits from its focus.
-     *
-     * The SDK calibrates on a 256-pixel tile, maplibre and mapbox-gl on a 512-pixel one, so the
-     * same number is a level apart. Options::ZoomOffset bridges them, and it is a RENUMBERING
-     * only - see docs/maintenance/web-build.md for what else had to move, and what did not.
+     * What a zoom number means: how far the camera sits from its focus. The SDK calibrates on a 256-pixel tile, maplibre and
+     * mapbox-gl on 512, so the same number is a level apart; Options::ZoomOffset only renumbers, see docs/maintenance/web-build.md.
      */
     struct ZoomConvention {
         /**
-         * The tile the CAMERA is calibrated on, in screen points. Not what the LOD measures against.
+         * The tile the camera is calibrated on, in screen points. Not what the LOD measures against.
          * @param tileDrawSize Options::getTileDrawSize.
          * @param zoomOffset Options::getZoomOffset, in zoom levels.
          */
@@ -29,7 +26,7 @@ namespace massif {
         }
 
         /**
-         * The zoom the RENDERER works in: vt sizes by `2^(zoom - tileZoom)`, so it needs the zoom
+         * The zoom the renderer works in: vt sizes by `2^(zoom - tileZoom)`, so it needs the zoom
          * the tiles were chosen for, not the one the app reads.
          */
         static double renderZoom(double zoom, double zoomOffset) {

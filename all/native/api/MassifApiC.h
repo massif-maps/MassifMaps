@@ -8,22 +8,9 @@
 #define _MASSIF_API_MASSIFAPIC_H_
 
 /*
- * The facade API as a flat C ABI.
- *
- * This is the surface NativeScript, React Native, a WASM build and any other language with an FFI
- * bind to: no C++ types, no exceptions, no ownership rules beyond the ones stated here. Everything
- * is an int result code and a uint32 handle - which is also a JavaScript number, so nothing needs
- * BigInt.
- *
- * The invariant this exists to keep: ADDING A FEATURE NEVER ADDS A FUNCTION HERE. A new source
- * type is a spec factory, a new option is a row in the generated property table, a new event is a
- * bridge, a new method is a table row. The count below grows with TYPES, not with features.
- *
- * The exception, and the only one: plumbing the caller's own CODE in. mm_on takes a handler,
- * mm_set_ui_dispatcher takes a loop, mm_source_create_custom takes a tile loader. None of them is
- * a feature - each is a seam a table cannot describe, because the implementation is the caller's.
- *
- * See docs/internals/api-facade.md.
+ * The facade API as a flat C ABI: int result codes and uint32 handles, no C++ types or exceptions.
+ * A feature never adds a function here, only a table row; the sole exception plugs in caller code
+ * (handlers, dispatchers, tile loaders). See docs/internals/api-facade.md.
  */
 
 #include <stddef.h>
@@ -55,9 +42,8 @@ typedef void* mm_ctx;
 #define MM_NULL_CALL 0u
 
 /*
- * Result codes. 0..99 mirror massif::api::Result one for one - a static assert in the
- * implementation keeps them in step. 100 and above exist only here, for mistakes only a C caller
- * can make.
+ * Result codes. 0..99 mirror massif::api::Result (a static assert keeps them in step); 100 and
+ * above are mistakes only a C caller can make.
  */
 #define MM_OK                 0
 #define MM_BAD_HANDLE         1  /* never registered, or freed and the generation moved on */
@@ -97,8 +83,7 @@ MM_API int mm_abi_version(void);
 
 /**
  * The name of a result code, e.g. "MM_UNKNOWN_PROPERTY", or "MM_UNKNOWN" for one from a newer
- * build. Static storage; do not free. So a binding can log something readable without keeping its
- * own copy of the table.
+ * build. Static storage; do not free.
  */
 MM_API const char* mm_result_name(int result);
 
@@ -110,12 +95,9 @@ MM_API mm_ctx mm_context_default(void);
 /* --- create / destroy ---------------------------------------------------------------------- */
 
 /**
- * Builds an object from a JSON spec and registers it under a kind and id.
- *
- * An IDENTICAL spec under an existing id returns the existing handle, so two maps can share one
- * source without coordinating; a different spec under the same id is MM_DUPLICATE_ID. Keys the
- * factory does not need are applied as properties, and a key the SDK does not know is dropped with
- * a warning rather than failing the whole spec.
+ * Builds an object from a JSON spec and registers it under a kind and id. An existing id with an
+ * identical spec returns its handle; a different spec is MM_DUPLICATE_ID. Keys the factory does not
+ * take are applied as properties, unknown ones dropped with a warning.
  */
 MM_API int mm_create(mm_ctx ctx, const char* kind, const char* id, const char* json,
                      mm_handle* out);
@@ -127,8 +109,7 @@ MM_API int mm_create(mm_ctx ctx, const char* kind, const char* id, const char* j
 MM_API int mm_destroy(mm_ctx ctx, const char* kind, const char* id);
 
 /**
- * The same, addressed by handle - which is what a caller holding a call result has, since a result
- * has no id the app chose.
+ * The same, addressed by handle - what a caller holding a call result has.
  */
 MM_API int mm_destroy_handle(mm_ctx ctx, mm_handle handle);
 
@@ -138,23 +119,17 @@ MM_API int mm_destroy_handle(mm_ctx ctx, mm_handle handle);
 MM_API int mm_find(mm_ctx ctx, const char* kind, const char* id, mm_handle* out);
 
 /**
- * Whether a handle still resolves. MM_OK or MM_BAD_HANDLE.
- *
- * A binding needs this to tell "destroyed" from "never existed" without a property read, which
- * can legitimately fail for another reason.
+ * Whether a handle still resolves: MM_OK or MM_BAD_HANDLE, without a property read that can fail
+ * for another reason.
  */
 MM_API int mm_valid(mm_ctx ctx, mm_handle handle);
 
 /* --- set / get ----------------------------------------------------------------------------- */
 
 /*
- * The path may walk object properties: "fogOptions.rangeStart", and it may continue INSIDE a
- * JSON value: "feature.properties.name", or index an array: "feature.properties.tags.1". A last
- * segment may also be the KEY of a bag property: "params.water_color" on a style. A bag takes a
- * JSON object too, which writes every key in ONE crossing.
- *
- * Types coerce both ways - a bool read as a double is 1 or 0, a double written to a bool is its
- * truthiness - so a binding with one numeric type does not need to know which it is dealing with.
+ * A path walks object properties ("fogOptions.rangeStart"), JSON values ("feature.properties.tags.1")
+ * and bag keys ("params.water_color"); a bag also takes a JSON object. Types coerce both ways: a bool
+ * reads as 1 or 0, a double writes to a bool as its truthiness.
  */
 
 MM_API int mm_set_bool(mm_ctx ctx, mm_handle handle, const char* path, int value);
@@ -164,24 +139,15 @@ MM_API int mm_set_double(mm_ctx ctx, mm_handle handle, const char* path, double 
 MM_API int mm_set_string(mm_ctx ctx, mm_handle handle, const char* path, const char* value);
 
 /**
- * Writes several properties at once, from a JSON object of PATH to value.
- *
- * One crossing rather than one per key: a binding's `apply({...})` over a dozen options was a
- * dozen FFI calls, and the JSON it already had to build for a spec is the same shape.
- *
- * Every key is attempted; the FIRST failure is returned, so one unknown name does not hide what
- * did apply. @param projection applies to the positions among them, as in mm_set_position.
+ * Writes several properties in one crossing, from a JSON object of path to value. Every key is
+ * attempted and the first failure is returned.
+ * @param projection Applies to the positions among them, as in mm_set_position.
  */
 MM_API int mm_set_json(mm_ctx ctx, mm_handle handle, const char* json, const char* projection);
 
 /**
  * Writes a position, or bounds, from doubles - the write counterpart of mm_get_position.
- *
- * mm_set_string takes a position in the projection the running handler asked for, and in WGS84
- * outside one. That is right until an app holds coordinates in another system: those had to be
- * converted by hand, and a mistake reads as a plausible position somewhere else entirely.
- *
- * @param projection A well-known name the values are IN, e.g. "EPSG:3857". Null or empty behaves
+ * @param projection A well-known name the values are in, e.g. "EPSG:3857". Null or empty behaves
  *                   like mm_set_string.
  * @param count 2 or 3 numbers are a position; 4 or 6 are BOUNDS, as a pair of positions.
  */
@@ -190,16 +156,13 @@ MM_API int mm_set_position(mm_ctx ctx, mm_handle handle, const char* path, const
 
 /**
  * Points an object property at another registered object - a layer's data source, a decoder's
- * style. MM_NULL_HANDLE clears it.
- *
- * The value's class is checked against the property's first, so pointing a style property at a
- * source is MM_UNKNOWN_CLASS rather than undefined behaviour.
+ * style. MM_NULL_HANDLE clears it; a value of the wrong class is MM_UNKNOWN_CLASS.
  */
 MM_API int mm_set_object(mm_ctx ctx, mm_handle handle, const char* path, mm_handle value);
 
 /**
- * The object an object property points at, as a handle the CALLER OWNS - the read counterpart of
- * mm_set_object, and the only way to SHARE a child rather than build it twice.
+ * The object an object property points at, as a handle the caller owns - the read counterpart of
+ * mm_set_object, and how a child is shared rather than built twice.
  * @return 0 when the path does not resolve, is not an object property, or is null.
  */
 MM_API mm_handle mm_get_object(mm_ctx ctx, mm_handle handle, const char* path);
@@ -209,12 +172,9 @@ MM_API int mm_get_long(mm_ctx ctx, mm_handle handle, const char* path, int64_t* 
 MM_API int mm_get_double(mm_ctx ctx, mm_handle handle, const char* path, double* value);
 
 /**
- * Reads a string, a struct as JSON, or a JSON subtree.
- *
- * Two-call protocol: pass a null buffer to learn the size, allocate, call again. `needed` is the
- * byte count INCLUDING the terminating NUL, and is always set on MM_OK and MM_BUFFER_TOO_SMALL, so
- * a caller that guessed can retry without asking twice.
- *
+ * Reads a string, a struct as JSON, or a JSON subtree. Two-call protocol: pass a null buffer to
+ * learn the size, then allocate; `needed` includes the terminating NUL and is always set on MM_OK
+ * and MM_BUFFER_TOO_SMALL.
  * @param projection A well-known name, e.g. "EPSG:3857", to read a position in. Null or empty
  *                   means the projection the running event handler asked for, and WGS84 when there
  *                   is none. Ignored for anything that is not a coordinate.
@@ -223,18 +183,13 @@ MM_API int mm_get_string(mm_ctx ctx, mm_handle handle, const char* path, const c
                          char* buffer, size_t size, size_t* needed);
 
 /**
- * Reads a position, or anything else that is a small array of numbers, straight into doubles.
- *
- * mm_get_string would hand a click handler a JSON string to allocate and parse, per event. JSI,
- * WASM and dart:ffi all want the numbers. No two-call protocol here on purpose: a position is at
- * most 3 doubles and a bounds 6, so the caller passes a fixed buffer and is told how many were
- * there.
- *
+ * Reads a position, or any small array of numbers, straight into doubles - no JSON to parse per
+ * event. No two-call protocol: a position is at most 3 doubles and bounds 6, so pass a fixed buffer.
  * @param projection A well-known name, e.g. "EPSG:3857". Null or empty means the projection the
  *                   running event handler asked for, and WGS84 when there is none.
  * @param out Filled with up to `count` numbers. May be null to ask only how many there are.
  * @param count The capacity of `out`.
- * @param needed Set to how many numbers the value HAS, whether or not they fit.
+ * @param needed Set to how many numbers the value has, whether or not they fit.
  * @return MM_OK, MM_BUFFER_TOO_SMALL when there are more than `count`, or the read's own error.
  *         MM_UNSUPPORTED_TYPE when the value is not an array of numbers.
  */
@@ -243,10 +198,7 @@ MM_API int mm_get_position(mm_ctx ctx, mm_handle handle, const char* path, const
 
 /* --- binary and bulk ----------------------------------------------------------------------- */
 
-/*
- * Neither of these is allowed to become a string. A tile is a blob and an elevation profile is
- * thousands of numbers; encoding either as JSON is what this API exists to avoid.
- */
+/* Neither of these becomes a string: a tile is a blob, an elevation profile thousands of numbers. */
 
 /**
  * The size in bytes of a binary property, e.g. "data" on a tile. An empty path means the handle
@@ -271,35 +223,25 @@ MM_API int mm_doubles_copy(mm_ctx ctx, mm_handle handle, double* buffer, size_t 
 /* --- call ---------------------------------------------------------------------------------- */
 
 /**
- * Runs a method on an object.
- *
- * The result is ALWAYS a handle THE CALLER OWNS - pass it to mm_destroy_handle. An object result
- * is that object; anything else is a JSON document read with an empty path.
- *
+ * Runs a method on an object. The result is always a handle the caller owns - pass it to
+ * mm_destroy_handle. An object result is that object; anything else is a JSON document read with
+ * an empty path.
  * @param args_json The arguments as a JSON array, e.g. "[[8467,5852,14]]". Null for none.
  */
 MM_API int mm_call(mm_ctx ctx, mm_handle handle, const char* method, const char* args_json,
                    mm_handle* result);
 
 /**
- * The same, on a worker thread, with the result delivered as an event on the object.
- *
- * Subscribe to `event` first; the payload is the result, and 0 means the call failed. The payload
- * is freed once the handlers have run, so unlike mm_call nothing has to be destroyed by hand.
- *
- * The handle, the method and the argument JSON are checked before anything is queued, so a mistake
- * is reported here rather than to a log later.
+ * The same, on a worker thread, with the result delivered as `event` on the object (subscribe
+ * first). A payload of 0 means failure; it is freed once the handlers have run. The handle, method
+ * and argument JSON are checked before anything is queued.
  */
 MM_API int mm_call_async(mm_ctx ctx, mm_handle handle, const char* method, const char* args_json,
                          const char* event, mm_call_id* call);
 
 /**
- * Cancels a queued or running async call.
- *
- * Cancelling stops a call being STARTED and stops its result being DELIVERED. It cannot abort one
- * already running - the SDK's load paths take no cancellation token - so a cancelled call in
- * flight finishes and its result is dropped. Either way no event fires.
- *
+ * Cancels a queued or running async call: it will not start and no event fires, but a call in
+ * flight is not aborted - it finishes and its result is dropped.
  * @return MM_OK when it was queued or running, MM_BAD_HANDLE when it had already finished.
  */
 MM_API int mm_cancel_call(mm_ctx ctx, mm_call_id call);
@@ -312,20 +254,13 @@ MM_API int mm_cancel_calls(mm_ctx ctx, mm_handle handle, int* count);
 /** The tile is an encoded file - PNG, JPEG, WEBP, or a vector tile's protobuf. */
 #define MM_TILE_ENCODED 0
 /**
- * The tile is width * height * 4 bytes of premultiplied RGBA, already decoded.
- *
- * For a source that produces pixels rather than a file. The alternative is to encode a PNG the
- * SDK immediately decodes again, which is two codecs and three copies per tile.
+ * The tile is width * height * 4 bytes of premultiplied RGBA, already decoded - no PNG round trip.
  */
 #define MM_TILE_RGBA8   1
 
 /**
- * Hands one tile's bytes to the SDK.
- *
- * Call it from inside an mm_tile_loader, at most once, WHILE THE BUFFER IS STILL ALIVE: the SDK
- * copies during this call, which is what makes a stack buffer legal and leaves nothing to free.
- * A loader that never calls it is saying "no such tile", which is not an error.
- *
+ * Hands one tile's bytes to the SDK. Call it from inside an mm_tile_loader, at most once: the SDK
+ * copies during the call, so a stack buffer is fine. Never calling it means "no such tile".
  * @param sink_data The pointer handed to the loader. Not yours to interpret.
  * @param format MM_TILE_ENCODED or MM_TILE_RGBA8.
  * @param width, height Pixel dimensions. Required for MM_TILE_RGBA8, ignored otherwise.
@@ -334,11 +269,8 @@ typedef void (*mm_tile_sink)(void* sink_data, const void* data, size_t size,
                              int format, int width, int height);
 
 /**
- * Produces one tile of the SDK's grid.
- *
- * Called on the SDK's tile threads, SEVERAL AT ONCE - it must be thread-safe. Nothing serialises
- * it, because a source that can answer in parallel should.
- *
+ * Produces one tile of the SDK's grid. Called on several tile threads at once: it must be
+ * thread-safe.
  * @param zoom, x, y The tile, in the usual XYZ scheme with y running south.
  * @param sink Call it with the bytes; skip it for a tile that does not exist.
  * @return MM_OK, or MM_FAILED when the tile should have existed and could not be produced.
@@ -357,24 +289,9 @@ typedef struct {
 } mm_tile_source;
 
 /**
- * Registers a tile source the CALLER implements, under an id, so a layer spec can name it.
- *
- * This is the one thing a spec factory cannot express: not a new source TYPE - those are
- * generated - but a source whose implementation lives outside the SDK. It is the native
- * counterpart of subclassing TileDataSource in Java, and the only one available to a second
- * shared library, which cannot derive from a C++ class the SDK does not export.
- *
- * Both tile kinds work: return encoded images for a "raster" layer, or vector tile protobuf for a
- * "vector" one - the layer decides how the bytes are read.
- *
- *   mm_tile_source source = {0, 14, load_tile, close_dataset, dataset};
- *   mm_handle handle;
- *   mm_source_create_custom(ctx, "dem", &source, &handle);
- *   mm_create(ctx, "layer", "dem", "{\"type\":\"raster\",\"source\":\"dem\"}", NULL);
- *
- * On anything but MM_OK nothing was taken: `destroy` is NOT called, and user_data stays the
- * caller's to retry or free.
- *
+ * Registers a tile source the caller implements, under an id, so a layer spec can name it: encoded
+ * images for a "raster" layer, vector tile protobuf for a "vector" one. On anything but MM_OK nothing
+ * was taken: `destroy` is not called and user_data stays the caller's.
  * @param id The source id. Must be free, as for any other create.
  * @param out The handle. Optional.
  * @return MM_OK, MM_DUPLICATE_ID, or MM_BAD_SPEC when load_tile is null.
@@ -383,11 +300,8 @@ MM_API int mm_source_create_custom(mm_ctx ctx, const char* id, const mm_tile_sou
                                    mm_handle* out);
 
 /**
- * Tells the layers reading a source that its tiles changed, so they reload.
- *
- * For a custom source whose underlying file was replaced. Not specific to custom sources, but
- * this is the only kind whose content can change without the SDK doing the changing.
- *
+ * Tells the layers reading a source that its tiles changed, so they reload - e.g. a custom source
+ * whose underlying file was replaced.
  * @param remove_tiles Non-zero to drop the cached tiles first, rather than replacing each as its
  *        reload finishes. Non-zero flashes; zero can show stale tiles for a moment.
  */
@@ -397,9 +311,7 @@ MM_API int mm_source_notify_changed(mm_ctx ctx, mm_handle handle, int remove_til
 
 /**
  * Subscribes to an event on an object. Handlers run in registration order.
- *
- * @param opts_json A JSON object, or null for the defaults. Options, rather than parameters, so a
- *        new one never changes this signature:
+ * @param opts_json A JSON object of options, or null for the defaults:
  *          {"delivery":"origin"|"ui"|"background",   where the handler runs, default "origin"
  *           "consume":true,      its return value can stop the event; requires "origin"
  *           "coalesce":true,     replace a pending event rather than queueing a second
@@ -419,11 +331,9 @@ MM_API int mm_off_event(mm_ctx ctx, mm_handle handle, const char* event, int* co
 MM_API int mm_off_all(mm_ctx ctx, mm_handle handle, int* count);
 
 /**
- * Registers how to reach the embedder's loop, for subscriptions that asked for "ui" delivery.
- *
- * The dispatcher is called from whatever thread produced the event, and must arrange for
- * `function(argument)` to run on the target loop; that call is mm_drain. Without one, "ui"
- * subscriptions run inline and say so once.
+ * Registers how to reach the embedder's loop, for "ui" delivery. The dispatcher is called on the
+ * producing thread and must run `function(argument)` (that is mm_drain) on the loop; without one,
+ * "ui" subscriptions run inline.
  */
 MM_API int mm_set_ui_dispatcher(mm_ctx ctx, mm_dispatcher dispatcher, void* user_data);
 

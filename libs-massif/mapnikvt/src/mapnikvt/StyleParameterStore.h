@@ -16,13 +16,8 @@
 
 namespace massif::mvt {
     /**
-     * The current value of every style parameter, behind one indirection.
-     *
-     * Decoded tiles capture the store, not the values: a style property that reads nothing but
-     * parameters (a colour, a width) is turned into a function that is evaluated at render time,
-     * so replacing the values here changes what the next frame draws without re-decoding anything.
-     * Properties that feed a filter, a text or a marker choice are still resolved at decode time
-     * and still need the tiles re-read - see Property::isLiveCapable.
+     * The current value of every style parameter. Decoded tiles capture the store, not the values, so
+     * parameter-only properties change on the next frame without a re-decode - see Property::isLiveCapable.
      */
     class StyleParameterStore final {
     public:

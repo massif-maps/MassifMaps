@@ -14,13 +14,8 @@ namespace massif {
     class TileData;
 
     /**
-     * The tile's pixels, whichever way the source produced them.
-     *
-     * Decodes the encoded file a normal source hands over, or wraps the raw RGBA8 of a source that
-     * produced pixels directly (TileData's raw-pixel constructor). Every consumer that turns a
-     * tile into a bitmap goes through here - one that called CreateFromCompressed itself would
-     * read a raw tile as a corrupt PNG and draw nothing.
-     *
+     * Decodes the tile's encoded file, or wraps the raw RGBA8 of a raw-pixel TileData. Every consumer turning a tile
+     * into a bitmap must go through here: CreateFromCompressed would read a raw tile as a corrupt PNG.
      * @param tileData The tile, or null.
      * @return The bitmap, or null when there is no data or it could not be decoded.
      */

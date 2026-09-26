@@ -31,8 +31,7 @@ namespace massif {
         
     void VTLabelPlacementWorker::setComponents(const std::weak_ptr<MapRenderer>& mapRenderer, const std::shared_ptr<VTLabelPlacementWorker>& worker) {
         _mapRenderer = mapRenderer;
-        // When the map component gets destroyed all threads get detatched. Detatched threads need their worker objects to be alive,
-        // so worker objects need to keep references to themselves, until the loop finishes.
+        // Threads are detached on map destruction, so the worker keeps itself alive until its loop finishes.
         _worker = worker;
     }
         
@@ -44,8 +43,7 @@ namespace massif {
         schedule(layer, delayTime, true);
     }
 
-    // 'postpone' pushes the pass back on every call instead of keeping the earliest deadline, so a
-    // stream of triggers (a camera zooming) results in ONE pass, once it stops.
+    // 'postpone' pushes the deadline back on every call, so a stream of triggers yields one pass once it stops.
     void VTLabelPlacementWorker::schedule(const std::shared_ptr<Layer>& layer, int delayTime, bool postpone) {
         if (!std::dynamic_pointer_cast<VectorTileLayer>(layer)) {
             return;
@@ -100,10 +98,7 @@ namespace massif {
                     run = true;
                     _pendingWakeup = false;
                     _wakeupTime = currentTime + std::chrono::hours(24);
-                    // Stamped when the pass STARTS, under the same lock that claims it. Stamped on
-                    // the way out instead, a schedule() arriving while the pass ran read the
-                    // PREVIOUS pass's time, found the interval already spent and fired again as
-                    // soon as this one finished - measured at 202 ms between passes.
+                    // Stamped at start under the claiming lock, or a schedule() during the pass reads a stale time.
                     _lastPassTime = currentTime;
                 }
 
@@ -120,15 +115,10 @@ namespace massif {
         }
     }
     
-    // maplibre will not BEGIN a placement before commitTime + fadeDuration (Placement.stillRecent),
-    // so a label never re-places while the previous one is still fading. This is that gate; the
-    // duty cycle below is the separate, cost-based one. TileRenderer's default label blending speed
-    // is the same 300 ms.
+    // maplibre's Placement.stillRecent gate: no new placement while the last one is fading (300 ms fade).
     const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 300;
 
-    // The only cap on placement's CPU share, since a cycle's size cannot bound its rate: after C ms
-    // the next pass waits C * (1000/TARGET - 1), holding placement to TARGET ms of every second.
-    // A cap, not a quota: a still map spends none.
+    // CPU cap: after C ms the next pass waits C * (1000/TARGET - 1), i.e. TARGET ms of every second.
     static const double PLACEMENT_TARGET_MS_PER_SECOND = 90.0;
 
     // Slicing is off, see culler.beginSlice below; the machinery still works and a non-zero budget restores it.
@@ -142,16 +132,13 @@ namespace massif {
 
         std::vector<std::shared_ptr<Layer>> layers = mapRenderer->getLayers()->getAll();
 
-        // A composite layer draws its style-layer groups and its vector slots through internal
-        // child layers that are not in the layer list - they append themselves here, in draw order.
+        // Composite layers append their internal child layers here, in draw order.
         std::vector<std::shared_ptr<VectorTileLayer> > labelLayers;
         for (const std::shared_ptr<Layer>& layer : layers) {
             layer->collectLabelLayers(labelLayers);
         }
 
-        // A cycle keeps the view it opened against (as mapbox freezes the transform): its grid is half
-        // built for that screen. Once the camera has moved the rest is for a screen that is gone, so
-        // the cycle is abandoned and restarted rather than drained.
+        // A cycle keeps its opening view (as mapbox freezes the transform); a moved camera restarts it.
         if (_cycleActive && mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
             for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
                 layer->_tileRenderer->restartLabelPlacement();
@@ -159,7 +146,7 @@ namespace massif {
             _cycleWrappedLayers.clear();
             _cycleMs = 0;
             _cycleActive = false;
-            // Nothing left to fade from: commit the replacement outright. The only case that snaps.
+            // Nothing left to fade from: the only case that snaps.
             _snapNextPlacement = true;
         }
         if (!_cycleActive) {
@@ -167,8 +154,7 @@ namespace massif {
         }
         const ViewState& viewState = _cycleViewState;
 
-        // The culler outlives a pass: it carries the cycle's collision grid, and clearing it
-        // mid-cycle would let the second half of the labels reuse slots the first half took.
+        // Outlives a pass: clearing the collision grid mid-cycle would free slots already taken.
         if (!_culler) {
             _culler = std::make_unique<vt::LabelCuller>(Const::WORLD_SIZE);
         }
@@ -176,20 +162,15 @@ namespace massif {
         if (!_cycleActive) {
             culler.reset();
         }
-        // Internal units per metre at the view's own latitude, so a label style's max-distance in
-        // metres compares against world-space distances. Mercator stretches by 1/cos(latitude),
-        // which at 45 degrees is a factor of 1.4.
+        // Internal units per metre at the focus: cosh(mercator y) is Mercator's 1/cos(latitude) stretch.
         {
             double latitude = viewState.getFocusPos()(1) * Const::PI * 2.0 / Const::WORLD_SIZE;
             double coshLatitude = std::cosh(latitude);
             culler.setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE * coshLatitude);
         }
-        // In multiples of the camera-to-focus distance; a view along the ground needs it raised or off,
-        // its focus being a few km ahead of a low camera (Options::setLabelViewDistance).
+        // In multiples of the camera-to-focus distance (Options::setLabelViewDistance).
         culler.setLabelViewDistance(mapRenderer->getOptions()->getLabelViewDistance());
-        // Not sliced: the duty cycle already caps the rate, and a slice sorts only its own subset, so an
-        // early label claims a slot before a higher-priority one (a panorama's far summits). The price
-        // is latency: a long cycle lands in one pass, and placement follows a turn in steps.
+        // Not sliced (budget 0): a slice sorts only its subset, so early labels steal higher-priority slots.
         bool forced = _snapNextPlacement;
         _snapNextPlacement = false;
         culler.beginSlice(PLACEMENT_BUDGET_MS);
@@ -197,8 +178,6 @@ namespace massif {
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
         bool changed = false;
-        // Under slicing each layer wraps on a different pass, so the cycle ends once every layer has
-        // wrapped at least once, or the grid is never cleared.
         auto cullLayer = [&](const std::shared_ptr<VectorTileLayer>& layer) {
             bool wrapped = true;
             if (layer->_tileRenderer->cullLabels(culler, viewState, wrapped)) {
@@ -243,15 +222,13 @@ namespace massif {
             _nextAllowedTime = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double, std::milli>(gapMs));
         }
 
-        // Only the cycle asks for the pass that continues it - nothing else knows one is owed, and
-        // a still map stops waking this thread once the labels have settled.
+        // Only the cycle knows a continuation is owed; a still map stops waking this thread.
         _cycleActive = !finished;
         if (_cycleActive) {
             scheduleContinuation();
         } else {
             _cycleMs = 0;
-            // Placed for a camera that has since moved, and a still map stops waking this thread, so
-            // the cycle asks for its own redo. No snap: the cross-fade keeps the change legible.
+            // Placed for a camera that has since moved: redo, cross-faded rather than snapped.
             if (mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
                 scheduleContinuation();
             }

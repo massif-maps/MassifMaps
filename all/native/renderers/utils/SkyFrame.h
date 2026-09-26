@@ -18,17 +18,12 @@
 namespace massif {
 
     /**
-     * What the sky shader needs to be drawn for an observer rather than for a flat earth. Its whole
-     * model is local - the elevation angle, the star azimuth and the planet-relative atmosphere
-     * origin - and LightOptions::getSunDirection already speaks that frame. Only the view ray
-     * arrives in world space, so the ray is what has to be rotated.
-     * Free of the renderer so it can be tested on the host; see
-     * docs/internals/rendering/18-globe.md.
+     * Local frame for the sky shader, whose model (and the sun direction) is observer-local: only the
+     * world-space view ray needs rotating. Renderer-free for host tests; see docs/internals/rendering/18-globe.md.
      */
     struct SkyFrame {
         /**
-         * World -> local (east, north, up) rotation at pos. The identity on a planar surface, so
-         * the plane keeps its shader output bit for bit.
+         * World -> local (east, north, up) rotation at pos; identity on a plane.
          */
         static cglib::mat3x3<float> orientation(const ProjectionSurface& surface, const cglib::vec3<double>& pos) {
             cglib::mat4x4<double> frame = surface.calculateLocalFrameMatrix(pos);
@@ -48,11 +43,8 @@ namespace massif {
         }
 
         /**
-         * The camera's height above the surface, in metres. Read through the surface's own internal
-         * z so the plane keeps the exact value it had; that convention omits the Mercator latitude
-         * scale, and both surfaces omit it alike rather than disagreeing.
-         * Zero when the surface cannot express the height - a globe camera over a pole, where the
-         * internal z of a point off the surface diverges.
+         * Camera height above the surface in metres, without Mercator latitude scale on either surface.
+         * Zero where internal z diverges (a globe camera over a pole).
          */
         static float cameraHeight(const ProjectionSurface& surface, const cglib::vec3<double>& cameraPos) {
             double internalZ = surface.calculateMapPos(cameraPos).getZ();

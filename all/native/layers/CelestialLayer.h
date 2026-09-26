@@ -19,16 +19,9 @@ namespace massif {
     class CelestialEventListener;
 
     /**
-     * A layer of objects that live in the sky rather than on the map: anything placed by a
-     * direction, an object overhead, or a curve traced across the sky.
-     *
-     * Nothing here is tied to the map's coordinates unless an object asks for it (see
-     * CelestialObject::setPosition), so panning the map does not drag the sky along. The layer
-     * is drawn in its place in the layer order, so adding it FIRST puts every object behind the
-     * map and lets terrain hide what is behind a ridge, which is what an object in the sky wants.
-     *
-     * Objects are batched by bitmap, so a catalogue of thousands sharing one bitmap - or none -
-     * costs a single draw call.
+     * A layer of objects placed in the sky by direction rather than on the map (unless one asks, see CelestialObject::setPosition).
+     * Added first in the layer order, every object is behind the map and terrain hides what is behind a ridge.
+     * Objects are batched by bitmap, so thousands sharing one bitmap (or none) cost a single draw call.
      */
     class CelestialLayer : public Layer {
     public:

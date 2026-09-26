@@ -42,27 +42,20 @@ namespace massif {
         void stopZoom();
 
         /**
-         * One camera move for pan, zoom and (optionally) rotation and tilt, on a single clock:
-         * the zoom pulls back over a long move and comes down at the target, along Van Wijk &
-         * Nuij's optimal path ("Smooth and efficient zooming and panning", 2003). Positions are
-         * in INTERNAL coordinates. durationSeconds <= 0 derives the duration from the path
-         * length, which is the point of their parametrisation - a move twice as far does not take
-         * twice as long. rho is the aggressiveness of the pull-back (their rho, 1.42 is the value
-         * they derive as optimal). Supersedes the per-property targets while it runs.
+         * One camera move along Van Wijk & Nuij's optimal zoom/pan path (2003); positions in internal units.
+         * durationSeconds <= 0 derives it from the path length; rho is the pull-back (1.42 optimal).
+         * Supersedes the per-property targets while it runs.
          */
         void setFlightTarget(const MapPos& pos, float zoom, const float* rotation, const float* tilt, float climbHeight, float durationSeconds, float rho);
         void stopFlight();
         bool isFlightActive() const;
         /**
-         * How far along the flight is, 0 to 1, or -1 when none is running. It is the EASED value
-         * the camera is at, so an app animating its own state alongside the move can read it
-         * instead of re-implementing the easing.
+         * Eased flight progress, 0 to 1, or -1 when none is running.
          */
         float getFlightProgress() const;
 
         /**
-         * Whether anything is still moving the camera - a flight or any per-property animation.
-         * calculate() uses it to owe itself the next frame; nothing runs a clock of its own.
+         * Whether a flight or any per-property animation is still moving the camera.
          */
         bool isAnimating() const;
 
@@ -93,9 +86,7 @@ namespace massif {
         float _zoomTarget;
         std::optional<MapPos> _zoomTargetPos;
     
-        // Van Wijk flight state: _flightS is the total path length in their units, _flightU1 the
-        // ground distance, the rest their precomputed parametrisation. _flightZeroPath marks a pure
-        // zoom, where their formula divides by the distance.
+        // Van Wijk parametrisation; _flightZeroPath marks a pure zoom, where it divides by the distance.
         bool _flightActive;
         bool _flightStarted;
         bool _flightZeroPath;

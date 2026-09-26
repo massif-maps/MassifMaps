@@ -55,16 +55,13 @@ namespace massif {
             PANNING_MODE_FREE,
             /**
              * Sticky panning means that the map panning is restricted, user is able to freely pan the map,
-             * but zooming and rotating gestures can't be performed at the same time. User is still able to 
+             * but zooming and rotating gestures can't be performed at the same time. User is still able to
              * switch between zooming and rotating the map but it takes a bit more effort compared to FREE panning.
-             * gesture is performed and
              */
             PANNING_MODE_STICKY,
             /**
-             * Final sticky panning means that the map panning is restricted, user is able to freely pan the map,
-             * but zooming and rotating gestures can't be performed at the same time. Once the gesture type is 
-             * determined the user is stuck with either zooming or rotating. To switch the gesture the user has to lift
-             * at least one the two fingers off the screen.
+             * Final sticky panning: like sticky panning, but once the gesture type is determined the user is
+             * stuck with either zooming or rotating until at least one of the two fingers is lifted.
              */
             PANNING_MODE_STICKY_FINAL
         };
@@ -81,22 +78,15 @@ namespace massif {
              */
             FREE_ROAM_MODE_OFF,
             /**
-             * Look: a one-finger drag looks around instead of panning - sideways turns the heading
-             * about the camera, up and down tilts the map the way the two-finger tilt does, so the
-             * camera still orbits its focus point. Panning moves to a two-finger drag; pinch and
+             * Look: a one-finger drag turns the heading (sideways) and tilts (up/down) instead of panning;
+             * the camera still orbits its focus point. Panning moves to a two-finger drag; pinch and
              * two-finger rotation are unchanged.
              */
             FREE_ROAM_MODE_LOOK,
             /**
-             * First person: the camera stops orbiting anything. A one-finger drag turns the view
-             * about the CAMERA on both axes, like a mouse in a first person game - the position
-             * never changes - and a two-finger drag moves, forward/back and strafing, the way the
-             * keys would. Pinch and two-finger rotation are off, since neither belongs to that
-             * control scheme.
-             *
-             * The camera model applies to every source, not just to touch: setTilt and
-             * setMapRotation turn the view in place too, so a camera driven by the device's
-             * orientation behaves exactly like the drag.
+             * First person: a one-finger drag turns the view about the camera, whose position never changes;
+             * a two-finger drag moves forward/back and strafes. Pinch and two-finger rotation are off.
+             * setTilt and setMapRotation also turn the view in place, so an orientation-driven camera matches the drag.
              */
             FREE_ROAM_MODE_FIRST_PERSON
         };
@@ -109,16 +99,13 @@ namespace massif {
          */
         enum PanningSpeedMode {
             /**
-             * The map point under the finger follows it exactly, which is what a flat map does.
-             * On a tilted view the speed then changes DURING the gesture: a drag that starts near
-             * the camera and travels up the screen accelerates as the finger reaches parts of the
-             * screen that are further away.
+             * The map point under the finger follows it exactly. On a tilted view the speed then changes
+             * during the gesture, accelerating as the finger moves toward the far part of the screen.
              */
             PANNING_SPEED_MODE_MAP,
             /**
-             * The scale is measured where the pan STARTS and stays fixed for the whole gesture:
-             * starting far away still pans fast and starting close still pans slowly, but the
-             * speed never changes while the finger is down. The default.
+             * The scale is measured where the pan starts and stays fixed for the whole gesture,
+             * so the speed never changes while the finger is down. The default.
              */
             PANNING_SPEED_MODE_ANCHORED,
             /**
@@ -136,9 +123,8 @@ namespace massif {
          */
         enum TileLODProfile {
             /**
-             * The reference density: TileLODFactor 1, which is tangram's rule, mapbox's and
-             * maplibre's alike - a tile is refined while it covers more than a 2x2 block of nominal
-             * tiles. Fewest tiles, and what every reference renderer ships.
+             * The reference density: TileLODFactor 1, the tangram/mapbox/maplibre rule - a tile is refined
+             * while it covers more than a 2x2 block of nominal tiles. Fewest tiles.
              */
             TILE_LOD_PROFILE_REFERENCE,
             /**
@@ -251,11 +237,8 @@ namespace massif {
          */
         bool isDebugTileBorders() const;
         /**
-         * Sets the state of the tile border debug overlay. Every tile layer then outlines the
-         * tiles it actually draws, in 3D following the terrain, with a colour per zoom level and
-         * alternating brightness between neighbours - so a layer using a coarser tile set than
-         * the one under it, an overzoomed stand-in, or a tile that owns pixels it should not, is
-         * visible on screen. The default is false.
+         * Sets the state of the tile border debug overlay: every tile layer outlines the tiles it
+         * draws, following the terrain in 3D, with a colour per zoom level. The default is false.
          * @param enabled The new state of the tile border debug overlay.
          */
         void setDebugTileBorders(bool enabled);
@@ -291,9 +274,9 @@ namespace massif {
          */
         bool isDoubleClickDetection() const;
         /**
-         * Sets the state of the double click detection flag. If set to true clicks, then double clicks are detected separately from normal clicks. are categorized as normal clicks, double clicks,
-         * The click type resolving takes about 400ms (configurable via setDoubleClickMaxDuration), so for applications that do not 
-         * require this functionality, it can be turned off. The default is true.
+         * Sets the state of the double click detection flag. If set to true, double clicks are detected separately from normal clicks.
+         * Resolving the click type takes about 400ms (see setDoubleClickMaxDuration), so apps that don't need it can turn it off.
+         * The default is true.
          * @param enabled The new state of the double click detection flag.
          */
         void setDoubleClickDetection(bool enabled);
@@ -326,12 +309,9 @@ namespace massif {
          */
         int getTileDrawSize() const;
         /**
-         * Sets the tile size for drawing map tiles. Different datasources may have different tile sizes, this option
-         * can be used to compensate for bigger or smaller tiles than default. The default is 256.
-         *
-         * A style's own sizes do NOT follow it: a vector tile layer decodes against this size, so a
-         * label stays the same dp whatever tile the layer picks. Set it before adding the layer -
-         * a layer reads it when it joins the map.
+         * Sets the tile size for drawing map tiles, to compensate for datasources with bigger or smaller tiles. The default is 256.
+         * Style sizes do not follow it: labels stay the same dp whatever tile the layer picks.
+         * Set it before adding a layer; a layer reads it when it joins the map.
          * @param tileDrawSize The new tile size in density-independent pixels (dp).
          */
         void setTileDrawSize(int tileDrawSize);
@@ -342,12 +322,9 @@ namespace massif {
          */
         float getZoomOffset() const;
         /**
-         * Sets how many zoom levels the camera is offset from the tile-size convention.
-         *
-         * The SDK calibrates on a 256-pixel tile, maplibre and mapbox-gl on a 512-pixel one, so an
-         * offset of 1 adopts theirs. It RENUMBERS and nothing else: label and line sizes do not
-         * move with it, which is why it is not just a bigger TileDrawSize. Changing it changes what
-         * getZoom() reports, so a stored camera and a visibleZoomRange move with it.
+         * Sets how many zoom levels the camera is offset from the SDK's 256-pixel tile convention; 1 adopts
+         * the 512-pixel one of maplibre and mapbox-gl. It only renumbers (label and line sizes do not move),
+         * so getZoom(), a stored camera and a visibleZoomRange shift with it.
          * @param offset The new zoom offset in levels. The default is 0.
          */
         void setZoomOffset(float offset);
@@ -358,14 +335,9 @@ namespace massif {
          */
         float getTileLODFactor() const;
         /**
-         * Sets how big a tile may get on screen before the next zoom level is used, as a factor on
-         * tangram's rule (core/src/tile/tileManager.cpp): refine while the tile's projected screen
-         * area is at least that of a 2x2 block of nominal tiles. A factor of 1 is that rule
-         * verbatim, larger keeps tiles coarser (fewer tiles, fewer labels, less detail), smaller
-         * refines further.
-         * Where it matters is a tilted view: a tile near the horizon collapses to a few pixels of
-         * screen while its distance barely grows, so this - not the view distance - is what decides
-         * how much of the horizon band is drawn at full detail.
+         * Sets how big a tile may get on screen before the next zoom level is used, as a factor on tangram's
+         * rule (refine while the tile covers at least a 2x2 block of nominal tiles): 1 is that rule, larger is
+         * coarser, smaller finer. On a tilted view this, not the draw distance, decides the horizon's detail.
          * @param factor The new tile LOD factor. The default is 0.5.
          */
         void setTileLODFactor(float factor);
@@ -376,14 +348,9 @@ namespace massif {
          */
         float getTileLODMaxZoomLevelsOnScreen() const;
         /**
-         * Sets how many distinct zoom levels the frame may spread over when the horizon is at the
-         * top of the screen - maplibre's maxZoomLevelsOnScreen (setSourceTileLodParams).
-         * It sets how fast the level decays toward the horizon: HIGHER spreads more levels over the
-         * frame, so the far field coarsens faster and costs fewer tiles; LOWER keeps far ground
-         * finer and costs more. maplibre's 9.314 is our screen-area rule exactly, so it is the
-         * default and changing nothing changes nothing.
-         * This supersedes the old TileLODForeshorteningLimit, which bounded the same term from the
-         * other side with a number that had no reference behind it.
+         * Sets how many distinct zoom levels the frame may spread over with the horizon at the top of the
+         * screen (maplibre's maxZoomLevelsOnScreen). Higher coarsens the far field faster and costs fewer
+         * tiles, lower keeps it finer. The default matches the screen-area rule. Replaces TileLODForeshorteningLimit.
          * @param levels The zoom levels on screen. The default is 9.314.
          */
         void setTileLODMaxZoomLevelsOnScreen(float levels);
@@ -394,23 +361,17 @@ namespace massif {
          */
         float getTileLODTileCountRatio() const;
         /**
-         * Sets the cap on how many more tiles a tilted view may load than a top-down one -
-         * maplibre's tileCountMaxMinRatio. When the cap would be exceeded the level is lowered
-         * uniformly across the frame until it fits.
-         * NOTE this binds only when TileLODMaxZoomLevelsOnScreen asks for a gentler far field than
-         * the default: at the default the pitched view never counts as asking for more tiles than a
-         * flat one, so the cap is inert. It bounds the cost of refining the horizon, it does not
-         * rescue a view that is slow for another reason.
+         * Sets the cap on how many more tiles a tilted view may load than a top-down one (maplibre's
+         * tileCountMaxMinRatio); past it the level is lowered uniformly. Inert at the default
+         * TileLODMaxZoomLevelsOnScreen: it only binds when that asks for a gentler far field.
          * @param ratio The ratio. The default is 3.
          */
         void setTileLODTileCountRatio(float ratio);
 
         /**
-         * Applies a named set of the tile LOD numbers - TileLODFactor,
-         * TileLODMaxZoomLevelsOnScreen, TileLODTileCountRatio and TileStyleZoomLift at once.
-         * They multiply into the tile count, so tuning them separately is how a map ends up four
-         * times more expensive than any reference renderer without anyone deciding to. Set a
-         * profile for the platform, then override one number if a specific map needs it.
+         * Applies a named set of TileLODFactor, TileLODMaxZoomLevelsOnScreen, TileLODTileCountRatio
+         * and TileStyleZoomLift at once. They multiply into the tile count, so set a profile for the
+         * platform and override one number only if a specific map needs it.
          * @param profile The profile to apply.
          */
         void setTileLODProfile(TileLODProfile::TileLODProfile profile);
@@ -421,16 +382,9 @@ namespace massif {
          */
         int getTileStyleZoomLift() const;
         /**
-         * Sets how many zoom levels above its own zoom a coarsened tile matches its style rules at.
-         * The LOD rule (see setTileLODFactor) hands back a tile coarser than the camera asked for,
-         * and a CartoCSS [zoom] filter gates on the TILE, so a converted MapBox style's
-         * `minzoom` - a VIEW-zoom gate in the original - stops matching the moment the tile
-         * coarsens: one level, and the far half of a tilted view loses every building along a
-         * straight tile edge.
-         * This lifts the zoom the rules are matched at, without changing which tiles are drawn. It
-         * is bounded because a far tile styled at the camera's zoom emits the whole near-field
-         * content - every label, every arrow - over ground tens of times wider. 2 covers the first
-         * two coarsening steps, where the visible edge is; 0 restores the tile's own zoom.
+         * Sets how many zoom levels above its own zoom a coarsened tile matches its style rules at, so a
+         * converted style's view-zoom `minzoom` survives LOD coarsening; which tiles are drawn is unchanged.
+         * Bounded, as a far tile styled at the camera zoom emits all near-field labels. 0 uses the tile's own zoom.
          * @param levels The lift in zoom levels. The default is 2.
          */
         void setTileStyleZoomLift(int levels);
@@ -454,10 +408,8 @@ namespace massif {
          */
         float getDrawDistance() const;
         /**
-         * Sets a new draw distance value. The higher the draw distance the more tiles can be seen, if the map is tilted.
-         * Changing the draw distance will cause the horizon to move, which means that the if the sky bitmap is used,
-         * the horizon may not match up anymore. Increasing this value will decrease performance and increase network traffic, 
-         * if online map is used. The default is 16.
+         * Sets a new draw distance value: higher shows more tiles on a tilted map, at a performance and network cost.
+         * It moves the horizon, so a sky bitmap may no longer match up. The default is 16.
          * @param drawDistance The new draw distance value.
          */
         void setDrawDistance(float drawDistance);
@@ -489,12 +441,12 @@ namespace massif {
         void setLabelPadding(float padding);
 
         /**
-         * Returns the vertial field of view angle.
+         * Returns the vertical field of view angle.
          * @return The vertical field of view angle in degrees.
          */
         float getFieldOfViewY() const;
         /**
-         * Sets the vertial field of view angle. Larger values increase the viewable area, at the cost of performance and
+         * Sets the vertical field of view angle. Larger values increase the viewable area, at the cost of performance and
          * additional perspective distortion. The default is 70.
          * Fractional, so an AR overlay can match the field of view of the camera behind it exactly.
          * @param fovY The new vertical field of view angle in degrees.
@@ -576,7 +528,7 @@ namespace massif {
         bool isRotationGestures() const;
         /**
          * Sets the rotation gestures flag. Rotation gestures allow to use pinch to rotate the map.
-         * By default, rotation gestures are not enabled.
+         * Enabled by default.
          * @param enabled True if rotation gestured should be enabled, false otherwise.
          */
         void setRotationGestures(bool enabled);
@@ -639,11 +591,8 @@ namespace massif {
          */
         std::shared_ptr<Bitmap> getBackgroundBitmap() const;
         /**
-         * Sets the background bitmap. The purpose of the background bitmap is to fill out the empty space when there's
-         * no map data visible. The bitmap will get scaled and repeated to cover the hole visible area. If a null pointer is passed, 
-         * the background won't be drawn.
-         * The width and height of the bitmap must be power of two (for example: 256 * 256 or 128 * 512). 
-         * It's also preferred if the bitmap was square (width == height), but this is not a requirement. 
+         * Sets the background bitmap, scaled and repeated to fill the space with no map data; null disables it.
+         * Width and height must be powers of two (e.g. 256 * 256 or 128 * 512), square preferred.
          * The default is "default_background.png".
          * @param backgroundBitmap The new background bitmap.
          */
@@ -656,7 +605,7 @@ namespace massif {
         bool isUserInput() const;
         /**
          * Sets the state of the user input flag. If set to false the user won't be able to pan the map using touch controls,
-         * programmatic map panning using MapView methods is still possible. The default is false.
+         * programmatic map panning using MapView methods is still possible. The default is true.
          * @param enabled The new state of the user input flag.
          */
         void setUserInput(bool enabled);
@@ -667,10 +616,8 @@ namespace massif {
          */
         PanningSpeedMode::PanningSpeedMode getPanningSpeedMode() const;
         /**
-         * Sets how fast a one-finger pan moves the map on a tilted view. The default is
-         * PANNING_SPEED_MODE_ANCHORED, which keeps the speed a gesture starts with for as long as
-         * it lasts; PANNING_SPEED_MODE_MAP is the exact grab-the-world pan, which changes speed as
-         * the finger moves between near and far parts of the screen.
+         * Sets how fast a one-finger pan moves the map on a tilted view.
+         * The default is PANNING_SPEED_MODE_ANCHORED.
          * @param mode The new panning speed mode.
          */
         void setPanningSpeedMode(PanningSpeedMode::PanningSpeedMode mode);
@@ -681,12 +628,9 @@ namespace massif {
          */
         FreeRoamMode::FreeRoamMode getFreeRoamMode() const;
         /**
-         * Sets the free roam mode: what a one-finger drag does, and which camera model the tilt
-         * and the rotation follow. Free roam is what makes content placed in the sky
-         * (CelestialLayer) reachable, since it is normally off the top of the screen. To look
-         * ABOVE the horizon the tilt range has to allow a negative tilt - e.g.
-         * setTiltRange(MapRange(-90, 90)) - as it stops at the horizon by default.
-         * The default is FREE_ROAM_MODE_OFF.
+         * Sets the free roam mode: what a one-finger drag does, and which camera model tilt and rotation follow.
+         * It makes sky content (CelestialLayer) reachable; looking above the horizon also needs a negative
+         * tilt range, e.g. setTiltRange(MapRange(-90, 90)). The default is FREE_ROAM_MODE_OFF.
          * @param mode The new free roam mode.
          */
         void setFreeRoamMode(FreeRoamMode::FreeRoamMode mode);
@@ -771,13 +715,9 @@ namespace massif {
          */
         MapRange getTiltRange() const;
         /**
-         * Sets the tilt range constraint. This will limit the tilt angle of the camera to the specified range.
-         * The current tilt angle will remain unaffected, until the next time the tilt angle changes.
-         * The minimum tilt angle is -90 degrees and the maximum is 90 degrees. Values that are out of range will be clamped.
-         * The default value is MapRange(0, 90).
-         * A NEGATIVE tilt looks above the horizon: the camera stays where it is and the view pitches
-         * up, which is what an application showing the sky needs. It is opt-in, as the default range
-         * stops at the horizon.
+         * Sets the tilt range constraint; the current tilt is unaffected until it next changes. Values are clamped to [-90, 90].
+         * A negative tilt pitches the view above the horizon, which is opt-in.
+         * The default value is MapRange(3, 90).
          * @param tiltRange The new tilt range constraint in degrees.
          */
         void setTiltRange(const MapRange& tiltRange);
@@ -788,10 +728,8 @@ namespace massif {
          */
         MapRange getZoomRange() const;
         /**
-         * Sets the zoom range constraint. This will limit the zoom level of the camera to the specified range.
-         * The current zoom level will remain unaffected, until the next time the zoom level changes.
-         * The minimum zoom value is 0 and the maximum is 24. Values that are out of range will be clamped.
-         * The default value is MapRange(0, 24).
+         * Sets the zoom range constraint; the current zoom is unaffected until it next changes.
+         * Values are clamped to [0, 24]. The default value is MapRange(0, 24).
          * @param zoomRange The new zoom range constraint.
          */
         void setZoomRange(const MapRange& zoomRange);
@@ -803,11 +741,9 @@ namespace massif {
          */
         MapBounds getPanBounds() const;
         /**
-         * Sets the map panning bounds constraints. This will limit camera movement to the specified bounds.
-         * The current camera position will remain unaffected, until the next time camera position changes.
-         * Map bounds minimum and maximum points are expected to be in the base projection's coordinate system.
-         * If the bounds are larger than the world size, they will be clamped to world bounds. The default value covers the 
-         * whole world.
+         * Sets the map panning bounds constraints, in the base projection's coordinate system; the current position
+         * is unaffected until the camera next moves. Bounds larger than the world are clamped to world bounds.
+         * The default value covers the whole world.
          * @param panBounds The new map bounds constraints.
          */
         void setPanBounds(const MapBounds& panBounds);
@@ -835,10 +771,8 @@ namespace massif {
          */
         std::shared_ptr<Projection> getBaseProjection() const;
         /**
-         * Sets the base projection. All MapView, MapEventListener and Options methods use the coordinate system of this projection.
-         * For example, if base projection is set to EPSG3857 then MapView::getFocusPos returns the coordinates in the EPSG3857 coordinate system,
-         * The same applies to setter methods like MapView::setFocusPos which expect the input coordinates to be in the base projection's coordinate system.
-         * The default is EPSG3857.
+         * Sets the base projection. All MapView, MapEventListener and Options methods (getters and setters)
+         * use the coordinate system of this projection. The default is EPSG3857.
          * @param baseProjection The new base projection.
          */
         void setBaseProjection(const std::shared_ptr<Projection>& baseProjection);
@@ -849,9 +783,8 @@ namespace massif {
          */
         std::shared_ptr<ProjectionSurface> getProjectionSurface() const;
         /**
-         * Returns the BASE tile transformer for the current render projection - the plane or the
-         * globe, never terrain. A layer that displaces by elevation decorates this one.
-         * Internal, not exposed in the public API.
+         * Returns the base tile transformer for the current render projection (plane or globe, never
+         * terrain); a layer that displaces by elevation decorates it. Internal, not in the public API.
          * @return The base tile transformer.
          */
         std::shared_ptr<vt::TileTransformer> getTileTransformer() const;
@@ -862,9 +795,8 @@ namespace massif {
          */
         std::shared_ptr<TerrainOptions> getTerrainOptions() const;
         /**
-         * Sets the terrain options. When set, 3D terrain is rendered using the elevation
-         * data source of the terrain options. Note that terrain is currently only supported
-         * with the PLANAR render projection mode. Setting null disables terrain.
+         * Sets the terrain options: 3D terrain is rendered from their elevation data source; null disables it.
+         * Terrain is currently only supported with the PLANAR render projection mode.
          * Note: this feature is experimental and may change in future SDK versions.
          * @param terrainOptions The new terrain options. Can be null.
          */
@@ -942,7 +874,7 @@ namespace massif {
         static const Color DEFAULT_AMBIENT_LIGHT_COLOR;
         static const Color DEFAULT_MAIN_LIGHT_COLOR;
         static const MapVec DEFAULT_MAIN_LIGHT_DIR;
-        // 0.2 inch at 160 dpi, the finger-sized threshold this has always used.
+        // 0.2 inch at 160 dpi: a finger-sized threshold.
         static const float DEFAULT_CLICK_MOVING_TOLERANCE;
         
         void notifyOptionChanged(const std::string& optionName);

@@ -20,15 +20,9 @@
 namespace massif {
 
     /**
-     * A tile data source that loads tiles using a HTTP connection.
-     * The requests are generated using a template scheme, where tags in the baseURL string are replaced with actual values.
-     * The following tags are supported: s, z, zoom, x, y, xflipped, yflipped, quadkey, frame.
-     *
-     * For example, if baseURL = "https://tile.openstreetmap.org/{zoom}/{x}/{y}.png" and the requested tile has zoom = 2,
-     * x = 1 and y = 3, then the tile will be loaded from the following URL: "https://tile.openstreetmap.org/2/1/3.png".
-     *
-     * This data source also supports PMTiles archives hosted over HTTP. If the URL ends with .pmtiles or starts with
-     * pmtiles://, the data source will automatically use HTTP range requests to fetch tiles from the PMTiles archive.
+     * A tile data source that loads tiles using a HTTP connection, replacing the tags in the baseURL template with actual values.
+     * Supported tags: s, z, zoom, x, y, xflipped, yflipped, quadkey, frame (e.g. "https://tile.openstreetmap.org/{zoom}/{x}/{y}.png").
+     * A URL ending with .pmtiles or starting with pmtiles:// is read from the PMTiles archive with HTTP range requests.
      */
     class HTTPTileDataSource : public TileDataSource {
     public:
@@ -115,7 +109,6 @@ namespace massif {
     protected:
         virtual std::string buildTileURL(const std::string& baseURL, const MapTile& tile) const;
         
-        // PMTiles support
         bool isPMTilesURL(const std::string& url) const;
         std::string normalizePMTilesURL(const std::string& url) const;
         std::shared_ptr<TileData> loadPMTile(const std::string& baseURL, const MapTile& mapTile);
@@ -133,7 +126,6 @@ namespace massif {
         mutable std::default_random_engine _randomGenerator;
         mutable std::mutex _mutex;
         
-        // PMTiles caching
         struct PMTilesCache {
             std::string url;
             pmtiles::Header header;

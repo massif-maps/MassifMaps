@@ -13,17 +13,9 @@
 
 namespace massif::mvt {
     /**
-     * A style parameter that picks ONE feature out by comparing itself with a feature field, which
-     * is how every route or POI selection is written:
-     *
-     *     @is_selected: [param::selected_id] = [osmid] + '';
-     *     #routes { line-color: @is_selected ? red : blue; }
-     *
-     * Setting it used to mean decoding every visible tile again, because the comparison can only be
-     * answered per feature. The decoder instead folds it BOTH ways at decode: the tile carries the
-     * selected and the unselected appearance as two style slots, and each feature keeps the hash of
-     * what the parameter is compared with (fieldExpression, evaluated on that feature). A change is
-     * then a hash comparison and a rewrite of one byte per vertex - see vt::TileGeometry.
+     * A style parameter compared with a feature field to pick one feature out ([param::selected_id] = [osmid] + '').
+     * Folded both ways at decode, with each feature keeping the hash of fieldExpression, so a change is a
+     * byte rewrite per vertex rather than a decode - see docs/features/style-parameters.md.
      */
     struct SelectionParameter {
         std::string name;            // the parameter, without the "param::" prefix

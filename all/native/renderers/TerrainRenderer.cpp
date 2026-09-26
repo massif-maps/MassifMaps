@@ -1038,8 +1038,7 @@ namespace massif {
         // Before the cut is walked, so a refined tile draws in the frame it lands.
         applyRefinedAttribs();
         unsigned int pass = ++_meshCacheClock;
-        // Opt-in: stitching costs a mesh variant per edge combination and the surfaces are already
-        // skirted. Same flag the draped path reads.
+        // Stitching costs a mesh variant per edge combination. Same flag the draped path reads.
         bool stitching = terrainOptions->isTileEdgeStitchingEnabled();
         // Same condition as ensureSurfaceAttribs' fixed-scale path, so mesh density and normals agree.
         bool fixedScaleNormals = terrainOptions->getNormalSampleDistance() > 0 && !_tileTransformer->isSpherical();

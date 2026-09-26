@@ -1,9 +1,4 @@
-/*
- * The SDK's own methods, in their own translation unit.
- *
- * Kept out of Methods.cpp for the same reason SpecFactories is kept out of Spec.cpp: these pull in
- * every class they call, and a test should be able to link the registry without the whole SDK.
- */
+// The SDK's own methods, kept out of Methods.cpp so a test can link the registry without the whole SDK.
 
 #include "api/CameraMethods.h"
 #include "api/DownloadMethods.h"
@@ -51,12 +46,7 @@ namespace massif { namespace api {
 
     namespace {
 
-        /**
-         * loadTile([x, y, zoom]) -> a TileData handle, or null when the source has no such tile.
-         *
-         * Synchronously fetches, so it is the first method that belongs on callAsync rather than
-         * call - an HTTP source blocks the calling thread otherwise.
-         */
+        /** loadTile([x, y, zoom]) -> TileData handle or null. Fetches synchronously: use callAsync. */
         Result loadTile(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
             MapTile tile;
             if (!args.getTile(0, tile)) {
@@ -72,12 +62,7 @@ namespace massif { namespace api {
             return objectResult(context, data, "massif::TileData", result);
         }
 
-        /**
-         * getMetaDataElement(key) -> the value, or null.
-         *
-         * Beside the whole-map 'metaData' property: a per-key read needs no round trip through
-         * JSON for the entries the caller does not want.
-         */
+        /** getMetaDataElement(key) -> the value, or null. */
         Result getMetaDataElement(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
             std::string key;
             if (!args.getString(0, key)) {
@@ -123,13 +108,8 @@ namespace massif { namespace api {
         }
 
         /**
-         * getElevations([[x, y], ...]) -> a handle onto a flat array of metres.
-         *
-         * An object result rather than a value: a profile over a track is thousands of numbers,
-         * and neither a JSON array nor a per-element proxy is an acceptable way to move them.
-         * Read it with getDoubles.
-         *
-         * WGS84, like getElevation: the layer reprojects to the data source itself.
+         * getElevations([[x, y], ...]) WGS84 -> handle onto a flat array of metres; read with getDoubles.
+         * A handle, not a value: a track profile is thousands of numbers.
          */
         Result getElevations(Context& context, void* obj, const CallArgs& args,
                              PropertyValue& result) {
@@ -142,20 +122,13 @@ namespace massif { namespace api {
             return objectResult(context, elevations, Context::DOUBLE_VECTOR_CLASS, result);
         }
 
-        /*
-         * The style parameters of a CartoCSS decoder - the most-used call in the app this API is
-         * measured against, and how a live theme switch is done without re-decoding from scratch.
-         *
-         * Registered on MBVectorTileDecoder, which traversal now reports: a `tileDecoder` reached
-         * through a path used to arrive as its DECLARED class and these needed a dynamic_cast.
-         */
+        // CartoCSS style parameters: a live theme switch without re-decoding.
         Result setStyleParameter(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
             std::string name, value;
             if (!args.getString(0, name)) {
                 return RESULT_BAD_SPEC;
             }
-            // The SDK takes the value as text whatever it means, so a number is spelled out here
-            // rather than refused.
+            // The SDK takes the value as text, so a number is stringified rather than refused.
             if (!args.getString(1, value)) {
                 Variant raw = args.get(1);
                 if (raw.getType() == VariantType::VARIANT_TYPE_NULL) {
@@ -168,12 +141,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /**
-         * setStyleParameters({name: value, …}) - several at once, in one crossing.
-         *
-         * An app switching theme writes half a dozen together, and each one re-runs the style's
-         * repaintability check; the SDK's own JSON form does that once for the whole set.
-         */
+        /** setStyleParameters({name: value, …}): the repaintability check runs once for the set, not per key. */
         Result setStyleParameters(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             Variant params = args.get(0);
             if (params.getType() != VariantType::VARIANT_TYPE_OBJECT) {
@@ -183,11 +151,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /**
-         * addFallbackFont(dataHandle) - a font for the glyphs the style names but the build has no
-         * face for. A `data` handle, because a spec has no way to say "these bytes", and without it
-         * a spec-built decoder loses the labels of every converted MapBox style.
-         */
+        /** addFallbackFont(dataHandle): a spec cannot carry font bytes, so it arrives as a `data` handle. */
         Result addFallbackFont(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             Handle handle = NULL_HANDLE;
             if (!args.getHandle(0, handle)) {
@@ -212,12 +176,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /**
-         * setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude).
-         *
-         * The SDK's own solar model, the one shadows and sky were tuned against - a binding would
-         * otherwise carry its own. The place matters as much as the time; pass the map centre.
-         */
+        /** setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude); pass the map centre. */
         Result setSunPositionFromTime(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             long long year = 0, month = 0, day = 0, hour = 0, minute = 0;
             double latitude = 0, longitude = 0;
@@ -240,12 +199,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /**
-         * add(elementHandle) / remove(elementHandle) on a local source.
-         *
-         * The one thing a spec cannot express: a spec builds an object, it does not put it
-         * anywhere. This is how a marker reaches the map.
-         */
+        /** add(elementHandle) / remove(elementHandle) on a local source: a spec builds, it does not place. */
         Result addElement(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             Handle handle = NULL_HANDLE;
             if (!args.getHandle(0, handle)) {
@@ -304,13 +258,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /**
-         * insert(index, layerHandle) / set(index, layerHandle) / get(index) / clear().
-         *
-         * An app whose stack has an order - base, then overlays, then its own markers - places a
-         * layer at an index rather than only on top, and swaps one in place when its decoder is
-         * rebuilt. add() alone made both of those a remove-and-re-add of everything above.
-         */
+        /** insert(index, layerHandle) / set(index, layerHandle) / get(index) / clear(). */
         Result insertLayer(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             long long index = 0;
             Handle handle = NULL_HANDLE;
@@ -354,13 +302,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /**
-         * add(sourceHandle, tileMask) / remove(sourceHandle) on a MultiTileDataSource.
-         *
-         * One package per downloaded area, discovered at run time, so the list is filled after
-         * construction. An empty tileMask means "read it off the package", which is what an
-         * MBTiles or a merged source carries.
-         */
+        /** add(sourceHandle, tileMask) / remove(sourceHandle) on a MultiTileDataSource; empty tileMask = read off the package. */
         Result addSubSource(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             Handle handle = NULL_HANDLE;
             std::string tileMask;
@@ -529,12 +471,8 @@ namespace massif { namespace api {
         }
 
         /**
-         * The GeoJSON source's layers: createLayer(name) -> index, then setLayerGeoJSON(index,
-         * geojson) with the document as a string.
-         *
-         * A layer index rather than a name because that is what the SDK's own API takes, and
-         * a string rather than a Variant because a binding has the document as text already -
-         * parsing it into a Variant only to serialise it again is a round trip for nothing.
+         * createLayer(name) -> index, then setLayerGeoJSON(index, geojson). The document stays a string:
+         * a binding already has it as text, so a Variant would be a pointless parse/serialise round trip.
          */
         Result createGeoJSONLayer(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
             std::string name;
@@ -556,8 +494,7 @@ namespace massif { namespace api {
             if (!args.getLong(0, index)) {
                 return RESULT_BAD_SPEC;
             }
-            // The document may arrive as a quoted string or as the JSON itself, which is what a
-            // binding that built it with its own writer has.
+            // Accepts a quoted string or the JSON itself.
             Variant raw = args.get(1);
             if (raw.getType() == VariantType::VARIANT_TYPE_NULL) {
                 return RESULT_BAD_SPEC;
@@ -575,10 +512,7 @@ namespace massif { namespace api {
         }
 
         /**
-         * addFeature / updateFeature / removeFeature - one feature at a time.
-         *
-         * An app that edits a saved item otherwise re-encodes and re-tiles its whole document for
-         * every change, which on a few hundred routes is the difference between instant and not.
+         * addFeature / updateFeature / removeFeature: one feature without re-tiling the whole document.
          * `update` matches on the feature's own `id`, `remove` takes that id.
          */
         Result editGeoJSONFeature(void* obj, const CallArgs& args, bool update) {
@@ -649,13 +583,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /**
-         * The external sources of a CompositeVectorTileLayer.
-         *
-         * Methods rather than spec keys: a slot is wired to a source the app usually SHARES - the
-         * DEM a hillshade slot draws is the same one it queries elevations from - and it is added
-         * and removed at run time as the style and the loaded packages change.
-         */
+        // Methods, not spec keys: a slot's source is usually shared (e.g. the DEM) and changes at run time.
         Result addExternalDataSource(Context& context, void* obj, const CallArgs& args,
                                      PropertyValue&) {
             std::string name;
@@ -760,15 +688,8 @@ namespace massif { namespace api {
         }
 
         /**
-         * getExternalChildLayer(name) -> the layer drawing that slot.
-         *
-         * The one setting a style cannot carry: a HillshadeRasterTileLayer's custom
-         * NormalMapLightingShader is generated GLSL, not a config symbolizer property.
-         *
-         * Registered under its CONCRETE class, not the declared one: a handle registered as
-         * `massif::Layer` resolves only Layer's own properties, and the whole point of reaching
-         * the child is the hillshade properties below that. An unregistered name is RESULT_FAILED,
-         * the same as every other object-returning method with nothing to hand back.
+         * getExternalChildLayer(name) -> the layer drawing that slot, or RESULT_FAILED.
+         * Returned under its concrete class so the child's own (e.g. hillshade) properties resolve.
          */
         Result getExternalChildLayer(Context& context, void* obj, const CallArgs& args,
                                      PropertyValue& result) {
@@ -787,13 +708,7 @@ namespace massif { namespace api {
 
 #ifdef _MASSIF_SEARCH_SUPPORT
 
-        /**
-         * findFeatures([requestHandle]) -> a feature collection handle.
-         *
-         * The request is an object rather than an inline spec because every one of its filters is
-         * already a property: create a "search"/"request", set them, pass the handle. Nothing about
-         * a search filter had to be taught to the facade.
-         */
+        /** findFeatures([requestHandle]) -> a feature collection handle; the request is a "search"/"request" object. */
         Result findVectorTileFeatures(Context& context, void* obj, const CallArgs& args,
                                       PropertyValue& result) {
             Handle requestHandle = NULL_HANDLE;
@@ -902,8 +817,7 @@ namespace massif { namespace api {
 #ifdef _MASSIF_OFFLINE_SUPPORT
         registerDownloadMethods();
 #endif
-        // Everything registered above has to be declared in a .i too, or no binding can complete
-        // it and no generated reference lists it.
+        // Every method registered above must also be declared in a .i, or no binding or reference sees it.
         checkDeclarations();
     }
 

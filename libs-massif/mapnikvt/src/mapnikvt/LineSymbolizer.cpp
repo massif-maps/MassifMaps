@@ -61,9 +61,8 @@ namespace massif::mvt {
             if (strokeLinejoin == vt::LineJoinMode::BEVEL) {
                 miterDotLimit = 1.0f;
             } else {
-                // 'miterlimit' is the RATIO miter-length / line-width at which a join falls back to a
-                // bevel (SVG, mapnik, tangram); the line width does not enter it. It picks the BRANCH
-                // only - the inner corner is bounded by vt's INNER_MITER_LIMIT.
+                // 'miterlimit' is the ratio miter-length / line-width at which a join bevels (SVG, mapnik, tangram);
+                // it picks the branch only, the inner corner is bounded by vt's INNER_MITER_LIMIT.
                 // ratio = 1 / cos(turn / 2) = 1 / sqrt((1 + dot) / 2)  =>  dot = 2 / ratio^2 - 1.
                 float strokeMiterLimit = std::max(_strokeMiterLimit.getStaticValue(exprContext), 1.0f);
                 miterDotLimit = 2.0f / (strokeMiterLimit * strokeMiterLimit) - 1.0f;
@@ -131,9 +130,7 @@ namespace massif::mvt {
         };
     }
 
-    // The head is painted by offsetting the contour outward by half the line width, and where a contour
-    // turns back on itself that offset folds over into blobs - so only a CONVEX head is supported.
-    // Removing those loops is a polygon-offsetting algorithm of its own.
+    // Only a convex head is supported: the half-width outward offset folds into blobs where a contour turns back.
     bool LineSymbolizer::isConvexArrowPath(const std::vector<cglib::vec2<float>>& points) {
         std::size_t n = points.size();
         int sign = 0;
@@ -155,9 +152,8 @@ namespace massif::mvt {
         return true;
     }
 
-    // Enough of the SVG path grammar for an icon: M/L/H/V/C/S and Z, absolute or relative, curves
-    // flattened to a polyline. Not a general SVG reader - it takes the 'd' attribute and keeps the head
-    // a POLYGON, since the tesselator extrudes points and knows nothing of curves.
+    // Enough of the SVG path grammar ('d') for an icon: M/L/H/V/C/S and Z, absolute or relative,
+    // curves flattened, since the tesselator only takes a polygon.
     std::shared_ptr<const std::vector<cglib::vec2<float>>> LineSymbolizer::parseArrowPath(const std::string& path, float boxLength, float boxWidth, float scale, float rotation) {
         constexpr int CURVE_SEGMENTS = 8;
         std::vector<cglib::vec2<float>> points;
@@ -278,9 +274,7 @@ namespace massif::mvt {
             return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
         }
 
-        // Drop the points the curve flattening piles up on top of each other: they carry no shape
-        // and each one is a degenerate ear that stops the triangulation dead, which shows up as
-        // holes in the head.
+        // Drop coincident points from curve flattening: each is a degenerate ear that stops the triangulation.
         std::vector<cglib::vec2<float>> cleaned;
         cleaned.reserve(points.size());
         for (const cglib::vec2<float>& point : points) {
@@ -295,9 +289,8 @@ namespace massif::mvt {
             return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
         }
 
-        // Fit the contour into the arrow box, keeping the ASPECT RATIO - scaling the axes independently
-        // stops it being the shape the author drew. SVG's y grows downwards, hence the flip. CENTRED on
-        // the last vertex, and not slotted like the built-in triangle.
+        // Keep the aspect ratio; SVG's y grows downwards, hence the flip. Centred on the last vertex,
+        // not slotted like the built-in triangle.
         cglib::vec2<float> minPos = cleaned[0], maxPos = cleaned[0];
         for (const cglib::vec2<float>& point : cleaned) {
             minPos = cglib::vec2<float>(std::min(minPos(0), point(0)), std::min(minPos(1), point(1)));
@@ -305,9 +298,7 @@ namespace massif::mvt {
         }
         float spanX = std::max(1.0e-6f, maxPos(0) - minPos(0)), spanY = std::max(1.0e-6f, maxPos(1) - minPos(1));
         float fit = std::min(boxLength / spanX, boxWidth / spanY) * (scale > 0 ? scale : 1.0f);
-        // The rotation turns the head about the same centre, in degrees clockwise on screen: the
-        // tile's y runs across the line and downwards on screen, so a positive angle here reads
-        // clockwise like a compass, not like a maths convention.
+        // Degrees clockwise on screen, like a compass: the tile's y runs across the line and downwards on screen.
         float angle = rotation * boost::math::constants::pi<float>() / 180.0f;
         float cosA = std::cos(angle), sinA = std::sin(angle);
         auto shape = std::make_shared<std::vector<cglib::vec2<float>>>();

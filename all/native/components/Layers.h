@@ -19,13 +19,9 @@ namespace massif {
     class CancelableThreadPool;
     
     /**
-     * Container for all raster and vector layers of the map view.
-     *
-     * The order in which layers are added is important for vector elements like Points, Lines
-     * and Polygons. For these elements the layer ordering defines their draw order.
-     * Other elements like NMLModels and Polygon3Ds are z ordered and are drawn using the depth buffer.
-     * For Billboard elements like Markers and Labels, the layer ordering is unimportant, because
-     * they will be sorted from back to front and drawn in that order on top of all other vector elements.
+     * Container for all raster and vector layers of the map view. Layer order is the draw order of
+     * Points, Lines and Polygons; NMLModels and Polygon3Ds use the depth buffer, and billboards
+     * (Markers, Labels) are sorted back to front on top of all other vector elements.
      */
     class Layers {
     public:

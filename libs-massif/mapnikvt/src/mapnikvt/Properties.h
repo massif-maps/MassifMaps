@@ -32,44 +32,30 @@ namespace massif::mvt {
         virtual void setExpression(const Expression& expr) = 0;
 
         /**
-         * True when this property reads style parameters and NOTHING that is fixed at decode time
-         * (no feature field, no mapnik:: variable, no zoom): it is evaluated per frame, so changing
-         * a parameter it depends on is a redraw rather than a re-decode. Only the function-valued
-         * properties (colours, widths) can be live; everything else is baked into the tile.
+         * True when this property reads style parameters and nothing fixed at decode time (feature field,
+         * mapnik:: variable, zoom), so a parameter change is a redraw. Only function-valued properties can be live.
          */
         virtual bool isLiveCapable() const { return false; }
 
         /**
-         * True when a symbolizer reads this property's value at decode time as well as handing its
-         * function to the renderer - a glyph raster size, a generated marker bitmap. Such a value is
-         * baked into the tile, so it can never be live however it is expressed. Set by
-         * Symbolizer::bindProperty.
+         * True when a symbolizer also reads this value at decode time (glyph raster size, marker bitmap),
+         * so it is baked into the tile and never live. Set by Symbolizer::bindProperty.
          */
         bool isBakedAtDecode() const { return _bakedAtDecode; }
         void setBakedAtDecode(bool bakedAtDecode) { _bakedAtDecode = bakedAtDecode; }
 
         /**
-         * True when the only parameter this property reads is the SELECTING one, and it only reads
-         * it through a comparison with a feature field. Forcing that parameter to a fixed value
-         * then leaves an expression of feature fields alone, which folds to a constant - so the
-         * tile can carry both answers as two style slots and a selection change becomes a repaint.
-         * Set by resolveSelectionParameter.
+         * True when the only parameter this property reads is the selecting one, through a comparison with
+         * a feature field, so it folds to two constant style slots. Set by resolveSelectionParameter.
          */
         bool isSelectionFoldable() const { return _selectionFoldable; }
         void setSelectionFoldable(bool selectionFoldable) { _selectionFoldable = selectionFoldable; }
 
     protected:
         /**
-         * An expression reading a field the feature does not carry - or a parameter the store has
-         * not got - evaluates to UNSET, and every converter below reads that as "" or 0. So an
-         * unset value falls back to the property's declared default, which is what the style would
-         * have got had it never set the property at all.
-         *
-         * Without it the two halves failed differently and both lost the feature: parseColor("")
-         * throws, and TileReader::processLayer catches it around createFeatureProcessor and caches
-         * a NULL processor - so the geometry goes, not just its colour - while a width quietly
-         * became 0 and dropped the line just as effectively. A malformed non-empty value still
-         * throws; that is a style bug worth reporting.
+         * An unset result (missing field or parameter) falls back to the declared default: as "" or 0
+         * a colour threw and dropped the feature's processor, and a width of 0 dropped the line.
+         * A malformed non-empty value still throws.
          */
         static Value evalExpression(const Expression& expr, const ExpressionContext& context, const vt::ViewState* viewState, const Value& defaultValue) {
             Value val = std::visit(ExpressionEvaluator(context, viewState), expr);
@@ -136,8 +122,6 @@ namespace massif::mvt {
         }
 
         T getValue(const ExpressionContext& context) const {
-            // A plain value is baked into the tile, so a parameter it reads is resolved here and
-            // now - same as a feature field.
             if (!_contextVars && !_viewStateVars && !_styleParamVars) {
                 return _value;
             }
@@ -385,16 +369,12 @@ namespace massif::mvt {
         }
 
         T getFunction(const ExpressionContext& context) const {
-            // No context variables means the expression reads nothing but the view state, so the
-            // function built once in setExpression is the same one buildFunction would return - and
-            // returning it hands every tile and feature the SAME object, which the renderer memoises.
+            // View state only: hand every tile and feature the same object, which the renderer memoises.
             if (!_contextVars && !_styleParamVars) {
                 return _func;
             }
             if (!_contextVars) {
-                // Reads parameters and the view state and nothing else, so the function is the same for
-                // every feature decoded against this store - built once per store, or every feature gets
-                // its own object and the renderer can neither memoise nor batch it.
+                // One object per store, not per feature, or the renderer can neither memoise nor batch it.
                 const StyleParameterStore* store = context.getStyleParameterStore().get();
                 std::lock_guard<std::mutex> lock(_liveFuncMutex);
                 for (const std::pair<const StyleParameterStore*, T>& liveFunc : _liveFuncs) {
@@ -419,9 +399,8 @@ namespace massif::mvt {
             return getFunction(context)(viewState);
         }
 
-        // Map::Settings holds these by value and is copied, so the cache below - which is not
-        // copyable and is only ever a cache - is left out of the copy. The BASE is copied
-        // explicitly, or it is default-initialized and the copy loses its _defaultValue.
+        // Map::Settings copies these, so the live-function cache is left out of the copy. The base is
+        // copied explicitly, or the copy loses its _defaultValue.
         GenericFunctionProperty(const GenericFunctionProperty& other) : Property(other),
             _defined(other._defined), _contextVars(other._contextVars), _viewStateVars(other._viewStateVars), _styleParamVars(other._styleParamVars), _func(other._func), _expr(other._expr) { }
 
@@ -441,16 +420,12 @@ namespace massif::mvt {
         }
 
     protected:
-        // A folded parameter is fixed for the whole evaluation, so it no longer stands between the
-        // property and a constant - which is the point: the two folded constants become the two
-        // style slots one feature can be repointed between.
         bool readsLiveStyleParams(const ExpressionContext& context) const {
             return _styleParamVars && !(_selectionFoldable && context.hasStyleParameterOverride());
         }
 
-        // Whether the parameters have to stay behind the store, or can be resolved now. An expression
-        // that also reads a feature field is not live-capable, so changing such a parameter decodes the
-        // tiles again anyway - a closure there would only split the batches.
+        // An expression that also reads a feature field re-decodes on a parameter change anyway, so a closure
+        // there would only split the batches.
         bool foldsStyleParams(const ExpressionContext& context) const {
             return !(readsLiveStyleParams(context) && !_contextVars);
         }

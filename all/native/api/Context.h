@@ -27,22 +27,17 @@ namespace massif {
     namespace api {
 
     /**
-     * An opaque reference to a registered object.
-     *
-     * 20 bits of slot index and 12 bits of generation, so a handle held past a destroy is
-     * detected rather than silently addressing whatever took the slot. 1M live objects and 4096
-     * reuses of a slot before the generation wraps; it fits a uint32_t, and therefore also a
-     * JavaScript number, which is what the C and WASM bindings need.
+     * An opaque reference to a registered object: 20 bits of slot index, 12 of generation, so a
+     * handle held past a destroy is detected rather than addressing whatever took the slot. Fits a
+     * uint32_t, and therefore a JavaScript number.
      */
     typedef std::uint32_t Handle;
 
     static const Handle NULL_HANDLE = 0;
 
     /**
-     * A queued or running async call, so it can be cancelled.
-     *
-     * A plain counter rather than the handle encoding: ids are never reused, so cancelling a call
-     * that already finished is simply not found, and there is no slot to confuse it with.
+     * A queued or running async call, so it can be cancelled. A plain counter: ids are never
+     * reused, so a finished call is simply not found.
      */
     typedef std::uint32_t Call;
 
@@ -66,8 +61,7 @@ namespace massif {
     };
 
     /**
-     * The enum name, for a message a human reads. "result 6" and "see the log" over a log with
-     * nothing in it is not a diagnosis, and every binding renders a bare code that way.
+     * The enum name, for a message a human reads.
      * @return The name, or "RESULT_?" for a value outside the enum.
      */
     const char* resultName(Result result);
@@ -82,11 +76,8 @@ namespace massif {
     };
 
     /**
-     * Owns the handle table and the per-kind id registries.
-     *
-     * There is one default context, which is what the static bindings use, but nothing is a raw
-     * global: a second context is a second isolated world, which is what tests and a WASM module
-     * instance want.
+     * Owns the handle table and the per-kind id registries. The static bindings use the default
+     * one; a second context is a second isolated world (tests, a WASM module instance).
      */
     class Context {
     public:
@@ -119,11 +110,8 @@ namespace massif {
         Handle findObject(const std::string& kind, const std::string& id) const;
 
         /**
-         * The handle of an object the context already holds, found by its address.
-         *
-         * A method thunk is given the object, not the handle, and a method that EMITS needs the
-         * handle to emit on. A linear scan of the slots, which is fine for the handful of methods
-         * that need it - starting a download, not reading a property.
+         * The handle of an object the context already holds, found by its address - for a method
+         * thunk that emits. A linear scan of the slots: keep it off hot paths.
          * @return NULL_HANDLE when the object is not registered.
          */
         Handle handleOf(const void* obj) const;
@@ -134,19 +122,15 @@ namespace massif {
         std::shared_ptr<void> getObject(Handle handle) const;
 
         /**
-         * The same, refused unless the object is of the required class or one of its subclasses.
-         *
-         * The type check an object ARGUMENT needs: a method handed the wrong handle would
-         * otherwise cast it and read another class' memory. Same chain walk setObjectProperty uses.
+         * The same, refused unless the object is of the required class or one of its subclasses,
+         * so a method handed the wrong handle does not cast it and read another class' memory.
          * @return The object, or null when the handle is stale or of the wrong class.
          */
         std::shared_ptr<void> getObject(Handle handle, const char* requiredClass) const;
 
         /**
-         * Registers an object under a generated id, for a result the caller owns.
-         *
-         * A call's result has no name an app would choose, but it still needs a handle - which is
-         * how a binary blob crosses the boundary without being serialised. Free it with destroy.
+         * Registers an object under a generated id, for a result the caller owns. Free it with
+         * destroy.
          */
         Result registerResult(const std::string& kind, const std::shared_ptr<void>& obj,
                               const char* cppClass, Handle& handle);
@@ -159,8 +143,7 @@ namespace massif {
         bool unregisterObject(const std::string& kind, const std::string& id);
 
         /**
-         * The same, addressed by handle rather than by kind and id - which is what a caller
-         * holding a call result has.
+         * The same, addressed by handle rather than by kind and id.
          * @return True when the handle was live.
          */
         bool destroy(Handle handle);
@@ -176,10 +159,8 @@ namespace massif {
                            const std::string& projection = std::string()) const;
 
         /**
-         * The projection an object's positions are in when its class does not say so itself.
-         *
-         * A click info carries map coordinates but has no projection of its own, so it inherits
-         * one; a data source names its projection as a property and needs no help.
+         * The projection an object's positions are in when its class does not say so itself,
+         * e.g. a click info, which carries map coordinates but no projection.
          */
         void setObjectProjection(Handle handle, const std::shared_ptr<Projection>& projection);
 
@@ -190,29 +171,17 @@ namespace massif {
         std::shared_ptr<Projection> getObjectProjection(Handle handle) const;
 
         /**
-         * Writes a property of a registered object. The underlying setter is called, so the
-         * change reaches the renderer exactly as a direct call would.
-         *
-         * The path may end in a bag KEY - "params.water_color", "httpHeaders.User-Agent" - and a
-         * bag with no whole-value setter takes a JSON object to write several keys in one call.
-         *
-         * @param projection The well-known name of the projection the value is IN, for a position.
-         *                   Empty falls back to the running handler's, then to WGS84, which is
-         *                   what a read returns - so a read and a write back land in the same
-         *                   place. Ignored for anything that is not a coordinate.
+         * Writes a property of a registered object through its setter. The path may end in a bag
+         * key ("params.water_color"); a bag with no whole-value setter takes a JSON object.
+         * @param projection The well-known name of the projection a position value is in. Empty
+         *                   falls back to the running handler's, then to WGS84, as a read does.
          */
         Result setProperty(Handle handle, const std::string& path, const PropertyValue& value,
                            const std::string& projection = std::string());
 
         /**
-         * Writes several properties from one JSON object of path to value.
-         *
-         * A binding's `apply({...})` was one crossing per key - JNI, JSI or dart:ffi, per option -
-         * and an app configuring a layer writes a dozen at once. Keys are PATHS, so
-         * `{"fog.rangeStart": 2, "visible": false}` is one call.
-         *
-         * Every key is attempted; the FIRST failure is returned, so a caller learns something went
-         * wrong without one bad key hiding the rest of the writes.
+         * Writes several properties from one JSON object of path to value, in one crossing. Every
+         * key is attempted and the first failure is returned.
          * @param projection Applies to every position among them, as in setProperty.
          */
         Result setProperties(Handle handle, const std::string& json,
@@ -220,12 +189,8 @@ namespace massif {
 
         /**
          * Points an object property at another registered object - a layer's data source, a
-         * decoder's style, a cache's inner source.
-         *
-         * The value's registered class is checked against the property's before anything is cast,
-         * because the generated thunk casts from a type-erased pointer. A class the table does not
-         * know is not a subclass of anything, so the check fails closed.
-         *
+         * decoder's style, a cache's inner source. The value's class is checked before the thunk
+         * casts its type-erased pointer; an unknown class fails closed.
          * @param value The object to point at, or NULL_HANDLE to clear the property.
          * @return RESULT_UNSUPPORTED_TYPE when the property is not an object or has no setter,
          *         RESULT_BAD_HANDLE when the value is stale, RESULT_UNKNOWN_CLASS when it is the
@@ -234,53 +199,35 @@ namespace massif {
         Result setObjectProperty(Handle handle, const std::string& path, Handle value);
 
         /**
-         * The object an object property points at, as a handle the CALLER OWNS.
-         *
-         * The read counterpart of setObjectProperty. Traversal already resolves a child to read
-         * THROUGH it; this is what lets an app hold one - which is the only way to share a layer's
-         * data source with an overlay rather than building it twice.
-         *
+         * The object an object property points at, as a handle the caller owns - how an app shares
+         * a child (e.g. a layer's data source) rather than building it twice.
          * @return NULL_HANDLE when the path does not resolve, is not an object property, or is null.
          */
         Handle getObjectProperty(Handle handle, const std::string& path);
 
         /**
-         * Runs a method on an object.
-         *
-         * The lock is NOT held while it runs: loadTile does network I/O, and a method that called
-         * back into the context would otherwise deadlock.
-         *
+         * Runs a method on an object. The lock is not held while it runs: loadTile does network
+         * I/O, and a method calling back into the context would deadlock.
          * @param method The method name, optionally preceded by a path to the object it belongs
          *               to: "loadTile" on a source, "tileDecoder.setStyleParameter" on a layer.
-         *               Without the path form an app would have to register every intermediate
-         *               object just to reach a method on it.
          * @param argsJson The arguments, as a JSON array. Empty for none.
-         * @param result The return value. PT_OBJECT means intValue is a handle the CALLER OWNS
+         * @param result The return value. PT_OBJECT means intValue is a handle the caller owns
          *               and must destroy; anything else is the value itself.
          */
         Result call(Handle handle, const std::string& method, const std::string& argsJson,
                     PropertyValue& result);
 
         /**
-         * The same, with the result always as a handle the CALLER OWNS.
-         *
-         * An object result is that object; anything else is registered as a Variant, so one rule
-         * covers both and a binding does not need a result struct. Free it with destroy.
+         * The same, with the result always as a handle the caller owns: an object result is that
+         * object, anything else a registered Variant. Free it with destroy.
          */
         Result callHandle(Handle handle, const std::string& method, const std::string& argsJson,
                           Handle& result);
 
         /**
-         * The same, on a worker thread, with the result delivered as an event on the object.
-         *
-         * The result arrives as the event's payload - an object result directly, anything else
-         * wrapped in a Variant a path can be read out of. A payload of 0 means the call failed;
-         * the reason is logged. Subscribers pick their own delivery thread as usual, so this adds
-         * no second callback mechanism.
-         *
-         * Validation of the handle, the method name and the argument JSON happens here, before
-         * anything is queued, so a mistake is reported to the caller rather than to a log.
-         *
+         * The same, on a worker thread, with the result as the payload of an event on the object
+         * (0 when the call failed; the reason is logged). The handle, method and argument JSON
+         * are validated before anything is queued.
          * @param event The event name to emit the result on, e.g. "loadTile.done".
          * @param call Set to the call's id, for cancelCall. Optional.
          */
@@ -288,13 +235,8 @@ namespace massif {
                          const std::string& event, Call* call = nullptr);
 
         /**
-         * Cancels a queued or running async call.
-         *
-         * Cancelling stops the call being STARTED and stops its result being DELIVERED. It cannot
-         * abort one already running - loadTile has no cancellation token to pass on - so a
-         * cancelled call in flight still finishes, and its result is dropped instead of emitted.
-         * Either way no event fires: the caller asked for it to stop and knows it did.
-         *
+         * Cancels a queued or running async call: it will not start and no event fires, but a call
+         * in flight is not aborted - it finishes and its result is dropped.
          * @return True when the call was queued or running. False when it had already finished.
          */
         bool cancelCall(Call call);
@@ -308,7 +250,6 @@ namespace massif {
 
         /**
          * Reads a binary property without turning it into a string.
-         *
          * @param path The path to a BinaryData property, e.g. "data" on a tile. Empty when the
          *             handle is the blob itself, which is what an async result gives.
          */
@@ -316,12 +257,7 @@ namespace massif {
                        std::shared_ptr<BinaryData>& value) const;
 
         /**
-         * Reads a bulk numeric result as a flat array.
-         *
-         * The handle is one a method returned - getElevations over a track is thousands of
-         * numbers, and neither a JSON array nor a per-element proxy is an acceptable way to move
-         * them. The vector is the SDK's own, so a binding copies once into whatever it calls an
-         * array.
+         * Reads a bulk numeric result, as a method returned it, as a flat array.
          */
         Result getDoubles(Handle handle, std::vector<double>& value) const;
 
@@ -419,9 +355,8 @@ namespace massif {
         std::size_t getSubscriptionCount() const;
 
         /**
-         * Whether a subscription is still live. A binding that keeps a listener alive per
-         * subscription needs this: unsubscribeEvent, unsubscribeAll and the death of a target do
-         * not name the subscriptions they remove, so the orphans can only be found by asking.
+         * Whether a subscription is still live. Lets a binding that pins a listener per
+         * subscription find the orphans of bulk removals and target deaths.
          */
         bool isSubscribed(Subscription subscription) const;
 
@@ -518,13 +453,9 @@ namespace massif {
         };
 
         /**
-         * Calls on ONE object run in order; calls on different objects run in parallel.
-         *
-         * A single worker meant a 20 s search blocked a route queued behind it. A free-for-all pool
-         * would instead make five loadTiles on one source finish in an order the caller cannot
-         * predict - and the event carries the result, not the call id, so it could not tell them
-         * apart. Serialising per target keeps the order where it is observable and removes the
-         * blocking where it hurts.
+         * Calls on one object run in order; calls on different objects run in parallel. The event
+         * carries the result, not the call id, so per-target order is the only way a caller can
+         * tell same-object results apart.
          */
         void startWorkerIfNeeded();
         void runCalls();
@@ -532,8 +463,7 @@ namespace massif {
         /** The first queued call whose target is idle, or _calls.end(). */
         std::deque<AsyncCall>::iterator claimableCall();
 
-        // Four: an app's concurrent async work is a search, a route, a tile prime and a profile.
-        // More threads than that queue at the network instead.
+        // An app's concurrent async work: a search, a route, a tile prime and a profile.
         static const std::size_t MAX_WORKERS = 4;
 
         std::deque<AsyncCall> _calls;

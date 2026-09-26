@@ -14,10 +14,8 @@
 
 namespace massif::mvt {
     /**
-     * The Map-block settings that are plain style properties (sun, shadows, fog, buildings,
-     * terrain), under the names the CartoCSS Map block uses - see
-     * CartoCSSMapLoader::loadMapSettings. The XML parser and the XML generator both walk these
-     * tables, so a new setting reaches css2xml and back by being added here once.
+     * The Map-block settings that are plain style properties, under their CartoCSS Map block names.
+     * The XML parser and generator both walk these tables, so a new setting is added here once.
      */
     inline constexpr std::array<std::pair<const char*, FloatFunctionProperty Map::Settings::*>, 37> MAP_SETTINGS_FLOAT_PROPERTIES = {{
         { "sun-azimuth", &Map::Settings::sunAzimuth },

@@ -64,15 +64,9 @@ namespace massif {
          */
         std::size_t getTextureCacheCapacity() const;
         /**
-         * Sets the tile texture cache capacity. Texture cache is the primary storage for raster data,
-         * all tiles contained within the texture cache are stored as uncompressed openGL textures and can immediately be
-         * drawn to the screen. Setting the cache size too small may cause artifacts, such as disappearing tiles.
-         * The more tiles are visible on the screen, the larger this cache should be. A single opaque 256x256 tile takes
-         * up 192KB of memory, a transparent tile of the same size takes 256KB. The number of tiles on the screen depends
-         * on the screen size and density, current rotation and tilt angle, tile draw size parameter and 
-         * whether or not preloading is enabled.
-         * The default is 10MB, which should be enough for most use cases with preloading enabled. If preloading is
-         * disabled, the cache size should be reduced by the user to conserve memory.
+         * Sets the tile texture cache capacity (uncompressed GPU textures); too small a cache causes disappearing tiles.
+         * An opaque 256x256 tile takes 192KB, a transparent one 256KB; the tile count grows with screen size, tilt and preloading.
+         * The default is 10MB, enough for most uses with preloading; reduce it when preloading is disabled.
          * @param capacityInBytes The new tile bitmap cache capacity in bytes.
          */
         void setTextureCacheCapacity(std::size_t capacityInBytes);

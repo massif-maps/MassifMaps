@@ -54,8 +54,7 @@ public final class DemoConfig {
     public static StyleSource STYLE_SOURCE = StyleSource.INLINE;
 
     /** Render the map on a sphere instead of the Mercator plane (Options.setRenderProjectionMode).
-     *  Terrain, shadows and the sky's up vector are still planar-only, so the globe currently
-     *  shows 2D content alone - see docs/internals/rendering/18-globe.md. */
+     *  What works on the globe: docs/internals/rendering/18-globe.md. */
     public static boolean GLOBE_MODE = false;
 
     // =============================================================================================

@@ -29,11 +29,8 @@ namespace massif {
         GLuint getTexId() const;
 
         /**
-         * Uploads a sub-rectangle of the texture from raw pixel data in the texture's own color
-         * format. The CALLER is responsible for keeping the bitmap this texture was created from in
-         * sync: the bitmap is what the texture is rebuilt from after a GL context loss, so a
-         * sub-upload that only reaches the GPU is silently undone by the next context recreation.
-         * Does nothing before the texture is created. Internal, no mipmap regeneration.
+         * Uploads a sub-rectangle in the texture's own format; no-op before creation, no mipmap update.
+         * The caller must update the source bitmap too: a context loss rebuilds the texture from it.
          */
         void updateSubImage(int x, int y, int width, int height, const unsigned char* data);
 

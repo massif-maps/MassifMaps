@@ -28,9 +28,8 @@ namespace massif {
          */
         enum TerrainFlattenMode {
             /**
-             * Rendering only: the terrain passes, the drape and the elevation fetches are dropped,
-             * but the tiles keep the terrain subdivision they were decoded with. Switching costs
-             * nothing and is instant, and a flat map still carries a 3D map's triangles.
+             * Rendering only: the terrain passes, the drape and the elevation fetches are dropped, but the
+             * tiles keep their terrain subdivision. Switching is instant, but a flat map carries 3D triangles.
              */
             TERRAIN_FLATTEN_MODE_RENDER,
             /**
@@ -42,10 +41,8 @@ namespace massif {
     }
 
     /**
-     * 3D terrain configuration, attached to the map via Options::setTerrainOptions.
-     * The elevation data source can be shared with a HillshadeRasterTileLayer, in which case
-     * both features use the same tiles (ideally the data source should be wrapped in a
-     * MemoryCacheTileDataSource to avoid duplicate loads).
+     * 3D terrain configuration, attached to the map via Options::setTerrainOptions. The elevation data source
+     * can be shared with a HillshadeRasterTileLayer (wrap it in a MemoryCacheTileDataSource to avoid duplicate loads).
      * Note: this class is experimental and may change or even be removed in future SDK versions.
      */
     class TerrainOptions {
@@ -111,10 +108,8 @@ namespace massif {
          */
         bool isFlattened() const;
         /**
-         * Switches the map between flat and 3D terrain, without detaching the elevation data the way
-         * setEnabled does. Auto-flattening writes the same state, so an app driving this itself
-         * normally turns auto off (setAutoFlattenParallax(0) and setAutoFlattenTilt(0)). What the
-         * switch costs, and whether a flat map goes on paying for 3D, is setFlattenMode.
+         * Switches the map between flat and 3D terrain without detaching the elevation data (unlike setEnabled).
+         * Auto-flattening writes the same state, so an app driving this normally sets both AutoFlatten thresholds to 0.
          * An app that starts in 2D sets this before it adds its layers, so nothing decodes for 3D.
          * @param flattened True to render flat.
          */
@@ -126,16 +121,9 @@ namespace massif {
          */
         TerrainFlattenMode::TerrainFlattenMode getFlattenMode() const;
         /**
-         * Sets how far a flattened terrain goes back towards a plain 2D map. RENDER is the cheap
-         * switch: the terrain passes stop, but the tiles keep the subdivision 3D needed, so a flat
-         * map still draws a 3D map's triangles. FULL drops that too - a flat map decodes, culls and
-         * draws as if no terrain were configured - at the price of re-decoding the visible tiles at
-         * every switch.
-         *
-         * That re-decode is not visible: it is made while the map is already flat, where the two
-         * densities draw the same picture, and the tiles being replaced stay on screen until their
-         * replacement arrives. Going back to 3D waits for the tiles it needs before it starts to
-         * rise, so the wait shows as 3D arriving late rather than as a half-built map.
+         * Sets how far a flattened terrain goes back towards a plain 2D map: RENDER only stops the terrain passes;
+         * FULL also drops the 3D subdivision, re-decoding the visible tiles at each switch (invisibly, while flat).
+         * Going back to 3D waits for the tiles it needs before it starts to rise.
          * @param mode The new flatten mode.
          */
         void setFlattenMode(TerrainFlattenMode::TerrainFlattenMode mode);
@@ -146,16 +134,9 @@ namespace massif {
          */
         float getFlattenRatio() const;
         /**
-         * Drives the 2D/3D switch by hand, off the app's own clock: 0 is full 3D, 1 is flat. Writing
-         * this takes the ratio away from setFlattened's animation, which is what an app does to make
-         * the terrain match a camera flight EXACTLY - feed it the flight's own progress rather than
-         * hope two timers agree. Auto-flattening is suspended while the app drives, and STAYS
-         * suspended until setFlattened hands the ratio back - so an app that drives an animation
-         * writes setFlattened once at the end of it, or a later tilt gesture does nothing.
-         *
-         * Rising is still gated on the tiles 3D needs: a ratio below 1 asks for them and the ground
-         * is HELD flat until they arrive, because unsubdivided geometry displaced over relief is a
-         * road in the sky. isSwitching() is that hold - wait on it before starting the animation.
+         * Drives the 2D/3D switch by hand (0 full 3D, 1 flat), e.g. from a camera flight's own progress. Auto-flattening
+         * stays suspended until setFlattened hands the ratio back, so call it once at the end. Below 1 the ground is
+         * held flat until the 3D tiles arrive; wait on isSwitching() before starting the animation.
          * @param ratio The new flatten ratio, 0 to 1.
          */
         void setFlattenRatio(float ratio);
@@ -172,15 +153,8 @@ namespace massif {
          */
         float getAutoFlattenParallax() const;
         /**
-         * Sets the terrain parallax, in SCREEN PIXELS, below which 3D stops being worth its cost and
-         * the map renders flat. The parallax is how far the highest ground in view moves on screen
-         * because it is displaced:
-         *
-         *     parallax = halfScreenDiagonal * heightRange * exaggeration / cameraDistance
-         *
-         * so it falls with the camera's height and rises with how mountainous the data is - a fixed
-         * zoom threshold is wrong for one of the two. The rule writes the same state setFlattened
-         * does, without touching setEnabled; how far flattening then goes is setFlattenMode.
+         * Sets the parallax in screen pixels (halfScreenDiagonal * heightRange * exaggeration / cameraDistance)
+         * below which the map renders flat; it writes the same state setFlattened does.
          * Restores at 1.5x this value, so a camera sitting on the boundary does not oscillate.
          * @param pixels The new parallax threshold in screen pixels, or 0 to never flatten. The default is 2.
          */
@@ -205,11 +179,8 @@ namespace massif {
          */
         float getAutoFlattenDuration() const;
         /**
-         * Sets how long the terrain takes to sink flat, and - unless setAutoFlattenRiseDuration
-         * overrides it - to rise again. The ramp scales the heights on the GPU, so it costs no tile
-         * re-decode; only when it reaches flat are the terrain passes themselves dropped, by which
-         * point the two render identically. Does not cover the wait for the tiles 3D needs (see
-         * setFlattenMode) - that is not the animation.
+         * Sets how long the terrain takes to sink flat, and to rise unless setAutoFlattenRiseDuration overrides it.
+         * The ramp scales heights on the GPU (no re-decode); the wait for the tiles 3D needs is not included.
          * @param duration The new duration in seconds. 0 switches instantly.
          */
         void setAutoFlattenDuration(float duration);
@@ -220,10 +191,8 @@ namespace massif {
          */
         float getAutoFlattenRiseDuration() const;
         /**
-         * Sets how long the terrain takes to RISE, separately from how long it takes to sink. The
-         * two are rarely worth the same: the rise is the one an app matches to a camera flight, and
-         * the one that waited for its tiles first. For an exact match to a flight, drive
-         * setFlattenRatio instead - a duration is a second timer, not the same clock.
+         * Sets how long the terrain takes to rise, separately from sinking. To match a camera flight
+         * exactly, drive setFlattenRatio instead: a duration is a second timer.
          * @param duration The new duration in seconds, or a negative value to use setAutoFlattenDuration.
          */
         void setAutoFlattenRiseDuration(float duration);
@@ -246,13 +215,9 @@ namespace massif {
          */
         bool isSeamlessTileEdgesEnabled() const;
         /**
-         * Enables or disables seamless tile edge handling. When enabled, the 1-texel border of
-         * every elevation texture is taken from the neighbouring elevation tiles - same-level
-         * neighbours texel-exactly, coarser (ancestor) neighbours by sampling their height field.
-         * Adjacent terrain tiles then agree on the height along their shared edge instead of
-         * showing a ridge of up to one DEM texel of relief. Costs no IO, only a small amount of
-         * CPU when an elevation texture is built. Disable if the elevation tiles already match
-         * exactly across tile borders.
+         * Enables or disables seamless tile edges: each elevation texture's 1-texel border is taken from the
+         * neighbouring DEM tiles (coarser ones sampled), so adjacent tiles agree on edge height. No IO, a little CPU.
+         * Disable if the elevation tiles already match exactly across tile borders.
          * @param enabled True to fill elevation texture borders from neighbouring tiles.
          */
         void setSeamlessTileEdgesEnabled(bool enabled);
@@ -263,14 +228,9 @@ namespace massif {
          */
         bool isElevationPrefetchEnabled() const;
         /**
-         * Enables or disables elevation tile prefetching. When enabled, every visible terrain tile
-         * asynchronously requests its own elevation tile and the 8 surrounding ones, so neighbouring
-         * terrain tiles are displaced by the same DEM level and border texels have real neighbour
-         * data. When disabled, elevation tiles are only loaded as a side effect of map tile fetches,
-         * which leaves cached map tiles (and the tiles around the viewport) on coarser ancestor
-         * elevation data. This is the costly option: it adds elevation tile requests, decoding and
-         * cache pressure. Disable to keep elevation traffic at a minimum, or if the elevation
-         * tileset is fully local.
+         * Enables or disables elevation prefetching: each visible terrain tile requests its own elevation tile and the
+         * 8 around it, so neighbours share a DEM level; off, cached map tiles stay on coarser ancestor data.
+         * Costs requests, decoding and cache pressure; disable for minimal traffic or a fully local tileset.
          * @param enabled True to prefetch elevation tiles for visible tiles and their neighbours.
          */
         void setElevationPrefetchEnabled(bool enabled);
@@ -333,20 +293,13 @@ namespace massif {
          */
         bool isTileEdgeStitchingEnabled() const;
         /**
-         * Enables or disables cross-LOD tile edge stitching. Neighbouring terrain tiles at
-         * different zoom levels interpolate the elevation between differently spaced grid
-         * vertices along their shared edge, which opens a thin crack. When enabled, the finer
-         * tile chords across the coarser neighbour's grid nodes on that edge, so both tiles
-         * describe the same edge. Needs an even MeshResolution, and only takes effect in GPU
-         * draping mode. Costs one uniform per tile - no extra geometry.
+         * Enables or disables cross-LOD edge stitching: the finer tile chords across a coarser neighbour's grid
+         * nodes, closing the crack between them. Needs an even MeshResolution and GPU draping mode;
+         * costs one uniform per tile.
          * @param enabled True to snap grid surface edges to a coarser neighbour's grid.
          */
         void setTileEdgeStitchingEnabled(bool enabled);
 
-        /**
-         * Returns whether polygon fills are draped as a render-to-texture surface.
-         * @return True if fills are baked to a per-tile texture and sampled on the surface. The default is false.
-         */
         /**
          * Returns how many terrain surface meshes may be cached.
          * @return The cache size in meshes, or 0 for the built-in rule. The default is 0.
@@ -373,15 +326,15 @@ namespace massif {
          */
         void setSharedGroundEnabled(bool enabled);
 
+        /**
+         * Returns whether polygon fills are draped as a render-to-texture surface.
+         * @return True if fills are baked to a per-tile texture and sampled on the surface. The default is true.
+         */
         bool isDrapeFillsEnabled() const;
         /**
-         * Enables or disables maplibre-style render-to-texture fill draping (experimental, spike). When
-         * enabled, polygon fills are rendered FLAT into a per-tile offscreen texture and then sampled as
-         * the color of the terrain surface mesh, instead of being drawn as displaced geometry. Because the
-         * fills become the surface's texture they follow the terrain exactly - no chord sag, so no holes,
-         * no see-through, and no depth slack - at flat-render (2D) fill cost. Lines/contours and labels are
-         * unaffected (still drawn as sharp geometry on top). Only native (non-overzoomed) fills are draped.
-         * Requires GPU draping mode (vertex texture fetch, planar projection).
+         * Enables or disables maplibre-style fill draping (experimental): fills render flat into a per-tile texture
+         * sampled by the terrain surface, so they follow it exactly at 2D fill cost. Only native (non-overzoomed)
+         * fills drape; lines need DrapeLinesEnabled. Requires GPU draping mode (vertex texture fetch, planar).
          * @param enabled True to drape fills as a texture, false to draw them as geometry.
          */
         void setDrapeFillsEnabled(bool enabled);
@@ -392,11 +345,9 @@ namespace massif {
          */
         bool isDrapeLinesEnabled() const;
         /**
-         * Enables or disables draping of vt tile lines in addition to fills (needs DrapeFillsEnabled).
-         * Draped lines are baked into the per-tile texture: they follow the terrain exactly and cost
-         * no per-frame geometry (a city pan runs at twice the frame rate), but they resolve at the
-         * drape resolution rather than the screen's. Layers matching NoDrapeLayerFilter stay sharp
-         * either way. See docs/internals/rendering/04-terrain.md.
+         * Enables or disables draping of tile lines too (needs DrapeFillsEnabled): they follow the terrain exactly
+         * at no per-frame geometry cost, but resolve at the drape resolution. Layers matching NoDrapeLayerFilter
+         * stay sharp. See docs/internals/rendering/04-terrain.md.
          * @param enabled True to drape tile lines too, false to keep them as sharp geometry.
          */
         void setDrapeLinesEnabled(bool enabled);
@@ -408,12 +359,9 @@ namespace massif {
          */
         bool isBridges3DEnabled() const;
         /**
-         * Enables or disables 3D bridges: a feature styled `line-elevation-mode: span` (or the
-         * polygon/building variants) is laid straight between its two portals instead of draped
-         * over the terrain, and a span deck stands as an extrusion carrying its road. Off, every
-         * such feature drapes like the ground and none of the span machinery runs - no chord
-         * resolution, no deck drape bakes, no reference tile fetches. Needs terrain.
-         * See docs/internals/rendering/04-terrain.md, "Bridges and tunnels: spans".
+         * Enables or disables 3D bridges: a `line-elevation-mode: span` feature (or polygon/building variant) is laid
+         * straight between its portals and a span deck stands as an extrusion; off, spans drape and no span work runs.
+         * Needs terrain. See docs/internals/rendering/04-terrain.md, "Bridges and tunnels: spans".
          * @param enabled True to lift spans onto their chord, false to drape them.
          */
         void setBridges3DEnabled(bool enabled);
@@ -421,15 +369,12 @@ namespace massif {
         /**
          * Returns the style layers that are kept out of the terrain drape bake.
          * @return A regular expression matched against vt style layer names. The default is
-         *         "^contour.*"; an empty string drapes everything the geometry type allows.
+         *         "^contour|maneuver.*"; an empty string drapes everything the geometry type allows.
          */
         std::string getNoDrapeLayerFilter() const;
         /**
-         * Sets which style layers must NOT be baked into the drape texture, as a regular expression
-         * over the vt layer name (which comes from the style's own rule names). They are drawn live
-         * in the 3D pass at screen resolution instead. Hairline content is what the drape resolution
-         * costs, hence contours by default. They still take the terrain's sun and shadow, so they
-         * shade like the ground they lie on.
+         * Sets which style layers are not baked into the drape texture, as a regular expression over the vt layer
+         * name; they are drawn live at screen resolution, still sun and shadow shaded. Meant for hairlines such as contours.
          * @param filter The regular expression, or an empty string to drape everything.
          */
         void setNoDrapeLayerFilter(const std::string& filter);
@@ -440,14 +385,9 @@ namespace massif {
          */
         int getDrapeResolution() const;
         /**
-         * Sets the per-tile drape texture resolution. Draped content is rasterized into a texture
-         * of this size and resampled onto the terrain surface, so this trades sharpness of thin
-         * content (lines, outlines) against video memory: cost is resolution^2 * 4 bytes per
-         * visible tile. maplibre uses twice the tile size (1024 for 512px tiles) for this reason.
-         * 0 (the default) takes it from the SCREEN instead: the tile LOD refines a tile until it
-         * covers at most a 2x2 block of nominal tiles, so 2 * tileDrawSize * pixelScale texels is
-         * one texel per screen pixel at that bound - a fixed resolution is either coarser than the
-         * screen (draped fill edges stair-step as you zoom in) or finer than it can show.
+         * Sets the per-tile drape texture resolution, trading thin-content sharpness against video memory
+         * (resolution^2 * 4 bytes per visible tile). 0 (the default) follows the screen: 2 * tileDrawSize * pixelScale,
+         * one texel per pixel at the tile LOD bound, halved until DrapeWorkingSet tiles fit DrapeCacheSize.
          * @param resolution The new drape texture resolution, clamped to [128, 2048], or 0 to follow the screen.
          */
         void setDrapeResolution(int resolution);
@@ -484,20 +424,9 @@ namespace massif {
          */
         float getViewDistanceFactor() const;
         /**
-         * Sets how far from the camera the map is drawn and where the far plane sits, as a factor
-         * on tangram's own rule (core/src/view/view.cpp):
-         *     far = 2 * cameraHeight / cos(pitch + fovy/2), capped by
-         *     maxTileDistance = worldTileSize(zoom) * (2^(MAX_LOD+1) - 1), with MAX_LOD 6.
-         * A factor of 1 is that rule verbatim; smaller ends the view closer, larger extends it.
-         * This is what makes a near-horizontal view affordable: taken from the visible ground
-         * instead, the view reaches the horizon - hundreds of tiles, most of them a few pixels
-         * tall, each carrying its own labels. Pair a small factor with fog so the ground fades
-         * out instead of ending.
-         * It also decides the depth budget: tangram's model is calibrated on a far/near ratio of a
-         * few hundred, and a deeper far spends the NDC precision the per-layer depth separation
-         * needs.
-         * A style may pin an absolute distance instead, in meters, with
-         * "terrain-max-visible-distance".
+         * Sets the view distance and far plane as a factor on tangram's rule (far = 2 * cameraHeight / cos(pitch + fovy/2),
+         * capped at worldTileSize(zoom) * 127); smaller ends the view closer (pair with fog), larger costs depth precision.
+         * A style may pin an absolute distance instead, in meters, with "terrain-max-visible-distance".
          * @param factor The new view distance factor. The default is 1.
          */
         void setViewDistanceFactor(float factor);
@@ -508,17 +437,8 @@ namespace massif {
          */
         float getViewDistance() const;
         /**
-         * Sets a MINIMUM distance the map is drawn to, in METERS, whatever the camera's height or
-         * pitch. Tangram's rule is proportional to the camera's height above the ground, so
-         * approaching the terrain shortens the view - which is right for a map seen from above and
-         * wrong for a view along the ground, where the same landscape should stay visible as the
-         * camera descends into it. An absolute distance keeps the ground reaching at least this far
-         * at any elevation and any tilt. The far plane follows it, which spends depth precision
-         * (see setViewDistanceFactor), so this is an explicit trade - pair it with fog so the
-         * ground fades out instead of ending.
-         * It only ever EXTENDS the factor rule: metres are zoom-independent while the rule scales
-         * with the camera's height, so a distance that reaches the horizon up close would end the
-         * ground in a disc well inside a zoomed-out screen.
+         * Sets a minimum distance the map is drawn to, in meters, at any camera height or tilt, for views along the
+         * ground. It only ever extends the factor rule and spends depth precision, so pair it with fog.
          * 0 (the default) leaves the factor rule alone.
          * @param distance The new minimum view distance in meters, or 0 for the factor rule alone.
          */
@@ -539,17 +459,13 @@ namespace massif {
 
         /**
          * Returns the drape cache budget in megabytes.
-         * @return The drape cache budget in megabytes. The default is 96.
+         * @return The drape cache budget in megabytes, or 0 for the built-in 96. The default is 0.
          */
         int getDrapeCacheSize() const;
         /**
-         * Sets how much video memory the cached drape textures may take, in megabytes. The cache
-         * has to hold the LIVE cover AND the generation it just replaced: a leaf whose own bake has
-         * not landed stands in on the cached tiles under it, so a budget that fits only one cover
-         * evicts the previous generation on every frame of a zoom and those leaves are painted in
-         * the flat background colour instead - the ground blinking during a fast zoom.
-         * It also decides the automatic drape resolution (see DrapeResolution and DrapeWorkingSet),
-         * since the two have to agree.
+         * Sets how much video memory the cached drape textures may take, in megabytes. It must hold the live cover
+         * and the generation it replaced, or the ground blinks during a fast zoom. It also bounds the automatic
+         * drape resolution (see DrapeResolution and DrapeWorkingSet).
          * @param megabytes The new budget in megabytes, or 0 for the default of 96.
          */
         void setDrapeCacheSize(int megabytes);
@@ -569,16 +485,13 @@ namespace massif {
 
         /**
          * Returns how many drape tiles the automatic resolution assumes are cached at once.
-         * @return The assumed working set in tiles. The default is 64.
+         * @return The assumed working set in tiles, or 0 for the built-in 64. The default is 0.
          */
         int getDrapeWorkingSet() const;
         /**
-         * Sets how many drape tiles the automatic resolution (DrapeResolution 0) assumes have to
-         * fit the budget at once: the live cover plus the generation a zoom or pan is about to need
-         * back. The resolution is halved until that many fit DrapeCacheSize.
-         * Lower values buy sharpness at the price of a cache that thrashes; a real cover was
-         * measured at 15-34 leaves, so a working set below that cannot hold even the live cover.
-         * @param tiles The assumed working set in tiles. The default is 64.
+         * Sets how many drape tiles the automatic resolution (DrapeResolution 0) assumes must fit DrapeCacheSize at
+         * once (live cover plus the next generation). Lower is sharper but thrashes below a real cover's 15-34 leaves.
+         * @param tiles The assumed working set in tiles, or 0 for the built-in 64.
          */
         void setDrapeWorkingSet(int tiles);
 
@@ -588,15 +501,9 @@ namespace massif {
          */
         int getMaxTileZoomCoarsening() const;
         /**
-         * Sets how far BELOW the camera's zoom the tile LOD may take a tile in terrain mode
-         * (Options::TileLODFactor decides the rest). The tile surface is the depth OCCLUDER and its
-         * tesselation is proportional to the tile size, so a tile that coarsens freely has its
-         * ridge crests chopped flat and content drawn over a finer tile of another layer - a road,
-         * a contour - shows through the ridge in front of it. The DEM level follows the tile zoom
-         * as well (one elevation texture per tile), so the same tiles also shade as blocky
-         * hillshade.
-         * Larger values give the LOD more room - fewer tiles at a tilt, at the price of both;
-         * 0 pins every tile to the camera's own zoom.
+         * Sets how far below the camera's zoom the tile LOD may take a tile in terrain mode. The surface is the depth
+         * occluder and its DEM level follows the tile, so coarse tiles chop ridge crests (content shows through) and
+         * shade blocky; larger values mean fewer tiles at a tilt. 0 pins every tile to the camera's own zoom.
          * @param levels The new maximum tile zoom coarsening. The default is 3.
          */
         void setMaxTileZoomCoarsening(int levels);
@@ -607,11 +514,8 @@ namespace massif {
          */
         Color getBackgroundColor() const;
         /**
-         * Sets the terrain background color: an opaque base fill of the terrain surface
-         * drawn under all layers. It keeps the terrain shape visible (and its depth valid
-         * for vector element and billboard occlusion) even without any raster or vector
-         * tile layer content - without it the terrain is transparent wherever no layer
-         * paints. Transparent (the default) disables the fill.
+         * Sets the terrain background color: an opaque base fill under all layers that keeps the terrain shape
+         * (and its depth, for occlusion) where no layer paints. Transparent (the default) disables the fill.
          * @param color The new terrain background color.
          */
         void setBackgroundColor(const Color& color);
@@ -622,12 +526,8 @@ namespace massif {
          */
         bool isBackgroundBitmapEnabled() const;
         /**
-         * Sets the terrain background bitmap state. When enabled, the map background bitmap
-         * (Options::getBackgroundBitmap, the repeating pattern flat maps show below the tiles)
-         * is draped over the terrain surface as the base fill drawn under all layers,
-         * instead of the solid background color. Like the background color fill, it keeps
-         * the terrain shape visible (and its depth valid for occlusion) where no layer
-         * paints, and shows through translucent tile layer content.
+         * Sets the terrain background bitmap state. When enabled, the map background bitmap (Options::getBackgroundBitmap)
+         * is draped as the base fill under all layers instead of the background color.
          * @param enabled The new background bitmap state.
          */
         void setBackgroundBitmapEnabled(bool enabled);
@@ -639,35 +539,9 @@ namespace massif {
          */
         std::string getSurfaceShaderSource() const;
         /**
-         * Sets a fragment shader that paints the terrain surface itself. When set, it replaces
-         * the background bitmap and the background color as the terrain base fill: the surface
-         * is drawn as an opaque pass under all layers, so a map with no tile layer at all still
-         * shows shaded relief. The source must define
-         *
-         *     vec4 surfaceColor();
-         *
-         * returning the non-premultiplied surface colour. These are available to it:
-         *
-         *     varying vec3  v_normal;      // unit surface normal, world space (x east, y north, z up)
-         *     varying vec3  v_worldPos;    // surface position in internal map units
-         *     varying float v_elevation;   // surface elevation in metres (before exaggeration)
-         *     varying float v_dist;        // distance from the camera in metres
-         *     uniform vec3  u_sunDir;      // unit vector towards the sun, world space
-         *     uniform vec4  u_sunColor;    // sun colour, rgba 0..1
-         *     uniform float u_sunIntensity;
-         *     uniform float u_ambientIntensity;
-         *     uniform float u_time;        // seconds since the map view was created
-         *     uniform float u_zoom;        // current fractional map zoom
-         *     uniform vec2  u_resolution;  // viewport size in pixels
-         *
-         * The surface must NOT fog itself: the SDK applies the same fog the rest of the frame gets
-         * to whatever this returns. The fog uniforms and helpers documented on
-         * FogOptions::setShaderSource are declared here too, and must not be redeclared.
-         *
-         * plus every parameter set with setSurfaceParameter (float) and setSurfaceColorParameter
-         * (vec4, rgba 0..1) as a uniform of that name. Redeclaring any of the above is a compile
-         * error, and a shader that fails to compile is dropped (the background bitmap/color is
-         * used instead) with the error logged.
+         * Sets a fragment shader defining "vec4 surfaceColor()" (non-premultiplied, not fogged) that paints the terrain
+         * surface as the base fill, replacing the background bitmap/color. On compile error it is dropped and logged.
+         * Varyings, uniforms and parameters: docs/internals/rendering/04-terrain.md, "The surface shader".
          * @param shaderSource The GLSL source, or an empty string for no shaded surface.
          */
         void setSurfaceShaderSource(const std::string& shaderSource);
@@ -716,14 +590,9 @@ namespace massif {
          */
         int getMaxTileZoomOffset() const;
         /**
-         * Sets the maximum visible tile zoom offset, relative to the camera zoom level.
-         * Terrain level-of-detail is distance based: tiles close to the camera (and mountain
-         * faces rising towards it) are shown at higher tile zoom levels than flat rendering
-         * would ever use at the same camera zoom. If the map style renders differently at
-         * different tile zoom levels, these LOD rings become visible as patches with hard
-         * boundaries. Offset 0 caps tile detail at the level flat rendering would show at
-         * the current camera zoom; positive values allow that many extra levels of detail
-         * near the camera. Values of 100 or more disable the cap.
+         * Sets the maximum visible tile zoom offset, relative to the camera zoom level. Distance-based terrain LOD shows
+         * near tiles finer than flat rendering would, exposing zoom-dependent styling as hard-edged rings; 0 caps at the
+         * flat level, positive values allow that many extra levels. Values of 100 or more disable the cap.
          * @param offset The new maximum tile zoom offset (values >= 100 disable the cap).
          */
         void setMaxTileZoomOffset(int offset);
@@ -735,12 +604,9 @@ namespace massif {
          */
         float getCameraClearance() const;
         /**
-         * Sets the camera terrain clearance floor, in meters. The camera is always kept a
-         * height above the terrain under it that scales with the zoom, as in mapbox: a
-         * sixteenth of its distance to sea level, so zooming in is never blocked by the
-         * clearance alone. This floor is added under that rule for apps that want a fixed
-         * minimum. A zoom in stops at the clearance; a camera pushed under it by a pan or
-         * by arriving elevation is lifted at a constant zoom, by reducing the tilt.
+         * Sets the camera terrain clearance floor, in meters, added under the zoom-relative rule (as in mapbox, a share of
+         * the camera's altitude, see CameraClearanceFraction). A zoom in stops at the clearance; a camera pushed under it
+         * by a pan or arriving elevation is lifted at a constant zoom, by reducing the tilt.
          * @param clearance The new clearance floor in meters. 0 (the default) applies the zoom-relative rule alone.
          */
         void setCameraClearance(float clearance);
@@ -751,7 +617,7 @@ namespace massif {
          */
         float getCameraClearanceFraction() const;
         /**
-         * Sets the share of the camera's altitude the clearance takes, replacing the 1/16 above.
+         * Sets the share of the camera's altitude the clearance takes (default 1/16).
          * 0 leaves CameraClearance alone as a fixed height above the ground, as a first-person view needs.
          * @param fraction The new fraction, clamped to [0, 1). 1/16 is the default.
          */
@@ -800,11 +666,9 @@ namespace massif {
          */
         float getBillboardOcclusionTolerance() const;
         /**
-         * Sets how far behind the terrain a billboard or label anchor may sit and still count
-         * as visible, as a fraction of its distance from the camera. The default is 0.2; 0 hides a
-         * label the moment its anchor goes behind the relief. Larger values
-         * deliberately let partly hidden features label - a summit just behind a nearer ridge
-         * still shows its name, which is what a peak-finder view wants.
+         * Sets how far behind the terrain a billboard or label anchor may sit and still count as visible, as a fraction
+         * of its distance from the camera. The default is 0.2; 0 hides a label the moment its anchor goes behind the
+         * relief; larger values let a summit just behind a nearer ridge keep its name.
          * @param tolerance The new relative tolerance (clamped to 0..1).
          */
         void setBillboardOcclusionTolerance(float tolerance);
@@ -828,17 +692,9 @@ namespace massif {
          */
         float getTextOcclusionOpacity() const;
         /**
-         * Sets the opacity a label keeps while the point it is anchored at is hidden by 3D
-         * content - buildings, not the terrain, which occludes labels regardless (see
-         * BillboardOcclusionTolerance). 0 hides such a label completely; 1, the default, draws it
-         * as if nothing were in front of it.
-         *
-         * The test is per LABEL, not per fragment: a building crossing part of a word does not cut
-         * it, the whole label fades by how much of a small square around its anchor is covered.
-         *
-         * Below 1 this costs one extra pass over the visible extrusions per frame (measured at
-         * ~0.85 ms on an Adreno 610 at a city camera); at 1 the pass does not run at all. The
-         * style's 'text-occlusion-opacity' wins over this value where it sets one.
+         * Sets the opacity a label keeps while its anchor is hidden by buildings (terrain occludes regardless), faded
+         * per label by how much of a small square around the anchor is covered. 1, the default, disables it; below 1
+         * costs one extra pass over visible extrusions. The style's 'text-occlusion-opacity' wins where it sets one.
          * @param opacity The opacity of an occluded label (clamped to 0..1).
          */
         void setTextOcclusionOpacity(float opacity);
@@ -856,7 +712,7 @@ namespace massif {
 
         /**
          * Returns the capacity of the decoded elevation tile cache in bytes.
-         * @return The cache capacity in bytes. The default is 32MB.
+         * @return The cache capacity in bytes. The default is 64MB, grown to hold 192 grids unless set explicitly.
          */
         std::size_t getElevationCacheCapacity() const;
         /**
@@ -905,10 +761,8 @@ namespace massif {
         void setDecodeActive(bool active);
 
         /**
-         * Applies the switch's own ratio, 0 to 1. Scales the heights the elevation manager hands
-         * out, leaving the app's own exaggeration alone. Does NOT notify option listeners or clear
-         * the manual flag: it is driven per frame by the renderer, which asks for its own redraws.
-         * Internal method.
+         * Applies the switch's own ratio, 0 to 1, scaling the heights handed out without touching the app's exaggeration.
+         * Does not notify listeners or clear the manual flag: the renderer drives it per frame. Internal method.
          * @param ratio The new flatten ratio.
          */
         void applyFlattenRatio(float ratio);
@@ -963,8 +817,7 @@ namespace massif {
         std::atomic<bool> _flattened;
         std::atomic<TerrainFlattenMode::TerrainFlattenMode> _flattenMode;
         std::atomic<bool> _decodeActive;
-        // Whether the renderer's 2D/3D switch has taken over. Until it has, setFlattened is the
-        // whole state - see the comment there.
+        // Whether the renderer's 2D/3D switch has taken over; until then setFlattened is the whole state.
         std::atomic<bool> _flattenSwitchStarted;
         std::atomic<bool> _flattenManual;
         std::atomic<float> _flattenManualRatio;
@@ -1007,8 +860,7 @@ namespace massif {
         std::atomic<int> _drapeWorkingSet;
         std::atomic<int> _maxTileZoomCoarsening;
 
-        // Contours are the one thing the drape's resolution visibly costs: they are hairline, and a
-        // slope magnifies the texture, so they smear where fills and road casings survive.
+        // Hairlines (contours) smear in the drape, where a slope magnifies the texture.
         static const std::string DEFAULT_NO_DRAPE_LAYER_FILTER;
 
         std::string _noDrapeLayerFilter;

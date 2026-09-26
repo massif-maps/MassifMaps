@@ -25,15 +25,12 @@ namespace massif {
         GLuint getFBOId() const;
         GLuint getColorTexId() const;
         /**
-         * The color texture currently attached to the framebuffer - the one drawing goes to,
-         * which is not the primary texture while the secondary one is attached.
+         * The color texture drawing currently goes to (the secondary one while attached).
          */
         GLuint getAttachedColorTexId() const;
         /**
-         * Attaches the secondary color texture (created on first use) or the primary one again.
-         * The depth/stencil attachments are untouched, so a full-screen pass can read one color
-         * texture and write the other while keeping the depth the scene was drawn with - which
-         * is what lets content be drawn after a post-process effect and still be occluded by it.
+         * Attaches the secondary color texture (created on first use) or the primary one. Depth/stencil
+         * stay, so content drawn after a post-process effect is still occluded by the scene.
          */
         void attachSecondaryColorTex(bool secondary);
 

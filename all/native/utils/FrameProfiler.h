@@ -8,19 +8,9 @@
 #define _MASSIF_FRAMEPROFILER_H_
 
 /**
- * Per-frame render timing, split by the section of the frame it was spent in.
- *
- * The sections are the ones a rendering change actually moves: the terrain occlusion pass,
- * the drape cover and its bakes, the layer draw, the 3D pass. Together with the frame rate
- * they say WHERE a frame went, which is the difference between optimising the renderer and
- * guessing at it.
- *
- * It lives in the hot path - one clock read per section per frame - so it must cost nothing
- * when unused: with MASSIF_FRAME_PROFILER at 0 the counters do not exist, the FRAME_PROF_*
- * macros expand to nothing, and their arguments are never evaluated.
- *
- * Enable it for a debug build with -DMASSIF_FRAME_PROFILER=1 (scripts/android-dev passes
- * CMake flags through to the native build), then read the 'PROF' lines from logcat.
+ * Per-frame render timing by frame section. At MASSIF_FRAME_PROFILER 0 the FRAME_PROF_* macros expand to
+ * nothing and their arguments are never evaluated; build with -DMASSIF_FRAME_PROFILER=1 to get 'PROF' lines.
+ * See docs/internals/rendering/10-performance.md.
  */
 #ifndef MASSIF_FRAME_PROFILER
 #define MASSIF_FRAME_PROFILER 0
@@ -37,22 +27,9 @@
 
 namespace massif {
     /**
-     * The same frame sections, measured on the GPU with GL_EXT_disjoint_timer_query.
-     *
-     * A CPU timer inside a GL section measures where the driver decided to block, not where the
-     * work is - that is why the 3D layer pass reads as 18 ms with only ~4 ms of it attributable.
-     * A timer query is answered by the GPU itself, so it says how much of a section is actually
-     * GPU work.
-     *
-     * Results are read SLOT_COUNT frames late, so the render thread never waits for the GPU; a
-     * frame whose results are not back yet is skipped rather than measured half way. Sections
-     * cannot nest (one TIME_ELAPSED query is active at a time), which matches the sections here:
-     * they are sequential.
-     *
-     * CAVEAT when reading the numbers: TIME_ELAPSED covers the wall clock between the two markers
-     * in the command stream, so a section where the GPU idles waiting for the CPU counts that
-     * idle time. The trustworthy signal is the TOTAL against the frame time (GPU-bound or not)
-     * and the RATIO between sections, not a single section in isolation.
+     * The same sections timed on the GPU (GL_EXT_disjoint_timer_query), read SLOT_COUNT frames late so the
+     * render thread never waits; sections cannot nest. TIME_ELAPSED includes GPU idle time waiting for the CPU,
+     * so trust the total against the frame time and the ratios between sections, not one section alone.
      */
     struct GpuFrameProfiler {
         enum Section {
@@ -75,8 +52,7 @@ namespace massif {
         // Called when a GL context is created on this thread: query objects belong to the context
         // that generated them, so a recreated surface needs its own.
         static void resetContext();
-        // Called at the start of every frame: collects whatever the GPU has finished and picks
-        // the query slot this frame writes into.
+        // Collects whatever the GPU has finished and picks the query slot this frame writes into.
         static void beginFrame();
         static void beginSection(int section);
         static void endSection();
@@ -85,14 +61,11 @@ namespace massif {
     };
 
     struct FrameProfiler {
-        // Where the current frame spent its time. Reset at the start of every frame.
-        // Per thread: each map view has its own GL thread, so each gets its own 'PROF' line.
+        // Per thread: each map view has its own GL thread and 'PROF' line.
         // The RenderStats counters are still process-wide, so checkSpike's deltas are shared.
         static inline thread_local double skyMs = 0;        // frame start: state, sky, background (includes the swap-buffer wait)
         static inline thread_local double preludeMs = 0;    // terrain depth pre-pass / occlusion depth read-back
-        // prelude's split: its GPU time is ~0, so the question is which CPU step.
         static inline thread_local double preTerrainMs = 0;   // terrain surface / background fill, incl. its elevation walk
-        // preTerrain's split: the elevation prefetch walk and the surface draw are unrelated.
         static inline thread_local double preTerrainCutMs = 0;      // the budgeted cut itself (memoised per frame)
         static inline thread_local double preTerrainPrefetchMs = 0; // prefetchTileGrid / getDataTileGrid over every cut tile
         static inline thread_local double preTerrainSurfaceMs = 0;  // renderSurface: mesh build + draw
@@ -112,7 +85,6 @@ namespace massif {
         static inline thread_local double preTailWalkMs = 0;    // ... of which the drape/ground layer walk
         static inline thread_local double prepareMs = 0;    // per-layer startFrame (label re-anchoring, blending state)
         static inline thread_local double coverMs = 0;      // drape cover computation
-        // cover's split.
         static inline thread_local double coverSeedMs = 0;    // collectTerrainCoverTileIds: the terrain's own visible cut
         static inline thread_local double coverCollectMs = 0; // collectTerrainCover over the ground/drape layers
         static inline thread_local double coverStandInMs = 0; // the DEM stand-in walk and its dedup
@@ -139,22 +111,11 @@ namespace massif {
         }
 
         /**
-         * A single frame far above the average, reported on its own.
-         *
-         * The once-a-second average hides exactly the frame the user feels - a 108 ms frame
-         * inside a 48 ms average is invisible in the mean and is the whole complaint. This
-         * prints that frame's own section split next to the counters that moved DURING it,
-         * which is what separates "the tile set changed and every label was rebuilt" from
-         * "the draw itself was slow": the deltas are per-frame, so a spike with tileSets 0 and
-         * labelMaps 0 is not a tile-set change however plausible that sounded.
-         *
-         * Called on EVERY frame, not only slow ones - the snapshot has to advance each frame or
-         * the deltas would span from the previous spike instead of the previous frame.
+         * Logs a single slow frame's section split with the RenderStats counters that moved during that frame.
+         * Called on every frame, so the snapshot advances per frame rather than per spike.
          */
         static void checkSpike(double frameMs) {
-            // The threshold is deliberately a fixed number rather than a multiple of the running
-            // average: while zooming the average itself climbs, and a ratio stops firing exactly
-            // when the stalls get bad.
+            // Fixed, not a multiple of the average: the average climbs while zooming and a ratio would stop firing.
             constexpr double SPIKE_MS = 80.0;
 #if MASSIF_VT_RENDER_STATS
             using vt::RenderStats;

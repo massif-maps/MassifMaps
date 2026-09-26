@@ -123,7 +123,7 @@ namespace massif {
                 source.maxOverzoomLevelSet = previous->maxOverzoomLevelSet;
                 source.maxOverzoomLevel = previous->maxOverzoomLevel;
             }
-            removeExternalDataSource(name); // replace if it exists
+            removeExternalDataSource(name);
             _externalSources.push_back(source);
             applyChildTileProperties(_externalSources.back());
             if (_componentsSet) {
@@ -139,9 +139,7 @@ namespace massif {
             throw NullArgumentException("Null dataSource");
         }
 
-        // A vector source is drawn as its own child VectorTileLayer over its own source, with the
-        // master decoder, filtered to its layer name. Kept separate so it can overzoom independently
-        // - a ContourTileDataSource renders z13+ from z12 DEM data through MaxOverzoomLevel.
+        // Its own child layer so it can overzoom independently, e.g. contours rendering z13+ from z12 DEM data.
         auto childVectorLayer = std::make_shared<VectorTileLayer>(dataSource, getTileDecoder());
         // Style names, not layer names: attachments included (see buildFilterString).
         childVectorLayer->setRendererLayerFilter("^(" + name + ")(::.*)?$");
@@ -343,24 +341,20 @@ namespace massif {
     }
 
     std::string CompositeVectorTileLayer::buildFilterString(const std::vector<std::string>& group, bool includeBackground) {
-        // The filter is a full regex_match and the per-tile background layer has an EMPTY name, so
-        // "^$" matches only the background and a trailing empty alternative matches it too.
-        // Non-bottom groups must NOT match "", or they paint the background over earlier groups.
+        // Full regex_match; the background layer has an empty name, which non-bottom groups must not match
+        // or they paint the background over earlier groups.
         if (group.empty()) {
-            // Bottom group with no style layers still draws the background; other empty groups match
-            // nothing ("[^\\s\\S]" requires one impossible char, so it matches no string, not even "").
+            // "[^\\s\\S]" matches no string, not even "".
             return includeBackground ? "^$" : "[^\\s\\S]";
         }
-        // The filter is matched against the STYLE name, not the map layer name: CartoCSS attachments
-        // produce one style each, "layer::attachment" (nested, "layer::a::b"). Matching the bare
-        // layer name keeps only the default attachment, so accept any attachment suffix too.
+        // Matched against style names: each CartoCSS attachment is its own "layer::attachment" style.
         std::string pattern = "^((";
         for (std::size_t i = 0; i < group.size(); i++) {
             pattern += (i ? "|" : "") + group[i];
         }
         pattern += ")(::.*)?";
         if (includeBackground) {
-            pattern += "|"; // empty alternative -> also matches the empty-named background layer
+            pattern += "|"; // matches the empty-named background layer
         }
         pattern += ")$";
         return pattern;
@@ -382,8 +376,7 @@ namespace massif {
     }
 
     std::shared_ptr<Layer> CompositeVectorTileLayer::makeGroupLayer(const std::string& filter) {
-        // Internal group layer: same merged source + decoder as this layer, with a fixed
-        // rendererLayerFilter. Shares the master data source so a source change reloads all groups.
+        // Shares the master data source so a source change reloads all groups.
         auto groupLayer = std::make_shared<VectorTileLayer>(getDataSource(), getTileDecoder());
         groupLayer->setRendererLayerFilter(filter);
         groupLayer->setLabelRenderOrder(getLabelRenderOrder());
@@ -433,7 +426,6 @@ namespace massif {
         // Caller holds _sourceMutex (or is the constructor).
         _resolvedConfigCache.clear();
 
-        // Drop previous internal group layers.
         for (const DrawItem& item : _drawItems) {
             if (item.groupLayer && _componentsSet) {
                 unwireChild(item.groupLayer);
@@ -449,7 +441,6 @@ namespace massif {
         }
         std::vector<std::string> order = decoder->getStyleLayerNames();
 
-        // Constrain each external child's visible zoom range to the style's config-rule range.
         for (const ExternalSource& s : _externalSources) {
             if (s.childLayer) {
                 applyExternalChildZoomRange(s);
@@ -458,7 +449,7 @@ namespace massif {
 
         auto isChildSlot = [&](const std::string& layerName) {
             const ExternalSource* s = findExternalSource(layerName);
-            return s && s->childLayer; // raster / hillshade / vector children all occupy a slot
+            return s && s->childLayer;
         };
 
         std::vector<std::string> group;
@@ -466,13 +457,11 @@ namespace massif {
         for (const std::string& layerName : order) {
             if (isChildSlot(layerName)) {
                 if (!firstSlotSeen) {
-                    // Group 0 renders on this layer itself. It also draws the style background
-                    // (includeBackground), so the Map background-color appears once at the bottom.
+                    // Group 0 renders on this layer and alone draws the style background, once at the bottom.
                     VectorTileLayer::setRendererLayerFilter(buildFilterString(group, /*includeBackground=*/true));
                     firstSlotSeen = true;
                 } else if (!group.empty()) {
-                    // A non-empty intermediate group gets its own stable-filtered layer. Empty
-                    // intermediate groups are skipped entirely (no layer to fetch/decode/overpaint).
+                    // Empty intermediate groups get no layer at all: nothing to fetch, decode or overpaint.
                     _drawItems.push_back({ DRAW_ITEM_VT_GROUP, std::string(), makeGroupLayer(buildFilterString(group)) });
                 }
                 _drawItems.push_back({ DRAW_ITEM_EXTERNAL, layerName, std::shared_ptr<Layer>() });
@@ -482,13 +471,11 @@ namespace massif {
             }
         }
         if (!firstSlotSeen) {
-            // No external child slots: render everything on this layer, no interleaving.
             VectorTileLayer::setRendererLayerFilter("");
         } else if (!group.empty()) {
             _drawItems.push_back({ DRAW_ITEM_VT_GROUP, std::string(), makeGroupLayer(buildFilterString(group)) });
         }
 
-        // Warn about registered sources that have no slot in the style order.
         for (const ExternalSource& s : _externalSources) {
             if (s.childLayer && std::find(order.begin(), order.end(), s.name) == order.end()) {
                 Log::Warnf("CompositeVectorTileLayer: external source '%s' is not listed in the style 'layers' - it will not be drawn", s.name.c_str());
@@ -542,19 +529,15 @@ namespace massif {
     void CompositeVectorTileLayer::loadData(const std::shared_ptr<CullState>& cullState) {
         VectorTileLayer::loadData(cullState);
 
-        // Re-apply merged-vector (contour) generation parameters in case the style / parameter
-        // parameters changed (a change triggers a decoder update -> tile reload -> loadData).
+        // A style or parameter change reloads tiles through here, so re-apply the contour generation parameters.
         applyVectorSourceConfigs();
 
-        // _sourceMutex guards which children to load, not the loading: holding it across child
-        // loadData blocked the render thread while tiles streamed in.
+        // _sourceMutex guards which children to load, not the loading, which would block the render thread.
         std::vector<std::shared_ptr<Layer> > loadLayers;
         {
             std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
             for (const ExternalSource& s : _externalSources) {
-                // Only sources the style actually gives a slot to: one the style's 'layers' never
-                // mentions has no draw item, yet it still fetched and decoded its tiles - DEM downloads
-                // and normal maps for a layer the map does not show.
+                // A source the style's 'layers' never mentions is not drawn, so it must not fetch either.
                 if (s.childLayer && isDrawnSlot(s.name)) {
                     loadLayers.push_back(s.childLayer);
                 }
@@ -695,17 +678,14 @@ namespace massif {
             auto it = config.values.find(key);
             return it != config.values.end() ? &it->second : nullptr;
         };
-        // Some hillshade setters bake into the normal map and re-decode the tile, so a zoom-
-        // interpolated value would re-decode continuously and never settle. Those are applied only
-        // when the INTEGER zoom changes, where the tiles reload anyway; the cheap ones every frame.
+        // Setters baked into the normal map re-decode the tile, so they apply only at integer zoom changes
+        // (where tiles reload anyway) or a zoom-interpolated value would never settle.
         std::map<std::string, double>& applied = _lastChildConfig[source.name];
         int intZoom = static_cast<int>(std::floor(viewState.getZoom()));
         bool decodeZoomChanged = (applied.find("__izoom") == applied.end()) || (static_cast<int>(applied["__izoom"]) != intZoom);
         applied["__izoom"] = static_cast<double>(intZoom);
 
-        // EVERY setter below ends in Layer::redraw(), so applying them unconditionally means the map
-        // asks for a new frame for ever and never goes idle. Apply only what actually changed - a
-        // zoom-interpolated value still changes, and still animates, whenever the zoom moves.
+        // Every setter below calls Layer::redraw(): applying unchanged values would keep the map from going idle.
         auto changed = [&applied](const std::string& key, double value) {
             auto it = applied.find(key);
             if (it != applied.end() && it->second == value) {
@@ -715,9 +695,7 @@ namespace massif {
             return true;
         };
 
-        // Tile selection, common to every source type. A style value takes precedence over
-        // setExternalDataSourceZoomLevelBias / setExternalDataSourceMaxOverzoomLevel while it is
-        // present, the same way the other per-source config values win over programmatic setters.
+        // A style value wins over setExternalDataSourceZoomLevelBias / MaxOverzoomLevel while present.
         const mvt::Value* biasValue = getValue("zoom-level-bias");
         const mvt::Value* overzoomValue = getValue("max-overzoom-level");
         if (biasValue || overzoomValue) {
@@ -750,14 +728,12 @@ namespace massif {
                 float opacity = valueToFloat(*v, 1.0f);
                 if (changed("opacity", opacity)) { hillshade->setOpacity(opacity); }
             }
-            // exaggeration is a per-frame shader uniform (no re-decode) -> animates smoothly with zoom.
             if (const mvt::Value* v = getValue("exaggeration")) {
                 float exaggeration = valueToFloat(*v, 1.0f);
                 if (changed("exaggeration", exaggeration)) { hillshade->setExaggeration(exaggeration); }
             }
 
-            if (decodeZoomChanged) { // decode-bound: only at integer zoom crossings (aligned with tile reload)
-                // height-scale is the raw normal-map height scale (baked at decode; steps with zoom).
+            if (decodeZoomChanged) {
                 if (const mvt::Value* v = getValue("height-scale")) { hillshade->setHeightScale(valueToFloat(*v, 1.0f)); }
                 if (const mvt::Value* v = getValue("contrast")) { hillshade->setContrast(valueToFloat(*v, 0.5f)); }
                 if (const mvt::Value* v = getValue("contour-interval")) {
@@ -794,8 +770,7 @@ namespace massif {
                 if (changed("contour-width", width)) { hillshade->setContourWidth(width); }
             }
             if (const mvt::Value* v = getValue("illumination-direction")) {
-                // Azimuth in degrees (0 = north, clockwise) at a fixed 45 deg altitude, matching the
-                // HillshadeRasterTileLayer default direction convention (sin az, cos az, -sin alt).
+                // Azimuth in degrees (0 = north, clockwise) at a fixed 45 deg altitude: (sin az, cos az, -sin alt).
                 float azimuthDegrees = valueToFloat(*v, 335.0f);
                 if (changed("illumination-direction", azimuthDegrees)) {
                     double azimuth = azimuthDegrees * M_PI / 180.0;
@@ -820,8 +795,7 @@ namespace massif {
             if (!contour) {
                 continue;
             }
-            // Contour generation parameters are not per-frame (changing them regenerates
-            // tiles), so evaluate at a neutral zoom; style parameters still apply.
+            // Changing generation parameters regenerates tiles, so they are evaluated at a neutral zoom, not per frame.
             mvt::ResolvedLayerConfig config = decoder->resolveLayerConfig(s.name, 0.0f);
             std::map<std::string, float>& applied = _lastVectorConfig[s.name];
 
@@ -845,18 +819,13 @@ namespace massif {
             if (changed("resolution", value))         { contour->setResolution(static_cast<int>(value)); }
             if (changed("min-visible-zoom", value))   { contour->setMinVisibleZoom(static_cast<int>(value)); }
             if (changed("simplify-tolerance", value)) { contour->setSimplifyTolerance(value); }
-            // Label stubs: the geometry becomes a few short polylines to carry the elevation text,
-            // for a stack that draws the contour LINES in the terrain shader
-            // (hillshade-contour-interval) instead of from this source.
             if (changed("label-stubs", value))        { contour->setLabelStubsEnabled(value != 0.0f); }
             if (changed("label-interval", value))     { contour->setLabelInterval(value); }
         }
     }
 
     void CompositeVectorTileLayer::collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState) {
-        // Same order AND gating as renderComposite: group 0 is this layer itself, then every draw
-        // item. Without the children the drape sees only group 0, so the hillshade and the raster
-        // slots keep their own pre-pass and depth domain - the split the shared drape removes.
+        // Same order and gating as renderComposite, or the children keep their own pre-pass and depth domain.
         TileLayer::collectDrapeLayers(drapeLayers, viewState);
         if (!isVisible()) {
             return;
@@ -873,14 +842,11 @@ namespace massif {
             if (item.kind == DRAW_ITEM_VT_GROUP) {
                 childLayer = item.groupLayer;
             } else if (const ExternalSource* source = findExternalSource(item.slot)) {
-                // Hidden children are not baked either - the drape runs BEFORE the frame, so one
-                // skipped only in renderComposite would still appear in the terrain texture.
+                // The drape runs before the frame: a child skipped only in renderComposite would still be baked.
                 if (!source->childLayer || !source->childLayer->isVisible()) {
                     continue;
                 }
-                // Raster/hillshade children are gated by their config symbolizer as in
-                // renderComposite, or one the style hides at this zoom is baked into the terrain
-                // texture. The config is applied here too, because the bake runs BEFORE it.
+                // Config gating and applying as in renderComposite, since the bake runs before it.
                 if (source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
                     FRAME_PROF_NOW(profConfigStart);
                     mvt::ResolvedLayerConfig config = resolveLayerConfigCached(decoder, item.slot, viewState.getZoom());
@@ -901,9 +867,7 @@ namespace massif {
     }
 
     void CompositeVectorTileLayer::collectLabelLayers(std::vector<std::shared_ptr<VectorTileLayer> >& labelLayers) {
-        // Same order as renderComposite: group 0 is this layer, then every draw item. The culler
-        // grid accumulates across the layers it is given, so the order decides which labels win a
-        // slot - and a label that is never culled is never placed, so it never becomes visible.
+        // Same order as renderComposite: the culler grid accumulates across layers, so order decides which labels win.
         VectorTileLayer::collectLabelLayers(labelLayers);
         if (!isVisible()) {
             return;
@@ -915,8 +879,7 @@ namespace massif {
             if (item.kind == DRAW_ITEM_VT_GROUP) {
                 childLayer = item.groupLayer;
             } else if (const ExternalSource* source = findExternalSource(item.slot)) {
-                // A hidden child places no labels: the contour elevations would otherwise stay on
-                // screen, and keep winning culler slots from labels that ARE drawn.
+                // A hidden child's labels would otherwise stay on screen and win culler slots.
                 if (source->childLayer && source->childLayer->isVisible()) {
                     childLayer = source->childLayer;
                 }
@@ -937,8 +900,7 @@ namespace massif {
 
         std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
 
-        // Group 0 renders on this layer itself (with the group-0 rendererLayerFilter set in
-        // rebuildDrawItems). When there are no external child slots, this draws everything.
+        // Group 0 (filter set in rebuildDrawItems).
         bool refresh = terrain ? VectorTileLayer::onDrawFrame3D(deltaSeconds, billboardSorter, viewState)
                                : VectorTileLayer::onDrawFrame(deltaSeconds, billboardSorter, viewState);
 
@@ -954,14 +916,9 @@ namespace massif {
             if (!source || !source->childLayer) {
                 continue;
             }
-            // The child's OWN visibility, first and for every type. Layer::setVisible has to mean
-            // what it says on a child too: hiding one only stops it LOADING (TileLayer::loadData
-            // returns early), so without this a hidden child keeps drawing the tiles it already
-            // had - it disappears when the camera moves and not when it is switched off.
+            // Hiding a child only stops it loading; without this it keeps drawing the tiles it already had.
             bool visible = source->childLayer->isVisible();
-            // Raster/hillshade children are gated by their config symbolizer's zoom/param:: visibility
-            // as well. Vector children have no config symbolizer (they are styled by normal line/text
-            // rules, which the child's own decode already zoom-filters).
+            // Vector children have no config symbolizer: their own decode already zoom-filters them.
             if (visible && source->type != CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && decoder) {
                 mvt::ResolvedLayerConfig config = resolveLayerConfigCached(decoder, item.slot, viewState.getZoom());
                 applyConfig(*source, config, viewState);

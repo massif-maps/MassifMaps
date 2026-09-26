@@ -38,10 +38,8 @@ namespace massif {
     }
 
     cglib::vec3<double> TerrainProjectionSurface::calculateNormal(const MapPos& mapPos) const {
-        // The terrain surface normal (from the elevation gradient). Line width extrusion
-        // is performed perpendicular to this normal, so wide lines lie in the local
-        // terrain tangent plane instead of a horizontal plane cutting into slopes.
-        // Tilting the base's own normal, so the slope rides whatever shape the base has.
+        // Line width is extruded perpendicular to this, so wide lines lie in the terrain tangent plane instead
+        // of cutting into slopes. The base's own normal is tilted, so this works on any base shape.
         double dhdx = 0, dhdy = 0;
         _elevationManager->getDisplayGradient(mapPos.getX(), mapPos.getY(), dhdx, dhdy);
         return cglib::unit(_base->calculateVector(mapPos, MapVec(-dhdx, -dhdy, 1)));
@@ -81,9 +79,8 @@ namespace massif {
         if (!_base->calculateHitPoint(ray, height, baseT)) {
             return false;
         }
-        // On a globe base, bisect on the height above the terrain instead - it is positive at the
-        // camera and negative where the base hit sits under a slope. Without it a pan anchored on
-        // the sea-level point and the map slid out from under the finger (18-globe.md).
+        // On a globe, bisect on the height above terrain (positive at the camera, negative under a slope),
+        // or a pan anchors on the sea-level point and the map slides from under the finger (18-globe.md).
         auto heightOverTerrain = [this, &ray, height](double t) {
             MapPos mapPos = _base->calculateMapPos(ray(t));
             return mapPos.getZ() - _elevationManager->getDisplayHeight(mapPos.getX(), mapPos.getY()) - height;
@@ -114,9 +111,8 @@ namespace massif {
     }
 
     void TerrainProjectionSurface::tesselateSegment(const MapPos& mapPos0, const MapPos& mapPos1, std::vector<MapPos>& mapPoses) const {
-        // Subdivide long segments so that draped lines follow the terrain surface instead
-        // of cutting straight through it (heights are applied per vertex in calculatePosition).
-        // The point count per input segment is bounded to keep degenerate inputs cheap.
+        // Subdivide so draped lines follow the terrain instead of cutting through it; the point count per
+        // segment is bounded to keep degenerate inputs cheap.
         double dx = mapPos1.getX() - mapPos0.getX();
         double dy = mapPos1.getY() - mapPos0.getY();
         double len = std::sqrt(dx * dx + dy * dy);
@@ -124,9 +120,8 @@ namespace massif {
         if (_splitThreshold > 0 && std::isfinite(len)) {
             count = std::min(512, std::max(1, static_cast<int>(std::ceil(len / _splitThreshold))));
         }
-        // Each terrain sub-segment then goes through the base, which is what curves it on a globe.
-        // The base emits both endpoints, so the point shared with the previous sub-segment is
-        // dropped - otherwise every join would carry a duplicate the flat surface never produced.
+        // Each sub-segment goes through the base (which curves it on a globe); the base emits both endpoints,
+        // so the one shared with the previous sub-segment is dropped.
         std::vector<MapPos> subPoses;
         for (int i = 0; i < count; i++) {
             double t0 = static_cast<double>(i) / count, t1 = static_cast<double>(i + 1) / count;

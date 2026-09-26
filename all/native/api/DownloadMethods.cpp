@@ -20,10 +20,7 @@ namespace massif { namespace api {
     namespace {
 
         /**
-         * Turns the download listener's four callbacks into `download.*` events on the source.
-         *
-         * The listener is passed to the CALL rather than installed on a slot, so nothing here has to
-         * chain: each download owns its bridge, and the bridge lives as long as the SDK holds it.
+         * Turns the download listener's callbacks into `download.*` events on the source.
          */
         class DownloadBridge : public TileDownloadListener {
         public:
@@ -57,11 +54,7 @@ namespace massif { namespace api {
         };
 
         /**
-         * The bridges, one per source that has been asked to download.
-         *
-         * Held here rather than by the caller: the SDK keeps a weak reference to the listener, so a
-         * bridge that only the call site owned would be collected as soon as the call returned and
-         * the download would report nothing.
+         * The bridges, one per source that has been asked to download; dropped by stopAllDownloads.
          */
         std::mutex& bridgeMutex() {
             static std::mutex instance;
@@ -75,9 +68,7 @@ namespace massif { namespace api {
 
         /**
          * startDownloadArea([[minLng, minLat], [maxLng, maxLat]], minZoom, maxZoom, fetchDelay).
-         *
-         * The bounds are the facade's own `[min, max]` pair, in the SOURCE's projection - the same
-         * rule every other position on this API follows.
+         * The bounds are in the source's projection, like every position on this API.
          */
         Result startDownloadArea(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             MapBounds bounds;
@@ -93,8 +84,7 @@ namespace massif { namespace api {
             std::shared_ptr<DownloadBridge> bridge;
             {
                 std::lock_guard<std::mutex> lock(bridgeMutex());
-                // The default context: a method thunk is handed the context by reference, and the
-                // emitter needs to hold one - which is what the static bindings all address anyway.
+                // The emitter must own a context and a thunk only gets a reference: use the default one.
                 bridge = std::make_shared<DownloadBridge>(Context::GetDefault(),
                                                           context.handleOf(obj));
                 bridges()[obj] = bridge;

@@ -60,11 +60,8 @@ namespace massif::vt {
         float getOpacity() const { return _opacity; }
         void setOpacity(float opacity) { _opacity = opacity; }
 
-        // The TEXT's own opacity, animated apart from the label's - maplibre's JointOpacityState,
-        // which carries one OpacityState for the text and one for the icon. A shield whose name no
-        // longer fits falls back to the icon-only variant, and with a single opacity the name
-        // vanished between two frames while its icon sat still; this fades it out instead.
-        // For a label with no icon the two track each other exactly, so nothing else changes.
+        // The text's own opacity (maplibre's JointOpacityState): a shield falling back to its icon-only
+        // variant fades the name out instead of dropping it. Tracks getOpacity when there is no icon.
         float getTextOpacity() const { return _textOpacity; }
         void setTextOpacity(float opacity) { _textOpacity = opacity; }
 
@@ -89,10 +86,9 @@ namespace massif::vt {
         // Resets the anchoring: the label keeps this lift from its own anchor until the next pass.
         void setCalloutOffset(float offset) { _calloutOffset = offset; _calloutAnchored = false; _calloutLinePosition.reset(); }
 
-        // The screen line the culler put this callout on, and where its anchor was when it did. The
-        // anchor MOVES between passes - elevation streams in, a tilt slides it - and a lift measured
-        // against the old one takes the label off the row, which the draw path corrects for.
-        // With a line position the line moves on screen with that point instead of holding still.
+        // The screen row the culler put this callout on, and its anchor's screen y at the time: the anchor
+        // moves between passes (elevation, tilt) and the draw path corrects the lift for it.
+        // With a line position the row follows that point on screen instead of holding still.
         void setCalloutPlacement(float offset, float anchorScreenY, const std::optional<cglib::vec3<double>>& linePosition = std::optional<cglib::vec3<double>>(), float lineScreenY = 0.0f) {
             _calloutOffset = offset;
             _calloutAnchorScreenY = anchorScreenY;
@@ -134,10 +130,8 @@ namespace massif::vt {
         // False when part of the geometry had no elevation; still mark the label clean, since only new
         // data changes the answer and that re-dirties it (markPendingLabelsDirty).
         bool updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
-        // updateElevation in two halves, so the sampling - one elevation lookup per vertex, the
-        // whole cost - can run off the renderer's lock: sample reads the x,y of the geometry
-        // alone, apply writes the positions back under the lock and rebuilds the placement.
-        // A non-finite sample means "no data here"; the surface origin would bury the label.
+        // updateElevation split so the per-vertex sampling runs off the renderer's lock; apply writes
+        // back under the lock. A non-finite sample means "no data here" (the origin would bury the label).
         std::vector<cglib::vec3<double>> sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const;
         bool applyElevation(const std::vector<cglib::vec3<double>>& positions);
 
@@ -148,9 +142,7 @@ namespace massif::vt {
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
         bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
-        // The envelope of EVERY side the text may be laid out on, in one call: the placement, the scale
-        // and the screen axes are the same for all of them, so the culler pays for one placement rather
-        // than one per side. Falls back to the single envelope for a label with no variants.
+        // Envelopes of every variant in one call, sharing one placement; the single envelope when there are none.
         bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes) const;
         bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex, iconHaloStyleIndex, buildNormals); }
         bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const;
@@ -195,7 +187,7 @@ namespace massif::vt {
         static constexpr double PLACEMENT_ROOM_FACTOR = 1.25; // room the glyph run is given on the line, relative to its own length
         static constexpr double PLACEMENT_SMOOTH_TEXT_FRACTION = 1.0 / 3.0; // line detail below this fraction of the text length is smoothed away before laying out glyphs
         static constexpr double SNAP_MOVE_EPSILON = 1.0e-9; // internal world units (1 unit ~ 38m); a 1px anchor drift is ~1e-4 at z15
-        static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.1f; // the minimum allowed dot product between view vector and surface normal (cos ~78.5deg -> labels valid down to ~tilt 11.5; was 0.49 = calibrated to the old 30deg tilt clamp)
+        static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.1f; // min dot of view vector and surface normal (cos ~84deg: labels valid down to tilt ~6)
 
         struct TilePoint {
             TileId tileId;
@@ -307,10 +299,9 @@ namespace massif::vt {
         // How far the label is moved so that the style's line anchor lands on its feature's
         // vertical; zero unless the style names one.
         cglib::vec2<float> calculateCalloutShift(float scale, float glyphScale) const;
-        // World units one SCREEN PIXEL is worth at the label's own depth, read off the projection
-        // instead of the label's scale: the scale comes from the zoom, so converting with it makes
-        // a callout's lift drift up and down the screen whenever the camera moves.
-        // `resolution` 0 = the normalized screen (the culler's units); a label's own size passes the device height.
+        // World units per screen pixel at the label's depth, off the projection: the zoom-derived scale
+        // makes a callout's lift drift as the camera moves. `resolution` 0 = normalized screen (the
+        // culler's units); a label's own size passes the device height.
         float calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback, float resolution = 0.0f) const;
         // World units one glyph unit is worth. Zoom-derived for an ordinary label (that is what
         // keeps it the same size as the rest of the map); taken off the projection for a CALLOUT,

@@ -26,7 +26,7 @@
 !enum(massif::TerrainFlattenMode::TerrainFlattenMode)
 
 // 3D terrain from an elevation source. Only the source is a constructor argument: the elevation
-// decoder is picked from the source's own `encoding`, so a spec never names one.
+// decoder is picked from the source's own `dem_encoding`, so a spec never names one.
 !spec(massif::TerrainOptions, options, terrain, alias(source, dataSource))
 // The skyline from a viewpoint, per azimuth, in apparent altitude degrees (ElevationManager::calculateHorizon).
 !method(massif::TerrainOptions, calculateHorizon, arg(pos, pos), arg(eyeHeight, float), arg(azimuths, json), arg(maxDistance, float), returns(doubles))

@@ -32,10 +32,9 @@ namespace massif {
          */
         std::string getFontName() const;
         /**
-         * Sets the font name for the text label. Accepts a CSS-like list, the most preferred name first, entries
-         * optionally tagged with the platform they are for ("android:Roboto, ios:Helvetica Neue,
-         * sans-serif"). A name the device has no font for is skipped; generic names ("sans-serif",
-         * "serif", "monospace", "Arial", ...) map to the platform font.
+         * Sets the font name for the text label: a CSS-like list, most preferred first, entries optionally platform-tagged
+         * ("android:Roboto, ios:Helvetica Neue, sans-serif"). Names with no font on the device are skipped; generic
+         * names ("sans-serif", "serif", "monospace", "Arial", ...) map to the platform font.
          * @param fontName The new platform dependent font name for the text label.
          */
         void setFontName(const std::string& fontName);

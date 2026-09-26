@@ -14,16 +14,9 @@
 namespace massif {
 
     /**
-     * How close the camera may get to the ground under it, and the zoom that lands on that shell.
-     * mapbox's model (transform._minimumHeightOverTerrain / _constrainCamera): the clearance is a
-     * FRACTION of the camera's distance to sea level, not a fixed height, so it never blocks a
-     * zoom-in on its own. Free of the renderer on purpose, so it is testable on the host.
-     *
-     * ONE divergence from mapbox, deliberate: mapbox builds its sea-level distance from
-     * _centerAltitude + cameraToCenterDistance, the ORBIT, which is the camera's altitude only at
-     * pitch 0. We use the camera's real altitude, so the shell does not grow by 1/sin(tilt) as the
-     * view lies down and lift a camera that is plainly clear of the ground.
-     * See docs/internals/rendering/04-terrain.md.
+     * Camera-to-ground clearance, mapbox's model (_minimumHeightOverTerrain): a fraction of the camera's
+     * altitude, not a fixed height. Unlike mapbox we use the real altitude, not the orbit, so the shell
+     * does not grow by 1/sin(tilt). See docs/internals/rendering/04-terrain.md.
      */
     struct CameraClearance {
         // mapbox MAX_DRAPE_OVERZOOM: the clearance is the orbit at 4 zoom levels past the sea-level one.
@@ -48,17 +41,14 @@ namespace massif {
             return std::max(std::max(0.0, std::max(cameraZ, maxZoomOrbit)) * fractionOr(fraction), floorZ);
         }
 
-        // How far above the shell the focus stops following the ground, in shells. Ours, not
-        // mapbox's: they pin the centre to the terrain at every altitude, which makes a pan across
-        // a ridge lift the whole camera with it - visible bobbing from far above the ground.
+        // Height above the shell, in shells, where the focus stops following the ground; not mapbox's,
+        // whose always-pinned centre makes a pan across a ridge bob the whole camera.
         static constexpr double FOLLOW_BAND = 4.0;
 
         /**
-         * How much of the ground's height the FOCUS takes: all of it at the shell, none of it
-         * FOLLOW_BAND shells above, linear in between.
-         * @param clearance The camera's height above the ground under it, with the focus PINNED to
-         *                  the ground - the lift itself moves the camera, so feeding the current
-         *                  height back would oscillate.
+         * How much of the ground's height the focus takes: all at the shell, none FOLLOW_BAND shells above, linear between.
+         * @param clearance The camera's height above the ground under it, with the focus pinned to the ground
+         *                  (the lift moves the camera, so feeding back the current height would oscillate).
          * @param minHeight The shell, from minHeight() above.
          */
         static double focusFollow(double clearance, double minHeight) {
@@ -69,9 +59,8 @@ namespace massif {
         }
 
         /**
-         * The camera height ABOVE THE FOCUS that lands it on the shell. The shell moves with the
-         * camera, so the lift is a fixed point, not terrainZ + minHeight: rising raises the
-         * clearance it has to clear, and a lift that ignores that under-shoots every frame.
+         * The camera height above the focus that lands it on the shell. The shell moves with the camera,
+         * so this is a fixed point, not terrainZ + minHeight, which would under-shoot every frame.
          * @param focusZ The ground height at the focus.
          * @param terrainZ The ground height under the camera.
          * @param maxZoomOrbit The orbit at the maximum zoom.
@@ -82,10 +71,8 @@ namespace massif {
         }
 
         /**
-         * The camera height above sea level that lands ON the shell over ground at `terrainZ`.
-         * cameraZ - terrainZ >= max(FRACTION * cameraZ, c) - two lower bounds on cameraZ, both
-         * gaining with it (FRACTION < 1), so the answer is the larger. It does not depend on the
-         * focus, which is what lets the focus be moved to satisfy it.
+         * The camera height above sea level that lands on the shell over ground at `terrainZ`: the larger
+         * of the two lower bounds in cameraZ - terrainZ >= max(f * cameraZ, c). Independent of the focus.
          */
         static double shellCameraZ(double terrainZ, double maxZoomOrbit, double floorZ, double fraction = -1) {
             double f = fractionOr(fraction);

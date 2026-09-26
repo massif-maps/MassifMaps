@@ -30,9 +30,8 @@
 namespace massif {
 
     static const std::size_t DEFAULT_CACHE_CAPACITY = 64 * 1024 * 1024;
-    // A grid COUNT, not a byte budget - one terrain view needs 122-167 distinct grids whatever the
-    // source resolution, and every grid past the limit evicts one still in use.
-    // See docs/internals/rendering/04-terrain.md for the measured ladder.
+    // A grid count, not a byte budget: a terrain view needs a fixed number of grids whatever the source
+    // resolution, and each one past the limit evicts one in use. See docs/internals/rendering/04-terrain.md.
     static const std::size_t MIN_CACHED_GRIDS = 192;
     static const int FAILED_TILE_TTL_MILLISECONDS = 30 * 1000;
     static const int MAX_ANCESTOR_SEARCH_DEPTH = 8;
@@ -370,7 +369,6 @@ namespace massif {
             return memo.grid;
         }
 
-        // Look for the tile or any of its cached ancestors
         bool tileFailed = false;
         if (mode == LoadMode::LOAD_EXACT) {
             // LOAD_EXACT wants THIS level: a cached ancestor must not short-circuit the load, or
@@ -414,9 +412,8 @@ namespace massif {
             return std::shared_ptr<ElevationTileGrid>();
         }
 
-        // Single-flight: many tile fetch threads typically request the same elevation tile
-        // at nearly the same time (16 layer tiles can share one clamped elevation tile).
-        // Only the first caller performs the load; the others wait for its result.
+        // Single-flight: many layer tiles share one clamped elevation tile, so only the first caller
+        // loads it and the others wait for its result.
         long long tileId = tile.getTileId();
         std::promise<std::shared_ptr<ElevationTileGrid> > promise;
         {
@@ -599,10 +596,8 @@ namespace massif {
             bool haveFocus = _prefetchFocusValid.load();
             double focusU = _prefetchFocusU.load(), focusV = _prefetchFocusV.load();
             while (queue.size() > MAX_PREFETCH_QUEUE_SIZE) {
-                // Shed the least useful entry, not the oldest: the low queue mixes edge neighbours
-                // with single-corner diagonals, and a full queue gives up the corners first.
-                // Within a priority, the furthest from the camera, so loading converges outwards and
-                // repeatably rather than in quadtree-walk order.
+                // Shed the least useful entry, not the oldest: lowest priority first (corners before edge
+                // neighbours), then the furthest from the camera, so loading converges outwards repeatably.
                 auto victim = queue.begin();
                 double victimDistance = (haveFocus ? prefetchTileDistance(victim->tile, focusU, focusV) : 0.0);
                 for (auto it = queue.begin(); it != queue.end(); it++) {
@@ -672,9 +667,8 @@ namespace massif {
     }
 
     double ElevationManager::getDisplayScale(double internalY) const {
-        // tanh + expm1 measured 21% of the render thread here, so quantise the latitude to
-        // DISPLAY_SCALE_STEP (~40 m, ~4e-7 relative scale) and memo the last step. Quantising rather
-        // than interpolating keeps the height a function of position alone, so nothing oscillates.
+        // tanh + expm1 are hot here, so memo per DISPLAY_SCALE_STEP (~4e-7 relative scale). Quantising
+        // rather than interpolating keeps the height a function of position alone, so nothing oscillates.
         double step = std::floor(internalY / DISPLAY_SCALE_STEP + 0.5);
         struct ScaleMemo {
             double step = std::numeric_limits<double>::quiet_NaN();
@@ -970,9 +964,8 @@ namespace massif {
     }
 
     std::shared_ptr<ElevationTileGrid> ElevationManager::getGridForInternalPos(double internalX, double internalY, LoadMode mode) const {
-        // A label re-anchor samples every label vertex, and the tile math before the cache lookup
-        // measured 70% of the render thread. Grids are immutable and versioned, so the last grid
-        // containing the point is still the right answer. LOAD_EXACT excluded (no ancestor stand-in).
+        // A label re-anchor samples every label vertex and the tile math before the lookup is hot. Grids are
+        // immutable and versioned, so the last grid containing the point stays right. LOAD_EXACT excluded.
         struct PosMemo {
             unsigned long long instanceId = 0;
             unsigned int version = 0;

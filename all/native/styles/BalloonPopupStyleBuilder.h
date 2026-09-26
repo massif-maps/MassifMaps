@@ -122,11 +122,9 @@ namespace massif {
          */
         std::string getTitleFontName() const;
         /**
-         * Sets the name of the title font. Accepts a CSS-like list, the most preferred name
-         * first, entries optionally tagged with the platform they are for
-         * ("android:Roboto, ios:Helvetica Neue, sans-serif"). A name the device has no font for
-         * is skipped; generic names ("sans-serif", "serif", "monospace", "Arial", ...) map to the
-         * platform font. The default is HelveticaNeue-Light.
+         * Sets the name of the title font: a CSS-like list, most preferred first, entries optionally platform-tagged
+         * ("android:Roboto, ios:Helvetica Neue, sans-serif"). Names with no font on the device are skipped; generic
+         * names ("sans-serif", "serif", "monospace", "Arial", ...) map to the platform font. The default is HelveticaNeue-Light.
          * @param titleFontName The new name for the title font.
          */
         void setTitleFontName(const std::string& titleFontName);
@@ -190,11 +188,9 @@ namespace massif {
          */
         std::string getDescriptionFontName() const;
         /**
-         * Sets the name of the description font. Accepts a CSS-like list, the most preferred name
-         * first, entries optionally tagged with the platform they are for
-         * ("android:Roboto, ios:Helvetica Neue, sans-serif"). A name the device has no font for
-         * is skipped; generic names ("sans-serif", "serif", "monospace", "Arial", ...) map to the
-         * platform font. The default is HelveticaNeue-Light.
+         * Sets the name of the description font: a CSS-like list, most preferred first, entries optionally platform-tagged
+         * ("android:Roboto, ios:Helvetica Neue, sans-serif"). Names with no font on the device are skipped; generic
+         * names ("sans-serif", "serif", "monospace", "Arial", ...) map to the platform font. The default is HelveticaNeue-Light.
          * @param descFontName The new name for the description font.
          */
         void setDescriptionFontName(const std::string& descFontName);

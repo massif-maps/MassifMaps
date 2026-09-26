@@ -14,12 +14,9 @@
 namespace massif {
     
     /**
-     * A tile data source where each map tile is a seperate image file bundled with the application.
-     * The requests are generated using a template scheme, where tags in the basePath string are replaced with actual values.
-     * The following tags are supported: zoom, x, y, xflipped, yflipped, quadkey.
-     *
-     * For example, if basePath = "t{zoom}_{x}_{y}.png" and the requested tile has zoom == 2,
-     * x == 1 and y == 3, then the tile will be loaded from the following path: "t2_1_2.png".
+     * A tile data source where each map tile is a separate image file bundled with the application.
+     * Tags in basePath are replaced with actual values: zoom, x, y, xflipped, yflipped, quadkey.
+     * For example, "t{zoom}_{x}_{y}.png" loads tile zoom 2, x 1, y 3 from "t2_1_3.png".
      */
     class AssetTileDataSource : public TileDataSource {
     public:

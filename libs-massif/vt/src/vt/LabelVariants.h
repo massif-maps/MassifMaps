@@ -13,15 +13,10 @@
 #include <vector>
 
 namespace massif::vt {
-    /**
-     * Where a label's TEXT sits for each side its style offers. Its own header because this is the
-     * placement model, tested on its own (tests/vt/LabelAnchorAlignTest.cpp) rather than through a
-     * tile build - and it went wrong three ways at once before it was.
-     */
+    // Where a label's text sits for each side its style offers; standalone so tests/vt/LabelAnchorAlignTest.cpp can test it.
 
-    // The pen walk Label::buildPointVertexData does. 'textPart' selects which half of the run is
-    // measured: the icon glyphs come first, and the first CR pseudo-glyph resets the pen onto the
-    // text's own origin.
+    // Label::buildPointVertexData's pen walk: icon glyphs first, then the first CR resets the pen to the
+    // text's origin. 'textPart' selects which half is measured.
     inline cglib::bbox2<float> measureGlyphRun(const std::vector<Font::Glyph>& glyphs, bool textPart) {
         cglib::bbox2<float> bbox = cglib::bbox2<float>::smallest();
         cglib::vec2<float> pen(0, 0);
@@ -50,18 +45,12 @@ namespace massif::vt {
         return (dir(0) < 0 ? -base : base);
     }
 
-    // One text layout per side the style allows. The glyph run is the same every time, only its pen
-    // origin moves.
-    //
-    // A RADIAL offset is mapbox's model (evaluateVariableOffset): the distance runs from the ANCHOR
-    // to the near edge of the text, along the side's own axis and zero across it, and a corner takes
-    // it on the diagonal. Without one the offset is dx/dy measured from the ICON's edge, which is
-    // what a style that states no radial offset has always got.
+    // One pen origin per side the style allows. A radial offset is mapbox's evaluateVariableOffset (anchor to
+    // the text's near edge, along the side's axis, diagonal on a corner); without one, dx/dy from the icon's edge.
     inline std::vector<TileLabel::Variant> buildLabelVariants(const std::vector<LabelAnchor>& anchors, LabelLineAlign lineAlign, bool textOptional, bool hasIcon, const std::vector<Font::Glyph>& glyphs, const cglib::vec2<float>& iconExtent, const cglib::vec2<float>& styleOffset, float radialOffset) {
         std::vector<TileLabel::Variant> variants;
-        // 'text-optional' is a layout list on its own: no side to try, but still the icon alone as
-        // a last resort. Most mapbox styles set it WITHOUT a variable anchor, and returning here on
-        // an empty anchor list dropped their POI icons with the names the culler could not fit.
+        // 'text-optional' alone still needs the icon-only fallback: most mapbox styles set it without a
+        // variable anchor, and returning here dropped their POI icons along with the names.
         bool iconAlone = textOptional && hasIcon;
         if (anchors.empty() && !iconAlone) {
             return variants;
@@ -92,8 +81,7 @@ namespace massif::vt {
                     desired(i) = -edge - gap - boxMax(i);
                 }
                 else {
-                    // Centred ACROSS the axis, and the style's own offset stays out of it: carried
-                    // in, a name centred under its icon sat one dx to the right of it.
+                    // Centred across the axis; the style offset must not be carried in or it shifts the name by one dx.
                     desired(i) = -(boxMin(i) + boxMax(i)) * 0.5f + (radial ? 0.0f : styleOffset(i));
                 }
             }

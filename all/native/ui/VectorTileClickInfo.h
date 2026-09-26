@@ -53,20 +53,15 @@ namespace massif {
         const MapPos& getClickPos() const;
         
         /**
-         * Returns the position on the clicked feature, that is close to the click position.
-         * For points it will always be the center position, for lines it will be the closest point
-         * on the line, for billboards it will be the anchor point and for polygons it's equal to
-         * getClickPos().
+         * Returns the position on the clicked feature that is closest to the click position: the center
+         * for points, the closest point for lines, the anchor point for billboards, getClickPos() for polygons.
          * @return The feature click position in the coordinate system of the data source.
          */
         const MapPos& getFeatureClickPos() const;
 
         /**
          * Returns the position of the clicked feature.
-         *
-         * For a MultiPoint this is the point that was clicked, not the centre of the whole set -
-         * which getFeatureClickPos deliberately does not cover, and which a caller otherwise has
-         * to reconstruct from getFeaturePosIndex plus a downcast.
+         * For a MultiPoint this is the clicked point (see getFeaturePosIndex), not the centre of the set.
          * @return The feature position, in the coordinate system of the data source.
          */
         MapPos getFeaturePos() const;

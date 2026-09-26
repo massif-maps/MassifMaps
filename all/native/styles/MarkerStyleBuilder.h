@@ -109,11 +109,9 @@ namespace massif {
          */
         float getSize() const;
         /**
-         * Sets the size for the marker. The units depend on the scaling mode, if it's set to BillboardScaling::WORLD_SIZE,
-         * the size is in meters near the equator, the size will not be stretched near the poles. If it's set to
-         * BillboardScaling::SCREEN_SIZE or BillboardScaling::CONST_SCREEN_SIZE then the size is in screen density
-         * independent pixels (dp or dip) or normal pixels, depending whether setScaleWithDPI was set to true or false
-         * respectively. If set to -1, unpadded bitmap width will be used instead. The default is -1.
+         * Sets the size for the marker. With BillboardScaling::WORLD_SIZE it is in meters near the equator (not stretched
+         * near the poles); with SCREEN_SIZE or CONST_SCREEN_SIZE it is in dp if setScaleWithDPI is true, else in pixels.
+         * If set to -1, the unpadded bitmap width is used. The default is -1.
          * @param size The new marker size.
          */
         void setSize(float size);

@@ -23,10 +23,8 @@ namespace massif::mvt {
     class Logger;
 
     /**
-     * Decoder for MapLibre Tiles, the columnar successor to MVT. Wraps maplibre-tile-spec's C++
-     * decoder (libs-external/mlt) and presents its features the same way MBVTFeatureDecoder
-     * presents MVT ones. Note that unlike MVT, an MLT tile is decoded whole - the format has no
-     * per-layer lazy path.
+     * Decoder for MapLibre Tiles, wrapping maplibre-tile-spec's C++ decoder (libs-external/mlt).
+     * Unlike MVT, an MLT tile is decoded whole - the format has no per-layer lazy path.
      */
     class MLTFeatureDecoder : public LayerFeatureDecoder {
     public:
@@ -34,8 +32,8 @@ namespace massif::mvt {
         ~MLTFeatureDecoder();
 
         /**
-         * Tests whether uncompressed tile data is MLT rather than MVT. See the format section of
-         * docs/rendering/02-tiles.md for what this recognises and what it was measured against.
+         * Tests whether uncompressed tile data is MLT rather than MVT.
+         * See the format section of docs/internals/rendering/02-tiles.md.
          */
         static bool isTileData(const unsigned char* data, std::size_t size);
 

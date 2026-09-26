@@ -1845,16 +1845,6 @@
       "baked": false
     },
     {
-      "cartocss": "text-allow-overlap",
-      "mapnik": "allow-overlap",
-      "symbolizer": "text",
-      "kind": "bool",
-      "type": "BoolProperty",
-      "default": "false",
-      "live": false,
-      "baked": false
-    },
-    {
       "cartocss": "text-allow-overlap-same-feature-id",
       "mapnik": "allow-overlap-same-feature-id",
       "symbolizer": "text",
@@ -1981,6 +1971,16 @@
       "kind": "string",
       "type": "StringProperty",
       "default": "",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-callout-band-follow",
+      "mapnik": "callout-band-follow",
+      "symbolizer": "text",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
       "live": false,
       "baked": false
     },

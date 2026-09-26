@@ -736,7 +736,6 @@ namespace massif::css {
         { "text-halo-radius", "halo-radius" },
         { "text-halo-rasterizer", "halo-rasterizer" },
         { "text-allow-overlap", "allow-overlap" },
-        { "text-allow-overlap", "allow-overlap" },
         { "text-allow-overlap-same-feature-id", "allow-overlap-same-feature-id" },
         { "text-same-feature-id-dependent", "same-feature-id-dependent" },
         { "text-min-distance", "minimum-distance" },

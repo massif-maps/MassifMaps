@@ -407,8 +407,8 @@ namespace massif::vt {
         double sphereRadius = 0;
         cglib::vec3<double> sphereCenter(0, 0, 0);
         {
-            // Cutout = factor x camera-to-focus distance. Passed in: _viewState's copy is filled by
-            // TileRenderer::onDrawFrame, after the shadow pass.
+            // Cutout = factor x camera-to-focus distance. _viewState is this frame's camera:
+            // prepareTerrainDrapeFrame sets it before the shadow pass.
             double cutout = (cameraDistance > 0 ? (distanceFactor > 0 ? distanceFactor : SHADOW_CUTOUT_DISTANCE_FACTOR) * cameraDistance : 0);
             if (!(cutout > 0)) {
                 texelMeters = -4; // no camera-to-focus distance: nothing to fit a slice to

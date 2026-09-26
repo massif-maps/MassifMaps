@@ -19,11 +19,29 @@ GitHub Pages:
 1. Checks out the repo **with submodules** (`libs-external`; `libs-massif` is in-tree).
 2. Generates the **Android Javadoc** and **iOS Jazzy** reference from the SWIG bindings into
    `website/static/api/{android,ios}`.
-3. Builds the **Docusaurus** site (`npm ci && npm run build`).
-4. Uploads the result and **deploys to GitHub Pages**.
+3. Downloads the newest `web-site` artefact of
+   [`web-preview.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/web-preview.yml)
+   into `website/static`: the module the `/preview` page runs and the package the live examples
+   load (`static/massif`). That workflow builds on every master push touching the SDK or `web/`,
+   and triggers this one when it is done.
+4. Builds the **Docusaurus** site (`npm ci && npm run build`).
+5. Uploads the result and **deploys to GitHub Pages**.
 
 The workflow file is
 [`.github/workflows/docs.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/docs.yml).
+
+## The web SDK in a release
+
+`build.yml`'s `build-web` job builds the web SDK next to the Android and iOS ones, from the same
+version input:
+
+- `MassifMaps-web-<version>.zip` on the GitHub release: `dist/web`, the files an app serves.
+- npm `@massif-maps/api` (`bindings/js`), then `@massif-maps/web` (`dist/web`, which depends on
+  it at the same version), with provenance. Publishing needs the `NPM_TOKEN` secret, which
+  `release-style-tools.yml` already uses.
+
+A run with `publish` off keeps the zip as a workflow artefact instead. What the package contains
+and how an app hosts it: [the web guide](/docs/getting-started/web).
 
 ## One-time setup
 

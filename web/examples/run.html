@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- Runs one gallery example: run.html?id=display-a-map. The site embeds this page per example. -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Massif Maps example</title>
+  <style>
+    html, body { margin: 0; height: 100%; font: 13px system-ui, sans-serif; overflow: hidden; }
+    #root, #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .example-controls { position: absolute; left: 8px; right: 8px; bottom: 36px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .example-controls button, .example-slider { background: #fffe; border: 1px solid #0003; border-radius: 6px; padding: 5px 10px; font: inherit; }
+    .example-controls button.on { background: #2a6; color: #fff; }
+    .example-slider { display: flex; align-items: center; gap: 6px; }
+    .example-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 12px; background: #000a; color: #fff; }
+    .example-error { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: #fff; }
+  </style>
+</head>
+<body>
+  <div id="root"><canvas id="map"></canvas></div>
+  <!-- A host that sends no COOP/COEP (GitHub Pages) gets them from this worker, after one reload. -->
+  <script src="../coi-serviceworker.js"></script>
+  <!-- So an example imports the package by name, as an app does. -->
+  <script type="importmap">{ "imports": { "@massif-maps/web": "../massif-maps.bundle.mjs" } }</script>
+  <script type="module">
+    import { createMap } from '@massif-maps/web';
+    import { createHost } from './host.mjs';
+
+    const root = document.getElementById('root');
+    const fail = (message) => {
+      const box = document.createElement('div');
+      box.className = 'example-error';
+      box.textContent = message;
+      root.appendChild(box);
+    };
+    const id = new URLSearchParams(location.search).get('id') ?? 'display-a-map';
+    if (!/^[a-z0-9-]+$/.test(id)) {
+      fail(`Not an example id: ${id}`);
+    } else if (!crossOriginIsolated) {
+      fail('This page needs cross-origin isolation (COOP/COEP) for the SDK\'s threads - see the web guide.');
+    } else {
+      try {
+        const example = await import(`./${id}.mjs`);
+        const map = await createMap(document.getElementById('map'));
+        // For the console and for scripted captures (web/demo/bench.mjs).
+        window.map = map;
+        await example.default(createHost(root, map));
+      } catch (error) {
+        console.error(error);
+        fail(String(error?.message ?? error));
+      }
+    }
+  </script>
+</body>
+</html>

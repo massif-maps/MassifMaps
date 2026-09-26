@@ -68,7 +68,7 @@ export const Rows = [
       },
       {
         label: 'Platforms',
-        massif: {v: 'partial', note: 'Android, iOS. Desktop and web next'},
+        massif: {v: 'partial', note: 'Android, iOS, web (preview). Desktop next'},
         maplibre: {v: 'yes', note: 'Android, iOS, desktop, plus GL JS on the web'},
         mapbox: {v: 'yes', note: 'Android, iOS, web'},
         tangram: {v: 'yes', note: 'Android, iOS, Linux, macOS'},

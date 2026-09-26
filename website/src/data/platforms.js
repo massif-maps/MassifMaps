@@ -58,12 +58,12 @@ export const Platforms = [
     id: 'web',
     name: 'Web',
     icon: '🌐',
-    status: 'planned',
+    status: 'supported',
     languages: ['JavaScript', 'TypeScript'],
-    distribution: 'Not published yet',
+    distribution: 'npm — `@massif-maps/web` (preview)',
     minVersion: 'WebAssembly + WebGL 2, cross-origin isolated',
-    docs: '/docs/maintenance/web-build',
-    note: 'Builds under emscripten and renders raster and CartoCSS-styled vector tiles in a browser. Threading is solved with pthreads, which is why the page has to be cross-origin isolated. Still missing: the JavaScript binding, the persistent cache, labels and Text/BalloonPopup elements.',
+    docs: '/docs/getting-started/web',
+    note: 'The same C++ core compiled to WebAssembly, with the typed API of the NativeScript plugin. Every example runs live on this site. One map per page, and the page has to be cross-origin isolated.',
   },
   {
     id: 'flutter',
@@ -118,61 +118,61 @@ export const StatusLabels = {
  * ('unverified' = the shared C++ core has it, but no one has built or run that
  * binding against this fork). Planned platforms have nothing to compare yet.
  */
-export const CapabilityColumns = ['android', 'ios', 'uwp', 'xamarin'];
+export const CapabilityColumns = ['android', 'ios', 'web', 'uwp', 'xamarin'];
 
 export const Capabilities = [
   {
     name: 'Vector tiles (MVT, MLT) + CartoCSS',
     to: '/docs/features/maplibre-tiles',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Raster tiles, MBTiles, PMTiles',
     to: '/docs/features/pmtiles',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: '3D terrain + draping',
     to: '/docs/features/3d-terrain',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Hillshade & on-the-fly contours',
     to: '/docs/features/hillshade',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Sky, sun lighting & shadows',
     to: '/docs/features/sky-sun-shadows',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: 'unverified', uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Post-processing shaders',
     to: '/docs/features/post-processing',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Valhalla street routing',
     to: '/docs/guides/routing',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Offline geocoding',
     to: '/docs/guides/geocoding',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: false, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Offline tiles (MBTiles, PMTiles, cache)',
     to: '/docs/guides/offline-maps',
-    values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
+    values: {android: true, ios: true, web: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
     name: 'Prebuilt artifacts published',
     to: '/docs/getting-started/installation',
-    values: {android: true, ios: true, uwp: false, xamarin: false},
+    values: {android: true, ios: true, web: false, uwp: false, xamarin: false},
   },
   {
     name: 'Covered by CI',
-    values: {android: true, ios: true, uwp: false, xamarin: false},
+    values: {android: true, ios: true, web: true, uwp: false, xamarin: false},
   },
 ];

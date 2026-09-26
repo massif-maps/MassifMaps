@@ -29,7 +29,7 @@ const CoreFeatures = [
   {
     icon: '📱',
     title: 'Truly cross-platform',
-    body: 'One C++ core, native bindings for Android (Java/Kotlin) and iOS (Objective-C/Swift), plus a NativeScript plugin.',
+    body: 'One C++ core, native bindings for Android (Java/Kotlin) and iOS (Objective-C/Swift), the same core in WebAssembly for the web, plus a NativeScript plugin.',
   },
   {
     icon: '🧭',

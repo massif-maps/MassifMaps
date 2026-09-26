@@ -1,6 +1,6 @@
 # Massif Maps
 
-**An open, multi-platform map SDK for Android and iOS** — a high-performance vector-tile renderer
+**An open, multi-platform map SDK for Android, iOS and the web** — a high-performance vector-tile renderer
 with 3D terrain, built-in routing (street and indoor) and geocoding, driven from a single C++ core.
 
 Massif Maps is a maintained fork of the CARTO Mobile SDK, which CARTO stopped maintaining. It was

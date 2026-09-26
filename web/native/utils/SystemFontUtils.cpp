@@ -2,6 +2,8 @@
 #include "core/BinaryData.h"
 #include "utils/Log.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cstdio>
 
 #include <sys/stat.h>
@@ -28,6 +30,37 @@ namespace massif {
             }
             return std::string();
         }
+
+        // The face the build carries (web/fonts) stands for every generic name, as Roboto does on Android.
+        const char* const GENERIC_NAMES[] = { "sans-serif", "sansserif", "sans", "arial", "helvetica", "helveticaneue",
+                                              "helvetica neue", "verdana", "tahoma", "segoeui", "segoe ui", "system-ui", nullptr };
+
+        std::string lower(std::string text) {
+            std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            return text;
+        }
+
+        // "Arial Bold" asks for the bold face of the default font; any other style gets the regular one.
+        std::string defaultFontFile(const std::string& name) {
+            std::string file = findFontFile(lower(name).find("bold") != std::string::npos ? "Roboto-Bold" : "Roboto");
+            return file.empty() ? findFontFile("Roboto") : file;
+        }
+
+        bool isGeneric(const std::string& name) {
+            std::string family = lower(name);
+            for (const char* suffix : { " bold", " medium", " regular", " light", " italic" }) {
+                std::size_t at = family.rfind(suffix);
+                if (at != std::string::npos && at + std::string(suffix).size() == family.size()) {
+                    family.erase(at);
+                }
+            }
+            for (int i = 0; GENERIC_NAMES[i]; i++) {
+                if (family == GENERIC_NAMES[i]) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     SystemFontUtils::FontMatch SystemFontUtils::MatchFont(const std::string& names) {
@@ -52,6 +85,9 @@ namespace massif {
 
     std::shared_ptr<BinaryData> SystemFontUtils::LoadFont(const std::string& name, bool allowFallback) {
         std::string path = findFontFile(name);
+        if (path.empty() && (allowFallback || isGeneric(name))) {
+            path = defaultFontFile(name);
+        }
         if (path.empty()) {
             // Not an error without the fallback: the caller is walking a font list and tries the next name
             if (allowFallback) {

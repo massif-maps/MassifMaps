@@ -104,7 +104,7 @@ export class Massif {
   create(kind, id, spec) {
     return this.#withBuffer(4, (out) => {
       this.#check(this.#fn.create(this.#ctx, kind, id, JSON.stringify(spec ?? {}), out), `create ${kind}`);
-      return this.#module.getValue(out, 'i32');
+      return this.#module.getValue(out, 'i32') >>> 0;
     });
   }
 
@@ -116,7 +116,7 @@ export class Massif {
   find(kind, id) {
     return this.#withBuffer(4, (out) => {
       const code = this.#fn.find(this.#ctx, kind, id, out);
-      return code === RESULT_OK ? this.#module.getValue(out, 'i32') : 0;
+      return code === RESULT_OK ? this.#module.getValue(out, 'i32') >>> 0 : 0;
     });
   }
 
@@ -165,7 +165,7 @@ export class Massif {
    * called. Returns 0 when nothing is set there.
    */
   getObject(handle, path) {
-    return this.#fn.getObject(this.#ctx, handle, path);
+    return this.#fn.getObject(this.#ctx, handle, path) >>> 0;
   }
 
   getString(handle, path, projection = '') {
@@ -183,7 +183,7 @@ export class Massif {
     // object and then released, or the context keeps it forever.
     const resultHandle = this.#withBuffer(4, (out) => {
       this.#check(this.#fn.call(this.#ctx, handle, method, JSON.stringify(args ?? []), out), `call ${method}`);
-      return this.#module.getValue(out, 'i32');
+      return this.#module.getValue(out, 'i32') >>> 0;
     });
     if (!resultHandle) {
       return undefined; // the method produced nothing, which is most of them
@@ -240,10 +240,10 @@ export class Massif {
    * The handler is added to the wasm table, so it must be removed again or the table only grows.
    */
   on(handle, event, callback, options = { delivery: 'ui' }) {
-    const pointer = this.#module.addFunction((userData, target, eventName, payload) => (callback(payload) ? 1 : 0), 'iiiii');
+    const pointer = this.#module.addFunction((userData, target, eventName, payload) => (callback(payload >>> 0) ? 1 : 0), 'iiiii');
     const subscription = this.#withBuffer(4, (out) => {
       this.#check(this.#fn.on(this.#ctx, handle, event, pointer, 0, JSON.stringify(options ?? {}), out), `on ${event}`);
-      return this.#module.getValue(out, 'i32');
+      return this.#module.getValue(out, 'i32') >>> 0;
     });
     this.#handlers.set(subscription, pointer);
     return () => {
@@ -258,19 +258,13 @@ export class Massif {
    * Returns the handles of the map, its options and its layer list, and the camera.
    */
   createMap(canvas, id = 'map') {
-    if (!canvas.id) {
-      canvas.id = `massif-${id}`;
-    }
-    if (!this.#module.ccall('massifCreateMap', 'number', ['string', 'string'], [`#${canvas.id}`, id])) {
+    if (!this.#module.ccall('massifCreateMap', 'number', ['string'], [canvasSelector(canvas, id)])) {
       throw new Error(`No map on #${canvas.id}: one already exists, or the browser has no WebGL 2`);
     }
-    return {
-      id,
-      map: this.find('map', id),
-      options: this.find('options', id),
-      layers: this.find('layers', id),
-      camera: new MassifCamera(this, id),
-    };
+    const adopt = (kind, what) => this.#module.ccall('massifAdopt', 'number', ['string', 'string', 'string'], [kind, what, id]);
+    const map = adopt('map', 'view');
+    this.#module.ccall('massifAttachMapEvents', null, ['number'], [map]);
+    return { id, map, options: adopt('options', 'options'), layers: adopt('layers', 'layers'), camera: new MassifCamera(this, id) };
   }
 
   /** Emits a vector or vector tile layer's clicks as events on its handle ("vectortile.clicked"). */
@@ -368,13 +362,29 @@ export class MassifCamera {
   }
 }
 
+/** The CSS selector emscripten addresses `canvas` by, giving it an id if it has none. */
+export function canvasSelector(canvas, id = 'map') {
+  if (!canvas.id) {
+    canvas.id = `massif-${id}`;
+  }
+  return `#${canvas.id}`;
+}
+
 /**
- * Loads the SDK module and returns its binding. `moduleUrl` defaults to massif-web.mjs beside this
- * file; `options` go to the emscripten factory (print, printErr, locateFile...).
+ * Loads the SDK module. `moduleUrl` defaults to massif-web.mjs beside this file; `options` go to
+ * the emscripten factory (print, printErr, locateFile...).
  */
-export async function loadMassif({ moduleUrl = new URL('./massif-web.mjs', import.meta.url).href, ...options } = {}) {
+// Not a literal in new URL(): a bundler would take that for an asset to bundle.
+const MODULE_FILE = 'massif-web.mjs';
+
+export async function loadModule({ moduleUrl = new URL(MODULE_FILE, import.meta.url).href, ...options } = {}) {
   // webpackIgnore: a bundler must not inline the module, its pthread workers import it by URL.
   const { default: factory } = await import(/* webpackIgnore: true */ moduleUrl);
   const base = new URL('.', new URL(moduleUrl, location.href)).href;
-  return new Massif(await factory({ locateFile: (path) => base + path, ...options }));
+  return factory({ locateFile: (path) => base + path, ...options });
+}
+
+/** Loads the SDK module and returns its low-level binding. */
+export async function loadMassif(options = {}) {
+  return new Massif(await loadModule(options));
 }

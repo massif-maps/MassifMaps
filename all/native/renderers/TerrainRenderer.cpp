@@ -491,8 +491,12 @@ namespace massif {
         glDisable(GL_BLEND);
         glDisable(GL_STENCIL_TEST);
         glDisable(GL_CULL_FACE); // displaced surfaces can face away near ridge crests
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(1.0f, 2.0f);
+        if (_surfacePolygonOffset) {
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(1.0f, 2.0f);
+        } else {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+        }
 
         GLuint progId = shader->getProgId();
         glUseProgram(progId);
@@ -659,6 +663,56 @@ namespace massif {
 
         GLContext::CheckGLError("TerrainRenderer::renderDepthTexture");
         return result;
+    }
+
+    bool TerrainRenderer::renderDepthTextureFromScene(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, unsigned int sceneDepthTexId) {
+        static const GLfloat SCREEN_VERTICES[8] = { -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f };
+        if (!terrainOptions || !glResourceManager || sceneDepthTexId == 0 || viewState.getWidth() <= 0 || viewState.getHeight() <= 0) {
+            return false;
+        }
+        int downscale = std::max(1, terrainOptions->getPostProcessDownscale());
+        int bufferWidth = std::max(1, viewState.getWidth() / downscale);
+        int bufferHeight = std::max(1, viewState.getHeight() / downscale);
+        if (!_frameBuffer || !_frameBuffer->isValid() || _frameBuffer->getWidth() != bufferWidth || _frameBuffer->getHeight() != bufferHeight) {
+            _frameBuffer = glResourceManager->create<FrameBuffer>(bufferWidth, bufferHeight, true, true, false);
+        }
+        if (!_sceneDepthShader || !_sceneDepthShader->isValid()) {
+            _sceneDepthShader = glResourceManager->create<Shader>("terrainscenedepth", SCENE_DEPTH_VERTEX_SHADER, SCENE_DEPTH_FRAGMENT_SHADER);
+        }
+        if (!_frameBuffer || !_sceneDepthShader) {
+            return false;
+        }
+        // What the drawn texture holds is no longer the drawn pass's, so its cache must not answer.
+        _depthTextureMVPMatrix = cglib::mat4x4<double>::zero();
+
+        GLint prevFBO = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, _frameBuffer->getFBOId());
+        glViewport(0, 0, bufferWidth, bufferHeight);
+        glDisable(GL_BLEND);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+
+        GLuint progId = _sceneDepthShader->getProgId();
+        glUseProgram(progId);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, sceneDepthTexId);
+        glUniform1i(_sceneDepthShader->getUniformLoc("u_depthTex"), 0);
+        glUniform2f(_sceneDepthShader->getUniformLoc("u_nearFar"), viewState.getNear(), viewState.getFar());
+        GLuint a_coord = _sceneDepthShader->getAttribLoc("a_coord");
+        glVertexAttribPointer(a_coord, 2, GL_FLOAT, GL_FALSE, 0, SCREEN_VERTICES);
+        glEnableVertexAttribArray(a_coord);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glDisableVertexAttribArray(a_coord);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+        glViewport(0, 0, viewState.getWidth(), viewState.getHeight());
+        glEnable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+
+        GLContext::CheckGLError("TerrainRenderer::renderDepthTextureFromScene");
+        return true;
     }
 
     unsigned int TerrainRenderer::getDepthTextureId() const {
@@ -2361,6 +2415,45 @@ namespace massif {
             float depth = clamp(v_depth, 0.0, 1.0);
             vec3 enc = vec3(1.0, 255.0, 65025.0) * depth;
             enc = fract(enc);
+            enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
+            gl_FragColor = vec4(enc, 1.0);
+        }
+    )GLSL";
+
+    const std::string TerrainRenderer::SCENE_DEPTH_VERTEX_SHADER = R"GLSL(
+        #version 100
+        attribute vec2 a_coord;
+        varying vec2 v_uv;
+        void main() {
+            v_uv = a_coord * 0.5 + 0.5;
+            gl_Position = vec4(a_coord, 0.0, 1.0);
+        }
+    )GLSL";
+
+    // The hardware depth back to the eye distance the drawn pass packs (clip w / far), in the same
+    // three bytes and with the same sky: coverage 0 where nothing was drawn.
+    const std::string TerrainRenderer::SCENE_DEPTH_FRAGMENT_SHADER = R"GLSL(
+        #version 100
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+        #else
+        precision mediump float;
+        #endif
+        // highp: a sampler defaults to lowp, which Mali honours - far depths came back as 1.0 (sky).
+        uniform highp sampler2D u_depthTex;
+        uniform vec2 u_nearFar;
+        varying vec2 v_uv;
+        void main() {
+            float d = texture2D(u_depthTex, v_uv).r;
+            if (d >= 1.0) {
+                gl_FragColor = vec4(1.0, 1.0, 1.0, 0.0);
+                return;
+            }
+            float n = u_nearFar.x;
+            float f = u_nearFar.y;
+            float w = 2.0 * n * f / ((f + n) - (d * 2.0 - 1.0) * (f - n));
+            float depth = clamp(w / f, 0.0, 1.0);
+            vec3 enc = fract(vec3(1.0, 255.0, 65025.0) * depth);
             enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
             gl_FragColor = vec4(enc, 1.0);
         }

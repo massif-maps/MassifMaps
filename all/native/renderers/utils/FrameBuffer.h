@@ -24,6 +24,8 @@ namespace massif {
 
         GLuint getFBOId() const;
         GLuint getColorTexId() const;
+        // The depth attachment as a texture when one was asked for and is supported; 0 otherwise.
+        GLuint getDepthTexId() const;
         /**
          * The color texture drawing currently goes to (the secondary one while attached).
          */
@@ -39,7 +41,7 @@ namespace massif {
     protected:
         friend GLResourceManager;
 
-        FrameBuffer(const std::weak_ptr<GLResourceManager>& manager, int width, int height, bool color, bool depth, bool stencil);
+        FrameBuffer(const std::weak_ptr<GLResourceManager>& manager, int width, int height, bool color, bool depth, bool stencil, bool depthTexture = false);
 
         virtual void create();
         virtual void destroy();
@@ -50,8 +52,10 @@ namespace massif {
         bool _color;
         bool _depth;
         bool _stencil;
+        bool _depthTexture;
     
         GLuint _fboId;
+        GLuint _depthTexId;
         GLuint _colorTexId;
         GLuint _secondaryColorTexId;
         bool _secondaryAttached;

@@ -1446,8 +1446,15 @@ namespace massif {
         _kineticEventHandler.calculate(viewState, deltaSeconds);
 
         std::shared_ptr<PostProcessEffect> postProcessEffect = getPostProcessEffect();
+        bool sceneDepth = false;
         if (postProcessEffect) {
-            clearAndBindScreenFBO(_options->getClearColor(), true, false);
+            // The terrain depth an effect reads comes from the scene's own depth when it can (see
+            // applyPostProcessEffect), so the scene's depth is kept as a texture for it.
+            sceneDepth = postProcessEffect->isTerrainDepthRequired() && !postProcessEffect->isTerrainNormalsRequired();
+            clearAndBindScreenFBO(_options->getClearColor(), true, false, sceneDepth);
+        }
+        if (_terrainRenderer) {
+            _terrainRenderer->setSurfacePolygonOffset(!sceneDepth);
         }
 
         // Resolved once before anything draws, so the sky and background fog like the tiles.
@@ -1565,15 +1572,18 @@ namespace massif {
         glFinish();
     }
     
-    void MapRenderer::clearAndBindScreenFBO(const Color& color, bool depth, bool stencil) {
+    void MapRenderer::clearAndBindScreenFBO(const Color& color, bool depth, bool stencil, bool depthTexture) {
         GLint prevBoundFBO = 0;
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevBoundFBO);
         GLuint bufferMask = GL_COLOR_BUFFER_BIT | (depth ? GL_DEPTH_BUFFER_BIT : 0) | (stencil ? GL_STENCIL_BUFFER_BIT : 0);
-        _screenBoundFBOs.emplace_back(static_cast<GLuint>(prevBoundFBO), bufferMask);
+        // The key carries the depth-texture choice in a bit no GL buffer mask uses; every user of the
+        // stored mask tests it with '&', so it passes through them.
+        GLuint bufferKey = bufferMask | (depthTexture ? SCREEN_FBO_DEPTH_TEXTURE_BIT : 0);
+        _screenBoundFBOs.emplace_back(static_cast<GLuint>(prevBoundFBO), bufferKey);
 
-        std::shared_ptr<FrameBuffer>& frameBuffer = _screenFrameBuffers[bufferMask];
+        std::shared_ptr<FrameBuffer>& frameBuffer = _screenFrameBuffers[bufferKey];
         if (!frameBuffer || !frameBuffer->isValid()) {
-            frameBuffer = _glResourceManager->create<FrameBuffer>(_viewState.getWidth(), _viewState.getHeight(), true, depth, stencil);
+            frameBuffer = _glResourceManager->create<FrameBuffer>(_viewState.getWidth(), _viewState.getHeight(), true, depth, stencil, depthTexture);
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer->getFBOId());
@@ -1626,6 +1636,16 @@ namespace massif {
         }
 
         GLuint terrainDepthTex = 0;
+        // The scene's depth, when it was kept as a texture: converting it is one full-screen pass,
+        // where drawing the terrain again into the depth texture was the whole mesh a second time -
+        // 22% of the frame rate of a panorama on an Adreno 610.
+        GLuint sceneDepthTex = 0;
+        if (!_screenBoundFBOs.empty() && (_screenBoundFBOs.back().second & SCREEN_FBO_DEPTH_TEXTURE_BIT)) {
+            std::shared_ptr<FrameBuffer>& sceneFrameBuffer = _screenFrameBuffers[_screenBoundFBOs.back().second];
+            if (sceneFrameBuffer && sceneFrameBuffer->isValid()) {
+                sceneDepthTex = sceneFrameBuffer->getDepthTexId();
+            }
+        }
         if (effect->isTerrainDepthRequired()) {
             std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
             if (terrainOptions && terrainOptions->isActive()) {
@@ -1637,7 +1657,14 @@ namespace massif {
                 if (std::shared_ptr<ElevationManager> depthElevation = terrainOptions->getElevationManager()) {
                     _terrainRenderer->setElevationTextureCache(getElevationTextureCache(depthElevation));
                 }
-                if (_terrainRenderer->renderDepthTexture(viewState, terrainOptions, _glResourceManager, 0, effect->isTerrainNormalsRequired())) {
+                bool rendered = false;
+                if (sceneDepthTex != 0 && !effect->isTerrainNormalsRequired()) {
+                    rendered = _terrainRenderer->renderDepthTextureFromScene(viewState, terrainOptions, _glResourceManager, sceneDepthTex);
+                }
+                if (!rendered) {
+                    rendered = _terrainRenderer->renderDepthTexture(viewState, terrainOptions, _glResourceManager, 0, effect->isTerrainNormalsRequired());
+                }
+                if (rendered) {
                     terrainDepthTex = _terrainRenderer->getDepthTextureId();
                 }
             }

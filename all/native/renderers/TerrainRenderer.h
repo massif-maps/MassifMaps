@@ -92,6 +92,11 @@ namespace massif {
          * withNormals: the PostProcessEffect::setTerrainNormalsRequired layout.
          */
         bool renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap = DEPTH_TEXTURE_MESH_RESOLUTION, bool withNormals = false, bool forReadback = false);
+        // Off when the scene's depth is read back as the terrain's: the slope-scaled offset steps from
+        // triangle to triangle, and an edge operator inks every step.
+        void setSurfacePolygonOffset(bool enabled) { _surfacePolygonOffset = enabled; }
+        // renderDepthTexture's packed depth (no normals), converted from the scene's own depth texture.
+        bool renderDepthTextureFromScene(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, unsigned int sceneDepthTexId);
 
         /**
          * Shared with the tile renderer, set once per frame. Lets the surface and normal passes sample the DEM
@@ -173,6 +178,8 @@ namespace massif {
 
         static const std::string TERRAIN_DEPTH_VERTEX_SHADER;
         static const std::string TERRAIN_DEPTH_FRAGMENT_SHADER;
+        static const std::string SCENE_DEPTH_VERTEX_SHADER;
+        static const std::string SCENE_DEPTH_FRAGMENT_SHADER;
         static const std::string TERRAIN_NORMAL_DEPTH_VERTEX_SHADER;
         static const std::string TERRAIN_NORMAL_DEPTH_FRAGMENT_SHADER;
         static const std::string TERRAIN_COLOR_FRAGMENT_SHADER;
@@ -220,6 +227,8 @@ namespace massif {
         std::shared_ptr<FrameBuffer> _frameBuffer;
         std::shared_ptr<Shader> _shader;
         std::shared_ptr<Shader> _normalShader; // the normal-packing variant of the depth pass
+        std::shared_ptr<Shader> _sceneDepthShader; // the scene depth -> packed depth conversion
+        bool _surfacePolygonOffset = true;
         std::shared_ptr<Shader> _colorShader;
         std::shared_ptr<Shader> _bitmapShader;
         std::shared_ptr<Shader> _surfaceShader;

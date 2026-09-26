@@ -10171,7 +10171,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the current relative label blending speed."
+          "doc": "Returns the label blending speed, in full fades per second."
         },
         {
           "name": "labelPerspectiveScaling",

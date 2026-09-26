@@ -35,6 +35,7 @@ add_executable(vt_tests
   SphericalTerrainTest.cpp
   RenderTileBlendTest.cpp
   LabelSliceTest.cpp
+  LabelFadeTest.cpp
   LayerContentFlagsTest.cpp
   ViewStateMatrixTest.cpp
   LabelNormalBuildTest.cpp

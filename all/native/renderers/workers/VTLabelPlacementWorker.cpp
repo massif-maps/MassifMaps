@@ -8,6 +8,7 @@
 #include "utils/ThreadUtils.h"
 
 #include <vt/LabelCuller.h>
+#include <vt/LabelFade.h>
 
 #include <algorithm>
 #include <cmath>
@@ -115,8 +116,8 @@ namespace massif {
         }
     }
     
-    // maplibre's Placement.stillRecent gate: no new placement while the last one is fading (300 ms fade).
-    const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 300;
+    // maplibre's Placement.stillRecent gate: no new placement while the last one is fading.
+    const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = vt::LABEL_FADE_DURATION_MS;
 
     // CPU cap: after C ms the next pass waits C * (1000/TARGET - 1), i.e. TARGET ms of every second.
     static const double PLACEMENT_TARGET_MS_PER_SECOND = 90.0;

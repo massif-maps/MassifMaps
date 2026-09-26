@@ -1756,7 +1756,7 @@ export interface PropertyTypes {
     readonly "dataSource.projection.name": string;
     /** Returns the current frame number. */
     "frameNr": number;
-    /** Returns the current relative label blending speed. */
+    /** Returns the label blending speed, in full fades per second. */
     "labelBlendingSpeed": number;
     /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
     "labelPerspectiveScaling": number;
@@ -6195,7 +6195,7 @@ export interface PropertyTypes {
     readonly "dataSource.projection.name": string;
     /** Returns the current frame number. */
     "frameNr": number;
-    /** Returns the current relative label blending speed. */
+    /** Returns the label blending speed, in full fades per second. */
     "labelBlendingSpeed": number;
     /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
     "labelPerspectiveScaling": number;
@@ -6655,7 +6655,7 @@ export interface PropertyTypes {
     readonly "dataSource.projection.name": string;
     /** Returns the current frame number. */
     "frameNr": number;
-    /** Returns the current relative label blending speed. */
+    /** Returns the label blending speed, in full fades per second. */
     "labelBlendingSpeed": number;
     /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
     "labelPerspectiveScaling": number;
@@ -7340,7 +7340,7 @@ export interface LayerSpec_composite_vector {
   cullDelay?: number;
   /** Returns the current frame number. */
   frameNr?: number;
-  /** Returns the current relative label blending speed. */
+  /** Returns the label blending speed, in full fades per second. */
   labelBlendingSpeed?: number;
   /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
   labelPerspectiveScaling?: number;
@@ -7580,7 +7580,7 @@ export interface LayerSpec_vector {
   cullDelay?: number;
   /** Returns the current frame number. */
   frameNr?: number;
-  /** Returns the current relative label blending speed. */
+  /** Returns the label blending speed, in full fades per second. */
   labelBlendingSpeed?: number;
   /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
   labelPerspectiveScaling?: number;

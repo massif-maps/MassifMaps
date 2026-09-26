@@ -439,7 +439,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> KINETIC_ROTATION = MassifObject.key("kineticRotation");
     /** Returns the state of kinetic zoom flag. */
     public static final MassifObject.Key<Boolean> KINETIC_ZOOM = MassifObject.key("kineticZoom");
-    /** Returns the current relative label blending speed. */
+    /** Returns the label blending speed, in full fades per second. */
     public static final MassifObject.Key<Double> LABEL_BLENDING_SPEED = MassifObject.key("labelBlendingSpeed");
     /** Returns the contour interval used for label stubs. */
     public static final MassifObject.Key<Double> LABEL_INTERVAL = MassifObject.key("labelInterval");

@@ -21,6 +21,7 @@
 #include "vectortiles/VectorTileDecoder.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 
+#include <vt/LabelFade.h>
 #include <vt/RenderStats.h>
 #include <vt/TileId.h>
 #include <vt/Tile.h>
@@ -58,7 +59,7 @@ namespace massif {
         _buildingRenderOrder(VectorTileRenderOrder::VECTOR_TILE_RENDER_ORDER_LAST),
         _clickRadius(4.0f),
         _layerBlendingSpeed(0.0f),
-        _labelBlendingSpeed(1.0f),
+        _labelBlendingSpeed(vt::DEFAULT_LABEL_BLENDING_SPEED),
         _labelPerspectiveScaling(0.5f),
         _rendererLayerFilter(),
         _clickHandlerLayerFilter(),

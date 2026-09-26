@@ -554,6 +554,13 @@ different encodings can therefore sit behind one `OrderedTileDataSource` — see
 `TileData::getMetadata` / `setMetadata` were renamed to `getMetaDataElement` / `setMetaDataElement`
 too; they were never exposed to bindings, so only C++ embedders see it.
 
+### Labels fade in 300 ms, not a second
+
+`VectorTileLayer.labelBlendingSpeed` defaults to **1/0.3** (a 300 ms fade, maplibre's
+`fadeDuration`) where it was 1.0. The value is full fades per second, not a relative factor as its
+doc comment used to say. An app that wants the old fade sets `setLabelBlendingSpeed(1)`; one that
+already sets a value is unaffected.
+
 ## Deliberately NOT renamed
 
 These name data or upstream work, not this SDK:

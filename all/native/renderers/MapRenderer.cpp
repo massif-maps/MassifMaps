@@ -1801,10 +1801,14 @@ namespace massif {
         }
         // A post-process effect's outermost unwind sends the secondary texture, then re-attaches the primary.
         GLuint colorTexId = frameBuffer->getColorTexId();
+        // The finished frame REPLACES the screen: blended, a translucent one (AR) piled every
+        // earlier frame up under it, and nothing else clears the screen on this path.
+        bool finishedFrame = false;
         if (_postProcessSecondaryActive && _screenBoundFBOs.empty()) {
             colorTexId = frameBuffer->getAttachedColorTexId();
             frameBuffer->attachSecondaryColorTex(false);
             _postProcessSecondaryActive = false;
+            finishedFrame = true;
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, prevBoundFBO);
@@ -1832,7 +1836,13 @@ namespace massif {
         glUniform4f(_screenBlendShader->getUniformLoc("u_color"), opacity, opacity, opacity, opacity);
         glUniform2f(_screenBlendShader->getUniformLoc("u_invScreenSize"), 1.0f / _viewState.getWidth(), 1.0f / _viewState.getHeight());
         
+        if (finishedFrame) {
+            glDisable(GL_BLEND);
+        }
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        if (finishedFrame) {
+            glEnable(GL_BLEND);
+        }
         
         glBindTexture(GL_TEXTURE_2D, 0);
         

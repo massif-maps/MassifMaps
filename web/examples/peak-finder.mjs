@@ -199,7 +199,6 @@ export default async function start(host) {
     requestAnimationFrame(tick);
   };
   tick();
-  host.caption('Drag to look around · tap a summit name');
 }
 
 /** The selected summit's name bold and blue: a style parameter compared with each summit. */

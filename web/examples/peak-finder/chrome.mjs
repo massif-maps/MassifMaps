@@ -28,7 +28,6 @@ const CSS = `
 .pf-sun { position: absolute; left: 12px; bottom: 28px; display: flex; align-items: center; gap: 10px; background: var(--surface);
           border-radius: 20px; padding: 8px 14px; box-shadow: var(--shadow); flex-wrap: wrap; max-width: calc(100% - 48px); }
 .pf-sun input[type=date] { font: inherit; border: 0; background: transparent; color: var(--ink); }
-.pf-sun .time { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 44px; }
 .pf-sun .riseset { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .pf-sun button { height: 28px; padding: 0 10px; background: #f59e0b1f; color: #b45309; }
 .pf-sun button.off { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px #0000001f; }
@@ -71,16 +70,12 @@ export function createChrome(root, on) {
   card.querySelector('.close').onclick = () => on.select(null);
 
   const sun = html(root, `<div class="pf-sun"><input type="date" class="date">
-    <span class="time"></span><span class="riseset"></span><button class="hours off">Hours</button><button class="now">Now</button></div>`);
+    <span class="riseset"></span><button class="hours off">Hours</button></div>`);
   const date = sun.querySelector('.date');
   const hours = sun.querySelector('.hours');
   const pad = (value) => String(value).padStart(2, '0');
-  const setNow = () => {
-    const now = new Date();
-    date.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  };
-  setNow();
-  sun.querySelector('.now').onclick = setNow;
+  const today = new Date();
+  date.value = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   hours.onclick = () => hours.classList.toggle('off');
 
   const panel = html(root, '<div class="pf-panel"></div>');
@@ -149,7 +144,6 @@ export function createChrome(root, on) {
       const [y, m, d] = date.value.split('-').map(Number);
       const now = new Date();
       const minute = now.getHours() * 60 + now.getMinutes();
-      sun.querySelector('.time').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
       return { day: new Date(y, m - 1, d).getTime(), minute, hours: !hours.classList.contains('off') };
     },
     showRiseSet(text) {

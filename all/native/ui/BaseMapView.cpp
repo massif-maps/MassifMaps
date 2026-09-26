@@ -174,19 +174,6 @@ namespace massif {
         if (!zoomIn) {
             setZoom(zoom, 0);
         }
-
-        // TEMPORARY DIAGNOSTIC: tells whether the facade fell back to moveTo rather than moveCameraTo.
-        {
-            MapRange tiltRange = _options->getTiltRange();
-            const ViewState& applied = _mapRenderer->getViewState(); // holdView is held
-            Log::Infof("EYE moveTo: asked zoom %.2f rotation %s tilt %s | range [%.1f, %.1f] freeRoam %d | live zoom %.2f rotation %.1f tilt %.1f",
-                       zoom,
-                       rotation ? std::to_string(*rotation).c_str() : "keep",
-                       tilt ? std::to_string(*tilt).c_str() : "keep",
-                       tiltRange.getMin(), tiltRange.getMax(),
-                       static_cast<int>(_options->getFreeRoamMode()),
-                       applied.getZoom(), applied.getRotation(), applied.getTilt());
-        }
     }
 
     void BaseMapView::moveTo(const MapPos& pos, float zoom) {
@@ -225,21 +212,6 @@ namespace massif {
 
         if (!zoomIn) {
             setZoom(zoom, 0);
-        }
-
-        // TEMPORARY DIAGNOSTIC. The live view state: the getters read a snapshot published per drawn frame.
-        {
-            MapRange tiltRange = _options->getTiltRange();
-            std::unique_lock<std::recursive_mutex> readHold = _mapRenderer->holdView();
-            const ViewState& applied = _mapRenderer->getViewState();
-            Log::Infof("EYE moveCameraTo: asked zoom %.2f rotation %s tilt %s | range [%.1f, %.1f] freeRoam %d | live zoom %.2f rotation %.1f tilt %.1f | snapshot tilt %.1f",
-                       zoom,
-                       rotation ? std::to_string(*rotation).c_str() : "keep",
-                       tilt ? std::to_string(*tilt).c_str() : "keep",
-                       tiltRange.getMin(), tiltRange.getMax(),
-                       static_cast<int>(_options->getFreeRoamMode()),
-                       applied.getZoom(), applied.getRotation(), applied.getTilt(),
-                       _mapRenderer->getViewStateSnapshot().getTilt());
         }
     }
 

@@ -89,12 +89,9 @@ namespace massif {
         _dataSourceListener = std::make_shared<DataSourceListener>(*this);
         _dataSource->registerOnChangeListener(_dataSourceListener);
         VT_STAT_INC(elevGridManagers);
-        Log::Infof("LIFE: ElevationManager #%d created", _instanceId);
     }
 
     ElevationManager::~ElevationManager() {
-        // TEMPORARY DIAGNOSTIC, ungated: tracks a manager leak with the "created" line.
-        Log::Infof("LIFE: ElevationManager #%d destroyed", _instanceId);
         {
             std::lock_guard<std::mutex> lock(_prefetchMutex);
             _prefetchStopped = true;

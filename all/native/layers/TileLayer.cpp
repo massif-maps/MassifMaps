@@ -1426,8 +1426,6 @@ namespace massif {
                     // decoded for the other mode in place forever.
                     bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
                     tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), terrainOptions->isDrapeFillsEnabled() || isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
-                    // TEMPORARY DIAGNOSTIC: the transformer pins the ElevationManager after terrain detach.
-                    Log::Infof("LIFE: TerrainTileTransformer built for layer %p (pins ElevationManager)", static_cast<const void*>(this));
                 }
             }
         }

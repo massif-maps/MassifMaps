@@ -92,8 +92,6 @@ namespace massif {
     }
 
     TerrainOptions::~TerrainOptions() {
-        // use_count > 1: an outside holder (TerrainTileTransformer, TerrainProjectionSurface) keeps the manager alive.
-        Log::Infof("LIFE: TerrainOptions destroyed, elevationManager use_count=%ld", static_cast<long>(_elevationManager.use_count()));
     }
 
     std::shared_ptr<TileDataSource> TerrainOptions::getDataSource() const {

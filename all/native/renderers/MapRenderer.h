@@ -239,7 +239,6 @@ namespace massif {
     private:
         // debug.massif.background 0 drops the map background plane. Read once (Android only).
         static bool isBackgroundEnabled();
-        static bool isClearanceProbeEnabled();
         class OptionsListener : public Options::OnChangeListener {
         public:
             explicit OptionsListener(const std::shared_ptr<MapRenderer>& mapRenderer);

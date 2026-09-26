@@ -1384,7 +1384,6 @@ namespace massif {
                     MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
                     MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
                     double terrainZ = 0;
-                    bool heightApplied = false;
                     if (elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), terrainZ)) {
                         // Everything below is measured with the focus PINNED, so the lift it decides
                         // cannot feed back into its own input and oscillate.
@@ -1409,34 +1408,6 @@ namespace massif {
                             _viewState.setFocusHeight(cameraTerrainZ - orbitHeight + lift);
                         } else {
                             _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
-                        }
-                        heightApplied = true;
-                        // Temporary diagnostic, deliberately ungated: where the eye ends up and which term
-                        // put it there, in metres, once a second.
-                        {
-                            static std::chrono::steady_clock::time_point lastLog;
-                            std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-                            if (now - lastLog > std::chrono::seconds(1)) {
-                                lastLog = now;
-                                double scale = elevationManager->getDisplayScale(focusMapPos.getY());
-                                double toM = (scale != 0 ? 1.0 / scale : 0.0);
-                                MapPos newCameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
-                                Log::Infof("EYE: camera %.0f m (ground %.0f) | focus %.0f m (ground %.0f) | orbitH %.0f follow %.2f shell %.0f lift %.0f | tilt %.1f zoom %.2f",
-                                           newCameraMapPos.getZ() * toM, cameraTerrainZ * toM,
-                                           projectionSurface->calculateMapPos(_viewState.getFocusPos()).getZ() * toM, terrainZ * toM,
-                                           orbitHeight * toM, follow, shellFocusZ * toM, lift * toM,
-                                           _viewState.getTilt(), _viewState.getZoom());
-                            }
-                        }
-                    }
-                    // No cached ground under the focus: the rule never runs and the height stays as left.
-                    if (!heightApplied) {
-                        static std::chrono::steady_clock::time_point lastSkipLog;
-                        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-                        if (now - lastSkipLog > std::chrono::seconds(1)) {
-                            lastSkipLog = now;
-                            Log::Infof("EYE: no cached ground under the focus, height left as it was | tilt %.1f zoom %.2f",
-                                       _viewState.getTilt(), _viewState.getZoom());
                         }
                     }
                 }
@@ -1593,22 +1564,6 @@ namespace massif {
 #else
     bool MapRenderer::isBackgroundEnabled() {
         return true;
-    }
-#endif
-
-    // Why the camera is (or is not) held off the ground, once a second:
-    //   adb shell setprop debug.massif.clearance 1
-#ifdef __ANDROID__
-    bool MapRenderer::isClearanceProbeEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return __system_property_get("debug.massif.clearance", property) > 0 && property[0] != '0';
-        }();
-        return enabled;
-    }
-#else
-    bool MapRenderer::isClearanceProbeEnabled() {
-        return false;
     }
 #endif
 

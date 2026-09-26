@@ -926,6 +926,8 @@ namespace massif::css {
         { "contour-base-interval",      "base-interval" },
         { "contour-resolution",         "resolution" },
         { "contour-min-visible-zoom",   "min-visible-zoom" },
-        { "contour-simplify-tolerance", "simplify-tolerance" }
+        { "contour-simplify-tolerance", "simplify-tolerance" },
+        { "contour-label-stubs",        "label-stubs" },
+        { "contour-label-interval",     "label-interval" }
     };
 }

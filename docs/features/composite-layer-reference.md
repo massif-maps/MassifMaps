@@ -104,6 +104,8 @@ per frame — they regenerate tiles):
 | `contour-resolution` | `setResolution` |
 | `contour-min-visible-zoom` | `setMinVisibleZoom` |
 | `contour-simplify-tolerance` | `setSimplifyTolerance` |
+| `contour-label-stubs` | `setLabelStubsEnabled` |
+| `contour-label-interval` | `setLabelInterval` |
 
 All of them are optional: a `#contour` block that only styles the lines (no `contour-*`
 property) leaves the source on its own defaults. Ordinary styling rules in the block are

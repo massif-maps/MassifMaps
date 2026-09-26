@@ -95,6 +95,26 @@
       "baked": false
     },
     {
+      "cartocss": "contour-label-interval",
+      "mapnik": "label-interval",
+      "symbolizer": "contour",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "contour-label-stubs",
+      "mapnik": "label-stubs",
+      "symbolizer": "contour",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "contour-min-visible-zoom",
       "mapnik": "min-visible-zoom",
       "symbolizer": "contour",

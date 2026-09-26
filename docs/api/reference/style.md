@@ -45,6 +45,7 @@ Inherited from `VectorTileDecoder`:
 
 | Method | Arguments | Returns |
 |---|---|---|
+| `addFallbackFont` | font: handle | void |
 | `getStyleParameter` | name: string | string |
 | `setStyleParameter` | name: string, value: string | bool |
 | `setStyleParameters` | params: json | void |

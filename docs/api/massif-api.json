@@ -9664,6 +9664,15 @@
           "doc": "Returns the current relative label blending speed."
         },
         {
+          "name": "labelPerspectiveScaling",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how much of the perspective divide a label keeps as it recedes from the camera."
+        },
+        {
           "name": "labelRenderOrder",
           "type": "ENUM",
           "readOnly": false,

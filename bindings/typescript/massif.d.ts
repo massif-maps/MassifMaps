@@ -1699,6 +1699,8 @@ export interface PropertyTypes {
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    "labelPerspectiveScaling": number;
     /** Returns the current display order of the labels. */
     "labelRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the current relative layer blending speed. */
@@ -6018,6 +6020,8 @@ export interface PropertyTypes {
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    "labelPerspectiveScaling": number;
     /** Returns the current display order of the labels. */
     "labelRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the current relative layer blending speed. */
@@ -6475,6 +6479,8 @@ export interface PropertyTypes {
     "frameNr": number;
     /** Returns the current relative label blending speed. */
     "labelBlendingSpeed": number;
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    "labelPerspectiveScaling": number;
     /** Returns the current display order of the labels. */
     "labelRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the current relative layer blending speed. */
@@ -7067,6 +7073,8 @@ export interface LayerSpec_composite_vector {
   frameNr?: number;
   /** Returns the current relative label blending speed. */
   labelBlendingSpeed?: number;
+  /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+  labelPerspectiveScaling?: number;
   /** Returns the current display order of the labels. */
   labelRenderOrder?: "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
   /** Returns the current relative layer blending speed. */
@@ -7304,6 +7312,8 @@ export interface LayerSpec_vector {
   frameNr?: number;
   /** Returns the current relative label blending speed. */
   labelBlendingSpeed?: number;
+  /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+  labelPerspectiveScaling?: number;
   /** Returns the current display order of the labels. */
   labelRenderOrder?: "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
   /** Returns the current relative layer blending speed. */

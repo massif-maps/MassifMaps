@@ -429,6 +429,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyKineticZoom;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelBlendingSpeed;
 /** Returns the contour interval used for label stubs. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelInterval;
+/** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelPerspectiveScaling;
 /** Returns the current display order of the labels. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelRenderOrder;
 /** Returns whether only short label stubs are generated instead of full contour lines. */

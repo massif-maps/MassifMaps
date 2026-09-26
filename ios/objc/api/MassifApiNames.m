@@ -214,6 +214,7 @@ MassifProperty const MassifPropertyKineticRotation = @"kineticRotation";
 MassifProperty const MassifPropertyKineticZoom = @"kineticZoom";
 MassifProperty const MassifPropertyLabelBlendingSpeed = @"labelBlendingSpeed";
 MassifProperty const MassifPropertyLabelInterval = @"labelInterval";
+MassifProperty const MassifPropertyLabelPerspectiveScaling = @"labelPerspectiveScaling";
 MassifProperty const MassifPropertyLabelRenderOrder = @"labelRenderOrder";
 MassifProperty const MassifPropertyLabelStubsEnabled = @"labelStubsEnabled";
 MassifProperty const MassifPropertyLanguage = @"language";

@@ -266,37 +266,6 @@ Inherited from `Layer`:
 | `g` | integer | read-only | Returns the green component of this map color. |
 | `r` | integer | read-only | Returns the red component of this map color. |
 
-## `ContourTileDataSource`
-
-| Property | Type | Access | Description |
-|---|---|---|---|
-| `baseInterval` | number | read/write | Returns the base contour interval in meters. |
-| `labelInterval` | number | read/write | Returns the contour interval used for label stubs. |
-| `labelStubsEnabled` | boolean | read/write | Returns whether only short label stubs are generated instead of full contour lines. |
-| `layerName` | string | read/write | Returns the name of the generated vector tile layer. |
-| `minVisibleZoom` | integer | read/write | Returns the minimum zoom at which contour geometry is generated. |
-| `resolution` | integer | read/write | Returns the target grid resolution used for contour tracing. |
-| `seamlessEdgesEnabled` | boolean | read/write | Returns whether seamless tile edges are enabled. |
-| `simplifyTolerance` | number | read/write | Returns the simplification tolerance in tile pixels. |
-| `terrainOptions` | object `std::shared_ptr<massif::TerrainOptions>` | read/write | Returns the terrain options whose elevation manager the label stubs read. |
-
-Inherited from `TileDataSource`:
-
-| Property | Type | Access | Description |
-|---|---|---|---|
-| `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
-| `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
-| `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
-| `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
-| `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
-
-| Method | Arguments | Returns |
-|---|---|---|
-| `getMetaDataElement` | key: string | json |
-| `loadTile` | tile: tile | object |
-| `setMetaDataElement` | key: string, value: json | void |
-
 ## `CullState`
 
 | Property | Type | Access | Description |
@@ -736,6 +705,7 @@ Inherited from `StyleBuilder`:
 | `backgroundBitmap` <br/>*or* `background` | object `std::shared_ptr<massif::Bitmap>` | read/write | Returns the background bitmap. May be null. |
 | `baseProjection` <br/>*or* `projection` | object `projections.Projection` | read/write | Returns the base projection. |
 | `clearColor` | color | read/write | Returns the clear color used by the renderer before drawing anything else. By default, this is white. It should be set to (0, 0, 0, 0) if transparent MapView is needed. |
+| `clickMovingTolerance` | number | read/write | Returns how far a pointer may travel before a press stops counting as a click. |
 | `clickTypeDetection` | boolean | read/write | Returns the click type detection state. |
 | `debugTileBorders` | boolean | read/write | Returns the state of the tile border debug overlay. |
 | `doubleClickDetection` | boolean | read/write | Returns the double click detection state. |
@@ -778,6 +748,7 @@ Inherited from `StyleBuilder`:
 | `tiltRange` | struct `massif::MapRange` | read/write | Returns the tilt range constraint. |
 | `userInput` | boolean | read/write | Returns the state of the user input flag. |
 | `zoomGestures` | boolean | read/write | Returns the state of zoom gestures. |
+| `zoomOffset` | number | read/write | Returns how many zoom levels the camera is offset from the tile-size convention. |
 | `zoomRange` | struct `massif::MapRange` | read/write | Returns the zoom range constraint. |
 
 | Event | Payload | Consumable |
@@ -1253,3 +1224,16 @@ Inherited from `FeatureCollection`:
 | `width` | integer | read-only | Returns the width of the map screen. |
 | `zoom` | number | read-only | Returns the camera zoom level. |
 | `zoom0Distance` | number | read-only | Returns the distance between the focus and the camera position, when the zoom level is set to 0. This parameter depends on the screen size, DPI, tile draw size and field of view settings. |
+
+## `WKBGeometryWriter`
+
+| Property | Type | Access | Description |
+|---|---|---|---|
+| `bigEndian` | boolean | read/write | Returns the endianness of output format. |
+| `z` | boolean | read/write | Returns the state of Z coordinate serialization. |
+
+## `WKTGeometryWriter`
+
+| Property | Type | Access | Description |
+|---|---|---|---|
+| `z` | boolean | read/write | Returns the state of Z coordinate serialization. |

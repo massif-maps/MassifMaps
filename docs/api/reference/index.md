@@ -13,7 +13,7 @@ Generated from the same table the SDK resolves `set`, `get`, `call` and `create`
 | Kind | Page | Spec types |
 |---|---|---|
 | `layer` | [Layers](layer.md) | 6 |
-| `source` | [Sources](source.md) | 13 |
+| `source` | [Sources](source.md) | 14 |
 | `style` | [Styles](style.md) | 1 |
 | `styleset` | [Style sets](styleset.md) | 2 |
 | `assets` | [Asset packages](assets.md) | 3 |
@@ -31,4 +31,4 @@ Generated from the same table the SDK resolves `set`, `get`, `call` and `create`
 
 Plus [value types](types.md) — what a property, payload or result can be — and every [enum](enums.md).
 
-236 classes, 778 properties, 52 spec types, 40 enums.
+240 classes, 786 properties, 53 spec types, 40 enums.

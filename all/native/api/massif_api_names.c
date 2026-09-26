@@ -215,6 +215,7 @@ static const char* const kNames[] = {
     "kineticZoom",
     "labelBlendingSpeed",
     "labelInterval",
+    "labelPerspectiveScaling",
     "labelRenderOrder",
     "labelStubsEnabled",
     "language",

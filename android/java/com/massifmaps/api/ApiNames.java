@@ -429,6 +429,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> LABEL_BLENDING_SPEED = MassifObject.key("labelBlendingSpeed");
     /** Returns the contour interval used for label stubs. */
     public static final MassifObject.Key<Double> LABEL_INTERVAL = MassifObject.key("labelInterval");
+    /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
+    public static final MassifObject.Key<Double> LABEL_PERSPECTIVE_SCALING = MassifObject.key("labelPerspectiveScaling");
     /** Returns the current display order of the labels. */
     public static final MassifObject.Key<String> LABEL_RENDER_ORDER = MassifObject.key("labelRenderOrder");
     /** Returns whether only short label stubs are generated instead of full contour lines. */

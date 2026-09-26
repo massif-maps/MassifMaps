@@ -71,6 +71,10 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | `sunOverridingStyle` | boolean | read/write | Returns whether this sun overrides the one a style states. |
 | `terrainLightingEnabled` | boolean | read/write | Returns whether the sun lights the 3D terrain surface. |
 
+| Method | Arguments | Returns |
+|---|---|---|
+| `setSunPositionFromTime` | year: int, month: int, day: int, hour: int, minute: int, latitude: float, longitude: float | void |
+
 ## `"sky"` — SkyOptions {#spec-sky}
 
 ```json

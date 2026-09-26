@@ -42,6 +42,7 @@ Inherited from `VectorTileLayer`:
 | `clickHandlerLayerFilter` | string | read/write | Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. |
 | `clickRadius` | number | read/write | Returns the click radius of vector tile features. Units are screen density independent pixels (DP or DIP). |
 | `labelBlendingSpeed` | number | read/write | Returns the current relative label blending speed. |
+| `labelPerspectiveScaling` | number | read/write | Returns how much of the perspective divide a label keeps as it recedes from the camera. |
 | `labelRenderOrder` | [enum](enums.md#enum-vectortilerenderorder) | read/write | Returns the current display order of the labels. |
 | `layerBlendingSpeed` | number | read/write | Returns the current relative layer blending speed. |
 | `rendererLayerFilter` | string | read/write | Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. |
@@ -56,14 +57,16 @@ Inherited from `TileLayer`:
 | `UTFGridDataSource` | object `datasources.TileDataSource` | read/write | Returns the tile data source of the associated UTF grid. By default this is null. |
 | `UTFGridEventListener` | object `layers.UTFGridEventListener` | read/write | Returns the UTF grid event listener. |
 | `dataSource` <br/>*or* `source` | object `datasources.TileDataSource` | read-only | Returns the data source assigned to this layer. |
-| `frameNr` | integer | read/write | Returns the current frame number. |
+| `frameNr` | integer | read/write |  |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this layer. |
 | `maxUnderzoomLevel` | integer | read/write | Gets the current maximum underzoom level for this layer. |
 | `preloading` | boolean | read/write | Returns the state of the preloading flag of this layer. |
+| `preloadingTileCount` | integer | read-only |  |
 | `projection` | object `projections.Projection` | read-only | Returns the projection this layer's data is in, which is its data source's. |
 | `synchronizedRefresh` | boolean | read/write | Returns the state of the synchronized refresh flag. |
 | `tileLoadListener` | object `layers.TileLoadListener` | read/write | Returns the tile load listener. |
 | `tileSubstitutionPolicy` | [enum](enums.md#enum-tilesubstitutionpolicy) | read/write | Returns the current tile substitution policy. |
+| `visibleTileCount` | integer | read-only | How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. |
 | `zoomLevelBias` | number | read/write | Gets the current zoom level bias for this layer. |
 
 Inherited from `Layer`:
@@ -80,8 +83,15 @@ Inherited from `Layer`:
 
 | Method | Arguments | Returns |
 |---|---|---|
+| `addExternalDataSource` | name: string, dataSource: handle, type: int | void |
+| `addVectorDataSource` | name: string, dataSource: handle | void |
 | `clearTileCaches` | all: bool | void |
+| `getExternalChildLayer` | name: string | object |
+| `getExternalDataSourceNames` | — | json |
 | `refresh` | — | void |
+| `removeExternalDataSource` | name: string | bool |
+| `setExternalDataSourceMaxOverzoomLevel` | name: string, level: int | void |
+| `setExternalDataSourceZoomLevelBias` | name: string, bias: float | void |
 
 | Event | Payload | Consumable |
 |---|---|---|
@@ -177,14 +187,16 @@ Inherited from `TileLayer`:
 | `UTFGridDataSource` | object `datasources.TileDataSource` | read/write | Returns the tile data source of the associated UTF grid. By default this is null. |
 | `UTFGridEventListener` | object `layers.UTFGridEventListener` | read/write | Returns the UTF grid event listener. |
 | `dataSource` <br/>*or* `source` | object `datasources.TileDataSource` | read-only | Returns the data source assigned to this layer. |
-| `frameNr` | integer | read/write | Returns the current frame number. |
+| `frameNr` | integer | read/write |  |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this layer. |
 | `maxUnderzoomLevel` | integer | read/write | Gets the current maximum underzoom level for this layer. |
 | `preloading` | boolean | read/write | Returns the state of the preloading flag of this layer. |
+| `preloadingTileCount` | integer | read-only |  |
 | `projection` | object `projections.Projection` | read-only | Returns the projection this layer's data is in, which is its data source's. |
 | `synchronizedRefresh` | boolean | read/write | Returns the state of the synchronized refresh flag. |
 | `tileLoadListener` | object `layers.TileLoadListener` | read/write | Returns the tile load listener. |
 | `tileSubstitutionPolicy` | [enum](enums.md#enum-tilesubstitutionpolicy) | read/write | Returns the current tile substitution policy. |
+| `visibleTileCount` | integer | read-only | How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. |
 | `zoomLevelBias` | number | read/write | Gets the current zoom level bias for this layer. |
 
 Inherited from `Layer`:
@@ -230,14 +242,16 @@ Inherited from `TileLayer`:
 | `UTFGridDataSource` | object `datasources.TileDataSource` | read/write | Returns the tile data source of the associated UTF grid. By default this is null. |
 | `UTFGridEventListener` | object `layers.UTFGridEventListener` | read/write | Returns the UTF grid event listener. |
 | `dataSource` <br/>*or* `source` | object `datasources.TileDataSource` | read-only | Returns the data source assigned to this layer. |
-| `frameNr` | integer | read/write | Returns the current frame number. |
+| `frameNr` | integer | read/write |  |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this layer. |
 | `maxUnderzoomLevel` | integer | read/write | Gets the current maximum underzoom level for this layer. |
 | `preloading` | boolean | read/write | Returns the state of the preloading flag of this layer. |
+| `preloadingTileCount` | integer | read-only |  |
 | `projection` | object `projections.Projection` | read-only | Returns the projection this layer's data is in, which is its data source's. |
 | `synchronizedRefresh` | boolean | read/write | Returns the state of the synchronized refresh flag. |
 | `tileLoadListener` | object `layers.TileLoadListener` | read/write | Returns the tile load listener. |
 | `tileSubstitutionPolicy` | [enum](enums.md#enum-tilesubstitutionpolicy) | read/write | Returns the current tile substitution policy. |
+| `visibleTileCount` | integer | read-only | How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. |
 | `zoomLevelBias` | number | read/write | Gets the current zoom level bias for this layer. |
 
 Inherited from `Layer`:
@@ -308,6 +322,7 @@ Inherited from `Layer`:
 | `clickHandlerLayerFilter` | string | read/write | Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. |
 | `clickRadius` | number | read/write | Returns the click radius of vector tile features. Units are screen density independent pixels (DP or DIP). |
 | `labelBlendingSpeed` | number | read/write | Returns the current relative label blending speed. |
+| `labelPerspectiveScaling` | number | read/write | Returns how much of the perspective divide a label keeps as it recedes from the camera. |
 | `labelRenderOrder` | [enum](enums.md#enum-vectortilerenderorder) | read/write | Returns the current display order of the labels. |
 | `layerBlendingSpeed` | number | read/write | Returns the current relative layer blending speed. |
 | `rendererLayerFilter` | string | read/write | Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. |
@@ -322,14 +337,16 @@ Inherited from `TileLayer`:
 | `UTFGridDataSource` | object `datasources.TileDataSource` | read/write | Returns the tile data source of the associated UTF grid. By default this is null. |
 | `UTFGridEventListener` | object `layers.UTFGridEventListener` | read/write | Returns the UTF grid event listener. |
 | `dataSource` <br/>*or* `source` | object `datasources.TileDataSource` | read-only | Returns the data source assigned to this layer. |
-| `frameNr` | integer | read/write | Returns the current frame number. |
+| `frameNr` | integer | read/write |  |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this layer. |
 | `maxUnderzoomLevel` | integer | read/write | Gets the current maximum underzoom level for this layer. |
 | `preloading` | boolean | read/write | Returns the state of the preloading flag of this layer. |
+| `preloadingTileCount` | integer | read-only |  |
 | `projection` | object `projections.Projection` | read-only | Returns the projection this layer's data is in, which is its data source's. |
 | `synchronizedRefresh` | boolean | read/write | Returns the state of the synchronized refresh flag. |
 | `tileLoadListener` | object `layers.TileLoadListener` | read/write | Returns the tile load listener. |
 | `tileSubstitutionPolicy` | [enum](enums.md#enum-tilesubstitutionpolicy) | read/write | Returns the current tile substitution policy. |
+| `visibleTileCount` | integer | read-only | How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. |
 | `zoomLevelBias` | number | read/write | Gets the current zoom level bias for this layer. |
 
 Inherited from `Layer`:
@@ -379,14 +396,16 @@ Inherited from `TileLayer`:
 | `UTFGridDataSource` | object `datasources.TileDataSource` | read/write | Returns the tile data source of the associated UTF grid. By default this is null. |
 | `UTFGridEventListener` | object `layers.UTFGridEventListener` | read/write | Returns the UTF grid event listener. |
 | `dataSource` <br/>*or* `source` | object `datasources.TileDataSource` | read-only | Returns the data source assigned to this layer. |
-| `frameNr` | integer | read/write | Returns the current frame number. |
+| `frameNr` | integer | read/write |  |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this layer. |
 | `maxUnderzoomLevel` | integer | read/write | Gets the current maximum underzoom level for this layer. |
 | `preloading` | boolean | read/write | Returns the state of the preloading flag of this layer. |
+| `preloadingTileCount` | integer | read-only |  |
 | `projection` | object `projections.Projection` | read-only | Returns the projection this layer's data is in, which is its data source's. |
 | `synchronizedRefresh` | boolean | read/write | Returns the state of the synchronized refresh flag. |
 | `tileLoadListener` | object `layers.TileLoadListener` | read/write | Returns the tile load listener. |
 | `tileSubstitutionPolicy` | [enum](enums.md#enum-tilesubstitutionpolicy) | read/write | Returns the current tile substitution policy. |
+| `visibleTileCount` | integer | read-only | How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. |
 | `zoomLevelBias` | number | read/write | Gets the current zoom level bias for this layer. |
 
 Inherited from `Layer`:
@@ -429,14 +448,16 @@ Inherited from `Layer`:
 | `UTFGridDataSource` | object `datasources.TileDataSource` | read/write | Returns the tile data source of the associated UTF grid. By default this is null. |
 | `UTFGridEventListener` | object `layers.UTFGridEventListener` | read/write | Returns the UTF grid event listener. |
 | `dataSource` <br/>*or* `source` | object `datasources.TileDataSource` | read-only | Returns the data source assigned to this layer. |
-| `frameNr` | integer | read/write | Returns the current frame number. |
+| `frameNr` | integer | read/write |  |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this layer. |
 | `maxUnderzoomLevel` | integer | read/write | Gets the current maximum underzoom level for this layer. |
 | `preloading` | boolean | read/write | Returns the state of the preloading flag of this layer. |
+| `preloadingTileCount` | integer | read-only |  |
 | `projection` | object `projections.Projection` | read-only | Returns the projection this layer's data is in, which is its data source's. |
 | `synchronizedRefresh` | boolean | read/write | Returns the state of the synchronized refresh flag. |
 | `tileLoadListener` | object `layers.TileLoadListener` | read/write | Returns the tile load listener. |
 | `tileSubstitutionPolicy` | [enum](enums.md#enum-tilesubstitutionpolicy) | read/write | Returns the current tile substitution policy. |
+| `visibleTileCount` | integer | read-only | How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost. |
 | `zoomLevelBias` | number | read/write | Gets the current zoom level bias for this layer. |
 
 Inherited from `Layer`:

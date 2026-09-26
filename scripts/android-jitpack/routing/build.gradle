@@ -50,7 +50,7 @@ tasks.whenTaskAdded { task ->
 publishing {
     publications {
         release(MavenPublication) {
-            groupId    = 'com.akylas.routing'
+            groupId    = 'com.massifmaps'
             artifactId = 'valhalla-routing'
             version    = libVersion
             artifact(aarFile) {

@@ -2320,17 +2320,7 @@
     },
     "massif::CompositeVectorTileLayer": {
       "base": "massif::VectorTileLayer",
-      "properties": [
-        {
-          "name": "singlePassRenderingEnabled",
-          "type": "BOOL",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "bool",
-          "doc": "Returns whether single-pass segmented rendering is enabled."
-        }
-      ],
+      "properties": [],
       "aliases": {},
       "methods": [
         {

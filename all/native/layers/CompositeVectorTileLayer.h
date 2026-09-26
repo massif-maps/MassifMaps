@@ -98,18 +98,6 @@ namespace massif {
         std::shared_ptr<Layer> getExternalChildLayer(const std::string& name) const;
 
         /**
-         * Returns whether single-pass segmented rendering is enabled.
-         * @return True if single-pass rendering is enabled. The default is false.
-         */
-        bool isSinglePassRenderingEnabled() const;
-        /**
-         * Sets whether to use the single-pass segmented renderer instead of one vt pass per segment.
-         * Currently a no-op placeholder until the single-pass renderer lands.
-         * @param enabled True to enable single-pass rendering.
-         */
-        void setSinglePassRenderingEnabled(bool enabled);
-
-        /**
          * Sets the zoom level bias for this layer and for every child layer it owns (external
          * raster/hillshade/vector sources and the internal style-group layers). Sources with a
          * per-source bias set via setExternalDataSourceZoomLevelBias keep their own value.
@@ -254,7 +242,6 @@ namespace massif {
         std::vector<DrawItem> _drawItems;
         std::map<std::string, std::map<std::string, float> > _lastVectorConfig;
         std::map<std::string, std::map<std::string, double> > _lastChildConfig; // double: holds a 32-bit ARGB exactly
-        bool _singlePassRenderingEnabled;
 
         // For wiring child layers added after setComponents().
         bool _componentsSet;

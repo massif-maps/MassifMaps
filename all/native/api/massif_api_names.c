@@ -402,7 +402,6 @@ static const char* const kNames[] = {
     "showWarn",
     "sideColor",
     "simplifyTolerance",
-    "singlePassRenderingEnabled",
     "size",
     "sizeAnimationType",
     "skyColor",

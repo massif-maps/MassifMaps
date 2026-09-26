@@ -401,7 +401,6 @@ MassifProperty const MassifPropertyShowInfo = @"showInfo";
 MassifProperty const MassifPropertyShowWarn = @"showWarn";
 MassifProperty const MassifPropertySideColor = @"sideColor";
 MassifProperty const MassifPropertySimplifyTolerance = @"simplifyTolerance";
-MassifProperty const MassifPropertySinglePassRenderingEnabled = @"singlePassRenderingEnabled";
 MassifProperty const MassifPropertySize = @"size";
 MassifProperty const MassifPropertySizeAnimationType = @"sizeAnimationType";
 MassifProperty const MassifPropertySkyColor = @"skyColor";

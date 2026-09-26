@@ -79,7 +79,6 @@ namespace massif {
         _externalSources(),
         _drawItems(),
         _lastVectorConfig(),
-        _singlePassRenderingEnabled(false),
         _componentsSet(false),
         _childOptions(),
         _childMapRenderer(),
@@ -321,16 +320,6 @@ namespace massif {
         if (source.maxOverzoomLevelSet) {
             childLayer->setMaxOverzoomLevel(source.maxOverzoomLevel);
         }
-    }
-
-    bool CompositeVectorTileLayer::isSinglePassRenderingEnabled() const {
-        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
-        return _singlePassRenderingEnabled;
-    }
-
-    void CompositeVectorTileLayer::setSinglePassRenderingEnabled(bool enabled) {
-        std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
-        _singlePassRenderingEnabled = enabled;
     }
 
     std::shared_ptr<ElevationDecoder> CompositeVectorTileLayer::resolveElevationDecoder(const std::shared_ptr<TileDataSource>& dataSource) {

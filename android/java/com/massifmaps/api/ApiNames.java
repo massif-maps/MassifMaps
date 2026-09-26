@@ -792,8 +792,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Integer> SIDE_COLOR = MassifObject.key("sideColor");
     /** Returns the simplification tolerance in tile pixels. */
     public static final MassifObject.Key<Double> SIMPLIFY_TOLERANCE = MassifObject.key("simplifyTolerance");
-    /** Returns whether single-pass segmented rendering is enabled. */
-    public static final MassifObject.Key<Boolean> SINGLE_PASS_RENDERING_ENABLED = MassifObject.key("singlePassRenderingEnabled");
     /** Returns the size of the data */
     public static final MassifObject.Key<String> SIZE = MassifObject.key("size");
     /** Returns the size-related animation type. */

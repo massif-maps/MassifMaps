@@ -27,7 +27,6 @@
 
 
 !spec(massif::CompositeVectorTileLayer, layer, composite-vector, alias(source, dataSource), alias(style, decoder))
-%attribute(massif::CompositeVectorTileLayer, bool, SinglePassRenderingEnabled, isSinglePassRenderingEnabled, setSinglePassRenderingEnabled)
 
 // Wired after construction: a slot is a style name and its source is usually shared (e.g. the DEM).
 // `type` crosses as an int: the facade has no enum argument kind.

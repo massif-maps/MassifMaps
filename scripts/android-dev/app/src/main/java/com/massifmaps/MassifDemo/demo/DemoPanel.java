@@ -502,14 +502,6 @@ public final class DemoPanel {
         check(context, "#contour", DemoConfig.COMPOSITE_CONTOUR, new BoolSetting() {
             public void set(boolean value) { DemoConfig.COMPOSITE_CONTOUR = value; demo.syncCompositeSources(); refreshStatus(demo); }
         });
-        check(context, "single-pass rendering", DemoConfig.COMPOSITE_SINGLE_PASS, new BoolSetting() {
-            public void set(boolean value) {
-                DemoConfig.COMPOSITE_SINGLE_PASS = value;
-                if (demo.compositeLayer != null) {
-                    demo.compositeLayer.setSinglePassRenderingEnabled(value);
-                }
-            }
-        });
         // +1 = fetch the DEM one zoom level deeper than the base map.
         slider(context, "#hillshade zoom bias", -2, 2, DemoConfig.COMPOSITE_HILLSHADE_ZOOM_BIAS, true, new FloatSetting() {
             public void set(float value) {

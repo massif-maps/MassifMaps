@@ -792,8 +792,6 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyShowWarn;
 FOUNDATION_EXPORT MassifProperty const MassifPropertySideColor;
 /** Returns the simplification tolerance in tile pixels. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySimplifyTolerance;
-/** Returns whether single-pass segmented rendering is enabled. */
-FOUNDATION_EXPORT MassifProperty const MassifPropertySinglePassRenderingEnabled;
 /** Returns the size of the data */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySize;
 /** Returns the size-related animation type. */

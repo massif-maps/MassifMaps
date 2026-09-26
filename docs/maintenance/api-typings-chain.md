@@ -6,7 +6,7 @@ description: "From a .i declaration to autocompletion in an app: what generates 
 # From a `.i` file to an app's autocompletion
 
 The facade's public surface is **declared** in `all/modules/*.i` and **consumed** as TypeScript in a
-NativeScript app. Between the two there are four generated artefacts, in four different places. If
+web or NativeScript app, through the typed API package `@massif-maps/api` (`bindings/js`). Between the two there are four generated artefacts, in four different places. If
 an app is reporting types that do not exist, or missing ones that do, the answer is always "one link
 is stale" — and this page says which.
 
@@ -18,15 +18,17 @@ flowchart TD
   cpp["all/native/**/*.h<br/>constructors and getters"] --> gen
   gen --> inc["PropertyTable.inc · PropertyAccessors.inc<br/>SpecConstructors.inc · MethodDecls.inc<br/>(build directory, never committed)"]
   gen --> schema["docs/api/massif-api.json<br/>COMMITTED"]
-  schema --> tsgen["ui-massifmaps:<br/>scripts/api-typings"]
-  tsgen --> srcts["src/ui-massifmaps/api/<br/>massif-api.d.ts · schema.ts<br/>COMMITTED"]
+  schema --> tsgen["bindings/js/scripts/api-typings"]
+  tsgen --> srcts["bindings/js/src/<br/>massif-api.d.ts · schema.ts<br/>COMMITTED"]
+  srcts --> web["@massif-maps/web<br/>(web/package/build.mjs)"]
   srcts --> build["ui-massifmaps: npm run build"]
   build --> pkg["packages/ui-massifmaps/**<br/>GITIGNORED — local only"]
   pkg --> app["the app's node_modules<br/>(a portal / symlink)"]
 ```
 
-Two of those are **committed generated files** — `docs/api/massif-api.json` and the plugin's
-`massif-api.d.ts` / `schema.ts`. They are regenerated, not hand-edited, and they must be committed
+Two of those are **committed generated files** — `docs/api/massif-api.json` and
+`bindings/js/src/massif-api.d.ts` / `schema.ts`. Until the plugin depends on `@massif-maps/api`, it
+keeps its own copy of the same generator and files in `src/ui-massifmaps/api/`. They are regenerated, not hand-edited, and they must be committed
 alongside the `.i` change that caused them. An app never runs the generator.
 
 The last one is **not** committed: `packages/**` is gitignored (`packages/**/*.d.ts`,
@@ -95,7 +97,7 @@ A `.i` change that adds a `!spec`, `!method`, `!event` or `%attribute` is **not 
 2. the C++ that implements it — a `!method` with no `Methods::registerMethod` is reported at
    startup by `checkDeclarations` and completes to a call that fails,
 3. `docs/api/massif-api.json`,
-4. the plugin's `src/ui-massifmaps/api/massif-api.d.ts` and `schema.ts`.
+4. `bindings/js/src/massif-api.d.ts` and `schema.ts` — `scripts/gen-api-bindings.sh` writes both.
 
 Splitting those across commits leaves every intermediate commit describing an API that is not there.
 Two things are deliberately NOT committed: the generated `.inc` files (they live in the build

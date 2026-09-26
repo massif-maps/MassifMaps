@@ -156,6 +156,9 @@ namespace massif {
         // geo-three's mesh (setSubdivideDistance): full MeshResolution up to this zoom, halved per level above.
         static constexpr int REFERENCE_MESH_FULL_ZOOM = 12;
         static constexpr int REFERENCE_MIN_MESH_GRID_SIZE = 16;
+        // The most cells per edge a mesh indexed with 16 bits holds: (n + 1)^2 grid vertices and 8n skirt
+        // vertices must stay under 65536, or the indices wrap and triangles join the wrong vertices.
+        static constexpr int MAX_INDEXED_MESH_GRID_SIZE = 250;
         static constexpr int MAX_CACHED_MESHES = 160;
         // Half the cache: each pass of a frame caches its own resolution, and must not evict the next pass's.
         static constexpr int MAX_VISIBLE_MESH_TILES = MAX_CACHED_MESHES / 2;

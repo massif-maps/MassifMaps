@@ -1992,7 +1992,7 @@ namespace massif {
             // geo-three's getGeometry: the same cells per edge up to REFERENCE_MESH_FULL_ZOOM, so a
             // near tile is no denser on the ground than a far one, and no DEM or 96 cap.
             int size = meshResolution >> std::max(0, tile.getZoom() - REFERENCE_MESH_FULL_ZOOM);
-            return std::max(size, REFERENCE_MIN_MESH_GRID_SIZE);
+            return std::min(std::max(size, REFERENCE_MIN_MESH_GRID_SIZE), MAX_INDEXED_MESH_GRID_SIZE);
         }
 
         // The pre-pass mesh must never be FINER than the draped tile surfaces: a coarser draped

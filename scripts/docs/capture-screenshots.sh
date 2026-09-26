@@ -1,25 +1,14 @@
 #!/usr/bin/env bash
-# Capture feature screenshots (and an optional video) from the Android demo app
-# (scripts/android-dev) into website/static/img/features/.
-#
-# The demo's terrain/hillshade/contour setup (SecondFragment.addCompositeMap /
-# addTerrain) streams its data from public online tiles — a terrarium DEM
-# (tiles.mapterhorn.com) and a vector basemap (tiles.openfreemap.org) — so the
-# emulator only needs internet; no map data has to be pushed to the device.
-#
-# The native .so are prebuilt under massif/, so the app builds in seconds
-# (no NDK compile). Requires a booted emulator / connected device (adb) and ffmpeg
-# for cropping/encoding.
-#
-# Usage:
-#   scripts/docs/capture-screenshots.sh [name]     # still -> features/<name>.png
-#   RECORD=1 scripts/docs/capture-screenshots.sh    # also record a ~14s video
+# Capture a feature still (RECORD=1: plus a ~14s video) from the demo bench into img/features/.
+# Usage: capture-screenshots.sh <name> --es lon <lon> --es lat <lat> --es zoom <z> --es tilt <t>
+# The camera is only what the extras say (docs/contributing/demo-app.md); SETTLE=<s> sets the wait.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DEV="$ROOT/scripts/android-dev"
 OUT="$ROOT/website/static/img/features"
 APP_ID="${APP_ID:-com.massifmaps.MassifDemo}"
 NAME="${1:-feature}"
+shift $(( $# > 0 ? 1 : 0 ))
 mkdir -p "$OUT"
 
 command -v adb >/dev/null || { echo "adb not found (install Android platform-tools)"; exit 1; }
@@ -33,9 +22,9 @@ APK="$(find "$DEV/app/build/outputs/apk/debug" -name '*.apk' | head -1)"
 echo "==> Installing + launching"
 adb install -r -g "$APK" >/dev/null
 adb shell am force-stop "$APP_ID"
-adb shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+adb shell am start -n "$APP_ID/.BenchActivity" --es ui false "$@" >/dev/null
 until [ -n "$(adb shell pidof "$APP_ID" 2>/dev/null)" ]; do sleep 1; done
-echo "   waiting for online tiles to render…"; sleep 11
+echo "   waiting ${SETTLE:-75}s for the scene to settle…"; sleep "${SETTLE:-75}"
 
 echo "==> Screenshot -> $OUT/$NAME.png"
 adb exec-out screencap -p > "$OUT/$NAME.png"
@@ -69,7 +58,3 @@ else
 fi
 
 echo "done. Review $OUT/ and point the feature doc's image/video at it."
-echo
-echo "Tip: for distinct feature shots, edit scripts/android-dev SecondFragment"
-echo "     (camera setFocusPos/setZoom/setTilt; Massif tilt 90=top-down, low=horizon)"
-echo "     and comment addTerrainControls to hide the debug UI. Restore it after."

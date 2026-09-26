@@ -191,21 +191,22 @@ Feature pages reference images under `website/static/img/features/`. The terrain
 contour shots and the pan video there were captured from the `scripts/android-dev` demo:
 
 ```bash
-# Boot an emulator / connect a device, then:
-scripts/docs/capture-screenshots.sh terrain-hero      # a still
-RECORD=1 scripts/docs/capture-screenshots.sh terrain  # still + ~14s video
+# Boot an emulator / connect a device, then (the extras are BenchActivity's launch extras):
+scripts/docs/capture-screenshots.sh terrain-hero --es lon <lon> --es lat <lat> --es zoom <z> --es tilt <t>
+RECORD=1 scripts/docs/capture-screenshots.sh terrain ...   # still + ~14s video
 ```
 
 The demo streams its terrain data from public online tiles (a terrarium DEM +
 an OpenFreeMap vector basemap), so the emulator only needs internet — no map data is pushed to
 the device. The native libraries are prebuilt under `scripts/android-dev/massif/`, so the
-app builds in seconds. The script builds (`assembleDebug --offline`), installs, launches, grabs a
+app builds in seconds. The script builds (`assembleDebug --offline`), installs, launches
+`.BenchActivity` with `--es ui false` plus the extras given, waits `SETTLE` seconds (default 75), grabs a
 screenshot (and optionally a screen recording), then uses `ffmpeg` to crop the Android status/nav
 bars and encode a web-friendly JPEG/MP4. Drop the results into `website/static/img/features/`.
 
-For distinct shots (top-down hillshade, close-up contours, a low-angle 3D view), edit the demo's
-`SecondFragment` camera (`setFocusPos` / `setZoom` / `setTilt` — Massif tilt is `90` = top-down,
-low = horizon) and comment out `addTerrainControls` to hide the debug UI, then restore it.
+For distinct shots (top-down hillshade, close-up contours, a low-angle 3D view), pass a different
+camera — `--es lon/lat/zoom/tilt/rotation`, Massif tilt `90` = top-down, low = horizon — and any
+knob from [the demo app page](demo-app.md). Nothing in the app needs editing.
 
 ## Deployment
 

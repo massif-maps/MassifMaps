@@ -2,6 +2,7 @@
 #include "projections/ProjectionSurface.h"
 #include "renderers/MapRenderer.h"
 #include "core/MapPos.h"
+#include "components/Options.h"
 #include "graphics/ViewState.h"
 #include "utils/Const.h"
 
@@ -40,6 +41,9 @@ namespace massif {
         _flightStartPos(),
         _flightTargetPos(),
         _flightClimb(0),
+        _flightLift(0),
+        _flightFirstPerson(false),
+        _firstPersonHint(false),
         _flightProgress(-1),
         _flightStartZoom(0),
         _flightTargetZoom(0),
@@ -60,8 +64,12 @@ namespace massif {
         std::optional<CameraRotationEvent> cameraRotationEvent;
         std::optional<CameraTiltEvent> cameraTiltEvent;
         std::optional<CameraZoomEvent> cameraZoomEvent;
+        // Read before _mutex: getOptions takes the renderer's lock, which is held around getFlightLift.
+        std::shared_ptr<Options> options = _mapRenderer.getOptions();
+        bool firstPerson = options && options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
         {
             std::lock_guard<std::mutex> lock(_mutex);
+            _firstPersonHint = firstPerson;
             if (_flightActive) {
                 // One clock for the whole move: the per-property animations are not running while
                 // a flight is (setFlightTarget stops them), so nothing fights it for the camera.
@@ -203,6 +211,12 @@ namespace massif {
     void AnimationHandler::stopFlight() {
         std::lock_guard<std::mutex> lock(_mutex);
         _flightActive = false;
+        _flightLift = 0;
+    }
+
+    double AnimationHandler::getFlightLift() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _flightActive ? _flightLift : 0;
     }
 
     bool AnimationHandler::isFlightActive() const {
@@ -232,6 +246,7 @@ namespace massif {
             _flightStartZoom = viewState.getZoom();
             _flightStartRotation = viewState.getRotation();
             _flightStartTilt = viewState.getTilt();
+            _flightFirstPerson = _firstPersonHint;
 
             // Van Wijk's w is the width of the visible world; only the RATIO of the widths and of
             // the distance to them matters, so world units per screen at each zoom will do.
@@ -273,7 +288,13 @@ namespace massif {
 
         double ratio = 1.0;
         double zoom = _flightTargetZoom;
-        if (!done && _flightS > 0) {
+        if (!done && _flightFirstPerson) {
+            // The eye goes straight there, eased, and the climb is the arc: zooming out on the way
+            // would move a first-person eye backwards before it went forward.
+            double eased = (t < 0.5f ? 4.0 * t * t * t : 1.0 - std::pow(-2.0 * t + 2.0, 3.0) / 2.0);
+            ratio = eased;
+            zoom = _flightStartZoom + (_flightTargetZoom - _flightStartZoom) * eased;
+        } else if (!done && _flightS > 0) {
             double s = t * _flightS;
             double w = 0;
             if (_flightZeroPath) {
@@ -298,14 +319,11 @@ namespace massif {
             cglib::mat4x4<double> transform = projectionSurface->calculateTranslateMatrix(pos0, pos1, ratio);
             newFocusPos = projectionSurface->calculateMapPos(cglib::transform_point(pos0, transform));
         }
-        // The viewpoint's HEIGHT travels with the move: it follows the same ground fraction, plus
-        // a parabola that lifts it above both ends and comes back down - a plane's flight, and the
-        // reason a climb is worth having is that it clears what is between the two ends.
+        // The height follows the same ground fraction; the climb is a parabola over both ends, kept
+        // apart (getFlightLift) because the renderer's ground rule rewrites the focus height.
         double height = _flightStartPos.getZ() + (_flightTargetPos.getZ() - _flightStartPos.getZ()) * ratio;
-        if (!done && _flightClimb != 0) {
-            height += _flightClimb * 4.0 * ratio * (1.0 - ratio);
-        }
         newFocusPos.setZ(height);
+        _flightLift = (done ? 0.0 : _flightClimb * 4.0 * ratio * (1.0 - ratio));
         _flightProgress = t;
 
         CameraPanEvent panCameraEvent;

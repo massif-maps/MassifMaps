@@ -53,6 +53,11 @@ namespace massif {
          * Eased flight progress, 0 to 1, or -1 when none is running.
          */
         float getFlightProgress() const;
+        /**
+         * The flight's climb at this frame, internal units: added over the ground rule's focus height,
+         * which would overwrite a climb written into the focus itself. 0 when no flight runs.
+         */
+        double getFlightLift() const;
 
         /**
          * Whether a flight or any per-property animation is still moving the camera.
@@ -101,6 +106,9 @@ namespace massif {
         MapPos _flightStartPos;
         MapPos _flightTargetPos;
         double _flightClimb; // internal units added at the middle of the path, parabolic
+        double _flightLift; // the climb at the current frame, see getFlightLift
+        bool _flightFirstPerson; // eye-led path: no van Wijk zoom-out, which backs a first-person eye away
+        bool _firstPersonHint; // the free roam mode at this frame, read before _mutex
         float _flightProgress;
         float _flightStartZoom;
         float _flightTargetZoom;

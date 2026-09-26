@@ -919,7 +919,7 @@ namespace massif {
         double clearanceFloor = terrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
         double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
         // Plus the application's lift, as in the frame's own rule.
-        double lift = terrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
+        double lift = terrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY()) + _animationHandler.getFlightLift();
         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, terrainOptions->getCameraClearanceFraction()) - orbitHeight + lift;
         if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
             shellFocusZ += _eyeGroundOffset; // mid-glide the eye is meant to be off the newest answer
@@ -1399,7 +1399,7 @@ namespace massif {
                         // Never below the shell: raising keeps the user's tilt and zoom.
                         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, clearanceFraction) - orbitHeight;
                         // App lift on top, kept out of `follow` so it cannot feed its own input.
-                        double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
+                        double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY()) + _animationHandler.getFlightLift();
                         // First person stands on the ground under the camera; the far focus ground would bob the eye.
                         if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
                             double groundZ = settleEyeGround(*elevationManager, cameraMapPos, cameraTerrainZ, cameraGroundZoom, deltaSeconds);
@@ -1437,7 +1437,7 @@ namespace massif {
                     }
                 }
             } else {
-                _viewState.setFocusHeight(0); // back onto the surface, radially on a globe
+                _viewState.setFocusHeight(_animationHandler.getFlightLift()); // back onto the surface, radially on a globe
                 _viewState.setTerrainHeightRange(0.0f, 0.0f);
             }
 

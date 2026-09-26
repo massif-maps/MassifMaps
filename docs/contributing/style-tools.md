@@ -676,7 +676,7 @@ Every skipped property is counted and named — `mapbox2css` prints a coverage r
 turns any drop into a non-zero exit. What it refuses, and why:
 
 - **Layer types** with no symbolizer: `heatmap`.
-- **The gap list** — `line-blur`, `line-gradient`, `fill-extrusion-pattern`,
+- **The gap list** — `line-gradient`, `fill-extrusion-pattern`,
   every `*-translate`, most `raster-*` adjustments. These are the CartoCSS gaps, not converter bugs.
 - **Expressions with no CartoCSS form**: `feature-state`, `within`, `number-format`,
   `image`, `%` (absent from the grammar), `abs`/`floor`/`ceil` (absent from `_basicFuncMap`), and

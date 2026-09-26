@@ -310,6 +310,8 @@ namespace massif {
 
         std::atomic<float> _exaggeration;
         std::string _normalMapLightingShader;
+        mutable std::atomic<bool> _normalMapsRebuilding; // cleared from the const applyRendererSettings
+        std::atomic<unsigned int> _normalMapRebuildPass;
         std::atomic<Color> _shadowColor;
         std::atomic<Color> _accentColor;
         std::atomic<Color> _highlightColor;
@@ -328,6 +330,8 @@ namespace massif {
         bool isTerrainPaintActive() const;
         // Called both before the shared drape bake and from the layer's own draw, so the paint and the normal map agree.
         void applyRendererSettings() const;
+        // updateTiles for a normal-map parameter; the built-in shader draws until the rebuild lands.
+        void rebuildNormalMaps();
         // Hash of everything the paint's appearance depends on - including what only the lighting
         // shader sees - so cached drape textures are re-baked when any of it changes.
         std::size_t calculatePaintFingerprint() const;

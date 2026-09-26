@@ -1,4 +1,6 @@
 #include "GLTileRenderer.h"
+
+#include <cctype>
 #include "SpanGeometry.h"
 #include "SpanDrapeLight.h"
 #include "ExtrusionFloor.h"
@@ -108,7 +110,29 @@ namespace massif::vt {
     void GLTileRenderer::setLightingShaderNormalMap(const std::optional<LightingShader>& lightingShaderNormalMap) {
         std::lock_guard<std::mutex> lock(_mutex);
 
+        bool changed = (_lightingShaderNormalMap.has_value() != lightingShaderNormalMap.has_value()) ||
+                       (_lightingShaderNormalMap && (_lightingShaderNormalMap->shader != lightingShaderNormalMap->shader || _lightingShaderNormalMap->perVertex != lightingShaderNormalMap->perVertex));
         _lightingShaderNormalMap = lightingShaderNormalMap;
+        if (!changed) {
+            return;
+        }
+        // Only the programs compiled with it: the program ids carry the lighting mode, not the shader
+        // text. On the GL thread, as setFogShaderSource.
+        for (LightingMode mode : { LightingMode::NORMALMAP, LightingMode::TERRAINPAINT }) {
+            std::string tag = "_l" + std::to_string(static_cast<int>(mode));
+            for (auto it = _shaderProgramMap.begin(); it != _shaderProgramMap.end(); ) {
+                std::size_t pos = it->first.find(tag);
+                std::size_t end = pos + tag.size();
+                if (pos != std::string::npos && (end == it->first.size() || !std::isdigit(static_cast<unsigned char>(it->first[end])))) {
+                    deleteShaderProgram(it->second);
+                    it = _shaderProgramMap.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+        _shaderProgramCache.clear();
+        resetProgramState();
     }
 
     void GLTileRenderer::setInteractionMode(bool enabled) {

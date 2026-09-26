@@ -261,6 +261,11 @@ class ProjectionSurface;
          */
         virtual bool isTerrainDecodeSettled();
 
+        /** Tile passes completed so far. Internal method. */
+        unsigned int getTileCalculationCount() const;
+        /** A tile pass has completed since `count` and no visible tile is still loading. Internal method. */
+        bool areVisibleTilesSettledSince(unsigned int count) const;
+
         /**
          * How many visible tiles the 2D/3D switch still waits on, -1 before the next cull. Internal method.
          * @return The number of pending tiles in this layer.
@@ -557,6 +562,7 @@ class ProjectionSurface;
         
         std::atomic<bool> _calculatingTiles;
         std::atomic<bool> _refreshedTiles;
+        std::atomic<unsigned int> _tileCalculationCount; // completed tile passes, see areVisibleTilesSettledSince
         
         ThreadSafeDirectorPtr<TileDataSource> _utfGridDataSource;
         

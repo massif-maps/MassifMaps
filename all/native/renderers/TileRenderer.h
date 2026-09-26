@@ -193,6 +193,8 @@ namespace massif {
         struct LabelOcclusionState;
 
         bool initializeRenderer();
+        // The normal-map lighting shader and its uniforms, for initializeRenderer and an in-place swap.
+        vt::GLTileRenderer::LightingShader createNormalMapLightingShader();
         bool isPlanarProjectionMode() const;
         // _mutex taken from the render thread, timed: a tile-set change holds it on the cull thread.
         std::unique_lock<std::mutex> lockTimed() const;

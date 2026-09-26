@@ -66,6 +66,8 @@ namespace massif
         _exagerateHeightScaleEnabled(true),
         _legacyHeightScaleEnabled(false),
         _normalMapLightingShader(),
+        _normalMapsRebuilding(false),
+        _normalMapRebuildPass(0),
         _accentColor(Color(0, 0, 0, 255)),
         _shadowColor(Color(0, 0, 0, 255)),
         _highlightColor(Color(255, 255, 255, 255)),
@@ -95,6 +97,8 @@ namespace massif
         _exagerateHeightScaleEnabled(true),
         _legacyHeightScaleEnabled(false),
         _normalMapLightingShader(),
+        _normalMapsRebuilding(false),
+        _normalMapRebuildPass(0),
         _accentColor(Color(0, 0, 0, 255)),
         _shadowColor(Color(0, 0, 0, 255)),
         _highlightColor(Color(255, 255, 255, 255)),
@@ -135,7 +139,7 @@ namespace massif
 
     void HillshadeRasterTileLayer::setHeightScale(float heightScale) {
         _heightScale.store(heightScale);
-        updateTiles(false);
+        rebuildNormalMaps();
     }
 
     float HillshadeRasterTileLayer::getExaggeration() const {
@@ -212,7 +216,7 @@ namespace massif
     void HillshadeRasterTileLayer::setExagerateHeightScaleEnabled(bool enabled)
     {
         _exagerateHeightScaleEnabled.store(enabled);
-        updateTiles(false);
+        rebuildNormalMaps();
     }
     bool HillshadeRasterTileLayer::isLegacyHeightScaleEnabled() const
     {
@@ -221,7 +225,7 @@ namespace massif
     void HillshadeRasterTileLayer::setLegacyHeightScaleEnabled(bool enabled)
     {
         _legacyHeightScaleEnabled.store(enabled);
-        updateTiles(false);
+        rebuildNormalMaps();
     }
 
     HillshadeMethod::HillshadeMethod HillshadeRasterTileLayer::getHillshadeMethod() const {
@@ -381,8 +385,25 @@ namespace massif
         return signature;
     }
 
+    void HillshadeRasterTileLayer::rebuildNormalMaps() {
+        _normalMapRebuildPass.store(getTileCalculationCount());
+        _normalMapsRebuilding.store(true);
+        updateTiles(false);
+    }
+
     void HillshadeRasterTileLayer::applyRendererSettings() const {
-        _tileRenderer->setNormalMapLightingShader(getNormalMapLightingShader());
+        // While the normal maps rebuild, old and new ones are on screen together, and a custom shader
+        // reads the wrong scale off one or the other (the slope shader lit the old, exaggerated maps as
+        // one steep slope). The built-in shader looks right at any scale, so it draws until they land.
+        std::string lightingShader = getNormalMapLightingShader();
+        if (_normalMapsRebuilding.load()) {
+            if (areVisibleTilesSettledSince(_normalMapRebuildPass.load())) {
+                _normalMapsRebuilding.store(false);
+            } else {
+                lightingShader.clear();
+            }
+        }
+        _tileRenderer->setNormalMapLightingShader(lightingShader);
         _tileRenderer->setRasterFilterMode(getRasterFilterMode());
         _tileRenderer->setLayerBlendingSpeed(getTileBlendingSpeed());
         _tileRenderer->setNormalMapShadowColor(getShadowColor());

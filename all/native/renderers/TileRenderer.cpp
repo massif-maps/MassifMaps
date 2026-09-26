@@ -184,7 +184,13 @@ namespace massif {
         }
         if (newValue != _normalMapLightingShader) {
             _normalMapLightingShader = newValue;
-            _vtRenderer.reset();
+            // Swapped in place: a reset threw away the layer's whole GL renderer, and until every tile
+            // was uploaded again the map drew without it - black on Mali. Called on the GL thread.
+            if (_vtRenderer && _vtRenderer->isValid()) {
+                if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
+                    tileRenderer->setLightingShaderNormalMap(createNormalMapLightingShader());
+                }
+            }
         }
     }
     void TileRenderer::setNormalMapElevationEncoded(bool enabled) {
@@ -1639,6 +1645,29 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return _labelOcclusionTestCopy;
     }
 
+    vt::GLTileRenderer::LightingShader TileRenderer::createNormalMapLightingShader() {
+        return vt::GLTileRenderer::LightingShader(false, _normalMapLightingShader, [this](GLuint shaderProgram, const vt::ViewState& viewState) {
+            // Straight colors; the shader premultiplies them, as MapLibre's does.
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_shadowColor"), _normalMapShadowColor.getR() / 255.0f, _normalMapShadowColor.getG() / 255.0f, _normalMapShadowColor.getB() / 255.0f, _normalMapShadowColor.getA() / 255.0f);
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_accentColor"), _normalMapAccentColor.getR() / 255.0f, _normalMapAccentColor.getG() / 255.0f, _normalMapAccentColor.getB() / 255.0f, _normalMapAccentColor.getA() / 255.0f);
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_highlightColor"), _normalMapHighlightColor.getR() / 255.0f, _normalMapHighlightColor.getG() / 255.0f, _normalMapHighlightColor.getB() / 255.0f, _normalMapHighlightColor.getA() / 255.0f);
+            glUniform3fv(glGetUniformLocation(shaderProgram, "u_lightDir"), 1, _normalLightDir.data() );
+            glUniform1i(glGetUniformLocation(shaderProgram, "u_method"), (_hillshadeMethod));
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_exaggeration"), _hillshadeExaggeration);
+            // MapLibre's 'hillshade-exaggeration', from the layer's contrast; u_exaggeration scales the slope.
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_intensity"), _hillshadeIntensity);
+            // No effect unless the normal map is elevation-encoded (HillshadeRasterTileLayer).
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_elevationEncoded"), _normalMapElevationEncoded ? 1.0f : 0.0f);
+            glUniform2f(glGetUniformLocation(shaderProgram, "u_elevationDecode"), vt::NormalMapBuilder::ELEVATION_SCALE, vt::NormalMapBuilder::ELEVATION_OFFSET);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_contrast"), _hillshadeIntensity);
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_contourColor"), _normalMapContourColor.getR() / 255.0f, _normalMapContourColor.getG() / 255.0f, _normalMapContourColor.getB() / 255.0f, _normalMapContourColor.getA() / 255.0f);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_contourInterval"), _normalMapContourInterval);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_contourWidth"), _normalMapContourWidth);
+            // For per-zoom custom normal-map shaders (getMapZoom()).
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_zoom"), viewState.zoom);
+        });
+    }
+
     bool TileRenderer::initializeRenderer() {
         if (_vtRenderer && _vtRenderer->isValid()) {
             return true;
@@ -1693,27 +1722,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             });
             tileRenderer->setLightingShader3D(lightingShader3D);
 
-            vt::GLTileRenderer::LightingShader lightingShaderNormalMap(false, _normalMapLightingShader, [this](GLuint shaderProgram, const vt::ViewState& viewState) {
-                    // Straight colors; the shader premultiplies them, as MapLibre's does.
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_shadowColor"), _normalMapShadowColor.getR() / 255.0f, _normalMapShadowColor.getG() / 255.0f, _normalMapShadowColor.getB() / 255.0f, _normalMapShadowColor.getA() / 255.0f);
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_accentColor"), _normalMapAccentColor.getR() / 255.0f, _normalMapAccentColor.getG() / 255.0f, _normalMapAccentColor.getB() / 255.0f, _normalMapAccentColor.getA() / 255.0f);
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_highlightColor"), _normalMapHighlightColor.getR() / 255.0f, _normalMapHighlightColor.getG() / 255.0f, _normalMapHighlightColor.getB() / 255.0f, _normalMapHighlightColor.getA() / 255.0f);
-                    glUniform3fv(glGetUniformLocation(shaderProgram, "u_lightDir"), 1, _normalLightDir.data() );
-                    glUniform1i(glGetUniformLocation(shaderProgram, "u_method"), (_hillshadeMethod));
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_exaggeration"), _hillshadeExaggeration);
-                    // MapLibre's 'hillshade-exaggeration', from the layer's contrast; u_exaggeration scales the slope.
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_intensity"), _hillshadeIntensity);
-                    // No effect unless the normal map is elevation-encoded (HillshadeRasterTileLayer).
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_elevationEncoded"), _normalMapElevationEncoded ? 1.0f : 0.0f);
-                    glUniform2f(glGetUniformLocation(shaderProgram, "u_elevationDecode"), vt::NormalMapBuilder::ELEVATION_SCALE, vt::NormalMapBuilder::ELEVATION_OFFSET);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_contrast"), _hillshadeIntensity);
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_contourColor"), _normalMapContourColor.getR() / 255.0f, _normalMapContourColor.getG() / 255.0f, _normalMapContourColor.getB() / 255.0f, _normalMapContourColor.getA() / 255.0f);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_contourInterval"), _normalMapContourInterval);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_contourWidth"), _normalMapContourWidth);
-                    // For per-zoom custom normal-map shaders (getMapZoom()).
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_zoom"), viewState.zoom);
-            });
-            tileRenderer->setLightingShaderNormalMap(lightingShaderNormalMap);
+            tileRenderer->setLightingShaderNormalMap(createNormalMapLightingShader());
         }
 
         return _vtRenderer && _vtRenderer->isValid();

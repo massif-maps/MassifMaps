@@ -220,6 +220,14 @@ namespace massif {
         return !_fetchingTileTasks.getAll().empty();
     }
 
+    unsigned int TileLayer::getTileCalculationCount() const {
+        return _tileCalculationCount.load();
+    }
+
+    bool TileLayer::areVisibleTilesSettledSince(unsigned int count) const {
+        return _tileCalculationCount.load() != count && !_calculatingTiles && _fetchingTileTasks.getVisibleCount() == 0;
+    }
+
     bool TileLayer::isTerrainDecodeSettled() {
         std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
         return _terrainDecodeWait.settle([this](long long tileId) {
@@ -263,6 +271,7 @@ namespace massif {
         _fetchingTileTasks(),
         _calculatingTiles(false),
         _refreshedTiles(false),
+        _tileCalculationCount(0),
         _utfGridDataSource(),
         _tileLoadListener(),
         _utfGridEventListener(),
@@ -501,6 +510,7 @@ namespace massif {
 
         _calculatingTiles = false;
         _refreshedTiles = true;
+        _tileCalculationCount++;
         
         refreshDrawData(cullState, recalculateTiles);
     }

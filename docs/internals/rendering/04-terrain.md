@@ -985,7 +985,7 @@ children, or the switch rises into terrain with the hillshade still decoding.
 "The switch is slow" covers three separate waits with three separate fixes, so the switch times each
 and logs one line when it stops costing anything. `all/native/terrain/FlattenSwitchTimeline.h` is that
 accounting alone, free of the renderer, with `tests/api/FlattenSwitchTimelineTest.cpp` on the host.
-It is always on — a couple of lines per switch, not per frame.
+It is logged in `MASSIF_VT_RENDER_STATS` builds only — one line per switch, not per frame.
 
 ```
 MapRenderer: 2D->3D switch took 4820 ms - warm 3120 ms (186 frames, 12 tiles owed), ramp 2500 ms

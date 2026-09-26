@@ -62,9 +62,11 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         if (value == _resolution) {
             return;
         }
+#if MASSIF_VT_RENDER_STATS
         // Drops every cached texture, so a resolution that oscillates costs the whole cache per frame.
         Log::Infof("TerrainDrapeCache: bake resolution %d -> %d, dropping %d cached textures",
                    _resolution, value, static_cast<int>(_entries.size()));
+#endif
         _resolution = value;
         // Every cached texture is the old size, so none of them can be reused.
         for (auto it = _entries.begin(); it != _entries.end(); it++) {

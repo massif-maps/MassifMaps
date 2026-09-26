@@ -170,10 +170,9 @@ towards a valley floor cut the range off entirely — at Grenoble a camera 400 m
 the Belledonne it was pointed at is 20 km out. Floored at `MIN_TILT_SIN` (0.1, tilt 5.7 degrees),
 because a horizontal view divides by zero, and bounded by the 127-tile walk cap as before.
 
-`adb shell setprop debug.massif.viewceiling 0` takes the ceiling back to scaling the orbit alone,
-which is the A/B for anything that reads as a depth-precision regression (labels vanishing against 3D
-content is the one to watch — the label occluder packs window depth into rgb, so its precision rides
-on this far plane).
+Suspect this ceiling first for anything that reads as a depth-precision regression (labels
+vanishing against 3D content is the one to watch — the label occluder packs window depth into rgb,
+so its precision rides on this far plane).
 
 The ceiling keeps tangram's **127 tile widths** cap, and that is not cosmetic: with
 `ViewDistanceFactor` 0 the cull envelope stops at the far plane *alone*

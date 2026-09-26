@@ -1965,6 +1965,7 @@ namespace massif {
         if (!_flattenSwitchTimeline.step(timing, report)) {
             return;
         }
+#if MASSIF_VT_RENDER_STATS
         // One line per switch: which of the three halves the user was actually waiting on.
         Log::Infof("MapRenderer: %s switch took %.0f ms - warm %.0f ms (%d frames, %d tiles owed%s), ramp %.0f ms (%d frames, %.1f fps), settle %.0f ms (%d frames, %d bakes)",
             report.rising ? "2D->3D" : "3D->2D", report.totalSeconds() * 1000.0f,
@@ -1972,6 +1973,7 @@ namespace massif {
             report.rampSeconds * 1000.0f, report.rampFrames,
             report.rampSeconds > 0 ? report.rampFrames / report.rampSeconds : 0.0f,
             report.settleSeconds * 1000.0f, report.settleFrames, report.bakes);
+#endif
     }
 
     bool MapRenderer::updateTerrainFlatten(float deltaSeconds) {

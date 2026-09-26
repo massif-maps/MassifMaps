@@ -9,10 +9,6 @@
 
 #include <algorithm>
 
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
-
 namespace massif {
 
     /**
@@ -25,21 +21,6 @@ namespace massif {
         float t = std::min(1.0f, std::max(0.0f, (pitch - 45.0f) / 20.0f));
         return t * t * (3.0f - 2.0f * t);
     }
-
-#ifdef __ANDROID__
-    /** Turns the fade off for an A/B without a rebuild: adb shell setprop debug.massif.fogpitch 0 */
-    inline bool isFogPitchFadeEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.fogpitch", property) > 0 && property[0] == '0');
-        }();
-        return enabled;
-    }
-#else
-    inline bool isFogPitchFadeEnabled() {
-        return true;
-    }
-#endif
 
 }
 

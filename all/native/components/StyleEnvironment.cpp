@@ -354,10 +354,8 @@ namespace {
                               fog.color.getA());
         }
         // On the alpha, as mapbox does (painter.ts u_fog_color[3]), so active() turns the pass off top-down.
-        if (isFogPitchFadeEnabled()) {
-            fog.color = Color(fog.color.getR(), fog.color.getG(), fog.color.getB(),
-                              static_cast<unsigned char>(fog.color.getA() * fogPitchOpacity(tilt) + 0.5f));
-        }
+        fog.color = Color(fog.color.getR(), fog.color.getG(), fog.color.getB(),
+                          static_cast<unsigned char>(fog.color.getA() * fogPitchOpacity(tilt) + 0.5f));
         if (!enabled) {
             fog.color = Color(0, 0, 0, 0);
             fog.startDistance = 0.0f;

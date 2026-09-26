@@ -248,7 +248,6 @@ namespace massif {
         // current pass already drew.
         void evictLeastRecentlyUsedMeshes(unsigned int pass, int maxCachedMeshes);
 
-        static void logBuildStamp();
         // DEM-sampled normals, baked off the render thread; the grids are immutable, so no lock.
         void startAttribWorker();
         void stopAttribWorker();

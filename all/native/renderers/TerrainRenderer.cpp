@@ -306,16 +306,6 @@ namespace massif {
         _shader(),
         _meshCache()
     {
-        logBuildStamp();
-    }
-
-    // Identifies the native binary: livesync pushes JS independently of the APK, so neither the
-    // install time nor the app version tells a fresh native build from a stale one.
-    void TerrainRenderer::logBuildStamp() {
-        static std::once_flag once;
-        std::call_once(once, []() {
-            Log::Infof("massif native build: %s %s", __DATE__, __TIME__);
-        });
     }
 
     TerrainRenderer::~TerrainRenderer() {
@@ -1886,6 +1876,7 @@ namespace massif {
         // values, so the crack-filling walls shade like the edge they hang from instead of
         // showing up as flat-lit bands.
         std::size_t gridVertices = static_cast<std::size_t>(rowSize) * rowSize;
+#if MASSIF_VT_RENDER_STATS
         if (vertexCount > gridVertices && mesh.skirtSources.size() < vertexCount - gridVertices) {
             static std::chrono::steady_clock::time_point lastSkirtLog;
             std::chrono::steady_clock::time_point skirtNow = std::chrono::steady_clock::now();
@@ -1896,6 +1887,7 @@ namespace massif {
                            vertexCount, gridVertices, vertexCount - gridVertices, mesh.skirtSources.size());
             }
         }
+#endif
         for (std::size_t i = gridVertices; i < vertexCount; i++) {
             std::size_t skirtIndex = i - gridVertices;
             if (skirtIndex >= mesh.skirtSources.size()) {

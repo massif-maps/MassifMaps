@@ -18,29 +18,10 @@
 #include <cglib/mat.h>
 #include <vt/ViewState.h>
 
-#ifdef __ANDROID__
-#include <sys/system_properties.h>
-#endif
-
 namespace massif {
 
     // Tangram's far-plane factor on the camera height (core/src/view/view.cpp).
     static const double TANGRAM_FAR_PLANE_FACTOR = 2.0;
-
-#ifdef __ANDROID__
-    // A/B switch back to the orbit-only draw ceiling:  adb shell setprop debug.massif.viewceiling 0
-    static bool isTerrainViewCeilingEnabled() {
-        static const bool enabled = [] {
-            char property[PROP_VALUE_MAX] = { 0 };
-            return !(__system_property_get("debug.massif.viewceiling", property) > 0 && property[0] == '0');
-        }();
-        return enabled;
-    }
-#else
-    static bool isTerrainViewCeilingEnabled() {
-        return true;
-    }
-#endif
 
     ViewState::ViewState() :
         _cameraPos(0, 0, 1),
@@ -900,8 +881,7 @@ namespace massif {
 
         // Not the orbit alone: that cut off peaks in front of a low camera. See 05-depth-model.md.
         double orbitDistance = std::pow(2.0f, -_zoom) * zoom0Distance;
-        double cameraHeight = isTerrainViewCeilingEnabled()
-            ? ViewDistance::cameraHeight(orbitDistance, _cameraPos(2)) : orbitDistance;
+        double cameraHeight = ViewDistance::cameraHeight(orbitDistance, _cameraPos(2));
         double maxDist = ViewDistance::drawCeiling(cameraHeight, options.getDrawDistance(), Const::WORLD_SIZE * std::pow(2.0, -_zoom),
                                                    std::sin(_tilt * Const::DEG_TO_RAD));
         double rayFar = far;

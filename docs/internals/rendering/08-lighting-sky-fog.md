@@ -1378,7 +1378,7 @@ it too (`painter.ts` passes `getOpacity(pitch)` as `u_fog_color[3]`), so `Resolv
 false and the pass is skipped entirely rather than drawing a transparent one.
 
 This changes what an existing style renders at a low tilt: a map that showed haze top-down no longer
-does. `adb shell setprop debug.massif.fogpitch 0` turns the fade off for the A/B.
+does.
 
 ### The horizon term is what closes the seam
 

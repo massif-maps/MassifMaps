@@ -14,13 +14,8 @@
 namespace massif {
 
     /**
-     * How long a 2D/3D switch spent in each of its phases, so "the switch is slow" names one of
-     * them instead of covering all three. Fed the switch's own phase once a frame, and free of the
-     * renderer so the host tests can reach it. See docs/internals/rendering/04-terrain.md.
-     *
-     * The three costs a user sees are separate and have separate fixes: the WARM wait re-decodes
-     * the visible tiles and is what makes the labels leave, the RAMP is the animation itself, and
-     * the SETTLE afterwards is the drape catching up on a camera that has already landed.
+     * How long a 2D/3D switch spent warming, ramping and settling, fed once a frame.
+     * See docs/internals/rendering/04-terrain.md.
      */
     struct FlattenSwitchTimeline {
         /** Content still arriving this long after the switch landed is reported anyway. */
@@ -46,8 +41,7 @@ namespace massif {
             float deltaSeconds = 0.0f;
             int tilesOwed = 0;         // summed over every layer the warm wait covers
             bool warmTimedOut = false;
-            // Drape bakes the frame's budget could not get through. What "the mesh takes forever
-            // to appear" is; the tiles themselves cannot be polled from here, see the renderer.
+            // drape bakes the frame's budget could not get through
             bool bakesQueued = false;
             int bakes = 0;             // drape bakes this frame
         };
@@ -55,13 +49,9 @@ namespace massif {
         /** Whether a switch is being timed. */
         bool isActive() const { return _active; }
 
-        /**
-         * Accumulates one frame. Returns true - once - on the frame the switch stops costing
-         * anything, with 'report' filled in.
-         */
+        /** Accumulates one frame; returns true once, with 'report' filled, when the switch is done. */
         bool step(const Input& input, Report& report) {
-            // The first frame only records where the switch already was: the renderer seeds its
-            // state before stepping it, and a map that opens FLAT would otherwise read as a switch.
+            // The first frame only seeds the phase, so a map that opens FLAT does not read as a switch.
             FlattenSwitch::Phase was = _lastPhase;
             bool seeded = _seeded;
             _lastPhase = input.phase;
@@ -94,8 +84,7 @@ namespace massif {
                 break;
             }
 
-            // Landed, and the drape is still baking - the part a user reads as "the mesh takes
-            // forever to appear", rationed by the frame's bake budget rather than by the work.
+            // Landed; the drape is still baking under the per-frame bake budget.
             _current.settleSeconds += delta;
             _current.settleFrames++;
             _current.bakes += std::max(0, input.bakes);

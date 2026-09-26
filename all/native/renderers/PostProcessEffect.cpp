@@ -43,8 +43,7 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
         _terrainNormalsRequired = required;
         if (required) {
-            // There is one texture. Asking for the normals without the pre-pass that packs them
-            // would silently leave the effect sampling whatever was there last.
+            // One texture: the normals are packed by the depth pre-pass.
             _terrainDepthRequired = true;
         }
     }

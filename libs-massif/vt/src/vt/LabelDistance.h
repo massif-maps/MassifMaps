@@ -40,22 +40,10 @@ namespace massif::vt {
          */
         static constexpr float PERSPECTIVE_RATIO_CUTOFF = 0.6f;
 
-        /**
-         * The same cut expressed the way a caller can reason about it: MULTIPLES of the
-         * camera-to-centre distance, which is what PERSPECTIVE_RATIO_CUTOFF works out to.
-         *
-         * A ratio is the wrong unit to hand an application - 0.6 says nothing about what is lost -
-         * and the rule itself is not always right. A view along the ground has its focus a few
-         * kilometres in front of a low camera, so five times that cuts everything past ten or
-         * twenty kilometres: for a map that is the horizon band's clutter, and for a panorama it is
-         * the whole subject. Hence Options::setLabelViewDistance, which overrides it.
-         */
+        /** The same cut in multiples of the camera-to-centre distance, what PERSPECTIVE_RATIO_CUTOFF works out to. */
         static constexpr double DEFAULT_VIEW_DISTANCE = 5.0;
 
-        /**
-         * Whether a label is too far to be worth placing, at `viewDistance` multiples of the
-         * camera-to-centre distance. 0 places every label however far it is.
-         */
+        /** Whether a label is past `viewDistance` multiples of the camera-to-centre distance; 0 = never. */
         static bool isTooFar(double cameraToCenter, double distance, double viewDistance) {
             if (!(viewDistance > 0) || !(cameraToCenter > 0)) {
                 return false;

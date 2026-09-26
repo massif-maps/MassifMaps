@@ -45,8 +45,7 @@ namespace massif {
         return forced;
     }
 
-    // Forces source density for AREAS even where the fills are not draped, where an un-subdivided
-    // fill floats above the ground. Draped fills already take it; this is the measurement switch.
+    // Forces AREA source density even for undraped fills (an un-subdivided fill floats above the ground).
     //   adb shell setprop debug.massif.areasourcedensity 1
     static bool isAreaSourceDensityForced() {
         static const bool forced = [] {
@@ -345,9 +344,8 @@ namespace massif {
             bool terrainEnabled = terrainOptions && terrainOptions->isDecodeActive();
             int terrainMeshResolution = terrainOptions ? terrainOptions->getMeshResolution() : 0;
             int terrainMinZoom = terrainOptions ? terrainOptions->getMinZoom() : 0;
-            // A DRAPED fill is baked into a texture, so its subdivision is never drawn - the same
-            // reason lines take the gate below. MUST match what resetTileTransformer() passes, or
-            // tiles decoded for the other mode stay in the cache forever.
+            // Draped fills take it too: their subdivision is baked into a texture, never drawn. MUST
+            // match resetTileTransformer(), or tiles decoded for the other mode stay cached forever.
             bool terrainTangramContent = terrainEnabled && terrainOptions && !terrainOptions->isDrapeFillsEnabled();
             bool terrainSourceDensity = (terrainOptions && terrainOptions->isDrapeFillsEnabled()) || isAreaSourceDensityForced();
             bool terrainSourceDensityLines = terrainTangramContent || (terrainOptions && terrainOptions->isDrapeLinesEnabled()) || isLineSourceDensityForced();
@@ -783,13 +781,8 @@ namespace massif {
                         _terrainMaxTileZoom = cameraTileZoom + terrainOptions->getMaxTileZoomOffset();
                     }
                     _terrainMinTileZoom = cameraTileZoom - terrainOptions->getMaxTileZoomCoarsening();
-                    // Stop it following the camera past the zoom the DEM runs out at: the floor
-                    // overrides the LOD's own answer, so a tile 20 km out was three levels better
-                    // for zooming in without moving towards it.
-                    // PLANAR only, where this was measured. The floor is what FORCES a terrain tile
-                    // to subdivide, so capping it allows coarser surfaces - and on the globe the
-                    // zoom carries worldPerInternal (2*cos(lat)), so a DEM-source zoom clamps it far
-                    // harder than on the plane and the relief goes flat.
+                    // Cap at the DEM's detail limit so far tiles stop refining with the camera zoom.
+                    // Planar only: on the globe the zoom carries 2*cos(lat) and the cap flattens the relief.
                     if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                         if (auto elevationManager = terrainOptions->getElevationManager()) {
                             _terrainMinTileZoom = std::min(_terrainMinTileZoom, elevationManager->getDetailZoomLimit());
@@ -871,8 +864,7 @@ namespace massif {
 
         _lodMaxTileArea = 0;
         _lodCosThetaExponent = 0;
-        // ONE vertical leg for the whole frame, as maplibre takes it (covering_tiles.ts: distanceZ
-        // is |center.z - camera.z|, passed for every candidate tile). Per tile it is a cliff.
+        // One vertical leg for the whole frame, as maplibre (covering_tiles.ts distanceZ); per tile it is a cliff.
         if (auto options = getOptions()) {
             const ViewState& viewState = cullState->getViewState();
             // TileDrawSize alone: the zoom offset belongs to the target-zoom cap, not to this
@@ -991,11 +983,8 @@ namespace massif {
                 for (int i = 0; i < steps; i++) {
                     cglib::vec2<float> uv(static_cast<float>(i) / (steps - 1), static_cast<float>(j) / (steps - 1));
                     cglib::vec3<double> worldPos = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(uv)), tileMat);
-                    // Each sample at its OWN height, not all of them at the tile's mean: a flat quad
-                    // floated at a summit's average is seen edge-on once that average nears the
-                    // camera's altitude, and the tile drops several levels in one step (02-tiles.md).
-                    // PLANAR only: worldPos is internal x,y just there. On the globe it is Cartesian
-                    // on the sphere, and sampling the grid with it reads a random place on the map.
+                    // Each sample at its own height, not the tile mean, or a summit tile seen edge-on drops
+                    // several levels (02-tiles.md). Planar only: on the globe worldPos is not internal x,y.
                     double sampleZ = lodElevation;
                     if (_lodElevationManager && !tileTransformer->isSpherical()) {
                         double sampleHeight = 0;
@@ -1029,10 +1018,8 @@ namespace massif {
                 screenArea = area;
                 // The area already carries one power of cos(incidence); maplibre's rule wants p of
                 // them, so the exponent applied here is p - 1 and 0 leaves the area rule alone.
-                // The angle is maplibre's thisTilePitch: the tile's HORIZONTAL distance against one
-                // vertical leg for the whole frame (covering_tiles.ts, distanceZ = the camera's
-                // height over the centre). Against the tile's OWN elevation it collapses to 0 where
-                // terrain rises to the camera's altitude - one tile good, the next at the floor.
+                // maplibre's thisTilePitch: horizontal distance against the frame's one vertical leg. Against
+                // the tile's own elevation it collapses to 0 where terrain reaches the camera's altitude.
                 if (_lodCosThetaExponent != 0) {
                     // Against the tile's own UP, which is the z axis only on a plane.
                     cglib::vec3<double> up = cglib::vec3<double>::convert(vertexTransformer->calculateNormal(cglib::vec2<float>(0.5f, 0.5f)));
@@ -1439,9 +1426,7 @@ namespace massif {
                     // decoded for the other mode in place forever.
                     bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
                     tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), terrainOptions->isDrapeFillsEnabled() || isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
-                    // TEMPORARY DIAGNOSTIC: this pins the ElevationManager for as long as the
-                    // layer's TileRenderer keeps the transformer, and nothing resets it when the
-                    // terrain is detached.
+                    // TEMPORARY DIAGNOSTIC: the transformer pins the ElevationManager after terrain detach.
                     Log::Infof("LIFE: TerrainTileTransformer built for layer %p (pins ElevationManager)", static_cast<const void*>(this));
                 }
             }
@@ -1553,12 +1538,8 @@ namespace massif {
             // A span reference tile is fetched as a preloading tile but wanted NOW: nothing reads
             // it until the next cull, and with the camera still there is none - the deck it was
             // fetched for stayed stranded until the user panned.
-            //
-            // So is a tile of the label band or of the preloading ring: both are handed to the
-            // renderer for their LABELS, and with terrain the ring holds names standing ON screen -
-            // a tile is culled on its flat footprint, so a far range 4 km up belongs to a ring tile.
-            // After a decoder change the visible tiles land first and the cull they ask for runs
-            // before these arrive: the names on them stayed missing until the camera moved.
+            // Same for label-band and preloading-ring tiles: with terrain they carry on-screen labels,
+            // and after a decoder change they land after the cull the visible tiles asked for.
             if (loaded && _preloadingTile) {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
                 for (const std::vector<MapTile>* wantedTiles : { &layer->_spanReferenceTiles, &layer->_labelTiles, &layer->_preloadingTiles }) {

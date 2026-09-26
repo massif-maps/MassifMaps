@@ -25,11 +25,8 @@ namespace massif {
     namespace {
 
         /**
-         * One point, in WGS84, carrying the properties it will be re-emitted with.
-         *
-         * The properties are already picojson, and already the right TYPE: an elevation that came
-         * out of the tile as an integer has to go back in as one, or a style doing `[ele]+'m'`
-         * prints the metres with a decimal tail.
+         * One point, in WGS84, with its properties in their original type (an integer `ele` must stay
+         * one or `[ele]+'m'` prints a decimal tail).
          */
         struct PointFeature {
             double lon = 0;
@@ -48,8 +45,7 @@ namespace massif {
                 return *doubleValue;
             }
             if (auto stringValue = std::get_if<std::string>(&value)) {
-                // A generator that wrote the elevation as text still ranks: this is the one property
-                // the cap depends on, so it is worth one conversion.
+                // Text-typed elevations still rank: the cap depends on this property.
                 try {
                     return std::stod(*stringValue);
                 } catch (const std::exception&) {
@@ -61,9 +57,6 @@ namespace massif {
 
         /**
          * Every point of one layer in one tile, appended, in WGS84.
-         *
-         * Free rather than a member so the struct above stays out of the header, and so the whole
-         * conversion reads in one place.
          */
         void collectTile(const std::shared_ptr<TileDataSource>& dataSource, const std::shared_ptr<Projection>& projection, const MapTile& detailTile,
                          const std::string& layerName, const std::string& rankProperty, std::vector<PointFeature>& features) {
@@ -72,9 +65,7 @@ namespace massif {
                 return;
             }
 
-            // The decoder inflates the tile itself (gzip or raw), so the bytes go in as they came
-            // out of the source. No transform and no clip box is set on it, so geometry arrives in
-            // the tile's own unit square - which is what the bounds below are interpolated over.
+            // No transform or clip box: geometry arrives in the tile's unit square, which the bounds below span.
             mvt::MBVTFeatureDecoder decoder(*tileData->getData()->getDataPtr(), std::make_shared<MVTLogger>("PointDetailTileDataSource"));
             if (!decoder.hasLayer(layerName)) {
                 return;
@@ -84,9 +75,7 @@ namespace massif {
                 return;
             }
 
-            // Flipped for the bounds, because CalculateMapTileOrigin counts Y up from the
-            // projection's south edge while a MapTile's own Y counts down from the north - see
-            // MapTile::getFlipped.
+            // Flipped: CalculateMapTileOrigin counts Y up from the south, MapTile's Y counts down.
             MapBounds bounds = TileUtils::CalculateMapTileBounds(detailTile.getFlipped(), projection);
             double originX = bounds.getMin().getX();
             double originY = bounds.getMax().getY();
@@ -98,10 +87,9 @@ namespace massif {
                 if (!geometry) {
                     continue;
                 }
-                // mvt::Geometry is a variant, not a hierarchy - see Geometry.h.
                 auto pointGeometry = std::get_if<mvt::PointGeometry>(geometry.get());
                 if (!pointGeometry) {
-                    continue; // lines and polygons would have to be clipped; a label layer has neither
+                    continue; // lines and polygons would need clipping
                 }
                 std::shared_ptr<const mvt::FeatureData> featureData = it->getFeatureData(false, nullptr);
                 if (!featureData) {
@@ -120,8 +108,7 @@ namespace massif {
                     } else if (auto boolValue = std::get_if<bool>(&variable.second)) {
                         properties[variable.first] = picojson::value(*boolValue);
                     }
-                    // Arrays and objects are dropped: MBVT carries scalars only, so there is nothing
-                    // to put one back into.
+                    // MBVT carries scalars only.
                     if (variable.first == rankProperty) {
                         rank = readRank(variable.second);
                     }
@@ -130,8 +117,7 @@ namespace massif {
                 long long featureId = it->getFeatureId();
                 for (const cglib::vec2<float>& vertex : pointGeometry->getVertices()) {
                     PointFeature feature;
-                    // v runs from the tile's NORTH edge, so it is subtracted from the top rather
-                    // than added to the bottom.
+                    // v runs from the tile's north edge.
                     MapPos wgs84 = projection->toWgs84(MapPos(originX + vertex(0) * width, originY - vertex(1) * height));
                     feature.lon = wgs84.getX();
                     feature.lat = wgs84.getY();
@@ -237,8 +223,7 @@ namespace massif {
 
     std::shared_ptr<TileData> PointDetailTileDataSource::loadTile(const MapTile& tile) {
         int detailZoom = _detailZoom.load();
-        // At or past the detail zoom the source's own tile already holds everything this could
-        // rebuild, and rebuilding it would only cost a decode and an encode.
+        // At or past the detail zoom the source tile already holds everything.
         if (tile.getZoom() >= detailZoom) {
             return _dataSource->loadTile(tile);
         }
@@ -265,21 +250,11 @@ namespace massif {
             }
         }
         if (features.empty()) {
-            // Nothing of this layer down there. The coarse tile may still carry other layers a style
-            // draws, so it is passed through rather than answered with an empty tile.
+            // Pass through: the coarse tile may still carry other layers a style draws.
             return _dataSource->loadTile(tile);
         }
 
-        // The cap, highest rank first. Merging undid whatever declustering the generator did, so
-        // without this the tile hands the label culler everything and lets it decide per frame -
-        // which is the churn this source exists to stop. `nth_element` rather than a full sort: the
-        // order inside the kept set does not matter, only that they are the top ones.
-        //
-        // 0 lifts it. What that costs is bounded by what is actually down there rather than by the
-        // arithmetic: a level-3 rebuild reads 64 tiles, and at the detail zoom those are themselves
-        // declustered - some forty points each in high country - so a rebuilt tile lands in the low
-        // thousands, not the millions. It is the LABEL CULLER that then pays, every frame, for
-        // candidates that were never going to be placed.
+        // Merging undid the source's declustering; without a cap the label culler pays per frame for every point.
         int maxFeaturesSetting = _maxFeatures.load();
         std::size_t maxFeatures = static_cast<std::size_t>(maxFeaturesSetting > 0 ? maxFeaturesSetting : features.size());
         if (features.size() > maxFeatures) {
@@ -298,8 +273,7 @@ namespace massif {
             }
 
             protobuf::encoded_message encodedTile;
-            // The builder works in EPSG3857 with a flipped Y, which is the tile's own Y - so this is
-            // the UNflipped tile, unlike the bounds in collectTile.
+            // The builder's flipped Y is the tile's own Y, so this is the unflipped tile, unlike collectTile.
             tileBuilder.buildTile(tile.getZoom(), tile.getX(), tile.getY(), encodedTile);
             auto data = std::make_shared<BinaryData>(reinterpret_cast<const unsigned char*>(encodedTile.data().data()), encodedTile.data().size());
             auto tileData = std::make_shared<TileData>(data);

@@ -140,8 +140,7 @@ namespace massif::mvt {
         // 'callout' placement only (see vt::LabelOrientation::CALLOUT). Screen pixels, except
         // the anchor: a fraction of the screen height from the top, < 0 = stack from the anchor.
         FloatProperty _calloutScreenAnchor = FloatProperty(-1.0f);
-        // The band comes down to just above the highest anchor on screen; the screen anchor is then
-        // the highest it may go. Off, the band stays where the screen anchor puts it.
+        // Band drops to just above the highest on-screen anchor, the screen anchor being its ceiling.
         BoolProperty _calloutBandFollow = BoolProperty(false);
         FloatProperty _calloutOffset = FloatProperty(0.0f);
         FloatProperty _calloutStep = FloatProperty(0.0f); // negative stacks the rows DOWNWARDS

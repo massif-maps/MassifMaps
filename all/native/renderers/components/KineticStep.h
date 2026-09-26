@@ -15,8 +15,7 @@ namespace massif {
      * The fraction of its remaining delta a kinetic gesture consumes in one frame.
      */
     inline float kineticStepFraction(float slowdown, float deltaSeconds) {
-        // The decay is wall-clock, so the step has to be too: consuming the WHOLE remaining delta
-        // every frame made the ground a fling covers scale with the frame count, not with time.
+        // The decay is wall-clock, so the step must be too, or fling distance scales with frame count.
         return 1.0f - std::pow(1.0f - slowdown, deltaSeconds);
     }
 

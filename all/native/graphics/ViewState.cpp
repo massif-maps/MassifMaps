@@ -24,13 +24,11 @@
 
 namespace massif {
 
-    // Tangram's far-plane factor on the camera height (core/src/view/view.cpp). Their LOD depth,
-    // which caps how far tiles are walked, is ViewDistance::MAX_TILE_LOD - two callers need it.
+    // Tangram's far-plane factor on the camera height (core/src/view/view.cpp).
     static const double TANGRAM_FAR_PLANE_FACTOR = 2.0;
 
 #ifdef __ANDROID__
-    // Takes the draw ceiling back to scaling the ORBIT alone, for an A/B against the altitude-aware
-    // one without a rebuild:  adb shell setprop debug.massif.viewceiling 0
+    // A/B switch back to the orbit-only draw ceiling:  adb shell setprop debug.massif.viewceiling 0
     static bool isTerrainViewCeilingEnabled() {
         static const bool enabled = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -900,8 +898,7 @@ namespace massif {
             }
         }
 
-        // Scaling the zoom-derived orbit ALONE made this ceiling a function of the zoom, and it cut
-        // peaks off a low camera in mountains whose tiles were fetched anyway - 05-depth-model.md.
+        // Not the orbit alone: that cut off peaks in front of a low camera. See 05-depth-model.md.
         double orbitDistance = std::pow(2.0f, -_zoom) * zoom0Distance;
         double cameraHeight = isTerrainViewCeilingEnabled()
             ? ViewDistance::cameraHeight(orbitDistance, _cameraPos(2)) : orbitDistance;
@@ -937,10 +934,8 @@ namespace massif {
             if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
                 viewDistanceFactor = terrainOptions->getViewDistanceFactor();
                 // Only when the absolute distance is the one that WON: it merely extends the rule
-                // now, and where the rule is longer this is the plain factor case. A ceiling takes
-                // it out of the running entirely - it cannot have won if it was capped away, and
-                // pushing the far plane out to it would draw the ground the cull envelope no longer
-                // has (calculateViewDistance).
+                // now, and where the rule is longer this is the plain factor case. A ceiling below it
+                // rules it out: the cull envelope stops at the ceiling.
                 double absolute = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
                 double maxDistance = terrainOptions->getViewDistanceMax() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
                 absoluteViewDistance = absolute > 0 && absolute >= viewDistance && !(maxDistance > 0 && maxDistance < absolute);
@@ -974,13 +969,12 @@ namespace massif {
     }
 
     /**
-     * Which of the four limits ended the map, in km: 05-depth-model.md. Once a second, and the cull
-     * worker calls it too, so the limiter is atomic.
+     * Which of the four limits ended the map, in km: 05-depth-model.md. Atomic limiter: the cull
+     * worker calls it too.
      */
     void ViewState::logViewDistances(const Options& options, float near, float far, double rayFar, double maxDist, double viewDistance, double cameraHeight) const {
 #if MASSIF_FRAME_PROFILER
-        // One limiter PER TAG. A single global one let whichever ViewState ran first each second
-        // suppress the other, which is why only the cull worker's copy was ever in the log.
+        // One limiter per tag, or one ViewState starves the other's log.
         static std::atomic<long long> lastLogMs[2] = { { 0 }, { 0 } };
         int logSlot = (_terrainHeightMax > _terrainHeightMin ? 0 : 1);
         long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -994,11 +988,8 @@ namespace massif {
             fogStart = static_cast<float>(fogOptions->getRangeStart() * calculateCameraDistance() * toKm);
             fogEnd = static_cast<float>(fogOptions->getRangeEnd() * calculateCameraDistance() * toKm);
         }
-        // TAGGED, because there are two of these per frame and they answer different questions: the
-        // one the GL thread calls is the view the projection matrix is built from, and the one the
-        // cull worker calls is a COPY that setTerrainHeightRange has never run on - so it reports
-        // terrain 0..0 and a near plane derived from a flat world, which is not what gets drawn.
-        // Reading the wrong one sent a near-plane investigation down a blind alley.
+        // Tagged: the cull worker's copy never gets setTerrainHeightRange, so its terrain and near
+        // plane are a flat world's, not what is drawn.
         Log::Infof("PROF VIEW[%s]: zoom %.2f tilt %.1f | orbit %.2f alt %.2f height %.2f km | terrain %.2f..%.2f km | ray far %.2f ceiling %.2f rule %.2f -> near %.4f far %.2f km | fog %.2f..%.2f km",
             (_terrainHeightMax > _terrainHeightMin ? "render" : "no-terrain-range"),
             _zoom, _tilt, calculateCameraDistance() * toKm, _cameraPos(2) * toKm, cameraHeight * toKm,
@@ -1020,8 +1011,7 @@ namespace massif {
         // near-horizontal view. The factor scales it: 1 is their rule, 0 the ground-derived one.
         float factor = 1.0f;
         double absoluteDistance = 0;
-        // The app's own ceiling, in the same internal units. Not derived from the fog: ground above
-        // the haze is further than the fog's range and still has to be drawn (TerrainOptions).
+        // The app's own ceiling. Not derived from the fog: ground above the haze must still be drawn.
         double maxDistance = 0;
         if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
             absoluteDistance = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
@@ -1049,8 +1039,7 @@ namespace massif {
         // rule scales with 2^-zoom, so letting metres win outright ends the ground in a disc well
         // inside a zoomed-out screen (MassifMaps#156).
         double viewDistance = std::max(distance * factor, absoluteDistance);
-        // The ceiling is applied LAST, so it caps the minimum above as well as the rule: a view
-        // asked to reach at least 150 km and at most 30 reaches 30.
+        // Applied last, so it caps the minimum too.
         return maxDistance > 0 ? std::min(viewDistance, maxDistance) : viewDistance;
     }
     

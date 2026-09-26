@@ -16,12 +16,9 @@
 namespace massif {
 
     /**
-     * How much of the fog a camera at this tilt sees: none looking straight down, all of it once
-     * the view is 25 degrees off the horizon. Mapbox's smoothstep(45, 65, pitch)
-     * (src/style/fog_helpers.ts), with their pitch measured from the vertical where our tilt is
-     * measured from the horizontal. A top-down map has no distance to fog.
-     *
-     * Free of FogOptions so the host tests can reach it; applied in resolveFog.
+     * Fog opacity at a tilt: 0 looking straight down, 1 from 25 degrees off the horizon down.
+     * Mapbox's smoothstep(45, 65, pitch) (src/style/fog_helpers.ts); their pitch is from the vertical.
+     * Free of FogOptions so the host tests can reach it.
      */
     inline float fogPitchOpacity(float tilt) {
         float pitch = 90.0f - tilt;

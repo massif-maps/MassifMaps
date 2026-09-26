@@ -14,17 +14,8 @@
 namespace massif {
 
     /**
-     * The GPU side of one cached terrain tile mesh: positions, indices and the surface attributes.
-     *
-     * TerrainRenderer used to draw its meshes straight out of the std::vectors they are built in -
-     * client-side vertex arrays, which means the driver copies the whole mesh across the bus before
-     * every draw call. A panorama draws ~80 tiles at 97x97 vertices, so that was roughly 24 MB a
-     * frame, and it measured 116 ms of a 130 ms frame on an Adreno 610 (`PROF PRELUDE`, surface).
-     * The meshes are CACHED and change only when their tile is rebuilt, so the copy bought nothing.
-     *
-     * Lifetime rides on the mesh cache entry that owns it. Destruction goes through
-     * GLResourceManager's delete queue, so a mesh evicted off the GL thread still frees its buffers
-     * on it.
+     * VBOs of one cached terrain tile mesh: client-side arrays re-copied every mesh on every draw.
+     * Owned by its mesh cache entry; freed through GLResourceManager's queue, so on the GL thread.
      */
     class TerrainMeshBuffer : public GLResource {
     public:
@@ -35,9 +26,8 @@ namespace massif {
          */
         void uploadGeometry(const std::vector<float>& vertices, const std::vector<unsigned short>& indices);
         /**
-         * Uploads the interleaved normal/elevation attributes. Separate from the geometry because
-         * they are baked lazily on first use and re-baked when TerrainOptions' normal sample
-         * distance changes - see TerrainRenderer::ensureSurfaceAttribs.
+         * Uploads the interleaved normal/elevation attributes: baked lazily, and re-baked when the
+         * normal sample distance changes (TerrainRenderer::ensureSurfaceAttribs).
          */
         void uploadAttribs(const std::vector<float>& surfaceAttribs);
 

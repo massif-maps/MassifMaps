@@ -13,8 +13,7 @@
 namespace massif {
 
     namespace {
-        // Handed out in construction order and never reused, so a consumer holding an old grid can
-        // tell it apart from the one that replaced it. See ElevationTileGrid::getSerial.
+        // Never reused, so an old grid is distinguishable from its replacement. See getSerial.
         std::atomic<unsigned long long> gridSerialCounter(0);
     }
 
@@ -275,8 +274,7 @@ namespace massif {
 
     ElevationTileGrid::NodeTexelSampler ElevationTileGrid::makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
         // The same three cases as makeTexelSampler, in metres and for any distance past the
-        // edge: a node box reaches half a cell out, not one texel. Everything that does not
-        // depend on the texel is resolved HERE, once, instead of per read.
+        // edge: a node box reaches half a cell out, not one texel. Per-grid lookups are resolved once here.
         NodeTexelSampler sampler;
         sampler.grid = this;
         sampler.keep = neighbours;
@@ -296,7 +294,6 @@ namespace massif {
         int dx = (gx < 0 ? -1 : (gx >= width ? 1 : 0));
         int dy = (gy < 0 ? -1 : (gy >= height ? 1 : 0));
         if (dx != 0 || dy != 0) {
-            // Indexed, not searched: the linear scan this replaces cost up to eight compares a texel.
             int slot = ElevationNodeField::neighbourSlot(dx, dy);
             const ElevationTileGrid* neighbour = (slot >= 0 ? neighbours[slot] : nullptr);
             if (neighbour) {
@@ -330,10 +327,7 @@ namespace massif {
         if (!(neighbourWidth > 0) || !(neighbourHeight > 0)) {
             return false;
         }
-        // operator() asks the neighbour for the height at the centre of OUR texel gx, and
-        // sampleHeight turns that into its own texel coordinate. Both steps are affine in gx, so
-        // the composition is too - and this is that composition, written once per region instead
-        // of being recomputed per texel.
+        // The composition of operator()'s texel centre and sampleHeight's texel mapping, both affine in gx.
         double neighbourTexelX = neighbourWidth / neighbour->_width;
         double neighbourTexelY = neighbourHeight / neighbour->_height;
         mapping.stepX = texelX / neighbourTexelX;
@@ -406,9 +400,8 @@ namespace massif {
         VT_STAT_ADD(demNodeBoxTexels, static_cast<long long>(boxX) * boxY);
         double cx = static_cast<double>(i) * _width / n;
         double cy = static_cast<double>(j) * _height / n;
-        // Per REGION of the box, not per texel: the full-weight texels inside this raster come from
-        // the prefix sums, a band lying in a COARSER neighbour is summed in closed form over that
-        // neighbour's own cells, and only the rest goes through the callback.
+        // Per region: own full-weight texels from the prefix sums, a coarser neighbour's band in
+        // closed form, the rest per texel.
         return ElevationNodeField::nodeHeightRegions(cx, cy, boxX, boxY, _width, _height, sat, texel,
             [&texel](int dx, int dy, ElevationNodeField::LatticeMapping& mapping) { return texel.coarseMapping(dx, dy, mapping); },
             [&texel](int dx, int dy, int x, int y) { return texel.neighbourHeight(dx, dy, x, y); });
@@ -424,8 +417,6 @@ namespace massif {
         textureData.resize(static_cast<std::size_t>(stride) * stride * _bytesPerTexel);
         NodeTexelSampler texel = makeNodeTexelSampler(neighbours);
         std::array<int, 4> scales = edgeBoxScales(neighbours);
-        // Built here, not kept: one pass over the raster serves every edge node of this encode, and
-        // a table per CACHED grid would be a couple of megabytes each.
         ElevationNodeField::SummedAreaTable sat;
         buildHeightSat(sat);
         std::size_t s = 0;

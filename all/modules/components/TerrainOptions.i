@@ -67,9 +67,7 @@
 %attribute(massif::TerrainOptions, float, ViewDistance, getViewDistance, setViewDistance)
 %attribute(massif::TerrainOptions, float, ViewDistanceMax, getViewDistanceMax, setViewDistanceMax)
 %attribute(massif::TerrainOptions, int, DrapeCacheSize, getDrapeCacheSize, setDrapeCacheSize)
-// The elevation GRID cache, megabytes. A wide-view mode (a panorama) has a working set several times
-// the default grid-count rule, so the cache sits full and every eviction is refetched - which keeps
-// all of the manager's prefetch threads busy for as long as the mode is open.
+// Elevation grid cache, megabytes. Raise it for a wide view (panorama): its working set outgrows the default and every eviction is refetched.
 %attribute(massif::TerrainOptions, int, ElevationCacheSize, getElevationCacheSize, setElevationCacheSize)
 %attribute(massif::TerrainOptions, int, DrapeWorkingSet, getDrapeWorkingSet, setDrapeWorkingSet)
 %attribute(massif::TerrainOptions, int, MaxTileZoomCoarsening, getMaxTileZoomCoarsening, setMaxTileZoomCoarsening)
@@ -78,8 +76,7 @@
 // existed in C++ only, so no binding could get a camera close to a slope - which is exactly what
 // composing a 3D view needs.
 %attribute(massif::TerrainOptions, float, CameraClearance, getCameraClearance, setCameraClearance)
-// 0 turns the altitude-relative rule off and leaves CameraClearance as a fixed height - what a
-// first-person view needs, where the orbiting-camera model holds the eye off the summit it stands on.
+// 0 makes CameraClearance a fixed height, as a first-person view needs.
 %attribute(massif::TerrainOptions, float, CameraClearanceFraction, getCameraClearanceFraction, setCameraClearanceFraction)
 %attribute(massif::TerrainOptions, float, FocusLift, getFocusLift, setFocusLift)
 %attribute(massif::TerrainOptions, float, CameraClampDuration, getCameraClampDuration, setCameraClampDuration)

@@ -26,9 +26,7 @@ namespace massif {
 
         const float NO_COORDINATE = -1.0f;
 
-        // How far apart the synthesised second pointer sits, in canvas pixels. Only the pair's
-        // TRANSLATION is used, so the number just has to be large enough that the gesture is not
-        // read as a pinch from two coincident points.
+        // Canvas pixels; only the pair's translation is used, it just must not read as coincident points.
         const float FIRST_PERSON_POINTER_GAP = 120.0f;
 
         // maplibre-gl-js: handler/mouse.ts and scroll_zoom.ts. Degrees per CSS pixel, zoom per
@@ -293,9 +291,7 @@ namespace massif {
             view->_lastPointerX = x;
             view->_lastPointerY = y;
             if (event->button == RIGHT_BUTTON || event->ctrlKey) {
-                // FIRST PERSON: the right button MOVES, which is what the two-finger drag does on
-                // device and what the reference and the app both do. Rotating there would be a
-                // second way to do what the left button already does.
+                // First person: right button moves, like the two-finger drag; the left already rotates.
                 if (view->getOptions()->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
                     view->_dragMoving = true;
                     view->onInputEvent(INPUT_EVENT_POINTER1_DOWN, x, y, NO_COORDINATE, NO_COORDINATE);

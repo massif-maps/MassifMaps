@@ -35,10 +35,8 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        // The counterpart to moveTo, and the reason CameraPos is readable: moveTo places the FOCUS,
-        // which at a panorama's tilt sits kilometres in front of where the user meant to STAND.
-        // Missing here is not a compile error anywhere - the facade calls it by name, so an
-        // unregistered method is a throw at runtime and a silent fall back to moveTo.
+        // moveTo places the focus, which at a panorama's tilt sits kilometres ahead of the eye.
+        // Called by name from the facade: an unregistered method is a runtime throw, not a compile error.
         Result moveCameraTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             auto view = static_cast<BaseMapView*>(obj);
             MapPos pos;

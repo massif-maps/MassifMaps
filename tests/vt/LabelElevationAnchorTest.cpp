@@ -1,24 +1,5 @@
-/*
- * "No elevation here" is not the same height as zero (Label::applyElevation).
- *
- * The bug this exists for, measured on the Crosscall in AlpiMaps: the SDK's label elevation provider
- * asked ElevationManager::getDisplayHeight, which returns 0 both for "sea level" and for "the grid
- * for this point is not cached" - and a grid is routinely evicted while its texture keeps rendering.
- * A label over 2000 m of alpine terrain was anchored at z=0, UNDER the ground, so the terrain
- * occlusion test correctly hid it; the caller then marked it clean and nothing ever asked again.
- * Symptoms: no labels at all with 3D terrain on, and with occlusion switched off the labels were
- * visibly under the ground. RenderStats said it in one line: elevUpdMs 1-180 ms with elevReanchor=0,
- * i.e. the sampler ran every frame and never moved a single label.
- *
- * So a non-finite sample means "no data": the vertex keeps the height it had, and applyElevation
- * returns false, which leaves the label un-anchored. Zero stays a legal height. The label is still
- * marked clean - only new elevation can change the answer, and that re-dirties it - and its RENDER
- * height comes from the GPU either way, so an un-anchored label is drawn in the right place.
- *
- * NOT covered here: that the provider actually returns NaN (TileRenderer, needs ElevationManager),
- * and that the anchoring sites mark the label clean and the occlusion test skips an un-anchored one -
- * GLTileRenderer is not in this link. Both are the device check named in the PR.
- */
+// A non-finite elevation sample means "no data", not sea level: the anchor keeps its height and the
+// label stays un-anchored rather than buried at z=0. Zero stays a legal height (Label::applyElevation).
 
 #include "Label.h"
 #include "LabelVariants.h"
@@ -66,7 +47,6 @@ namespace {
         return viewState;
     }
 
-    // The label's anchor height, which is what the occlusion test compares against the terrain.
     bool anchorHeight(const std::shared_ptr<Label>& label, double& z) {
         cglib::vec3<double> center(0, 0, 0);
         if (!label->calculateCenter(center)) {
@@ -76,8 +56,7 @@ namespace {
         return true;
     }
 
-    // The provider anchors a point, not a bare height: on a globe "up" is radial, so the whole
-    // position comes back. A non-finite one means it has no data there.
+    // The provider returns a whole position since "up" is radial on a globe.
     std::function<cglib::vec3<double>(const cglib::vec3<double>&)> constantHeight(double height) {
         return [height](const cglib::vec3<double>& pos) {
             return cglib::vec3<double>(pos(0), pos(1), height);
@@ -88,7 +67,6 @@ namespace {
 void testLabelElevationAnchor() {
     ViewState viewState = buildViewState();
 
-    // A height that IS known moves the anchor, and the label is complete: nothing to ask again.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -97,8 +75,6 @@ void testLabelElevationAnchor() {
         TEST_CHECK(anchorHeight(label, z) && std::abs(z - 250.0) < 1e-6, "and puts it on the terrain");
     }
 
-    // The bug, in one line: no data must not read as sea level. The anchor KEEPS 250 m rather than
-    // being buried at 0, and the label reports incomplete.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -109,7 +85,6 @@ void testLabelElevationAnchor() {
         TEST_CHECK(anchorHeight(label, z) && std::abs(z - 250.0) < 1e-6, "and leaves the anchor where it was, not at 0");
     }
 
-    // Zero is still a legal height - a label at sea level must anchor at sea level, and count as done.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -119,7 +94,7 @@ void testLabelElevationAnchor() {
         TEST_CHECK(anchorHeight(label, z) && std::abs(z) < 1e-6, "and anchors the label at sea level");
     }
 
-    // An infinite height is a miss too: the provider has no way to mean "infinitely high".
+    // The provider has no way to mean "infinitely high", so infinity is a miss too.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -129,9 +104,7 @@ void testLabelElevationAnchor() {
         TEST_CHECK(anchorHeight(label, z) && std::abs(z - 250.0) < 1e-6, "and does not move the anchor");
     }
 
-    // A label whose height was never resolved is NOT anchored, so the terrain occlusion test leaves
-    // it alone (GLTileRenderer::updateLabel) rather than hiding it under ground it is not behind.
-    // mapbox never gates a symbol on elevation availability - it elevates in the vertex shader.
+    // The terrain occlusion test skips un-anchored labels (GLTileRenderer::updateLabel).
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -140,15 +113,11 @@ void testLabelElevationAnchor() {
         TEST_CHECK(!label->isElevationAnchored(), "so the occlusion test must not judge it");
         TEST_CHECK(label->updateElevation(constantHeight(410.0)), "the height arriving anchors it");
         TEST_CHECK(label->isElevationAnchored(), "and from then on it may be judged");
-        // Sticky: a later miss does not un-anchor a label that already has a real height.
         label->updateElevation(constantHeight(std::numeric_limits<double>::quiet_NaN()));
         TEST_CHECK(label->isElevationAnchored(), "a later miss does not un-anchor it");
     }
 
-    // The deck bit rides in attribs[3] alongside the offset mode, and labelVsh reads them separately:
-    // bit 0 is how to read the glyph offset, bit 1 is "this height is absolute, do not take the
-    // terrain's". Sharing a bit would silently make a deck label take the ground - see ShaderFlagTest
-    // for the same class of bug in the shader flags.
+    // attribs[3], read bitwise by labelVsh: bit 0 = glyph offset mode, bit 1 = absolute (deck) height.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -178,11 +147,8 @@ void testLabelElevationAnchor() {
         TEST_CHECK((deck & 1) == (ground & 1), "and the offset mode in bit 0 untouched");
     }
 
-    // The floating POI: the first anchor of a 2D/3D switch is taken from a COARSE ancestor tile -
-    // finite, and metres over the real ground - and the exact tile lands frames later. An already
-    // anchored label must still take the better height, and must follow the exaggeration ramp step
-    // by step, or it stays in the air. What feeds it those samples is TileRenderer, which has to
-    // invalidate on the elevation TEXTURE landing and on the exaggeration, not only on the grid.
+    // On a 2D/3D switch the first anchor comes from a coarse ancestor tile; an anchored label must
+    // still take the exact tile's height and follow the exaggeration ramp, or it floats.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);
@@ -198,7 +164,6 @@ void testLabelElevationAnchor() {
         }
     }
 
-    // Repeated misses never drift: the anchor is the last KNOWN height however often it is asked.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);

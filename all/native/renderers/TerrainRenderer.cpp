@@ -43,41 +43,27 @@ namespace massif {
         // vertex. Recovering it from the position only works while the tile is a flat unit square.
         std::vector<unsigned short> skirtSources;
         std::vector<unsigned short> indices;
-        // Where the SKIRT indices start. The grid is emitted first, so drawing only this many
-        // indices draws the surface without its edge walls - see renderTiles' skipSkirts.
+        // Where the skirt indices start: the grid is emitted first, see renderTiles' skipSkirts.
         std::size_t gridIndexCount = 0;
         // Surface pass only, filled on first use: nx, ny, nz, elevation in metres per vertex.
         std::vector<float> surfaceAttribs;
-        // The TerrainOptions::getNormalSampleDistance the attribs above were built with, so that
-        // changing it re-bakes them instead of being ignored until the mesh is evicted. -1 is
-        // "not built yet"; 0 is the mesh-derived gradient, which is a real setting.
+        // TerrainOptions::getNormalSampleDistance the attribs were built with, so a change re-bakes.
+        // -1 is "not built yet"; 0 is the mesh-derived gradient, a real setting.
         float surfaceAttribSampleDistance = -1.0f;
-        // The GPU copy. Created on first draw and kept for the mesh's life - see TerrainMeshBuffer
-        // for why drawing straight out of the vectors above was the most expensive thing in a frame.
+        // Created on first draw and kept for the mesh's life, see TerrainMeshBuffer.
         std::shared_ptr<TerrainMeshBuffer> buffer;
-        // The sample distance the ATTRIB buffer holds, so a re-bake re-uploads and nothing else does.
+        // The sample distance the attrib buffer holds, so only a re-bake re-uploads.
         float uploadedAttribSampleDistance = -2.0f;
-        // Whether the attribs above are the FIXED-SCALE ones (read from the DEM at a constant ground
-        // step) or the cheap mesh-gradient stand-in baked inline so the tile can draw at once. See
-        // refineSurfaceAttribs: the DEM read is four lookups per vertex and measured 14 ms a tile,
-        // which is a hitch on the render thread and nothing at all on a worker.
+        // Fixed-scale DEM-sampled attribs, or the mesh-gradient stand-in baked inline; the DEM read
+        // is too slow for the render thread, see refineSurfaceAttribs.
         bool attribsRefined = false;
-        // The DEM tile this mesh's grid actually resolved to, for the per-tile debug views: the
-        // difference between a tile and its neighbour has been inferred four times over and never
-        // once LOOKED AT, so it gets painted on the surface instead.
+        // The DEM tile this mesh's grid resolved to, for the per-tile debug views.
         int demZoom = -1;
-        // The DEM zoom the surface attribs were actually COMPUTED from, which is not the same as the
-        // one the tile resolves NOW: attribs are baked once and ensureSurfaceAttribs early-returns
-        // forever after, so a tile refined while standing on a coarse ancestor keeps those normals
-        // even once its own grid lands. attribsRefined and demZoom both read healthy in that state.
+        // The DEM zoom the attribs were baked from, which can lag demZoom: attribs are not re-baked
+        // when a finer grid lands under an existing mesh.
         int attribsDemZoom = -1;
-        // The COARSEST grid any of the four stencil reads fell back to, and whether that was coarser
-        // than the source could have given. The tile's own grid does not decide this: the reads are
-        // at +/- normalSampleDistance, so near an edge they land on NEIGHBOURING DEM tiles, and a
-        // tile whose own grid is exact still bakes a smoothed slope if its neighbour's has not
-        // arrived. A provisional bake is one that must be redone when more data lands - without it
-        // the tile keeps whatever the cache happened to hold at that instant, which is decided by
-        // arrival order and so differs from run to run: the same tile, shaded differently each time.
+        // Coarsest grid the stencil reads used, and whether it was coarser than the source offers:
+        // a provisional bake is redone when more data lands, or the shading depends on arrival order.
         bool attribsProvisional = false;
         int attribsWorstZoom = -1;
         unsigned int attribsDataVersion = 0; // ElevationManager::getDataVersion() when it was baked
@@ -97,26 +83,9 @@ namespace massif {
     };
 
     namespace {
-        // THE HEIGHT A TILE EDGE MUST HAVE, computed so that the two tiles sharing it get the same
-        // polyline.
-        //
-        // A tile's own grid cannot give that. Its node field is clamped at the DEM tile border (the
-        // GPU node texture reads the neighbour there, the CPU field does not), and a neighbour may
-        // stand on another DEM level entirely. Measured at a valley viewpoint: 76 of 88 same-zoom
-        // edges between two DEM grids and 43 of 44 edges against a coarser tile were more than 1 m
-        // apart, the worst by 221 m - a step the skirts showed as a pale wall along the tile edge.
-        // Matching only the node SPACING, as the stitching mask did, left every one of them.
-        //
-        // The rule, which each side evaluates without knowing which side it is:
-        // - against a coarser tile, the coarser tile's edge polyline wins, and it only ever looks
-        //   at its own grid there (it cannot see finer tiles), so both agree;
-        // - at equal zoom, the coarser node lattice of the two carries the edge and its heights
-        //   are the MEAN of the two grids. Each grid's edge node averages only its own half of the
-        //   node box, so on a slope each is off by the slope over a quarter box, in opposite
-        //   directions; picking either one moved that step into the other tile's last cell;
-        // - a corner goes to the coarsest tiles touching it: if it lies inside one's edge, that
-        //   edge's polyline; otherwise the mean over the quadrants they cover.
-        // Every recursion step moves to a strictly coarser tile, so it terminates.
+        // Edge heights both tiles sharing an edge agree on: a coarser neighbour's polyline wins, equal
+        // zooms take the mean of both grids, a corner goes to the coarsest tiles touching it.
+        // Each recursion step moves to a strictly coarser tile, so it terminates.
         class EdgeHeightResolver {
         public:
             struct Participant {
@@ -210,9 +179,8 @@ namespace massif {
                 return meters * _exaggeration * _elevationManager->getDisplayScale(y);
             }
 
-            // The tile across 'side', at this tile's zoom or coarser. The cut is a quadtree
-            // partition, so walking the neighbour's ancestry finds it; a finer neighbour is not
-            // found, and that is correct - it follows this tile, not the other way round.
+            // The tile across 'side', at this tile's zoom or coarser (the cut is a quadtree partition).
+            // A finer neighbour is deliberately not found: it follows this tile, not the reverse.
             const Participant* neighbour(const Participant& participant, int side) const {
                 static const int DX[4] = { 0, 0, -1, 1 };
                 static const int DY[4] = { 1, -1, 0, 0 }; // tile y runs south, the mesh's gy north
@@ -234,9 +202,8 @@ namespace massif {
                 return nullptr;
             }
 
-            // The tile in each of the four quadrants around a point, at 'from's zoom or coarser, in
-            // a fixed order so every caller sums them alike. Finer ones are left out: they never
-            // decide a corner, and a coarse tile could not see them.
+            // The tile in each quadrant around a point, at 'from's zoom or coarser, in a fixed order so
+            // every caller sums them alike. Finer ones never decide a corner.
             std::array<const Participant*, 4> quadrantLeaves(double x, double y, const MapTile& from) const {
                 std::array<const Participant*, 4> leaves {};
                 double epsilon = tileSize(from.getZoom()) * 1.0e-6;
@@ -342,11 +309,8 @@ namespace massif {
         logBuildStamp();
     }
 
-    // WHICH NATIVE BINARY IS ACTUALLY RUNNING. __DATE__/__TIME__ are baked in at compile time, so
-    // this is the one thing that cannot be livesynced: JS is pushed to files/app independently of
-    // the APK, so neither the install timestamp nor the app's own version can tell a fresh native
-    // build from a stale one. Several debugging rounds were spent on changes that had never
-    // reached the device, and on dismissing results that had.
+    // Identifies the native binary: livesync pushes JS independently of the APK, so neither the
+    // install time nor the app version tells a fresh native build from a stale one.
     void TerrainRenderer::logBuildStamp() {
         static std::once_flag once;
         std::call_once(once, []() {
@@ -636,14 +600,12 @@ namespace massif {
             return false;
         }
 
-        // The POST-PROCESS buffer follows the option, where the occlusion read-back below keeps the
-        // constant: an effect that differentiates this buffer shows its texels as blocks and comb
-        // streaks at close range, and a read-back that samples points does not care.
+        // Only the post-process buffer follows the option: an effect differentiating it shows coarse
+        // texels as blocks, while the point-sampling read-back does not care.
         int downscale = (forReadback ? BUFFER_DOWNSCALE : std::max(1, terrainOptions->getPostProcessDownscale()));
         int bufferWidth = std::max(1, viewState.getWidth() / downscale);
         int bufferHeight = std::max(1, viewState.getHeight() / downscale);
-        // Two buffers, because the read-back's size does not follow the option: a full-resolution
-        // glReadPixels is a stall, and an effect's sampling resolution is not the occlusion query's.
+        // Two buffers: a full-resolution glReadPixels is a stall, so the read-back keeps its own size.
         std::shared_ptr<FrameBuffer>& target = (forReadback ? _readbackFrameBuffer : _frameBuffer);
         if (!target || !target->isValid() || target->getWidth() != bufferWidth || target->getHeight() != bufferHeight) {
             target = glResourceManager->create<FrameBuffer>(bufferWidth, bufferHeight, true, true, false);
@@ -671,10 +633,8 @@ namespace massif {
         glBindFramebuffer(GL_FRAMEBUFFER, target->getFBOId());
         glViewport(0, 0, bufferWidth, bufferHeight);
 
-        // Clear to 'sky'. Without normals that is maximum depth and zero coverage; with them there
-        // is no coverage channel to spare, so the sky IS the depth the terrain is not allowed to
-        // write - (1, 0) decodes to exactly 1.0 - and the normal reads straight up so that a sky
-        // texel sampled by mistake is at least not a direction.
+        // Clear to 'sky'. With normals there is no coverage channel, so sky is depth (1, 0) = 1.0,
+        // which terrain never writes, and a straight-up normal.
         glClearColor(1.0f, withNormals ? 0.0f : 1.0f, withNormals ? 0.5f : 1.0f, withNormals ? 0.5f : 0.0f);
         glDepthMask(GL_TRUE);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -891,9 +851,8 @@ namespace massif {
     }
 
     long long TerrainRenderer::occlusionVerdictKey(const cglib::vec3<double>& pos) {
-        // The bit patterns, not a quantization: a label's centre is recomputed from the same tile
-        // geometry on every placement pass and repeats exactly, so this hits. A rebuilt or moved
-        // feature misses instead of colliding, and a miss is the behaviour this had before.
+        // Exact bit patterns: a label's centre repeats exactly across placement passes, and a moved
+        // feature misses rather than colliding.
         std::uint64_t xBits = 0, yBits = 0;
         double x = pos(0), y = pos(1);
         std::memcpy(&xBits, &x, sizeof(xBits));
@@ -940,10 +899,8 @@ namespace massif {
         }
         int x = static_cast<int>((clipPos(0) / clipPos(3) * 0.5 + 0.5) * depthData->width);
         int y = static_cast<int>((0.5 - clipPos(1) / clipPos(3) * 0.5) * depthData->height);
-        // Outside the buffer's viewport is UNANSWERABLE, and is not the same thing as a sky pixel
-        // inside it - which is a real answer, and the common one for a summit on the horizon. The
-        // bounds are tested here rather than left to sampleDepthW, which returns the same 'nothing
-        // there' for both.
+        // Outside the viewport is unanswerable, unlike a sky pixel inside it; tested here because
+        // sampleDepthW returns the same 'nothing there' for both.
         if (x < 0 || y < 0 || x >= depthData->width || y >= depthData->height) {
             return cachedOcclusionVerdict(verdictKey);
         }
@@ -958,9 +915,7 @@ namespace massif {
         // Farthest terrain depth AROUND the position, not the depth of its own pixel: a ground label
         // sits exactly on the terrain and the buffer is read back downscaled, so on a slope an exact
         // comparison lets a label's own ground occlude it - the labels blinking while panning.
-        // The SPREAD over the same samples is how obliquely the view meets the ground, which is what
-        // decides how much depth a small height error is worth - see TerrainOcclusion::isBehind.
-        float nearestW = depthW;
+        float nearestW = depthW; // the spread measures view obliquity, see TerrainOcclusion::isBehind
         for (int i = 0; i < 4; i++) {
             int dx = (i & 1 ? OCCLUSION_SAMPLE_OFFSET : -OCCLUSION_SAMPLE_OFFSET);
             int dy = (i & 2 ? OCCLUSION_SAMPLE_OFFSET : -OCCLUSION_SAMPLE_OFFSET);
@@ -983,14 +938,8 @@ namespace massif {
         if (!elevationManager) {
             return;
         }
-        // The cut, and a BUDGET on it: a level coarser everywhere until it fits, the way
-        // TileLayer::calculateVisibleTiles keeps its own cover inside TERRAIN_COVER_TILE_BUDGET. See
-        // MAX_VISIBLE_MESH_TILES for what overflowing it costs - it is not the drawing, it is the
-        // mesh cache being smaller than the frame's working set.
-        // The SAME cut is asked for two to four times a frame - the surface, the depth pre-pass, the
-        // post-process depth texture, the occlusion read-back - and nothing between them changes it.
-        // Keyed on the camera and the elevation version, so it is recomputed exactly when it would
-        // differ.
+        // Budgeted like TileLayer's cover, see MAX_VISIBLE_MESH_TILES. Several passes ask for the same
+        // cut each frame, so it is cached on the camera and the elevation version.
         unsigned int elevationVersion = elevationManager->getVersion();
         float subdivideDistance = terrainOptions->getSubdivideDistance();
         {
@@ -1001,15 +950,8 @@ namespace massif {
             }
         }
 
-        // Seeded from the zoom the LAST cut settled on, not from MAX_SUPPORTED_ZOOM_LEVEL. Starting
-        // at 24 every time is the expensive part: a first-person camera near the ground subdivides
-        // the near tiles as deep as it is allowed, so the first walk returns thousands of tiles and
-        // the budget loop then re-walks the WHOLE quadtree from the root, once per level, until it
-        // fits - a dozen full walks, each one a frustum test plus a min/max height lookup plus a
-        // vertex transformer per node visited. Measured on a Crosscall: 129-150 ms of a 103-165 ms
-        // frame, and entirely independent of the mesh resolution, which is why coarsening the mesh
-        // changed nothing. From the previous answer it converges in one walk, or two when the view
-        // opens up. +1 so it can climb back when the view narrows.
+        // Seeded from the last cut's zoom: starting at MAX_SUPPORTED_ZOOM_LEVEL re-walks the whole
+        // quadtree once per level for a ground-level camera. +1 so it can climb back.
         int maxVisibleTiles = terrainOptions->getMeshCacheSize() / 2;
         if (maxVisibleTiles <= 0) {
             maxVisibleTiles = MAX_VISIBLE_MESH_TILES;
@@ -1024,17 +966,13 @@ namespace massif {
             maxZoom = Const::MAX_SUPPORTED_ZOOM_LEVEL;
             maxVisibleTiles = std::numeric_limits<int>::max();
         }
-        // The app's own ceiling, which is what makes the height field SETTLE rather than keep
-        // refining under everything anchored to it - see TerrainOptions::setMaxZoom.
+        // Lets the height field settle rather than keep refining, see TerrainOptions::setMaxZoom.
         int zoomCap = terrainOptions->getMaxZoom();
         if (zoomCap > 0) {
             maxZoom = std::min(maxZoom, zoomCap);
         }
-        // And the LOD ring cap, relative to the camera, the SAME option TileLayer applies to the
-        // draped cut (TileLayer::calculateVisibleTiles). 100 or more disables it, which is the
-        // default: terrain LOD is distance based, so a tile close to the camera is meant to sit
-        // above the level flat rendering would pick. calculateVisibleTiles used to clamp to the bare
-        // camera zoom instead, which is that option pinned at 0 and unreachable - see the note there.
+        // The LOD ring cap TileLayer applies to the draped cut. 100 or more (the default) disables it:
+        // terrain LOD is distance based, so a near tile may sit above the camera zoom.
         int zoomOffset = terrainOptions->getMaxTileZoomOffset();
         if (zoomOffset < 100) {
             maxZoom = std::min(maxZoom, static_cast<int>(viewState.getZoom() + 0.001f) + zoomOffset);
@@ -1082,9 +1020,7 @@ namespace massif {
     void TerrainRenderer::collectTileMeshes(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, int meshResolutionCap, std::vector<std::pair<MapTile, std::shared_ptr<TileMesh> > >& tileMeshes) {
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
 #if MASSIF_VT_RENDER_STATS
-        // THE DEM'S OWN CEILING, once. Whether normalSampleDistance is reachable at all depends on
-        // it, and inferring it from which zooms happen to appear in a short sample cannot tell "the
-        // source stops here" from "that is as far as loading had got".
+        // Whether normalSampleDistance is reachable depends on the DEM source's max zoom.
         if (elevationManager && elevationManager->getDataSource()) {
             static std::once_flag sourceZoomOnce;
             std::shared_ptr<TileDataSource> demSource = elevationManager->getDataSource();
@@ -1094,8 +1030,7 @@ namespace massif {
         }
 #endif
 
-        // Calculate visible terrain tiles. Through collectVisibleTiles, so the meshes are built for
-        // the SAME budgeted cut every other pass of this frame walks.
+        // Through collectVisibleTiles, so every pass of this frame walks the same budgeted cut.
         std::vector<MapTile> tiles;
         collectVisibleTiles(viewState, terrainOptions, tiles);
 
@@ -1110,24 +1045,18 @@ namespace massif {
         if (meshCacheSize <= 0) {
             meshCacheSize = MAX_CACHED_MESHES;
         }
-        // Anything the worker finished since the last frame, swapped in before the cut is walked so
-        // a refined tile uploads and draws in the same frame it lands.
+        // Before the cut is walked, so a refined tile draws in the frame it lands.
         applyRefinedAttribs();
         unsigned int pass = ++_meshCacheClock;
-        // Only where the app asked for it: stitching costs a mesh variant per edge combination, and
-        // this renderer's surfaces are already skirted, so it is an improvement rather than a fix
-        // for a hole. Same flag the draped path reads (TileRenderer).
+        // Opt-in: stitching costs a mesh variant per edge combination and the surfaces are already
+        // skirted. Same flag the draped path reads.
         bool stitching = terrainOptions->isTileEdgeStitchingEnabled();
-        // The same condition ensureSurfaceAttribs uses for its fixed-scale path, so the mesh
-        // density and the normal sampling agree about which regime they are in.
+        // Same condition as ensureSurfaceAttribs' fixed-scale path, so mesh density and normals agree.
         bool fixedScaleNormals = terrainOptions->getNormalSampleDistance() > 0 && !_tileTransformer->isSpherical();
         bool referenceMesh = terrainOptions->getSubdivideDistance() > 0;
         bool bilinearHeights = elevationManager->isBilinearSurface();
 
-        // EVERY TILE'S GRID FIRST, because a tile's edges depend on what its NEIGHBOURS resolved
-        // and the loop below would only know about the tiles it had already reached. The lookup is
-        // a cache read and the result is reused in the loop, so this costs one pass over the cut
-        // rather than a second round of lookups.
+        // Every tile's grid first: a tile's edges depend on what its neighbours resolved.
         std::map<long long, std::shared_ptr<ElevationTileGrid> > tileGrids;
         EdgeHeightResolver edgeResolver(elevationManager, bilinearHeights);
         for (const MapTile& tile : tiles) {
@@ -1151,23 +1080,8 @@ namespace massif {
                 auto gridIt = tileGrids.find(tileId);
                 grid = (gridIt != tileGrids.end() ? gridIt->second : std::shared_ptr<ElevationTileGrid>());
             }
-            // NO ELEVATION DATA, NO TILE.
-            //
-            // buildTileMesh starts from heights.assign(..., 0) and only fills them if it has a grid,
-            // so a tile whose DEM is not cached is built as a FLAT PLANE AT SEA LEVEL and drawn as
-            // if that were the ground. getTileGrid(CACHED_ONLY) already walks ancestors, so a null
-            // here means nothing is cached for this tile or any parent - there is no height to draw,
-            // only a guess of zero.
-            //
-            // In mountains that guess is a large false surface with perfectly flat normals, and
-            // WHICH tiles are in that state depends on what has finished loading - so it differs on
-            // every run at the same viewpoint, and the tile jumps from 0 m to its real elevation
-            // when the DEM lands. Every per-tile property reads correct meanwhile (gridSize,
-            // attribsRefined, demZoom and staleness are all right); the heights were simply absent.
-            //
-            // Skipping leaves a gap that fills in as data arrives, which is honest, instead of a
-            // plane at the wrong altitude. Only where the panorama's fixed-scale normals are in use:
-            // a draped map treats a missing DEM as flat ground by design, and this does not change it.
+            // No grid for the tile or any ancestor would build a flat plane at sea level; a gap that
+            // fills as data lands is better. Fixed-scale only: a draped map keeps flat ground by design.
             if (fixedScaleNormals && !grid && tile.getZoom() >= minZoom) {
                 continue;
             }
@@ -1181,10 +1095,8 @@ namespace massif {
 #endif
             const EdgeHeightResolver::Participant* participant = (stitching && grid ? edgeResolver.find(tile) : nullptr);
             unsigned long long edgeSignature = (participant ? edgeResolver.signature(*participant) : 0);
-            // The edges belong to the mesh, so they belong in the key: the same tile at the same
-            // resolution is a different surface once a neighbour changes, and a pan changes that
-            // without changing anything else. Part of the signature in the key keeps a variant per
-            // neighbourhood, so turning back finds the old mesh; the entry holds all of it.
+            // Part of the edge signature in the key keeps a variant per neighbourhood, so turning back
+            // finds the old mesh; the entry holds the full signature.
             int cacheKey = gridSize | static_cast<int>((edgeSignature & 0x7fff) << 16);
 
             // Rebuild the mesh only when its inputs actually changed. This avoids rebuilding
@@ -1210,38 +1122,9 @@ namespace massif {
                     }
                 }
                 entry.mesh = buildTileMesh(tile, grid, elevationManager, gridSize, edgeHeights, bilinearHeights);
-                // CARRY THE REFINED NORMALS ACROSS THE REBUILD.
-                //
-                // A rebuild here is almost always "a finer DEM arrived for a tile already on
-                // screen", and the new mesh starts with no attribs at all - so renderTiles bakes the
-                // cheap mesh-gradient stand-in and queues the DEM-sampled ones. The tile therefore
-                // LOSES the relief it was already drawing and gets it back a moment later, which
-                // reads as shading dropping out of tiles as they come towards the middle of the view
-                // (they are the ones the prefetch is feeding, so they are the ones that get a better
-                // grid). Before the bake was split off the render thread this could not happen: the
-                // rebuild paid the 14 ms and had the right normals immediately.
-                //
-                // The old ones are a good stand-in and a far better one than the mesh gradient: the
-                // normals are sampled at a fixed GROUND distance, so they belong to the DEM rather
-                // than to this mesh, and the grid nodes have not moved. Only the elevation component
-                // is stale, by whatever the new DEM disagrees with the old about.
-                //
-                // attribsRefined stays FALSE, so the refine is still queued and the stale elevation
-                // is corrected - this only removes the visible gap, it does not skip the work.
-                // ANY cached variant of the SAME TILE will do, not just the one under this exact
-                // key. The key carries the edge signature as well as the grid size, and that
-                // signature is built from which NEIGHBOURS are in the visible cut - so simply turning the
-                // camera remints the key for every tile whose neighbour set changed, and the lookup
-                // above misses. The tile then gets a new mesh with no attribs and falls back to the
-                // mesh-gradient stand-in, which is visibly flatter, and it flips back when the old
-                // key comes round again. That is "some tiles render differently depending on which
-                // way I am looking".
-                //
-                // The edges only move the SKIRT and the edge nodes; the interior grid is the same
-                // and the normals are sampled at a fixed ground distance anyway, so a sibling's
-                // refined attribs are the right answer for all but the tile's outermost ring.
-                // _meshCache is ordered by tile id first, so this is a short walk over one tile's
-                // own variants rather than a scan.
+                // Carry refined normals from any cached variant of this tile: they are sampled at a fixed
+                // ground distance, so they beat the flatter mesh-gradient stand-in. attribsRefined
+                // stays false, so the refine is still queued.
                 if (entry.mesh) {
                     std::size_t wanted = static_cast<std::size_t>(entry.mesh->vertices.size() / 3) * 4;
                     auto sibling = _meshCache.lower_bound(std::make_pair(tileId, std::numeric_limits<int>::min()));
@@ -1265,11 +1148,7 @@ namespace massif {
                         }
                     }
 #if MASSIF_VT_RENDER_STATS
-                    // A MISS is a tile that will draw from the mesh-gradient stand-in until the
-                    // worker gets to it - visibly flatter than its neighbours for that window.
-                    // Split by CAUSE, because they do not have the same fix: a tile with no cached
-                    // variant at all has nothing to carry and never will, while one whose sibling
-                    // was refined at a different grid size is a carry this code chose to decline.
+                    // Misses split by cause: nothing to carry, or a sibling refined at another grid size.
                     if (carried) {
                         VT_STAT_INC(terrainAttribCarryHit);
                     } else if (!sawSibling) {
@@ -1278,11 +1157,8 @@ namespace massif {
                         VT_STAT_INC(terrainAttribCarryMissUnrefined);
                     } else {
                         VT_STAT_INC(terrainAttribCarryMissGrid);
-                        // WARM-UP OR FLAP? The camera here is only ROTATING, so tile distances never
-                        // change and a tile should settle on its grid size once. A sustained rate of
-                        // these means it is instead oscillating - its elevation grid being evicted
-                        // and re-resolved under it - which is a cache problem, not a carry problem,
-                        // and has a far cheaper fix than reworking the carry.
+                        // A sustained rate under a rotating camera means the grid is being evicted and
+                        // re-resolved, a cache problem rather than a carry one.
                         static std::chrono::steady_clock::time_point lastGridLog;
                         std::chrono::steady_clock::time_point gridNow = std::chrono::steady_clock::now();
                         if (gridNow - lastGridLog > std::chrono::milliseconds(250)) {
@@ -1308,12 +1184,8 @@ namespace massif {
                 VT_STAT_ADD(terrainMeshVerts, (gridSize + 1) * (gridSize + 1));
 #endif
                 entry.lastUsed = pass;
-                // How far the DEM under this tile was STRETCHED, and what mesh that bought. Two
-                // neighbours at the same tile zoom can land on different numbers here - one resolved
-                // its own elevation tile, the other fell back to a cached ancestor covering four or
-                // sixteen times the ground - and then they are built from different height fields
-                // and meet along an edge neither of them agrees about. That is a seam between tiles
-                // of EQUAL zoom, which no LOD reasoning explains.
+                // Equal-zoom neighbours can stand on different DEM levels (own tile vs ancestor),
+                // which is a seam no LOD reasoning explains.
                 if (TERRAIN_MESH_TRACE && grid) {
                     double tileSize = Const::WORLD_SIZE / (1 << tile.getZoom());
                     double gridWidth = grid->getInternalBounds().getMax().getX() - grid->getInternalBounds().getMin().getX();
@@ -1327,17 +1199,12 @@ namespace massif {
                 VT_STAT_INC(terrainMeshCacheHits);
             }
             it->second.lastUsed = pass;
-            // Every emitted tile, cached ones included - a cache hit is the common case, and the
-            // debug views are useless if they only describe the tiles rebuilt this frame.
+            // Every emitted tile, cache hits included, so the debug views describe all of them.
             if (it->second.mesh) {
                 it->second.mesh->demZoom = (grid ? grid->getTile().getZoom() : -1);
 #if MASSIF_VT_RENDER_STATS
-                // STALE NORMALS: the attribs were baked from a coarser DEM than this tile resolves
-                // NOW. ensureSurfaceAttribs early-returns once surfaceAttribSampleDistance matches,
-                // so a tile refined while standing on an ancestor keeps those normals for good -
-                // and gridSize, attribsRefined and demZoom all still read correct, which is why the
-                // per-tile debug views showed nothing wrong. Which tiles lose that race is decided
-                // by load order, so it changes every run: "same tile, different shading each time".
+                // Attribs baked from a coarser DEM than the tile now resolves; no other per-tile
+                // property shows it.
                 int staleBy = (it->second.mesh->attribsDemZoom < 0 || it->second.mesh->demZoom < 0
                                    ? -1
                                    : it->second.mesh->demZoom - it->second.mesh->attribsDemZoom);
@@ -1350,9 +1217,8 @@ namespace massif {
             tileMeshes.emplace_back(tile, it->second.mesh);
         }
 #if MASSIF_VT_RENDER_STATS
-        // SEAM DIAGNOSTIC: how far apart, in metres, two neighbours' edge polylines are along the
-        // edge they share. A number to compare before and after a stitching change instead of a
-        // screenshot. Planar only; every neighbour at this tile's zoom or coarser is measured.
+        // Seam diagnostic: metres between two neighbours' edge polylines along their shared edge.
+        // Planar only; every neighbour at this tile's zoom or coarser is measured.
         if (!_tileTransformer->isSpherical()) {
             static std::chrono::steady_clock::time_point lastSeamLog;
             std::chrono::steady_clock::time_point seamNow = std::chrono::steady_clock::now();
@@ -1461,15 +1327,12 @@ namespace massif {
             glUniform1f(shader->getUniformLoc("u_far"), viewState.getFar());
         }
 
-        // Per-tile properties for the debug views, on whichever pass is drawing. Set from the MESH,
-        // so it says what this tile actually is rather than what the cut asked for.
+        // Per-tile debug properties, set from the mesh rather than from what the cut asked for.
         GLint uTileDebug = glGetUniformLocation(progId, "u_tileDebug");
-        // Set here rather than only in renderSurface's callback: the normal/depth pass needs the
-        // world position as well now, to find itself in the elevation texture.
+        // Here, not only in renderSurface's callback: the normal/depth pass needs it for the DEM lookup.
         GLint uTileMatAll = glGetUniformLocation(progId, "u_tileMat");
 
-        // The DEM texture this pass samples its normals from, per tile. Looked up once here: a
-        // uniform that is not in the shader answers -1 and the whole block then costs nothing.
+        // A shader without these answers -1 and the per-tile DEM block costs nothing.
         GLint uDemTex = glGetUniformLocation(progId, "u_demTex");
         GLint uDemOriginSize = glGetUniformLocation(progId, "u_demOriginSize");
         GLint uDemInvTexSize = glGetUniformLocation(progId, "u_demInvTexSize");
@@ -1490,9 +1353,7 @@ namespace massif {
 
         GLint aNormal = -1, aElevation = -1;
         std::shared_ptr<ElevationManager> elevationManager;
-        // The normal-packing depth pass wants the same per-vertex attributes and not the rest of
-        // what a surface pass is: it keeps u_far above, and its shader declares no a_elevation, so
-        // the location comes back negative and the array is simply not enabled.
+        // The normal-packing depth pass declares no a_elevation, so that array is simply not enabled.
         if (surfaceAttribs || normalAttrib) {
             aNormal = glGetAttribLocation(progId, "a_normal");
             aElevation = glGetAttribLocation(progId, "a_elevation");
@@ -1523,31 +1384,17 @@ namespace massif {
                 tileUniformsFn(tileMesh.first);
             }
             if (wantsDem) {
-                // The grid may cover an ANCESTOR of this tile, which is why the uv transform comes
-                // from the texture rather than from the tile: a tile standing on a z8 grid samples
-                // one sixteenth of it, and the shader must be told which sixteenth.
+                // The uv transform comes from the texture: the grid may cover an ancestor of this tile.
                 vt::GLTileRenderer::TerrainTexture demTexture;
-                // internalSize is the one that was missing: a texture still being prepared can come
-                // back with a zero world extent, and the shader's uv divide then goes infinite, so
-                // the four taps sample nothing meaningful and the normal comes out near-horizontal.
-                // That is the hard paper/shade blotching visible while the tiles load.
-                // AND THE MESH MUST ALREADY CARRY ELEVATION. The texture arrives before the mesh is
-                // rebuilt from the same grid, and a per-fragment normal on a mesh that is still flat
-                // paints mountain relief onto flat ground - hard paper/shade blotches with the
-                // geometry nowhere near them, which is what the load looks like. demZoom below zero
-                // is a mesh with no grid behind it yet; until then the interpolated mesh normal is
-                // the one that agrees with what is actually drawn.
+                // A texture still being prepared can have a zero internalSize (infinite uv divide), and
+                // a mesh with no grid yet is flat: per-fragment relief on it blotches.
                 bool meshHasElevation = (mesh->demZoom >= 0);
                 bool haveDem = meshHasElevation && _elevationTextureCache->getTexture(vt::TileId(tileMesh.first.getZoom(), tileMesh.first.getX(), tileMesh.first.getY()), demTexture)
                                && demTexture.textureId != 0 && demTexture.textureSize(0) > 0 && demTexture.textureSize(1) > 0
                                && demTexture.internalSize(0) > 0 && demTexture.internalSize(1) > 0
                                && demTexture.metersPerTexel > 0;
-                // AND NO FINER THAN THE MESH'S OWN GRID. The texture for a tile arrives before the
-                // mesh is rebuilt from the same level, so during a load the shading is routinely a
-                // level or more ahead of the geometry - fine relief painted onto ground that has
-                // not been displaced yet, which saturates into hard-edged patches sitting nowhere
-                // near the shape under them. A texture covers a whole tile, so its level follows
-                // from the ground it spans.
+                // No finer than the mesh's own grid: the texture lands before the mesh is rebuilt, and
+                // relief ahead of the geometry blotches. The texture's level follows from its span.
                 if (haveDem && mesh->demZoom >= 0) {
                     // The raster's own span, without the border around it.
                     double span = demTexture.internalSize(0) * (demTexture.textureSize(0) - 2 * demTexture.borderTexels) / demTexture.textureSize(0);
@@ -1563,8 +1410,8 @@ namespace massif {
                     glBindTexture(GL_TEXTURE_2D, demTexture.textureId);
                     glActiveTexture(GL_TEXTURE0);
                     if (uDemUvMat >= 0) {
-                        // Tile-local vertex to DEM uv, composed in DOUBLE so the float the shader
-                        // gets is a small tile-relative transform rather than an absolute position.
+                        // Composed in double so the shader gets a tile-relative transform, not an
+                        // absolute float position.
                         cglib::mat4x4<double> toUv = cglib::mat4x4<double>::identity();
                         toUv(0, 0) = 1.0 / demTexture.internalSize(0);
                         toUv(1, 1) = 1.0 / demTexture.internalSize(1);
@@ -1596,16 +1443,11 @@ namespace massif {
                 }
             }
             if (uTileDebug >= 0) {
-                // .w was attribsDemZoom, which measured staleness - now proven zero on every tile, so
-                // the slot is reused for TILE PARITY. Every per-tile property has come back uniform
-                // while regions still differ, so the next thing to test is the assumption underneath
-                // all of them: that those regions are tiles at all.
                 int parity = ((tileMesh.first.getX() + tileMesh.first.getY()) & 1);
                 glUniform4f(uTileDebug, static_cast<float>(mesh->gridSize), mesh->attribsRefined ? 1.0f : 0.0f, static_cast<float>(mesh->demZoom), static_cast<float>(parity));
             }
-            // The mesh is cached and its geometry never changes, so it is uploaded once. Creating
-            // the resource HERE means create() runs inline - this is the GL thread - and the
-            // buffers exist by the time the upload below needs them.
+            // Geometry never changes, so it is uploaded once; created here, on the GL thread, so
+            // create() runs inline before the upload.
             if (!mesh->buffer && glResourceManager) {
                 mesh->buffer = glResourceManager->create<TerrainMeshBuffer>();
             }
@@ -1618,9 +1460,8 @@ namespace massif {
                 auto attribStart = std::chrono::steady_clock::now();
                 bool attribMiss = mesh->surfaceAttribs.empty() || mesh->surfaceAttribSampleDistance != normalSampleDistance;
 #endif
-                // INLINE, but only the cheap half: the mesh-gradient normals, which are pure
-                // arithmetic over heights this mesh already holds. The tile therefore draws
-                // correctly the frame its mesh is built, with no DEM reads on the render thread.
+                // Inline only the cheap mesh-gradient normals, so the tile draws the frame it is
+                // built with no DEM reads on the render thread.
                 bool wasEmpty = mesh->surfaceAttribs.empty();
                 ensureSurfaceAttribs(tileMesh.first, elevationManager, *mesh, normalSampleDistance, false);
                 if (wasEmpty && !mesh->surfaceAttribs.empty()) {
@@ -1632,19 +1473,9 @@ namespace massif {
                     VT_STAT_ADD(terrainAttribUs, std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - attribStart).count());
                 }
 #endif
-                // ...and the DEM-sampled ones on the worker. They replace the stand-in when they
-                // land, which is what makes neighbouring tiles at different LOD agree about their
-                // normals - the gradient becomes a property of the DEM instead of of the mesh.
-                // ...and again whenever the bake was PROVISIONAL and elevation data has landed since.
-                // Without this the first bake wins for good, and since it reads the DEM cached-only,
-                // what it finds there is decided by arrival order: half the normals on screen were
-                // measured on an ancestor grid, a different half each run. That is the whole of "the
-                // same tile is shaded differently every time I open the panorama".
-                //
-                // It terminates: a re-bake only happens when the elevation version has MOVED, the
-                // version stops moving when loading settles, and the count is capped besides - a
-                // tile over ground the source genuinely has no data for would otherwise retry for
-                // ever, since its reads can never resolve at the zoom asked for.
+                // The DEM-sampled ones go to the worker, and again after a provisional bake once data
+                // has landed. Bounded: only when the data version moved, and capped for ground the
+                // source has no data for.
                 bool attribsStale = mesh->attribsRefined && mesh->attribsProvisional &&
                                     mesh->attribsRebakes < MAX_ATTRIB_REBAKES &&
                                     mesh->attribsDataVersion != elevationManager->getDataVersion();
@@ -1657,10 +1488,7 @@ namespace massif {
                 }
                 if (mesh->buffer && mesh->uploadedAttribSampleDistance != mesh->surfaceAttribSampleDistance) {
 #if MASSIF_VT_RENDER_STATS
-                    // COUNTED HERE, not inside the bake: the first version of this stat ran halfway
-                    // through ensureSurfaceAttribs, before the skirt fill, and so reported every
-                    // skirt vertex as a zero normal every time. It measured the middle of a
-                    // function rather than what the GPU is handed. This is the buffer GL gets.
+                    // Counted on the buffer GL gets, after the skirt fill, not inside the bake.
                     {
                         std::size_t gridVerts = static_cast<std::size_t>(mesh->gridSize + 1) * (mesh->gridSize + 1);
                         long long zeroGrid = 0, zeroSkirt = 0;
@@ -1709,10 +1537,8 @@ namespace massif {
                 indexBase = mesh->indices.data();
             }
             glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(gridCount), GL_UNSIGNED_SHORT, indexBase);
-            // THE SKIRTS ARE CULLED, the grid is not. A skirt faces out of its tile, so it is drawn
-            // only from the side a crack would be seen from. Unculled, the wall hanging off a near
-            // tile's FAR edge stood in front of the far tile wherever the ground drops away across
-            // the edge, and drew a pale band along the tile boundary.
+            // Skirts are culled, the grid is not: a skirt faces out of its tile, and unculled a near
+            // tile's far-edge wall draws a pale band in front of the far tile.
             if (skirtCount > 0) {
                 GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
                 glEnable(GL_CULL_FACE);
@@ -1724,8 +1550,7 @@ namespace massif {
             }
         }
 
-        // Unbound before anything else draws: the rest of the renderer still uses client-side
-        // arrays in places, and a bound ARRAY_BUFFER silently reinterprets their pointers as offsets.
+        // Other code still uses client-side arrays, which a bound ARRAY_BUFFER turns into offsets.
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         if (aNormal >= 0) {
@@ -1752,19 +1577,15 @@ namespace massif {
                     if (_attribWorkerStop.load()) {
                         return;
                     }
-                    // NEWEST FIRST. The queue is a record of where the camera HAS been, and while it
-                    // drains the camera keeps moving - so the front of it is the least likely tile to
-                    // still be on screen. Taking the back means a pan is refined from where the eye
-                    // is now outwards.
+                    // Newest first: the oldest job is the tile least likely to still be on screen.
                     job = std::move(_attribJobs.back());
                     _attribJobs.pop_back();
                 }
                 if (!job.mesh || !job.elevationManager) {
                     continue;
                 }
-                // Into a COPY: the render thread is drawing out of job.mesh->surfaceAttribs right
-                // now. Only the vectors the mesh build filled are read here, and those never change
-                // after it - the mesh is replaced rather than edited when its inputs do.
+                // Into a copy: the render thread draws from job.mesh->surfaceAttribs. The vectors read
+                // here never change after the mesh build.
                 TileMesh scratch;
                 scratch.vertices = job.mesh->vertices;
                 scratch.heights = job.mesh->heights;
@@ -1805,15 +1626,14 @@ namespace massif {
         startAttribWorker();
         {
             std::lock_guard<std::mutex> lock(_attribMutex);
-            // Bounded, and the OLDEST go: see the worker for why the newest job is the useful one.
+            // Bounded; the oldest go, as the worker prefers the newest.
             while (_attribJobs.size() >= MAX_PENDING_ATTRIB_JOBS) {
                 _attribJobs.front().mesh->attribsPending = false;
                 _attribJobs.pop_front();
             }
             _attribJobs.push_back(AttribJob { tile, elevationManager, mesh, normalSampleDistance });
         }
-        // Set on the render thread, which is the only thread that reads it - the worker never
-        // touches the mesh's own fields.
+        // Render thread only; the worker never touches the mesh's own fields.
         mesh->attribsPending = true;
         _attribCondition.notify_one();
     }
@@ -1832,8 +1652,7 @@ namespace massif {
                 continue;
             }
             result.mesh->attribsPending = false;
-            // Dropped if the mesh has been re-baked at a different sample distance meanwhile: the
-            // job answered a question nobody is asking any more.
+            // Dropped if the mesh was re-baked at a different sample distance meanwhile.
             if (result.attribs.size() != result.mesh->surfaceAttribs.size()) {
                 continue;
             }
@@ -1849,8 +1668,7 @@ namespace massif {
             }
             // Forces the re-upload in renderTiles, which compares these two.
             result.mesh->uploadedAttribSampleDistance = result.normalSampleDistance - 1.0f;
-            // ...and the PACKED texture has to be redrawn, or the post-process goes on reading the
-            // normals this mesh was first drawn with. Nothing else in its cache key moves here.
+            // The packed normal texture's cache key does not see this change.
             _depthTextureAttribsDirty = true;
         }
     }
@@ -1878,18 +1696,9 @@ namespace massif {
         // the branch below keeps the exact expression it always had.
         bool spherical = _tileTransformer->isSpherical();
 
-        // The tile-local frame scales x, y and z by the same factor (calculateTileMatrix), so a
-        // normal built from the local height field is already a world-space direction.
-        //
-        // The central difference at a tile EDGE reaches past this mesh, and the node it wants is the
-        // neighbour's. It used to clamp to this tile's own edge node instead, which halves the
-        // gradient there and leaves every tile boundary carrying a normal that disagrees with the
-        // one a pixel away - a seam, one vertex wide on each side of every tile. Invisible while
-        // nothing read the normals across a pixel; a drawn line as soon as something does
-        // (PostProcessEffect::setTerrainNormalsRequired). The height comes from the elevation
-        // manager, which is where buildTileMesh got this tile's own from, so the two agree by
-        // construction. CACHED only - a blocking load per edge vertex is not payable - and the old
-        // clamp is the fallback where the neighbour's DEM has not arrived.
+        // The tile-local frame scales x, y and z alike, so this normal is already world-space. Past
+        // the edge the neighbour's height is read (cached only): clamping to the own edge node halves
+        // the gradient and draws a seam, and is only the fallback.
         auto localZ = [&](int gx, int gy) -> float {
             if (gx >= 0 && gx <= gridSize && gy >= 0 && gy <= gridSize) {
                 return mesh.heights[gy * rowSize + gx];
@@ -1910,33 +1719,16 @@ namespace massif {
             vertexTransformer = _tileTransformer->createTileVertexTransformer(vt::TileId(tile.getZoom(), tile.getX(), tile.getY()));
         }
 
-        // A gradient measured over the MESH is measured over a step that halves with every zoom
-        // level, because a tile carries the same number of cells whatever ground it covers. Two
-        // tiles meeting at an LOD boundary therefore smooth the same hillside by different amounts,
-        // and their normals disagree along the whole shared edge - which is a drawn line as soon as
-        // anything reads the normals across a pixel, and no edge lookup can fix it: the heights
-        // agree, the SCALE does not.
-        //
-        // Sampling at a fixed ground distance instead makes the normal a property of the DEM rather
-        // than of the mesh, so both sides of a boundary return the same value and there is nothing
-        // to draw. It is what peakfinder.com gets for free by having no tiles in its geometry at all
-        // (one panorama mesh over a DEM texture array). The detail is still bounded by the DEM that
-        // is loaded out there - but it is bounded CONTINUOUSLY.
-        //
-        // 0 keeps the mesh-derived gradient, which is what a draped 2D/3D map wants: there the
-        // normals are shaded, never differentiated, and the mesh step is both cheaper and sharper.
+        // A mesh gradient's step halves per zoom, so tiles at an LOD boundary disagree; a fixed
+        // ground step makes the normal a property of the DEM. 0 keeps the mesh gradient, cheaper
+        // and sharper for a draped map whose normals are never differentiated.
         bool fixedScale = allowFixedScale && normalSampleDistance > 0 && !spherical;
-        // The DEM is read CACHED_ONLY, and a panorama asks for ground a hundred kilometres out that
-        // no grid covers yet - so the fixed-scale path can silently decline for most of a mesh and
-        // leave the mesh gradient, and the seam, exactly where they were. Counted so that is visible
-        // rather than guessed at.
+        // Counted: with CACHED_ONLY reads the fixed-scale path can silently decline for most of a mesh.
         int fixedScaleVertices = 0;
-        // The coarsest grid any stencil read fell back to, over the whole tile. -1 until one answers.
+        // -1 until a stencil read answers.
         int worstStencilZoom = -1;
-        // The DEM texel under this tile, in internal units: what the central difference below may
-        // not go finer than. Taken from the grid the tile actually resolved, which is the one that
-        // decides how much detail there is to read - an ancestor stretched over sixteen tiles
-        // answers at a sixteenth of its nominal resolution.
+        // The texel of the grid the tile actually resolved, in internal units; an ancestor answers
+        // at a fraction of its nominal resolution.
         double gridTexelInternal = 0;
         int resolvedGridZoom = -1;
         std::shared_ptr<ElevationTileGrid> attribGrid = elevationManager->getTileGrid(tile, ElevationManager::LoadMode::CACHED_ONLY);
@@ -1948,12 +1740,8 @@ namespace massif {
             resolvedGridZoom = attribGrid->getTile().getZoom();
         }
 #if MASSIF_VT_RENDER_STATS
-        // HOW MUCH COARSER THAN ASKED this tile's normals actually are. The step below can never go
-        // finer than the DEM texel under the tile, so a tile standing on a stretched ANCESTOR gets
-        // smoother normals than its neighbour that resolved its own grid - less turn across a pixel,
-        // less ridge ink, a visibly LIGHTER tile right beside a fully drawn one. This is the number
-        // behind "why are they not the same LOD as the tiles next to them"; the mesh cut cannot
-        // explain it, because its zoom cap is global.
+        // How much coarser than asked the DEM under this tile is: a stretched ancestor gives smoother
+        // normals, so a lighter tile beside a fully drawn one.
         if (fixedScale && gridTexelInternal > 0) {
             double centreScale = elevationManager->getDisplayScale(originY + size * 0.5);
             double asked = normalSampleDistance * centreScale;
@@ -1962,25 +1750,14 @@ namespace massif {
             else if (stretch <= 2.01) { VT_STAT_INC(terrainAttribStretch2); }
             else if (stretch <= 4.01) { VT_STAT_INC(terrainAttribStretch4); }
             else { VT_STAT_INC(terrainAttribStretchBig); }
-            // WHICH tiles are coarse decides the fix, and the totals cannot say. A far tile is drawn
-            // from a low-zoom DEM whose texels are kilometres wide whatever the cache holds - nothing
-            // to fix there. A tile at the cut's FINEST zoom coming back stretched means it is
-            // standing on an ancestor it should not be, which is the prefetch/cache and IS fixable.
+            // Named, because a stretched far tile is expected while a stretched near one is a cache miss.
             if (stretch > 2.01) {
                 static std::chrono::steady_clock::time_point lastStretchLog;
                 std::chrono::steady_clock::time_point stretchNow = std::chrono::steady_clock::now();
                 if (stretchNow - lastStretchLog > std::chrono::milliseconds(300)) {
                     lastStretchLog = stretchNow;
-                    // resolvedGridZoom is the DEM tile it ACTUALLY got. Well below the requested
-                    // zoom over a whole area means the source has no data there and the pin in
-                    // ElevationManager is telling the truth; scattered means it is a cache/prefetch
-                    // failure that the pin then makes permanent.
-                    // THREE zooms, because they are three different things and only their gaps say
-                    // where the detail is lost: the terrain tile, the DEM tile actually REQUESTED
-                    // for it (clampTileZoom walks up by the source's grid-size hint, then the
-                    // dataMaxZoom cap), and the one that came back. requested < terrain means the
-                    // detail was never asked for; resolved < requested means it was asked for and
-                    // has not arrived.
+                    // requested < terrain zoom: detail never asked for; resolved < requested: asked
+                    // for and not arrived (or, over a whole area, absent from the source).
                     Log::Infof("TerrainRenderer: DEM coarser than asked for tile z%d %d/%d: asked %.0f m, DEM texel %.0f m (%.1fx), gridSize %d, DEM requested z%d resolved z%d (sampling is still the asked step)",
                                tile.getZoom(), tile.getX(), tile.getY(), normalSampleDistance,
                                normalSampleDistance * stretch, stretch, gridSize,
@@ -1996,42 +1773,9 @@ namespace massif {
             double internalY = originY + (static_cast<double>(gy) / gridSize) * size;
             double displayScale = elevationManager->getDisplayScale(internalY);
             double metersPerLocalZ = (exaggeration > 0 && displayScale > 0 ? size / (exaggeration * displayScale) : 0);
-            // Metres into internal units at this latitude, Mercator stretch included. The gradient
-            // below is internal z over internal x, which is the same dimensionless slope the local
-            // frame's one is - the tile scales all three axes alike.
-            // NEVER FINER THAN THE DEM'S OWN TEXEL, which is what left whole tiles perfectly flat.
-            //
-            // The four reads below are a central difference at +/- this step. If the step lands
-            // inside ONE texel of the grid the tile is standing on, all four return the same height,
-            // the gradient is exactly zero and the normal comes out exactly vertical - so the tile
-            // draws with no slope shading and no ridge ink at all, only its silhouette. A tile that
-            // resolved its own elevation tile has texels of tens of metres and 90 m clears them
-            // easily; one standing on a cached ANCESTOR covering four or sixteen times the ground
-            // has texels of hundreds of metres, and 90 m falls inside one.
-            //
-            // Which tiles those are depends on what the prefetch has fed, so it changes as the
-            // camera moves - hence "some tiles are flat, and which ones depends on orientation".
-            //
-            // Sampling at the grid's own resolution instead gives a real gradient. It is coarser
-            // than asked for, but it is the finest the data under that tile can actually answer.
-            // THE CLAMP IS A PER-VERTEX FALLBACK, NOT A PER-TILE RULE.
-            //
-            // Raising the step to the tile's own texel for the WHOLE tile makes the sampling rate a
-            // property of the grid that tile happens to be standing on - which is exactly the
-            // per-tile dependence fixed-scale normals exist to remove. At an LOD boundary a z9 tile
-            // sampled at 210 m against its z8 neighbour's 419 m, so the two smoothed the same
-            // hillside by different amounts and inked differently along the whole shared edge. The
-            // guard defeated the feature it was guarding.
-            //
-            // It also binds when nothing is wrong: 90 m is under the texel of every FAR tile, so the
-            // clamp was active on 82% of the cut (measured 1x=23 2x=24 4x=17 8x+=62) and the fixed
-            // scale was effectively never in use.
-            //
-            // Both DEM sampling paths are BILINEAR (ElevationNodeField::sample, and
-            // ElevationTileGrid::sampleHeight), so a sub-texel central difference returns the cell's
-            // own gradient rather than zero - the flat tiles this clamp was added for cannot come
-            // from step size alone. Where a vertex does still come back exactly flat, it retries at
-            // the texel below, which keeps that fix without spending it on the whole tile.
+            // Metres to internal units at this latitude; internal z over internal x is the same slope
+            // as the local frame's. The texel step is a per-vertex retry for an exactly flat result,
+            // not a per-tile floor, which would make the sampling rate depend on the grid again.
             double stepInternal = 0;
             double texelStepInternal = 0;
             if (fixedScale) {
@@ -2040,22 +1784,8 @@ namespace massif {
                     texelStepInternal = gridTexelInternal;
                 }
             }
-            // THIS TILE'S OWN GRID, not a lookup by position.
-            //
-            // getDisplayHeightCached resolves the point to a tile at the source's MAX zoom and then
-            // accepts any cached ancestor of it. Thirty kilometres out no z12 elevation tile is ever
-            // loaded, so every read there walks up to whichever ancestor the prefetch happens to have
-            // fetched - z8, z9 or z10, differing between runs and between neighbouring vertices. The
-            // normals were therefore a function of what the cache held at the instant of the bake,
-            // which is exactly the reported fault: the same tile, at the same zoom and the same
-            // distance, shaded differently on each opening. Measured at 1.1 M ancestor fallbacks
-            // against 1.1 M exact reads in one panorama.
-            //
-            // Reading the grid the tile is standing on makes the normal a function of (tile, grid)
-            // alone, so it is the same on every run. The step can reach past that grid near an edge;
-            // clamping there costs a bounded flattening on the outermost vertex, where the old code
-            // paid an unbounded and random one over the whole tile. Cross-tile agreement is kept by
-            // the step being a fixed GROUND distance, which is what the seam fix turned on.
+            // This tile's own grid, not a lookup by position: getDisplayHeightCached accepts whatever
+            // ancestor is cached, so the normal would depend on load order. Clamped at the grid edge.
             auto internalHeightAt = [&](double internalX, double internalYAt, double& height) {
                 if (!attribGrid) {
                     return false;
@@ -2074,24 +1804,16 @@ namespace massif {
                 if (stepInternal > 0) {
                     double internalX = originX + (static_cast<double>(gx) / gridSize) * size;
                     double west = 0, east = 0, south = 0, north = 0;
-                    // All four or none: a half-resolved stencil is a gradient measured over the
-                    // wrong baseline, which is the artefact this exists to remove.
+                    // All four or none: a half-resolved stencil measures over the wrong baseline.
                     if (internalHeightAt(internalX - stepInternal, internalY, west) && internalHeightAt(internalX + stepInternal, internalY, east) &&
                         internalHeightAt(internalX, internalY - stepInternal, south) && internalHeightAt(internalX, internalY + stepInternal, north)) {
                         dzdx = static_cast<float>((east - west) / (2 * stepInternal));
                         dzdy = static_cast<float>((north - south) / (2 * stepInternal));
-                        // Counted only when the stencil actually RESOLVED A SLOPE. Counting the
-                        // lookups succeeding instead reported 99.8% while whole tiles were coming
-                        // out perfectly flat - the reads worked, they just all landed in the same
-                        // DEM texel and returned the same height. A stat that cannot distinguish
-                        // "answered" from "answered zero" confirmed the wrong thing.
+                        // Counted only when a slope resolved: reads in one texel succeed but answer zero.
                         if (dzdx != 0.0f || dzdy != 0.0f) {
                             fixedScaleVertices++;
                         } else if (texelStepInternal > 0) {
-                            // Exactly flat at the asked-for step, and the grid under this vertex is
-                            // coarser than that step: retry once at the texel. Per vertex and only
-                            // where it actually came back flat, so a tile keeps the uniform sampling
-                            // rate everywhere else and only the degenerate spots pay.
+                            // Flat inside one coarse texel: retry once at the texel, for this vertex only.
                             if (internalHeightAt(internalX - texelStepInternal, internalY, west) && internalHeightAt(internalX + texelStepInternal, internalY, east) &&
                                 internalHeightAt(internalX, internalY - texelStepInternal, south) && internalHeightAt(internalX, internalY + texelStepInternal, north)) {
                                 dzdx = static_cast<float>((east - west) / (2 * texelStepInternal));
@@ -2120,10 +1842,7 @@ namespace massif {
             }
         }
 
-        // PROVISIONAL: at least one stencil read was answered by a grid coarser than the source
-        // could have given for this tile, so these normals are smoother than the data allows and
-        // have to be rebuilt once the missing grids land. Measured at 1.1 M ancestor fallbacks
-        // against 1.1 M exact reads in a single panorama - half of every normal on screen.
+        // Provisional: read from a grid coarser than the source offers, so rebuilt once it lands.
         mesh.attribsWorstZoom = worstStencilZoom;
         mesh.attribsProvisional = false;
         if (fixedScale && worstStencilZoom >= 0) {
@@ -2146,12 +1865,8 @@ namespace massif {
         }
 
 #if MASSIF_VT_RENDER_STATS
-        // WHICH TILES BAKED FLAT, BY NAME. Every per-tile counter so far describes ONE run and they
-        // all come back uniform - but the complaint is that the SAME tile, at the same zoom and
-        // distance, renders differently on different runs. Terrain does not change between runs, so
-        // that is non-determinism, and a per-run snapshot cannot see it. Naming the flat tiles lets
-        // two runs be compared: if the SET changes, the bake depends on load timing rather than on
-        // the ground, and these tile ids say exactly which ones to chase.
+        // Flat tiles by id, so two runs can be compared: a changing set means the bake depends on
+        // load timing rather than on the ground.
         {
             double slopeSum = 0;
             std::size_t gridNodes = static_cast<std::size_t>(rowSize) * rowSize;
@@ -2188,20 +1903,13 @@ namespace massif {
             }
             std::size_t source = static_cast<std::size_t>(mesh.skirtSources[skirtIndex]) * 4;
             if (source + 4 > mesh.surfaceAttribs.size()) {
-                // The OTHER way a skirt keeps its zero-filled default, and the one the first
-                // diagnostic here did not cover: a source index past the end of the attribs.
+                // The other way a skirt keeps its zero-filled default.
                 VT_STAT_INC(terrainAttribSkirtOutOfRange);
                 continue;
             }
             std::copy(mesh.surfaceAttribs.begin() + source, mesh.surfaceAttribs.begin() + source + 4, mesh.surfaceAttribs.begin() + i * 4);
-            // MARKED AS A SKIRT, in the sign of z. A height field's normal always points up, so a
-            // negative z is unreachable for real ground and costs no extra attribute to carry.
-            //
-            // The shader needs to know because a skirt is a VERTICAL wall: every fragment down one
-            // of its columns has the same ground position, so a normal sampled per fragment from the
-            // elevation texture is constant down the column and jumps between columns - the wall
-            // comes out in vertical black and white bands. A skirt has to keep the normal of the
-            // edge it hangs from, which is what was copied above.
+            // Skirt marked by a negative normal z, unreachable for a height field: the shader must
+            // keep the copied edge normal, as per-fragment DEM sampling bands a vertical wall.
             mesh.surfaceAttribs[i * 4 + 2] = -std::abs(mesh.surfaceAttribs[i * 4 + 2]);
         }
     }
@@ -2264,18 +1972,8 @@ namespace massif {
         if (std::shared_ptr<TileDataSource> dataSource = elevationManager->getDataSource()) {
             maxUsefulZoom = dataSource->getMaxZoom() + 3;
         }
-        // The camera's zoom is NOT one of the bounds. It was, and it is the wrong measure for a
-        // ground-level camera: an orbiting camera's zoom IS its distance, so on a map the clamp only
-        // repeated what the distance rule above already said, but a first-person camera STANDS on the
-        // ground with the horizon in frame - its zoom describes what one screen width of that horizon
-        // covers (13.6 in the panorama) while the ridge a kilometre in front of it wants z15. Clamped
-        // to it, the near ground was cut at z13 whatever the app asked for: 3.4 km tiles, and at the
-        // 96-cell grid cap 36 m triangles off a 13.5 m DEM.
-        //
-        // TerrainOptions::MaxTileZoomOffset is the knob for this, and TileLayer already honours it on
-        // the draped path - which is why the same view is finer there. It is folded into maxZoom by
-        // collectVisibleTiles, so the two paths now cap the cut by the same rule and the default (100,
-        // no cap) leaves the distance rule, the data and the budget to decide.
+        // Not capped by the camera zoom, which for a ground-level camera describes the horizon and
+        // cuts the near ground too coarse; MaxTileZoomOffset is folded into maxZoom instead.
         int targetTileZoom = std::min(maxUsefulZoom, maxZoom);
         if (targetTileZoom <= tile.getZoom()) {
             subDivide = false;
@@ -2291,21 +1989,8 @@ namespace massif {
     }
 
     int TerrainRenderer::calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution, bool fixedScaleNormals, bool referenceMesh) const {
-        // THESE TWO CASES ARE NOT THE SAME THING, and treating them alike drew whole tiles as a
-        // single flat quad.
-        //
-        // A grid that is present and has no relief is genuinely flat - sea, a salt pan - and one
-        // quad is the right mesh for it. NO grid means only that this tile's own DEM is not in the
-        // cache yet; buildTileMesh still reads every node's height from the elevation manager, which
-        // answers from a cached ANCESTOR. So the relief is available, and collapsing to four
-        // vertices throws it away: the tile becomes one plane, with a valid but CONSTANT normal.
-        //
-        // That shades correctly in the surface pass and produces exactly zero normal gradient in the
-        // post-process, so it takes no ridge ink at all - a large, straight-edged, flat-looking
-        // region whose neighbours are fully drawn. Which tiles are in that state follows the
-        // prefetch, so it moves as the camera turns.
-        //
-        // Note this bypassed the MIN_MESH_GRID_SIZE floor below, which exists to stop precisely this.
+        // A present grid with no relief is genuinely flat, one quad. A missing grid is not: the
+        // heights still come from a cached ancestor, so it keeps the MIN_MESH_GRID_SIZE floor.
         if (grid && grid->getMaxHeight() - grid->getMinHeight() <= 0) {
             return 1;
         }
@@ -2328,22 +2013,9 @@ namespace massif {
         if (gridWidth > 0) {
             texelsPerTile = static_cast<int>(grid->getWidth() * tileSize / gridWidth + 0.5);
         }
-        // WITH FIXED-SCALE NORMALS, THE DEM'S TEXEL COUNT MUST NOT SET THE MESH DENSITY.
-        //
-        // The mesh grid is not only geometry: ensureSurfaceAttribs stores ONE NORMAL PER VERTEX and
-        // the rasteriser interpolates between them, so gridSize is also the resolution of the normal
-        // field the ridge term differentiates. Capping it by the DEM under the tile therefore makes
-        // the NORMAL density per-tile - a tile on a 32x ancestor carries a 16x16 normal field, and
-        // linear interpolation across those cells is smooth whatever distance each normal was
-        // measured over. It takes almost no ridge ink while its 96-grid neighbour takes plenty.
-        //
-        // That is the tile-to-tile discontinuity, and it survived making the SAMPLE DISTANCE uniform
-        // because the sample distance was never what carried it. It also explains the flicker and
-        // the height jump: gridSize steps 16 -> 96 as the DEM converges, which is a different mesh.
-        //
-        // Only while the normals are sampled at a fixed ground distance. Without that the normal IS
-        // the mesh gradient, and a mesh finer than the DEM would just interpolate the same plane at
-        // more vertices - the cap is right there, and the draped path keeps it.
+        // With fixed-scale normals the DEM texel count must not cap the mesh: gridSize is also the
+        // normal field's resolution, so the cap would make normal density per-tile. Without them a
+        // mesh finer than the DEM only interpolates the same plane, so the cap stays.
         int gridSize = (fixedScaleNormals ? std::min(meshResolution, MAX_MESH_GRID_SIZE)
                                           : std::min(std::min(texelsPerTile, meshResolution), MAX_MESH_GRID_SIZE));
         return std::max(gridSize, MIN_MESH_GRID_SIZE);
@@ -2373,8 +2045,7 @@ namespace massif {
         bool spherical = _tileTransformer->isSpherical();
 
         mesh->vertices.reserve((rowSize * rowSize + 8 * rowSize) * 3); // grid + skirt vertices
-        // The heights come FIRST, on their own: the vertices are built from them below, and so are
-        // the surface normals (ensureSurfaceAttribs), so the stitching in between reaches both.
+        // Heights first, so the stitching below reaches both the vertices and the surface normals.
         mesh->heights.assign(rowSize * rowSize, 0.0f);
         if (grid) {
             for (int gy = 0; gy <= gridSize; gy++) {
@@ -2393,9 +2064,7 @@ namespace massif {
             }
         }
 
-        // Edge stitching: the edge nodes take the heights both tiles sharing the edge agree on
-        // (EdgeHeightResolver), so the two surfaces meet instead of each ending on its own grid.
-        // Only the one row of edge nodes moves, so nothing inside the tile is smoothed.
+        // Only the edge nodes move, to the heights both tiles agree on (EdgeHeightResolver).
         if (grid) {
             for (int side = 0; side < 4; side++) {
                 const std::vector<double>& edge = edgeHeights[side];
@@ -2449,20 +2118,7 @@ namespace massif {
 
         // Skirts: extrude the tile edges downwards to cover cracks between neighboring
         // tiles of different resolutions in the depth buffer.
-        //
-        // The drop is in METRES, and it used to be 0.05 in TILE-LOCAL z - where 1.0 is the tile's
-        // own width. That is 5% of a tile, so it scaled with the tile: 244 m at z13, 976 m at z11,
-        // 3.9 km at z9 and 31 km at z6. Looking down at a map nobody ever sees a skirt. Looking
-        // ALONG the ground, as a panorama does, every tile edge on the horizon carries a vertical
-        // wall kilometres deep, seen nearly edge-on - and the terrain depth texture carries it too,
-        // so an effect drawing lines from that depth inks a straight line along every tile boundary.
-        // Which is a seam between tiles of EQUAL zoom, on any DEM, that no normal can smooth: the
-        // skirt vertices copy their edge's normal, so the shading is continuous while the geometry
-        // is a cliff.
-        //
-        // What the skirt has to cover is the crack between a coarse sampling of a hillside and a
-        // fine one, which is bounded by the local relief - hundreds of metres, not tens of
-        // kilometres.
+        // In metres, not tile-local z, which made walls kilometres deep on coarse horizon tiles.
         if (grid) {
             double displayScale = elevationManager->getDisplayScale(originY + size * 0.5);
             double localPerMeter = (exaggeration > 0 ? exaggeration : 1.0) * displayScale * localFromInternal;
@@ -2628,15 +2284,8 @@ namespace massif {
         varying float v_elevation;
         varying float v_dist;
 
-        // THE DEM, PER FRAGMENT.
-        //
-        // v_worldPos.xy is the internal position, so a fragment can find itself in the elevation
-        // texture the tile is standing on and measure the slope THERE, instead of interpolating a
-        // normal baked at the mesh's corners. A mesh carries one normal per cell corner; at 64 cells
-        // a tile that is hundreds of metres of ground per sample, so every ridge narrower than a
-        // cell is smoothed away before any shader sees it. This is what geo-three's terrain material
-        // does (MaterialHeightShader: vComputedNormal from d-f, b-h taps of the height texture) and
-        // it is most of why its relief is sharp where ours is soft.
+        // Slope measured per fragment from the DEM (as geo-three's MaterialHeightShader): per-vertex
+        // normals smooth away every ridge narrower than a mesh cell.
         uniform sampler2D u_demTex;
         uniform vec4 u_demOriginSize;   // xy: internal origin of uv (0,0), zw: internal size of uv [0,1]
         uniform vec2 u_demInvTexSize;   // 1 / texture size, in texels
@@ -2654,15 +2303,8 @@ namespace massif {
             return terrainHeightUv((internalPos - u_demOriginSize.xy) / u_demOriginSize.zw);
         }
 
-        /**
-         * The surface normal measured at THIS fragment. stepMetres <= 0 samples at one texel, which
-         * is the finest the data can answer; a larger step is a deliberately smoother normal.
-         *
-         * Mercator: a fixed internal distance covers cos(latitude) as much ground, and
-         * cos(latitude) is exactly 1/cosh(mercator y) - so the true ground step is the equator's
-         * scaled by that. Without it a slope at latitude 45 comes out 1.41x too steep. GLSL ES 1.0
-         * has no cosh, hence the exponentials.
-         */
+        // stepMetres <= 0 samples at one texel. The ground step is scaled by cos(lat) = 1/cosh(mercator y),
+        // spelled with exponentials because GLSL ES 1.0 has no cosh.
         vec3 terrainNormal(float stepMetres) {
             // A SKIRT (z marked negative by the attribute bake): a vertical crack-filling wall, whose
             // fragments all share one ground position. Sampling the DEM per fragment there bands it
@@ -2670,10 +2312,8 @@ namespace massif {
             if (v_normal.z < 0.0) {
                 return normalize(vec3(v_normal.xy, -v_normal.z));
             }
-            // NO MESH-NORMAL FALLBACK. Returning normalize(v_normal) here was the pre-per-fragment
-            // shading, so a tile without an elevation texture yet drew in a visibly different style
-            // and the picture appeared to change shader as it loaded. Flat is the honest answer to
-            // "no height data": the tile shades as ground until its texture arrives.
+            // Flat, not the mesh normal: a mesh-normal fallback shades in a visibly different style
+            // until the elevation texture arrives.
             if (u_demValid < 0.5) {
                 return vec3(0.0, 0.0, 1.0);
             }
@@ -2767,15 +2407,8 @@ namespace massif {
         varying vec3 v_worldPos;
         varying vec2 v_demUv;
 
-        // THE DEM, PER FRAGMENT.
-        //
-        // v_worldPos.xy is the internal position, so a fragment can find itself in the elevation
-        // texture the tile is standing on and measure the slope THERE, instead of interpolating a
-        // normal baked at the mesh's corners. A mesh carries one normal per cell corner; at 64 cells
-        // a tile that is hundreds of metres of ground per sample, so every ridge narrower than a
-        // cell is smoothed away before any shader sees it. This is what geo-three's terrain material
-        // does (MaterialHeightShader: vComputedNormal from d-f, b-h taps of the height texture) and
-        // it is most of why its relief is sharp where ours is soft.
+        // Slope measured per fragment from the DEM (as geo-three's MaterialHeightShader): per-vertex
+        // normals smooth away every ridge narrower than a mesh cell.
         uniform sampler2D u_demTex;
         uniform vec4 u_demOriginSize;   // xy: internal origin of uv (0,0), zw: internal size of uv [0,1]
         uniform vec2 u_demInvTexSize;   // 1 / texture size, in texels
@@ -2793,15 +2426,8 @@ namespace massif {
             return terrainHeightUv((internalPos - u_demOriginSize.xy) / u_demOriginSize.zw);
         }
 
-        /**
-         * The surface normal measured at THIS fragment. stepMetres <= 0 samples at one texel, which
-         * is the finest the data can answer; a larger step is a deliberately smoother normal.
-         *
-         * Mercator: a fixed internal distance covers cos(latitude) as much ground, and
-         * cos(latitude) is exactly 1/cosh(mercator y) - so the true ground step is the equator's
-         * scaled by that. Without it a slope at latitude 45 comes out 1.41x too steep. GLSL ES 1.0
-         * has no cosh, hence the exponentials.
-         */
+        // stepMetres <= 0 samples at one texel. The ground step is scaled by cos(lat) = 1/cosh(mercator y),
+        // spelled with exponentials because GLSL ES 1.0 has no cosh.
         vec3 terrainNormal(float stepMetres) {
             // A SKIRT (z marked negative by the attribute bake): a vertical crack-filling wall, whose
             // fragments all share one ground position. Sampling the DEM per fragment there bands it
@@ -2809,10 +2435,8 @@ namespace massif {
             if (v_normal.z < 0.0) {
                 return normalize(vec3(v_normal.xy, -v_normal.z));
             }
-            // NO MESH-NORMAL FALLBACK. Returning normalize(v_normal) here was the pre-per-fragment
-            // shading, so a tile without an elevation texture yet drew in a visibly different style
-            // and the picture appeared to change shader as it loaded. Flat is the honest answer to
-            // "no height data": the tile shades as ground until its texture arrives.
+            // Flat, not the mesh normal: a mesh-normal fallback shades in a visibly different style
+            // until the elevation texture arrives.
             if (u_demValid < 0.5) {
                 return vec3(0.0, 0.0, 1.0);
             }
@@ -2839,21 +2463,12 @@ namespace massif {
             float depth = min(sqrt(clamp(v_depth, 0.0, 1.0)), 0.9995);
             vec2 enc = fract(vec2(1.0, 255.0) * depth);
             enc.x -= enc.y * (1.0 / 255.0);
-            // Octahedral, upper hemisphere only - a height field's normal never points down, so the
-            // L1 normalisation IS the encoding and the usual fold is unreachable. Degenerate
-            // normals (a zero attribute on a mesh built before the attributes existed) fall back to
-            // straight up rather than to a division by zero.
-            // PER FRAGMENT, from the elevation texture - the same normal the surface is shaded
-            // with. Packing the interpolated vertex normal here left the post-process
-            // differentiating the MESH, so its ridge lines could never be finer than a mesh cell
-            // however sharp the operator on top of it was.
+            // Octahedral, upper hemisphere only: a height field's normal never points down, so no fold.
+            // Per fragment, the normal the surface is shaded with: a vertex normal caps ridge lines at mesh-cell size.
             vec3 n = terrainNormal(u_demNormalStep);
             float l1 = abs(n.x) + abs(n.y) + abs(n.z);
-            // DIAGNOSTIC FALLBACK, not the shipping one. Straight up (0, 0) is what a genuinely flat
-            // surface encodes to AND what the sky is cleared to, so a degenerate normal used to be
-            // indistinguishable from both - which is why three rounds of debugging could not tell
-            // "the attribute is zero" from "this pixel was never drawn". (1, -1) has an L1 norm of
-            // two, so no real normal can produce it, and it shows up as its own colour.
+            // Diagnostic: (1, -1) has L1 norm 2, so no real normal encodes to it, unlike (0, 0) which
+            // is both flat ground and the sky clear colour.
             vec2 oct = l1 > 0.0001 ? n.xy / l1 : vec2(1.0, -1.0);
             gl_FragColor = vec4(enc, oct * 0.5 + 0.5);
         }

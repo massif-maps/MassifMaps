@@ -15,18 +15,8 @@ namespace massif::vt {
     inline constexpr std::size_t MIN_SLICE_LABELS = 32;
 
     /**
-     * Whether a rationed placement pass that resumed at `cursor` may stop at `index`. Free of the
-     * culler so the host tests can reach it; see docs/internals/rendering/06-labels.mdx.
-     *
-     * The floor is the point. One deadline is shared by every layer in a pass, so a layer whose turn
-     * comes after it is spent enters with the deadline already gone - and stopping on the first
-     * iteration leaves the cursor exactly where it was. A cursor that does not move is a layer whose
-     * labels are never placed again: measured on the Crosscall, two layers of three sat at 2048 of
-     * 4075 and 96 of 172 for as long as the map was panned, so everything past those points kept
-     * whatever visibility it had and no newly loaded tile ever got a label.
-     *
-     * The 32-label mask is only there to keep the clock read off most iterations, which is why it
-     * alone could not carry this: every stuck cursor was a multiple of 32.
+     * Whether a rationed pass that resumed at `cursor` may stop at `index`. The floor guarantees the
+     * cursor moves even when the shared deadline is already spent. See docs/internals/rendering/06-labels.mdx.
      */
     inline bool labelSliceMayStop(std::size_t index, std::size_t cursor, std::size_t minLabels) {
         return index - cursor >= minLabels && (index & 0x1f) == 0;

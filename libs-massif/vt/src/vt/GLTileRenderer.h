@@ -229,8 +229,7 @@ namespace massif::vt {
         void setLabelOcclusionOpacity(float occludedOpacity);
         // True when some style layer asks for occlusion even though the default does not.
         bool hasStyledLabelOcclusion() const;
-        // Whether the visible tiles draw anything on the ground - a background, a bitmap or a
-        // geometry - rather than labels alone.
+        // Whether the visible tiles draw a background, a bitmap or a geometry, rather than labels alone.
         bool hasGroundContent() const;
         // Draws every visible extrusion into the bound depth target from the camera. The ground is
         // NOT drawn: labels are already tested against the terrain on the CPU, per label
@@ -574,9 +573,7 @@ namespace massif::vt {
             int parameterCount;
             float scale;
             int glyphRenderSize;
-            // The tile owning the ANCHORS in this batch, so the batch can bind that tile's elevation
-            // uniforms and elevate them on the GPU (applyTerrain). Only meaningful with terrain on,
-            // where renderLabelPass groups the labels by it; (-1,-1,-1) is "no tile".
+            // The tile owning this batch's anchors, whose elevation uniforms lift them on the GPU; (-1,-1,-1) = none.
             TileId tileId { -1, -1, -1 };
             cglib::mat4x4<double> labelMatrix;
             std::array<cglib::vec4<float>, MAX_PARAMETERS> colorTable;
@@ -688,10 +685,7 @@ namespace massif::vt {
         bool updateRenderTile(RenderTile& renderTile, float dBlend) const;
 
         static long long calculateLabelGeometryHash(const Tile* tile, long long localId);
-        /**
-         * A label map rebuild in flight: everything prepareLabelMaps produces off _mutex, for
-         * commitLabelMaps to fold into the live maps under it. See prepareLabelMaps.
-         */
+        /** A label map rebuild prepared off _mutex by prepareLabelMaps, committed under it by commitLabelMaps. */
         struct LabelMapBuild {
             long long signature = 0;
             bool unchanged = false;        // the tile set did not move; nothing to do
@@ -789,12 +783,10 @@ namespace massif::vt {
          */
         void markPendingLabelsDirty();
         std::function<cglib::vec3<double>(const cglib::vec3<double>&)> labelAnchorFunc() const;
-        // Whether each label's anchor stands on a span DECK rather than on the ground, so labelVsh
-        // keeps the CPU height there instead of taking the terrain's. One chord test per LABEL: the
-        // height func answers per vertex and cannot report which of its two sources it used.
+        // Flags labels anchored on a span deck, whose CPU height labelVsh must keep; one chord test per
+        // label, since the height func cannot report which source it used.
         void markDeckAnchoredLabels(const std::vector<std::shared_ptr<Label>>& labels) const;
-        // Which batch a label belongs to: its anchor tile when it needs the GPU to supply a height,
-        // (-1,-1,-1) - the shared batch, CPU height - when it is already anchored.
+        // A label's batch: its anchor tile when the GPU supplies its height, (-1,-1,-1) when already anchored.
         TileId labelBatchTileId(const std::shared_ptr<Label>& label) const;
         bool anchorDirtyLabels();
         bool spanHeightAt(const cglib::vec2<double>& pos, double& height) const;
@@ -985,7 +977,7 @@ namespace massif::vt {
         bool _buildingGrowOnAppear = false;
         bool _buildingFadeOnAppear = false;
         float _groundAOIntensity = 0.0f;
-        // Read lock-free, per drape layer per frame: the walk behind it used to take _mutex.
+        // Read lock-free, per drape layer per frame.
         std::atomic<bool> _groundAOBakeable { false };
         float _groundAOAttenuation = 0.69f;
         bool _groundAOMaskPass = false; // set only while the mask is being drawn
@@ -1076,8 +1068,7 @@ namespace massif::vt {
         std::atomic<bool> _labelsReanchored { false }; // see consumeLabelsReanchored
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
-        // The label tile set the maps were last built from: buildLabelMaps depends on nothing else,
-        // so an unchanged set rebuilds them identically at 167-289 ms/s of a streaming map.
+        // The label tile set the maps were last built from; buildLabelMaps depends on nothing else.
         long long _labelTilesSignature = 0;
         unsigned int _labelMapGeneration = 0; // bumped when the live maps are dropped under us
         mutable std::size_t _lastDrapeGlobalTerm = 0; // diagnostic only: see collectDrapeTiles

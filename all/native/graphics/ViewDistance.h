@@ -13,18 +13,16 @@
 namespace massif {
 
     /**
-     * The camera's own distance, which everything about how far the map reaches is a multiple of.
-     * Free of ViewState so the host tests can reach it; see ViewState::calculateViewDistances and
-     * docs/internals/rendering/05-depth-model.md.
+     * The camera height every view distance is a multiple of; free of ViewState for the host tests.
+     * See docs/internals/rendering/05-depth-model.md.
      */
     struct ViewDistance {
         /** Tangram's LOD depth: 2^(d+1)-1 = 127 tile widths, the cap on how far tiles are walked. */
         static const int MAX_TILE_LOD = 6;
 
         /**
-         * Tangram's m_pos.z: the zoom-derived orbit distance, or the camera's height above sea
-         * level when that is larger. On a summit the two part company, and the orbit alone draws a
-         * few kilometres of panorama.
+         * Tangram's m_pos.z: the orbit distance, or the altitude above sea level when larger
+         * (on a summit the orbit alone draws only a few kilometres).
          */
         static double cameraHeight(double orbitDistance, double cameraAltitude) {
             return std::max(orbitDistance, cameraAltitude);
@@ -36,24 +34,13 @@ namespace massif {
         }
 
         /**
-         * Below this the tilt no longer lengthens the ceiling: 0.1 is tilt 5.7 degrees, already 10x
-         * the straight-down reach, and past it the tile walk cap is the bound in any case.
+         * Below this the tilt no longer lengthens the ceiling (tilt 5.7 degrees); the tile walk cap bounds it anyway.
          */
         static constexpr double MIN_TILT_SIN = 0.1;
 
         /**
-         * The ceiling on how far the map is DRAWN: DrawDistance multiples of that height, divided
-         * by the sine of the tilt. Scaling the ORBIT alone made it a function of the zoom, so
-         * dropping near the ground in mountains cut off peaks whose tiles were being fetched anyway.
-         *
-         * The tilt term is mapbox's cameraToSeaLevelDistance = altitude / cos(pitch)
-         * (src/geo/projection/far_z.ts); pitch 0 is straight down there and tilt 90 is straight down
-         * here, so their cos(pitch) is our sin(tilt) and straight down is unchanged. Without it the
-         * map reaches as far looking at the horizon as at the camera's own feet, which is why a low
-         * camera saw a hundred metres of a mountain range.
-         *
-         * Under the tile walk cap all the same: with ViewDistanceFactor 0 the cull envelope stops at
-         * the far plane ALONE, so an unbounded ceiling is an unbounded tile walk (CullWorker).
+         * How far the map is drawn: DrawDistance camera heights over sin(tilt) (mapbox far_z.ts),
+         * under the tile walk cap because with ViewDistanceFactor 0 nothing else bounds the tile walk.
          */
         static double drawCeiling(double cameraHeight, double drawDistance, double worldTileSize, double tiltSin) {
             double grazing = std::max(std::isfinite(tiltSin) ? tiltSin : 1.0, MIN_TILT_SIN);

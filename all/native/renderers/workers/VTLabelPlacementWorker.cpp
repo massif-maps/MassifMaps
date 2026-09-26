@@ -126,16 +126,12 @@ namespace massif {
     // is the same 300 ms.
     const int VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL = 300;
 
-    // The ceiling, and the only thing that enforces it. A cycle's SIZE cannot bound a RATE: once
-    // placement got cheap enough to run whole, it simply ran more often, and 8 ms at 15 passes a
-    // second is 120 ms/s again. So after spending C ms, the next pass waits
-    // C * (1000/TARGET - 1), holding placement to TARGET ms of every second whatever the tilt, the
-    // cycle size or how often the camera asks. It is a cap, not a quota - a still map spends none.
+    // The only cap on placement's CPU share, since a cycle's size cannot bound its rate: after C ms
+    // the next pass waits C * (1000/TARGET - 1), holding placement to TARGET ms of every second.
+    // A cap, not a quota: a still map spends none.
     static const double PLACEMENT_TARGET_MS_PER_SECOND = 90.0;
 
-    // A cycle is no longer SLICED, at any size - see the note at culler.beginSlice below. The
-    // machinery for it is still here and still correct (a cursor per layer, a culler and a frozen
-    // view that outlive a pass); restoring a non-zero budget there turns it back on.
+    // Slicing is off, see culler.beginSlice below; the machinery still works and a non-zero budget restores it.
     static const double PLACEMENT_BUDGET_MS = 0.0;
 
     bool VTLabelPlacementWorker::calculateVTLabelPlacement() {
@@ -153,15 +149,9 @@ namespace massif {
             layer->collectLabelLayers(labelLayers);
         }
 
-        // A cycle in progress keeps the view it was opened against: its collision grid is half
-        // built for that screen, and RESUMING against a moved camera would place the rest of the
-        // labels against it. mapbox freezes the transform for a cycle for the same reason.
-        //
-        // Once the camera HAS moved, though, every placement the cycle has left to make is for a
-        // screen that is gone, and draining it first is what the user waits through - measured at up
-        // to ~10 s of panning before the near field is labelled. So the stale cycle is ABANDONED
-        // rather than finished: cursors back to the start, grid cleared, new view. That keeps the
-        // invariant (a cycle is never resumed against a different view) and drops the wait.
+        // A cycle keeps the view it opened against (as mapbox freezes the transform): its grid is half
+        // built for that screen. Once the camera has moved the rest is for a screen that is gone, so
+        // the cycle is abandoned and restarted rather than drained.
         if (_cycleActive && mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
             for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
                 layer->_tileRenderer->restartLabelPlacement();
@@ -169,9 +159,7 @@ namespace massif {
             _cycleWrappedLayers.clear();
             _cycleMs = 0;
             _cycleActive = false;
-            // The screen this cycle was placing for is gone, so the placement that replaces it has
-            // nothing to fade FROM: commit it outright. This is the only case that snaps - see
-            // 'forced' below.
+            // Nothing left to fade from: commit the replacement outright. The only case that snaps.
             _snapNextPlacement = true;
         }
         if (!_cycleActive) {
@@ -196,26 +184,12 @@ namespace massif {
             double coshLatitude = std::cosh(latitude);
             culler.setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE * coshLatitude);
         }
-        // How far labels may be placed, in multiples of the camera-to-focus distance. maplibre's
-        // own cut is the default; a view along the ground needs it raised or turned off, since its
-        // focus sits a few kilometres in front of a low camera and everything worth naming is past
-        // five times that (Options::setLabelViewDistance).
+        // In multiples of the camera-to-focus distance; a view along the ground needs it raised or off,
+        // its focus being a few km ahead of a low camera (Options::setLabelViewDistance).
         culler.setLabelViewDistance(mapRenderer->getOptions()->getLabelViewDistance());
-        // NOT rationed within a pass any more. PLACEMENT_TARGET_MS_PER_SECOND is what holds
-        // placement to its share of wall clock, and it does so "whatever the tilt, the cycle size or
-        // how often the camera asks" - so a slice buys no ceiling the duty cycle does not already
-        // give. What a slice DOES cost is the SELECTION: the culler sorts by priority and then
-        // inserts greedily, and a slice sorts only the subset it collected, so a label collected
-        // early claims a grid slot before a higher-priority label in a later slice is even looked
-        // at. On a city map that is invisible - a cycle is ~8 ms there and was never sliced - but in
-        // a panorama the whole screen is horizon band, a cycle is hundreds of milliseconds, and the
-        // labels whose priority only counts once everything is in the sort are exactly the far
-        // summits the mode exists to name. The set of names also changed with every slice boundary,
-        // which is what reads as labels churning while the view turns.
-        //
-        // The price is latency, not throughput: a 200 ms cycle now lands in one pass and the duty
-        // cycle spaces the next one ~2 s later, so placement follows a turning view in steps
-        // instead of continuously. That is the trade the mode wants - one stable set of names.
+        // Not sliced: the duty cycle already caps the rate, and a slice sorts only its own subset, so an
+        // early label claims a slot before a higher-priority one (a panorama's far summits). The price
+        // is latency: a long cycle lands in one pass, and placement follows a turn in steps.
         bool forced = _snapNextPlacement;
         _snapNextPlacement = false;
         culler.beginSlice(PLACEMENT_BUDGET_MS);
@@ -223,11 +197,8 @@ namespace massif {
 
         bool reversedOrder = mapRenderer->getOptions()->isLayersLabelsProcessedInReverseOrder();
         bool changed = false;
-        // A layer wraps when its cursor reaches the end of its own label list, which under slicing
-        // takes a different number of passes per layer - so requiring them all to wrap in the SAME
-        // pass never came true, the cycle never ended and the grid was never cleared. Measured on the
-        // Crosscall: 0 completions in 230 passes, 1241 stale records held forever, and no label of a
-        // newly loaded tile could claim a slot again.
+        // Under slicing each layer wraps on a different pass, so the cycle ends once every layer has
+        // wrapped at least once, or the grid is never cleared.
         auto cullLayer = [&](const std::shared_ptr<VectorTileLayer>& layer) {
             bool wrapped = true;
             if (layer->_tileRenderer->cullLabels(culler, viewState, wrapped)) {
@@ -255,10 +226,7 @@ namespace massif {
         }
 
         if (changed) {
-            // Only an ABANDONED cycle snaps. A redo owed to a camera that moved while the pass ran
-            // is the normal case on a view that is being turned - snapping that one meant every
-            // placement of a turning view arrived with no fade at all, which is what made a changed
-            // name read as a blink rather than a cross-fade.
+            // Only an abandoned cycle snaps: a turning view's redo cross-fades, or a changed name blinks.
             if (forced) {
                 for (const std::shared_ptr<VectorTileLayer>& layer : labelLayers) {
                     layer->_tileRenderer->snapLabelTransition();
@@ -282,13 +250,8 @@ namespace massif {
             scheduleContinuation();
         } else {
             _cycleMs = 0;
-            // Every label of that cycle was placed against the view it opened with, so if the camera
-            // has moved since, the screen now shows placements for a camera that is gone: far tiles
-            // keep a mass of labels overlapping each other and the newly revealed ground has none.
-            // Nothing else will ask for the redo - a still map stops waking this thread - so the
-            // cycle asks for itself, and converges as soon as one opens on a camera that holds.
-            // It does NOT snap: this is the ordinary case while a view is being turned, and the
-            // cross-fade is what keeps the change legible.
+            // Placed for a camera that has since moved, and a still map stops waking this thread, so
+            // the cycle asks for its own redo. No snap: the cross-fade keeps the change legible.
             if (mapRenderer->getViewState().getModelviewProjectionMat() != _cycleViewState.getModelviewProjectionMat()) {
                 scheduleContinuation();
             }

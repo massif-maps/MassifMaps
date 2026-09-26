@@ -209,10 +209,10 @@ namespace massif {
         bool _noDualPointerYet;
         std::chrono::steady_clock::time_point _dualPointerReleaseTime;
 
-        // FIRST PERSON: the direction under the finger when the look started (heading and elevation,
+        // First person: the direction under the finger when the look started (heading and elevation,
         // radians), and the camera the look has asked for since, so that direction stays under it.
         bool _lookAnchored;
-        ScreenPos _lookAnchorPos; // where the finger went DOWN: the drag threshold is part of the look
+        ScreenPos _lookAnchorPos; // where the finger went down: the drag threshold is part of the look
         double _lookAnchorHeading;
         double _lookAnchorElevation;
         float _lookRotation;

@@ -41,8 +41,7 @@ namespace massif {
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
         _meshResolution(64),
         _subdivideDistance(0.0f),
-        // 0: the node field follows the mesh, which is what every caller got before it could be
-        // asked for separately. See setSurfaceNodeResolution for why the two are worth splitting.
+        // 0: the node field follows the mesh.
         _surfaceNodeResolution(0),
         _postProcessDownscale(2),
         _tileEdgeStitchingEnabled(true),
@@ -65,9 +64,7 @@ namespace massif {
         _focusLift(0.0f),
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
-        // 0.2, not 0: measured at Grenoble from the south of La Bastille, where 0 dropped POIs on
-        // slopes FACING the camera. The grazing term in TerrainOcclusion::isBehind covers the angle;
-        // this covers what is left - the anchor-vs-drawn-surface error itself.
+        // 0 drops POIs on slopes facing the camera: covers the anchor-vs-drawn-surface error.
         _billboardOcclusionTolerance(0.2f),
         _normalSampleDistance(0.0f),
         _textOcclusionOpacity(1.0f),
@@ -95,10 +92,7 @@ namespace massif {
     }
 
     TerrainOptions::~TerrainOptions() {
-        // use_count AFTER this member is the number of OUTSIDE holders: 1 means only this, so the
-        // manager dies with us. More means something else pinned it - TerrainTileTransformer and
-        // TerrainProjectionSurface both keep a const shared_ptr, and Options::setTerrainOptions(null)
-        // touches neither.
+        // use_count > 1: an outside holder (TerrainTileTransformer, TerrainProjectionSurface) keeps the manager alive.
         Log::Infof("LIFE: TerrainOptions destroyed, elevationManager use_count=%ld", static_cast<long>(_elevationManager.use_count()));
     }
 
@@ -186,9 +180,7 @@ namespace massif {
     }
 
     void TerrainOptions::markSwitchingIfRising(float askedRatio) {
-        // Asking for 3D off a flat map WILL wait for tiles, and the renderer only says so on its
-        // next frame. An app that polls isSwitching() before that frame reads false, starts its
-        // flight against a ground the switch then holds flat, and the terrain ramps after it lands.
+        // The renderer only reports the wait on its next frame; set it now so isSwitching() never reads false in between.
         if (askedRatio < 1.0f && _flattenRatio.load() >= 1.0f && _flattenSwitchStarted.load()) {
             _switching.store(true);
         }
@@ -303,10 +295,7 @@ namespace massif {
     }
 
     void TerrainOptions::setMeshResolution(int meshResolution) {
-        // The ceiling was 256, which silently turned a request for 512 into no change at all - and
-        // 256 is half the grid the reference this is compared against uses. The caller decides; 1024
-        // is left as a guard against an allocation that would take the process down, not as a
-        // judgement about what is useful.
+        // 1024 only guards against an allocation that would kill the process.
         int resolution = std::min(1024, std::max(2, meshResolution));
         if (_meshResolution.exchange(resolution) != resolution) {
             notifyOptionChanged("MeshResolution");
@@ -455,11 +444,7 @@ namespace massif {
     void TerrainOptions::setMaxZoom(int maxZoom) {
         int zoom = std::min(24, std::max(0, maxZoom));
         if (_maxZoom.exchange(zoom) != zoom) {
-            // The DATA too, not only the mesh cut. Pinning the cut alone measured no better: the
-            // cut stopped moving (RenderStats tileRecalc 0) while the elevation grid cache kept
-            // thrashing at capacity (elevGrid reinserts 2-6 per second, indefinitely), and every
-            // reload bumps the elevation version - so labels went on re-anchoring and the ground
-            // went on moving. See ElevationManager::setMaxDataZoomCap.
+            // Cap the data too: capping the mesh alone left the grid cache thrashing and the ground moving.
             if (_elevationManager) {
                 _elevationManager->setMaxDataZoomCap(zoom);
             }
@@ -547,11 +532,7 @@ namespace massif {
     void TerrainOptions::setElevationCacheSize(int megabytes) {
         int clamped = std::max(0, megabytes);
         if (_elevationCacheSize.exchange(clamped) != clamped) {
-            // Straight through to the manager, like SetMaxZoom does for the data zoom cap: the
-            // budget belongs to the grid cache, and the manager is the only thing that owns one.
-            // ONLY when asked for: setCacheCapacity latches _gridCacheCapacityFixed, so passing 0
-            // through would pin the cache at zero bytes rather than restore the grid-count rule.
-            // 0 here therefore means "never told the manager anything", which is what the default is.
+            // Never pass 0: setCacheCapacity latches a fixed capacity, so 0 would pin the cache at zero bytes.
             if (_elevationManager && clamped > 0) {
                 _elevationManager->setCacheCapacity(static_cast<std::size_t>(clamped) * 1024 * 1024);
             }

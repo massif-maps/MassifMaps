@@ -52,9 +52,7 @@
 
 namespace {
     std::shared_ptr<massif::WebMapView> _MapView;
-    // Held so the relief hooks below can reach them. The peak finder's shaders are the thing being
-    // iterated on, so NONE of their source lives here - the page supplies both and can change them
-    // on a reload, which is the whole point of driving this from JavaScript.
+    // Held for the relief hooks below; the page supplies the shader sources, so a reload changes them.
     std::shared_ptr<massif::TerrainOptions> _terrainOptions;
     std::shared_ptr<massif::PostProcessEffect> _reliefEffect;
     bool _reliefWantsNormals = true;
@@ -144,11 +142,8 @@ int main() {
     int maxZoom = static_cast<int>(queryNumber("maxzoom", 19));
     auto dataSource = std::make_shared<massif::HTTPTileDataSource>(minZoom, maxZoom, source);
 
-    // ?source=none adds NO tile layer at all, which a panorama needs: a draped raster or vector
-    // layer paints the terrain itself, so with one in the scene the surface shader's output is
-    // covered and every surface parameter reads as a no-op. Measured: with a raster source, setting
-    // uShadeStrength and uSlopeShade to 0 or to 1.5 both changed 33 pixels (the HUD), and turning
-    // the ink off left a flat sheet of paper - the picture was the post-process alone.
+    // ?source=none adds no tile layer, which a panorama needs: a draped layer covers the surface
+    // shader's output, so every surface parameter would be a no-op.
     if (source == "none") {
         // nothing
     } else if (isRasterSource(source)) {
@@ -192,8 +187,7 @@ int main() {
     std::string terrain = queryParam("terrain", "");
     if (!terrain.empty()) {
         std::shared_ptr<massif::TileDataSource> elevationSource = std::make_shared<massif::HTTPTileDataSource>(0, static_cast<int>(queryNumber("terrainMaxZoom", 12)), terrain);
-        // ?demCache=<path> keeps the DEM tiles in a database there - on a directory the page has
-        // mounted on IndexedDB, across reloads, as the app keeps its own (persistent-cache).
+        // ?demCache=<path>: DEM database on a directory the page mounted on IndexedDB.
         std::string demCache = queryParam("demCache", "");
         if (!demCache.empty()) {
             elevationSource = std::make_shared<massif::PersistentCacheTileDataSource>(elevationSource, demCache);
@@ -214,31 +208,16 @@ int main() {
         // "off". The mesh doubles for the same reason - 64 cells per tile edge is a phone budget.
         terrainOptions->setAutoFlattenTilt(0.0f);
         terrainOptions->setAutoFlattenParallax(0.0f);
-        // AT INIT, from the query string. A later setMeshResolution does not rebuild the meshes or
-        // the tile transformer - both read the value when they are created - so every runtime change
-        // measured as 0 pixels, and the panorama was quietly running at this 128 while the bench
-        // reported 256. Raising the clamp alone changed nothing for the same reason.
+        // At init: meshes and the tile transformer read it when created, so a later change does nothing.
         terrainOptions->setMeshResolution(static_cast<int>(queryNumber("meshResolution", WEB_TERRAIN_MESH_RESOLUTION)));
-        // AT INIT for the same reason: a mesh is built once and cached, so flipping stitching later
-        // leaves every cached mesh unstitched - which is why setting it at runtime measured as 0
-        // pixels and the steps between levels stayed exactly where they were.
+        // At init: a mesh is built once and cached, so a later change leaves cached meshes as they were.
         terrainOptions->setTileEdgeStitchingEnabled(queryNumber("tileEdgeStitching", 1) != 0);
-        // AT INIT as well. Several TerrainOptions setters do not invalidate what has already been
-        // built or culled, so a value written after the map is running measures as 0 pixels - which
-        // has now been true of meshResolution, tileEdgeStitching and viewDistance in turn. Anything
-        // that decides the shape of the world is set here, before anything reads it.
+        // At init: several TerrainOptions setters do not invalidate what is already built or culled.
         const double viewDistance = queryNumber("viewDistance", 0);
         if (viewDistance > 0) {
             terrainOptions->setViewDistance(static_cast<float>(viewDistance));
         }
-        // The VISIBLE TILE BUDGET, which is maxVisibleTiles = meshCacheSize / 2 in
-        // collectVisibleTiles: the cut is coarsened a level at a time until it fits. From high up
-        // over a long view that is what flattens the distance - debug view 10 shows z11 near and z7
-        // at the horizon - so it is the real limit on how far a panorama can see detail, not
-        // viewDistance. At init because the cut is cached on the camera and the elevation version,
-        // not on the budget, so a later change measures as 0 pixels.
-        // geo-three's terrain cut and mesh (TerrainOptions::setSubdivideDistance), and the level it
-        // stops at. The cut is cached on the camera, so the level cap is set here too.
+        // geo-three's cut (setSubdivideDistance) and its level cap; the cut is cached on the camera.
         const double subdivideDistance = queryNumber("subdivideDistance", 0);
         if (subdivideDistance > 0) {
             terrainOptions->setSubdivideDistance(static_cast<float>(subdivideDistance));
@@ -247,6 +226,8 @@ int main() {
         if (cutMaxZoom > 0) {
             terrainOptions->setMaxZoom(static_cast<int>(cutMaxZoom));
         }
+        // maxVisibleTiles = meshCacheSize / 2, the real limit on distant detail rather than viewDistance.
+        // At init: the cut is cached on the camera and the elevation version, not on this budget.
         const double meshCacheSize = queryNumber("meshCacheSize", 0);
         if (meshCacheSize > 0) {
             terrainOptions->setMeshCacheSize(static_cast<int>(meshCacheSize));
@@ -271,9 +252,7 @@ int main() {
     // And the layer list, which is what makes the whole map replaceable from JavaScript: the style
     // preview clears this and adds a layer it built from a spec of its own.
     massif::api::MassifInterop::adopt("layers", "map", _MapView->getLayers());
-    // Handlers that asked for "ui" delivery run on the page's thread, not on whichever worker
-    // produced the event - a click is detected on the click worker, and a JS handler is only
-    // callable where the page's function table lives.
+    // "ui" handlers run on the page's thread: a JS handler is only callable where its function table lives.
     mm_set_ui_dispatcher(mm_context_default(), [](void*, void (*function)(void*), void* argument) {
         emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VI, reinterpret_cast<void*>(function), argument);
     }, nullptr);
@@ -284,40 +263,21 @@ int main() {
 }
 
 /*
- * THE RELIEF HOOKS: enough of the peak finder to reproduce it in a browser, driven from JavaScript.
- *
- * They exist because the C ABI facade cannot build one: PostProcessEffect has no kind and no spec,
- * so a page can create a TerrainOptions but neither construct an effect nor attach it. Declaring a
- * kind for it would change the SDK's public surface; three functions here do not.
- *
- * NO SHADER SOURCE LIVES IN C++. The page passes both shaders in, so editing them is a reload
- * rather than a rebuild - which is the reason for running the panorama here at all. The parameters
- * go the same way, so ridge strength, deadzone and ground span can be swept from a script.
+ * Relief hooks for the peak finder: the C ABI facade cannot build or attach a PostProcessEffect
+ * (it has no kind or spec). The page passes the shader sources, so editing them is a reload.
  */
 extern "C" {
 
-/*
- * The panorama CAMERA, in one call.
- *
- * A map clamps tilt to its own range because it is a map; a panorama looks at the horizon, which is
- * a few degrees, and a flyTo silently lands on the clamp instead - the first capture asked for 4 and
- * came back 84.3. The range has to move before the camera does, and neither is a value the C ABI
- * carries as a plain property.
- */
+/* The panorama camera: the tilt range must open before the move, or the tilt lands on the clamp. */
 EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float zoom, float rotation,
                                                   float tilt, float elevationMeters) {
     if (!_MapView) {
         return;
     }
-    // ABOVE THE HORIZON TOO. The range stops at 0 by default, which is the horizon, so a look up
-    // was clamped the moment it left the horizontal - and a panorama looks at summits. Negative
-    // tilt is up (90 is straight down), so the range has to open on that side.
+    // Negative tilt looks above the horizon (90 is straight down); the default range stops at 0.
     _MapView->getOptions()->setTiltRange(massif::MapRange(-90.0f, 90.0f));
-    // THE GROUND POSITION, and the height through focusLift - which is the app's way and the only
-    // one that survives in first person. MapRenderer holds the eye at cameraTerrainZ + focusLift
-    // every frame under FREE_ROAM_MODE_FIRST_PERSON (MapRenderer.cpp:1449), so a z written into the
-    // camera position is overwritten on the next frame and the eye drops to the ground - which is
-    // what put it inside a hillside in every earlier attempt at this.
+    // Height through focusLift: in first person the renderer holds the eye at terrain z + focusLift
+    // every frame, so a z in the camera position is overwritten.
     massif::MapPos wgs84(lon, lat, 0.0);
     massif::MapPos pos = _MapView->getOptions()->getBaseProjection()->fromWgs84(wgs84);
     pos.setZ(0.0);
@@ -327,11 +287,7 @@ EMSCRIPTEN_KEEPALIVE void massifSetPanoramaCamera(double lon, double lat, float 
     }
 }
 
-/**
- * Makes a vector tile layer's clicks facade events ("vectortile.clicked" on its handle) - what the
- * native plugins do for a layer they subscribe on (MassifInterop::createVectorTileEventBridge). The
- * page cannot build that listener itself, so it names the layer by handle.
- */
+/** Turns a vector tile layer's clicks into "vectortile.clicked" facade events. */
 EMSCRIPTEN_KEEPALIVE int massifBridgeLayerClicks(int handle) {
     auto layer = std::dynamic_pointer_cast<massif::VectorTileLayer>(massif::api::MassifInterop::getLayerByHandle(handle));
     if (!layer) {
@@ -341,17 +297,12 @@ EMSCRIPTEN_KEEPALIVE int massifBridgeLayerClicks(int handle) {
     return 1;
 }
 
-/** Must be called BEFORE massifSetReliefShader: the layout is fixed when the effect is built. */
+/** Call before massifSetReliefShader: the layout is fixed when the effect is built. */
 EMSCRIPTEN_KEEPALIVE void massifSetReliefNormals(int wanted) {
     _reliefWantsNormals = (wanted != 0);
 }
 
-/**
- * The terrain's own base fill. Transparent by default, which means the terrain is see-through
- * wherever no layer has painted yet - and while the tiles load that is a lot of it, so the clear
- * colour shows through as hard black patches that settle into the picture as the drape arrives.
- * Filling with the paper colour makes the unpainted state the same colour as the finished one.
- */
+/** Terrain base fill; transparent by default, which shows black patches until the drape arrives. */
 EMSCRIPTEN_KEEPALIVE void massifSetTerrainBackground(int r, int g, int b, int a) {
     if (_terrainOptions) {
         _terrainOptions->setBackgroundColor(massif::Color(static_cast<unsigned char>(r), static_cast<unsigned char>(g),
@@ -359,22 +310,14 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainBackground(int r, int g, int b, int a)
     }
 }
 
-/**
- * The frame's haze. A panorama draws its own aerial perspective in the surface shader, over a
- * distance it chooses, so the SDK's fog on top of that is a second wash nobody asked for. ANDed with
- * the style, so switching it off here cannot be re-enabled by a style.
- */
+/** The panorama draws its own aerial perspective. ANDed with the style, so a style cannot re-enable it. */
 EMSCRIPTEN_KEEPALIVE void massifSetFogEnabled(int enabled) {
     if (_MapView && _MapView->getOptions()->getFogOptions()) {
         _MapView->getOptions()->getFogOptions()->setEnabled(enabled != 0);
     }
 }
 
-/**
- * 0 off, 1 look, 2 first person. First person is the one a panorama wants: a drag turns the view
- * about the CAMERA on both axes and the position never moves, which is a mouse in a first person
- * game rather than a map being spun about a point on the ground.
- */
+/** 0 off, 1 look, 2 first person (a drag turns the view about the camera, which never moves). */
 EMSCRIPTEN_KEEPALIVE void massifSetFreeRoamMode(int mode) {
     if (!_MapView) {
         return;
@@ -386,12 +329,8 @@ EMSCRIPTEN_KEEPALIVE void massifSetFreeRoamMode(int mode) {
 }
 
 /**
- * No sky, the way the app does it (peakFinder.ts applyAtmosphere). THREE things draw a band above
- * the horizon and each one alone leaves a gradient: the shader sky, the legacy sky BITMAP (whose
- * switch is a transparent skyColor - any real colour there generates a gradient), and the
- * BackgroundRenderer's plane, which falls back to the SDK's own block pattern when no style has an
- * opinion, so it has to be nulled rather than coloured. With all three off, the clear colour is
- * what shows.
+ * No sky, as peakFinder.ts applyAtmosphere: the shader sky, the legacy sky bitmap (off only with a
+ * transparent skyColor) and the background bitmap (null, else the block pattern) each draw a band.
  */
 EMSCRIPTEN_KEEPALIVE void massifSetSkyEnabled(int enabled, int r, int g, int b) {
     if (!_MapView) {
@@ -410,13 +349,7 @@ EMSCRIPTEN_KEEPALIVE void massifSetSkyEnabled(int enabled, int r, int g, int b) 
     }
 }
 
-/**
- * How high the eye stands above the ground, in metres - the panorama's one viewpoint control.
- *
- * NOT a camera z. With a terrain attached the renderer OWNS the focus height: it sits the focus on
- * the ground every frame, so an altitude written into the focus position lasts until the next one.
- * focusLift is ADDED on top of that rule, so it survives and means the same thing at every zoom.
- */
+/** Eye height above the ground, metres; not a camera z, which the renderer resets every frame. */
 EMSCRIPTEN_KEEPALIVE void massifSetFocusLift(float metres) {
     if (_terrainOptions) {
         _terrainOptions->setFocusLift(metres < 0.0f ? 0.0f : metres);
@@ -437,8 +370,7 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
     if (key == "normalSampleDistance") {
         _terrainOptions->setNormalSampleDistance(value);
     } else if (key == "meshResolution") {
-        // CLAMPED TO 256 by setMeshResolution, which is why asking for 512 here reads back as no
-        // change at all. surfaceNodeResolution is the surface's own grid and goes to 512.
+        // Clamped to 256; surfaceNodeResolution is the surface's own grid and goes to 512.
         _terrainOptions->setMeshResolution(static_cast<int>(value));
     } else if (key == "surfaceNodeResolution") {
         _terrainOptions->setSurfaceNodeResolution(static_cast<int>(value));
@@ -451,9 +383,7 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
     } else if (key == "exaggeration") {
         _terrainOptions->setExaggeration(value);
     } else if (key == "viewDistance") {
-        // How far the map is drawn AT LEAST, metres. The factor rule is proportional to the
-        // camera's height over the cosine of the angle to the horizon, so from a summit the far
-        // ranges can fall outside it - which reads as a horizon with nothing behind it.
+        // Minimum draw distance, metres: from a summit the factor rule alone can cut the far ranges.
         _terrainOptions->setViewDistance(value);
     } else if (key == "viewDistanceMax") {
         _terrainOptions->setViewDistanceMax(value);
@@ -466,7 +396,7 @@ EMSCRIPTEN_KEEPALIVE void massifSetTerrainFloat(const char* name, float value) {
     }
 }
 
-/** Replaces the ink pass. A shader is compiled into an effect, so a new source is a new effect. */
+/** Replaces the ink pass; a new source is a new effect. */
 EMSCRIPTEN_KEEPALIVE void massifSetReliefShader(const char* source) {
     if (!_MapView) {
         return;
@@ -478,15 +408,12 @@ EMSCRIPTEN_KEEPALIVE void massifSetReliefShader(const char* source) {
     }
     _reliefEffect = std::make_shared<massif::PostProcessEffect>("relief", source);
     _reliefEffect->setTerrainDepthRequired(true);
-    // Normals only when the shader asks for them. The depth-only outline wants the OTHER layout -
-    // all 24 bits spent on depth - because an outline is exactly the thing that needs depth
-    // precision, and the 16-bit sqrt depth the normal layout leaves room for quantises into visible
-    // steps over a panorama's far plane. The shading no longer comes from here at all.
+    // Without normals all 24 bits go to depth; the normal layout's 16 bits step on a far plane.
     _reliefEffect->setTerrainNormalsRequired(_reliefWantsNormals);
     _MapView->getMapRenderer()->setPostProcessEffect(_reliefEffect);
 }
 
-/** The SURFACE shader's own uniforms, which are terrain options rather than effect parameters. */
+/** The surface shader's uniforms, which are terrain options rather than effect parameters. */
 EMSCRIPTEN_KEEPALIVE void massifSetSurfaceParam(const char* name, float value) {
     if (_terrainOptions && name) {
         _terrainOptions->setSurfaceParameter(name, value);
@@ -498,12 +425,8 @@ EMSCRIPTEN_KEEPALIVE void massifSetReliefParam(const char* name, float value) {
         return;
     }
     _reliefEffect->setFloatParameter(name, value);
-    // AND ASK FOR A FRAME. An effect's parameters live on the effect object, which holds no
-    // reference back to the renderer (MapRenderer::setPostProcessEffect), so a write on its own
-    // cannot request a redraw - and on an on-demand renderer with a still camera nothing else will.
-    // Setting the same effect again is what the SDK documents as the way to publish a change; the
-    // app's applyReliefOutline ends with exactly that call. Without this every parameter swept here
-    // was a silent no-op, which is a bench that lies rather than a bench that measures.
+    // An effect holds no reference to the renderer, so a parameter write cannot request a redraw;
+    // re-setting the effect is the documented way to publish a change.
     if (_MapView) {
         _MapView->getMapRenderer()->setPostProcessEffect(_reliefEffect);
     }

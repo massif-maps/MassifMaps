@@ -468,23 +468,9 @@ namespace massif {
          */
         float getLabelViewDistance() const;
         /**
-         * Sets how far from the camera a label may be placed, in MULTIPLES of the camera-to-focus
-         * distance - the unit FogOptions' range and LightOptions' shadow distance also use.
-         *
-         * A label glyph is screen-space: it does not shrink with distance the way the geometry it
-         * names does, so a tilted view otherwise fills its horizon band with full-size names for
-         * features tens of kilometres away. mapbox and maplibre both cut them inside the symbol
-         * collision index, and the default here is maplibre's own cut (5; theirs is written as a
-         * perspective ratio of 0.6).
-         *
-         * It is a MAP's rule, though, not a universal one. A view along the ground - a panorama, a
-         * first person camera - has its focus a few kilometres in front of a low camera, so five
-         * times that distance cuts everything past ten or twenty kilometres, and in that view the
-         * far summits are the whole subject rather than clutter. Raise it for those, or set 0 and
-         * let the styles' own text-max-distance be the only limit.
-         *
-         * Placement cost grows with it: every label that survives the cut is a placement and a
-         * collision test per pass.
+         * Sets how far from the camera a label may be placed, in multiples of the camera-to-focus distance.
+         * The default 5 is maplibre's cut. Raise it, or set 0, for a view along the ground (panorama,
+         * first person), where the far features are the subject. Placement cost grows with it.
          * @param viewDistance The new label view distance, or 0 for no limit.
          */
         void setLabelViewDistance(float viewDistance);
@@ -495,25 +481,9 @@ namespace massif {
          */
         float getLabelPadding() const;
         /**
-         * Sets how far outside the viewport a label may be placed, in screen pixels.
-         *
-         * Placement only packs the labels it can SEE: one outside the band is never given a slot, so
-         * it arrives at the edge with the screen already full and has to evict a neighbour to appear.
-         * That eviction is what reads as names blinking in and out while a view is turned. Padding is
-         * the fix - a label that enters the band a screen early has already won or lost its slot by
-         * the time it is visible, and nothing changes on screen. maplibre pads a flat 100 and says so
-         * itself: "increases label stability, but it's expensive".
-         *
-         * The default is negative, which keeps the built-in rule: 100 pixels scaled by sin(tilt),
-         * with a floor of 20. That rule reasons about the GROUND - 100 pixels near the horizon are
-         * kilometres of map and thousands of labels - and for a map being panned it is right. A
-         * panorama is the case it gets wrong: tilt is ~0, so it takes the floor, and the view TURNS
-         * rather than panning, so the band it wants is a horizontal one over ground that is already
-         * loaded. Half a screen width is the useful setting there.
-         *
-         * Expensive in two places: the tiles filling the band are culled in as label tiles rather
-         * than preloading ones (TileLayer), and every label in it is a placement and a collision test
-         * per pass.
+         * Sets how far outside the viewport a label may be placed, in screen pixels; more padding, fewer
+         * labels blinking as the view turns, at a placement and tile-loading cost. The default is negative:
+         * 100 pixels scaled by sin(tilt), floor 20. A panorama wants about half a screen width.
          * @param padding The new label padding in screen pixels, or a negative value to follow the tilt.
          */
         void setLabelPadding(float padding);
@@ -526,11 +496,7 @@ namespace massif {
         /**
          * Sets the vertial field of view angle. Larger values increase the viewable area, at the cost of performance and
          * additional perspective distortion. The default is 70.
-         *
-         * FRACTIONAL degrees are meaningful and are the reason this is not an integer: an AR overlay
-         * has to reproduce the field of view of the camera behind it exactly, or a feature is drawn
-         * at a different size from the one photographed. One degree is about 3% of the tangent at a
-         * narrow field, which at the frame edge is a mismatch of tens of pixels.
+         * Fractional, so an AR overlay can match the field of view of the camera behind it exactly.
          * @param fovY The new vertical field of view angle in degrees.
          */
         void setFieldOfViewY(float fovY);
@@ -731,10 +697,8 @@ namespace massif {
          */
         float getFreeRoamLookSensitivity() const;
         /**
-         * Sets how fast a FREE_ROAM_MODE_LOOK drag turns the view, in degrees per inch.
-         *
-         * FREE_ROAM_MODE_FIRST_PERSON does not read it: its look is a grab on the panorama, which
-         * keeps the ground under the finger, so the turn is whatever the lens makes it.
+         * Sets how fast a FREE_ROAM_MODE_LOOK drag turns the view, in degrees per inch. The default is 360.
+         * FREE_ROAM_MODE_FIRST_PERSON ignores it: its look keeps the ground under the finger.
          * @param degrees The turn in degrees per inch.
          */
         void setFreeRoamLookSensitivity(float degrees);
@@ -745,16 +709,8 @@ namespace massif {
          */
         float getFreeRoamMoveSpeed() const;
         /**
-         * Scales the two-finger move in FREE_ROAM_MODE_FIRST_PERSON.
-         *
-         * NOT a rate any more. The move now travels the ground the DRAG COVERS - a pixel spans
-         * 2 * tan(fovY / 2) * distance / height, so the ground follows the cursor instead of
-         * moving at a speed somebody chose - and this scales that. 1, the default, tracks; below 1
-         * the ground lags the cursor and above 1 it runs ahead.
-         *
-         * It used to be a distance per inch of drag as a fraction of the camera-to-focus distance,
-         * defaulting to 0.5, which could not track at any value because it did not know the field
-         * of view.
+         * Scales the two-finger move in FREE_ROAM_MODE_FIRST_PERSON over the ground the drag covers.
+         * The default 1 keeps the ground under the cursor; below 1 it lags, above 1 it runs ahead.
          * @param multiplier The multiplier on the tracked distance.
          */
         void setFreeRoamMoveSpeed(float multiplier);

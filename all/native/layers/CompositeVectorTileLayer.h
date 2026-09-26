@@ -141,10 +141,8 @@ namespace massif {
         virtual void setPreloading(bool preloading);
 
         /**
-         * Sets the vector tile event listener for this layer and for every internal style-group
-         * layer it owns. A style with external source slots draws everything above the first slot
-         * on a group layer, and a group layer with no listener reports no click at all, so the
-         * listener has to reach them or only the bottom-most group answers clicks.
+         * Sets the vector tile event listener for this layer and every internal style-group layer,
+         * which otherwise report no clicks above the first external source slot.
          * @param eventListener The vector tile event listener.
          */
         virtual void setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener);

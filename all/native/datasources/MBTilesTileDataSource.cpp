@@ -77,10 +77,7 @@ namespace massif {
     }
 
     void MBTilesTileDataSource::cacheDeclaredMaxZoom(int maxZoom) {
-        // A maximum the caller NAMED wins over the database. MAX_SUPPORTED_ZOOM_LEVEL is not one:
-        // it is how "as deep as it goes" is spelled - the default, what the binding passes when the
-        // app names nothing, and what a metadata maxzoom of "inf" means. Only the database knows
-        // how deep that is, so leave it unresolved and let getMaxZoom ask.
+        // MAX_SUPPORTED_ZOOM_LEVEL means "unspecified" (the binding default), so the database decides.
         if (maxZoom < Const::MAX_SUPPORTED_ZOOM_LEVEL) {
             _cachedMaxZoom = maxZoom;
         }
@@ -92,9 +89,7 @@ namespace massif {
         if (!_cachedMinZoom) {
             _cachedMinZoom = minZoom;
         }
-        // Nobody named a maximum, so the database answers. It matters that this is the level it
-        // really holds: every level declared above one makes each fetch probe its way down to the
-        // real one (TileLayer::FetchTaskBase walks the ancestors inside the declared range).
+        // Must be the real deepest level: each declared level above it costs every fetch an ancestor probe.
         if (!_cachedMaxZoom) {
             _cachedMaxZoom = maxZoom < 0 ? TileDataSource::getMaxZoom() : maxZoom;
         }
@@ -234,8 +229,7 @@ namespace massif {
                     foundMinZoom = true;
                 } else if (name == "maxzoom") {
                     maxZoom = numValue;
-                    // "inf" is not a level the database holds, it is "as deep as it goes" - and the
-                    // tiles table is what knows. Left as 24 it makes every fetch probe ten levels.
+                    // "inf" is not a real level: fall through to the tiles table for the actual one.
                     foundMaxZoom = numValue < Const::MAX_SUPPORTED_ZOOM_LEVEL;
                 }
             }

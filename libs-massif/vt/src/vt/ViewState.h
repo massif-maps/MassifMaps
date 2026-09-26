@@ -24,15 +24,8 @@ namespace massif::vt {
         float tilt = 0;
         float aspect = 1;
         float resolution = 0;
-        // The viewport's REAL height in device pixels; 0 = not set.
-        //
-        // `resolution` above is the NORMALIZED screen - 2 * tileDrawSize * dpiScale - which is what
-        // every style size is measured against, and it says nothing about how many pixels the
-        // viewport actually has. The two only differ by a constant, so anything sized off the zoom
-        // comes out at the size the style asked whatever the screen is; but a SCREEN-space object
-        // (a callout label) sized off `resolution` alone ends up scaled by the ratio between them -
-        // so the same label was a different size on a taller screen, and shrank when the device was
-        // turned. See Label::calculateLabelScale.
+        // The viewport's real height in device pixels, 0 = not set; `resolution` is the normalized
+        // screen, so screen-space objects sized off it alone scale with the device. See Label::calculateLabelScale.
         float deviceResolution = 0;
         float zoomScale = 1;
         // Distance from the camera to the focus point, in internal units; 0 = not set, and the label
@@ -43,15 +36,8 @@ namespace massif::vt {
         // where the evaluation is PER LABEL - the culler's ranking pass - since the renderer evaluates a
         // style function once per batch and a per-label value there would break batching.
         float labelDistance = 0;
-        // How far a label may be PLACED, in multiples of focusDistance; 0 places every label however
-        // far it is. Options::setLabelViewDistance, and the same rule the culler applies.
-        //
-        // It has to be here as well as on the culler, and that is the whole point: the culler's cut
-        // reads a label's PLACEMENT, and Label::updatePlacement refuses to place one past its own
-        // copy of the rule - so an application that raised the culler's limit still had every distant
-        // label rejected one step earlier, with nothing for the culler to reconsider. A panorama is
-        // exactly that case: its focus sits a couple of kilometres in front of a low camera, and the
-        // default five times that cut every summit past ~15 km.
+        // How far a label may be placed, in multiples of focusDistance; 0 = no limit. Must match the
+        // culler's: Label::updatePlacement applies its own copy first, so raising only the culler's does nothing.
         float labelViewDistance = LabelDistance::DEFAULT_VIEW_DISTANCE;
 
         // mapbox's ["measure-light", "brightness"]: how bright the scene light is, 0-1. A style reads it
@@ -64,10 +50,7 @@ namespace massif::vt {
         bool planarProjection = false;
         cglib::mat4x4<double> projectionMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> cameraMatrix = cglib::mat4x4<double>::identity();
-        // The view-projection and its INVERSE, resolved once with the rest of the frame's camera.
-        // Label::setupCoordinateSystem snaps every point label's anchor to the screen pixel grid and
-        // needs both to do it - and it ran the product and a 4x4 double inverse PER LABEL, per frame,
-        // off values identical for the whole frame (3589 labels an interval on the Crosscall).
+        // Cached once per frame: Label::setupCoordinateSystem needs both for every point label.
         cglib::mat4x4<double> viewProjMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> invViewProjMatrix = cglib::mat4x4<double>::identity();
         cglib::vec3<double> origin = cglib::vec3<double>::zero();
@@ -107,10 +90,7 @@ namespace massif::vt {
 
         // Tilt 90 is straight down and 0 is the horizon (graphics/ViewState.h), so sin(tilt) IS the
         // foreshortening of the ground plane - the factor the world size of a screen pixel grows by.
-        //
-        // `paddingOverride` is Options::getLabelPadding: negative keeps the rule above, and anything
-        // else is taken as the padding outright. The rule reasons about the GROUND, and a view along
-        // the horizon turns rather than pans over it - see Options::setLabelPadding.
+        // `paddingOverride` >= 0 (Options::getLabelPadding) replaces the rule.
         static float calculateLabelPadding(float tilt, float paddingOverride = -1.0f) {
             if (paddingOverride >= 0.0f) {
                 return paddingOverride;
@@ -119,8 +99,7 @@ namespace massif::vt {
             return std::max(MIN_LABEL_PADDING, MAX_LABEL_PADDING * scale);
         }
 
-        // Re-pads an already-built view. The frustum is derived from the padding, so the two cannot
-        // be set apart from one another.
+        // The label frustum is derived from the padding, so both are set together.
         void setLabelPadding(float padding) {
             labelPadding = std::max(0.0f, padding);
             labelFrustum = cglib::gl_projection_frustum(paddedProjectionMatrix() * cameraMatrix);

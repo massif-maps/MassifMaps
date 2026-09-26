@@ -878,17 +878,13 @@ namespace massif::vt {
         return hasGroundAOTiles(groundAOZoomFade(_viewState.zoom));
     }
 
-    // Answered from a cached flag, refreshed where the visible tiles and the AO state are set. The
-    // owner asks once per drape layer per frame to fingerprint the stack, and the walk it used to do
-    // took this mutex - which a tile-set change holds for a whole label map rebuild: 211 ms of a
-    // 219 ms prelude. NO zoom fade, unlike the screen-space pass: a bake is cached and only redone
-    // when the tile's CONTENT changes, so anything the camera moves must stay out of it.
+    // A cached flag, so the per-frame drape fingerprint never takes _mutex. No zoom fade, unlike the
+    // screen-space pass: a bake is redone only when tile content changes, so camera state stays out.
     bool GLTileRenderer::isGroundAOBakeable() const {
         return _groundAOBakeable.load();
     }
 
     void GLTileRenderer::refreshGroundAOBakeable() {
-        // Caller holds _mutex.
         _groundAOBakeable.store(hasGroundAOTiles(1.0f));
     }
 
@@ -1284,9 +1280,7 @@ namespace massif::vt {
             addLabelTile(tilePair.second);
         }
 
-        // The label maps are rebuilt from the PREVIOUS ones, and that is the expensive half of this
-        // call - so it runs here, off the mutex, against a snapshot. The skip guard is answered
-        // first, from the tile list alone, so an unchanged set does not pay for the snapshot.
+        // The expensive label map rebuild runs off the mutex against a snapshot; an unchanged set skips the snapshot.
         LabelMapBuild labelBuild;
         labelBuild.signature = calculateLabelTilesSignature(labelTiles);
         {
@@ -1319,8 +1313,7 @@ namespace massif::vt {
         buildTileSurfaces(tileIds);
         VT_STAT_SPLIT(tileSurfacesNs, visibleClock);
         if (!labelBuild.unchanged) {
-            // deinitializeRenderer can have cleared the live maps on the render thread while the
-            // prepare above ran on the snapshot. Rare, and the answer is simply to redo it here.
+            // deinitializeRenderer may have cleared the live maps while the prepare ran: redo it here.
             if (labelBuild.generation != _labelMapGeneration) {
                 LabelMapBuild rebuild;
                 rebuild.signature = labelBuild.signature;
@@ -1363,10 +1356,8 @@ namespace massif::vt {
             std::lock_guard<std::mutex> lock(_mutex);
             for (std::size_t i = 0; i < dirtyLabels.size(); i++) {
                 if (dirtyLabels[i]->isElevationDirty()) {
-                    // Cleared even when the provider had no elevation: the answer cannot change until
-                    // new data arrives, and markPendingLabelsDirty re-dirties the label when it does.
-                    // Retrying every frame instead bought nothing and never converged. What carries
-                    // "height unknown" is isElevationAnchored(), not dirtiness.
+                    // Cleared even without elevation: markPendingLabelsDirty re-dirties it when data
+                    // arrives, and isElevationAnchored() is what carries "height unknown".
                     dirtyLabels[i]->applyElevation(positions[i]);
                     dirtyLabels[i]->setElevationDirty(false);
                 }
@@ -1571,7 +1562,7 @@ namespace massif::vt {
         }
         _labels.clear();
         _layerLabelMap.clear();
-        _labelMapGeneration++; // a prepare running off the mutex is now describing maps that are gone
+        _labelMapGeneration++; // invalidates a prepare running off the mutex
     }
     
     bool GLTileRenderer::startFrame(float dt) {
@@ -1655,10 +1646,8 @@ namespace massif::vt {
 
         // Update labels
         _visiblePassLabels = _passLabels;
-        // A placement forced by a camera change replaces the whole screen at once, so crossfading it
-        // shows every outgoing label on top of its replacement for the length of the fade - a pan
-        // came out of it with road names drawn twice. mapbox commits a forced placement with
-        // fadeDuration 0 for the same reason; this is that, consumed once.
+        // A forced placement replaces the whole screen, so a crossfade would double every label; mapbox
+        // commits one with fadeDuration 0 too.
         float dOpacity = (_snapLabelTransition.exchange(false) ? 1.0f
                                                               : (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f));
         for (int pass = 0; pass < 2; pass++) {
@@ -2720,8 +2709,7 @@ namespace massif::vt {
         return static_cast<long long>(hash);
     }
 
-    // Keyed on the tile OBJECTS: the same id can be re-served by a re-decoded tile, and that one DOES
-    // have to rebuild. Cheap, so the skip guard can be answered before anything is snapshotted.
+    // Keyed on the tile objects: a re-decoded tile can re-serve the same id and must rebuild.
     long long GLTileRenderer::calculateLabelTilesSignature(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
         long long signature = static_cast<long long>(labelTiles.size());
         for (const std::shared_ptr<const Tile>& labelTile : labelTiles) {
@@ -2730,19 +2718,8 @@ namespace massif::vt {
         return signature;
     }
 
-    /*
-     * The two expensive phases, run OFF _mutex against a snapshot of the previous maps.
-     *
-     * They are the whole reason a tile arrival hung the map: setVisibleTiles held the renderer mutex
-     * for the entire rebuild - 26 to 54 ms, 13 times a second while panning - and startFrame on the
-     * render thread wants that same mutex, measured as 102 ms of a 219 ms frame. Neither phase writes
-     * renderer state: the signatures are local, and every label they construct or merge into is one
-     * nothing else can see yet. A REUSED label is the live object, but only its build-time signature
-     * is read here.
-     *
-     * The caller checks the generation before committing, because deinitializeRenderer can clear the
-     * live maps on the render thread while this runs.
-     */
+    // The two expensive phases, off _mutex against a snapshot: they write no renderer state, and a
+    // reused live label only has its build-time signature read. The caller checks the generation.
     void GLTileRenderer::prepareLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles, const std::map<int, GlobalIdLabelMap>& oldLayerLabelMap, const std::optional<std::regex>& layerFilter, LabelMapBuild& build) const {
         VT_STAT_INC(labelMapRebuilds);
 
@@ -2765,8 +2742,7 @@ namespace massif::vt {
 
                 std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[layer->getLayerIndex()];
                 if (signatureMap.empty()) {
-                    // Sized from the labels it ended up holding last time, as the merge pass does:
-                    // grown from empty it rehashes its way to thousands of entries every rebuild.
+                    // Sized from last time's count, as the merge pass does, to avoid rehashing every rebuild.
                     signatureMap.reserve(oldLabelCount(layer->getLayerIndex()) + 64);
                 }
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
@@ -2832,8 +2808,7 @@ namespace massif::vt {
         VT_STAT_SPLIT(labelMergeNs, labelMapClock);
         // Stamp the signature on the freshly built labels, now that every contributing tile
         // has been merged into them. Doing it at construction time would make the label look
-        // complete to the merge branch above and swallow its remaining contributions. Still off
-        // the mutex: every label stamped here is one the renderer has never seen.
+        // complete to the merge branch above. Still off the mutex: the renderer has never seen these.
         for (auto newLayerLabelIt = newLayerLabelMap.begin(); newLayerLabelIt != newLayerLabelMap.end(); newLayerLabelIt++) {
             const std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[newLayerLabelIt->first];
             const std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[newLayerLabelIt->first];
@@ -2849,8 +2824,7 @@ namespace massif::vt {
         VT_STAT_SPLIT(labelStampNs, labelMapClock);
     }
 
-    // The rest, which MUTATES the live maps and the draw lists: caller holds _mutex. Short by design -
-    // what it does is erase, carry placement over and sort, against work already done.
+    // Mutates the live maps and draw lists; caller holds _mutex. Kept short: erase, carry placement, sort.
     void GLTileRenderer::commitLabelMaps(LabelMapBuild& build) {
         std::map<int, GlobalIdLabelMap>& newLayerLabelMap = build.labelMap;
         std::map<int, std::unordered_set<long long>>& reusedLayerLabelIds = build.reusedIds;
@@ -2928,12 +2902,8 @@ namespace massif::vt {
                 labels.push_back(label);
             }
         }
-        // CULL order, which is the opposite of the draw order below: the culler walks this list and
-        // greedily claims grid slots, so the most important label has to come first. It also has to
-        // be a GLOBAL order, because a rationed cycle only sorts the slice it collected - a
-        // low-priority label in the first slice would otherwise take a slot from a high-priority one
-        // in the fifth, and a sliced cycle would answer differently from a whole one for the very
-        // same scene (measured as a placement that changed under a still camera).
+        // Cull order (opposite of the draw order below), most important first, and global: a rationed
+        // cycle only sorts its own slice, so a sliced cycle would otherwise differ from a whole one.
         std::stable_sort(labels.begin(), labels.end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
             if (label1->getPriority() != label2->getPriority()) {
                 return label1->getPriority() > label2->getPriority();
@@ -2971,10 +2941,7 @@ namespace massif::vt {
         bool refresh = false;
         if (label->isValid()) {
             bool occluded = false;
-            // Not while the label's height is unknown: it still carries its flat decode height, and
-            // testing that against the terrain hides it under ground it is not actually behind.
-            // mapbox tests no symbol on elevation availability at all - it elevates them in the
-            // vertex shader, so the question cannot arise (symbol.vertex.glsl).
+            // Not while the height is unknown: the flat decode height would hide it under the ground.
             if (_labelOcclusionTest && label->isVisible() && label->isActive() && label->isElevationAnchored()) {
                 cglib::vec3<double> center(0, 0, 0);
                 if (label->calculateCenter(center)) {
@@ -3806,12 +3773,8 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass) {
-        // Only a label whose CPU height is UNKNOWN needs the GPU to supply one, and that is the only
-        // reason to split the batch: a batch elevates from one tile's elevation uniforms, so labels
-        // needing it must arrive grouped by tile. An anchored label already carries the right height,
-        // so it stays in the shared batch - which is what keeps the draw count where it was. Splitting
-        // every label by tile took label draws from 64 to ~450, and the per-frame cost tracks the draw
-        // count (RenderStats::geometryDraws). Stable, so the culler's order survives within a group.
+        // Group only labels needing a GPU height by tile (a batch binds one tile's elevation); anchored
+        // ones share a batch to keep the draw count down. Stable, so the culler's order survives.
         VT_STAT_CLOCK(sortClock);
         std::vector<std::shared_ptr<Label>> grouped;
         if (_terrainMode) {
@@ -3924,9 +3887,7 @@ namespace massif::vt {
                 // The anchor tile ends a batch only for a label that needs the GPU's height.
                 TileId labelTileId = labelBatchTileId(label);
                 if (bitmap != labelBitmap || labelBatchParams.tileId != labelTileId || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
-                    // Timed as a BATCH, not as style evaluation: this flush is an upload and a draw,
-                    // and attributing it here is what hid most of the label draws for so long. The
-                    // split banks the style work so far and restarts the clock for the rest of it.
+                    // The flush is an upload and a draw: bank the style time so far, not count the flush as style.
                     VT_STAT_SPLIT(labelPassStyleNs, styleClock);
                     renderLabelBatch(labelBatchParams, bitmap);
                     VT_STAT_SPLIT(labelBatchNs, styleClock);
@@ -4675,8 +4636,6 @@ namespace massif::vt {
     }
 
     TileId GLTileRenderer::labelBatchTileId(const std::shared_ptr<Label>& label) const {
-        // (-1,-1,-1) is "no tile": the shared batch, drawn without the terrain flag, which uses the
-        // label's own CPU height. Only an un-anchored label needs a tile's elevation uniforms.
         if (!_terrainMode || label->isElevationAnchored()) {
             return TileId(-1, -1, -1);
         }
@@ -5022,8 +4981,7 @@ namespace massif::vt {
         if (!_visibleRenderTiles) {
             return;
         }
-        // The part of every tile's fingerprint that is not per-tile: if it moves, the whole cover
-        // goes stale at once, which reads as "the drape re-bakes for ever" but is not about tiles.
+        // The fingerprint part shared by every tile: if it moves, the whole cover goes stale at once.
         std::size_t globalTerm = 0;
         for (int i = 0; i < 3; i++) {
             globalTerm = globalTerm * 31 + static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * 64.0f);
@@ -6016,8 +5974,7 @@ namespace massif::vt {
     }
 
     bool GLTileRenderer::hasGroundAOContent(const RenderTileLayer& renderLayer) const {
-        // Decided when the layer was decoded: a style with no extrusions has no contact shadow to
-        // find, and the walk that looked for one could never stop early.
+        // Decided at decode: the search for a contact shadow cannot stop early.
         return renderLayer.layer && renderLayer.layer->hasGroundAOGeometry();
     }
 
@@ -7162,17 +7119,14 @@ namespace massif::vt {
 
         const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
         unsigned int occlusionFlag = (_labelOcclusionTexture != 0 && labelBatchParams.occlusionOpacity < 1.0f ? LABEL_OCCLUSION_FLAG : 0);
-        // The anchors are elevated on the GPU from this batch's own tile, the same applyTerrain the
-        // surface uses, so a label cannot disagree with the ground it stands on and no CPU height is
-        // needed to draw it (mapbox symbol.vertex.glsl). The texture provider is the VTF capability
-        // gate, as everywhere else; without it the CPU anchor height is all there is.
+        // Anchors elevated on the GPU with the surface's own applyTerrain, as mapbox symbol.vertex.glsl;
+        // the texture provider is the VTF capability gate, without it the CPU height is used.
         unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider && labelBatchParams.tileId.zoom >= 0 ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0);
         const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (useDerivatives ? DERIVATIVES_FLAG : 0) | occlusionFlag | terrainFlag | fogFlag());
         useProgram(shaderProgram);
         setupFogUniforms(shaderProgram);
         if (terrainFlag) {
-            // The batch's vertex frame, which is what the anchors are relative to: setupTerrainUniforms
-            // derives the elevation uv from it, so applyTerrain(aVertexPosition) needs no conversion.
+            // The anchors' own frame, so applyTerrain(aVertexPosition) needs no conversion.
             setupTerrainUniforms(shaderProgram, labelBatchParams.tileId, cglib::translate4_matrix(_viewState.origin), false);
         }
         if (occlusionFlag) {

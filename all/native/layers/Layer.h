@@ -260,7 +260,7 @@ namespace massif {
         std::atomic<bool> _postProcessed;
 
         MapRange _visibleZoomRange;
-        mutable std::mutex _visibleZoomRangeMutex; // see getVisibleZoomRange - NOT the layer mutex
+        mutable std::mutex _visibleZoomRangeMutex; // not the layer mutex, see getVisibleZoomRange
 
         std::map<std::string, Variant> _metaData;
 
@@ -269,7 +269,7 @@ namespace massif {
         std::weak_ptr<Options> _options;
         std::weak_ptr<MapRenderer> _mapRenderer;
         std::weak_ptr<TouchHandler> _touchHandler;
-        mutable std::mutex _componentMutex; // the three above, written once in setComponents and read by every drawn frame - NOT the layer mutex
+        mutable std::mutex _componentMutex; // guards the three above; not the layer mutex
     };
     
 }

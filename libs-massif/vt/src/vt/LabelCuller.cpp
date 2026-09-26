@@ -227,9 +227,7 @@ namespace massif::vt {
                 }
                 return true;
             };
-            // The perspective cut comes FIRST and costs one length: everything below it -
-            // updatePlacement, the variant envelopes, the grid test - is per label, and the
-            // horizon band is where most of the labels are (performance-log 27).
+            // The perspective cut first: one length, before any per-label work (performance-log 27).
             if (measurable && !measureDistance()) {
                 continue;
             }
@@ -237,10 +235,7 @@ namespace massif::vt {
             if (label->updatePlacement(_viewState)) {
                 label->setOpacity(0);
             }
-            // A label placed for the FIRST time has no centre until updatePlacement, so it is measured
-            // after it. Left at 0 it was ranked by view::distance 0 - by raw height, for a summit rank -
-            // and a range a hundred kilometres out took the slots of the skyline in front of it: the
-            // names every decode brought were judged that way until the camera moved.
+            // A first-time label has no centre until updatePlacement; at distance 0 it would outrank nearer ones.
             if (measurable && !measured && !measureDistance()) {
                 continue;
             }
@@ -248,11 +243,8 @@ namespace massif::vt {
             if (!label->isValid()) {
                 VT_STAT_INC(cullerInvalid);
             }
-            // Hidden by the terrain: drop it before it can take a collision slot a visible neighbour
-            // needs. See setOcclusionTest.
-            // AFTER updatePlacement on purpose: the test is a matrix transform and five texture taps,
-            // and most CONSIDERED labels are off-screen (cullerInvalid). Asking before the placement
-            // ran it on every one of them and cost ~18 ms a pass against ~4.
+            // Hidden by the terrain: take no collision slot (see setOcclusionTest). After updatePlacement
+            // because most considered labels are off-screen and the test is not cheap.
             if (label->isValid() && _occlusionTest) {
                 cglib::vec3<double> anchor(0, 0, 0);
                 if (label->calculateCenter(anchor) && _occlusionTest(anchor)) {
@@ -344,10 +336,7 @@ namespace massif::vt {
             return true;
         };
 
-        // THE ROW FOLLOWS THE SKYLINE. A banded callout row sits just above the highest summit it
-        // names, not at a fixed height: that is peakfinder.com's row, and at a fixed height every
-        // summit standing above the line was dropped - which, with the skyline high on screen, was
-        // all of them. The style's screen anchor is the highest the row may go.
+        // A following band sits just above the highest summit it names (peakfinder's row), capped by the screen anchor.
         _highestCalloutAnchorY = -1.0f;
         for (const LabelInfo& labelInfo : validLabelList) {
             const std::shared_ptr<const TileLabel::Style>& style = labelInfo.label->getStyle();
@@ -493,8 +482,7 @@ namespace massif::vt {
         const std::shared_ptr<Label>& label = labelInfo.label;
         const std::shared_ptr<const TileLabel::Style>& style = label->getStyle();
 
-        // Until the next pass the name moves with its own anchor, or holds its band line - which,
-        // for a band that follows the skyline, moves with the summit the band was put above.
+        // Until the next pass the name moves with its own anchor, or holds its band line.
         bool banded = style->calloutScreenAnchor >= 0;
         bool following = banded && style->calloutBandFollow && _highestCalloutAnchorY >= 0;
         auto envelopeAt = [this, &labelInfo, &label, banded, following](float offset) {
@@ -540,12 +528,7 @@ namespace massif::vt {
         // Everything below is in SCREEN PIXELS, and so is the offset the label is given: it is converted
         // to world units at draw time against the projection at the label's own depth, so a lift of N
         // pixels stays N pixels while the camera tilts, rises or zooms.
-        //
-        // NORMALIZED screen pixels, though, while the style's own callout pixels - the offset and the
-        // step - are DEVICE ones, like the glyph size they space out (Label::calculateLabelScale takes
-        // the same). Hence the conversion: measured in this space they would otherwise be tighter or
-        // looser than the names they separate by whatever the viewport's height happens to be, so a
-        // row spacing that worked in portrait had the rows overlapping in landscape.
+        // Normalized pixels; the style's offset and step are device pixels, like the glyph size they space out.
         float calloutPixel = std::max(1.0f, _viewState.resolution * style->scale * 0.5f);
         if (_viewState.deviceResolution > 0 && _viewState.resolution > 0) {
             calloutPixel *= _viewState.resolution / _viewState.deviceResolution;
@@ -558,16 +541,8 @@ namespace massif::vt {
                 bandY = std::min(bandY, _highestCalloutAnchorY + calloutOffset + calloutPixel);
             }
             float bandLift = bandY - anchorY;
-            // THE BAND IS THE HEIGHT, NOT A FLOOR. `std::max(lift, bandLift)` here meant that a
-            // feature already ABOVE the band line got `calloutOffset` instead - its name placed just
-            // over its own summit, which is the NO-BAND arrangement (omit the anchor for that). So a
-            // banded style silently became a skyline one, label by label, for whichever summits
-            // happened to sit high on screen: tilt down and rows of names left the band and appeared
-            // under each other. Two placements from one style, switching as the camera moved.
-            //
-            // A name below its own summit is not wanted either, so there is nothing to fall back TO:
-            // if the band cannot be reached while staying clear of the feature, the name is dropped.
-            // The row loop and `minLift` below keep the same invariant for the stacked rows.
+            // The band is the height, not a floor; a name below its own summit is not wanted either,
+            // so one that cannot reach the band clear of its feature is dropped.
             if (bandLift < calloutOffset) {
                 label->setCalloutFailures(0);
                 return false;
@@ -581,25 +556,13 @@ namespace massif::vt {
         // Rows may go down (negative step), but never below the lift the style asks for: the label
         // belongs ABOVE its feature, and its leader line only exists while it is.
         float minLift = std::max(calloutOffset, SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1));
-        // A feature already so high on screen that its name cannot fit above it AT ALL has no place
-        // for that name: drop it. Pulling the label down to the screen edge instead put it BELOW its
-        // own anchor, off the band the style asks for and with its leader line pointing down.
+        // No room above the feature at all: drop the name rather than put it below its own anchor.
         if (minLift > maxLift) {
             label->setCalloutFailures(0);
             return false;
         }
-        // A BANDED style gets the band or nothing. `maxLift` is built from `top`, the label's OWN
-        // upper extent, so clamping down to it moves each name by its own height - and at a 55
-        // degree orientation a plate is as tall as the name is long. That is why a band looked like
-        // several: short names reached it, long ones stopped short, and tilting changed which. The
-        // comment above aimed at a constant margin for exactly this reason, but `top` reintroduces
-        // the dependence.
-        //
-        // The cost is the landscape case this clamp was added for: a band pinned 3% from the top is
-        // 32 device pixels of a 1080-pixel short screen, less than a name and its plate, so every
-        // label wants more room than there is and the whole row drops. That is now a style being
-        // asked for something impossible rather than something to paper over - a top offset has to
-        // leave room for a plate, and `peakFinderLabelBand` is the knob.
+        // A banded style gets the band or nothing: clamping to `maxLift`, built from the label's own top,
+        // would move each name by its own height. A band too close to the screen edge drops the row.
         if (banded) {
             if (lift > maxLift) {
                 label->setCalloutFailures(0);
@@ -610,29 +573,16 @@ namespace massif::vt {
             lift = std::max(std::min(lift, maxLift), minLift);
         }
 
-        // NOT '> 0': a NEGATIVE step is how a style says its rows go DOWN, which is the only direction
-        // a band pinned near the top of the screen has room in - and taking the default instead sent
-        // them up into the edge margin, where `rowLift > maxLift` broke out of the row loop on the
-        // first one. Every label past the first of a crowded band was therefore dropped rather than
-        // stacked, which in a panorama is most of the horizon.
+        // Not '> 0': a negative step stacks rows downwards, the only room a band near the top has.
         float step = (style->calloutStep != 0.0f ? style->calloutStep * calloutPixel : labelInfo.size * 1.2f * calloutPixel);
 
         // The row it already holds is tried first, as long as it is still one this pass would
         // offer: a label that keeps changing row while the camera moves reads as flicker even
         // though it never disappears.
         if (labelInfo.wasVisible && previousOffset > 0) {
-            // The rows this pass offers run from minLift to maxLift whichever way the step points:
-            // comparing against `lift` alone refused every row BELOW the band, so a downward-stepping
-            // style lost its held row on every pass and re-flowed the whole band.
+            // The offered rows run from minLift to maxLift whichever way the step points.
             bool holdsOfferedRow = previousOffset >= minLift - 0.5f && previousOffset <= maxLift + 0.5f;
-            // A BAND has NAMED rows, and that range is not them. Any offset the screen could hold
-            // passed here, so a label kept whatever lift it was last placed at - and the lift the
-            // band asks for MOVES as the camera tilts, because it is measured from the label's own
-            // anchor. Tilting therefore left a row of names at last frame's heights and the band
-            // looked broken; panning sideways "fixed" it only because the labels left the view, lost
-            // `wasVisible`, and came back through the fresh placement below.
-            //
-            // So the held offset has to BE one of this pass's rows, or the label is re-placed.
+            // A band's held offset must be one of this pass's rows: the band's lift moves with tilt.
             if (holdsOfferedRow && banded) {
                 holdsOfferedRow = false;
                 for (int row = 0; row < std::max(1, style->calloutMaxRows); row++) {

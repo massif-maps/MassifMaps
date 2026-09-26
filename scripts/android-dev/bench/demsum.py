@@ -1,10 +1,6 @@
 import re, sys, collections
-# Summarize the DEM lines produced by dem.sh, grouped by [label].
-#
-# The counters are per-interval SUMS, so the only figure that compares two builds is a cost PER
-# ENCODE - a faster build gets through more tiles in the same second and therefore prints bigger
-# totals. Intervals with no encode in them are dropped: their node time belongs to a tile counted
-# in a neighbouring interval, and keeping them would divide by zero.
+# Summarize dem.sh DEM lines per [label]. Counters are per-interval sums, so compare builds per encode;
+# intervals with no encode are dropped (their node time belongs to a neighbouring interval's tile).
 enc = re.compile(r"\[(?P<label>[^\]]+)\].*dem encodes=(?P<encodes>\d+) patches=(?P<patches>\d+) encodeWorkerMs=(?P<worker>[\d.]+)")
 spl = re.compile(r"\[(?P<label>[^\]]+)\].*demEncode textureMs=(?P<tex>[\d.]+) bitmapMs=(?P<bmp>[\d.]+) nodeMs=(?P<node>[\d.]+)")
 box = re.compile(r"\[(?P<label>[^\]]+)\].*demNode edgeCalls=(?P<calls>\d+) boxTexelsPerCall=(?P<texels>\d+)")

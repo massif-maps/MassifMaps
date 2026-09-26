@@ -13,11 +13,8 @@
 namespace massif {
 
     /**
-     * The tile zoom the camera asks for, held across the boundary by a margin. In terrain mode the
-     * focus rides the ground, so the zoom drifts by a fraction of a level whenever the elevation
-     * under it moves - and changing this re-decodes every visible tile. Measured at Zermatt, one
-     * 2D/3D switch at zoom 12.05 drifted to 11.95 and back: invisible, and it re-decoded the whole
-     * map twice on top of the switch's own decode.
+     * The tile zoom the camera asks for, held across the boundary by a margin: with terrain the zoom
+     * drifts with the ground under the focus, and every change re-decodes all visible tiles.
      * cameraZoom already carries the LOD offset and the layer's zoom level bias.
      */
     inline int calculateTargetTileZoom(double cameraZoom, int currentTarget, double hysteresis) {
@@ -32,24 +29,19 @@ namespace massif {
     }
 
     /**
-     * The zoom a tile's STYLE evaluates at: the zoom the camera asked for, not the (possibly
-     * coarser) tile the LOD handed back. CartoCSS [zoom] gates on the tile, so without a lift a
-     * single level of LOD coarsening drops every rule written for the camera's zoom.
-     * The lift is bounded (Options::TileStyleZoomLift) because a horizon tile styled at the
-     * camera's zoom emits the whole near-field content over ground tens of times wider.
+     * The zoom a tile's style evaluates at: the camera's target, not the coarser LOD tile, so [zoom]
+     * rules survive coarsening. Bounded by Options::TileStyleZoomLift so horizon tiles stay cheap.
      */
     inline int calculateStyleTileZoom(int tileZoom, int targetTileZoom, int maxZoomLift) {
         if (targetTileZoom <= tileZoom || targetTileZoom - tileZoom > maxZoomLift) {
-            return tileZoom; // at or past the ring: the horizon pays nothing for the lift
+            return tileZoom;
         }
         return targetTileZoom;
     }
 
     /**
-     * Whether a tile decoded at styleTileZoom still matches what the camera asks for. The style zoom
-     * is snapshotted when the fetch is QUEUED, and a target-zoom change invalidates the cache but not
-     * the tasks in flight - those land after it and, being fresh, count as valid. That is how a tile
-     * decoded for zoom 13 survived a zoom-out to 11 and kept drawing its [zoom>=12] contours.
+     * Whether a tile decoded at styleTileZoom still matches the camera: in-flight tasks survive a
+     * target-zoom change and land fresh, so validity alone cannot tell.
      */
     inline bool isStyleTileZoomCurrent(int tileZoom, int styleTileZoom, int targetTileZoom, int maxZoomLift) {
         return styleTileZoom == calculateStyleTileZoom(tileZoom, targetTileZoom, maxZoomLift);

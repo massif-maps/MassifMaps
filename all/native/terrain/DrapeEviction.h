@@ -10,25 +10,11 @@
 namespace massif {
 
     /**
-     * What the drape cache may throw away when it is over budget.
-     *
-     * A coverage mask is not a tile of its own: it is part of the drape it was baked beside, and the
-     * owner re-bakes the WHOLE tile to bring a missing mask back. So evicting a mask whose colour
-     * drape is still cached buys a megabyte and spends a full bake to undo it, every frame, for
-     * ever. Measured on the Crosscall: 104 MB cached against a 96 MB budget, ~16 evictions a second
-     * of which 9 were masks, and 23 tiles re-baked a frame with nothing on screen changing.
-     *
-     * A mask whose colour drape is gone is a different thing - an orphan, and the first to go.
-     *
-     * Free of the renderer and of GL on purpose, so it is testable on the host. See
-     * docs/internals/rendering/04-terrain.md.
+     * What the drape cache may evict over budget. A mask whose colour drape is still cached is kept:
+     * the owner re-bakes the whole tile to restore it. See docs/internals/rendering/04-terrain.md.
      */
     struct DrapeEviction {
-        /**
-         * stack 0 is the colour drape, above it the coverage masks. 'used' is "read this frame",
-         * which the cache already refuses to evict. 'colourCached' is whether stack 0 of the SAME
-         * tile is still in the cache.
-         */
+        /** stack 0 is the colour drape, above it the masks; colourCached = stack 0 of the same tile is cached. */
         static bool isEvictable(int stack, bool used, bool colourCached) {
             if (used) {
                 return false;

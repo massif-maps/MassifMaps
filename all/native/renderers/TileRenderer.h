@@ -179,8 +179,7 @@ namespace massif {
          * this layer's labels did, so the caller knows to come back and resume the cycle.
          */
         bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
-        // The label occlusion test as installed on the vt renderer, kept so the CULLER can ask the
-        // same question during placement - an occluded label must not reserve a collision slot.
+        // Copy of the vt label occlusion test for the culler: an occluded label must not reserve a collision slot.
         void setLabelOcclusionTestCopy(std::function<bool(const cglib::vec3<double>&)> test);
         std::function<bool(const cglib::vec3<double>&)> getLabelOcclusionTest() const;
         void restartLabelPlacement();

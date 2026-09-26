@@ -36,10 +36,7 @@ namespace massif {
     static const std::size_t MIN_CACHED_GRIDS = 192;
     static const int FAILED_TILE_TTL_MILLISECONDS = 30 * 1000;
     static const int MAX_ANCESTOR_SEARCH_DEPTH = 8;
-    // Sized for the largest cut that asks: a map's is well under this, a PANORAMA's is ~320 tiles
-    // (TerrainRenderer's visible-tile budget is meshCacheSize/2). At 64 the queue could not hold one
-    // frame's worth, so most of the cut was shed and re-pushed every frame and the DEM converged in
-    // quadtree-walk order rather than from the camera outwards. An entry is a MapTile and an int.
+    // Must hold a panorama's whole cut (~320 tiles, meshCacheSize/2), or it is shed and re-pushed every frame.
     static const std::size_t MAX_PREFETCH_QUEUE_SIZE = 384;
     static const int PREFETCH_THREADS = 3; // elevation tiles are network+decode bound; one worker converges too slowly
     static constexpr double NO_DATA_ELEVATION = -1000000.0;
@@ -96,8 +93,7 @@ namespace massif {
     }
 
     ElevationManager::~ElevationManager() {
-        // TEMPORARY DIAGNOSTIC, ungated. RenderStats 'managers' climbed 1,2,3,4 across entries and
-        // never fell, so the question is only ever WHICH of these two lines is missing.
+        // TEMPORARY DIAGNOSTIC, ungated: tracks a manager leak with the "created" line.
         Log::Infof("LIFE: ElevationManager #%d destroyed", _instanceId);
         {
             std::lock_guard<std::mutex> lock(_prefetchMutex);
@@ -185,9 +181,7 @@ namespace massif {
     void ElevationManager::setMaxDataZoomCap(int maxZoom) {
         int value = std::max(0, std::min(maxZoom, Const::MAX_SUPPORTED_ZOOM_LEVEL));
         if (_maxDataZoom.exchange(value) != value) {
-            // The resident grids are the ones the cap is meant to get rid of: keeping them would
-            // leave the finer heights in play for as long as they are cached, which is the very
-            // disagreement between neighbours the cap exists to end.
+            // Dropped, or the finer cached grids would keep disagreeing with capped neighbours.
             tilesChanged();
         }
     }
@@ -217,8 +211,7 @@ namespace massif {
     }
 
     std::vector<double> ElevationManager::calculateHorizon(const MapPos& pos, double eyeHeight, const std::vector<double>& azimuths, double maxDistance) const {
-        // Standard refraction bends a grazing ray with the earth, as if the earth were 1/(1 - k)
-        // times larger.
+        // Refraction modelled as an earth 1/(1 - k) times larger.
         static const double REFRACTION_COEFFICIENT = 0.13;
         static const double FIRST_SAMPLE_METERS = 30.0;
         static const double SAMPLE_GROWTH = 1.008; // ~0.05 degree of the ray a step, near and far alike
@@ -236,8 +229,7 @@ namespace massif {
         }
         double eyeZ = eyeGrid->sampleHeight(eye.getX(), eye.getY()) + eyeHeight;
 
-        // The level each distance deserves: a posting of about a thousandth of the distance, which
-        // is well under a pixel of a panorama. Coarser than that is requested, once per tile.
+        // Wanted posting ~1/1000 of the distance (under a panorama pixel); coarser grids request it once per tile.
         int maxZoom = dataMaxZoom();
         double worldMeters = Const::EARTH_CIRCUMFERENCE * std::cos(pos.getY() * Const::DEG_TO_RAD);
         std::unordered_set<long long> requested;
@@ -322,9 +314,7 @@ namespace massif {
         if (!grid) {
             return false;
         }
-        // WHICH grid answered, not just whether one did. A cached-only read falls back to any cached
-        // ancestor, so it can succeed and still hand back a height off a DEM several levels too
-        // coarse - and a caller differentiating two of these cannot otherwise tell.
+        // Reports which grid answered: a cached-only read may fall back to a much coarser ancestor.
         resolvedZoom = grid->getTile().getZoom();
         height = sampleSurfaceHeight(*grid, wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
         return true;
@@ -357,9 +347,7 @@ namespace massif {
         if (!_gridCache.read(tileId, grid)) {
             return false;
         }
-        // A failed load is cached as a null grid with an expiry, and timed_lru_cache::read does not
-        // look at one - only valid() does. Read alone makes the marker permanent, and a tile that
-        // failed once is then never retried and never answers a height again.
+        // timed_lru_cache::read ignores expiry (only valid() checks it), which would make a failure marker permanent.
         return grid || _gridCache.valid(tileId);
     }
 
@@ -470,14 +458,11 @@ namespace massif {
                     _gridCache.resize(minCapacity);
                 }
 #if MASSIF_VT_RENDER_STATS
-                // A tile arriving for the SECOND time can only mean it was evicted while still in
-                // use: nothing else asks for a grid this manager already holds.
+                // A second arrival means the grid was evicted while still in use.
                 if (!_everLoadedTiles.insert(grid->getTile().getTileId()).second) {
                     VT_STAT_INC(elevGridReinserts);
                 }
-                // The MAX across managers, not the last writer's: the gauge is global and several
-                // managers write it, so plain assignment made it bounce (230/288/255/296 measured)
-                // and it read as noise rather than as a working-set size.
+                // Max across managers: the gauge is global and several managers write it.
                 {
                     long long mine = static_cast<long long>(_everLoadedTiles.size());
                     long long seen = vt::RenderStats::elevGridDistinctEver.load();
@@ -539,19 +524,13 @@ namespace massif {
     }
 
     int ElevationManager::getDetailZoomLimit() const {
-        // The inverse of clampTileZoom: it drops a render tile one level per doubling of the grid
-        // over DEM_TEXELS_PER_TILE_UNIT, then caps at the source maximum. So the render zoom where
-        // the data runs out is the source maximum plus the levels clampTileZoom would have dropped.
+        // The inverse of clampTileZoom: the source maximum plus the levels it drops for an oversized grid.
         int bias = 0;
         for (int size = _gridSizeHint.load(); size > DEM_TEXELS_PER_TILE_UNIT; size /= 2) {
             bias++;
         }
-        // NOT dataMaxZoom(): this is the LOD FLOOR (TileLayer::_terrainMinTileZoom), so the cap here
-        // decides how coarse a terrain tile may be, and a coarse tile is tessellated into many
-        // sub-surfaces to follow the ground. Capping it measured `fill` at 3654 tile-surface draws
-        // in ONE frame against 39 render tiles - tens of millions of triangles, 4-second frames.
-        // MaxZoom is a working-set control; it belongs in tile SELECTION (clampDataTileZoom), not in
-        // anything that decides tessellation.
+        // Not dataMaxZoom(): this is the LOD floor, and capping it tessellates coarse tiles into
+        // thousands of sub-surfaces. The cap belongs in tile selection (clampDataTileZoom) only.
         return _dataSource->getMaxZoom() + bias;
     }
 
@@ -625,18 +604,8 @@ namespace massif {
             while (queue.size() > MAX_PREFETCH_QUEUE_SIZE) {
                 // Shed the least useful entry, not the oldest: the low queue mixes edge neighbours
                 // with single-corner diagonals, and a full queue gives up the corners first.
-                //
-                // Within a priority, shed the one FURTHEST FROM THE CAMERA. With the tie broken by
-                // insertion order instead, a cut bigger than the queue keeps only the tiles that
-                // happen to come LAST in the quadtree walk - an order with no relation to where the
-                // camera is looking. A panorama's cut is ~320 tiles against a queue of 64, so five
-                // sixths of it was shed and re-pushed every frame, and which sixth survived was
-                // decided by walk order. That is why the same viewpoint came up with a different set
-                // of coarse tiles on every start: whichever tiles won the walk got their DEM, the
-                // rest stayed on an ancestor, and nothing about it was tied to the view.
-                //
-                // The worker already drains nearest-first; this makes the QUEUE it drains from agree,
-                // so loading converges outwards from the camera and is repeatable.
+                // Within a priority, the furthest from the camera, so loading converges outwards and
+                // repeatably rather than in quadtree-walk order.
                 auto victim = queue.begin();
                 double victimDistance = (haveFocus ? prefetchTileDistance(victim->tile, focusU, focusV) : 0.0);
                 for (auto it = queue.begin(); it != queue.end(); it++) {
@@ -745,10 +714,8 @@ namespace massif {
     }
 
     int ElevationManager::getMaxDataZoom() const {
-        // The SOURCE's depth, deliberately not dataMaxZoom(). This is the ElevationProvider contract,
-        // and its one caller is TerrainProjectionSurface::CalculateSplitThreshold - it sizes the
-        // projection surface's subdivision off it. A working-set cap must not move geometry
-        // tessellation; see getDetailZoomLimit for what that cost when it did.
+        // The source's depth, not dataMaxZoom(): it sizes the projection surface's subdivision
+        // (CalculateSplitThreshold), and the working-set cap must not move tessellation.
         if (std::shared_ptr<TileDataSource> dataSource = getDataSource()) {
             return dataSource->getMaxZoom();
         }
@@ -832,8 +799,7 @@ namespace massif {
     }
 
     bool ElevationManager::isSegmentBlocked(const cglib::vec3<double>& from, const cglib::vec3<double>& to, double maxFraction) const {
-        // Steps growing with the distance, as calculateHorizon's: about a hundredth of a degree of
-        // the line a step, near and far alike, from 30 m.
+        // Steps grow with the distance, as in calculateHorizon: ~0.01 degree of the line each, from 30 m.
         static const double FIRST_STEP_METERS = 30.0;
         static const double STEP_GROWTH = 1.015;
 

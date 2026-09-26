@@ -92,8 +92,7 @@ namespace massif {
             for (auto it = _cachedOpenDataSources.begin(); it != _cachedOpenDataSources.end(); it++)
             {
                 auto dataSource = it->second;
-                // No + 1: a source cannot serve a level past its own maximum, and asking anyway is
-                // a database query per fetch that always misses.
+                // No + 1: past its maximum a source only costs a query that always misses.
                 if (zoom < dataSource->getMinZoom() || zoom > dataSource->getMaxZoomWithOverzoom()) {
                     continue;
                 }

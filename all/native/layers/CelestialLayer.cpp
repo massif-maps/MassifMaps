@@ -117,10 +117,7 @@ namespace massif {
         return false;
     }
 
-    // Drawn in the 3D pass, where the vector layers draw their labels: the LAYER ORDER then decides
-    // what is on top, so a celestial layer above a labelled one writes over its labels and one below
-    // it goes under them. In the base pass every label covered every sky object, whatever the order.
-    // The depth test against the map is the same in either pass.
+    // Drawn in the 3D pass, alongside labels, so layer order decides whether labels cover sky objects.
     bool CelestialLayer::onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
         if (!isVisible() || !getVisibleZoomRange().inRange(viewState.getZoom()) || getOpacity() <= 0) {
             return false;

@@ -86,14 +86,13 @@ namespace massif::vt {
         // camera up axis. Owned by LabelCuller; the envelope and the vertex data both read it, so the
         // leader line always ends where the glyphs actually are.
         float getCalloutOffset() const { return _calloutOffset; }
-        // A callout that keeps this lift from its own anchor until the next pass: it moves WITH it.
+        // Resets the anchoring: the label keeps this lift from its own anchor until the next pass.
         void setCalloutOffset(float offset) { _calloutOffset = offset; _calloutAnchored = false; _calloutLinePosition.reset(); }
 
         // The screen line the culler put this callout on, and where its anchor was when it did. The
         // anchor MOVES between passes - elevation streams in, a tilt slides it - and a lift measured
         // against the old one takes the label off the row, which the draw path corrects for.
-        // With a line position the line is not held still but moves on screen with that point, as a
-        // band that follows the skyline moves with the summit it was put above.
+        // With a line position the line moves on screen with that point instead of holding still.
         void setCalloutPlacement(float offset, float anchorScreenY, const std::optional<cglib::vec3<double>>& linePosition = std::optional<cglib::vec3<double>>(), float lineScreenY = 0.0f) {
             _calloutOffset = offset;
             _calloutAnchorScreenY = anchorScreenY;
@@ -121,11 +120,9 @@ namespace massif::vt {
         // under one of its tiles changes - it costs one sample per line vertex. An already-anchored
         // label that is neither placed nor on screen DEFERS; one never anchored does not.
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
-        // Whether the label's heights are KNOWN. False while it still carries its flat decode height,
-        // which is what the terrain occlusion test must not judge - it would hide it under the ground.
+        // False while the label still carries its flat decode height, which the terrain occlusion test must not judge.
         bool isElevationAnchored() const { return _elevationAnchored; }
-        // The anchor stands on a deck, not on the ground: its height came from a span chord, which is
-        // CPU-only data, so the GPU must not overwrite it with the terrain's. See offsetMode.
+        // The anchor stands on a deck: its span-chord height is CPU-only, so the GPU must not replace it with the terrain's.
         bool hasAbsoluteHeight() const { return _absoluteHeight; }
         void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
@@ -134,9 +131,8 @@ namespace massif::vt {
         void mergeGeometries(Label& label);
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
-        // False when the provider had no elevation for part of the geometry: those vertices keep the
-        // height they had and isElevationAnchored() stays false. The caller still marks the label
-        // clean - only new data can change the answer, and that re-dirties it (markPendingLabelsDirty).
+        // False when part of the geometry had no elevation; still mark the label clean, since only new
+        // data changes the answer and that re-dirties it (markPendingLabelsDirty).
         bool updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
         // updateElevation in two halves, so the sampling - one elevation lookup per vertex, the
         // whole cost - can run off the renderer's lock: sample reads the x,y of the geometry
@@ -168,12 +164,10 @@ namespace massif::vt {
         bool isScreenLineRun() const { return _style->orientation == LabelOrientation::LINE_BILLBOARD_3D; }
 
     private:
-        // How labelVsh must read a glyph offset (attribs[3], bit 0); see calculateVertexData.
+        // attribs[3] bit 0: how labelVsh reads a glyph offset; see calculateVertexData.
         static constexpr std::int8_t WORLD_OFFSET = 0;       // already spanned, add it as is
         static constexpr std::int8_t CAMERA_AXIS_OFFSET = 1; // x/y on the camera axes
-        // Bit 1 of the same slot: the anchor's height is ABSOLUTE and only the CPU knows it (a bridge
-        // deck), so labelVsh must keep it instead of taking the terrain's. mapbox's
-        // u_elevation_from_sea (symbol.vertex.glsl), per label rather than per layer.
+        // Bit 1: the anchor height is absolute (a deck) and labelVsh keeps it; mapbox's u_elevation_from_sea, per label.
         static constexpr std::int8_t ABSOLUTE_HEIGHT = 2;
 
         std::int8_t offsetMode(bool cameraAxes) const {
@@ -316,8 +310,7 @@ namespace massif::vt {
         // World units one SCREEN PIXEL is worth at the label's own depth, read off the projection
         // instead of the label's scale: the scale comes from the zoom, so converting with it makes
         // a callout's lift drift up and down the screen whenever the camera moves.
-        // `resolution` 0 (the default) measures against the NORMALIZED screen, which is what the
-        // culler's lifts and rows are in; a label's own SIZE passes the device height instead.
+        // `resolution` 0 = the normalized screen (the culler's units); a label's own size passes the device height.
         float calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback, float resolution = 0.0f) const;
         // World units one glyph unit is worth. Zoom-derived for an ordinary label (that is what
         // keeps it the same size as the rest of the map); taken off the projection for a CALLOUT,

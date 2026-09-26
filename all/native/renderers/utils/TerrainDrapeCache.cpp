@@ -62,8 +62,7 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         if (value == _resolution) {
             return;
         }
-        // Every cached texture dies here, so a resolution that oscillates costs the whole cache per
-        // frame. Logged because it is a per-frame decision made from the camera and the budget.
+        // Drops every cached texture, so a resolution that oscillates costs the whole cache per frame.
         Log::Infof("TerrainDrapeCache: bake resolution %d -> %d, dropping %d cached textures",
                    _resolution, value, static_cast<int>(_entries.size()));
         _resolution = value;
@@ -339,12 +338,9 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         std::size_t maxCount = maxEntries();
         std::size_t colourBytes = static_cast<std::size_t>(_resolution) * _resolution * 4;
         std::size_t maxBytes = (isBudgetEnabled() ? std::max(_maxBytes, MIN_ENTRIES * colourBytes) : MAX_ENTRIES * colourBytes);
-        // COLOUR entries only, for the BYTES as well as the count. The budget's own floor is
-        // MIN_ENTRIES colour drapes, so counting the masks a tile cannot be drawn without put the
-        // cache permanently over budget: 21 drapes plus their masks measured 104 MB against 96 MB,
-        // evicting every frame for ever. Masks are bounded by the colour entries they belong to -
-        // DrapeEviction drops one only once its drape is gone. maplibre ties a drape's lifetime to
-        // its tile and mapbox caps the cache at 50 tiles; neither budgets the two separately.
+        // Colour entries only, bytes and count: the budget's floor is MIN_ENTRIES colour drapes, so
+        // counting their masks kept the cache over budget, evicting every frame. Masks are bounded by
+        // their drape instead: DrapeEviction drops one only once its drape is gone.
         std::size_t colourEntries = 0;
         std::size_t bytes = 0;
         for (auto it = _entries.begin(); it != _entries.end(); it++) {

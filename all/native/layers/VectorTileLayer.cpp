@@ -700,8 +700,7 @@ namespace massif {
     }
 
     bool VectorTileLayer::readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const {
-        // No layer mutex: _tileDecoder is const and its getters lock themselves, so this held the
-        // mutex refreshDrawData keeps across a whole tile-set change - twice a frame, per layer.
+        // No layer mutex: _tileDecoder is const and locks itself, and refreshDrawData holds _mutex for a whole tile-set change.
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
         if (!mapSettings) {
             return false;
@@ -874,9 +873,8 @@ namespace massif {
     bool VectorTileLayer::FetchTask::loadTile(const std::shared_ptr<TileLayer>& tileLayer) {
         auto layer = std::static_pointer_cast<VectorTileLayer>(tileLayer);
 
-        // The style zoom of the tile we are about to decode, read HERE rather than when the task was
-        // queued: a zoom-out lands these tiles under a lower target, and styling a coarse tile for
-        // the zoom the camera has left decodes the near field over 4^lift the ground, to be binned.
+        // Read at decode, not at queue time: after a zoom-out a stale target would style a coarse
+        // tile for the near field over 4^lift the ground.
         _styleTileZoom = calculateStyleTileZoom(_tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift());
 
         bool refresh = false;

@@ -343,13 +343,10 @@ namespace massif {
         // Missing here, vt fell back to the camera's height above the z=0 PLANE - right on a plane,
         // and on a globe the camera's world z, which sized every label at the 0.05 floor.
         prepareViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
-        // The viewport's real height, for the screen-space objects whose size is NOT derived from the
-        // zoom - see ViewState::deviceResolution and setLineAntialiasScale below, which needs the same
-        // ratio for the same reason.
+        // The viewport's real height, for screen-space objects not sized from the zoom
+        // (ViewState::deviceResolution; setLineAntialiasScale below needs the same ratio).
         prepareViewState.deviceResolution = static_cast<float>(viewState.getHeight());
-        // How far a label may be PLACED. The default is maplibre's own cut and an application raises
-        // or removes it (Options::setLabelViewDistance); Label::updatePlacement reads it, so a value
-        // that never reached vt left every distant label unplaced whatever the culler allowed.
+        // Label::updatePlacement reads it: without it every distant label stays unplaced, whatever the culler allows.
         if (auto options = _options.lock()) {
             prepareViewState.labelViewDistance = options->getLabelViewDistance();
         }
@@ -362,9 +359,8 @@ namespace massif {
         pushTerrainDrapeState();
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
-            // A label moved onto terrain that just arrived was placed - collided, occluded, put on
-            // its row - at its OLD height, and on a still camera nothing asks again: the names a
-            // decode brought stayed judged at their flat heights until the user moved.
+            // A label re-anchored onto newly arrived terrain was placed at its old height, and a
+            // still camera asks for no new placement.
             if (tileRenderer->consumeLabelsReanchored()) {
                 _labelPlacementOwed = true;
             }
@@ -741,9 +737,8 @@ namespace massif {
     void TileRenderer::setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds) {
         auto lock = lockTimed();
 
-        // Pushed every frame, but it only CHANGES when the terrain cover does. The push takes the
-        // vt renderer's mutex, which a tile-set change holds for a whole label map rebuild - 151 ms
-        // of a 213 ms prelude, on a list that was usually identical to the one already there.
+        // Usually unchanged, and the push takes the vt mutex, which a tile-set change holds for a whole
+        // label map rebuild.
         if (tileIds == _terrainPaintTileIds) {
             return;
         }
@@ -932,16 +927,13 @@ namespace massif {
                                     contentTileIds.emplace_back(mapTile.getZoom(), mapTile.getX(), mapTile.getY());
                                 }
                                 tileRenderer->invalidateExtrusionBases(contentTileIds);
-                                // A label anchor reads the same texture entry first, so it is left on an
-                                // ancestor by the same lag - and an ancestor is metres too high, which is
-                                // a POI floating over the ground once the switch has settled.
+                                // A label anchor reads the same texture entry, so it lags on an ancestor
+                                // too: metres too high, a POI floating over the ground.
                                 tileRenderer->invalidateLabelElevation(contentTileIds);
                             }
                         }
-                        // Every CPU height carries the exaggeration, so a ramp step invalidates the whole
-                        // screen. Hoisted out of the branches below: those name the tiles whose DATA
-                        // changed, and on a frame that brought both, the labels elsewhere kept a height
-                        // from a step of the 2D/3D ramp that the ground had already left.
+                        // Every CPU height carries the exaggeration, so a 2D/3D ramp step invalidates the
+                        // whole screen, not only the tiles whose data changed below.
                         float exaggeration = elevationManager->getExaggeration();
                         if (exaggeration != _elevationExaggeration) {
                             _elevationExaggeration = exaggeration;
@@ -1013,19 +1005,14 @@ namespace massif {
             if (_maxVertexTextureUnits > 0) {
                 std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
                 if (elevationManager) {
-                    // The node field's density - for every elevation consumer, not just the drawn
-                    // surface (billboard occlusion ray marching and element placement query the same
-                    // manager and must see the same heights).
-                    //
-                    // The mesh resolution is the DEFAULT for it, not the rule: the lattice is per
-                    // render tile and the field is per DEM tile, so once the camera overzooms the
-                    // source they stop describing the same thing - see setSurfaceNodeResolution.
+                    // The node field's density, for every elevation consumer, not just the drawn surface.
+                    // The mesh resolution is only its default: the lattice is per render tile and the
+                    // field per DEM tile, so they diverge once the camera overzooms the source.
                     int nodeResolution = activeTerrainOptions->getSurfaceNodeResolution();
                     elevationManager->setSurfaceResolution(nodeResolution > 0 ? nodeResolution : activeTerrainOptions->getMeshResolution());
                 }
-                // One cache for the whole map, not one per layer: the encoded texture depends only on
-                // the elevation data and the tile id, so a cache each meant an encode THREAD each over
-                // identical heights. MapRenderer owns it and calls beginFrame once a frame.
+                // One cache for the whole map, owned by MapRenderer (beginFrame once a frame): the texture
+                // depends only on the data and the tile id, and a cache per layer meant an encode thread each.
                 _elevationTextureCache.reset();
                 if (elevationManager) {
                     if (auto mapRenderer = _mapRenderer.lock()) {
@@ -1053,15 +1040,12 @@ namespace massif {
             // Labels are anchored when their tile is decoded, possibly before elevation
             // data arrives - re-anchor them whenever the elevation version changes
             std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
-            // smooth=FALSE on purpose: that path asks the grid the TEXTURE entry retains, walks to a
-            // bounded ancestor and prefetches what is missing, so it answers where the manager's LRU
-            // has already dropped the grid out from under a tile that is still being drawn. The
-            // smoothed variant is for a building BASE and resolves through that LRU alone.
-            // NaN only when neither has data: returning 0 there anchored the label under the terrain,
-            // and the caller then marked it clean for good.
+            // smooth=false: that path asks the grid the texture entry retains, so it answers where the
+            // manager's LRU already dropped a tile still being drawn. NaN when neither has data: 0
+            // anchored the label under the terrain, and the caller then marked it clean for good.
             std::shared_ptr<ElevationTextureCache> labelTextureCache = _elevationTextureCache;
             int labelZoom = static_cast<int>(viewState.getZoom());
-            // FIRST PERSON: what the terrain already holds - see below.
+            // First person: only what the terrain already holds - see below.
             bool firstPerson = false;
             if (auto options = _options.lock()) {
                 firstPerson = options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
@@ -1069,23 +1053,9 @@ namespace massif {
             int firstPersonZoom = elevationManager->getDetailZoomLimit();
             tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos) {
                 double height = 0;
-                // With the texture cache there is GPU draping, so labelVsh draws an UN-anchored label
-                // on the ground itself: no answer beats a distant ancestor's, and the walk already
-                // tries the exact grid at each level. The LRU's own walk is unbounded, so it is the
-                // fallback for the other device, where the CPU height is all a label will ever get.
-                //
-                // In FIRST PERSON the finest elevation the terrain already holds, and nothing is asked
-                // for. At the CAMERA's zoom - which a first person camera's cut does not follow (z15-17
-                // near, z8-10 far in a panorama) - the texture answered almost nowhere, so the label
-                // kept its sea-level anchor and the placement's frustum test refused it. And a miss
-                // PREFETCHED that zoom's detail tile, for every label of the layer, on screen or not: a
-                // summit layer asked for ~300 full-resolution DEM tiles the view never draws,
-                // overflowed the grid cache and evicted the terrain's own, which kept the DEM loading
-                // on a still camera. The texture entries come first because the manager's LRU drops a
-                // grid the terrain still draws: asked alone, a summit seen again after a look away sat
-                // on a coarse ancestor, a hundred metres under the drawn one, for good.
-                // Not on an ordinary map, where the camera zoom IS the tiles' and an unbounded walk is
-                // what hung POIs in the air off a coarse ancestor.
+                // GPU draping puts an un-anchored label on the ground, so the walk is bounded: an unbounded
+                // one hung POIs off a coarse ancestor. First person reads only what is held, at the finest
+                // zoom: its cut does not follow the camera zoom, and prefetching per label evicted the DEM.
                 if (labelTextureCache && !firstPerson) {
                     if (labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
                         return height;
@@ -1418,8 +1388,7 @@ namespace massif {
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
-        // Placement answers the occlusion question itself now, so a hidden label takes no collision
-        // slot from a visible one. The test is whatever updateLabelOcclusionTest installed.
+        // A hidden label must take no collision slot from a visible one (test from updateLabelOcclusionTest).
         culler.setOcclusionTest(getLabelOcclusionTest());
         cullViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         cullViewState.lightBrightness = _resolvedBrightness;
@@ -1427,13 +1396,12 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // The same as the draw pass gets, or the culler would measure a callout at a different size
         // from the one drawn and place a row of them where they are not.
         cullViewState.deviceResolution = static_cast<float>(viewState.getHeight());
-        // The placement search applies the SAME cut the culler does (LabelCuller::setLabelViewDistance),
+        // The placement search applies the same cut the culler does (LabelCuller::setLabelViewDistance),
         // and it is the one that runs first: an unplaced label never reaches the culler's own test.
         if (auto options = _options.lock()) {
             cullViewState.labelViewDistance = options->getLabelViewDistance();
-            // The band placement packs into, which has to be the SAME one the tile culler filled
-            // (ViewState::getLabelFrustum) - a label placed early whose tile was never fetched is
-            // a label that is not there.
+            // The band placement packs into must be the one the tile culler filled
+            // (ViewState::getLabelFrustum): a label placed where no tile was fetched is not there.
             float labelPadding = options->getLabelPadding();
             if (labelPadding >= 0.0f) {
                 cullViewState.setLabelPadding(labelPadding);
@@ -1487,9 +1455,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             _horizontalLayerOffset = 0;
         }
 
-        // OFF the mutex: setVisibleTiles rebuilds the label maps (~26 ms, 16x a second while
-        // panning) and locks the vt renderer itself. Held here it also blocked every render-thread
-        // call on this layer - measured as 500 ms of lock per second of a 3D pan.
+        // Off the mutex: setVisibleTiles rebuilds the label maps and locks the vt renderer itself;
+        // held here it blocked every render-thread call on this layer.
         if (tileRenderer) {
             if (teleportOffset != 0) {
                 tileRenderer->teleportVisibleTiles(teleportOffset, 0);
@@ -1723,11 +1690,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             }
         }
 
-        // The SAME question the depth path answers (TerrainOcclusion::isBehind): is there terrain in
-        // front of the anchor nearer than 1 / (1 + tolerance) of its distance. The ray used to aim at
-        // a point lifted by half the tolerance times the distance instead - 8% at 0.15, some four
-        // degrees - which let a summit just behind a ridge through: a name entering from the side,
-        // where only this path answers, was shown, then hidden when the depth covering it landed.
+        // The same question the depth path answers (TerrainOcclusion::isBehind): is there terrain in
+        // front of the anchor nearer than 1 / (1 + tolerance) of its distance.
         double rayHitLimit = 1.0 / (1.0 + std::max(static_cast<double>(MIN_OCCLUSION_TOLERANCE), static_cast<double>(terrainOptions->getBillboardOcclusionTolerance())));
         auto rayTest = [state, elevationManager, cameraPos, rayHitLimit](const cglib::vec3<double>& pos) -> bool {
             // Quantize the position for caching (roughly 4m grid)
@@ -1756,9 +1720,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // much cheaper than ray-marching the elevation grids per label.
         if (auto mapRenderer = _mapRenderer.lock()) {
             if (TerrainRenderer* terrainRenderer = mapRenderer->getTerrainRenderer()) {
-                // A new depth changes the verdicts, and a still camera asks for no placement pass:
-                // without one a label placed against the previous depth - a name that turned into
-                // view before the terrain in front of it had been read back - kept its slot.
+                // A new depth changes the verdicts, and a still camera asks for no placement pass, so a
+                // label placed against the previous depth would keep its slot.
                 unsigned int depthVersion = terrainRenderer->getDepthSnapshotVersion();
                 if (depthVersion != _labelOcclusionDepthVersion) {
                     _labelOcclusionDepthVersion = depthVersion;
@@ -1769,11 +1732,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 // anchor-vs-terrain mismatch, and raising it lets partly hidden features label.
                 // The projection belongs to the depth buffer's own camera, so it lives with it.
                 float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
-                // The culler needs the SAME question answered during placement - see
-                // LabelCuller::setOcclusionTest - so it is kept rather than only installed.
-                // Where the depth cannot answer - a name entering from the side is placed in the
-                // padding outside the read-back viewport - the elevation ray does, rather than the
-                // name being shown until a depth covering it lands and then fading out again.
+                // Kept for the culler too (LabelCuller::setOcclusionTest). Where the depth cannot answer,
+                // outside the read-back viewport, the elevation ray does.
                 auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest](const cglib::vec3<double>& pos) {
                     auto mapRenderer = mapRendererWeak.lock();
                     if (!mapRenderer) {

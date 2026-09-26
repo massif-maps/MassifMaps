@@ -278,8 +278,6 @@ namespace massif {
         /**
          * Returns the terrain mesh resolution.
          * @return The maximum number of grid cells per tile edge used for terrain geometry. The default is 64.
-         *         The effective detail is capped by the ELEVATION SOURCE's zoom as well: a z12 DEM
-         *         has no more to give a 512 grid than a 256 one.
          */
         int getMeshResolution() const;
         /**
@@ -296,15 +294,9 @@ namespace massif {
          */
         float getSubdivideDistance() const;
         /**
-         * Cuts and meshes the terrain the way geo-three's webapp does (LODFrustum and
-         * MaterialHeightShader.getGeometry), so the two can render the same picture:
-         *
-         *  - a tile at zoom z is subdivided while the camera is closer to its centre than
-         *    distance * 2^(20 - z) Mercator metres - geo-three's desktop value is 70 - with no tile
-         *    budget. setMaxZoom is its maximum level: the DEM's maximum plus its overzoom of 2.
-         *  - a tile's mesh is MeshResolution cells per edge up to zoom 12, halved per level above
-         *    it and never under 16, without the usual cap of 96.
-         *  - the heights are read bilinearly off the DEM, not averaged over a box of cells.
+         * Cuts and meshes the terrain the way geo-three's webapp does, so the two render the same picture:
+         * a tile at zoom z subdivides while the camera is closer than distance * 2^(20 - z) Mercator
+         * metres (geo-three's desktop value is 70), with no tile budget and bilinear DEM heights.
          * @param distance Mercator metres at zoom 20, or 0 for the SDK's own rule.
          */
         void setSubdivideDistance(float distance);
@@ -315,23 +307,9 @@ namespace massif {
          */
         int getSurfaceNodeResolution() const;
         /**
-         * Sets the resolution of the height field the terrain is displaced from, independently of
-         * the mesh drawn over it.
-         *
-         * These are two different things and only one of them carries detail. The vertex stage does
-         * not sample the DEM: it samples the NODE FIELD, the DEM box-filtered to this many cells per
-         * tile edge (ElevationNodeField), sized per DEM tile. The mesh is a lattice per RENDER tile,
-         * and once the camera is overzoomed past the elevation source's maximum zoom the render tile
-         * covers a fraction of a DEM tile - at z16 on a z12 source, 32 texels - so even a 96-cell
-         * lattice is finer than the data and the node field is what the relief is limited by.
-         *
-         * Tied together, asking for detail meant paying for a lattice that was never the constraint:
-         * 256 cells per render tile is 7x the vertices of 96 for relief that comes from the field.
-         * Measured on a Crosscall, mesh 256 panned visibly slower than 96 at the same picture.
-         *
-         * The cost of this one is memory, not frames: the field is (resolution x tiles-per-edge + 1)^2
-         * texels per cached DEM grid, so 256 over a 512-texel source is ~790 KB a grid against
-         * ~150 KB at 96. 0 follows MeshResolution, which is what every caller got before.
+         * Sets the resolution of the height field the terrain is displaced from, per DEM tile edge,
+         * independently of the mesh drawn over it. Overzoomed, this field limits the relief, not the mesh.
+         * Costs memory per cached DEM grid, not frames. The default 0 follows MeshResolution.
          * @param resolution Node cells per tile edge (clamped to 2..512), or 0 to follow MeshResolution.
          */
         void setSurfaceNodeResolution(int resolution);
@@ -342,18 +320,9 @@ namespace massif {
          */
         int getPostProcessDownscale() const;
         /**
-         * Sets the downscale factor of the packed depth/normal texture that post-process effects
-         * read (PostProcessEffect::setTerrainDepthRequired / setTerrainNormalsRequired).
-         *
-         * 2 - the default - is a map's setting: the buffer is a quarter of the pixels, and an effect
-         * that SHADES it cannot tell. An effect that DIFFERENTIATES it can: a peak finder drawing
-         * ridge lines from the normals magnifies that buffer's texels at close range into visible
-         * blocks, stair-stepped crests and comb streaking down steep faces. 1 removes them, at four
-         * times the fill for a pass already measured at 9.5 ms of a 19.3 ms frame on an Adreno 610 -
-         * so it is worth it for a panorama and not for a map.
-         *
-         * The occlusion read-back keeps its own half-resolution buffer either way: it samples depth
-         * at points, and a full-resolution glReadPixels is a stall, not a detail.
+         * Sets the downscale factor of the packed depth/normal texture that post-process effects read.
+         * The default 2 suits shading; an effect that differentiates the normals (ridge lines) shows
+         * blocky texels, which 1 removes at four times the fill. The occlusion read-back is unaffected.
          * @param downscale The new downscale factor (clamped to 1..4).
          */
         void setPostProcessDownscale(int downscale);
@@ -384,19 +353,9 @@ namespace massif {
          */
         int getMeshCacheSize() const;
         /**
-         * Sets how many terrain surface meshes TerrainRenderer may keep, and with it how many tiles
-         * the visible cut may hold (half this, since one frame walks the same cut two to four times
-         * at different mesh resolutions).
-         *
-         * 0 keeps the built-in 160/80, which is a map's working set. A PANORAMA's is several times
-         * that: the cut reaches a hundred kilometres, and looking around changes each tile's LOD
-         * stitching mask, which is part of the mesh cache key - so panning mints new keys faster than
-         * the cache holds them. Measured on an Adreno 610 at 160: `RenderStats terrainMesh`
-         * builds=72 evictions=72 every second while panning, each rebuild re-baking the surface
-         * normals for 4225 vertices, for prelude spikes of 200-290 ms.
-         *
-         * Raising it also steadies the LOD: the cut coarsens a whole zoom level whenever it overflows
-         * its half of this, so a small cache means the panorama keeps dropping and regaining detail.
+         * Sets how many terrain surface meshes may be cached; the visible cut holds half as many tiles.
+         * The default 0 keeps the built-in 160/80, a map's working set. Raise it for a panorama, whose
+         * wider cut otherwise rebuilds meshes while turning and keeps dropping a zoom level.
          * @param meshes The number of meshes to cache, or 0 for the built-in rule.
          */
         void setMeshCacheSize(int meshes);
@@ -407,18 +366,9 @@ namespace massif {
          */
         bool isSharedGroundEnabled() const;
         /**
-         * Enables or disables the shared-ground draw in the no-drape (DrapeFillsEnabled false)
-         * arrangement.
-         *
-         * That path normally draws the terrain cover once in a flat colour before any layer, so the
-         * layers have a ground to composite onto. A SURFACE SHADER already painted the terrain, with
-         * depth, in the same frame - so when the only thing on the map is a surface shader plus
-         * label/billboard layers (the peak finder), the ground pass draws the whole mesh a second
-         * time for nothing. It measured 10.6 ms of a 22 ms panorama frame on an Adreno 610, the
-         * single largest item, with 94 flat fills per frame and zero of them carrying content.
-         *
-         * Leave it TRUE for any map with fills or lines: without a ground they composite onto
-         * whatever the surface shader left, which is not the same picture.
+         * Enables or disables the flat shared-ground draw when DrapeFillsEnabled is false. The default is true.
+         * Disable it only when a surface shader plus labels/billboards is all the map draws; fills and
+         * lines need that ground to composite onto.
          * @param enabled True to draw the shared ground, false to leave the surface shader's output.
          */
         void setSharedGroundEnabled(bool enabled);
@@ -521,39 +471,9 @@ namespace massif {
          */
         int getMaxZoom() const;
         /**
-         * Caps the tile zoom the terrain mesh is cut at, AND which elevation tiles are SELECTED to
-         * feed it (ElevationManager::setMaxDataZoomCap). 0, the default, leaves both to the
-         * distance-based rule, the tile budget and the data source maximum.
-         *
-         * Selection only. It deliberately does not reach getDetailZoomLimit (the terrain LOD floor)
-         * or getMaxDataZoom (the projection surface's subdivision): both decide TESSELLATION, and
-         * capping them drove the tile surfaces to 3654 draws in one frame.
-         *
-         * The terrain LOD is distance based, so a camera near the ground subdivides what is in front
-         * of it as deep as the data allows, and keeps subdividing as finer elevation tiles arrive.
-         * Three things follow from that, and all three are worse in a view along the ground than in
-         * a map looked down at:
-         *
-         *  - the SURFACE keeps changing height under everything anchored to it. Labels are
-         *    re-anchored as their ground moves (vt::Label::updateElevation), so a placement that
-         *    settled is re-decided, and a camera held above the terrain is dragged with it - the
-         *    whole view rises and sinks while tiles stream in.
-         *  - neighbouring tiles resolve to DIFFERENT elevation grids while that is happening, since
-         *    each takes the finest one resident for it. Their shared edge is then built from two
-         *    height fields that disagree.
-         *  - it is unbounded work: the cut grows until the budget stops it.
-         *
-         * Pinning the zoom makes the height field settle once and stay settled, which is what a
-         * panorama wants - peakfinder.com resolves its DEM for the viewpoint once and never refines
-         * it. The cost is detail near the camera, which a view reaching a hundred kilometres can
-         * mostly afford.
-         *
-         * MEASURED: pinning the mesh cut alone is not enough. With the cut pinned, RenderStats
-         * showed tileRecalc 0 and a label set that stopped growing - and the elevation grid cache
-         * still sat at capacity with 2-6 reinserts a second, forever, because the DATA zoom is
-         * capped by the source rather than by the cut. Each reload bumps the elevation version, so
-         * the labels kept re-anchoring and the ground kept moving. The cap has to reach the data,
-         * which is why it does.
+         * Caps the tile zoom the terrain mesh is cut at and the elevation tiles selected to feed it,
+         * so the ground settles once instead of refining under labels and camera (a panorama). The
+         * default 0 leaves both to the distance rule, the tile budget and the source maximum.
          * @param maxZoom The new maximum zoom level (clamped to 0..24), or 0 for no cap.
          */
         void setMaxZoom(int maxZoom);
@@ -610,21 +530,9 @@ namespace massif {
          */
         float getViewDistanceMax() const;
         /**
-         * Sets a MAXIMUM distance the map is drawn to, in METERS - the counterpart of
-         * setViewDistance, and the only metric way to make the map reach LESS far than the factor
-         * rule. The rule is proportional to the camera's height over the cosine of the angle to the
-         * horizon, so a view along the ground reaches tens of kilometres from a hillside and past a
-         * hundred from a summit: ground that is fetched, meshed, draped and drawn to be a few pixels
-         * of haze. A ceiling caps the cull envelope (CullWorker), the tile walk (TileLayer) and the
-         * far plane together, so it is a real saving rather than clipped work.
-         * NOT derived from the fog, on purpose. The fog's range says where the ground has gone
-         * white, and a summit standing above the haze is both further than that and the whole point
-         * of FogOptions' vertical range - so the two are set independently and this one is the app's
-         * own trade between how far the view reaches and what it costs.
-         * Applied after setViewDistance, which it therefore also caps: asking for at least 150 km
-         * and at most 30 gives 30.
-         * 0 (the default) is no ceiling, leaving the factor rule and the tile walk cap to bound the
-         * view as before.
+         * Sets a maximum distance the map is drawn to, in meters, capping culling, the tile walk and
+         * the far plane; it also caps setViewDistance. Independent of the fog, which a summit may
+         * stand above. 0 (the default) is no ceiling.
          * @param distance The new maximum view distance in meters, or 0 for no ceiling.
          */
         void setViewDistanceMax(float distance);
@@ -652,20 +560,9 @@ namespace massif {
          */
         int getElevationCacheSize() const;
         /**
-         * Sets how much memory the decoded elevation GRIDS may take, in megabytes.
-         *
-         * The default rule sizes this by grid COUNT (ElevationManager's MIN_CACHED_GRIDS, 192), which
-         * assumes a map's working set: the ground around one viewpoint at one zoom. A panorama breaks
-         * that assumption - it sees a hundred kilometres at once, so its working set is several times
-         * 192 grids, the cache sits permanently full, and every grid evicted is immediately asked for
-         * again. That costs far more than memory: each ElevationManager runs PREFETCH_THREADS (3)
-         * decoding threads, and a cache that never holds its working set keeps all of them busy for
-         * as long as the mode is open. Device-measured on a Crosscall: six such threads burned
-         * ~34,600 CPU ticks against the render thread's 3,094, so the mode was starved of CPU while
-         * the renderer itself was idle.
-         *
-         * Raise it for a wide-view mode; leave it alone for a map. A grid is `getDataSize()` bytes -
-         * 1796 KB for a 512-texel DEM - so the budget divided by that is the number of grids held.
+         * Sets how much memory the decoded elevation grids may take, in megabytes (a 512-texel grid is
+         * ~1.8 MB). The default 0 keeps 192 grids, a map's working set; raise it for a wide view, where a
+         * full cache refetches every eviction and keeps the decode threads busy.
          * @param megabytes The new budget in megabytes, or 0 for the grid-count rule.
          */
         void setElevationCacheSize(int megabytes);
@@ -855,14 +752,7 @@ namespace massif {
         float getCameraClearanceFraction() const;
         /**
          * Sets the share of the camera's altitude the clearance takes, replacing the 1/16 above.
-         *
-         * That rule models an ORBITING map camera, where the altitude and the viewing distance are
-         * the same number - so the higher the ground, the further off it the camera is held. A
-         * FIRST-PERSON view is the case it gets wrong: on a 4800 m summit it insists on 320 m of
-         * clearance, and the eye floats a third of a kilometre above the peak it is standing on.
-         *
-         * Set it to 0 and the clearance becomes CameraClearance alone - a fixed height above the
-         * ground, which is what "stand here" means. Leave it alone for a map.
+         * 0 leaves CameraClearance alone as a fixed height above the ground, as a first-person view needs.
          * @param fraction The new fraction, clamped to [0, 1). 1/16 is the default.
          */
         void setCameraClearanceFraction(float fraction);
@@ -873,21 +763,9 @@ namespace massif {
          */
         float getFocusLift() const;
         /**
-         * Sets the height the viewpoint is lifted above the ground under it, in meters.
-         *
-         * The focus sits ON the terrain (mapbox's transform._centerAltitude) and the renderer owns
-         * its height, so an application cannot place the eye above the ground by writing a focus
-         * position with a z in it - the next frame recomputes it. This is the lift that survives:
-         * it is ADDED to whatever the ground-following rule decides, so the clearance shell and the
-         * follow band keep working underneath it and the eye ends up this far above the ground it
-         * stands over, at any zoom and any tilt.
-         *
-         * What it is for is a first-person viewpoint: a peak finder standing a few hundred meters
-         * up, seeing over the ridge in front of it. A camera looking at the horizon has almost no
-         * orbit height to raise it with, so the zoom cannot buy that view.
-         *
-         * Meters, like CameraClearance: the Mercator stretch and the display scale are applied
-         * here, not by the caller.
+         * Sets the height the viewpoint is lifted above the ground under it, in meters, added to the
+         * ground-following rule (a focus z is recomputed every frame). For a first-person viewpoint
+         * standing above the ridge in front of it.
          * @param lift The new lift in meters. 0 (the default) leaves the focus on the ground.
          */
         void setFocusLift(float lift);
@@ -923,9 +801,8 @@ namespace massif {
         float getBillboardOcclusionTolerance() const;
         /**
          * Sets how far behind the terrain a billboard or label anchor may sit and still count
-         * as visible, as a fraction of its distance from the camera. 0 hides a label the moment its
-         * anchor goes behind the relief, which is too tight over real terrain - the default 0.2 was
-         * measured at Grenoble, where 0 dropped POIs on slopes facing the camera. Larger values
+         * as visible, as a fraction of its distance from the camera. The default is 0.2; 0 hides a
+         * label the moment its anchor goes behind the relief. Larger values
          * deliberately let partly hidden features label - a summit just behind a nearer ridge
          * still shows its name, which is what a peak-finder view wants.
          * @param tolerance The new relative tolerance (clamped to 0..1).
@@ -938,24 +815,9 @@ namespace massif {
          */
         float getNormalSampleDistance() const;
         /**
-         * Sets the ground distance the per-vertex surface normals are measured over, in meters.
-         *
-         * The default 0 takes the gradient from the MESH - the neighbouring grid nodes of the tile
-         * the vertex belongs to. A tile carries the same number of cells whatever ground it covers,
-         * so that step halves with every zoom level, and two tiles meeting at an LOD boundary smooth
-         * the same hillside by different amounts. Their normals then disagree along the whole shared
-         * edge. For shading nobody notices; for anything that DIFFERENTIATES the normals - a ridge
-         * line drawn from the normal buffer (PostProcessEffect::setTerrainNormalsRequired) - every
-         * tile boundary in the view becomes a drawn line, and no amount of care at the edge fixes
-         * it, because the heights agree and the SCALE does not.
-         *
-         * A fixed distance makes the normal a property of the DEM instead: both sides of a boundary
-         * sample the same two points and return the same value, so there is no edge to draw. What
-         * survives is the real relief at that scale - 60-150 m reads ridges without turning every
-         * DEM step into one.
-         *
-         * Costs four cached elevation lookups per mesh vertex, once per mesh build rather than per
-         * frame. Planar surfaces only: on the globe the sample offsets are not the local frame's.
+         * Sets the ground distance the per-vertex surface normals are measured over, in meters. The default
+         * 0 uses the mesh spacing, which differs across LOD boundaries and draws them as lines in a normal-
+         * differentiating effect; 60-150 m reads ridges. Planar surfaces only.
          * @param distance The new sample distance in meters, or 0 for the mesh's own spacing.
          */
         void setNormalSampleDistance(float distance);

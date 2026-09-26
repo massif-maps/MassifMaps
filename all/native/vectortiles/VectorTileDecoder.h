@@ -155,9 +155,8 @@ namespace massif {
         void unregisterOnChangeListener(const std::shared_ptr<OnChangeListener>& listener);
 
         /**
-         * Bumped by every change and every refresh, so a caller may cache anything resolved from the
-         * style and know when that answer expired. A live parameter change refreshes without
-         * reloading a tile, and would otherwise be invisible to such a cache.
+         * Bumped by every change and refresh (including live parameter changes that reload no tile),
+         * so a cache of anything resolved from the style knows when it expired.
          */
         unsigned int getConfigVersion() const { return _configVersion.load(); }
 

@@ -41,17 +41,9 @@ namespace massif {
         PFNGLENDQUERYEXTPROC EndQueryEXT = NULL;
         PFNGLGETQUERYOBJECTUIVEXTPROC GetQueryObjectuivEXT = NULL;
 
-        // Everything below is PER GL THREAD, because a query object belongs to the context that
-        // generated it. A process can hold several map views - the panorama beside the main map -
-        // each with its own thread and context, and one shared set of these meant the second
-        // renderer called glBeginQueryEXT with names from the FIRST context. That is
-        // GL_INVALID_OPERATION, once per frame forever, reported at whichever CheckGLError came
-        // next: 8000 'GLError (0x502) at BackgroundRenderer::onDrawFrame' lines in twenty minutes,
-        // starting at the exact frame the second view's surface was created. The same held for a
-        // surface RECREATED after a context loss, where the names belonged to a context that no
-        // longer existed. 'Initialized' being per thread is what makes each context generate its
-        // own queries; ActiveSection per thread is what keeps one renderer's endSection from
-        // closing another's query.
+        // Per GL thread: a query object belongs to the context that generated it, and each map view has
+        // its own; shared names were a GL_INVALID_OPERATION every frame. ActiveSection per thread keeps
+        // one renderer's endSection from closing another's query.
         thread_local QuerySlot Slots[SLOT_COUNT];
         thread_local int CurrentSlot = -1;
         thread_local int ActiveSection = -1;
@@ -144,9 +136,8 @@ namespace massif {
     }
 
     void GpuFrameProfiler::resetContext() {
-        // The old names are NOT deleted: they belong to a context that is either gone or is
-        // another thread's, and deleting them from here is the very error this exists to avoid.
-        // A few leaked query names per context, in a profiling build only.
+        // Old names are not deleted: their context is gone or another thread's, so deleting them here
+        // is the very error this avoids. A few leaked names per context, profiling builds only.
         Initialized = false;
         Supported = false;
         CurrentSlot = -1;

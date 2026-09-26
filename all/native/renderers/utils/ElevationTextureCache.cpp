@@ -66,14 +66,8 @@ namespace massif {
 #endif
 
     ElevationTextureCache::GridKey ElevationTextureCache::gridKey(const std::shared_ptr<ElevationTileGrid>& grid) {
-        // The DECODE, not the tile it covers. A tile id cannot express "the same ground, decoded
-        // again": TerrainOptions::MeshResolution sizes the node field, so moving it re-decodes every
-        // grid (ElevationManager::setSurfaceResolution -> tilesChanged), and keyed by tile id every
-        // entry compared equal - gridChanged stayed false, no re-encode was requested, and the GPU
-        // kept the node texture built for the OLD lattice. The setting therefore did nothing until
-        // the app was restarted and the cache started empty, which is exactly how it was reported.
-        // The mesh cache next door never had this: it compares the grid POINTER (TerrainRenderer::
-        // collectTileMeshes), which a re-decode changes.
+        // The decode, not the tile: a MeshResolution change re-decodes every grid under the same tile
+        // id, and keyed by id no re-encode was requested. The mesh cache compares the grid pointer.
         return grid ? static_cast<GridKey>(grid->getSerial()) : -1;
     }
 
@@ -317,7 +311,7 @@ namespace massif {
             // megabyte behind it is allocated once instead of per encode.
             VT_STAT_CLOCK(totalClock); // the whole encode, so encodeWorkerMs keeps its meaning
 #if MASSIF_VT_RENDER_STATS
-            // This THREAD's cpu time, not the clock on the wall - the pair is the whole question.
+            // This thread's cpu time, not the wall clock: the pair is the whole question.
             timespec cpuStart = { 0, 0 };
             clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpuStart);
 #endif

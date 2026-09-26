@@ -76,15 +76,8 @@ namespace massif {
 #if MASSIF_VT_RENDER_STATS
     namespace {
         // Diagnostic dump of the vt label/tile churn counters (vt/RenderStats.h,
-        // MASSIF_VT_RENDER_STATS). All but 'live' are per-interval deltas.
-        //
-        // The counters are PROCESS-wide, so these lines describe every map view in the process
-        // together - the panorama beside the main map. The consecutive lines still tile the
-        // timeline (each is the delta since the previous one, whichever renderer printed it), but a
-        // line cannot be attributed to one map. It USED to be worse than that: 'GL thread only, so
-        // the previous values need no synchronization' stopped being true the day a second map view
-        // existed, and two GL threads then tore the previous values between them. Hence the lock -
-        // whoever gets it prints, the other renderer's frame just carries on.
+        // MASSIF_VT_RENDER_STATS). All but 'live' are per-interval deltas. Process-wide, so a line
+        // covers every map view; the lock keeps two GL threads from tearing the previous values.
         constexpr int RENDER_STATS_INTERVAL = 1000; // ms
 
         void logRenderStats() {
@@ -150,13 +143,8 @@ namespace massif {
             long long deltaLabelMapSkips = labelMapSkips - lastLabelMapSkips;
             lastLabelMapSkips = labelMapSkips;
 
-            // ONE snapshot of the culler counters, taken before anything is printed, and the SAME
-            // values stored as the previous interval's. They used to be loaded inside the Log call
-            // and loaded AGAIN, a line later, to become 'last': the placement worker keeps counting
-            // in between, so each counter was sampled at a different instant and every increment
-            // that landed in the gap was reported in no interval at all. That is why a line did not
-            // add up - considered 369 against placeUpd 211 with distCut 0 read as 158 labels cut by
-            // a style max-distance that no style in the app sets.
+            // One snapshot, printed and stored as 'last' alike: the placement worker keeps counting,
+            // and loading twice lost every increment in between.
             const long long considered = RenderStats::cullerConsidered.load();
             const long long distanceCut = RenderStats::cullerDistanceCut.load();
             const long long maxDistanceCut = RenderStats::cullerMaxDistanceCut.load();
@@ -209,9 +197,8 @@ namespace massif {
                        surfaceDraws - lastSurfaceDraws, surfaceIndices - lastSurfaceIndices);
             lastSurfaceDraws = surfaceDraws; lastSurfaceIndices = surfaceIndices;
 
-            // TerrainRenderer's own meshes, built INLINE on the render thread. 'buildMs' against the
-            // frame time is the whole question: a panorama rotating past its mesh cache spends the
-            // frame building rather than drawing.
+            // TerrainRenderer's meshes, built inline on the render thread: 'buildMs' against the frame
+            // time says whether a panorama rotating past its mesh cache builds rather than draws.
             {
                 static long long lastMeshBuilds = 0, lastMeshBuildUs = 0, lastMeshVerts = 0, lastMeshEvictions = 0, lastMeshHits = 0;
                 long long meshBuilds = RenderStats::terrainMeshBuilds.load();
@@ -561,10 +548,8 @@ namespace massif {
                        (dem[0] - lastDem[0]) > 0 ? (RenderStats::demEncodeTexels.load() - lastDemTexels) / (dem[0] - lastDem[0]) : 0LL);
             lastDemClears = RenderStats::demDetailClears.load();
             lastDemTexels = RenderStats::demEncodeTexels.load();
-            // The decoded GRID cache, not the texture cache above. reinserts > 0 means grids still
-            // in use are being evicted and reloaded, and every reload bumps the elevation version:
-            // labels re-anchor and the surface moves for as long as it goes on. Pinned bytes with
-            // a steady insert rate is the signature.
+            // The decoded grid cache, not the texture cache: reinserts > 0 means grids in use are evicted
+            // and reloaded, each bumping the elevation version, so labels re-anchor and the surface moves.
             static long long lastElevGrid[2] = { 0 };
             const long long elevGrid[2] = { RenderStats::elevGridInserts.load(), RenderStats::elevGridReinserts.load() };
             Log::Infof("RenderStats: elevGrid inserts=%lld reinserts=%lld | bytes=%lldMB capacity=%lldMB distinctEver=%lld gridKB=%lld managers=%lld (per interval, gauges)",
@@ -574,11 +559,8 @@ namespace massif {
                        RenderStats::elevGridManagers.load());
             for (int i = 0; i < 2; i++) { lastElevGrid[i] = elevGrid[i]; }
 
-            // WHERE AN ELEVATION LOOKUP LANDS. Cumulative, not per interval: the question is what the
-            // session as a whole resolved, not what the last second did. aliasHits against exactHits
-            // is the one that matters - an alias answers with an ANCESTOR's grid for a tile that may
-            // well have its own by now, and nothing ever asks again, so those tiles keep normals
-            // sampled from a DEM several levels too coarse and shade lighter than their neighbours.
+            // Where an elevation lookup lands, over the session. An alias answers with an ancestor's grid
+            // and is never asked again, so its tiles keep normals from a too-coarse DEM and shade lighter.
             Log::Infof("RenderStats: elevResolve exact=%lld aliasHits=%lld walkHits=%lld | aliasPuts=%lld (cumulative)",
                        RenderStats::elevExactHits.load(), RenderStats::elevAncestorAliasHits.load(),
                        RenderStats::elevAncestorWalkHits.load(), RenderStats::elevAncestorAliasPuts.load());
@@ -601,9 +583,8 @@ namespace massif {
                        nodeBox[0] - lastNodeBox[0],
                        (nodeBox[0] - lastNodeBox[0]) > 0 ? (nodeBox[1] - lastNodeBox[1]) / (nodeBox[0] - lastNodeBox[0]) : 0LL);
             for (int i = 0; i < 2; i++) { lastNodeBox[i] = nodeBox[i]; }
-            // Which grid answered each of those texels. Only the COARSE bucket pays a bilinear
-            // sampleHeight per texel, and only that bucket is what latticeRuns/latticeSum would
-            // collapse - so this is the number that says whether wiring it in is worth the seam risk.
+            // Which grid answered each texel: only the coarse bucket pays a bilinear sampleHeight, and
+            // only it is what latticeRuns/latticeSum would collapse.
             static long long lastNodeSource[3] = { 0, 0, 0 };
             const long long nodeSource[3] = { RenderStats::demNodeTexelsOwn.load(), RenderStats::demNodeTexelsSameLevel.load(), RenderStats::demNodeTexelsCoarse.load() };
             long long nodeSourceTotal = 0;
@@ -916,16 +897,9 @@ namespace massif {
     }
     
     /**
-     * Holds the camera on the clearance shell the moment a camera event moves it, not one frame
-     * later. mapbox constrains inside the transform (_constrainCamera) for the same reason: a
-     * clearance applied only in the render loop can do no better than correct a camera that has
-     * ALREADY been drawn under the ground. Measured on the device, a gesture took the camera from
-     * 217 m above a 1385 m ridge to 146 m inside it between two consecutive frame checks.
-     *
-     * Raises only. Letting the focus back down is the frame's job (CameraClearance::focusFollow),
-     * and doing it here would fight the follow band on every event.
-     * Cached heights only, so it never waits on a tile; through the surface, so it holds on a globe.
-     * Call with _mutex held.
+     * Holds the camera on the clearance shell as a camera event moves it (mapbox's _constrainCamera):
+     * the render loop alone only corrects a camera already drawn under the ground. Raises only;
+     * lowering is CameraClearance::focusFollow's. Cached heights only. Call with _mutex held.
      */
     void MapRenderer::constrainCameraToClearance() {
         std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
@@ -951,7 +925,7 @@ namespace massif {
         double clearanceFloor = terrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
         double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
         // Plus the application's lift, as in the frame's own rule: without it a lifted viewpoint
-        // reads as a focus ABOVE the shell here and the constraint stops holding it.
+        // reads as a focus above the shell here and the constraint stops holding it.
         double lift = terrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, terrainOptions->getCameraClearanceFraction()) - orbitHeight + lift;
         if (shellFocusZ > focusMapPos.getZ()) {
@@ -989,10 +963,8 @@ namespace massif {
             // Calculate parameters for kinetic events
             newFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
             zoom = _viewState.getZoom();
-            // AFTER the kinetic delta is read, never before. setPanDelta measures the fling from the
-            // 3D distance between the two focus positions, and a clearance lift is a VERTICAL
-            // correction of hundreds of metres against a pan step of metres - folded in, it makes
-            // the fling enormous and the map flies off when the finger leaves.
+            // After the kinetic delta is read: setPanDelta measures the fling in 3D, and a vertical lift
+            // of hundreds of metres folded in makes the map fly off when the finger leaves.
             constrainCameraToClearance();
           
             // In case of seamless panning horizontal teleport, offset the delta focus pos
@@ -1381,9 +1353,8 @@ namespace massif {
             mapRendererListener->onBeforeDrawFrame();
         }
 
-        // OFF the renderer mutex: this notifies option listeners, and a listener is application code -
-        // the facade's map-moved event reaches a JS handler that posts SYNCHRONOUSLY to the main
-        // thread. Under _mutex that deadlocks against any facade getter (BaseMapView::getZoom).
+        // Off the renderer mutex: option listeners are app code (a JS handler posting synchronously to
+        // the main thread), so under _mutex this deadlocks against any facade getter (BaseMapView::getZoom).
         bool terrainDecodeChanged = updateTerrainFlatten(deltaSeconds);
 
         // Calculate camera params and make a synchronized copy of the view state
@@ -1429,35 +1400,19 @@ namespace massif {
                         // ... and never below the shell: the focus RAISES the camera, which keeps the
                         // tilt and the zoom the user set. Correcting by tilting jumped the view.
                         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, clearanceFraction) - orbitHeight;
-                        // The application's own lift goes ON TOP of whatever the rule decided, so
-                        // the shell and the follow band keep working under a raised viewpoint - and
-                        // so the lift means the same thing at every altitude: this far above the
-                        // ground it stands over. It is excluded from `follow` on purpose: that is
-                        // measured with the focus PINNED, or the lift would feed into its own input.
+                        // The app's lift goes on top of the rule, so shell and follow band still work; kept
+                        // out of `follow`, which is measured with the focus pinned, or it feeds its own input.
                         double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY());
-                        // FIRST PERSON: the eye stands on the ground under ITSELF, and on nothing
-                        // else. The rule above is an orbiting camera's - it takes the ground under
-                        // the FOCUS, which at a panorama's tilt is kilometres ahead. Two ways that
-                        // is wrong for standing on a summit: turning sweeps the focus across other
-                        // terrain, so the viewpoint rises and sinks as you look around, and the far
-                        // ground is the LAST to arrive, so it keeps changing under a focus nobody is
-                        // standing on - the whole view drifts up and down while the DEM streams in.
-                        //
-                        // Here the reference is the ground under the camera, so the eye is still
-                        // while the height field fills in behind it, and `focusLift` means exactly
-                        // what it says: this far above the ground you stand on.
+                        // First person stands on the ground under the camera, not under the focus km ahead,
+                        // which changes as the view turns and as the far DEM streams in: the eye would bob.
                         if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
                             _viewState.setFocusHeight(cameraTerrainZ - orbitHeight + lift);
                         } else {
                             _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
                         }
                         heightApplied = true;
-                        // TEMPORARY DIAGNOSTIC, deliberately ungated: the flag that carries the
-                        // RenderStats lines is passed somewhere this tree does not record, and a
-                        // diagnostic that might not be compiled in is a wasted rebuild.
-                        // WHERE THE EYE ENDS UP, and which of the four terms put it there. Every
-                        // height in METRES, so it reads against a summit. Once a second: this runs
-                        // per frame and the answer only moves when the camera does.
+                        // Temporary diagnostic, deliberately ungated: where the eye ends up and which term
+                        // put it there, in metres, once a second.
                         {
                             static std::chrono::steady_clock::time_point lastLog;
                             std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -1474,8 +1429,7 @@ namespace massif {
                             }
                         }
                     }
-                    // THE OTHER OUTCOME, and easy to miss: no cached ground under the focus means
-                    // the rule never runs and the focus keeps whatever height it was left on.
+                    // No cached ground under the focus: the rule never runs and the height stays as left.
                     if (!heightApplied) {
                         static std::chrono::steady_clock::time_point lastSkipLog;
                         std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -1506,10 +1460,8 @@ namespace massif {
                             if (std::dynamic_pointer_cast<VectorLayer>(layer)) {
                                 layer->refresh();
                             } else if (std::dynamic_pointer_cast<TileLayer>(layer)) {
-                                // The LOD projects every tile at the height the DEM gives it, so a
-                                // set picked before the first tile landed - or through the 2D/3D
-                                // ramp, where the exaggeration is still 0 - is the set for a map at
-                                // sea level. Nothing else culls while the camera stands still.
+                                // The LOD projects tiles at their DEM height, so a set picked before the first
+                                // tile or during the 2D/3D ramp is a sea-level set; nothing else re-culls a still camera.
                                 layerChanged(layer, true);
                             }
                         }
@@ -1736,18 +1688,15 @@ namespace massif {
     void MapRenderer::setPostProcessEffect(const std::shared_ptr<PostProcessEffect>& postProcessEffect) {
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            // The clock restarts only for a DIFFERENT effect: an animated shader reads it, and a
+            // The clock restarts only for a different effect: an animated shader reads it, and a
             // parameter change is not a new effect.
             if (_postProcessEffect != postProcessEffect) {
                 _postProcessEffect = postProcessEffect;
                 _postProcessStartTime = std::chrono::steady_clock::now();
             }
         }
-        // ...but the redraw is unconditional, INCLUDING re-setting the effect that is already set.
-        // An effect's float/color parameters are mutable on the effect object itself and it holds no
-        // reference back here, so setting the same effect again is the only way a parameter change
-        // can ask for a frame. Returning early on an unchanged pointer left every parameter write on
-        // a still map invisible until something else happened to redraw.
+        // ...but the redraw is unconditional, even for the same effect: its parameters are mutable and it
+        // holds no reference back, so re-setting it is how a parameter change asks for a frame.
         requestRedraw();
     }
 
@@ -2055,7 +2004,7 @@ namespace massif {
         timing.bakesQueued = _drapeBakesPending;
         _drapeBakesDone = 0;
         _drapeBakesPending = false;
-        // NOT isUpdateInProgress(): a composite takes _sourceMutex for it, and this runs on the
+        // Not isUpdateInProgress(): a composite takes _sourceMutex for it, and this runs on the
         // render thread under _mutex - the deadlock snapshotChildTileLayers exists to avoid.
         FlattenSwitchTimeline::Report report;
         if (!_flattenSwitchTimeline.step(timing, report)) {
@@ -2099,7 +2048,7 @@ namespace massif {
         float tiltThreshold = terrainOptions->getAutoFlattenTilt();
         if (!manual && (parallaxThreshold > 0 || tiltThreshold > 0)) {
             // The three inputs the renderer mutex owns, read together so they describe one camera.
-            // The DECISION is taken without it: setFlattened below reaches application code.
+            // The decision is taken without it: setFlattened below reaches application code.
             double parallax = 0;
             float tilt = 0;
             bool cameraPlaced = false;
@@ -2844,16 +2793,8 @@ namespace massif {
         // Normalize the per-layer union to a non-overlapping quadtree partition, keeping the
         // finest tile for any ground - overlapping surfaces of different tesselations fight.
         // See docs/internals/rendering/04-terrain.md, "Normalizing the cover to a quadtree partition".
-        // EVERY STRICT ANCESTOR of every collected tile, built once. The normalization asks two
-        // questions and both were a full scan of the set: 'is one of my ancestors collected' and
-        // 'is a finer collected tile inside me'. Each was O(n^2) in the tile count and ran EVERY
-        // frame, camera moving or not - at ~490 tiles that is ~240k coversTile calls per loop, and
-        // buildLeaves below repeats its one for every level the cap forces it to drop. Measured at
-        // 4.7-7.1 ms of a 32 ms frame, the largest single item in it (PROF COVER 'collect').
-        //
-        // Against this set both are lookups: walk my own <=20 ancestors for the first, one
-        // membership test for the second. Same answers - a tile is in here exactly when some
-        // collected tile has it as a strict ancestor, which is what coversTile tested pairwise.
+        // Every strict ancestor of every collected tile, built once: 'is an ancestor collected' and 'is a
+        // finer collected tile inside me' become lookups instead of a per-frame O(n^2) coversTile scan.
         std::set<vt::TileId> collectedAncestors;
         for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
             for (int zoom = it->first.zoom - 1; zoom >= 0; zoom--) {
@@ -2958,14 +2899,9 @@ namespace massif {
         // With no tile layer at all, an approximate depth pre-pass stands in.
         bool terrainMode = false;
         {
-            // NOTE: releasing _elevationTextureCache here when getTerrainOptions() is null looks
-            // right - the cache holds a STRONG shared_ptr to its ElevationManager and
-            // getElevationTextureCache only ever swaps it for a DIFFERENT manager, never for none,
-            // so a detached terrain leaks the manager with its 3 prefetch threads and its 336 MB of
-            // grids. It was tried and REVERTED: on device `caches` went 2 to 1 and the panorama's
-            // surface draws went from 80 to 683 a frame (`drape` 10 ms to 112 ms), so one of the two
-            // renderers was losing a cache it was still drawing from. The manager is released from
-            // the app side instead, by setting the view's terrain options to null before teardown.
+            // _elevationTextureCache is deliberately not released here, though it holds its manager strongly:
+            // tried and reverted, a renderer lost a cache it still drew from. The app releases the manager
+            // by nulling the view's terrain options before teardown.
             if (auto terrainOptions = _options->getTerrainOptions()) {
                 if (terrainOptions->isActive()) {
                     terrainMode = true;
@@ -2984,9 +2920,8 @@ namespace massif {
                         // tilt of 60 that point sits behind the bottom of the screen.
                         const cglib::vec3<double>& focusPos = viewState.getFocusPos();
                         elevationManager->setPrefetchFocus(focusPos(0), focusPos(1));
-                        // ONCE a frame, for every layer: it uploads what the encoder finished and
-                        // resets the per-frame resolution memo, so a call per layer would spend the
-                        // upload budget five times over and throw the memo away four times.
+                        // Once a frame for all layers: it uploads finished encodes and resets the per-frame
+                        // memo, which a call per layer would overspend and discard.
                         if (auto elevationTextureCache = getElevationTextureCache(elevationManager)) {
                             // Before the frame's uploads: a new reach re-pads every texture.
                             elevationTextureCache->setBorderMetres(terrainOptions->getNormalSampleDistance());
@@ -3006,10 +2941,8 @@ namespace massif {
                     int terrainRenderOrder = 0;
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
-                            // A layer of labels alone draws no ground, so it cannot be the one that
-                            // writes the terrain's depth: given the role, it wrote nothing, the
-                            // surface fill dropped its own depth for it, and the sky objects drawn
-                            // after were no longer hidden behind the ridges.
+                            // A labels-only layer draws no ground, so given the depth-write role it wrote
+                            // nothing, and sky objects drawn after were no longer hidden behind the ridges.
                             bool depthWrite = !depthWriteAssigned && tileLayer->isVisible() && tileLayer->getOpacity() >= 1.0f && tileLayer->hasGroundContent();
                             tileLayer->setTerrainDepthWriteMode(depthWrite);
                             // stacking order for the fixed per-layer depth separation in GPU draping mode
@@ -3055,7 +2988,7 @@ namespace massif {
                             ResolvedLighting surfaceLighting = resolveLighting(_options->getLightOptions(), _frameStyleEnvironment);
                             FRAME_PROF_NOW(profSurfaceStart);
                             // The GPU elevation textures, so the surface measures its normal per
-                            // FRAGMENT rather than interpolating one baked at the mesh's corners.
+                            // fragment rather than interpolating one baked at the mesh's corners.
                             if (std::shared_ptr<ElevationManager> surfaceElevation = terrainOptions->getElevationManager()) {
                                 _terrainRenderer->setElevationTextureCache(getElevationTextureCache(surfaceElevation));
                             }
@@ -3231,12 +3164,8 @@ namespace massif {
                         // flashes bare until elevation lands - every tile on screen during a zoom.
                         // Without a stand-in texture, STAND ON the coarsest loaded ancestor instead.
                         if (std::shared_ptr<ElevationManager> groundElevationManager = terrainOptions->getElevationManager()) {
-                            // MEMOIZED, and for the frame only. The walk below asks about a tile and
-                            // then about its whole ancestor chain, and neighbouring leaves share
-                            // most of that chain - so the same handful of coarse tiles were looked
-                            // up in the grid cache over and over. Measured on the Crosscall: `cover`
-                            // was 8-14 ms of a 30-42 ms panorama frame, the largest single item,
-                            // over ~53 cover tiles.
+                            // Memoized for the frame: the walk asks about each tile's ancestor chain, which
+                            // neighbouring leaves mostly share.
                             std::map<vt::TileId, bool> elevationMemo;
                             auto hasElevation = [&groundElevationManager, &elevationMemo](const vt::TileId& tileId) {
                                 auto memo = elevationMemo.find(tileId);
@@ -3251,9 +3180,7 @@ namespace massif {
                             };
                             std::vector<vt::TileId> loadedTileIds;
                             std::vector<bool> standingIn;
-                            // Where each stand-in landed in loadedTileIds, so the dedup below is a
-                            // lookup rather than a linear scan of everything placed so far - that
-                            // scan made the whole walk quadratic in the cover size.
+                            // Each stand-in's index in loadedTileIds, so the dedup is a lookup, not a quadratic scan.
                             std::map<vt::TileId, std::size_t> loadedIndex;
                             loadedTileIds.reserve(groundTileIds.size());
                             standingIn.reserve(groundTileIds.size());
@@ -3346,10 +3273,8 @@ namespace massif {
                                 break;
                             }
                         }
-                        // Skipped only when the app says the surface shader already painted this
-                        // ground - see TerrainOptions::setSharedGroundEnabled. The ground tiles and
-                        // the layer ordinals above are still published either way: they are what the
-                        // layers place themselves against, and only the DRAW is redundant.
+                        // Skipped when the surface shader already painted this ground (TerrainOptions::
+                        // setSharedGroundEnabled); the ground tiles and ordinals above are still published.
                         int groundDraws = 0;
                         if (terrainOptions->isSharedGroundEnabled()) {
                             groundDraws = groundDrawer->renderTerrainGround(groundColor);
@@ -4221,10 +4146,8 @@ namespace massif {
         }
         BillboardSorter billboardSorter(billboardDrawDatas);
 
-        // Both preludeMs sites sit inside the drape and shared-ground branches, so a terrain map
-        // with NO ground layer at all - a panorama whose only layer is a label overlay - left the
-        // whole prelude (the depth pre-pass, the surface shader) unattributed and it surfaced as
-        // 'other'. Close it out here instead, so PROF still adds up.
+        // Both preludeMs sites sit in the drape and shared-ground branches, so a terrain map with no
+        // ground layer (a labels-only panorama) closes the prelude here, or PROF does not add up.
         if (!preludeAccounted) {
             FRAME_PROF_ADD(preludeMs, profDrawStart);
         }

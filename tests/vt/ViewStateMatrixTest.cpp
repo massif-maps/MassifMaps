@@ -1,19 +1,5 @@
-/*
- * The view-projection matrix and its inverse, resolved once with the frame's camera (vt/ViewState.h).
- *
- * Label::setupCoordinateSystem snaps every point label's anchor to the screen pixel grid - that is
- * what keeps glyphs sharp - and to do it, it projected the anchor and un-projected the snapped
- * position. Both matrices are the same for every label in the frame, and it built them PER LABEL:
- * a 4x4 product and a 4x4 double INVERSE, 3589 times an interval on the Crosscall, inside the loop
- * that RenderStats calls buildMs.
- *
- * Caching them is only safe while they cannot disagree with the components they came from, which is
- * what this pins: nothing assigns projectionMatrix or cameraMatrix after construction today, and a
- * setter that did would have to refresh these too.
- *
- * NOT covered here: that the snap itself is unchanged - the label tests that check anchor positions
- * (LabelAnchorAlignTest, LabelPerspectiveTest, LineLabelTest) cover that, and they run the snap.
- */
+// viewProjMatrix and its inverse are cached at construction (vt/ViewState.h), which is only safe
+// while nothing assigns projectionMatrix or cameraMatrix afterwards.
 
 #include "ViewState.h"
 
@@ -46,16 +32,14 @@ namespace {
 void testViewStateMatrix() {
     ViewState viewState = buildViewState(60.0f);
 
-    // The product, which the frustum is already built from and every label projection needs.
     TEST_CHECK(matricesClose(viewState.viewProjMatrix, viewState.projectionMatrix * viewState.cameraMatrix, 1.0e-9),
                "the cached view-projection is the product of the two it came from");
 
-    // The inverse, which the anchor snap un-projects through. Checked as a round trip rather than
-    // against another inverse, so it holds whatever the implementation does.
+    // A round trip rather than a second inverse, so it holds whatever the implementation does.
     TEST_CHECK(matricesClose(viewState.viewProjMatrix * viewState.invViewProjMatrix, cglib::mat4x4<double>::identity(), 1.0e-6),
                "and the cached inverse undoes it");
 
-    // A point through both is itself: this IS the snap's round trip, at a real camera.
+    // The label anchor snap's round trip.
     cglib::vec3<double> position(123.0, -456.0, 78.0);
     cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewState.viewProjMatrix);
     TEST_CHECK(clipPos(3) > 0, "the test point is in front of the camera");
@@ -69,23 +53,21 @@ void testViewStateMatrix() {
     }
     TEST_CHECK(true, "a point projected and un-projected through the pair is itself");
 
-    // A DEFAULT-constructed view state must be self-consistent too, or a label snapped through one
-    // would be thrown to an arbitrary position rather than left where it is.
+    // Else a label snapped through a default state is thrown to an arbitrary position.
     ViewState defaultState;
     TEST_CHECK(matricesClose(defaultState.viewProjMatrix, defaultState.projectionMatrix * defaultState.cameraMatrix, 1.0e-9),
                "a default view state's cached product agrees with its components");
     TEST_CHECK(matricesClose(defaultState.viewProjMatrix * defaultState.invViewProjMatrix, cglib::mat4x4<double>::identity(), 1.0e-9),
                "and so does its inverse");
 
-    // A COPY carries them, since the renderer and the culler each hold their own.
+    // The renderer and the culler each hold their own copy.
     ViewState copy = viewState;
     TEST_CHECK(matricesClose(copy.viewProjMatrix, viewState.viewProjMatrix, 0.0),
                "a copied view state keeps the resolved product");
     TEST_CHECK(matricesClose(copy.invViewProjMatrix, viewState.invViewProjMatrix, 0.0),
                "and the resolved inverse");
 
-    // A different CAMERA does not share them - the obvious way a cache goes wrong. (Note the tilt
-    // field alone would not: it does not feed these matrices, it only describes them.)
+    // Vary the camera, not the tilt field: tilt does not feed these matrices.
     ViewState other = buildViewState(60.0f, 5000.0);
     TEST_CHECK(!matricesClose(other.viewProjMatrix, viewState.viewProjMatrix, 1.0e-9),
                "a different camera resolves a different product");

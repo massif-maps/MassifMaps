@@ -24,8 +24,7 @@ namespace massif::vt {
         explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) {
             // Answered once here so the renderer's per-frame span pass can skip a layer - and, in a
             // style that uses no elevation-mode at all, every layer - without walking its geometry.
-            // The contact shadow is the same question: ABSENCE is what costs, since the search that
-            // asks it cannot stop early, and a style with no extrusions never has one to find.
+            // Same for the contact shadow: its search cannot stop early, so absence is the costly case.
             for (const std::shared_ptr<TileGeometry>& geometry : _geometries) {
                 if (!geometry->getSpanRecords().empty()) {
                     _hasSpanGeometry = true;

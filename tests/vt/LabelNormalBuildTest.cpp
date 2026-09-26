@@ -1,17 +1,5 @@
-/*
- * Whether a label builds vertex normals at all (Label::calculateVertexData).
- *
- * aVertexNormal exists in labelVsh only under LIGHTING_VSH/LIGHTING_FSH, and the SDK compiles those
- * in for a NON-planar projection alone (TileRenderer::initializeRenderer sets the 2D lighting shader
- * only when the projection surface is not planar). renderLabelBatch already knew that - it uploads
- * the normal buffer under `if (_lightingShader2D)`.
- *
- * The build did not: it filled one normal PER VERTEX, per label, per frame, on every planar map, and
- * threw all of it away. Measured on the Crosscall, 3589 labels an interval.
- *
- * So the caller says whether anything will read them. The rest of the vertex data is unaffected -
- * that is the half of this that could break a label.
- */
+// labelVsh reads aVertexNormal only under lighting, compiled in for non-planar projections alone,
+// so the caller tells Label::calculateVertexData whether to build normals at all.
 
 #include "Label.h"
 #include "LabelVariants.h"
@@ -72,7 +60,6 @@ namespace {
 void testLabelNormalBuild() {
     ViewState viewState = buildViewState();
 
-    // Lit (non-planar): the normals are there, one per vertex, as the shader's attribute needs.
     VertexData lit;
     {
         std::shared_ptr<Label> label = buildPointLabel();
@@ -82,8 +69,7 @@ void testLabelNormalBuild() {
         TEST_CHECK(lit.vertices.size() > 0, "which is not a vacuous check");
     }
 
-    // Planar, the common case: no normals at all, and EVERYTHING ELSE identical. The second half is
-    // the point - skipping the fill must not shift a glyph, a texture coordinate or an index.
+    // Skipping the normals must not shift a glyph, a texture coordinate or an index.
     {
         std::shared_ptr<Label> label = buildPointLabel();
         label->updatePlacement(viewState);

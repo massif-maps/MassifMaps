@@ -384,10 +384,8 @@ namespace massif::css {
 
                 mapSettings = loadMapSettings(mapProperties);
 
-                // A plain CartoCSS string has no project.json to declare its parameters in, so it may
-                // declare them itself, one scalar each - Map { param-selected: ''; } is what
-                // "styleparameters": { "selected": "" } is to a project. Enums and tables still need
-                // the project: their JSON has no CartoCSS spelling.
+                // A plain CartoCSS string has no project.json, so it may declare scalar parameters itself:
+                // Map { param-selected: ''; } == "styleparameters": { "selected": "" }. Enums and tables need the project.
                 if (styleParameters.empty()) {
                     static const std::string PARAM_PREFIX = "param-";
                     for (const std::pair<const std::string, Expression>& mapProperty : mapProperties) {

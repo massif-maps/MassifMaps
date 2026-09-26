@@ -75,10 +75,8 @@ namespace massif {
         void beginFrame(float viewZoom);
 
         /**
-         * Called when an encode finishes and a texture is waiting to be uploaded. Uploads happen in
-         * beginFrame, so a texture encoded on a still map needs a frame asked for or it is never
-         * applied - the ground stays as last drawn while the relief sits in the queue.
-         * Invoked on the ENCODE WORKER, outside every lock held here.
+         * Called when an encode finishes: uploads happen in beginFrame, so a still map must request a
+         * frame or the relief is never applied. Invoked on the encode worker, outside every lock here.
          */
         void setTextureReadyListener(const std::function<void()>& listener);
 
@@ -103,24 +101,17 @@ namespace massif {
          * portal measured 441 m and 663 m within one run, so two halves of one deck were baked at
          * different heights.
          *
-         * maxAncestorLevels bounds how far above `zoom` the answer may come from. An extrusion BAKES
-         * its base into its vertices, so a far ancestor is a wrong answer rather than a coarse one -
-         * hence the tight default. A LABEL is re-anchored whenever the elevation changes and a few
-         * metres is invisible, so it walks further: with the elevation three levels coarser than the
-         * render tiles (RenderStats zoomGap), one level answered for nothing at all.
-         *
-         * prefetch false asks for nothing that is missing: the answer is what is already there.
+         * maxAncestorLevels bounds how far above `zoom` the answer may come from: tight for a baked
+         * extrusion base, looser for a label, which is re-anchored and tolerates a few metres.
+         * prefetch false requests nothing missing: the answer is what is already cached.
          *
          * @return False when the renderer has no elevation for the tile holding the point.
          */
-        // Default for a BAKED query. One level covers the common "decoded but not yet in the texture
-        // cache" frame; beyond that the answer is a smoothed average of a region, not the ground
-        // under the point - which a vertex cannot be given, but a re-anchored label can.
+        // Default for a baked query: one level covers the "decoded but not yet in the texture cache"
+        // frame; beyond that the answer is a region's smoothed average, not the ground under the point.
         static const int BASE_MAX_ANCESTOR_LEVELS = 1;
-        // What a label anchor passes when the GPU can place it instead (labelVsh's applyTerrain, which
-        // needs the terrain texture provider): the measured zoomGap of 3, plus the frame the texture
-        // lags the grid by. Past that an entry is one a PREVIOUS camera left behind - after a 2D/3D
-        // switch a single coarse texel answered the whole screen and hung every POI in the air.
+        // For a label anchor the GPU can place instead: zoomGap 3 plus one frame of texture lag. Deeper
+        // entries are a previous camera's; after a 2D/3D switch one coarse texel lifted every POI.
         static const int LABEL_MAX_ANCESTOR_LEVELS = 4;
 
         bool getDisplayHeight(double internalX, double internalY, int zoom, bool smooth, double& height, int maxAncestorLevels = BASE_MAX_ANCESTOR_LEVELS, bool prefetch = true) const;
@@ -143,9 +134,8 @@ namespace massif {
          * time any DEM tile landed.
          */
         /**
-         * The tiles whose texture content changed, as of the start of this frame. NOT drained: the
-         * cache is shared by every tile layer and each one must invalidate its own extrusion bases,
-         * so the list is swapped in by beginFrame and stays readable by all of them for the frame.
+         * The tiles whose texture content changed as of this frame's start. Not drained: every tile
+         * layer sharing the cache must invalidate its own extrusion bases from it.
          */
         const std::vector<MapTile>& getFrameContentChanges() const;
 
@@ -153,7 +143,7 @@ namespace massif {
 
         /**
          * Asks for at least this many extra detail levels. The cache is shared by every tile layer
-         * and a painted layer wants more than a plain one, so the frame takes the MAX of what was
+         * and a painted layer wants more than a plain one, so the frame takes the max of what was
          * asked and applies it in beginFrame - a per-layer set would clear the cache on each change.
          */
         void requestDetailLevels(int extraLevels);

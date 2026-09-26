@@ -353,8 +353,7 @@ namespace {
                               channel(fog.color.getB(), lighting.sunColor.getB()),
                               fog.color.getA());
         }
-        // A top-down map has no distance to fog. Mapbox puts this on the fog colour's alpha too
-        // (painter.ts passes getOpacity(pitch) as u_fog_color[3]), so active() turns the pass off.
+        // On the alpha, as mapbox does (painter.ts u_fog_color[3]), so active() turns the pass off top-down.
         if (isFogPitchFadeEnabled()) {
             fog.color = Color(fog.color.getR(), fog.color.getG(), fog.color.getB(),
                               static_cast<unsigned char>(fog.color.getA() * fogPitchOpacity(tilt) + 0.5f));

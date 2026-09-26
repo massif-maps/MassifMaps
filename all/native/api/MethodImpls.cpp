@@ -417,10 +417,7 @@ namespace massif { namespace api {
             return true;
         }
 
-        /**
-         * add(objectHandle) / remove(objectHandle) / clear() on a sky layer - how a sprite or an arc
-         * built from a spec reaches the sky, as an element reaches a local source.
-         */
+        /** add(objectHandle) / remove(objectHandle) / clear() on a sky layer. */
         Result addCelestialObject(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
             Handle handle = NULL_HANDLE;
             if (!args.getHandle(0, handle)) {

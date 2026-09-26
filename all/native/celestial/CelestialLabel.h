@@ -16,13 +16,9 @@ namespace massif {
     class Bitmap;
 
     /**
-     * Text in the sky: a time on a path, the name of a figure, a rise over a ridge.
-     *
-     * The SDK draws the text itself, with the platform's text API (BitmapCanvas, as the Text
-     * vector element), so an application gives a string and a style rather than painting a bitmap.
-     * The label faces the camera and keeps its pixel size at any field of view. Its anchor point
-     * says which point of the label sits on its direction: (0, -1), the default, puts the middle of
-     * its bottom edge there, so the text stands above the point it names.
+     * Text in the sky, drawn by the SDK from a string and a style (like the Text vector element).
+     * Faces the camera and keeps its pixel size at any field of view.
+     * The default anchor point (0, -1) puts the text above the direction it names.
      */
     class CelestialLabel : public CelestialObject {
     public:
@@ -168,8 +164,7 @@ namespace massif {
          */
         float getOffsetY() const;
         /**
-         * Moves the label on screen from its anchor: a label naming a point of the skyline stands a
-         * few pixels clear of it.
+         * Moves the label on screen from its anchor.
          * @param x The offset in density-independent pixels, to the right.
          * @param y The offset in density-independent pixels, up.
          */
@@ -187,8 +182,8 @@ namespace massif {
         void setClickable(bool clickable);
 
         /**
-         * The label drawn at the given density, rebuilt only when the text, the style or the density
-         * changed. Called by the renderer; an application does not need it.
+         * The label drawn at the given density, cached until the text, style or density changes.
+         * Called by the renderer.
          * @param dpToPx Device pixels per density-independent pixel.
          * @return The bitmap, or null for an empty text.
          */

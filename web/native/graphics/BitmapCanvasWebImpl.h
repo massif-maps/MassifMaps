@@ -15,10 +15,8 @@
 namespace massif {
 
     /**
-     * The browser's own 2D canvas: an OffscreenCanvas where there is one (any thread, a worker
-     * included), a DOM canvas otherwise. Both are synchronous - text is measured, laid out and
-     * rasterized in the call, and read back with getImageData - so the synchronous interface holds.
-     * The fonts are the browser's: a font list names CSS families.
+     * The browser's 2D canvas: OffscreenCanvas where available (any thread), a DOM canvas otherwise.
+     * Both are synchronous, so the synchronous interface holds; font lists name CSS families.
      */
     class BitmapCanvas::WebImpl : public BitmapCanvas::Impl {
     public:

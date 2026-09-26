@@ -238,16 +238,8 @@ namespace massif {
         }
     }
 
-    // The click state, to every internal style group.
-    //
-    // A style with external source slots draws only the layers BELOW the first slot on this layer;
-    // everything above it is on a group layer built by makeGroupLayer. A VectorTileLayer with no
-    // event listener returns from calculateRayIntersectedElements without testing anything, so a
-    // listener set on the composite alone made every feature above the first slot unclickable -
-    // with the DEM in the style's hillshade slot, that is every road, icon and label on the map.
-    //
-    // The external children are deliberately left out: they carry their own source, and a click on
-    // one is a click on that source's features, not on this style's.
+    // Group layers (everything above the first external slot) answer no click without a listener.
+    // External children are left out: a click on them is on their own source's features.
     void CompositeVectorTileLayer::setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener) {
         VectorTileLayer::setVectorTileEventListener(eventListener);
 
@@ -399,8 +391,7 @@ namespace massif {
         // The groups render the same source as this layer, so they must select the same tiles.
         groupLayer->setZoomLevelBias(getZoomLevelBias());
         groupLayer->setPreloading(isPreloading());
-        // The click state too: a group is rebuilt whenever the style or the slot list changes, which
-        // is long after the app set its listener, and a group without one answers no click at all.
+        // Groups are rebuilt on every style or slot change, long after the app set its click state.
         groupLayer->setClickRadius(getClickRadius());
         groupLayer->setClickHandlerLayerFilter(getClickHandlerLayerFilter());
         groupLayer->setVectorTileEventListener(getVectorTileEventListener());
@@ -422,14 +413,10 @@ namespace massif {
         }
     }
 
-    // Resolving a slot's config walks the style and takes the DECODER's mutex, and the render thread
-    // did it per draw item, twice a frame (the drape collect and the draw) - 41 ms of a 43 ms
-    // prelude, for an answer that only moves when the zoom or the style does. Caller holds
-    // _sourceMutex; the version covers a live parameter change, which reloads no tile.
+    // Memoised: resolving walks the style under the decoder's mutex, twice a frame per draw item.
+    // Caller holds _sourceMutex; the version covers live parameter changes.
     mvt::ResolvedLayerConfig CompositeVectorTileLayer::resolveLayerConfigCached(const std::shared_ptr<MBVectorTileDecoder>& decoder, const std::string& slot, float viewZoom) {
-        // Quantised, and resolved AT the quantised zoom so the cached value is the one the key
-        // describes: with terrain the exact zoom drifts every frame and never hits. See
-        // StyleConfigZoom - the integer zoom the rules are selected at cannot move.
+        // Resolved at the quantised zoom so the cached value matches its key. See StyleConfigZoom.
         float zoom = StyleConfigZoom::quantise(viewZoom);
         unsigned int version = decoder->getConfigVersion();
         auto it = _resolvedConfigCache.find(slot);
@@ -511,9 +498,8 @@ namespace massif {
     }
 
     void CompositeVectorTileLayer::snapshotChildTileLayers() {
-        // Caller holds _sourceMutex. The render thread reads this list holding MapRenderer::_mutex,
-        // and a cull holding _sourceMutex reaches for that same one - taking _sourceMutex over there
-        // deadlocked the GL thread outright, with every worker piled up behind it.
+        // Caller holds _sourceMutex. Readers hold MapRenderer::_mutex, which a cull under _sourceMutex
+        // also takes, so readers must not take _sourceMutex (deadlock).
         std::vector<std::shared_ptr<TileLayer> > children;
         for (const ExternalSource& s : _externalSources) {
             if (auto childTileLayer = std::dynamic_pointer_cast<TileLayer>(s.childLayer)) {
@@ -560,10 +546,8 @@ namespace massif {
         // parameters changed (a change triggers a decoder update -> tile reload -> loadData).
         applyVectorSourceConfigs();
 
-        // WHICH children to load is what _sourceMutex protects; loading them is not. A child's
-        // loadData builds its fetch set and queues its tasks, and holding the mutex across all of
-        // them blocked the render thread in collectDrapeLayers for 277 ms of a 280 ms prelude -
-        // the map hung exactly while tiles were streaming in.
+        // _sourceMutex guards which children to load, not the loading: holding it across child
+        // loadData blocked the render thread while tiles streamed in.
         std::vector<std::shared_ptr<Layer> > loadLayers;
         {
             std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
@@ -621,8 +605,7 @@ namespace massif {
     }
 
     bool CompositeVectorTileLayer::isTerrainDecodeSettled() {
-        // The children re-decode on the same switch, but only the composite is in Layers - so
-        // without this the 2D/3D switch rose into terrain with the hillshade still decoding.
+        // Children re-decode on the same switch but are not in Layers themselves.
         bool settled = VectorTileLayer::isTerrainDecodeSettled();
         std::vector<std::shared_ptr<TileLayer> > children;
         {
@@ -881,8 +864,7 @@ namespace massif {
 
         auto decoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(getTileDecoder());
 
-        // The render thread reaches for _sourceMutex here every frame, and a cull holds it for a
-        // whole tile-set refresh - timed apart from the work below for exactly that reason.
+        // Timed apart: a cull holds _sourceMutex for a whole tile-set refresh.
         FRAME_PROF_NOW(profLayerLockStart);
         std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
         FRAME_PROF_ADD(prePaintLayerLockMs, profLayerLockStart);
@@ -946,12 +928,7 @@ namespace massif {
     }
 
     bool CompositeVectorTileLayer::renderComposite(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState, bool terrain) {
-        // This layer's OWN visibility, for the whole composite. Hiding a layer only stops it
-        // CULLING (TileLayer::calculateVisibleTiles returns early), which empties this layer's own
-        // renderer but leaves the group layers and the external children holding the tiles they
-        // already had - and those are drawn below without ever consulting their parent. So a hidden
-        // composite kept drawing its style's groups (roads, contours, ...) until the layer was
-        // removed outright, which is the opposite of what setVisible says.
+        // Hiding only stops culling; group layers and external children would keep drawing their tiles.
         if (!isVisible() || getOpacity() <= 0) {
             return false;
         }

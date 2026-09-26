@@ -72,10 +72,8 @@ namespace massif {
             SECTION_COUNT
         };
 
-        // Called when a GL context is created on this thread: the query objects belong to the
-        // context that generated them, so a recreated surface has to generate its own. Without
-        // this the names of the dead context were used forever, and every glBeginQueryEXT was a
-        // GL_INVALID_OPERATION.
+        // Called when a GL context is created on this thread: query objects belong to the context
+        // that generated them, so a recreated surface needs its own.
         static void resetContext();
         // Called at the start of every frame: collects whatever the GPU has finished and picks
         // the query slot this frame writes into.
@@ -88,22 +86,13 @@ namespace massif {
 
     struct FrameProfiler {
         // Where the current frame spent its time. Reset at the start of every frame.
-        //
-        // PER THREAD, and that is not a detail: a process can have SEVERAL map views, each with its
-        // own GL thread and its own context (the panorama next to the main map). Shared, every field
-        // here was the sum of two frames drawn by two renderers at two frame rates, and the 'PROF'
-        // line described neither of them. One set per GL thread means one line per map, told apart
-        // by the thread id logcat already prints.
-        //
-        // The RenderStats counters below are still process-wide atomics, so the per-frame deltas in
-        // checkSpike are shared where these are not.
+        // Per thread: each map view has its own GL thread, so each gets its own 'PROF' line.
+        // The RenderStats counters are still process-wide, so checkSpike's deltas are shared.
         static inline thread_local double skyMs = 0;        // frame start: state, sky, background (includes the swap-buffer wait)
         static inline thread_local double preludeMs = 0;    // terrain depth pre-pass / occlusion depth read-back
-        // prelude's own split: it holds five unrelated things and dominates a 3D pan, and its GPU
-        // time is 0.0, so the answer is which CPU step - not which draw.
+        // prelude's split: its GPU time is ~0, so the question is which CPU step.
         static inline thread_local double preTerrainMs = 0;   // terrain surface / background fill, incl. its elevation walk
-        // preTerrain's own split: it holds an elevation prefetch walk over the cut and the surface
-        // draw, and they have nothing to do with each other.
+        // preTerrain's split: the elevation prefetch walk and the surface draw are unrelated.
         static inline thread_local double preTerrainCutMs = 0;      // the budgeted cut itself (memoised per frame)
         static inline thread_local double preTerrainPrefetchMs = 0; // prefetchTileGrid / getDataTileGrid over every cut tile
         static inline thread_local double preTerrainSurfaceMs = 0;  // renderSurface: mesh build + draw
@@ -123,10 +112,7 @@ namespace massif {
         static inline thread_local double preTailWalkMs = 0;    // ... of which the drape/ground layer walk
         static inline thread_local double prepareMs = 0;    // per-layer startFrame (label re-anchoring, blending state)
         static inline thread_local double coverMs = 0;      // drape cover computation
-        // cover's own split. It measured 7-14 ms of a 35-48 ms panorama frame - the largest single
-        // item - and memoizing the stand-in walk's elevation lookups plus replacing its quadratic
-        // dedup moved it not at all, so the cost is in one of the other three and guessing which
-        // has already been wrong once.
+        // cover's split.
         static inline thread_local double coverSeedMs = 0;    // collectTerrainCoverTileIds: the terrain's own visible cut
         static inline thread_local double coverCollectMs = 0; // collectTerrainCover over the ground/drape layers
         static inline thread_local double coverStandInMs = 0; // the DEM stand-in walk and its dedup

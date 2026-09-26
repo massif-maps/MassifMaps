@@ -1861,21 +1861,12 @@ namespace massif::vt {
             vec3 offset = mod(aVertexAttribs[3], 2.0) > 0.5
                 ? uLabelAxisX * aVertexOffset.x + uLabelAxisY * aVertexOffset.y
                 : aVertexOffset;
-            // The anchor's height comes from the SAME elevation texture the surface is drawn from, so
-            // it cannot disagree with the ground, and a CPU height that was never resolved (or is
-            // stale) does not bury the label - mapbox elevates symbols the same way
-            // (symbol.vertex.glsl: z_offset + elevation(tile_anchor)).
-            // A deck label keeps the CPU height - a span chord is CPU-only data and is not the
-            // terrain's. Every other label takes the ground's, so a CPU height that was never resolved
-            // cannot bury it. This is mapbox's u_elevation_from_sea, per label instead of per layer.
+            // Labels take the height from the surface's own elevation texture (as mapbox's symbol.vertex.glsl),
+            // except deck labels: a span chord is CPU-only data.
             highp vec3 anchorPos = aVertexPosition;
         #ifdef TERRAIN
             if (aVertexAttribs[3] < 1.5) {
-                // The WHOLE position through applyTerrain, both ways. On a globe the sphere point is
-                // recoverable only from the real vertex (terrainSphereMercatorDelta reads all three
-                // components) and the lift is RADIAL, so neither forcing z to 0 going in nor taking
-                // .z coming out is right there. On a plane applyTerrain ignores z and returns
-                // vec3(pos.xy, z), so both forms are the same.
+                // The whole position, not just z: on a globe the lift is radial and needs all three components.
                 anchorPos = applyTerrain(aVertexPosition);
             }
         #endif

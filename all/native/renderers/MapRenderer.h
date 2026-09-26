@@ -176,9 +176,7 @@ namespace massif {
         std::shared_ptr<GLResourceManager> getGLResourceManager() const;
 
         /**
-         * The elevation texture cache for this manager, shared by every tile layer. One per MAP:
-         * the encoded texture is a function of the elevation data and the tile id alone, so a cache
-         * per layer meant five encode threads and five textures for identical heights.
+         * The elevation texture cache for this manager: one per map, shared by every tile layer.
          * GL thread only. Internal method.
          */
         std::shared_ptr<ElevationTextureCache> getElevationTextureCache(const std::shared_ptr<ElevationManager>& elevationManager);
@@ -337,7 +335,7 @@ namespace massif {
         ViewState _viewState;
         void publishViewStateSnapshot(const ViewState& viewState) const;
         mutable std::shared_ptr<const ViewState> _viewStateSnapshot;
-        mutable std::mutex _viewStateSnapshotMutex; // pointer swap only, never held across work - NOT _mutex
+        mutable std::mutex _viewStateSnapshotMutex; // pointer swap only, never held across work; not _mutex
         float _lastLabelPlacementZoom = 0.0f;
 
         // The 2D/3D switch. The ratio and the decode state live on TerrainOptions, where everything
@@ -356,8 +354,7 @@ namespace massif {
         std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
         // What each half of a switch cost, reported once per switch. See FlattenSwitchTimeline.
         FlattenSwitchTimeline _flattenSwitchTimeline;
-        // The drape's own progress, for that report: both are written by the draw pass and read by
-        // the switch at the start of the next frame, so the settle is one frame late. Render thread.
+        // Written by the draw pass, read by the next frame's switch (one frame late). Render thread.
         bool _drapeBakesPending = false;
         int _drapeBakesDone = 0;
         // Set by every camera event; the rule stays quiet while it is false. See AutoFlatten::Trigger.

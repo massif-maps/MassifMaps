@@ -52,9 +52,7 @@ namespace massif {
      *    which gives terrain self-occlusion without z-fighting between layers.
      * 2. renderDepthTexture: renders packed 24-bit linear depth (RGB, relative to the
      *    far plane) plus terrain coverage (A) into a half-resolution offscreen buffer,
-     *    consumed by post-process effects. An effect that asks for
-     *    PostProcessEffect::setTerrainNormalsRequired gets the same buffer repacked as
-     *    16-bit sqrt depth (RG) plus the surface normal (BA) instead.
+     *    consumed by post-process effects (repacked with normals for setTerrainNormalsRequired).
      * Internal class, not exposed in the public API.
      */
     class TerrainRenderer {
@@ -117,22 +115,15 @@ namespace massif {
          * screen is not an approximation there, it is the pattern it draws. The occlusion
          * read-back, which only samples points, keeps the cheap cap.
          *
-         * withNormals swaps the buffer's layout for the one PostProcessEffect::setTerrainNormalsRequired
-         * documents - 16-bit sqrt depth plus the packed surface normal - and costs one extra vertex
-         * attribute. The occlusion read-back never asks for it: it samples depth at points, and the
-         * layout it reads back is the 24-bit one.
+         * withNormals uses the layout PostProcessEffect::setTerrainNormalsRequired documents; the
+         * occlusion read-back never asks for it, it reads the 24-bit depth layout.
          */
         bool renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap = DEPTH_TEXTURE_MESH_RESOLUTION, bool withNormals = false, bool forReadback = false);
 
         /**
-         * The GPU elevation textures, shared with the tile renderer (MapRenderer owns one per
-         * elevation manager). Set once per frame before the passes below; without it the surface
-         * and normal passes fall back to the per-vertex mesh normal.
-         *
-         * A mesh carries ONE normal per cell corner, so relief finer than a cell is not in it at
-         * all - and at 64 cells a tile that is hundreds of metres of ground per cell. Sampling the
-         * DEM per FRAGMENT is what geo-three's terrain material does, and it is most of why its
-         * hillshade and ridge lines are sharp where ours are soft.
+         * The GPU elevation textures, shared with the tile renderer; set once per frame before the passes.
+         * Lets the surface and normal passes sample the DEM per fragment (sub-cell relief, as geo-three
+         * does); without it they fall back to the per-vertex mesh normal.
          */
         void setElevationTextureCache(const std::shared_ptr<ElevationTextureCache>& cache) { _elevationTextureCache = cache; }
 
@@ -168,10 +159,8 @@ namespace massif {
          * so a current-camera distance compared against it reads every label as occluded while
          * zooming out. Projecting with the buffer's own matrix makes the answer merely late.
          *
-         * A position that camera cannot see - behind it, or outside its viewport - is UNANSWERABLE
-         * rather than visible, and gets the verdict it was last given (see _occlusionVerdicts).
-         * Fails open only when there is no data at all, or when nothing is known about the
-         * position yet. `answered`, when given, says which it was.
+         * A position that camera cannot see gets its last verdict (see _occlusionVerdicts); fails open
+         * only with no data or no verdict yet. `answered`, when given, says which it was.
          */
         bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, bool* answered = nullptr) const;
 
@@ -190,11 +179,7 @@ namespace massif {
         struct MeshCacheEntry;
 
         std::shared_ptr<ElevationTextureCache> _elevationTextureCache;
-        // The OCCLUSION read-back's own buffer, separate from the post-process one. They are two
-        // different sizes as soon as an app asks for a full-resolution post-process buffer
-        // (TerrainOptions::setPostProcessDownscale), and sharing one member then made the two
-        // callers resize it against each other every frame - and left glReadPixels asking for a
-        // rectangle the framebuffer no longer was.
+        // Own buffer: its size differs from the post-process one (setPostProcessDownscale).
         std::shared_ptr<FrameBuffer> _readbackFrameBuffer;
 
         static constexpr int BUFFER_DOWNSCALE = 2;    // occlusion read-back buffer, half resolution
@@ -207,14 +192,10 @@ namespace massif {
         // GPU with the render one, and that contention is what this interval buys back: on an Adreno
         // 610, 100 ms costs 13.3 fps against 14.9 at 500 ms.
         static constexpr int DEPTH_SUBMIT_MOVING_INTERVAL = 500;   // minimum interval (ms) between worker jobs while moving
-        // Per-mesh-build tracing: what DEM a tile landed on, and whether the fixed-scale normals
-        // took. One line per mesh built, which in a panorama is ~1500 a minute off the GL thread -
-        // a diagnostic, not something to ship on.
+        // Per-mesh-build trace: one log line per mesh, never ship it on.
         static constexpr bool TERRAIN_MESH_TRACE = false;
 
-        // How far a tile's edge skirt hangs below the surface, in METRES. It covers the crack
-        // between a coarse sampling of a hillside and a fine one, which is bounded by the local
-        // relief. Expressed in metres and not in tile-local z on purpose - see buildTileMesh.
+        // Metres, not tile-local z: the crack it covers is bounded by the local relief. See buildTileMesh.
         static constexpr double SKIRT_DEPTH_METERS = 500.0;
         static constexpr int MIN_MESH_GRID_SIZE = 4;  // grid cells per tile edge, lower bound
         static constexpr int MAX_MESH_GRID_SIZE = 96; // grid cells per tile edge, upper bound
@@ -223,32 +204,16 @@ namespace massif {
         static constexpr int REFERENCE_MESH_FULL_ZOOM = 12;
         static constexpr int REFERENCE_MIN_MESH_GRID_SIZE = 16;
         static constexpr int MAX_CACHED_MESHES = 160;
-        // How many tiles the visible cut may hold, and why it is HALF the cache: one frame walks the
-        // same cut two or three times (the surface, the depth pre-pass, the occlusion depth texture)
-        // and the passes ask for different mesh resolutions, so each tile occupies more than one cache
-        // entry per frame. A cut bigger than that evicts meshes the NEXT pass of the SAME frame needs,
-        // so every pass rebuilds them: the whole surface, tile by tile, several times a frame.
-        //
-        // That is what a WIDE view walks into and a tall one does not. Landscape covers several times
-        // the ground at the same tilt, and the camera distance for a given zoom follows the viewport's
-        // HEIGHT (ViewState::calculateZoom0Distance), so turning the device also subdivides further -
-        // the cut grew past the cache and the frame rate collapsed, with the same scene in portrait
-        // perfectly smooth.
+        // Half the cache: each pass of a frame asks for its own mesh resolution, so a bigger cut evicts
+        // meshes the next pass of the same frame needs (landscape views hit this first).
         static constexpr int MAX_VISIBLE_MESH_TILES = MAX_CACHED_MESHES / 2;
         static constexpr int DEPTH_TEXTURE_MESH_RESOLUTION = 32; // mesh cap for the occlusion depth texture
         static constexpr int OCCLUSION_SAMPLE_OFFSET = 4; // buffer pixels sampled around a queried position
-        // How many remembered occlusion verdicts are kept (see _occlusionVerdicts). One per labelled
-        // feature the camera has looked at, so a panorama's few thousand summits fit; past it the
-        // whole table is dropped rather than evicted one by one - a verdict is a hint, and losing it
-        // costs one pass of the behaviour this had before.
+        // Past it the whole table is dropped: a verdict is only a hint.
         static constexpr std::size_t MAX_OCCLUSION_VERDICTS = 8192;
-        // How many refine jobs may be outstanding. A frame can newly build a hundred meshes, and
-        // queueing all of them keeps the worker busy long past the point the camera has moved on.
+        // Bounded so the worker does not lag long after the camera has moved on.
         static constexpr std::size_t MAX_PENDING_ATTRIB_JOBS = 64;
-        // How many times a mesh may re-bake its normals as better elevation data arrives. A bake
-        // reads the DEM cached-only, so an early one measures whatever had landed by then; each
-        // re-bake can only improve on it, and the DEM zoom range is small. The cap is what stops a
-        // tile over ground the source has no data for from retrying on every elevation insert.
+        // Re-bakes as better DEM arrives; the cap stops a tile with no source data retrying on every insert.
         static constexpr int MAX_ATTRIB_REBAKES = 4;
 
         static const std::string TERRAIN_DEPTH_VERTEX_SHADER;
@@ -265,22 +230,15 @@ namespace massif {
         // meshResolutionCap > 0 caps the per-tile mesh grid below what TerrainOptions asks for: the
         // occlusion depth texture is a half-resolution approximation sampled at single points, and
         // the full mesh is CPU built and drawn from client memory, the expensive part of the pass.
-        // `normalAttrib` binds a_normal (and pays for ensureSurfaceAttribs) without making the pass a
-        // surface one: the normal-packing depth shader wants the normal AND u_far, which the surface
-        // shader works in metres and does not have.
-        // `skipSkirts` draws the grid only. TRIED for the post-process depth texture, on the theory
-        // that a skirt there is only a depth discontinuity along a tile boundary - and it made things
-        // worse: the skirts are covering REAL cracks, so dropping them left sky-coloured gaps at the
-        // tile edges and the silhouette term drew those instead, as a cross at every tile corner.
-        // The cracks have to be closed before the walls can go. Kept, unused, for that.
+        // `normalAttrib` binds a_normal without making the pass a surface one (the depth shader needs u_far).
+        // `skipSkirts` is unused: the skirts still cover real cracks, so dropping them shows gaps.
         bool renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn = std::function<void(const MapTile&)>(), int meshResolutionCap = 0, bool surfaceAttribs = false, bool normalAttrib = false, bool skipSkirts = false);
         // Compiles (and caches) the surface program for the current TerrainOptions shader source.
         // A source that failed once is not retried until it changes.
         std::shared_ptr<Shader> updateSurfaceShader(const std::string& shaderSource, const std::string& fogShaderSource, const std::shared_ptr<GLResourceManager>& glResourceManager);
         // Fills the mesh's per-vertex surface attributes (normal + elevation in metres) on first
         // use. Only the surface pass needs them, so the depth passes never pay for them.
-        // normalSampleDistance is TerrainOptions'; 0 takes the gradient from the mesh, anything else
-        // takes it from the DEM at that many metres, which is what makes it survive an LOD boundary.
+        // normalSampleDistance: 0 takes the gradient from the mesh, else from the DEM at that many metres.
         void ensureSurfaceAttribs(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, TileMesh& mesh, float normalSampleDistance, bool allowFixedScale) const;
         // Visible tiles paired with their (cached, built here if missing) meshes. Both the
         // rendering path and the offscreen depth job start from this, so they always draw the
@@ -290,37 +248,24 @@ namespace massif {
         // current pass already drew.
         void evictLeastRecentlyUsedMeshes(unsigned int pass, int maxCachedMeshes);
 
-        /**
-         * The fixed-scale half of the surface attributes, off the render thread.
-         *
-         * ensureSurfaceAttribs bakes the cheap mesh-gradient normals inline so a tile can draw the
-         * frame its mesh is built, and queues the DEM-sampled ones here. Those are four cached
-         * elevation reads per vertex - 4225 vertices on a 64-cell mesh - and measured 14 ms a tile,
-         * 458 ms in one second of panning, all of it in the prelude. The grids are immutable and
-         * versioned, so reading them from a worker needs no lock.
-         */
         static void logBuildStamp();
+        // DEM-sampled normals, baked off the render thread; the grids are immutable, so no lock.
         void startAttribWorker();
         void stopAttribWorker();
         void queueAttribRefine(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, const std::shared_ptr<TileMesh>& mesh, float normalSampleDistance);
         void applyRefinedAttribs();
         bool updateDepthBufferAsync(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
         bool updateDepthBufferSync(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager);
-        // `maxZoom` caps the cut, which is how the budget below coarsens the whole surface a level at
-        // a time; Const::MAX_SUPPORTED_ZOOM_LEVEL means "no cap".
+        // Const::MAX_SUPPORTED_ZOOM_LEVEL as `maxZoom` means no cap.
         void calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, int maxZoom, float subdivideDistance, std::vector<MapTile>& tiles) const;
-        // edgeHeights: per side (south, north, west, east - the MESH's frame, gy = 0 south) the
-        // height of each edge node in internal units, or empty to keep the tile's own. See
-        // EdgeHeightResolver in the .cpp for how both tiles sharing an edge agree on it.
+        // edgeHeights: per side (south, north, west, east; gy = 0 south), internal units, empty keeps the tile's own.
         std::shared_ptr<TileMesh> buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, const std::array<std::vector<double>, 4>& edgeHeights, bool bilinearHeights) const;
         int calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution, bool fixedScaleNormals, bool referenceMesh) const;
         cglib::mat4x4<double> calculateTileMatrix(const MapTile& tile) const;
         // Linear eye depth (view w, internal units) of the terrain at a buffer pixel. Returns a
         // huge value for sky pixels and for pixels outside the buffer.
         static float sampleDepthW(const TerrainDepthBuffer& depthData, int x, int y);
-        // A queried position's identity, for the remembered verdicts. The HORIZONTAL position only:
-        // a label's elevation is re-anchored as elevation tiles stream in, and a key that moved with
-        // it would forget the verdict exactly while the data it depends on is arriving.
+        // Horizontal position only: a label's elevation is re-anchored while elevation tiles stream in.
         static long long occlusionVerdictKey(const cglib::vec3<double>& pos);
         bool cachedOcclusionVerdict(long long key) const;
         void rememberOcclusionVerdict(long long key, bool occluded) const;
@@ -351,9 +296,6 @@ namespace massif {
         std::map<std::pair<long long, int>, MeshCacheEntry> _meshCache;
         unsigned int _meshCacheClock = 0; // incremented per collectTileMeshes pass; stamps MeshCacheEntry::lastUsed
 
-        // The budgeted terrain cut, memoised for the frame. collectVisibleTiles is asked for the
-        // same answer by every pass of a frame, and the walk that produces it is the single most
-        // expensive thing in one - see the note there.
         // The surface-attribute worker: one thread, a job queue in and a result queue out.
         struct AttribJob {
             MapTile tile = MapTile(0, 0, 0, 0);
@@ -366,8 +308,7 @@ namespace massif {
             std::vector<float> attribs;
             float normalSampleDistance = 0;
             int attribsDemZoom = -1;
-            // The bake happens on a scratch copy, so what it learned about the DEM under it has to
-            // travel back with the attribs or the mesh keeps a provisional result as if it were final.
+            // Baked on a scratch copy, so the DEM state travels back with the attribs.
             bool attribsProvisional = false;
             int attribsWorstZoom = -1;
             unsigned int attribsDataVersion = 0;
@@ -378,22 +319,17 @@ namespace massif {
         std::deque<AttribJob> _attribJobs;
         std::vector<AttribResult> _attribResults;
         std::atomic<bool> _attribWorkerStop { false };
-        // Set when a refine lands, cleared when the packed depth/normal texture is re-rendered.
-        // That texture is cached on (MVP, elevation version, mesh cap, withNormals) and a refine
-        // changes NONE of them - so without this the post-process keeps sampling the stand-in
-        // normals the mesh was first drawn with, however good the mesh's own attributes have since
-        // become. The surface shader reads the mesh directly and looks right meanwhile, which is
-        // exactly the split debug views 1 and 7 showed.
+        // A refine changes none of the depth texture's cache key, so it must invalidate it explicitly.
         bool _depthTextureAttribsDirty = false;
 
+        // The budgeted terrain cut, memoised for the frame: every pass asks for it.
         mutable std::mutex _visibleTilesMutex;
         mutable cglib::mat4x4<double> _visibleTilesMVP = cglib::mat4x4<double>::zero();
         mutable unsigned int _visibleTilesElevationVersion = 0;
         mutable float _visibleTilesSubdivideDistance = 0.0f;
         mutable std::vector<MapTile> _visibleTilesCache;
         mutable bool _visibleTilesValid = false;
-        // The zoom the last cut settled on, so the budget loop starts from the answer instead of
-        // from MAX_SUPPORTED_ZOOM_LEVEL and re-walking the tree a dozen times.
+        // The zoom the last cut settled on: the budget loop starts there.
         mutable int _budgetMaxZoom = 24;
 
         // The occlusion depth is written by whichever path produced it and read by the label
@@ -409,15 +345,8 @@ namespace massif {
         cglib::mat4x4<double> _depthLastSeenMVPMatrix = cglib::mat4x4<double>::zero(); // camera of the previous frame
         bool _depthStale = false; // an update was deferred: the data no longer matches the camera
 
-        // The last verdict each queried position was given, and why one is kept at all: the depth
-        // buffer only covers the camera it was rendered from, which lags a moving one by up to the
-        // submit interval. A label the camera has just turned toward falls OUTSIDE that buffer, and
-        // answering 'not occluded' there made every name entering from the screen edge appear and
-        // then vanish once the buffer caught up - the labels that showed and disappeared while
-        // looking around. Unanswerable now means 'as before' instead of 'visible'.
-        //
-        // Cleared when the elevation changes, which is the one thing that can change a verdict for a
-        // camera that has not moved.
+        // The lagging depth buffer cannot see a label entering from the screen edge; it keeps its last
+        // verdict instead of blinking visible. Cleared when the elevation changes.
         mutable std::unordered_map<long long, bool> _occlusionVerdicts;
         mutable std::mutex _occlusionVerdictMutex;
     };

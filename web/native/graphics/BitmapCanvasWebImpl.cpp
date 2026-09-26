@@ -9,10 +9,8 @@
 
 #include <emscripten.h>
 
-// The JS half, as EM_JS functions (EM_ASM splits its code on commas). Canvases are kept by id;
-// one text layout serves measure and draw - lines split on newlines, then word-wrapped to
-// maxWidth when asked, each line fontSize * 1.2 high as Android's StaticLayout and CoreText
-// lay them out.
+// EM_JS rather than EM_ASM, which splits its code on commas. Measure and draw share one layout;
+// lines are fontSize * 1.2 high, as Android's StaticLayout and CoreText lay them out.
 EM_JS(int, massif_canvas_create, (int width, int height), {
     if (!globalThis.__massifCanvas) {
         const canvases = new Map();

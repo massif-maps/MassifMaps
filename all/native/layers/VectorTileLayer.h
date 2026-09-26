@@ -276,7 +276,7 @@ namespace massif {
             virtual bool loadTile(const std::shared_ptr<TileLayer>& tileLayer);
 
         private:
-            int _styleTileZoom; // decided in loadTile, from the target the camera has when it decodes
+            int _styleTileZoom; // decided in loadTile, from the target at decode time
         };
         
         class TileInfo {

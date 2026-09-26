@@ -1,16 +1,6 @@
-/*
- * What a 2D/3D switch cost, split by phase (terrain/FlattenSwitchTimeline.h).
- *
- * The case this exists for: "the switch is slow" on the Crosscall covers three separate waits with
- * three separate fixes - the tile re-decode the rise waits on, the ramp itself, and the drape
- * catching up after the camera has landed. One report has to name which one.
- *
- * NOT covered here: that the renderer feeds it the right phase every frame, or that the drape's
- * pending flag is set where the bakes actually run - that is the device run named in the PR. Nor the
- * lock order: the settle deliberately does NOT poll the layers, because a composite's
- * isUpdateInProgress takes _sourceMutex and the render thread holds MapRenderer::_mutex - polling it
- * there hung the app outright on the first switch. No host test can catch that.
- */
+// What a 2D/3D switch cost, split by phase (terrain/FlattenSwitchTimeline.h).
+// Not covered: the settle must not poll layers (isUpdateInProgress takes _sourceMutex under
+// MapRenderer::_mutex, a deadlock no host test can see).
 
 #include "terrain/FlattenSwitchTimeline.h"
 
@@ -23,7 +13,7 @@ using namespace massif;
 namespace {
     using Phase = FlattenSwitch::Phase;
 
-    // One frame at 'phase'. Returns true when the timeline closed a report on this frame.
+    // Returns true when the timeline closed a report on this frame.
     bool frame(FlattenSwitchTimeline& timeline, FlattenSwitchTimeline::Report& report, Phase phase,
                float deltaSeconds, bool bakesQueued = false, int tilesOwed = 0, int bakes = 0,
                bool warmTimedOut = false) {
@@ -41,8 +31,7 @@ namespace {
 void testFlattenSwitchTimeline() {
     FlattenSwitchTimeline::Report report;
 
-    // A map sitting flat is not a switch, however many frames it draws - the renderer seeds the
-    // switch before the first step, and the timeline must not read that seed as a transition.
+    // The renderer seeds the phase before the first step; that seed is not a transition.
     {
         FlattenSwitchTimeline timeline;
         bool closed = false;
@@ -52,7 +41,6 @@ void testFlattenSwitchTimeline() {
         TEST_CHECK(!closed, "a map that never switches reports nothing");
     }
 
-    // The rise, in full: warm, ramp, settle, one report.
     {
         FlattenSwitchTimeline timeline;
         frame(timeline, report, Phase::FLAT, 0.016f);
@@ -62,7 +50,6 @@ void testFlattenSwitchTimeline() {
         for (int i = 0; i < 5; i++) {
             frame(timeline, report, Phase::RAMPING, 0.2f);
         }
-        // Landed, but the drape is still baking: the map is not finished and neither is the report.
         TEST_CHECK(!frame(timeline, report, Phase::TERRAIN, 0.1f, true, 0, 4), "a drape still baking holds the report open");
         bool closed = frame(timeline, report, Phase::TERRAIN, 0.1f, false, 0, 2);
         TEST_CHECK(closed, "the report closes the frame the bake queue empties");
@@ -76,7 +63,6 @@ void testFlattenSwitchTimeline() {
         TEST_CHECK(std::abs(report.totalSeconds() - 2.2f) < 1e-4f, "the total is the three of them");
     }
 
-    // The sink has nothing to wait for, so it is ramp only - and it is not called a rise.
     {
         FlattenSwitchTimeline timeline;
         frame(timeline, report, Phase::TERRAIN, 0.016f);
@@ -89,7 +75,6 @@ void testFlattenSwitchTimeline() {
         TEST_CHECK(std::abs(report.rampSeconds - 1.0f) < 1e-4f, "only the ramp cost anything");
     }
 
-    // A warm wait that gave up says so: late is better than never, but it is not the same number.
     {
         FlattenSwitchTimeline timeline;
         frame(timeline, report, Phase::FLAT, 0.016f);
@@ -100,7 +85,6 @@ void testFlattenSwitchTimeline() {
         TEST_CHECK(report.timedOut, "and the report says the tiles never came");
     }
 
-    // An app driving the ratio itself is still a switch: MANUAL counts as the ramp it is.
     {
         FlattenSwitchTimeline timeline;
         frame(timeline, report, Phase::FLAT, 0.016f);
@@ -111,7 +95,6 @@ void testFlattenSwitchTimeline() {
         TEST_CHECK(std::abs(report.rampSeconds - 1.0f) < 1e-4f, "with the app's own animation as the ramp");
     }
 
-    // A drape that never drains must not hold the report open for good.
     {
         FlattenSwitchTimeline timeline;
         frame(timeline, report, Phase::FLAT, 0.016f);
@@ -124,7 +107,6 @@ void testFlattenSwitchTimeline() {
         TEST_CHECK(report.settleSeconds >= FlattenSwitchTimeline::MAX_SETTLE_SECONDS, "at its own cap");
     }
 
-    // Two switches in a row are two reports, not one running total.
     {
         FlattenSwitchTimeline timeline;
         frame(timeline, report, Phase::FLAT, 0.016f);

@@ -276,16 +276,14 @@ class ProjectionSurface;
         virtual bool isTerrainDecodeSettled();
 
         /**
-         * How many visible tiles still owe that switch a decode, for the switch's own timing report.
-         * -1 before the cull that names them has run. Internal method.
-         * @return The number of tiles the 2D/3D switch is waiting on in this layer.
+         * How many visible tiles the 2D/3D switch still waits on, -1 before the next cull. Internal method.
+         * @return The number of pending tiles in this layer.
          */
         virtual int getTerrainDecodePendingCount() const;
 
     protected:
         /**
-         * Marks the visible tiles as waiting for a new terrain decode state. The next cull records
-         * which ones it had to refetch, and isTerrainDecodeSettled waits on exactly those.
+         * Marks the visible tiles as waiting for a new terrain decode; the next cull names which ones.
          */
         void markTerrainDecodeUnsettled();
 
@@ -521,9 +519,8 @@ class ProjectionSurface;
         int getTargetTileZoom() const { return _targetTileZoom; }
         int getTileStyleZoomLift() const { return _tileStyleZoomLift; }
 
-        // A hook, not an invalidation: a decoded tile carries the style zoom it was built at, and
-        // tileValid() compares that stamp per tile. Wiping the caches here re-decoded the whole map
-        // on every integer zoom crossing, tiles the crossing could not stale included.
+        // A hook, not an invalidation: tileValid() compares each tile's style zoom stamp, and wiping
+        // the caches here re-decoded the whole map on every integer zoom crossing.
         virtual void onTargetTileZoomChanged() { }
 
         const DirectorPtr<TileDataSource> _dataSource;
@@ -554,8 +551,7 @@ class ProjectionSurface;
         int findChildTiles(const MapTile& visTile, const MapTile& tile, int depth, bool preloadingCache, bool preloadingTile);
 
         static const float DISCRETE_ZOOM_LEVEL_BIAS;
-        // How far past a level boundary the camera zoom must go before the target tile zoom follows
-        // it. See calculateTargetTileZoom - a terrain switch drifts the zoom by ~0.10 of a level.
+        // Margin past a level boundary before the target tile zoom follows (see calculateTargetTileZoom).
         static const double TARGET_TILE_ZOOM_HYSTERESIS;
 
         // Ceiling on the terrain tile cover, used to relax the coarsening floor when the

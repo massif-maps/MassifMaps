@@ -35,7 +35,7 @@ public class Switch2D3DExample extends MapExample {
     private static final long SOURCE_HILLSHADE = 1;
     private static final long SOURCE_VECTOR = 2;
 
-    /** Where the map OPENS. Every later switch works off wherever the user has got to. */
+    /** Where the map opens; later switches start from wherever the user has got to. */
     private static final Position SUMMIT = new Position(7.6586, 45.9763);
 
     /** The opening zoom only. A switch keeps the zoom it is given - see fly(). */
@@ -277,23 +277,17 @@ public class Switch2D3DExample extends MapExample {
     }
 
     private void fly() {
-        // Sinking centres on the camera's own ground position, because at tilt 20 the focus is
-        // kilometres out in front. Rising has to be the INVERSE of that, or every round trip walks
-        // backwards by that same offset: it aims at the focus whose 3D camera stands where the flat
-        // map is centred now.
+        // Sinking centres on the eye's ground point (at tilt 20 the focus is km ahead); rising is the
+        // inverse, or every round trip drifts back by that offset.
         Position target = in3D ? focusPutting3DCameraOver(map.camera().position())
                                : map.camera().eyePosition();
-        // The zoom carries across. Tilt alone then decides the eye height - the camera stands
-        // distance * sin(tilt) up, so the same zoom that framed a town flat lands low over it in 3D,
-        // and a round trip comes back where it started instead of snapping to one altitude.
+        // Zoom carries across so tilt alone sets the eye height and a round trip returns where it started.
         map.camera().animate(seconds).moveTo(target, map.camera().zoom(), ROTATION, in3D ? TILT_3D : TILT_2D);
     }
 
     /**
-     * The focus to aim a 3D flight at so its CAMERA ends up over pos. The offset is not a constant -
-     * it comes from the viewport, the zoom and the tilt - so ask the SDK instead of deriving it:
-     * put the camera there, see where that left it standing, and mirror the miss. Both moves are
-     * instant and in one callback, so no frame is drawn in between and nothing shows on screen.
+     * Focus whose 3D camera stands over pos. The offset depends on viewport, zoom and tilt, so probe
+     * it; both moves are instant in one callback, so no frame is drawn in between.
      */
     private Position focusPutting3DCameraOver(Position pos) {
         Position was = map.camera().position();

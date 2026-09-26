@@ -116,9 +116,8 @@ namespace massif {
          */
         bool isOccludedByMap() const;
         /**
-         * Sets whether the map in front hides the object. On by default: a body behind a ridge is
-         * behind the ridge. Off draws it over the map, which is what a label naming a point of the
-         * skyline wants - it sits on the ridge and would otherwise be half covered by it.
+         * Sets whether the map in front hides the object. Default: true.
+         * Off draws it over the map, e.g. a label sitting on a skyline ridge.
          * @param occluded True to let the map in front cover the object.
          */
         void setOccludedByMap(bool occluded);

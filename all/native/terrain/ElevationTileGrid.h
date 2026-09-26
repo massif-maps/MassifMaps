@@ -69,13 +69,8 @@ namespace massif {
         /** Mesh nodes per grid edge the node field was built for, 0 for none. */
         int getNodesPerEdge() const { return _nodesPerEdge; }
         /**
-         * This decode's own identity, unique for the process and never reused.
-         *
-         * A grid is immutable, so a CONSUMER's copy is stale only when the grid itself was replaced -
-         * and a tile id cannot say that, because the replacement carries the same one. That is what
-         * kept a changed MeshResolution invisible until the app was restarted: setSurfaceResolution
-         * re-decodes every grid with a new node field (ElevationManager::tilesChanged), and a cache
-         * comparing tile ids saw no change and kept serving the old node texture.
+         * This decode's identity, unique for the process. A re-decode keeps the tile id, so caches
+         * compare this to notice a replaced grid (e.g. after setSurfaceResolution).
          */
         unsigned long long getSerial() const { return _serial; }
         /**
@@ -105,9 +100,7 @@ namespace massif {
          * duplicating this grid's edge texels.
          * Adjacent tiles then interpolate across the border from IDENTICAL texel pairs, making
          * same-level tile borders seam-free. The padded texture covers the grid bounds extended by
-         * 'border' texels on each side (at least 1). A shader measuring a slope N texels either side
-         * of a fragment needs N + 1 of them, or its outer taps clamp and the slope flattens along
-         * every DEM tile edge - see TextureBorderTexels.
+         * 'border' texels on each side (at least 1); a slope tap N texels out needs N + 1.
          * This padding is the one place this deliberately does more than tangram, which samples the
          * raster unpadded and extrapolates at the edges: without it, adjacent DEM tiles disagree
          * within the outermost half texel and the terrain shows a ridge along every tile border.
@@ -115,10 +108,8 @@ namespace massif {
         void encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, std::vector<std::uint8_t>& textureData) const;
 
         /**
-         * The texture border that keeps taps reaching 'reachMetres' of ground (at the equator, as
-         * TerrainTexture::metersPerTexel counts it) inside real data: one texel for a reach of 0,
-         * which is the 1-texel border every consumer relied on before, capped at
-         * MAX_TEXTURE_BORDER_TEXELS and at the grid's own size.
+         * The border keeping taps reaching 'reachMetres' (equator metres) inside real data: 1 for a
+         * reach of 0, capped at MAX_TEXTURE_BORDER_TEXELS and the grid size.
          */
         int getTextureBorderTexels(double reachMetres) const;
         static constexpr int MAX_TEXTURE_BORDER_TEXELS = 32;
@@ -195,11 +186,8 @@ namespace massif {
 
         float getHeight(int gx, int gy) const { return decodeTexel(texel(gx, gy)); }
 
-        /**
-         * Neighbour texel access in metres for the node boxes. A concrete functor, not a
-         * std::function: an edge node box averages up to 23k texels through this and the node
-         * loops are templates, so the indirect call was the whole read cost. Same values.
-         */
+        // Neighbour texel access in metres for the node boxes; a concrete functor because the
+        // std::function indirection dominated the edge box read cost.
         struct NodeTexelSampler {
             const ElevationTileGrid* grid;
             std::array<std::shared_ptr<ElevationTileGrid>, 8> keep; // holds the neighbours alive
@@ -209,34 +197,26 @@ namespace massif {
 
             float operator()(int gx, int gy) const;
 
-            /**
-             * The affine map onto the raster of the neighbour in direction (dx, dy), for the whole
-             * REGION of a box that lies there - true only when that neighbour exists and is
-             * COARSER, which is the one case worth summing in closed form. Our own raster and a
-             * same-level neighbour are a plain indexed read and stay per texel.
-             */
+            // Affine map onto the (dx, dy) neighbour's raster for a box region; true only for an
+            // existing COARSER neighbour, the one case summed in closed form.
             bool coarseMapping(int dx, int dy, ElevationNodeField::LatticeMapping& mapping) const;
-            /** That neighbour's own texel, for the closed form's corners. */
+            // That neighbour's own texel, for the closed form's corners.
             float neighbourHeight(int dx, int dy, int x, int y) const;
         };
 
         // Height of node (i, j) for the node TEXTURE: the field's own value inside, a box over
         // 'texel' (which answers outside the grid) on an edge, widened by the edge's scale.
-        // Takes the sampler CONCRETELY rather than as a template parameter, because the box is
-        // summed per region and a region needs to know which neighbour owns it - see
-        // ElevationNodeField::nodeHeightRegions.
+        // Concrete sampler: each region of the box must know which neighbour owns it.
         float nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const NodeTexelSampler& texel,
                               const ElevationNodeField::SummedAreaTable& sat) const;
 
         NodeTexelSampler makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
 
-        // How much coarser each neighbour (W, E, S, N) is than this grid, as a power of two
-        // (1 = not coarser).
-        // Prefix sums over this grid's own texels, for the node boxes. Built per node-texture
-        // encode and dropped with it: one is a couple of megabytes, and every cached grid keeping
-        // one would cost more than the reads it saves.
+        // Prefix sums over this grid's texels for the node boxes; built per encode, not cached (MBs each).
         void buildHeightSat(ElevationNodeField::SummedAreaTable& sat) const;
 
+        // How much coarser each neighbour (W, E, S, N) is than this grid, as a power of two
+        // (1 = not coarser).
         std::array<int, 4> edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
 
         const unsigned long long _serial;

@@ -37,18 +37,13 @@ namespace massif::vt {
          */
         void setMetersToInternal(double metersToInternal);
         /**
-         * How far a label may be from the camera, in MULTIPLES of the camera-to-focus distance.
-         * maplibre's own cut is 5 (LabelDistance::DEFAULT_VIEW_DISTANCE), which is the default here
-         * too; 0 places every label however far away it is. A view along the ground is what needs
-         * the override - see LabelDistance and Options::setLabelViewDistance.
+         * How far a label may be from the camera, in multiples of the camera-to-focus distance.
+         * Default LabelDistance::DEFAULT_VIEW_DISTANCE (5, as maplibre); 0 places every label.
          */
         void setLabelViewDistance(double viewDistance);
         /**
-         * Whether a label's anchor is hidden by the terrain - the same test the GL renderer fades an
-         * occluded label out with, whatever its style (GLTileRenderer::updateLabel).
-         * Applied DURING placement: a hidden label reserves no collision slot, so it cannot suppress
-         * a visible neighbour. mapbox returns an empty collision box for an occluded symbol for the
-         * same reason (symbol/collision_index.ts). An empty test restores the previous behaviour.
+         * Whether a label's anchor is hidden by the terrain, applied during placement so a hidden
+         * label reserves no collision slot (as mapbox's collision_index.ts). Empty = no test.
          */
         void setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test);
         void reset();
@@ -131,8 +126,7 @@ namespace massif::vt {
         ViewState _viewState;
         double _metersToInternal = 0;
         double _labelViewDistance = LabelDistance::DEFAULT_VIEW_DISTANCE;
-        // This pass's highest following-band callout anchor on screen (y up, resolution units), or
-        // < 0 for none, and where it is: such a row comes down to just above it. See placeCalloutLabel.
+        // This pass's highest following-band callout anchor on screen (y up, resolution units), < 0 = none.
         float _highestCalloutAnchorY = -1.0f;
         cglib::vec3<double> _highestCalloutAnchorPosition = cglib::vec3<double>(0, 0, 0);
         std::function<bool(const cglib::vec3<double>&)> _occlusionTest;

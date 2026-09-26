@@ -30,15 +30,8 @@ namespace massif {
         static constexpr double FRACTION = 1.0 / 16.0;
 
         /**
-         * The fraction an app asked for, or the default when it asked for nothing.
-         *
-         * SETTABLE because the fraction is a model of an ORBITING map camera, where altitude and
-         * viewing distance are the same number. A first-person view on a summit is the case it gets
-         * wrong: at 4800 m it insists on 320 m of clearance, so the eye floats a third of a
-         * kilometre above the peak it is supposed to be standing on. Such an app sets the fraction
-         * to 0 and gets a plain fixed floor (TerrainOptions::CameraClearance) instead.
-         *
-         * Negative means "unset" rather than 0, so 0 stays expressible.
+         * The fraction an app asked for, or FRACTION when negative (so 0 stays expressible).
+         * Settable because the fraction models an orbiting camera; a first-person app sets 0 for a fixed floor.
          */
         static double fractionOr(double fraction) {
             return fraction < 0 ? FRACTION : fraction;
@@ -97,8 +90,7 @@ namespace massif {
         static double shellCameraZ(double terrainZ, double maxZoomOrbit, double floorZ, double fraction = -1) {
             double f = fractionOr(fraction);
             double c = std::max(std::max(0.0, maxZoomOrbit) * f, floorZ);
-            // At fraction 0 the first bound collapses to terrainZ, so this is terrainZ + floor - the
-            // fixed clearance an app that turned the fraction off asked for.
+            // At fraction 0 this collapses to terrainZ + floor, the fixed clearance.
             return std::max(terrainZ / (1 - f), terrainZ + c);
         }
 

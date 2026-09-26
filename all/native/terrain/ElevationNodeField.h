@@ -42,10 +42,8 @@ namespace massif {
          * than the box, where the box is a plain bilinear sample.
          */
         /**
-         * The slot of the neighbour lying in direction (dx, dy), in the order a grid packs them:
-         * W E S N then SW SE NW NE. -1 is this grid itself. Split out of the node texel sampler so
-         * it can be pinned from a test: an edge node box reads up to 23k texels through that
-         * sampler, and a wrong slot reads the wrong neighbour - a seam along the tile edge.
+         * The slot of the neighbour in direction (dx, dy), in grid packing order W E S N SW SE NW NE;
+         * -1 is this grid itself. Standalone so a test can pin it: a wrong slot is a seam.
          */
         static int neighbourSlot(int dx, int dy) {
             if (dx < -1 || dx > 1 || dy < -1 || dy > 1) {
@@ -88,17 +86,8 @@ namespace massif {
         }
 
         /**
-         * One axis of a bilinear lattice sum, grouped into runs that share a cell.
-         *
-         * A node box that reaches into a COARSER neighbour reads it with sampleHeight at this
-         * grid's texel spacing, so `scale` consecutive samples land in the same neighbour cell,
-         * where the height is bilinear in the two corners. Over such a run the weighted sum has a
-         * closed form: the corners are constant, so only the weights times the interpolation
-         * fraction need accumulating. The box covers (box/scale) cells an axis, so the pair loop
-         * that follows is base^2 - constant however coarse the neighbour is - instead of box^2.
-         *
-         * c0/c1 are the clamped corner indices sampleHeight would use, s0/s1 the summed weights
-         * against them. The sum over the run is s0*H(c0) + s1*H(c1).
+         * One axis of a bilinear lattice sum: consecutive samples sharing a coarse cell, summed as
+         * s0*H(c0) + s1*H(c1), with c0/c1 the clamped corners sampleHeight would use.
          */
         struct LatticeRun {
             int c0 = 0, c1 = 0;
@@ -107,8 +96,7 @@ namespace massif {
 
         /**
          * Splits `count` samples at f0 + i*df into runs of constant (c0, c1), accumulating the
-         * weights. `dim` is the sampled raster's size: outside it the corners clamp, exactly as
-         * sampleHeight clamps, so a run past the edge collapses onto one repeated texel.
+         * weights. Corners clamp to `dim` exactly as sampleHeight does.
          */
         static void latticeRuns(double f0, double df, const float* weights, int count, int dim, std::vector<LatticeRun>& runs) {
             runs.clear();
@@ -134,9 +122,8 @@ namespace massif {
         }
 
         /**
-         * The weighted sum of a bilinear raster over the lattice the two run lists describe.
-         * `corner(x, y)` is the raster's texel. Exactly the sum of the per-sample bilinears -
-         * reassociated, not approximated, because a bilinear is separable in its two fractions.
+         * The weighted sum of a bilinear raster (texel `corner(x, y)`) over the lattice the run lists
+         * describe; exact, since a bilinear is separable.
          */
         template <typename CornerFn>
         static double latticeSum(const std::vector<LatticeRun>& xRuns, const std::vector<LatticeRun>& yRuns, const CornerFn& corner) {
@@ -155,13 +142,8 @@ namespace massif {
         }
 
         /**
-         * Prefix sums over a raster, so the mean of an axis-aligned block of it is four lookups
-         * instead of one read per texel. An edge node's box reaches 497 texels a side at a large
-         * zoom gap - a quarter of a million reads for one node - and half of that box is the
-         * grid's own texels, which this answers in O(1).
-         *
-         * EXACT, not an approximation: it is the same sum, reassociated. Double accumulation, so a
-         * 512x512 grid of metre heights does not lose the low bits the seam depends on.
+         * Prefix sums over a raster: a block sum in four lookups. Accumulated in double so a
+         * 512x512 grid does not lose the low bits the seam depends on.
          */
         struct SummedAreaTable {
             int width = 0, height = 0;
@@ -197,11 +179,7 @@ namespace massif {
             }
         };
 
-        /**
-         * nodeHeight, with the whole-weight texels that lie INSIDE the raster taken from a summed
-         * area table. Every other texel - the fractional rim of the box, and everything past the
-         * raster, which is a neighbour's - still goes through `texel`, so the value is unchanged.
-         */
+        /** nodeHeight, with the full-weight texels inside the raster taken from the summed area table. */
         template <typename TexelFn>
         static float nodeHeightSat(double cx, double cy, int boxX, int boxY, const SummedAreaTable& sat, const TexelFn& texel) {
             if (!sat.valid()) {
@@ -210,8 +188,7 @@ namespace massif {
             std::vector<float> wx, wy;
             int firstX = boxWeights(cx - 0.5 * boxX, boxX, wx);
             int firstY = boxWeights(cy - 0.5 * boxY, boxY, wy);
-            // The span of FULL-weight texels that the table can answer: inside the raster, and not
-            // the fractional rim. A weight is 1 only where the box covers the texel completely.
+            // Full-weight texels inside the raster; the fractional rim stays per texel.
             int satX0 = firstX, satX1 = firstX + static_cast<int>(wx.size()) - 1;
             int satY0 = firstY, satY1 = firstY + static_cast<int>(wy.size()) - 1;
             while (satX0 <= satX1 && (satX0 < 0 || wx[satX0 - firstX] < 1.0f)) { satX0++; }
@@ -223,7 +200,6 @@ namespace massif {
             if (satX0 <= satX1 && satY0 <= satY1) {
                 sum += sat.rectSum(satX0, satY0, satX1, satY1);
             }
-            // Everything the block did not cover, one texel at a time, exactly as before.
             for (std::size_t j = 0; j < wy.size(); j++) {
                 if (wy[j] <= 0) {
                     continue;
@@ -275,10 +251,8 @@ namespace massif {
         }
 
         /**
-         * Where a COARSE neighbour's raster sits under ours, as an affine map from OUR absolute
-         * texel index to its continuous texel coordinate: f = origin + step * g, the same f
-         * ElevationTileGrid::sampleHeight computes. step is our texel over theirs, so it is
-         * 1/scale and `scale` consecutive samples of ours share one of their cells.
+         * Affine map from our texel index g to a coarse neighbour's continuous texel coordinate,
+         * f = origin + step * g, as ElevationTileGrid::sampleHeight computes it.
          */
         struct LatticeMapping {
             double originX = 0, stepX = 0;
@@ -287,28 +261,9 @@ namespace massif {
         };
 
         /**
-         * nodeHeight over a box that straddles the tile border, with each REGION of the box
-         * answered by whoever owns it instead of one dispatch per texel.
-         *
-         * An edge node's box reaches half its width into the neighbours, and on a DEM tile edge
-         * shared with a coarser neighbour that half is the whole cost: measured on a Galaxy S22,
-         * 98% of the texels an edge node reads come from a coarse neighbour, each one a bilinear
-         * sampleHeight, 14.9 million of them in a second with the encode worker pinned at 100%.
-         *
-         * The box splits into at most nine regions - three column bands (west of the raster, our
-         * own, east of it) by three row bands - and each band has ONE owner, so the dispatch moves
-         * out of the texel loop. A band owned by a coarse neighbour is then summed by the closed
-         * form (latticeRuns/latticeSum), which costs (box/scale)^2 instead of box^2; our own band
-         * takes the summed-area table for its full-weight interior; anything else is per texel as
-         * before.
-         *
-         * `mapping(dx, dy, out)` answers true and fills `out` only for a COARSE neighbour - for
-         * our own raster, a same-level neighbour or a missing one it answers false and the band
-         * falls back to `texel`. `corner(dx, dy, x, y)` is that neighbour's own raster.
-         *
-         * Not bit-identical to nodeHeight: the closed form is the same sum reassociated, exact to
-         * a relative 1e-6 (tests/api/ElevationNodeFieldTest.cpp). Tile edges are where that shows,
-         * so a change here wants a seam check on a device, not only the host suite.
+         * nodeHeight summed per region (up to 3x3 bands): a coarse neighbour's band in closed form
+         * when `mapping` answers true, our own band via the table, the rest per texel through `texel`.
+         * Matches nodeHeight to a relative 1e-6, not bit-exactly; changes want a device seam check.
          */
         template <typename TexelFn, typename MappingFn, typename CornerFn>
         static float nodeHeightRegions(double cx, double cy, int boxX, int boxY, int width, int height,
@@ -319,7 +274,7 @@ namespace massif {
             int firstY = boxWeights(cy - 0.5 * boxY, boxY, wy);
             int countX = static_cast<int>(wx.size());
             int countY = static_cast<int>(wy.size());
-            // The band edges as indices into wx/wy. Most boxes use only two of the three.
+            // The band edges as indices into wx/wy.
             auto clampIndex = [](int value, int hi) { return std::min(std::max(value, 0), hi); };
             const int xCut[4] = { 0, clampIndex(-firstX, countX), clampIndex(width - firstX, countX), countX };
             const int yCut[4] = { 0, clampIndex(-firstY, countY), clampIndex(height - firstY, countY), countY };
@@ -341,8 +296,7 @@ namespace massif {
                     sum += latticeSum(xRuns, yRuns, [&corner, dx, dy](int x, int y) { return corner(dx, dy, x, y); });
                     continue;
                 }
-                // Our own band can take the table for the texels the box covers WHOLE; everything
-                // else in the band, and every other band, is one read per texel as before.
+                // Only our own band's full-weight texels come from the table.
                 bool own = (dx == 0 && dy == 0 && sat.valid());
                 int satX0 = x0, satX1 = x1 - 1, satY0 = y0, satY1 = y1 - 1;
                 if (own) {

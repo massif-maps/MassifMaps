@@ -121,13 +121,7 @@ namespace {
         TEST_CHECK(ElevationNodeField::sample(field, 4, 1.0, 1.0) == 0.0f, "a field too small for its node count answers 0 instead of reading past its end");
     }
 
-    /*
-     * Which neighbour a direction means (ElevationNodeField::neighbourSlot). The node texel sampler
-     * used to find this by scanning an eight-entry table per texel - up to 23k texels for ONE edge
-     * node - and now indexes it. A wrong slot reads the wrong neighbour, which is a seam along a
-     * tile edge, so the mapping is pinned here against the packing order it must match: W E S N
-     * then SW SE NW NE, exactly the order ElevationTileGrid fills its neighbour array in.
-     */
+    // Slot order must match ElevationTileGrid's neighbour array (W E S N SW SE NW NE); a wrong slot is a seam.
     void testNeighbourSlot() {
         const std::array<std::pair<int, int>, 8> DIRS = { {
             { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
@@ -144,12 +138,6 @@ namespace {
                    "a direction that is not a neighbour reads this grid rather than past the array");
     }
 
-    /*
-     * nodeHeightSat must be nodeHeight, to the bit that a seam would show in. It answers the
-     * full-weight texels inside the raster from prefix sums and leaves the fractional rim and
-     * everything past the raster to the same callback, so the only difference allowed is the
-     * reassociation of a double sum.
-     */
     void testSatMatchesBruteForce() {
         const int W = 24, H = 20;
         std::vector<float> grid(static_cast<std::size_t>(W) * H);
@@ -158,8 +146,7 @@ namespace {
                 grid[static_cast<std::size_t>(y) * W + x] = static_cast<float>(100 + x * 7 - y * 3 + (x * y) % 11);
             }
         }
-        // Outside the raster is a neighbour's business; any answer will do as long as BOTH paths
-        // get the same one, which is what the rim and the past-the-edge texels exercise.
+        // Any outside value works as long as both paths see the same one.
         auto texel = [&grid](int x, int y) -> float {
             if (x < 0 || y < 0 || x >= W || y >= H) {
                 return static_cast<float>(1000 + x * 2 - y);
@@ -173,8 +160,7 @@ namespace {
         TEST_CHECK(std::abs(sat.rectSum(0, 0, W - 1, H - 1) - [&]{ double t = 0; for (float v : grid) { t += v; } return t; }()) < 1e-6,
                    "and its whole-raster sum is the raster's sum");
 
-        // Boxes wholly inside, straddling each edge and each corner, and wider than the raster -
-        // the last is the case an edge node at a large zoom gap actually hits.
+        // Wider-than-raster boxes are what an edge node hits at a large zoom gap.
         const double centres[][2] = { { 12.0, 10.0 }, { 12.5, 10.5 }, { 0.0, 10.0 }, { 24.0, 10.0 },
                                       { 12.0, 0.0 }, { 12.0, 20.0 }, { 0.0, 0.0 }, { 24.0, 20.0 } };
         const int sizes[] = { 1, 2, 3, 8, 30, 64 };
@@ -188,20 +174,13 @@ namespace {
         }
         TEST_CHECK(worst < 1.0e-3, "and every box mean matches the per-texel sum");
 
-        // A table that was never built must not silently answer zero.
         ElevationNodeField::SummedAreaTable empty;
         TEST_CHECK(ElevationNodeField::nodeHeightSat(12.0, 10.0, 8, 8, empty, texel)
                    == ElevationNodeField::nodeHeight(12.0, 10.0, 8, 8, texel),
                    "an unbuilt table falls back to the per-texel sum");
     }
 
-    /*
-     * The lattice closed form against the per-sample bilinear it replaces. This is the half of an
-     * edge node's box that lies in a COARSER neighbour, where the old path called sampleHeight once
-     * per texel of OUR grid - up to a quarter of a million times for one node, most of them landing
-     * in the same neighbour cell. Exactness is not optional here: this value is what makes two tiles
-     * agree on their shared edge.
-     */
+    // The part of an edge node's box inside a coarser neighbour; must be exact or two tiles disagree on their edge.
     void testLatticeSumMatchesPerSampleBilinear() {
         const int NW = 9, NH = 7;                       // the coarse neighbour
         std::vector<float> nb(static_cast<std::size_t>(NW) * NH);
@@ -212,7 +191,6 @@ namespace {
         }
         auto corner = [&nb](int x, int y) { return nb[static_cast<std::size_t>(y) * NW + x]; };
 
-        // scale = how much coarser the neighbour is; df = 1/scale, the step our texels take in it.
         for (int scale : { 2, 4, 8, 16 }) {
             for (double f0 : { -2.5, -0.5, 0.0, 0.25, 3.75 }) {
                 const int count = 6 * scale;
@@ -249,7 +227,6 @@ namespace {
                     TEST_CHECK(false, "the lattice closed form is the per-sample bilinear sum");
                     return;
                 }
-                // ... and it is the point of the exercise that it took far fewer terms.
                 if (static_cast<int>(xRuns.size()) > count / scale + 3) {
                     TEST_CHECK(false, "and groups the lattice into one run per neighbour cell");
                     return;
@@ -260,16 +237,6 @@ namespace {
         TEST_CHECK(true, "and groups the lattice into one run per neighbour cell");
     }
 
-    /*
-     * nodeHeightRegions must be nodeHeight, over a box that straddles the tile border into COARSE
-     * neighbours on every side. It is the same sum with the dispatch lifted out of the texel loop
-     * and each neighbour band replaced by the lattice closed form, so what it may differ by is the
-     * reassociation - and a tile edge is exactly where that would show as a seam.
-     *
-     * The reference builds the neighbours' heights through the plain per-texel callback, sampling
-     * each coarse grid bilinearly the way ElevationTileGrid::sampleHeight does, so both paths are
-     * being asked the same question.
-     */
     void testRegionsMatchPerTexelSum() {
         const int W = 32, H = 28;
         std::vector<float> own(static_cast<std::size_t>(W) * H);
@@ -278,8 +245,7 @@ namespace {
                 own[static_cast<std::size_t>(y) * W + x] = static_cast<float>(200 + x * 5 - y * 3 + (x * y) % 13);
             }
         }
-        // One coarse neighbour per direction, each a different coarseness, so a corner band meets
-        // two different scales at once.
+        // Mixed scales so a corner band meets two different coarseness levels at once.
         struct Neighbour { int w, h, scale; std::vector<float> data; };
         std::array<Neighbour, 8> nb;
         const int scales[8] = { 2, 4, 2, 8, 4, 2, 8, 4 };
@@ -303,8 +269,7 @@ namespace {
             const Neighbour& n = nb[slot];
             return n.data[static_cast<std::size_t>(std::min(std::max(y, 0), n.h - 1)) * n.w + std::min(std::max(x, 0), n.w - 1)];
         };
-        // Our texel (gx, gy) lies in the neighbour at gx/scale - the same affine map
-        // NodeTexelSampler::coarseMapping builds, with the two tiles covering the same ground.
+        // Same affine map as NodeTexelSampler::coarseMapping.
         auto mapping = [&nb](int dx, int dy, ElevationNodeField::LatticeMapping& map) {
             int slot = ElevationNodeField::neighbourSlot(dx, dy);
             if (slot < 0) {
@@ -319,8 +284,7 @@ namespace {
             map.dimY = n.h;
             return true;
         };
-        // The per-texel reference: our own raster inside, and outside it the bilinear sample of the
-        // owning neighbour at our texel centre, which is what the region form has to reproduce.
+        // Reference: bilinear neighbour sample at our texel centre, as ElevationTileGrid::sampleHeight does.
         auto texel = [&own, &corner, &mapping](int gx, int gy) -> float {
             int dx = (gx < 0 ? -1 : (gx >= W ? 1 : 0));
             int dy = (gy < 0 ? -1 : (gy >= H ? 1 : 0));
@@ -344,8 +308,6 @@ namespace {
         ElevationNodeField::SummedAreaTable sat;
         sat.build(W, H, [&own](int x, int y) { return own[static_cast<std::size_t>(y) * W + x]; });
 
-        // Every edge and every corner of the tile, plus one box wholly inside as the control, and
-        // boxes from a single texel up to wider than the raster.
         const double centres[][2] = { { 0.0, 0.0 }, { 32.0, 0.0 }, { 0.0, 28.0 }, { 32.0, 28.0 },
                                       { 0.0, 14.0 }, { 32.0, 14.0 }, { 16.0, 0.0 }, { 16.0, 28.0 },
                                       { 16.0, 14.0 }, { 4.5, 3.5 } };
@@ -360,8 +322,6 @@ namespace {
         }
         TEST_CHECK(worst < 1.0e-5, "a box summed per region is the box summed per texel");
 
-        // With no coarse neighbour anywhere it must still be the plain sum - this is the same-level
-        // and missing-neighbour case, where every band falls back to the callback.
         auto noMapping = [](int, int, ElevationNodeField::LatticeMapping&) { return false; };
         double worstPlain = 0;
         for (const auto& c : centres) {

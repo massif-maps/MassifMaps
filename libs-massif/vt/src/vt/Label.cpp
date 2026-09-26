@@ -417,10 +417,7 @@ namespace massif::vt {
         // Refresh anchor heights from the elevation data: label geometry is built when the tile decodes,
         // possibly before its elevation arrives. A line placement is REBUILT from the re-anchored line
         // rather than shifted, so the glyph run keeps following the profile it is drawn over.
-        //
-        // A non-finite height means the provider HAS no elevation there, which is not the same as 0:
-        // writing 0 buried the label under the terrain. Such a vertex is left alone, and 'false'
-        // leaves the label un-anchored - which is what keeps the occlusion test off it.
+        // A non-finite height is no data, not 0 (which buries the label): keep the vertex, stay un-anchored.
         bool changed = false;
         bool complete = true;
         std::size_t n = 0;
@@ -454,8 +451,7 @@ namespace massif::vt {
         // The elevation version is global - it moves whenever ANY tile decodes - while the labels
         // affected are only those over that tile. Re-anchoring one whose heights did not move drops its
         // cached vertex data and rebuilds its placement for nothing.
-        // Anchored means the heights are KNOWN, not merely that anchoring was attempted: a label
-        // still carrying its flat decode height must not be judged against the terrain.
+        // Anchored means the heights are known, not merely that anchoring was attempted.
         _elevationAnchored = _elevationAnchored || complete;
         if (!changed) {
             return complete;
@@ -558,11 +554,7 @@ namespace massif::vt {
         // unplaced label does not have, so it could not see these at all (performance-log 29).
         // The frustum tested is the PADDED one, so a label just outside the viewport is still placed.
         cglib::bbox3<double> geometryBBox = calculateGeometryBBox(viewState);
-        // The APPLICATION's cut, not the hard-coded ratio: the two are the same number by default
-        // (PERSPECTIVE_RATIO_CUTOFF 0.6 is DEFAULT_VIEW_DISTANCE 5), and 0 places every label however
-        // far it is. Reading the constant here is what made Options::setLabelViewDistance only half
-        // work - the culler let a distant label through and this refused to place it, so there was
-        // never a placement for the culler to judge (ViewState::labelViewDistance).
+        // The application's cut, not the constant: it must match the culler's or raising that does nothing.
         bool beyondCutoff = LabelDistance::isTooFar(viewState.focusDistance, cglib::length(geometryBBox.center() - viewState.origin), viewState.labelViewDistance);
         if (beyondCutoff || !viewState.labelFrustum.inside(geometryBBox)) {
             _cachedFlippedPlacement.reset();
@@ -755,9 +747,7 @@ namespace massif::vt {
     }
 
     bool Label::isSurfaceFacingView(const ViewState& viewState, const Placement& placement) const {
-        // Only a label laid out ON the surface degenerates when the view meets it edge-on. A
-        // billboard stands up and faces the camera and a CALLOUT is a screen object, so the ground
-        // normal says nothing about either - mapbox and maplibre cull neither, they scale instead.
+        // Only a surface-laid label degenerates edge-on; billboards and callouts face the camera (mapbox culls neither).
         if (_style->orientation != LabelOrientation::POINT && _style->orientation != LabelOrientation::LINE) {
             return true;
         }
@@ -876,9 +866,7 @@ namespace massif::vt {
         }
 
         VT_STAT_SPLIT(labelTransformNs, labelClock);
-        // Only where something will read them: aVertexNormal exists in labelVsh solely under
-        // LIGHTING_*, which is compiled in for a NON-planar projection. A planar map filled a
-        // normal per vertex per label per frame and uploaded none of it.
+        // labelVsh reads aVertexNormal only under LIGHTING_*, i.e. a non-planar projection.
         if (buildNormals) {
             if (buildNormals) {
                 normals.fill(placement->normal, _cachedVertices.size());
@@ -1158,17 +1146,7 @@ namespace massif::vt {
         // A callout is a screen object: its size is what the style asks in pixels, taken off the
         // projection rather than the zoom. The zoom-derived scale only holds a constant screen size
         // while the camera distance follows the zoom, which free roam breaks.
-        //
-        // DEVICE pixels, and with the display's own scale, so that the style's size means the same
-        // thing it means for every other label. `resolution` is the NORMALIZED screen
-        // (2 * tileDrawSize * dpiScale), so measuring against it alone left a callout's size
-        // multiplied by deviceHeight / resolution: the same name came out a different size on a
-        // taller screen, and shrank by half when the device was turned to landscape.
-        //
-        // Every other label lands at `size * dpiScale` device pixels - its world size is
-        // size * 2^-zoom / tileSize, and a tile of that zoom is drawn tileDrawSize * dpiScale pixels
-        // wide - so this takes the same. `_style->scale` is 1/tileSize, which is what makes
-        // resolution * scale / 2 the display's scale without vt having to be told it.
+        // Device pixels at the display's scale (resolution * scale / 2), matching every other label's size * dpiScale.
         float deviceResolution = viewState.deviceResolution > 0 ? viewState.deviceResolution : viewState.resolution;
         float pixelScale = std::max(1.0f, viewState.resolution * _style->scale * 0.5f);
         return size * pixelScale * calculatePixelToWorld(viewState, *placement, zoomScale / std::max(size, 1.0f), deviceResolution);
@@ -1218,10 +1196,7 @@ namespace massif::vt {
         // One screen pixel is depth / (projection scale * half the screen height) world units at that
         // depth. Taken from the projection, not the label's zoom-derived scale, so a lift in pixels
         // MEANS pixels - a camera that tilts or rises would otherwise slide the label.
-        //
-        // Which screen, though, is the caller's: the culler's lifts and rows are in NORMALIZED screen
-        // pixels (the default), while a label's own size is in device pixels - see
-        // calculateLabelScale.
+        // The caller picks the screen: normalized (default, the culler's) or device (a label's size).
         cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(viewState.orientation[2]);
         double depth = cglib::dot_product(placement.position - viewState.origin, viewDir);
         double halfScreen = viewState.projectionMatrix(1, 1) * (resolution > 0 ? resolution : viewState.resolution) * 0.5;
@@ -1567,7 +1542,7 @@ namespace massif::vt {
         // The run is laid out on the line AS THE CAMERA PROJECTS IT, so the view-projection is part of
         // the key. Only the RENDERER rebuilds on a view change: the culler's view state lags the frame,
         // so re-laying out there judges the label against a view nobody sees.
-        const cglib::mat4x4<double>& mvpMatrix = viewState.viewProjMatrix; // resolved once per frame
+        const cglib::mat4x4<double>& mvpMatrix = viewState.viewProjMatrix;
         // A flat run does not follow the projection - it lies on the ground - but which way it reads
         // does, so the camera AXES are its key. That leaves a flat run reused across a pan, where a
         // screen run rebuilds.
@@ -1618,9 +1593,6 @@ namespace massif::vt {
             // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
             // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
             // shimmer-free (tangram-style screen-space anchoring)
-            // Both resolved once with the frame's camera (ViewState): the product and the inverse
-            // below are the same for every label, and doing them here cost a 4x4 double inverse per
-            // label per frame.
             cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewState.viewProjMatrix);
             if (clipPos(3) > 0) {
                 double screenWidth = viewState.resolution * viewState.aspect;
@@ -1872,7 +1844,7 @@ namespace massif::vt {
         // test share that measure: a SCREEN run is worth its PROJECTED length, since a line running away
         // from a tilted camera is a fraction of its ground length, while a FLAT run is worth its own.
         bool screenRun = isScreenLineRun();
-        const cglib::mat4x4<double>& mvpMatrix = viewState.viewProjMatrix; // resolved once per frame
+        const cglib::mat4x4<double>& mvpMatrix = viewState.viewProjMatrix;
         auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<double>& result) {
             cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), mvpMatrix);
             if (!(clipPos(3) > 0)) {

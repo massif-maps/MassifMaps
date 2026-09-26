@@ -231,9 +231,8 @@ namespace massif {
             }
             case SINGLE_POINTER_PAN:
                 _gestureMode = SINGLE_POINTER_CLICK_GUESS;
-                // A first person drag is a look, and it glides on as a look: the kinetic handler
-                // turns the view about the camera at the speed the finger left with - unless the
-                // finger rested before it lifted.
+                // A first person drag glides on as a look, turning the view about the camera,
+                // unless the finger rested before it lifted.
                 if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
                     if (_lookAnchored && std::chrono::steady_clock::now() - _lookSampleTime < LOOK_KINETIC_REST) {
                         _mapRenderer->getKineticEventHandler().startLook();
@@ -502,15 +501,9 @@ namespace massif {
     }
 
     void TouchHandler::firstPersonLook(const ScreenPos& screenPos, const ViewState& viewState) {
-        // THE GROUND UNDER THE FINGER STAYS UNDER IT, as in peakfinder.com and geo-three: the look
-        // is a grab on the panorama. The direction under the finger is taken once, when the look
-        // starts, and every move solves the pitch and heading that put that same direction under
-        // the finger where it is now - so dragging down looks UP, and the view turns exactly as far
-        // as the finger travels across the lens. Solved against the camera the look has ASKED for,
-        // not the view state, which lags the queued events by a frame.
-        //
-        // Tilt 90 is straight down, so the pitch is minus the tilt; the heading is minus the
-        // rotation.
+        // The direction under the finger at the look's start stays under it (peakfinder.com, geo-three),
+        // solved against the camera the look asked for: the view state lags queued events by a frame.
+        // Tilt 90 is straight down, so the pitch is minus the tilt; the heading is minus the rotation.
         double focal = 0.5 * viewState.getHeight() / std::max(viewState.getTanHalfFOVY(), 1.0e-6);
         if (!(focal > 0)) {
             return;
@@ -606,13 +599,8 @@ namespace massif {
                 _cameraEvents.fetch_or(CAMERA_ROTATE);
                 _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
-            // Up and down changes the tilt, and OPPOSITE to the two-finger tilt on purpose.
-            //
-            // The map gesture drags the GROUND: pulling the fingers up tips the map up towards the
-            // horizon. A look drags the VIEW, which is the other way round - this is the panorama
-            // convention (Street View, every first person control scheme): the scene follows the
-            // finger, so dragging down brings the sky down into the screen, which is a look UP.
-            // Tilt 90 is straight down here, so looking up is a NEGATIVE delta for a positive dy.
+            // Up and down changes the tilt, opposite to the two-finger tilt: a look drags the view, not
+            // the ground (Street View convention), so dragging down looks up - a negative tilt delta.
             if (dy != 0) {
                 float scale = -INCHES_TO_TILT_DELTA / dpi;
                 if (_options->isTiltGestureReversed()) {
@@ -806,20 +794,15 @@ namespace massif {
             }
             forward = cglib::unit(forward);
 
-            // GROUND PER PIXEL, from the view frustum, so the ground travels with the cursor
-            // instead of at a speed somebody chose. At a distance d a pixel spans
-            // 2 * tan(fovY/2) * d / height, so a drag of n pixels moves n of those - exact for
-            // ground at that distance and far closer than a per-inch rate everywhere else. The
-            // FreeRoamMoveSpeed setting stays as a multiplier on it rather than as the rate itself.
+            // Ground per pixel from the frustum, so the ground travels with the cursor;
+            // FreeRoamMoveSpeed is a multiplier on it.
             double cameraDistance = viewState.calculateCameraDistance();
             double viewHeight = viewState.getHeight();
             double perPixel = (viewHeight > 0
                 ? 2.0 * std::tan(viewState.getHalfFOVY() * Const::DEG_TO_RAD) * cameraDistance / viewHeight
                 : 0.0) * _options->getFreeRoamMoveSpeed();
-            // Dragging DOWN goes forward, which is the map's own pan read in first person: a one
-            // finger drag moves the ground with the finger, so pulling the ground towards you walks
-            // the camera away from you. Sideways keeps the same reading - dragging right pushes the
-            // ground right, so the camera goes left - and only the forward axis had it backwards.
+            // Dragging down goes forward: the ground moves with the finger, so pulling it towards
+            // you walks the camera away, as sideways already did.
             cglib::vec3<double> offset = forward * (dy * perPixel) + right * (-dx * perPixel);
 
             CameraPanEvent cameraEvent;
@@ -1112,7 +1095,7 @@ namespace massif {
         if (elevationManager->intersectRay(ray, t) && t > 0) {
             return ray(t)(2);
         }
-        // No hit: the camera is UNDER the terrain (the march starts below the ground and returns
+        // No hit: the camera is under the terrain (the march starts below the ground and returns
         // t = 0), or the DEM along the ray is not decoded yet. Sea level is kilometres under the
         // drawn ground in mountains and puts the tap that far off - anchor on the focus instead.
         double focusHeight = 0;

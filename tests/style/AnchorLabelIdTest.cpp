@@ -1,9 +1,5 @@
-/*
- * A tile whose features carry no id gives every one of them id 0, so a layer's point labels used
- * to share one global id and the renderer merged them into a single label. Symbolizer folds the
- * anchor in instead - these are the two properties that has to hold: two points a few metres apart
- * get different ids, and one point read at two overzoom levels gets the same id.
- */
+// Id-less features all get id 0, so point labels fold their anchor into the id: nearby points must
+// differ, one point read at two overzoom levels must agree (Symbolizer::combineAnchorId).
 
 #include "TestCheck.h"
 
@@ -14,7 +10,6 @@ using massif::vt::TileId;
 namespace {
     using Vertex = cglib::vec2<float>;
 
-    // combineAnchorId is protected, as combineId is: the symbolizers are its only callers.
     struct AnchorIdProbe final : massif::mvt::Symbolizer {
         AnchorIdProbe() : Symbolizer(std::shared_ptr<massif::mvt::Logger>()) { }
 
@@ -25,7 +20,7 @@ namespace {
         using Symbolizer::combineAnchorId;
     };
 
-    // One anchor cell is 2^-28 of the world, which is 2^-14 of a zoom 14 tile.
+    // One anchor cell is 2^-28 of the world, 2^-14 of a zoom 14 tile.
     constexpr float CELL_Z14 = 1.0f / 16384.0f;
 }
 
@@ -35,24 +30,21 @@ void testAnchorLabelId() {
 
     long long id = AnchorIdProbe::combineAnchorId(7, tile14, anchor);
 
-    // The two POIs of the report are 3.4 m apart, which is ~30 cells; 40 is the same order.
     Vertex neighbour(anchor(0) + 40 * CELL_Z14, anchor(1));
     TEST_CHECK(AnchorIdProbe::combineAnchorId(7, tile14, neighbour) != id, "two points a few metres apart get different ids");
 
-    // Same point, same source tile, read for a zoom 16 target tile: the world position is
-    // unchanged, so the id has to be too - otherwise one POI becomes two while a zoom streams in.
+    // Same world point read for a zoom 16 target tile, or one POI becomes two while a zoom streams in.
     const TileId tile16(16, 33841, 23463);
     const Vertex anchor16(0.50390625f, 0.00390625f);
     TEST_CHECK(AnchorIdProbe::combineAnchorId(7, tile16, anchor16) == id, "overzoom levels of one point agree");
 
-    // Below the cell there is deliberately no separation - two labels that close are one label.
+    // Deliberate: two labels within one cell are one label.
     Vertex sameCell(anchor(0) + CELL_Z14 / 4, anchor(1));
     TEST_CHECK(AnchorIdProbe::combineAnchorId(7, tile14, sameCell) == id, "a sub-cell offset stays one id");
 
-    // The fold narrows an id, it never widens it: two symbolizers sharing an anchor stay distinct.
     TEST_CHECK(AnchorIdProbe::combineAnchorId(8, tile14, anchor) != id, "different symbolizers keep different ids");
 
-    // A vertical offset is not a horizontal one - a hash that dropped y would pass everything above.
+    // A hash that dropped y would pass every check above.
     Vertex below(anchor(0), anchor(1) + 40 * CELL_Z14);
     TEST_CHECK(AnchorIdProbe::combineAnchorId(7, tile14, below) != id, "the anchor's y counts");
 }

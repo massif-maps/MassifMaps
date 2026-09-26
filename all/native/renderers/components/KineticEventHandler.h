@@ -46,9 +46,8 @@ namespace massif {
         void stopZoom();
 
         /**
-         * The FIRST PERSON look's glide: a turn of the view about the camera, heading and tilt,
-         * at the speed the finger left with and slowing to a stop. Gated by the kinetic rotation
-         * option. setLookDelta takes each move of the drag and the seconds it took.
+         * First-person look glide: heading and tilt keep turning at the release speed, slowing to a stop.
+         * Gated by the kinetic rotation option; setLookDelta takes each drag move and its seconds.
          */
         bool isLooking() const;
         void setLookDelta(float rotationDelta, float tiltDelta, float deltaSeconds);

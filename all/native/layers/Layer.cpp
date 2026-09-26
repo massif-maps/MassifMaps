@@ -88,9 +88,8 @@ namespace massif {
         refresh();
     }
 
-    // Its OWN mutex, not the layer's: the render thread reads this per layer per frame (every drape
-    // collect tests it), and refreshDrawData holds the layer mutex across a whole tile-set change -
-    // measured as 220 ms of a 228 ms prelude, on two floats.
+    // Own mutex: the render thread reads this every frame, and refreshDrawData holds the layer
+    // mutex across a whole tile-set change.
     MapRange Layer::getVisibleZoomRange() {
         std::lock_guard<std::mutex> lock(_visibleZoomRangeMutex);
         return _visibleZoomRange;
@@ -118,11 +117,8 @@ namespace massif {
         if (cullState) {
             // Reload data using the last known cull state.
             loadData(cullState);
-            // ...and a FRAME, which loading does NOT imply: refreshDrawData asks for one only when
-            // the tile SET changed (TileLayer, RasterTileLayer), so everything that changes how the
-            // tiles ALREADY loaded are drawn - opacity, visibility, a zoom range, a filter mode -
-            // left the screen exactly as it was until something else happened to redraw it. That is
-            // why an opacity slider appeared to do nothing until the map was panned.
+            // ...and a frame: refreshDrawData only redraws when the tile set changed, so opacity,
+            // visibility or filter changes on loaded tiles would not show until the next pan.
             redraw();
         } else {
             // Last cullstate not known yet. Let renderer do async update.

@@ -45,11 +45,9 @@
 // - a HillshadeRasterTileLayer's custom NormalMapLightingShader is generated code, not a style
 // property. applyConfig never writes it, so a shader set here survives the per-frame pass.
 !method(massif::CompositeVectorTileLayer, getExternalChildLayer, arg(name, string), returns(object, massif::Layer))
-// Internal, driven by MapRenderer: what the 2D/3D switch is still waiting on, for its own report.
+// Internal, read by MapRenderer for the 2D/3D switch.
 %ignore massif::CompositeVectorTileLayer::getTerrainDecodePendingCount;
-// The click setters are overridden only to reach the internal style-group layers - the binding stays
-// the one VectorTileLayer declares, and the call through it dispatches here because they are virtual.
-// Wrapping them again would add a second declaration of the same property to every generated surface.
+// Virtual overrides: VectorTileLayer's binding already dispatches here; wrapping them again duplicates the property.
 %ignore massif::CompositeVectorTileLayer::setVectorTileEventListener;
 %ignore massif::CompositeVectorTileLayer::setClickRadius;
 %ignore massif::CompositeVectorTileLayer::setClickHandlerLayerFilter;

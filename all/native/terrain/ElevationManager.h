@@ -82,30 +82,16 @@ namespace massif {
         void setNeighbourPrefetchEnabled(bool enabled);
 
         /**
-         * Caps the zoom of the elevation tiles this manager will resolve, independently of what the
-         * data source can offer. 0, the default, uses the source maximum - the ordinary behaviour.
-         *
-         * This is a WORKING SET control, not a quality one. The grid cache holds a fixed grid COUNT
-         * (MIN_CACHED_GRIDS), so a view whose set of distinct elevation tiles exceeds it evicts
-         * grids that are still on screen and reloads them, forever. Every insert bumps the
-         * elevation version, and a version bump re-anchors every label and re-samples the surface,
-         * so the symptom is not a slow map but a map that never settles: labels shift, the ground
-         * rises and sinks, and neighbouring tiles hold grids of different levels so their shared
-         * edge is built from two disagreeing height fields.
-         * A panorama reaching a hundred kilometres is exactly that view. Capping the zoom collapses
-         * the set to the tiles at or above the cap, which is bounded, so the cache stops thrashing
-         * and the height field settles once. TerrainOptions::setMaxZoom drives this alongside the
-         * mesh cut, because pinning the cut alone leaves the DATA refining under it.
-         * Changing it drops the decoded grids.
+         * Caps the zoom of the elevation tiles resolved; 0 (default) = the source maximum. A working-set
+         * control: keeps a far-reaching view within the grid cache so it stops thrashing.
+         * Driven by TerrainOptions::setMaxZoom. Changing it drops the decoded grids.
          */
         int getMaxDataZoomCap() const;
         void setMaxDataZoomCap(int maxZoom);
 
         /**
-         * Whether the surface is the DEM read bilinearly rather than its node field. geo-three's
-         * mesh is (TerrainOptions::setSubdivideDistance), and every display-height query has to
-         * answer off the surface that is drawn, or a camera standing on a summit stands inside it.
-         * Changing it bumps the version.
+         * Whether display heights read the DEM bilinearly rather than its node field, to match a
+         * bilinear mesh (TerrainOptions::setSubdivideDistance). Changing it bumps the version.
          */
         bool isBilinearSurface() const;
         void setBilinearSurface(bool bilinear);
@@ -133,14 +119,10 @@ namespace massif {
         std::vector<double> getElevations(const std::vector<MapPos>& poses) const;
 
         /**
-         * The skyline seen from a viewpoint: for each azimuth (degrees clockwise from north), the
-         * apparent altitude in degrees of the highest terrain out to maxDistance metres, with the
-         * earth's curvature and standard refraction - what a sunrise behind a range is timed against.
-         * From the grids already decoded, never blocking: what is missing is requested, so a
-         * second call once it has arrived answers with it.
+         * The skyline from a viewpoint: per azimuth (degrees clockwise from north), the apparent altitude
+         * in degrees of the highest terrain, with curvature and refraction. Non-blocking: missing grids are requested.
          * @param pos The viewpoint, WGS84.
          * @param eyeHeight Metres above the ground at the viewpoint.
-         * @param azimuths The directions to measure.
          * @param maxDistance How far out, in metres.
          * @return One altitude per azimuth, in degrees; -90 where no terrain is known.
          */
@@ -166,10 +148,7 @@ namespace massif {
          */
         bool getDisplayHeightCached(double internalX, double internalY, double& height) const;
         /**
-         * The same, and also reports the zoom of the grid that answered. A cached-only read falls
-         * back to any cached ANCESTOR, so it can succeed while handing back a height off a DEM
-         * several levels coarser than the source could give - which a caller differentiating two of
-         * these to build a normal has to know, or it bakes a smoothed slope and keeps it.
+         * The same, also reporting the zoom of the grid that answered, which may be a coarser cached ancestor.
          * @return True if a cached grid answered.
          */
         bool getDisplayHeightCached(double internalX, double internalY, double& height, int& resolvedZoom) const;
@@ -202,18 +181,14 @@ namespace massif {
         MapTile getDataTile(const MapTile& mapTile) const;
 
         /**
-         * The render tile covering the given internal position, at the source maximum zoom - what
-         * the display-height queries here sample. Pair with getDataTile and prefetchTileGrid to
-         * get a point loaded that no visible tile covers: the ground under a low-tilt camera sits
-         * behind the near plane, and nothing else ever asks for it.
+         * The render tile covering an internal position at the source maximum zoom. With getDataTile
+         * and prefetchTileGrid, loads a point no visible tile covers (e.g. the ground under a low camera).
          */
         MapTile getTileForInternalPos(double internalX, double internalY) const;
 
         /**
-         * The RENDER tile zoom at which this DEM stops adding relief: its source maximum plus the
-         * levels clampTileZoom drops for an oversized grid (a 512-texel source is used one level
-         * coarser). A render tile finer than this resamples the same heightfield, so it is where
-         * the terrain LOD floor stops following the camera.
+         * The render tile zoom past which this DEM adds no relief: the source maximum plus the levels
+         * clampTileZoom drops for an oversized grid. Where the terrain LOD floor stops following the camera.
          */
         int getDetailZoomLimit() const;
 
@@ -243,11 +218,7 @@ namespace massif {
          */
         void prefetchTileGrid(const MapTile& dataTile, int priority) const;
 
-        /**
-         * The same queueing, for a tile a consumer NEEDS rather than one it would like to have
-         * ready. Not subject to TerrainOptions::ElevationPrefetchEnabled, which is about
-         * neighbours: the ground under the camera decides whether the camera is inside a mountain.
-         */
+        /** The same queueing for a tile a consumer needs; ignores TerrainOptions::ElevationPrefetchEnabled. */
         void requestTileGrid(const MapTile& dataTile, int priority) const;
 
         /**
@@ -282,10 +253,8 @@ namespace massif {
         virtual int getMaxDataZoom() const override;
         virtual bool intersectRay(const cglib::ray3<double>& ray, double& t) const override;
         /**
-         * Whether the terrain stands in the way between two display-space points, over the first
-         * maxFraction of the way from the first. Unlike intersectRay, the segment may climb: from a
-         * valley, the line of sight to a summit does, and a ridge between the two still hides it.
-         * Loaded elevation only.
+         * Whether loaded terrain blocks the first maxFraction of the segment between two display-space
+         * points. Unlike intersectRay, the segment may climb.
          */
         bool isSegmentBlocked(const cglib::vec3<double>& from, const cglib::vec3<double>& to, double maxFraction) const;
         /**

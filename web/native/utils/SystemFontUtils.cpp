@@ -40,8 +40,7 @@ namespace massif {
                 break;
             }
         }
-        // The browser draws text itself (BitmapCanvas), so a name it knows as a CSS family needs no
-        // file: the first one is what the canvas is asked for.
+        // The browser draws text itself (BitmapCanvas), so the first name is passed on as a CSS family.
         if (match.familyName.empty()) {
             std::vector<std::string> parsed = vt::parseFontNames(names);
             if (!parsed.empty()) {

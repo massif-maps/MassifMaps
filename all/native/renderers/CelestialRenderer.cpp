@@ -355,9 +355,8 @@ namespace massif {
                 usable.push_back((belowHorizonVisible || dir(2) >= 0) && cglib::dot_product(worldDir, forward) > 0.02);
             }
 
-            // Every run of points is a strip of quads, two vertices a point, each knowing its
-            // neighbours: the vertex shader widens the line on screen, so it is as many PIXELS wide
-            // at any field of view - glLineWidth is 1 on WebGL and most GLES drivers.
+            // A strip of quads widened on screen by the vertex shader, so the width is in pixels at
+            // any field of view: glLineWidth is capped at 1 on WebGL and most GLES drivers.
             _coordBuf.clear();
             _texCoordBuf.clear();
             _indexBuf.clear();
@@ -434,8 +433,7 @@ namespace massif {
             glUniform4f(_arcShader->getUniformLoc("u_color"),
                         color.getR() / 255.0f * opacity, color.getG() / 255.0f * opacity,
                         color.getB() / 255.0f * opacity, color.getA() / 255.0f * opacity);
-            // Half a pixel more each side, faded out in the fragment shader: the edge is smooth
-            // without multisampling.
+            // Half a pixel more each side, faded out in the fragment shader: smooth without multisampling.
             if (arc->isOccludedByMap()) {
                 glEnable(GL_DEPTH_TEST);
             } else {

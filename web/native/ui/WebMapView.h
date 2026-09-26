@@ -68,10 +68,8 @@ namespace massif {
         bool _pointerDown = false;
         // Right button, or left with ctrl: maplibre's trigger for rotate-and-pitch.
         bool _dragRotating = false;
-        // The same trigger under FREE_ROAM_MODE_FIRST_PERSON, where it MOVES instead. The SDK's
-        // move gesture in that mode is a two-finger drag, so this synthesises one from the mouse:
-        // a second pointer a fixed distance away, translated with the first, which is a two-finger
-        // translation with no pinch and no twist in it.
+        // Same trigger in FREE_ROAM_MODE_FIRST_PERSON: moves via a synthesised two-finger drag
+        // (second pointer at a fixed offset, so no pinch or twist).
         bool _dragMoving = false;
         float _lastPointerX = 0.0f;
         float _lastPointerY = 0.0f;

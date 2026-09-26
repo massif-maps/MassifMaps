@@ -13,11 +13,9 @@
 namespace massif {
 
     /**
-     * What a 2D/3D switch waits for on ONE layer: the tiles that switch's own decode swap
-     * invalidated, not every tile in flight. A moving camera always has something fetching, so
-     * "nothing is fetching" never came true before the camera stopped and a flight always fell
-     * through to the warm timeout instead - docs/internals/rendering/04-terrain.md.
-     * Free of the layer so the host tests can reach it; TileLayer holds one behind its own mutex.
+     * What a 2D/3D switch waits for on one layer: only the tiles its decode swap invalidated, since a
+     * moving camera always has something fetching. See docs/internals/rendering/04-terrain.md.
+     * TileLayer holds one behind its own mutex.
      */
     class TerrainDecodeWait {
     public:

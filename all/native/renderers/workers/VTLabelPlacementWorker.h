@@ -48,30 +48,19 @@ namespace massif {
         void scheduleContinuation();
 
         /**
-         * A placement cycle MAY be rationed across several passes (mapbox's PauseablePlacement), so
-         * the culler, its collision grid and the view it was opened against all outlive one pass.
-         * The view is FROZEN for the cycle: resuming against a moved camera would collide the second
-         * half of the labels against a grid built for a different screen.
-         *
-         * The ration is currently 0 - see PLACEMENT_BUDGET_MS - so a cycle is one pass, and this is
-         * the mechanism for turning it back on rather than a thing the worker relies on.
+         * A cycle may be rationed across passes (mapbox's PauseablePlacement; off, PLACEMENT_BUDGET_MS 0),
+         * so culler, grid and view outlive a pass. The view is frozen for the cycle: resuming against a
+         * moved camera would collide labels against a grid built for a different screen.
          */
         std::unique_ptr<vt::LabelCuller> _culler;
         ViewState _cycleViewState;
         bool _cycleActive = false;
-        /**
-         * Which layers have already wrapped during the current cycle. A cycle ends when every layer
-         * has wrapped at least ONCE, not when they all wrap in the same pass - under slicing they
-         * never do, and the grid below then never clears.
-         */
+        /** A cycle ends when every layer has wrapped once; under slicing they never wrap in the same pass. */
         std::set<const void*> _cycleWrappedLayers;
         /**
-         * The next placement is COMMITTED rather than faded in (TileRenderer::snapLabelTransition).
-         * Set only when a cycle was abandoned because the camera moved under it: there is no
-         * outgoing screen left to cross-fade from, and fading would draw every outgoing label over
-         * its replacement for the length of the fade. A redo owed to a camera that moved while the
-         * pass ran is NOT this case - that is the ordinary state of a view being turned, and
-         * snapping it made every name change read as a blink.
+         * Commit the next placement instead of fading it (TileRenderer::snapLabelTransition). Only for a
+         * cycle abandoned under a moved camera: nothing to fade from. A redo after an ordinary turn
+         * still fades, or every name change blinks.
          */
         bool _snapNextPlacement = false;
         /** Wall clock the current cycle has spent. */

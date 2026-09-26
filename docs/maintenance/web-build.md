@@ -400,28 +400,44 @@ too many, so every value arrives as `" 32818\n"`. `Content-Length` then fails
 `boost::lexical_cast<uint64_t>` and every tile load dies as `bad lexical cast`. The impl trims both
 key and value.
 
+## The SDK module
+
+Two executables link the same `libmassif.a`. `massif-web` (`web/module/main.cpp`) is what an app
+loads: it draws nothing until the page asks for a map. `massif-demo` is the bench above.
+
+`scripts/build-web.py` copies `massif-web.{mjs,wasm,data}` and `web/js/massif.mjs` into `dist/web/`,
+which is the whole package; `--website` copies them to `website/static/massif/` too. Smoke page:
+serve the repo root with `web/demo/serve.py --dir .` and open `/web/module/`.
+
+- **One map per module.** emscripten keeps one callback per event target, so a second `WebMapView`
+  would take the document's pointer events from the first. A page that needs two maps loads the
+  module twice (an iframe each, as the site's examples do).
+- **No destroy.** `WebMapView`'s destructor leaves the document and window callbacks pointing at it,
+  so a map lives as long as its page.
+- **Layer clicks are bridged by the page** (`massif.bridgeClicks(layer)`), as the Android and iOS
+  sugar installs the bridge when a click is first subscribed. Map events are bridged by `createMap`.
+
 ## The JavaScript binding
 
 `web/js/massif.mjs` wraps the facade's C ABI. It is deliberately thin - the facade is a table, so a
 new SDK feature reaches JavaScript without touching the binding:
 
 ```js
-const massif = new Massif(module);          // module is the emscripten Module
-const camera = await MassifCamera.attach(massif);
-camera.zoom;                                 // 13.29
-camera.flyTo({ position: [2.35, 48.86], zoom: 15, duration: 1.5 });
-massif.call(camera.handle, 'screenToMap', { x: 100, y: 200 });
+const massif = await loadMassif();          // massif-web.mjs beside massif.mjs
+const { layers, camera } = massif.createMap(document.getElementById('map'));
+camera.flyTo([[2.35, 48.86], 15, 0, 90, 0, 1.5]);
+massif.call(camera.handle, 'screenToMap', [100, 200]);
 ```
 
-Three things it has to get right, and each was a bug first:
+What it has to get right, and each was a bug first:
 
 - **`-sEXPORTED_FUNCTIONS` REPLACES the default list**, so `_main` has to be in it or the program is
   stripped and nothing runs at all. The list is generated from `MassifApiC.h` by CMake, so a new
   `mm_` function reaches JavaScript by existing.
 - **The host has to adopt its map** - `MassifInterop::adopt("map", "map", view)` - or the camera has
-  nothing to point at.
-- **`await Module(...)` resolves before `main()` has run** when pthreads are on, so reading the map
-  straight away is a race. `MassifCamera.attach` polls for it.
+  nothing to point at. `createMap` does it; the bench adopts in `main()`.
+- **`await Module(...)` resolves before `main()` has run** when pthreads are on, so reading the
+  bench's map straight away is a race. `MassifCamera.attach` polls for it.
 - **`mm_call` answers with a result HANDLE, not a string buffer.** Read it like any other object and
   release it with `mm_destroy_handle`, or the context holds it forever. Reading it as a string
   buffer silently returned garbage for every method that produces a value.

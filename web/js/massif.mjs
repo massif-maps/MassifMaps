@@ -253,6 +253,33 @@ export class Massif {
     };
   }
 
+  /**
+   * Starts the map on `canvas` (massif-web only; one map per module) and adopts it under `id`.
+   * Returns the handles of the map, its options and its layer list, and the camera.
+   */
+  createMap(canvas, id = 'map') {
+    if (!canvas.id) {
+      canvas.id = `massif-${id}`;
+    }
+    if (!this.#module.ccall('massifCreateMap', 'number', ['string', 'string'], [`#${canvas.id}`, id])) {
+      throw new Error(`No map on #${canvas.id}: one already exists, or the browser has no WebGL 2`);
+    }
+    return {
+      id,
+      map: this.find('map', id),
+      options: this.find('options', id),
+      layers: this.find('layers', id),
+      camera: new MassifCamera(this, id),
+    };
+  }
+
+  /** Emits a vector or vector tile layer's clicks as events on its handle ("vectortile.clicked"). */
+  bridgeClicks(layer) {
+    if (!this.#module.ccall('massifBridgeLayerClicks', 'number', ['number'], [layer])) {
+      throw new Error(`Handle ${layer} is not a vector or vector tile layer`);
+    }
+  }
+
   /** Delivers queued events for subscriptions that asked for the UI thread. */
   drain() {
     return this.#withBuffer(4, (out) => {
@@ -339,4 +366,15 @@ export class MassifCamera {
   mapToScreen(options) {
     return this.#massif.call(this.#handle, 'mapToScreen', options);
   }
+}
+
+/**
+ * Loads the SDK module and returns its binding. `moduleUrl` defaults to massif-web.mjs beside this
+ * file; `options` go to the emscripten factory (print, printErr, locateFile...).
+ */
+export async function loadMassif({ moduleUrl = new URL('./massif-web.mjs', import.meta.url).href, ...options } = {}) {
+  // webpackIgnore: a bundler must not inline the module, its pthread workers import it by URL.
+  const { default: factory } = await import(/* webpackIgnore: true */ moduleUrl);
+  const base = new URL('.', new URL(moduleUrl, location.href)).href;
+  return new Massif(await factory({ locateFile: (path) => base + path, ...options }));
 }

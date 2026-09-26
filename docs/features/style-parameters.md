@@ -71,7 +71,7 @@ A parameter the style does not declare is refused there rather than dropped, whi
 difference worth knowing: `setStyleParameter` returns `false` for it, and the surface API turns
 that into `RESULT_UNKNOWN_PROPERTY`.
 
-Runnable, on three platforms: [the style parameters example](/examples#style-parameters).
+Runnable, on four platforms (live on the web): [the style parameters example](/examples#style-parameters).
 
 ## Reading them
 

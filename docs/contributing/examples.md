@@ -16,6 +16,12 @@ a list to update.
 | Android | `.../examples/<section>/XxxExample.java` | `@ExampleInfo(id = …)` |
 | iOS | `scripts/ios-dev/MassifDemo/Examples/MSFXxxExample.m` | `+ (NSString *)exampleId` |
 | NativeScript | `integrations/nativescript/demo-snippets/svelte/examples/Xxx.svelte` | `<ExampleShell id="…">` |
+| Web | `web/examples/<id>.mjs` | its file name |
+
+A web port runs live on the site: the gallery frames `web/examples/run.html?id=<id>`, which loads
+the web SDK and calls the file's default export with a host (`web/examples/host.mjs`, the twin of
+the NativeScript `host.ts`). An example only the web can show - the peak finder - carries its own
+`@title`, `@section` and `@order` in its header comment, and has no Android file.
 
 The website shows one code tab per platform that has ported the id, and `gen-examples.py` reports
 how many of each there are.
@@ -151,10 +157,11 @@ clearance above the ground.
 | `app/src/main/style-projects/<name>/` | CartoCSS style projects, zipped into the APK by gradle **and into the iOS bundle by `scripts/ios-dev/project.yml`** — one source, two demos |
 | `scripts/ios-dev/MassifDemo/Examples/MSFXxxExample.m` | the Objective-C twin, matched to its Java one by `+exampleId` |
 | `integrations/nativescript/demo-snippets/svelte/examples/Xxx.svelte` | the NativeScript twin, matched by `<ExampleShell id>` |
+| `web/examples/<id>.mjs` | the web twin, run live on the site by `web/examples/run.html` |
 | `website/src/pages/examples.js` | the published gallery |
 
-An example exists on all three platforms or it is a fraction of an example: `gen-examples.py`
-reports how many of the manifest's ids iOS and NativeScript have ported, the iOS gallery dims the
+An example exists on all four platforms or it is a fraction of an example: `gen-examples.py`
+reports how many of the manifest's ids iOS, NativeScript and the web have ported, the iOS gallery dims the
 ones it has not, and the website simply has no tab for them.
 
 ## Known gaps
@@ -162,3 +169,5 @@ ones it has not, and the website simply has no tab for them.
 - Screenshots are captured on an Android emulator; the iOS gallery shows the same files. Text
   rendering and imagery differ slightly on a device.
 - There is no check that an example still runs — a broken one shows an empty map and a toast.
+- On the web a handler cannot claim an event (`consumed`): every event is delivered on the page's
+  thread after the fact, so the markers example's popup closes on the tap that opened it.

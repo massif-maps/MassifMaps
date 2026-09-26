@@ -54,7 +54,7 @@ map.addLayer("tour", Spec.of("vector")
 ```
 
 `addFeature`, `updateFeature` and `removeFeature` are reachable the same way, so incremental edits
-need no object-API access either. Runnable, on three platforms:
+need no object-API access either. Runnable, on four platforms (live on the web):
 [the GeoJSON line example](/examples#geojson-line).
 
 Style it by layer name, like any other vector source:

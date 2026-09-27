@@ -50,8 +50,8 @@ namespace {
         VertexArray<cglib::vec4<std::int8_t>> attribs;
         VertexArray<std::uint16_t> indices;
 
-        bool build(const std::shared_ptr<Label>& label, const ViewState& viewState, bool buildNormals) {
-            return label->calculateVertexData(1.0f, viewState, 0, -1, vertices, offsets, normals, texCoords, attribs, indices,
+        bool build(const std::shared_ptr<Label>& label, const ViewState& viewState, bool buildNormals, int haloStyleIndex = -1) {
+            return label->calculateVertexData(1.0f, viewState, 0, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices,
                                               Label::DrawPass::ALL, LabelPlateIndices(), -1, -1, -1, buildNormals);
         }
     };
@@ -90,5 +90,18 @@ void testLabelNormalBuild() {
             }
         }
         TEST_CHECK(true, "and every vertex in the same place");
+    }
+
+    // The halo pass appends a second copy of every vertex, and must follow the same switch.
+    {
+        std::shared_ptr<Label> label = buildPointLabel();
+        label->updatePlacement(viewState);
+        VertexData haloLit, haloUnlit;
+        TEST_CHECK(haloLit.build(label, viewState, true, 0), "a haloed label builds its vertex data");
+        TEST_CHECK(haloLit.vertices.size() == 2 * lit.vertices.size(), "with the halo copy on top of the ink");
+        TEST_CHECK(haloLit.normals.size() == haloLit.vertices.size(), "and a normal for every halo vertex when lit");
+        TEST_CHECK(haloUnlit.build(label, viewState, false, 0), "a haloed label builds its vertex data unlit");
+        TEST_CHECK(haloUnlit.normals.size() == 0, "and the halo pass builds no normals nothing would read");
+        TEST_CHECK(haloUnlit.vertices.size() == haloLit.vertices.size(), "without losing a halo vertex");
     }
 }

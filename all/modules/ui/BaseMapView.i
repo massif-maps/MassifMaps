@@ -6,6 +6,8 @@
 !proxy_imports(massif::BaseMapView, core.MapPos, core.MapVec, core.MapBounds, core.ScreenPos, core.ScreenBounds, components.Options, components.Layers, renderers.MapRenderer, renderers.RedrawRequestListener, ui.MapEventListener)
 
 %{
+// Listed even though BaseMapView.h includes it: the table generator does not follow includes.
+#include "ui/FlightEasing.h"
 #include "ui/BaseMapView.h"
 #include "core/MapPos.h"
 #include "core/ScreenPos.h"
@@ -13,6 +15,8 @@
 
 %include <std_shared_ptr.i>
 %include <massifswig.i>
+
+!enum(massif::FlightEasing::FlightEasing)
 
 // shared_ptr so MassifInterop.adopt can take it. MapView still owns it: an adopted handle holds the
 // only other reference - destroy it with the view, or the renderer's resources outlive the surface.
@@ -46,12 +50,14 @@
 // Places the camera, where moveTo places the focus (first-person, panorama). Not doable in a binding:
 // the offset needs the projection surface and the focus is clamped.
 !method(massif::BaseMapView, moveCameraTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), returns(void))
-!method(massif::BaseMapView, flyTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), arg(climbHeight, float), arg(durationSeconds, float), returns(void))
+// easing is the CSS curve name and is OPTIONAL - a six-argument call still works.
+!method(massif::BaseMapView, flyTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), arg(climbHeight, float), arg(durationSeconds, float), arg(easing, string), returns(void))
 !method(massif::BaseMapView, fitBounds, arg(bounds, json), arg(screenBounds, json), arg(integerZoom, bool), arg(resetRotation, bool), arg(resetTilt, bool), arg(durationSeconds, float), returns(void))
 !method(massif::BaseMapView, screenToMap, arg(x, float), arg(y, float), returns(json))
 !method(massif::BaseMapView, mapToScreen, arg(pos, pos), returns(json))
 !method(massif::BaseMapView, stopFlight, returns(void))
 
+%include "ui/FlightEasing.h"
 %include "ui/BaseMapView.h"
 
 #endif

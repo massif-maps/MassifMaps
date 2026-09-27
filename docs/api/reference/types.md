@@ -125,7 +125,7 @@ Inherited from `StyleBuilder`:
 | Method | Arguments | Returns |
 |---|---|---|
 | `fitBounds` | bounds: json, screenBounds: json, integerZoom: bool, resetRotation: bool, resetTilt: bool, durationSeconds: float | void |
-| `flyTo` | pos: pos, zoom: float, rotation: float, tilt: float, climbHeight: float, durationSeconds: float | void |
+| `flyTo` | pos: pos, zoom: float, rotation: float, tilt: float, climbHeight: float, durationSeconds: float, easing: string | void |
 | `mapToScreen` | pos: pos | json |
 | `moveCameraTo` | pos: pos, zoom: float, rotation: float, tilt: float | void |
 | `moveTo` | pos: pos, zoom: float, rotation: float, tilt: float | void |

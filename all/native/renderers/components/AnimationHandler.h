@@ -12,6 +12,8 @@
 #include "renderers/cameraevents/CameraRotationEvent.h"
 #include "renderers/cameraevents/CameraTiltEvent.h"
 #include "renderers/cameraevents/CameraZoomEvent.h"
+#include "renderers/components/FlightPath.h"
+#include "ui/FlightEasing.h"
 
 #include <optional>
 #include <memory>
@@ -44,9 +46,9 @@ namespace massif {
         /**
          * One camera move along Van Wijk & Nuij's optimal zoom/pan path (2003); positions in internal units.
          * durationSeconds <= 0 derives it from the path length; rho is the pull-back (1.42 optimal).
-         * Supersedes the per-property targets while it runs.
+         * easing is the timing curve. Supersedes the per-property targets while it runs.
          */
-        void setFlightTarget(const MapPos& pos, float zoom, const float* rotation, const float* tilt, float climbHeight, float durationSeconds, float rho);
+        void setFlightTarget(const MapPos& pos, float zoom, const float* rotation, const float* tilt, float climbHeight, float durationSeconds, float rho, FlightEasing::FlightEasing easing);
         void stopFlight();
         bool isFlightActive() const;
         /**
@@ -91,18 +93,13 @@ namespace massif {
         float _zoomTarget;
         std::optional<MapPos> _zoomTargetPos;
     
-        // Van Wijk parametrisation; _flightZeroPath marks a pure zoom, where it divides by the distance.
         bool _flightActive;
         bool _flightStarted;
-        bool _flightZeroPath;
         float _flightElapsed;
         float _flightDuration;
         double _flightRho;
-        double _flightU1;
-        double _flightW0;
-        double _flightW1;
-        double _flightR0;
-        double _flightS;
+        FlightEasing::FlightEasing _flightEasing;
+        FlightPath _flightPath;
         MapPos _flightStartPos;
         MapPos _flightTargetPos;
         double _flightClimb; // internal units added at the middle of the path, parabolic

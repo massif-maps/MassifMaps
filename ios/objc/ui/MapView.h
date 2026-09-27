@@ -182,6 +182,17 @@ __attribute__ ((visibility("default"))) @interface MSFMapView : MSFGLKView
  */
 -(void)flyTo:(MSFMapPos*)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt climbHeight:(float)climbHeight durationSeconds:(float)durationSeconds;
 /**
+ * Moves the camera as above, on a chosen timing curve. The others fly on MSF_FLIGHT_EASING_EASE.
+ * @param pos The target position in base projection coordinate system; its Z is the target height.
+ * @param zoom The target zoom level.
+ * @param rotation The target rotation in degrees.
+ * @param tilt The target tilt in degrees.
+ * @param climbHeight The extra height at the middle of the path, in the base projection's units.
+ * @param durationSeconds The duration in seconds, or 0 to derive it from the path.
+ * @param easing The timing curve the whole move runs on.
+ */
+-(void)flyTo:(MSFMapPos*)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt climbHeight:(float)climbHeight durationSeconds:(float)durationSeconds easing:(enum MSFFlightEasing)easing;
+/**
  * Stops a flight started with flyTo, leaving the camera where it is.
  */
 -(void)stopFlight;

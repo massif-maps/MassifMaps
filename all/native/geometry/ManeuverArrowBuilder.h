@@ -18,16 +18,9 @@ namespace massif {
     class Projection;
 
     /**
-     * A builder that cuts a navigation maneuver arrow out of a route geometry.
-     *
-     * The arrow is the piece of the route around the maneuver point - LengthBefore metres of the
-     * leg the driver is on, LengthAfter metres of the leg it turns into - plus the point where it
-     * ends and the compass bearing it ends with.
-     *
-     * The result is a FeatureCollection in WGS84 holding ONE line, running the way the driver
-     * goes. The head is drawn by the style, not by this: 'line-end-arrow' puts an arrow on the
-     * last vertex of a line, sized in multiples of the line width and extruded with the line, so
-     * the head keeps its screen size and a casing rule outlines the whole arrow evenly.
+     * A builder that cuts a navigation maneuver arrow out of a route: LengthBefore metres before the maneuver point, LengthAfter after.
+     * The result is one WGS84 line in the travel direction; the head is drawn by the style's 'line-end-arrow', so it keeps
+     * its screen size and a casing rule outlines the whole arrow evenly.
      */
     class ManeuverArrowBuilder {
     public:
@@ -77,9 +70,7 @@ namespace massif {
         std::shared_ptr<FeatureCollection> buildArrowAtIndex(const std::shared_ptr<Projection>& projection, const std::vector<MapPos>& points, int maneuverIndex) const;
 
     private:
-        // A point of the route in metres, in a plane anchored at the maneuver latitude. The arrow
-        // is tens of metres long, so an equirectangular plane is exact enough and keeps the walk
-        // along the route a plain 2D one.
+        // Metres in an equirectangular plane anchored at the maneuver latitude: exact enough for a tens-of-metres arrow.
         struct LocalPos {
             double x;
             double y;

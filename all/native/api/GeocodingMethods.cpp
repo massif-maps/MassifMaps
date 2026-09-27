@@ -23,20 +23,15 @@ namespace massif { namespace api {
     namespace {
 
         /**
-         * The results as ONE GeoJSON FeatureCollection, in WGS84.
-         *
-         * calculateAddresses returns a vector of results, each holding a feature collection, and
-         * the facade has no channel for a vector. Flattening them here is also what the caller
-         * wanted: every feature carries its result's "address" and "rank", so ten results are one
-         * crossing rather than one per feature plus one per address field.
+         * The results as one GeoJSON FeatureCollection, in WGS84: the facade has no vector channel,
+         * and every feature already carries its result's "address" and "rank".
          */
         std::string joinResults(const std::vector<std::shared_ptr<GeocodingResult> >& results) {
             std::string json = "{\"type\":\"FeatureCollection\",\"features\":[";
             bool first = true;
             for (const std::shared_ptr<GeocodingResult>& result : results) {
                 std::string collection = result->getGeoJSON();
-                // Splice the inner "features" array in rather than nesting collections: the
-                // consumer wants one flat list, ordered by descending rank as the SDK returns it.
+                // Splice the inner features in: one flat list, in the SDK's descending-rank order.
                 std::size_t open = collection.find('[');
                 std::size_t close = collection.rfind(']');
                 if (open == std::string::npos || close == std::string::npos || close <= open + 1) {

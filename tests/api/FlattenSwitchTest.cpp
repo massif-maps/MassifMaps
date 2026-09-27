@@ -217,14 +217,35 @@ namespace {
 
         in.manualRatio = 1.0f;
         state = FlattenSwitch::step(state, in);
-        TEST_CHECK(state.ratio == 1.0f && !state.decode3D,
-                   "landing flat in FULL mode drops the terrain subdivision");
+        TEST_CHECK(state.ratio == 1.0f, "and lands where the app put it");
+        TEST_CHECK(state.decode3D, "but the decode does not follow a ratio that is only passing through");
 
-        // Handing it back resumes the automatic switch from wherever the app left it.
+        // Handing it back resumes the automatic switch from wherever the app left it; only that drops the decode.
         in.manual = false;
         in.flatten = true;
         state = FlattenSwitch::step(state, in);
         TEST_CHECK(state.phase == Phase::FLAT, "released at 1, so it resumes flat");
+        TEST_CHECK(!state.decode3D, "and the release is what drops the terrain subdivision");
+    }
+
+    void testManualRiseDoesNotFlapTheDecode() {
+        // A rise's first manual frame is ratio 1.0; dropping to the 2D decode there resets the tile
+        // transformer and discards every tile in flight.
+        FlattenSwitch::State state = flatState(false);
+        FlattenSwitch::Input in = input(false, true, true);
+        state = FlattenSwitch::step(state, in);
+        TEST_CHECK(state.phase == Phase::WARMING && state.decode3D, "asking for 3D asked for its tiles");
+
+        in.manual = true;
+        in.manualRatio = 1.0f;
+        state = FlattenSwitch::step(state, in);
+        TEST_CHECK(state.phase == Phase::MANUAL, "the app takes the ratio at its animation's first frame");
+
+        for (float ratio : { 1.0f, 0.75f, 0.5f, 0.0f }) {
+            in.manualRatio = ratio;
+            state = FlattenSwitch::step(state, in);
+            TEST_CHECK(state.decode3D, "the decode stays at the 3D density for the whole animation");
+        }
     }
 
     void testManualRiseIsStillGatedOnTiles() {
@@ -259,5 +280,6 @@ void testFlattenSwitch() {
     testTerrainActiveFollowsTheRatio();
     testPerDirectionDurations();
     testManualRatio();
+    testManualRiseDoesNotFlapTheDecode();
     testManualRiseIsStillGatedOnTiles();
 }

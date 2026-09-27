@@ -181,15 +181,9 @@ namespace massif::mvt {
     }
 
     /**
-     * Where a LINEAR curve has to be sampled to give mapbox's exponential result.
-     *
-     * Between two key frames mapbox uses `s = (b^(x-x0) - 1) / (b^(x1-x0) - 1)` where a linear
-     * curve uses `(x-x0) / (x1-x0)`. Feeding the linear curve `x0 + s * (x1 - x0)` therefore
-     * yields the exponential value exactly, with no second curve type to implement and no change
-     * to cglib. Outside the key range, and for a base of 1, this is the identity.
-     *
-     * The key POSITIONS have to be constants for this, which every zoom ramp's are; a computed one
-     * falls through and interpolates linearly, as it did before.
+     * Where a linear curve must be sampled to give mapbox's exponential result: x0 + s * (x1 - x0), with
+     * s = (b^(x-x0) - 1) / (b^(x1-x0) - 1). Identity outside the key range and for base 1.
+     * Needs constant key positions; a computed one interpolates linearly.
      */
     float InterpolateExpression::remapExponential(float t) const {
         if (!(_base > 0) || _base == 1.0f) {
@@ -228,15 +222,12 @@ namespace massif::mvt {
         private:
             float _time;
         };
-        // The constant curve is evaluated in place: it owns a vector of key frames, so
-        // taking it by value copied (and heap-allocated) that vector on every evaluation -
-        // and this runs per style parameter per draw call.
+        // Evaluated in place: a by-value copy heap-allocates the key frames, and this runs per parameter per draw call.
         if (_discrete) {
             return evaluateDiscrete(t, context);
         }
-        // Past the last key the curve HOLDS, and likewise before the first - mapbox's `interpolate`, and
-        // the only reading that makes sense of a zoom ramp. cglib extrapolates, so a (16, 6) -> (17, 4)
-        // minimum-distance went NEGATIVE by z19 and the culler stopped thinning anything.
+        // The curve holds outside the key range, as mapbox's `interpolate`; cglib would extrapolate
+        // (a (16, 6) -> (17, 4) minimum-distance went negative by z19).
         if (_keyRange) {
             t = std::min(std::max(t, _keyRange->first), _keyRange->second);
         }
@@ -321,8 +312,7 @@ namespace massif::mvt {
                     type = cglib::fcurve_type::cubic;
                     break;
                 case Method::EXPONENTIAL:
-                    // Same key frames as a linear curve; the CURVE is linear and the INPUT is
-                    // remapped before it (see evaluate), which is exactly mapbox's definition.
+                    // A linear curve whose input is remapped before it (see remapExponential).
                     type = cglib::fcurve_type::linear;
                     break;
             }

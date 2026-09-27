@@ -71,10 +71,9 @@ namespace massif {
         CacheTileDataSource(const std::shared_ptr<TileDataSource>& dataSource);
 
         /**
-         * Overlays the cache's OWN meta data entries onto a tile, leaving the map the tile already
-         * carries otherwise untouched - that map came from the leaf source that produced the tile,
-         * which through a wrapper like OrderedTileDataSource is the only place the tile's real
-         * settings are known. A no-op for the usual unconfigured cache, and for a null tile.
+         * Overlays the cache's own meta data entries onto a tile, leaving the rest of its map untouched: behind a
+         * wrapper like OrderedTileDataSource, the leaf source that produced the tile is the only one that knows its settings.
+         * A no-op for the usual unconfigured cache, and for a null tile.
          * @param tileData The tile data to overlay the meta data onto.
          */
         void applyCacheTileMetaData(const std::shared_ptr<TileData>& tileData) const;

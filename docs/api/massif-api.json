@@ -1048,7 +1048,7 @@
           "static": false,
           "position": true,
           "cppType": "massif::MapPos",
-          "doc": "Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place."
+          "doc": "Returns the position the camera itself is above (the viewpoint), which at a low tilt is far from the focus it looks at. Where a top-down view has to be centred to come back to the same place."
         },
         {
           "name": "flightActive",
@@ -1066,7 +1066,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock."
+          "doc": "How far along a flyTo animation is, from 0 to 1, or -1 when none is running. The value the camera is actually at, so an app animating its own state alongside the move reads it rather than its own clock."
         },
         {
           "name": "focusPos",
@@ -1185,6 +1185,30 @@
         },
         {
           "cppClass": "massif::BaseMapView",
+          "name": "moveCameraTo",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            },
+            {
+              "name": "zoom",
+              "type": "float"
+            },
+            {
+              "name": "rotation",
+              "type": "float"
+            },
+            {
+              "name": "tilt",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
           "name": "moveTo",
           "args": [
             {
@@ -1273,7 +1297,7 @@
           "position": false,
           "cppType": "geometry.Geometry",
           "objectClass": "massif::Geometry",
-          "doc": "Returns the location of the root billboard. If this billboard has a location, this method is equavalent to the Billboard::getGeometry method. If this billboard is attached to another billboard, the hierarchy is traveled recursively and the location of the root billboard is returned."
+          "doc": "Returns the location of the root billboard: getGeometry() if this billboard has a location, otherwise the location found by following the chain of base billboards to its root."
         },
         {
           "name": "rotation",
@@ -1667,7 +1691,52 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CelestialArc",
+          "name": "setCircle",
+          "args": [
+            {
+              "name": "axisAzimuth",
+              "type": "float"
+            },
+            {
+              "name": "axisAltitude",
+              "type": "float"
+            },
+            {
+              "name": "radius",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialArc",
+          "name": "setDirections",
+          "args": [
+            {
+              "name": "directions",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialArc",
+          "name": "setSegments",
+          "args": [
+            {
+              "name": "directions",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialEventListener": {
@@ -1675,6 +1744,182 @@
       "properties": [],
       "aliases": {},
       "methods": [],
+      "events": []
+    },
+    "massif::CelestialLabel": {
+      "base": "massif::CelestialObject",
+      "properties": [
+        {
+          "name": "anchorPointX",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the horizontal anchor point."
+        },
+        {
+          "name": "anchorPointY",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the vertical anchor point."
+        },
+        {
+          "name": "backgroundColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the background colour."
+        },
+        {
+          "name": "backgroundRadius",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the corner radius of the plate."
+        },
+        {
+          "name": "clickable",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether a click on the label hits it."
+        },
+        {
+          "name": "fontName",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the font list."
+        },
+        {
+          "name": "fontSize",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the font size."
+        },
+        {
+          "name": "haloColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the halo colour."
+        },
+        {
+          "name": "haloWidth",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the halo width."
+        },
+        {
+          "name": "offsetX",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the horizontal offset."
+        },
+        {
+          "name": "offsetY",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the vertical offset."
+        },
+        {
+          "name": "paddingX",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the horizontal padding between the text and the plate's edge."
+        },
+        {
+          "name": "paddingY",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the vertical padding between the text and the plate's edge."
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the text."
+        },
+        {
+          "name": "textColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the text colour. The object's own colour tints the whole label, plate included."
+        }
+      ],
+      "aliases": {},
+      "methods": [
+        {
+          "cppClass": "massif::CelestialLabel",
+          "name": "setAnchorPoint",
+          "args": [
+            {
+              "name": "x",
+              "type": "float"
+            },
+            {
+              "name": "y",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialLabel",
+          "name": "setOffset",
+          "args": [
+            {
+              "name": "x",
+              "type": "float"
+            },
+            {
+              "name": "y",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialLayer": {
@@ -1692,7 +1937,39 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "add",
+          "args": [
+            {
+              "name": "object",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "clear",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "remove",
+          "args": [
+            {
+              "name": "object",
+              "type": "handle"
+            }
+          ],
+          "returns": "bool",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialObject": {
@@ -1744,6 +2021,15 @@
           "doc": "Returns the distance of a direction-anchored object."
         },
         {
+          "name": "occludedByMap",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the map in front hides the object."
+        },
+        {
           "name": "position",
           "type": "STRUCT",
           "readOnly": true,
@@ -1772,7 +2058,28 @@
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::CelestialObject",
+          "name": "setDirection",
+          "args": [
+            {
+              "name": "azimuth",
+              "type": "float"
+            },
+            {
+              "name": "altitude",
+              "type": "float"
+            },
+            {
+              "name": "distance",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialSprite": {
@@ -2013,17 +2320,7 @@
     },
     "massif::CompositeVectorTileLayer": {
       "base": "massif::VectorTileLayer",
-      "properties": [
-        {
-          "name": "singlePassRenderingEnabled",
-          "type": "BOOL",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "bool",
-          "doc": "Returns whether single-pass segmented rendering is enabled (Milestone 6, optional)."
-        }
-      ],
+      "properties": [],
       "aliases": {},
       "methods": [
         {
@@ -3296,7 +3593,7 @@
           "static": false,
           "position": false,
           "cppType": "bool",
-          "doc": "Returns wheter the illumination direction should change with the map rotation."
+          "doc": "Returns whether the illumination direction should change with the map rotation."
         },
         {
           "name": "legacyHeightScaleEnabled",
@@ -3719,7 +4016,7 @@
           "static": false,
           "position": false,
           "cppType": "std::vector<massif::LightStop>",
-          "doc": "Returns the day-cycle light curve - the \"formula\" an hour is turned into a look by."
+          "doc": "Returns the day-cycle light curve."
         },
         {
           "name": "dayCycleLightsEnabled",
@@ -4310,7 +4607,7 @@
           "static": false,
           "position": false,
           "cppType": "std::vector<std::string>",
-          "doc": "Returns the ordered list of style layer names as declared by the style (the project JSON \"layers\" array, or the Layer elements of a Mapnik XML style). This defines both the draw order and which layers exist. CompositeVectorTileLayer uses it to place external data sources in the layer order: a source whose name is not in this list has no slot in the style and is not drawn, so this is the way to check a style before wiring sources into it."
+          "doc": "Returns the ordered style layer names as declared by the style (project JSON \"layers\", or Mapnik XML Layers), i.e. the draw order. CompositeVectorTileLayer places external sources by it: a source whose name is not in this list is not drawn."
         },
         {
           "name": "styleParameters",
@@ -5536,12 +5833,12 @@
         },
         {
           "name": "fieldOfViewY",
-          "type": "INT",
+          "type": "FLOAT",
           "readOnly": false,
           "static": false,
           "position": false,
-          "cppType": "int",
-          "doc": "Returns the vertial field of view angle."
+          "cppType": "float",
+          "doc": "Returns the vertical field of view angle."
         },
         {
           "name": "focusPointOffset",
@@ -5569,7 +5866,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns how fast a free roam drag turns the view."
+          "doc": "Returns how fast a FREE_ROAM_MODE_LOOK drag turns the view."
         },
         {
           "name": "freeRoamMode",
@@ -5588,7 +5885,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns how far a first person move drag travels."
+          "doc": "Returns the first person move multiplier."
         },
         {
           "name": "kineticPan",
@@ -5616,6 +5913,24 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns the state of kinetic zoom flag."
+        },
+        {
+          "name": "labelPadding",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how far outside the viewport labels are placed, in screen pixels."
+        },
+        {
+          "name": "labelViewDistance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how far labels are placed, in multiples of the camera-to-focus distance."
         },
         {
           "name": "layersLabelsProcessedInReverseOrder",
@@ -6363,6 +6678,59 @@
       "methods": [],
       "events": []
     },
+    "massif::PointDetailTileDataSource": {
+      "base": "massif::TileDataSource",
+      "properties": [
+        {
+          "name": "detailZoom",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the zoom whose tiles are read."
+        },
+        {
+          "name": "layerName",
+          "type": "STRING",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the layer that is rebuilt."
+        },
+        {
+          "name": "maxDetailLevels",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many zoom levels below the requested tile this will reach."
+        },
+        {
+          "name": "maxFeatures",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many features a rebuilt tile may carry."
+        },
+        {
+          "name": "rankProperty",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the property a rebuilt tile's features are ranked by."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
     "massif::PointGeometry": {
       "base": "massif::Geometry",
       "properties": [
@@ -6799,10 +7167,36 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex)."
+        },
+        {
+          "name": "terrainNormalsRequired",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns true if the effect wants the terrain surface normal in the depth pre-pass."
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::PostProcessEffect",
+          "name": "setFloatParameter",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::Projection": {
@@ -7357,7 +7751,7 @@
           "static": false,
           "position": false,
           "cppType": "std::string",
-          "doc": "Returns every turn-by-turn instruction as one JSON array. A maneuver is nine scalars, and reading them one instruction at a time costs a call per field: a mountain route has hundreds. The keys are the property names (`action`, `pointIndex`, `streetName`, `instruction`, `turnAngle`, `azimuth`, `distance`, `time`), and `action` is the enum's constant name."
+          "doc": "Returns every turn-by-turn instruction as one JSON array, saving a binding call per field. Keys: `action` (the enum's integer value), `pointIndex`, `streetName`, `instruction`, `turnAngle`, `azimuth`, `distance`, `time`."
         },
         {
           "name": "pointCount",
@@ -7394,7 +7788,7 @@
           "static": false,
           "position": false,
           "cppType": "std::string",
-          "doc": "Returns raw result"
+          "doc": "Returns the raw result."
         },
         {
           "name": "totalDistance",
@@ -7894,6 +8288,15 @@
           "doc": "Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters."
         },
         {
+          "name": "cameraClearanceFraction",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the share of the camera's altitude that the terrain clearance takes."
+        },
+        {
           "name": "depthBias",
           "type": "FLOAT",
           "readOnly": false,
@@ -7946,6 +8349,15 @@
           "position": false,
           "cppType": "int",
           "doc": "Returns how many drape tiles the automatic resolution assumes are cached at once."
+        },
+        {
+          "name": "elevationCacheSize",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule."
         },
         {
           "name": "elevationPrefetchEnabled",
@@ -8003,6 +8415,15 @@
           "doc": "Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there."
         },
         {
+          "name": "focusLift",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the height the viewpoint is lifted above the ground-following focus, in meters."
+        },
+        {
           "name": "maxTileZoomCoarsening",
           "type": "INT",
           "readOnly": false,
@@ -8019,6 +8440,24 @@
           "position": false,
           "cppType": "int",
           "doc": "Returns the maximum visible tile zoom offset, relative to the camera zoom level."
+        },
+        {
+          "name": "maxZoom",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the maximum tile zoom level the terrain mesh is cut at."
+        },
+        {
+          "name": "meshCacheSize",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns how many terrain surface meshes may be cached."
         },
         {
           "name": "meshResolution",
@@ -8048,6 +8487,24 @@
           "doc": "Returns the style layers that are kept out of the terrain drape bake."
         },
         {
+          "name": "normalSampleDistance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the ground distance the surface normals are measured over, in meters."
+        },
+        {
+          "name": "postProcessDownscale",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the downscale factor of the packed depth/normal texture post-process effects read."
+        },
+        {
           "name": "seamlessTileEdgesEnabled",
           "type": "BOOL",
           "readOnly": false,
@@ -8055,6 +8512,24 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns whether seamless tile edge handling is enabled."
+        },
+        {
+          "name": "sharedGroundEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the shared ground pass draws the terrain a second time."
+        },
+        {
+          "name": "subdivideDistance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the distance geo-three's terrain LOD subdivides at."
         },
         {
           "name": "surfaceShaderSource",
@@ -8109,10 +8584,44 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns the factor applied to the view distance."
+        },
+        {
+          "name": "viewDistanceMax",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the maximum view distance, in meters."
         }
       ],
       "aliases": {},
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::TerrainOptions",
+          "name": "calculateHorizon",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            },
+            {
+              "name": "eyeHeight",
+              "type": "float"
+            },
+            {
+              "name": "azimuths",
+              "type": "json"
+            },
+            {
+              "name": "maxDistance",
+              "type": "float"
+            }
+          ],
+          "returns": "doubles",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::TerrariumElevationDataDecoder": {
@@ -8508,7 +9017,7 @@
           "position": false,
           "cppType": "std::map<std::string, massif::Variant>",
           "indexed": "json",
-          "doc": "Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - \"dem_encoding\" (\"mapbox\" or \"terrarium\") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's."
+          "doc": "Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. \"dem_encoding\" (\"mapbox\" or \"terrarium\") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's."
         },
         {
           "name": "minZoom",
@@ -8670,7 +9179,8 @@
           "readOnly": false,
           "static": false,
           "position": false,
-          "cppType": "int"
+          "cppType": "int",
+          "doc": "Returns the current frame number."
         },
         {
           "name": "maxOverzoomLevel",
@@ -8753,7 +9263,7 @@
           "static": false,
           "position": false,
           "cppType": "int",
-          "doc": "How many tiles the last cull put on screen, and how many are preloaded around them. A diagnostic: it is what the tile LOD numbers actually cost."
+          "doc": "How many tiles the last cull put on screen. A diagnostic: it is what the tile LOD numbers actually cost."
         },
         {
           "name": "zoomLevelBias",
@@ -9233,7 +9743,7 @@
           "static": false,
           "position": true,
           "cppType": "massif::MapPos",
-          "doc": "Returns the position on the clicked element, that is close to the click position. For points it will always be the center position, for lines it will be the closest point on the line, for billboards it will be the anchor point and for polygons it's equal to getClickPos()."
+          "doc": "Returns the position on the clicked element that is closest to the click position: the center for points, the closest point for lines, the anchor point for billboards, getClickPos() for polygons."
         },
         {
           "name": "layer",
@@ -9432,7 +9942,7 @@
           "static": false,
           "position": true,
           "cppType": "massif::MapPos",
-          "doc": "Returns the position on the clicked feature, that is close to the click position. For points it will always be the center position, for lines it will be the closest point on the line, for billboards it will be the anchor point and for polygons it's equal to getClickPos()."
+          "doc": "Returns the position on the clicked feature that is closest to the click position: the center for points, the closest point for lines, the anchor point for billboards, getClickPos() for polygons."
         },
         {
           "name": "featureId",
@@ -9459,7 +9969,7 @@
           "static": false,
           "position": true,
           "cppType": "massif::MapPos",
-          "doc": "Returns the position of the clicked feature. For a MultiPoint this is the point that was clicked, not the centre of the whole set - which getFeatureClickPos deliberately does not cover, and which a caller otherwise has to reconstruct from getFeaturePosIndex plus a downcast."
+          "doc": "Returns the position of the clicked feature. For a MultiPoint this is the clicked point (see getFeaturePosIndex), not the centre of the set."
         },
         {
           "name": "featurePosIndex",
@@ -9634,7 +10144,7 @@
           "position": false,
           "cppType": "massif::VectorTileRenderOrder::VectorTileRenderOrder",
           "enum": "massif::VectorTileRenderOrder::VectorTileRenderOrder",
-          "doc": "Returns the current display order of the buildings."
+          "doc": "Returns the current display order of the buildings. LAST draws over flat labels too: a label that must clear a building is a billboard one, whose pass runs after the buildings."
         },
         {
           "name": "clickHandlerLayerFilter",
@@ -9662,6 +10172,15 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns the current relative label blending speed."
+        },
+        {
+          "name": "labelPerspectiveScaling",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how much of the perspective divide a label keeps as it recedes from the camera."
         },
         {
           "name": "labelRenderOrder",
@@ -9948,7 +10467,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the camera tilt angle. A NEGATIVE tilt means the view looks above the horizon."
+          "doc": "Returns the camera tilt angle. A negative tilt means the view looks above the horizon."
         },
         {
           "name": "unitToDPCoef",
@@ -10217,6 +10736,44 @@
             [
               "data"
             ]
+          ]
+        ]
+      ]
+    ],
+    "celestial": [
+      [
+        "arc",
+        "massif__CelestialArc",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
+        "label",
+        "massif__CelestialLabel",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
+        "sprite",
+        "massif__CelestialSprite",
+        [
+          [
+            0,
+            [],
+            [],
+            []
           ]
         ]
       ]
@@ -10986,6 +11543,18 @@
       ]
     ],
     "layer": [
+      [
+        "celestial",
+        "massif__CelestialLayer",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
       [
         "composite-vector",
         "massif__CompositeVectorTileLayer",
@@ -11854,6 +12423,44 @@
             ]
           ]
         ]
+      ],
+      [
+        "point-detail",
+        "massif__PointDetailTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ],
+              [
+                "VALUE",
+                "layer",
+                "stringAt(spec, \"layer\", \"\")",
+                null
+              ],
+              [
+                "VALUE",
+                "detailZoom",
+                "static_cast<int>(intAt(spec, \"detailZoom\", 14))",
+                null
+              ]
+            ],
+            [
+              "source",
+              "layer"
+            ],
+            [
+              "source",
+              "layer",
+              "detailZoom"
+            ]
+          ]
+        ]
       ]
     ],
     "style": [
@@ -12011,6 +12618,11 @@
     "massif::BundleAssetPackage": "assets",
     "massif::CacheTileDataSource": "source",
     "massif::CartoCSSStyleSet": "styleset",
+    "massif::CelestialArc": "celestial",
+    "massif::CelestialLabel": "celestial",
+    "massif::CelestialLayer": "layer",
+    "massif::CelestialObject": "celestial",
+    "massif::CelestialSprite": "celestial",
     "massif::CombinedTileDataSource": "source",
     "massif::CompiledStyleSet": "styleset",
     "massif::CompositeVectorTileLayer": "layer",
@@ -12051,6 +12663,7 @@
     "massif::PMTilesTileDataSource": "source",
     "massif::PersistentCacheTileDataSource": "source",
     "massif::Point": "element",
+    "massif::PointDetailTileDataSource": "source",
     "massif::PointGeometry": "geometry",
     "massif::PointStyle": "elementstyle",
     "massif::PointStyleBuilder": "elementstyle",
@@ -12208,6 +12821,36 @@
             "required": true
           }
         ]
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialArc",
+      "kind": "celestial",
+      "type": "arc",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialLabel",
+      "kind": "celestial",
+      "type": "label",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialSprite",
+      "kind": "celestial",
+      "type": "sprite",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
       ]
     },
     {
@@ -12831,6 +13474,16 @@
             "required": true
           }
         ]
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialLayer",
+      "kind": "layer",
+      "type": "celestial",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
       ]
     },
     {
@@ -13615,6 +14268,46 @@
       ]
     },
     {
+      "cppClass": "massif::PointDetailTileDataSource",
+      "kind": "source",
+      "type": "point-detail",
+      "aliases": {
+        "dataSource": "source",
+        "layerName": "layer"
+      },
+      "defaults": {
+        "detailZoom": "14"
+      },
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "layer",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "detailZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::MBVectorTileDecoder",
       "kind": "style",
       "type": "mbvt",
@@ -13859,7 +14552,7 @@
       {
         "name": "COMPOSITE_SOURCE_TYPE_VECTOR",
         "value": 2,
-        "doc": "Another MBVT/protobuf source (including ContourTileDataSource), drawn at its style slot as its own child VectorTileLayer using the master decoder, filtered to its own layer name. Kept separate (not merged) so it overzooms independently via its own MaxOverzoomLevel and does not need the DEM at the target zoom."
+        "doc": "Another MBVT/protobuf source (including ContourTileDataSource), drawn at its style slot as its own child VectorTileLayer with the master decoder, so it overzooms independently via its own MaxOverzoomLevel."
       }
     ],
     "massif::FreeRoamMode::FreeRoamMode": [
@@ -13871,12 +14564,12 @@
       {
         "name": "FREE_ROAM_MODE_LOOK",
         "value": 1,
-        "doc": "Look: a one-finger drag looks around instead of panning - sideways turns the heading about the camera, up and down tilts the map the way the two-finger tilt does, so the camera still orbits its focus point. Panning moves to a two-finger drag; pinch and two-finger rotation are unchanged."
+        "doc": "Look: a one-finger drag turns the heading (sideways) and tilts (up/down) instead of panning; the camera still orbits its focus point. Panning moves to a two-finger drag; pinch and two-finger rotation are unchanged."
       },
       {
         "name": "FREE_ROAM_MODE_FIRST_PERSON",
         "value": 2,
-        "doc": "First person: the camera stops orbiting anything. A one-finger drag turns the view about the CAMERA on both axes, like a mouse in a first person game - the position never changes - and a two-finger drag moves, forward/back and strafing, the way the keys would. Pinch and two-finger rotation are off, since neither belongs to that control scheme. The camera model applies to every source, not just to touch: setTilt and setMapRotation turn the view in place too, so a camera driven by the device's orientation behaves exactly like the drag."
+        "doc": "First person: a one-finger drag turns the view about the camera, whose position never changes; a two-finger drag moves forward/back and strafes. Pinch and two-finger rotation are off. setTilt and setMapRotation also turn the view in place, so an orientation-driven camera matches the drag."
       }
     ],
     "massif::GeometryType::GeometryType": [
@@ -14125,24 +14818,24 @@
       {
         "name": "PANNING_MODE_STICKY",
         "value": 1,
-        "doc": "Sticky panning means that the map panning is restricted, user is able to freely pan the map, but zooming and rotating gestures can't be performed at the same time. User is still able to switch between zooming and rotating the map but it takes a bit more effort compared to FREE panning. gesture is performed and"
+        "doc": "Sticky panning means that the map panning is restricted, user is able to freely pan the map, but zooming and rotating gestures can't be performed at the same time. User is still able to switch between zooming and rotating the map but it takes a bit more effort compared to FREE panning."
       },
       {
         "name": "PANNING_MODE_STICKY_FINAL",
         "value": 2,
-        "doc": "Final sticky panning means that the map panning is restricted, user is able to freely pan the map, but zooming and rotating gestures can't be performed at the same time. Once the gesture type is determined the user is stuck with either zooming or rotating. To switch the gesture the user has to lift at least one the two fingers off the screen."
+        "doc": "Final sticky panning: like sticky panning, but once the gesture type is determined the user is stuck with either zooming or rotating until at least one of the two fingers is lifted."
       }
     ],
     "massif::PanningSpeedMode::PanningSpeedMode": [
       {
         "name": "PANNING_SPEED_MODE_MAP",
         "value": 0,
-        "doc": "The map point under the finger follows it exactly, which is what a flat map does. On a tilted view the speed then changes DURING the gesture: a drag that starts near the camera and travels up the screen accelerates as the finger reaches parts of the screen that are further away."
+        "doc": "The map point under the finger follows it exactly. On a tilted view the speed then changes during the gesture, accelerating as the finger moves toward the far part of the screen."
       },
       {
         "name": "PANNING_SPEED_MODE_ANCHORED",
         "value": 1,
-        "doc": "The scale is measured where the pan STARTS and stays fixed for the whole gesture: starting far away still pans fast and starting close still pans slowly, but the speed never changes while the finger is down. The default."
+        "doc": "The scale is measured where the pan starts and stays fixed for the whole gesture, so the speed never changes while the finger is down. The default."
       },
       {
         "name": "PANNING_SPEED_MODE_CONSTANT",
@@ -14326,19 +15019,19 @@
       {
         "name": "SKY_TYPE_GRADIENT",
         "value": 0,
-        "doc": "A gradient between HorizonColor and SkyColor. What the SDK drew before the atmosphere existed; pick it for a flat, stylised or brand-coloured sky."
+        "doc": "A gradient between HorizonColor and SkyColor; pick it for a flat, stylised or brand-coloured sky."
       },
       {
         "name": "SKY_TYPE_ATMOSPHERE",
         "value": 1,
-        "doc": "Rayleigh and Mie single scattering, integrated along the view ray. The blue zenith, the reddening at a low sun and the halo around it all come out of the model rather than out of a colour ramp, so the sky follows the time of day on its own."
+        "doc": "Rayleigh and Mie single scattering, integrated along the view ray, so the sky follows the time of day on its own."
       }
     ],
     "massif::TerrainFlattenMode::TerrainFlattenMode": [
       {
         "name": "TERRAIN_FLATTEN_MODE_RENDER",
         "value": 0,
-        "doc": "Rendering only: the terrain passes, the drape and the elevation fetches are dropped, but the tiles keep the terrain subdivision they were decoded with. Switching costs nothing and is instant, and a flat map still carries a 3D map's triangles."
+        "doc": "Rendering only: the terrain passes, the drape and the elevation fetches are dropped, but the tiles keep their terrain subdivision. Switching is instant, but a flat map carries 3D triangles."
       },
       {
         "name": "TERRAIN_FLATTEN_MODE_FULL",
@@ -14367,7 +15060,7 @@
       {
         "name": "TILE_LOD_PROFILE_REFERENCE",
         "value": 0,
-        "doc": "The reference density: TileLODFactor 1, which is tangram's rule, mapbox's and maplibre's alike - a tile is refined while it covers more than a 2x2 block of nominal tiles. Fewest tiles, and what every reference renderer ships."
+        "doc": "The reference density: TileLODFactor 1, the tangram/mapbox/maplibre rule - a tile is refined while it covers more than a 2x2 block of nominal tiles. Fewest tiles."
       },
       {
         "name": "TILE_LOD_PROFILE_MOBILE",

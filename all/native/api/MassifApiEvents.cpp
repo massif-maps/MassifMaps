@@ -13,16 +13,12 @@
 #include <map>
 #include <memory>
 
-// The subscription half of MassifApi, split out of MassifApi.cpp so it links against Context and
-// nothing else - the rest of the class needs Options, Layers and every source constructor, which
-// is what kept these functions out of the host tests while `on` silently dropped its consume flag.
+// Subscription half of MassifApi, split out so it links against Context only and runs in host tests.
 
 namespace massif { namespace api {
 
     namespace {
-        // The listener a subscription belongs to, kept alive as long as the subscription is.
-        // DirectorPtr, not shared_ptr: a shared_ptr holds the C++ half only, and the binding's half
-        // is reached weakly until retainDirector pins it - so its handlers died at the next GC.
+        // DirectorPtr, not shared_ptr: a shared_ptr holds only the C++ half, the binding's half would be GC'd.
         std::map<int, DirectorPtr<EventListener> >& listeners() {
             static std::map<int, DirectorPtr<EventListener> > registry;
             return registry;
@@ -34,14 +30,7 @@ namespace massif { namespace api {
             return listener->onEvent(static_cast<int>(target), event, static_cast<int>(payload)) ? 1 : 0;
         }
 
-        /**
-         * Drops the listeners whose subscription has gone.
-         *
-         * offEvent, offAll and the death of a target remove subscriptions without naming them, so
-         * the registry cannot mirror those removals - it is swept against the context instead. Run
-         * on every add and every remove, which is the only way the map grows, so an orphan lives
-         * until the next call rather than for the process.
-         */
+        // offEvent, offAll and target death drop subscriptions without naming them, so sweep against the context.
         void pruneListeners() {
             const std::shared_ptr<Context>& context = Context::GetDefault();
             std::map<int, DirectorPtr<EventListener> >& registry = listeners();
@@ -64,16 +53,13 @@ namespace massif { namespace api {
         if (subscription != NULL_SUBSCRIPTION) {
             listeners()[static_cast<int>(subscription)] = DirectorPtr<EventListener>(listener);
         }
-        // Subscribing is the only thing that grows the registry, so sweeping here bounds it: a
-        // listener orphaned by a destroy cannot outlive the next subscription.
+        // Sweeping on subscribe bounds the registry: an orphaned listener dies at the next subscription.
         pruneListeners();
         return static_cast<int>(subscription);
     }
 
     void MassifApi::setUiDispatcher(const std::shared_ptr<UiDispatcher>& dispatcher) {
-        // Held for as long as it is installed: Context keeps only a raw pointer, so nothing else
-        // would stop a director being collected the moment this returns. DirectorPtr for the same
-        // reason as the listener registry above.
+        // Context keeps only a raw pointer; this is what stops the director being collected.
         static DirectorPtr<UiDispatcher> held;
         held = DirectorPtr<UiDispatcher>(dispatcher);
         if (!dispatcher) {

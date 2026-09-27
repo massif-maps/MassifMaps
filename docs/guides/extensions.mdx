@@ -55,7 +55,7 @@ Then register it and use it like any other source:
 val source = GeoTiffSource("/sdcard/dem.tif")
 MassifInterop.adopt("source", "dem", source)
 
-map.addLayer("dem", Spec.of("raster").set("source", map.source("dem")))
+map.addLayer("dem", Spec.of("raster").set("source", "dem"))
 ```
 
 ## A vector source
@@ -103,9 +103,10 @@ mm_source_create_custom(mm_context_default(), "dem", &source, &handle);
 
 The id then works exactly as an adopted one does — `Spec.of("raster").set("source", "dem")`.
 
-`MM_TILE_RGBA8` hands over **decoded pixels**, which is the point: the Kotlin path above has to
-encode a PNG that `RasterTileLayer` immediately decodes again. Use `MM_TILE_ENCODED` when what you
-have really is a file, including vector tile protobuf for a `"vector"` layer.
+`MM_TILE_RGBA8` hands over **decoded pixels**, so nothing is encoded only to be decoded again — the
+Kotlin path gets the same with `TileData(pixels, width, height)` (premultiplied RGBA8; such tiles are
+not persistently cached). Use `MM_TILE_ENCODED` when what you have really is a file, including
+vector tile protobuf for a `"vector"` layer.
 
 Link against `libmassif.so` for the `mm_*` symbols only — they are the exported surface, and the
 extension's own `.so` is otherwise independent of the SDK.

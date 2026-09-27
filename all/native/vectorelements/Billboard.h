@@ -43,10 +43,8 @@ namespace massif {
         MapBounds getBounds() const;
     
         /**
-         * Returns the location of the root billboard. If this billboard has a location,
-         * this method is equavalent to the Billboard::getGeometry method. If this billboard is attached 
-         * to another billboard, the hierarchy is traveled recursively and the location of the root 
-         * billboard is returned. 
+         * Returns the location of the root billboard: getGeometry() if this billboard has a location,
+         * otherwise the location found by following the chain of base billboards to its root.
          * @return The geometry object that defines the location of the root billboard. Null if there's no root billboard.
          */
         std::shared_ptr<Geometry> getRootGeometry() const;
@@ -74,11 +72,8 @@ namespace massif {
          */
         float getRotation() const;
         /**
-         * Sets the rotation angle of this billboard. The rotation angle is ignored if orientation mode is
-         * set to BillboardOrientation::FACE_CAMERA_BILLBOARD. If the orientation mode is set to 
-         * BillboardOrientation::FACE_CAMERA_GROUND then the rotation angle is added to the calculated billboard 
-         * angle. If the orientation mode is set to BillboardOrientation::GROUND then the rotation means absolute
-         * rotation, where 0 is points to the north.
+         * Sets the rotation angle of this billboard. Ignored for BillboardOrientation::FACE_CAMERA_BILLBOARD,
+         * added to the computed angle for FACE_CAMERA_GROUND, and absolute (0 = north) for GROUND.
          * @param rotation The new rotation angle of this billboard in degrees.
          */
         void setRotation(float rotation);

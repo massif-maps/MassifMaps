@@ -12,9 +12,8 @@
 namespace massif {
 
     /**
-     * What a drape tile is baked AT: the texture resolution the screen asks for, capped by what the
-     * cache's byte budget allows a working cover to hold. Free of the renderer on purpose, so it is
-     * testable on the host. See docs/internals/rendering/04-terrain.md.
+     * The drape bake resolution: what the screen asks for, capped by the cache's byte budget.
+     * See docs/internals/rendering/04-terrain.md.
      */
     struct DrapeTuning {
         /**
@@ -25,14 +24,12 @@ namespace massif {
          * @param budgetBytes The cache's byte budget; 0 for no budget at all.
          */
         static int resolution(double tileDrawSize, double dpiScale, std::size_t workingSet, std::size_t budgetBytes, int minResolution, int maxResolution) {
-            // From the SCREEN: the tile LOD refines a tile until it covers at most a 2x2 block of
-            // nominal tiles, so 2 * tileDrawSize * dpiScale is the widest any tile ever gets.
+            // The tile LOD refines a tile to at most 2x2 nominal tiles, so this is the widest one gets on screen.
             double edge = 2.0 * tileDrawSize * dpiScale;
             int size = minResolution;
             while (size < edge && size < maxResolution) {
                 size *= 2;
             }
-            // ... then down to what the budget holds a working cover of.
             while (budgetBytes > 0 && size > minResolution && bytesPerTile(size) * workingSet > budgetBytes) {
                 size /= 2;
             }
@@ -44,10 +41,8 @@ namespace massif {
         }
 
         /**
-         * The zoom a drape tile is baked FOR, quantised: equal across a drift smaller than the
-         * threshold, different across a larger one. Folded into the tile's content fingerprint, so
-         * a tile whose term moved is stale and re-bakes. Clamped at 0 - a negative zoom exists
-         * (free roam) and would wrap the cast into a term that never repeats.
+         * The bake zoom quantised by threshold, folded into the content fingerprint so a moved term re-bakes.
+         * Clamped at 0: a negative zoom (free roam) would wrap the cast into a term that never repeats.
          */
         static std::size_t bakeZoomTerm(float zoom, float threshold) {
             if (!(zoom > 0) || !(threshold > 0)) {

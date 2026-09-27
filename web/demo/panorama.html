@@ -1,0 +1,1263 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Peak finder - MassifMaps</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f7f7f4; }
+  #map { width: 100vw; height: 100vh; display: block; }
+  /* ?split=1: the reference on the left, ours on the right, one camera driving both. Served from
+     this origin (web/geo-three -> geo-three/example) so its setPosition/setAzimuth are callable -
+     cross-origin the frame can be shown but not steered, which makes the comparison worthless. */
+  body.split #map { width: 50vw; position: absolute; right: 0; top: 0; }
+  body.split #ref { position: absolute; left: 0; top: 0; width: 50vw; height: 100vh; border: 0;
+                    border-right: 1px solid #888; }
+  #ref { display: none; }
+  body.split #ref { display: block; }
+  :root { --primary: #4465be; --ink: #1f2430; --muted: #6b7280; --surface: #ffffffee;
+          --shadow: 0 4px 18px #0000001f, 0 1px 3px #00000014; --ui: 13px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  /* The camera readout is for debugging: ?hud=1. It stays in the DOM, where the bench reads it. */
+  #hud { position: fixed; top: 8px; left: 80px; font: 12px/1.4 monospace; background: #fffc;
+         padding: 6px 8px; white-space: pre; display: none; }
+  body.show-hud #hud { display: block; }
+  /* THE SETTINGS DRAWER, closed by default and opened by the button in the top right corner (?panel=1
+     opens it at load). Every control writes the query string back, so a tuned look is a LINK.
+     ?panel=0 removes the drawer and its button, so a capture is the render and nothing else. */
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; overflow: auto; box-sizing: border-box;
+           font: 12px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--ink);
+           background: #fffffff5; padding: 64px 16px 16px; box-shadow: var(--shadow);
+           transform: translateX(105%); transition: transform .25s ease; z-index: 2; }
+  body.panel-open #panel { transform: none; }
+  #panel h4 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--muted);
+              text-transform: uppercase; letter-spacing: .08em; }
+  #panel label { display: block; margin-bottom: 6px; }
+  #panel .row { display: flex; align-items: center; gap: 8px; }
+  #panel input[type=range] { flex: 1; min-width: 0; accent-color: var(--primary); }
+  #panel .val { width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  #panel a { display: block; margin-top: 10px; word-break: break-all; color: var(--primary); }
+  body.no-panel #panel, body.no-panel #panel-toggle { display: none; }
+  .fab { position: fixed; width: 44px; height: 44px; border-radius: 22px; border: 0; padding: 0;
+         background: var(--surface); box-shadow: var(--shadow); color: var(--ink); cursor: pointer;
+         display: flex; align-items: center; justify-content: center; }
+  .fab:hover { color: var(--primary); }
+  #panel-toggle { top: 12px; right: 12px; z-index: 3; }
+  /* WHERE THE VIEW IS POINTED, as the app's (PeakFinderOverlay): the needle holds north, the text is
+     the direction looked at. A click turns the view to the north. */
+  #compass { position: fixed; top: 12px; left: 12px; width: 52px; padding: 6px 0 5px; border-radius: 26px;
+             background: var(--surface); box-shadow: var(--shadow); color: var(--ink); cursor: pointer;
+             display: flex; flex-direction: column; align-items: center; gap: 1px; font: 600 11px/1.2 system-ui, sans-serif;
+             user-select: none; }
+  #compass svg { width: 30px; height: 30px; }
+  #compass .heading { font-variant-numeric: tabular-nums; }
+  #compass .cardinal { color: var(--muted); font-weight: 500; }
+  /* THE SELECTED SUMMIT, as the app's card: what it is, how high and how far, and the two actions. */
+  #peak { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+          transition: opacity .2s ease, transform .2s ease; display: flex; align-items: center; gap: 12px;
+          font: var(--ui); color: var(--ink); background: var(--surface); border-radius: 20px;
+          padding: 10px 10px 10px 12px; box-shadow: var(--shadow); max-width: calc(100vw - 32px); box-sizing: border-box; }
+  #peak.open { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #peak .icon { flex: none; width: 42px; height: 42px; border-radius: 21px; background: var(--primary); color: #fff;
+                display: flex; align-items: center; justify-content: center; }
+  #peak .icon svg { width: 24px; height: 24px; }
+  #peak .text { min-width: 0; }
+  #peak .name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #peak .meta { color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #peak .actions { display: flex; gap: 6px; margin-left: 8px; }
+  #peak button { border: 0; cursor: pointer; font: 600 12px/1 system-ui, sans-serif; border-radius: 18px;
+                 height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 14px; }
+  #peak button svg { width: 18px; height: 18px; }
+  #peak .look { background: #4465be1a; color: var(--primary); }
+  #peak .fly { background: var(--primary); color: #fff; }
+  #peak .close { background: transparent; color: var(--muted); padding: 0; width: 36px; justify-content: center; }
+  #peak button:hover { filter: brightness(.95); }
+  /* THE SUN BAR: the day and the hour the sun is drawn for, and the day's rise and set over the
+     terrain in front of the viewpoint. */
+  #sunbar { position: fixed; left: 12px; bottom: 28px; display: flex; align-items: center; gap: 10px;
+            font: var(--ui); color: var(--ink); background: var(--surface); border-radius: 20px;
+            padding: 8px 14px 8px 10px; box-shadow: var(--shadow); }
+  #sunbar svg { width: 22px; height: 22px; color: #f59e0b; flex: none; }
+  #sunbar input[type=date] { font: inherit; border: 0; background: transparent; color: var(--ink); }
+  #sunbar input[type=range] { width: 160px; accent-color: #f59e0b; }
+  #sunbar .time { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 44px; white-space: nowrap; }
+  #sunbar .riseset { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #sunbar button { border: 0; background: #f59e0b1f; color: #b45309; font: 600 12px/1 system-ui, sans-serif;
+                   border-radius: 14px; height: 28px; padding: 0 10px; cursor: pointer; }
+  #sunbar button.hours { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px #0000001f; }
+  #sunbar button.hours.on { background: #f59e0b1f; color: #b45309; box-shadow: none; }
+  body.no-sun #sunbar { display: none; }
+  body:not(.no-sun) #peak { bottom: 84px; }
+  #attribution { position: fixed; right: 8px; bottom: 4px; font: 10px/1.4 system-ui, sans-serif; color: #6b7280cc; }
+  #attribution a { color: inherit; }
+  /* Present in the DOM even when invisible, so --dump-dom reads it without disturbing a screenshot. */
+  #log { position: fixed; bottom: 0; left: 0; right: 0; max-height: 34vh; overflow: auto; margin: 0;
+         font: 10px/1.3 monospace; background: #000c; color: #0f0; padding: 6px; display: none; }
+  body.show-log #log { display: block; }
+</style>
+<canvas id="map"></canvas>
+<iframe id="ref"></iframe>
+<div id="hud"></div>
+<div id="compass" title="Look north">
+  <svg viewBox="0 0 24 24"><path class="needle" fill="currentColor" d="M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7z"/></svg>
+  <span class="heading">0°</span><span class="cardinal">N</span>
+</div>
+<button id="panel-toggle" class="fab" title="Settings">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+</button>
+<div id="panel"></div>
+<div id="peak">
+  <div class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/></svg></div>
+  <div class="text"><div class="name"></div><div class="meta"></div></div>
+  <div class="actions">
+    <button class="look" title="Turn the view to it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Look at</button>
+    <button class="fly" title="Stand on the summit"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>Fly to</button>
+    <button class="close" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+</div>
+<div id="sunbar">
+  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
+  <input type="date" class="date" title="Day">
+  <input type="range" class="minute" min="0" max="1439" step="1" title="Time of day">
+  <span class="time"></span>
+  <span class="riseset"></span>
+  <button class="hours" title="Hour marks on the path">Hours</button>
+  <button class="now" title="Back to now">Now</button>
+</div>
+<div id="attribution">MassifMaps · terrain <a href="https://mapterhorn.com" target="_blank">Mapterhorn</a> · summits <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org" target="_blank">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</div>
+<pre id="log"></pre>
+<script>
+  // A headless run has no console to read, and the SDK reports a shader that failed to compile
+  // through Log::Errorf - i.e. console. Mirroring it into the DOM is what makes --dump-dom a
+  // diagnostic: the page can be asked what went wrong without a debugger attached.
+  globalThis.__log = [];
+  for (const level of ['log', 'info', 'warn', 'error']) {
+    const original = console[level].bind(console);
+    console[level] = (...args) => {
+      globalThis.__log.push(level + ': ' + args.map((a) => String(a?.stack ?? a)).join(' '));
+      original(...args);
+    };
+  }
+  // "no tiles this frame" has two very different causes - the layer asked for nothing, or it asked
+  // and the request failed. Counting requests by host separates them without a debugger.
+  globalThis.__net = { count: 0, byHost: {}, status: {}, last: [] };
+  const note = (url, tag) => {
+    const net = globalThis.__net;
+    let host = 'relative';
+    try { host = new URL(url, location.href).host; } catch (error) { /* opaque url */ }
+    net.count += 1;
+    net.byHost[host] = (net.byHost[host] ?? 0) + 1;
+    net.status[tag] = (net.status[tag] ?? 0) + 1;
+    if (net.last.length < 40) { net.last.push(tag + ' ' + String(url).slice(0, 140)); }
+  };
+  // Bound: an unbound window.fetch throws "Illegal invocation", which kills the wasm load itself.
+  const originalFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = (input, init) => {
+    const url = typeof input === 'string' ? input : input?.url;
+    note(url, 'fetch');
+    return originalFetch(input, init).then((r) => { note(url, 'fetch:' + r.status); return r; },
+      (e) => { note(url, 'fetch:ERR'); throw e; });
+  };
+  if (new URLSearchParams(location.search).get('xhrtrace')) {
+    const originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+      note(url, 'xhr');
+      this.addEventListener('load', () => note(url, 'xhr:' + this.status));
+      this.addEventListener('error', () => note(url, 'xhr:ERR'));
+      return originalOpen.call(this, method, url, ...rest);
+    };
+  }
+  addEventListener('error', (e) => globalThis.__log.push('window.error: ' + (e.error?.stack ?? e.message)));
+  addEventListener('unhandledrejection', (e) => globalThis.__log.push('reject: ' + (e.reason?.stack ?? e.reason)));
+</script>
+<script src="./coi-serviceworker.js"></script>
+<script type="module">
+  /*
+   * The peak finder, in a browser.
+   *
+   * Why: its faults are RUN TO RUN - the same tile renders differently on different openings - and
+   * on device a single comparison costs a native build, an install, hand navigation and a screenshot
+   * read by eye. Here a run is a page load, the camera is scripted, and two runs can be diffed.
+   *
+   * The shaders are GENERATED from alpimaps' reliefShaders.ts (gen-relief-shaders.mjs), so this is
+   * the same source the app ships, not a copy that will drift.
+   */
+  import { Massif, MassifCamera } from '../js/massif.mjs';
+  import { RELIEF_SURFACE_SHADER, RELIEF_OUTLINE_SHADER, RELIEF_DEPTH_OUTLINE_SHADER } from './relief-shaders.js';
+
+  const query = new URLSearchParams(location.search);
+  if (query.get('log')) { document.body.classList.add('show-log'); }
+  // BEFORE the module boots: the canvas buffer is sized from its CSS box at start and on a WINDOW
+  // resize only, so a class added later left a full-width buffer squashed into half the page.
+  if (query.get('split') === '1') { document.body.classList.add('split'); }
+  const num = (name, fallback) => (query.has(name) ? parseFloat(query.get(name)) : fallback);
+
+  // Grenoble, the viewpoint the device reports the fault at.
+  // `let`: the fly-to moves the viewpoint.
+  let LAT = num('lat', 45.1885);
+  let LON = num('lon', 5.7245);
+  // THE SAME DEM THE REFERENCE READS, at the same max zoom. geo-three's LocalHeightProvider is
+  // s3 elevation-tiles-prod terrarium with heightMaxZoom 15; mapterhorn's planet archive stops at
+  // z12, which is three levels - 8x - coarser height data, and that is most of why our folds read
+  // softer than the reference's however fine the mesh grid is. ?terrain= overrides.
+  // ?look=peakfinder reads mapterhorn instead, as the app does: its ridge ink is the DEM's own
+  // curvature, and the terrarium set here is upsampled into blobs and striations.
+  const DEM = query.get('terrain') ?? (query.get('look') === 'peakfinder'
+    ? 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'
+    : 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png');
+  // THE REFERENCE'S WORLD IS WEB MERCATOR SIDEWAYS AND TRUE METRES UP. Its ground is mercator metres,
+  // its heights are not (MaterialHeightShader: elevation * exageration), so at exageration 1 its
+  // relief is flattened by cos(lat) - 0.70 here - and its near/far of 10 m .. 173 km are mercator
+  // metres, 122 km of real ground. Everything compared against it goes through this factor.
+  const MERCATOR_COS = Math.cos(LAT * Math.PI / 180);
+
+  // NO TILE LAYER by default. A draped raster or vector layer paints the terrain itself, so the
+  // surface shader's output never reaches the screen and every surface parameter reads as a no-op -
+  // which is how a post-process tuned to be the whole picture got mistaken for a shading bug.
+  // ?source=<url> puts one back.
+  // ?look=drape needs a tile LAYER, so the source has to be decided here - before the module
+  // loads and reads it. See the look handling below for what that render is.
+  // geo-three's terrain CUT AND MESH under its look (TerrainOptions::setSubdivideDistance): its
+  // LODFrustum subdivideDistance of 70, levels to 17 (DEM z15 plus its overzoom of 2), and its
+  // getGeometry mesh - geometrySize 512 over three, 171 cells to z12, halved above - without our
+  // edge stitching, which it does not have. ?lod=ours keeps the SDK's own cut to compare against.
+  // ?look=peakfinder stands on the same cut: it is what the app ships, and the look is about shading.
+  const REFERENCE_LOD = ['geothree', 'peakfinder'].includes(query.get('look')) && query.get('lod') !== 'ours';
+  // THE TILE CACHES, persistent as the app's are (persistent-cache): /cache is IndexedDB, loaded
+  // before main() runs - it opens the DEM's database - and written back every few seconds and when
+  // the page goes away. ?cache=0 for a cold run.
+  const CACHE = query.get('cache') !== '0';
+  globalThis.MASSIF_DEFAULTS = { terrain: DEM, lat: LAT, lon: LON, zoom: num('zoom', 13),
+    demCache: CACHE ? '/cache/dem.db' : '',
+    subdivideDistance: num('subdivideDistance', REFERENCE_LOD ? 70 : 0),
+    cutMaxZoom: num('cutMaxZoom', REFERENCE_LOD ? 17 : 0),
+    source: query.get('look') === 'drape' ? './paper.png' : 'none',
+    // 16 for mapterhorn: the app's source declares that (data/tilesources.ts).
+    terrainMaxZoom: num('terrainMaxZoom', query.get('look') === 'peakfinder' ? 16 : 15),
+    // Read by main() at init, which is the only time the mesh grid can be set: the meshes and the
+    // tile transformer both capture it when they are built. 512 is the reference's geometrySize.
+    meshResolution: num('meshResolution', REFERENCE_LOD ? 171 : 512),
+    // Init-time too: a stitched mesh is a different mesh, and the cache holds the one it was built
+    // as. Setting this after the fact changed 0 pixels.
+    tileEdgeStitching: num('tileEdgeStitching', REFERENCE_LOD ? 0 : 1),
+    // The reference clips at 173 km of MERCATOR, which is less real ground; under its look the same
+    // ranges are drawn, so a ridge it cannot see is not one ours inks.
+    viewDistance: num('viewDistance', query.get('look') === 'geothree' ? 173000 * MERCATOR_COS : 173000),
+    meshCacheSize: num('meshCacheSize', 640),
+    exaggeration: num('exaggeration', 1) };
+
+  const { default: Module } = await import('./massif-demo.mjs');
+  const module = await Module({
+    canvas: document.getElementById('map'),
+    preRun: [(m) => {
+      if (!CACHE) { return; }
+      m.FS.mkdir('/cache');
+      m.FS.mount(m.FS.filesystems.IDBFS, {}, '/cache');
+      m.addRunDependency('idbfs');
+      m.FS.syncfs(true, (error) => {
+        if (error) { console.warn('cache: load failed', error); }
+        m.removeRunDependency('idbfs');
+      });
+    }]
+  });
+  if (CACHE) {
+    let syncing = false;
+    const persist = () => {
+      if (syncing) { return; }
+      syncing = true;
+      module.FS.syncfs(false, (error) => { syncing = false; if (error) { console.warn('cache: save failed', error); } });
+    };
+    setInterval(persist, 10000);
+    addEventListener('pagehide', persist);
+    globalThis.clearTileCache = () => indexedDB.deleteDatabase('/cache');
+  }
+  const massif = new Massif(module);
+  const camera = await MassifCamera.attach(massif);
+
+  const str = (fn, text) => module.ccall(fn, null, ['string'], [text]);
+  const param = (fn, name, value) => module.ccall(fn, null, ['string', 'number'], [name, value]);
+
+  // The SDK supplies uColorTex, uTerrainDepthTex, uFar, uNear, uInvScreenSize and uProjInvScale.
+  // Everything else the shader declares has to be fed, or it reads zero - which is its own class of
+  // bug and exactly the kind this bench exists to avoid re-creating by hand.
+  const INK = {
+    uIntensity: 1, uOutlineWidth: 1, uHorizonBoost: 1, uDepthThreshold: 1,
+    // Which operator the depth outline runs: 0 geo-three's linear depth range, 1 ours relative to the
+    // depth, 2 silhouettes only (peakfinder's lines). The looks below each pick one.
+    uOperator: 1,
+    // The depth-only outline's own, and the numbers the render is judged against. The slope term
+    // this operator returns everywhere is NOT an artefact - it is the hillshade, and the reference
+    // leans on the same thing (geo-three: gain 11, power 0.23). uOutlineFloor turns it into a pure
+    // edge detector instead; 0 keeps the reference look. ?ink.uOutlineFloor=0.05 to see the other.
+    uOutlineGain: 11, uOutlinePower: 0.6, uOutlineFloor: 0,
+    // How far an edge may go past 1 before uIntensity scales it. 1 is our own look; see geothree.
+    uOutlineCeiling: 1,
+    // 1 runs the operator on sky pixels too, which is how the reference draws its skyline.
+    uInkSky: 0,
+    // The skyline, which a depth operator cannot draw: the sky is not in the depth buffer, so the
+    // ridge against it comes out the weight of an interior fold. Its own width, so it is a fatter
+    // stroke and not just a darker one.
+    uHorizonWidth: 3,
+    uCreaseStrength: 0, uCreaseThreshold: 0.12,
+    uRidgeStrength: 2, uRidgeThreshold: 0.05, uRidgeGroundSpan: 90,
+    uTransparent: 0, uDepthTexelSize: 2, uGrazingFloor: 0.15,
+    // Only the ink=normals outline still fades with distance; the depth outline has no fade or haze -
+    // the SDK fog is the one distance effect (?fog=1).
+    uInkDistance: 50000,
+    // The camera range the geo-three operator measures depth over, metres. uDepthFar 0 is the frame's
+    // own far plane; ?look=geothree sets the reference's 10 .. 173000.
+    uDepthNear: 0, uDepthFar: 0,
+    // The reference's 24-bit perspective depth, emulated: bits (0 keeps ours) and its units per metre.
+    uDepthBits: 0, uDepthUnit: 0,
+    uInkShadeCap: 0, uDebugView: num('debug', 0),
+    uMetersPerUnit: 40075016.68558 / (1 << 20), uSilhouetteGate: 865,
+    // No haze: the far ranges are the point of a panorama, and fading them into the paper is what
+    // hid them. ?ink.uHaze=0.65 puts the aerial perspective back.
+    uHazeDistance: 60000, uHaze: 0,
+    uDistortK1: 0, uDistortK2: 0, uDistortK3: 0, uDistortP1: 0, uDistortP2: 0,
+    uDistortCenterX: 0.5, uDistortCenterY: 0.5,
+    uDistortScreenTanX: 1, uDistortScreenTanY: 1,
+    uDistortRenderTanX: 1, uDistortRenderTanY: 1, uDistortRotate: 0
+  };
+  const SURFACE = {
+    // peakfinder.com's model (RELIEF_SURFACE_SHADER): slope + ridge ink, capped by the light
+    // (uAmbient + uShadeStrength x the sun term) and by uInkCap.
+    uShadeStrength: 0.18, uSlopeShade: 0.22, uAmbient: 0.35, uInkCap: 1, uHillshade: 0,
+    uRidgeInkStrength: 0, uDebugView: num('debug', 0),
+    // Radians per screen pixel, for the ridge term's tap spacing: kept in step with the field of view.
+    uPixelAngle: 0
+  };
+  const TERRAIN = {
+    normalSampleDistance: num('normalSampleDistance', 90),
+    meshResolution: num('meshResolution', 256),
+    meshCacheSize: num('meshCacheSize', 640),
+    surfaceNodeResolution: num('surfaceNodeResolution', 0),
+    sharedGround: 0,
+    // ON. It was off, and the breaks between tiles at different levels are exactly what it exists
+    // to close - a skirt hides the gap but not the step in the surface across it.
+    tileEdgeStitching: num('tileEdgeStitching', 1),
+    // The reference renders true; 1 is the SDK default too, so this is here to be compared rather
+    // than because it needs changing.
+    exaggeration: num('exaggeration', 1),
+    // HOW FAR THE PANORAMA REACHES. The factor rule is the camera's height over the cosine of the
+    // angle to the horizon, so from high up the far ranges can fall outside it and the horizon ends
+    // up with nothing behind it. The reference's far plane is 173 km, so ask for the same.
+    viewDistance: globalThis.MASSIF_DEFAULTS.viewDistance
+  };
+
+  // ?look=drape is THE RENDER FROM BEFORE THE PER-FRAGMENT NORMALS, kept because it is the one
+  // that was approved and because it is the control the other two are judged against.
+  //
+  // Its whole picture is the post-process. A draped raster layer paints the terrain, so the
+  // surface shader contributes nothing at all and the outline operator's slope term - the thing a
+  // gradient magnitude returns everywhere - IS the shading. That is why it needed gain 40: it was
+  // not drawing lines, it was drawing the relief. It has no per-fragment DEM normals in it, so it
+  // has none of the shading seams they introduce, and no per-tile DEM level shows in it either.
+  //
+  // It is not a target to go back to - it cannot light a surface, haze it or shade it from the sun,
+  // because there is no surface in it - but until the normal continuity is fixed it is the only
+  // configuration here with a continuous picture, and comparing against it says whether a change
+  // helped.
+  if (query.get('look') === 'drape') {
+    Object.assign(INK, {
+      uOutlineGain: 40, uOutlinePower: 0.6, uOutlineFloor: 0, uOutlineWidth: 1, uIntensity: 1,
+      // OUR operator, not the reference's: divide by the depth rather than measure over a camera range.
+      uOperator: 1,
+      uHorizonBoost: 1, uHorizonWidth: 3
+    });
+    // The surface is under the drape and invisible; these are what it had.
+    Object.assign(SURFACE, { uShadeStrength: 0.18, uSlopeShade: 0.22, uRidgeInkStrength: 0 });
+  }
+
+  // ?look=geothree is the REFERENCE PIPELINE, ported term for term rather than approximated:
+  //
+  //   - the surface is FLAT LIT. geo-three's example has AmbientLight alone (dayNightCycle is off,
+  //     so its sun and its shadow map are never constructed), so its material returns albedo x
+  //     ambient and every bit of relief in its picture comes from the outline.
+  //   - the outline measures a LINEAR depth over the camera's near..far, 10 m .. 173 km, with no
+  //     division by anything. Ours divides by a far plane that reaches 1229 km in a panorama, which
+  //     is why its depthMultiplier of 11 never meant the same thing here.
+  //   - its terrain is TRANSPARENT BLACK (generateColor off, so MaterialHeightShader writes
+  //     vec4(0)) and the paper is the page behind the canvas. The outline mixes vec4(black, d) into
+  //     it by d, ALPHA INCLUDED, so the alpha is d * d, and BlendFunction.AVERAGE - the whole vec4 -
+  //     halves that: its ink is min(d * d / 2, 1). Squaring is what keeps a gentle slope paper
+  //     (d 0.24 inks 0.03, not 0.12) while a ridge in front of far ground still reaches black.
+  //     Power 0.46 is its 0.23 squared, uIntensity 0.5 the average, uOutlineCeiling 2 the headroom.
+  //   - geometrySize 512, its mesh resolution.
+  //   - depthMultiplier 11, depthBiais 0.23 (the power), outlineStroke 1.
+  //
+  // NOT its exageration of 1.6225, by request: the terrain is rendered true.
+  if (query.get('look') === 'geothree') {
+    Object.assign(INK, {
+      // THEIR NUMBERS: depthMultiplier 11, outlineStroke 1, and depthBiais 0.23 doubled by the
+      // alpha mix above. Power 0.23 alone drew every slope as a grey wash (mean 223 against their
+      // 243 at the split viewpoint) - that was the whole of the "too dark" gap.
+      uOperator: 0, uOutlineGain: 11, uOutlinePower: 0.46, uOutlineCeiling: 2, uOutlineFloor: 0, uOutlineWidth: 1,
+      // Its 10 m .. 173 km are mercator metres; ours are real ones.
+      uIntensity: 0.5, uDepthNear: 10 * MERCATOR_COS, uDepthFar: 173000 * MERCATOR_COS,
+      // Its depth buffer is DEPTH_COMPONENT24 over a world of 1e-5 per mercator metre, linearised in
+      // float - which bands the far slopes instead of shading them. ?depth=linear reads ours.
+      uDepthBits: query.get('depth') === 'linear' ? 0 : 24, uDepthUnit: 1e-5 / MERCATOR_COS,
+      // ITS SKYLINE: the sky is depth 1, so the operator inks both sides of the ridge and the jump
+      // saturates to black. On top of it, our deviation: a coverage stroke on the terrain side,
+      // uHorizonWidth texels wide. ?skyline=ref is the reference alone, ?skyline=heavy the stroke alone.
+      uInkSky: query.get('skyline') === 'heavy' ? 0 : 1,
+      uHorizonBoost: query.get('skyline') === 'ref' ? 0 : 1, uHorizonWidth: 3
+    });
+    Object.assign(SURFACE, { uShadeStrength: 0, uSlopeShade: 0, uRidgeInkStrength: 0 });
+    // It differentiates a FULL resolution depth buffer. At our default of 2 a one-pixel tap lands in
+    // the same depth texel half the time, and the skyline comes out as a staircase.
+    TERRAIN.postProcessDownscale = 1;
+    // applyAll pushes these at runtime too, and the mesh is rebuilt from getMeshResolution every
+    // frame - so they have to say what the init said, or the runtime 256 replaces its 171.
+    TERRAIN.meshResolution = globalThis.MASSIF_DEFAULTS.meshResolution;
+    TERRAIN.tileEdgeStitching = globalThis.MASSIF_DEFAULTS.tileEdgeStitching;
+  }
+
+  // ?look=peakfinder is peakfinder.com's picture (cfg=es), from its shader and the uniform values read
+  // off its page (app/mapModules/terrain/peakfinder-reference-shader.md):
+  //
+  //   - the SURFACE is their shading pass: ridge ink 0.6 (the normal's turn across a pixel), slope 0,
+  //     capped by the light - sun 0.05, ambient 0, cap 0.3 - so a sunlit face is paper and only the
+  //     shadow side shows its gullies, at most a few percent grey. Paper is their 0.97.
+  //   - the LINES are theirs too, but theirs are a separate line pass, not a filter: silhouettes 1 px
+  //     at 0.2 grey and the skyline 3 px at 0.1. Ours are the depth outline's silhouette operator
+  //     (uOperator 2), which inks only the near side of an occlusion and nothing on a slope.
+  //   - their ridge taps are one pixel apart on screen, so ours are one pixel's ground apart - bounded
+  //     by normalSampleDistance, which is how far the DEM textures carry their neighbours' data.
+  if (query.get('look') === 'peakfinder') {
+    Object.assign(INK, {
+      uOperator: 2, uOutlineGain: 12, uOutlinePower: 1, uOutlineFloor: 0.008, uOutlineCeiling: 1,
+      uOutlineWidth: 1, uIntensity: 0.8, uInkSky: 0, uHorizonBoost: 0.9, uHorizonWidth: 2.5
+    });
+    // Their ridge 0.6 is over THEIR normal buffer; 0.3 over the mapterhorn curvature at 40 m lands on
+    // the same mountain luminance (243.1 against 243.8 at the Grenoble view). uAmbient 0.06 stands in
+    // for their shadow-buffer term (+0.05 x (0.5 - z) inside ~120 km), which we have no input for.
+    // The sun does not cap it, as the app ships it (PEAKFINDER_LOOK): at their 0.05 flipping the sun
+    // moved 0.11 grey levels, and strong enough to matter it blanks every sunlit face. It shades through
+    // uHillshade instead, after the cap, relative to flat ground so the ground stays paper.
+    Object.assign(SURFACE, { uShadeStrength: 0, uSlopeShade: 0, uAmbient: 0.06, uInkCap: 0.3, uRidgeInkStrength: 0.3, uHillshade: 0.15 });
+    TERRAIN.normalSampleDistance = num('normalSampleDistance', 40);
+    TERRAIN.postProcessDownscale = 1;
+    TERRAIN.meshResolution = globalThis.MASSIF_DEFAULTS.meshResolution;
+    TERRAIN.tileEdgeStitching = globalThis.MASSIF_DEFAULTS.tileEdgeStitching;
+  }
+
+  // Any uniform can be overridden from the query string, so a tuned look is a LINK rather than a
+  // list of console calls to retype: ink.uRidgeStrength=6, s.uShadeStrength=0.10, t.meshResolution=256.
+  for (const [key, value] of query) {
+    const [scope, name] = [key.slice(0, key.indexOf('.')), key.slice(key.indexOf('.') + 1)];
+    const target = scope === 'ink' ? INK : scope === 's' ? SURFACE : scope === 't' ? TERRAIN : null;
+    if (target && name) {
+      target[name] = parseFloat(value);
+    }
+  }
+
+  // ?ink=depth is the geo-three-shaped pipeline: the surface shades and inks the ridges at full
+  // resolution off the elevation texture, and the post-process draws silhouettes from 24-bit depth
+  // and nothing else. ?ink=normals is the old one, kept so the two can be compared in one build.
+  const inkMode = query.get('ink') ?? 'depth';
+
+  // No SDK fog: the surface shader draws the aerial perspective itself, over its own distance, so
+  // the frame's haze on top of it is a second wash. ?fog=1 puts it back.
+  module.ccall('massifSetFogEnabled', null, ['number'], [query.get('fog') === '1' ? 1 : 0]);
+  // Paper, not transparent: see massifSetTerrainBackground. ?background=0 turns it off to see the
+  // state it fixes.
+  if (query.get('background') !== '0') {
+    module.ccall('massifSetTerrainBackground', null, ['number', 'number', 'number', 'number'], [247, 247, 244, 255]);
+  }
+
+  // The palette is baked into the generated shaders as constants (gen-relief-shaders.mjs), so a look
+  // that needs other colours rewrites them. The reference's are white paper - its terrain is
+  // transparent over a #fff page - and pure black ink; ?palette=ours keeps the app's under that look.
+  const COLOURS = query.get('palette') === 'ours' ? {}
+    : query.get('look') === 'geothree' ? { uPaperColor: [1, 1, 1, 1], uInkColor: [0, 0, 0, 1] }
+    : query.get('look') === 'peakfinder' ? { uPaperColor: [1, 1, 1, 1], uInkColor: [0, 0, 0, 1], uShadeColor: [0, 0, 0, 1] }
+    : {};
+  // ?paper=<grey 0..1>, peakfinder look: the ground's colour, with the sky and the terrain background
+  // following it, so ground and sky stay one sheet. White by default; theirs is 0.97, with the sky the
+  // same 0.97 and sunlit flat ground a touch ABOVE it (250) - their ink goes negative under the sun.
+  let paperGrey = num('paper', 1);
+  const setPaper = (grey, recompile) => {
+    paperGrey = grey;
+    const byte = Math.round(grey * 255);
+    COLOURS.uPaperColor = [grey, grey, grey, 1];
+    if (query.get('background') !== '0') {
+      module.ccall('massifSetTerrainBackground', null, ['number', 'number', 'number', 'number'], [byte, byte, byte, 255]);
+    }
+    if (query.get('sky') !== '1') {
+      module.ccall('massifSetSkyEnabled', null, ['number', 'number', 'number', 'number'], [0, byte, byte, byte]);
+    }
+    if (recompile) { applyAll(); }
+  };
+  const withColours = (shader) => Object.entries(COLOURS).reduce((glsl, [name, rgba]) =>
+    glsl.replace(new RegExp(`const vec4 ${name} = vec4\\([^)]*\\);`), `const vec4 ${name} = vec4(${rgba.map((v) => v.toFixed(3)).join(', ')});`), shader);
+
+  function applyAll() {
+    str('massifSetSurfaceShader', withColours(RELIEF_SURFACE_SHADER));
+    module.ccall('massifSetReliefNormals', null, ['number'], [inkMode === 'depth' ? 0 : 1]);
+    str('massifSetReliefShader', withColours(inkMode === 'depth' ? RELIEF_DEPTH_OUTLINE_SHADER : RELIEF_OUTLINE_SHADER));
+    for (const [k, v] of Object.entries(TERRAIN)) param('massifSetTerrainFloat', k, v);
+    for (const [k, v] of Object.entries(SURFACE)) param('massifSetSurfaceParam', k, v);
+    for (const [k, v] of Object.entries(INK)) param('massifSetReliefParam', k, v);
+  }
+  applyAll();
+
+  // THE TILT RANGE FIRST. A map clamps tilt to something like 30..90 because it is a map; a
+  // panorama looks at the HORIZON, which is a tilt of a few degrees, and flyTo silently lands on the
+  // clamp instead - the first capture came back at 84.3 asking for 4.
+  // A panorama is a near-horizontal camera, not a tilted map: tilt 90 is straight down, so the
+  // horizon is a SMALL number - and the map's own tilt range clamps it, which is why the first
+  // capture came back at 84.3 having been asked for 4. The hook widens the range and places the
+  // CAMERA (not the focus point) at the viewpoint, which is what first-person means.
+  // FIRST PERSON FIRST, then the camera. This is the control scheme the panorama is about and the
+  // one the app uses: the position IS the eye, a drag turns the view about it, and the eye never
+  // moves. ?roam=0 restores the map gestures, ?roam=1 is the orbiting 'look' mode.
+  module.ccall('massifSetFreeRoamMode', null, ['number'], [num('roam', 2)]);
+  module.ccall('massifSetPanoramaCamera', null,
+    ['number', 'number', 'number', 'number', 'number', 'number'],
+    [LON, LAT, num('zoom', 13), num('rotation', 0), num('tilt', 4), num('elevation', 50)]);
+
+  // Field of view is an Options attribute the facade already carries, so it needs no C hook - and it
+  // is the first thing to match against a reference panorama. The SDK's default is a map's wide
+  // angle; peakfinder frames about 46 degrees, which is most of why the same ground looks small here.
+  const optionsHandle = massif.find('options', 'map');
+  // ?sun=azimuth,altitude, degrees; the SDK's and the app's default is 315,45. It drives uHillshade and
+  // the uShadeStrength cap. Their reference capture had 123.5,27.6 (u_sunDirection).
+  const sunQuery = query.get('sun') ?? '315,45';
+  const [sunAzimuth, sunAltitude] = sunQuery.split(',').map(parseFloat);
+  const sunHandle = massif.create('options', 'sun', { type: 'light', sunAzimuth, sunAltitude });
+  massif.setObject(optionsHandle, 'lightOptions', sunHandle);
+  let fovDegrees = num('fov', 46);
+  const setFov = (degrees) => {
+    fovDegrees = degrees;
+    massif.set(optionsHandle, 'fieldOfViewY', degrees);
+    SURFACE.uPixelAngle = (degrees * Math.PI / 180) / Math.max(document.getElementById('map').height, 1);
+    param('massifSetSurfaceParam', 'uPixelAngle', SURFACE.uPixelAngle);
+  };
+  setFov(num('fov', 46));
+
+  // Assigned once the split is set up; a no-op until then. `let`, not a const declared later: a
+  // const in its temporal dead zone throws on `typeof`, so setCamera could not guard on it.
+  let syncRef = () => false;
+  let lastRotation = num('rotation', 0);
+  let lastTilt = num('tilt', 4);
+  let eyeMetres = num('elevation', 50);
+  const setCamera = (rotation, tilt) => {
+    lastRotation = rotation;
+    lastTilt = tilt;
+    module.ccall('massifSetPanoramaCamera', null,
+      ['number', 'number', 'number', 'number', 'number', 'number'],
+      [LON, LAT, num('zoom', 13), rotation, tilt, eyeMetres]);
+    // The reference follows every camera change, so the split never drifts out of step.
+    syncRef();
+  };
+  globalThis.__setCamera = setCamera; // the headless bench steers with it
+
+  // AFTER the camera is placed. First person changes what moving the camera MEANS - setTilt and
+  // setMapRotation turn the view in place rather than orbiting a focus point - so switching it on
+  // first left massifSetPanoramaCamera aiming at nothing (focus z -12232).
+  // ?roam=0 restores the map gestures, ?roam=1 is the orbiting 'look' mode.
+  // ?roam=2 is FIRST PERSON - a drag turns the view about the camera and the position never moves.
+  // OPT-IN, not the default: switching the camera model moves the eye, and massifSetPanoramaCamera
+  // does not yet co-operate with it - in either order the eye lands below the ground looking into a
+  // wall of skirts (focus z -328 setting it after, -12232 before). The mode itself works; placing
+  // the camera under it is what still needs doing.
+  // No sky: a panorama is read against the paper, and every band above the horizon is something
+  // drawn. ?sky=1 puts it back.
+  if (query.get('sky') !== '1') {
+    module.ccall('massifSetSkyEnabled', null, ['number', 'number', 'number', 'number'], [0, 255, 255, 255]);
+  }
+  if (query.get('look') === 'peakfinder') { setPaper(paperGrey, true); }
+
+  // The eye's height, the panorama's one viewpoint control. Re-places the camera rather than
+  // touching focusLift: massifSetPanoramaCamera owns the height here, and using both lifts twice.
+  // focusLift, not a camera re-placement: in first person the renderer reads it every frame, so
+  // this is the live control and nothing else has to move.
+  const setEye = (metres) => {
+    eyeMetres = Math.max(0, metres);
+    module.ccall('massifSetFocusLift', null, ['number'], [eyeMetres]);
+    syncRef();
+  };
+
+
+  // THE REFERENCE, SIDE BY SIDE, ON ONE CAMERA (?split=1).
+  //
+  // Comparing two renders from two screenshots taken by hand is how four rounds of "still not the
+  // same" happened: the viewpoint, the field of view and the load state all differ a little and any
+  // of the three can explain a difference on its own. Here both are on screen at once and the same
+  // numbers drive both, so what is left is the renderer.
+  //
+  // Same origin (web/geo-three -> geo-three/example) is not a convenience: the reference takes its
+  // camera from window.setPosition/setAzimuth, so cross-origin the frame could be shown but never
+  // steered. Its settings are also all query parameters (it JSON.parses every one into `settings`),
+  // which is how the field of view and the elevation are matched at load.
+  const refFrame = document.getElementById('ref');
+  // ITS ALTITUDE IS ABOVE THE SEA, ours is above the ground (focusLift). Passing ours through put its
+  // eye a whole valley floor lower. The ground is read off the same terrarium tile both render from.
+  let groundMetres = null;
+  const readGround = async () => {
+    const zoom = 15;
+    const tiles = 2 ** zoom;
+    const latRad = LAT * Math.PI / 180;
+    const tileX = (LON + 180) / 360 * tiles;
+    const tileY = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * tiles;
+    const url = DEM.replace('{z}', zoom).replace('{x}', Math.floor(tileX)).replace('{y}', Math.floor(tileY));
+    const bitmap = await createImageBitmap(await (await fetch(url)).blob());
+    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
+    context.drawImage(bitmap, 0, 0);
+    const [red, green, blue] = context.getImageData(Math.floor((tileX % 1) * bitmap.width),
+      Math.floor((tileY % 1) * bitmap.height), 1, 1).data;
+    return red * 256 + green + blue / 256 - 32768;
+  };
+  const refReady = () => {
+    try { return groundMetres !== null && typeof refFrame.contentWindow?.setPosition === 'function'; }
+    catch (error) { return false; }
+  };
+  syncRef = () => {
+    if (!refReady()) { return false; }
+    try {
+      refFrame.contentWindow.setPosition({ lat: LAT, lon: LON, altitude: groundMetres + eyeMetres });
+      // NOT NEGATED. Both are the opposite of a heading: fitted against the skyline raymarched off
+      // the DEM, our rotation 11.22 looks at heading -11.7 and their setAzimuth(11.22) at -11.2.
+      // An earlier correlation said to negate, but it was taken with the eye at the wrong altitude
+      // and our pane squashed, which is two errors that happened to agree.
+      refFrame.contentWindow.setAzimuth(lastRotation, false);
+      return true;
+    } catch (error) { return false; }
+  };
+  // Read whether or not the split is on: the peakfinder link below needs it too.
+  groundMetres = await readGround().catch(() => 0);
+  if (query.get('split') === '1') {
+    // fovFactor is its field of view, and outline/mesh settings come across too so the two are
+    // being compared on the same configuration rather than on its defaults and ours.
+    const refQuery = new URLSearchParams({
+      elevation: String(groundMetres + eyeMetres),
+      fovFactor: String(num('fov', 46)),
+      outline: 'true',
+      // Its heights are true metres on a mercator ground, so the TRUE shape is 1 / cos(lat), not 1.
+      exageration: String(TERRAIN.exaggeration / MERCATOR_COS),
+      generateColor: 'false',
+      // Its stickToGround keeps the eye at least 60 m over the ground, which is camera placement,
+      // not rendering: off, so an eye of 20 m on a summit is 20 m in both.
+      stickToGround: 'false',
+      // Its peak labels and their leader lines are ink the terrain did not draw; ?labels=1 for them.
+      readFeatures: String(query.get('labels') === '1'),
+      dayNightCycle: 'false'
+    });
+    refFrame.src = '/geo-three/index.html?' + refQuery.toString();
+    // It loads its own terrain asynchronously and only exposes setPosition once it has booted, so
+    // the sync is retried rather than fired once on load.
+    const pump = setInterval(() => { if (syncRef()) { clearInterval(pump); } }, 500);
+    setTimeout(() => clearInterval(pump), 30000);
+  }
+
+  // THE SUMMIT LABELS, as the app draws them (alpimaps features/peakFinder.ts, createPeaks):
+  // OpenMapTiles' mountain_peak off OpenFreeMap, through the point-detail source that rebuilds a
+  // coarse tile out of the fine ones (so a far range keeps its summits), a memory cache, and the
+  // app's own callout style - generated from its peaksStyle.ts into peaks-style.js. On by default
+  // under ?look=peakfinder; ?peaks=1 / ?peaks=0 either way. The eye's altitude is baked into the
+  // style's rank, as in the app, so it is the one at load.
+  const PEAKS = query.has('peaks') ? query.get('peaks') === '1' : query.get('look') === 'peakfinder';
+  // The label layout, every knob a query parameter and a panel control. The default is
+  // peakfinder.com's: ONE ROW, a leader line up from each summit to a line just above the skyline,
+  // each name standing on it by its bottom-left corner and reading up at 45 degrees
+  // (text-callout-screen-anchor), the row coming down to just above the highest summit on screen
+  // (text-callout-band-follow) with peakBand the highest it goes. 'top' is the row held at peakBand
+  // whatever the skyline does. 'skyline' is no row, each name over its own summit.
+  // How far behind the terrain a summit may sit and keep its name, as a fraction of its distance:
+  // TerrainOptions' billboardOcclusionTolerance, the app's default.
+  let peakOcclusion = num('peakOcclusion', 0.15);
+  const PEAK_STYLE = {
+    layout: query.get('peakLayout') ?? 'band',
+    band: num('peakBand', 0.12),
+    angle: num('peakAngle', 45),
+    rows: num('peakRows', 1),
+    minDistance: num('peakMinDistance', 1),
+    size: num('peakSize', 13),
+    wrap: num('peakWrap', 0),
+    persist: num('peakPersist', 10)
+  };
+  let rebuildPeaks = () => {};
+  // Layers that must stay above the summit names, however often those are rebuilt (the sun's).
+  let raiseOverPeaks = () => {};
+  let selectPeak = () => {};
+  let showSelectedPeak = () => {};
+  if (PEAKS) {
+    const { peaksStyle } = await import('./peaks-style.js');
+    const tryDo = (what, fn) => { try { return fn(); } catch (error) { console.warn('peaks:', what, error.message); return 0; } };
+    const http = massif.create('source', 'peaks.http',
+      { type: 'http', url: 'https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf', maxZoom: 14 });
+    // On disk like the app's: the detail source rebuilds a coarse tile out of up to 64 fine ones, and
+    // over the network that is most of why the names are slow to appear.
+    const tiles = (CACHE && tryDo('persistent cache', () => massif.create('source', 'peaks.tiles',
+      { type: 'persistent-cache', source: http, databasePath: '/cache/peaks.db' }))) || http;
+    // The app's detail source (terrainStore: detail zoom 12, 3 levels, 32 features a tile, ranked by
+    // height) is OFF here unless ?peakDetail=1: it rebuilds a coarse tile out of up to 64 fine ones,
+    // which on a device reads local tiles and here reads IndexedDB or the network - measured, the
+    // raw tiles put ~16 names up by 5 s from a warm cache, the detail source ~9.
+    const detail = query.get('peakDetail') !== '1' ? 0 : tryDo('point-detail', () => massif.create('source', 'peaks.detail',
+      { type: 'point-detail', source: tiles, layer: 'mountain_peak', detailZoom: num('peakZoom', 12) }));
+    if (detail) {
+      tryDo('detail options', () => {
+        massif.set(detail, 'maxDetailLevels', num('peakDetailLevels', 3));
+        massif.set(detail, 'maxFeatures', num('peakFeatures', 32));
+        massif.set(detail, 'rankProperty', 'ele');
+      });
+    }
+    const cache = detail ? massif.create('source', 'peaks.cache', { type: 'memory-cache', source: detail, capacity: 32 * 1024 * 1024 }) : tiles;
+    const layers = massif.find('layers', 'map');
+    // THE SELECTED SUMMIT'S NAME, bold and in the card's blue: a style parameter the style declares
+    // itself (Map style-parameters) and compares with each summit, so selecting one is a parameter
+    // write on the live decoder - no second layer, no new style.
+    let selectedKey = '';
+    const withSelection = (css) => "Map { param-selected_peak: ''; }\n" +
+      "@selected: [name] + '|' + [ele] = [param::selected_peak];\n" + css
+      .replace("text-face-name: 'Roboto';", "text-face-name: @selected ? 'Roboto-Bold' : 'Roboto';")
+      .replace(/\n {2}text-fill: ([^;]+);/, '\n  text-fill: @selected ? #2f4f9e : $1;')
+      .replace(/text-placement-priority: ([^;]+);/, 'text-placement-priority: @selected ? 100000 : $1;');
+    let generation = 0;
+    let current = null;
+    rebuildPeaks = () => {
+      // The style is TEXT - the eye's altitude is baked into its rank - so a change is a new decoder
+      // and a new layer, put up before the old one comes down.
+      generation += 1;
+      const css = peaksStyle({
+        eyeElevation: (groundMetres ?? 0) + eyeMetres, minDistance: PEAK_STYLE.minDistance, persistPasses: PEAK_STYLE.persist,
+        textAngle: PEAK_STYLE.angle, maxRows: PEAK_STYLE.rows, textSize: PEAK_STYLE.size, wrapWidth: PEAK_STYLE.wrap,
+        pinTop: PEAK_STYLE.layout === 'top', band: PEAK_STYLE.band, topOffset: PEAK_STYLE.band, followSkyline: PEAK_STYLE.layout === 'skyline'
+      })
+        // The app's style names no face, so a device draws its system font; a browser has none, and
+        // the page preloads Roboto into /fonts (SystemFontUtils).
+        .replace('  text-name: [name];', "  text-name: [name];\n  text-face-name: 'Roboto';");
+      const style = massif.create('style', `peaks.style.${generation}`, { type: 'mbvt', cartocss: { type: 'cartocss', css: withSelection(css) } });
+      tryDo('selection', () => massif.set(style, 'params.selected_peak', selectedKey));
+      const layer = massif.create('layer', `peaks.layer.${generation}`, {
+        type: 'vector', source: cache, style: `peaks.style.${generation}`, preloading: true,
+        labelRenderOrder: 'VECTOR_TILE_RENDER_ORDER_LAST', tileSubstitutionPolicy: 'TILE_SUBSTITUTION_POLICY_VISIBLE'
+      });
+      // A tap on a name selects that summit, as in the app (onPeakClicked).
+      const off = tryDo('click', () => massif.on(layer, 'vectortile.clicked', (payload) => {
+        let properties = {};
+        try { properties = JSON.parse(massif.getString(payload, 'feature.properties') || '{}'); } catch (error) { /* no properties */ }
+        const position = tryDo('featurePos', () => JSON.parse(massif.getString(payload, 'featurePos', 'EPSG:4326')));
+        if (!properties.name || !position) { return false; }
+        selectPeak({ name: properties.name, ele: properties.ele, lon: position[0] ?? position.x, lat: position[1] ?? position.y });
+        return true;
+      }, { delivery: 'ui' }));
+      // On device the plugin installs the click bridge on the layer; here the demo exports it.
+      if (!module.ccall('massifBridgeLayerClicks', 'number', ['number'], [layer])) { console.warn('peaks: no click bridge'); }
+      massif.call(layers, 'add', [layer]);
+      raiseOverPeaks();
+      if (current) {
+        massif.call(layers, 'remove', [current.layer]);
+        current.off?.();
+      }
+      current = { layer, off, style };
+    };
+    showSelectedPeak = (peak) => {
+      selectedKey = peak ? `${peak.name}|${peak.ele ?? ''}` : '';
+      if (current) { tryDo('selection', () => massif.set(current.style, 'params.selected_peak', selectedKey)); }
+    };
+    rebuildPeaks();
+    // The app's panorama terrain options for a label layer (features/peakFinder.ts): NO DRAPE and no
+    // shared ground - the one layer is billboards, and a drape bakes it over the terrain, which
+    // hides the surface shader (the notes' failure mode 1) - occlusion tolerance as set (below), coarsening 4.
+    tryDo('terrain label options', () => {
+      massif.set(optionsHandle, 'terrainOptions.drapeFillsEnabled', false);
+      massif.set(optionsHandle, 'terrainOptions.drapeLinesEnabled', false);
+      massif.set(optionsHandle, 'terrainOptions.sharedGroundEnabled', false);
+      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionEnabled', query.get('peakOcclude') !== '0');
+      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionTolerance', peakOcclusion);
+      massif.set(optionsHandle, 'terrainOptions.maxTileZoomCoarsening', 4);
+    });
+    tryDo('label padding', () => massif.set(optionsHandle, 'labelPadding', 200));
+  }
+
+  // THE SELECTED SUMMIT, as the app's card (PeakFinderOverlay): name, height, distance, and the two
+  // actions - LOOK AT turns the view to it where you stand (focusSelectedPeak), FLY TO stands you on
+  // it (flyToSelectedPeak), at the same eye height and heading.
+  const card = document.getElementById('peak');
+  const toRad = Math.PI / 180;
+  const bearingTo = (lat, lon) => {
+    const y = Math.sin((lon - LON) * toRad) * Math.cos(lat * toRad);
+    const x = Math.cos(LAT * toRad) * Math.sin(lat * toRad) - Math.sin(LAT * toRad) * Math.cos(lat * toRad) * Math.cos((lon - LON) * toRad);
+    return Math.atan2(y, x) / toRad;
+  };
+  const distanceTo = (lat, lon) => {
+    const a = Math.sin((lat - LAT) * toRad / 2) ** 2 + Math.cos(LAT * toRad) * Math.cos(lat * toRad) * Math.sin((lon - LON) * toRad / 2) ** 2;
+    return 2 * 6371008.8 * Math.asin(Math.sqrt(a));
+  };
+  const COMPASS_POINTS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const toCompass = (heading) => COMPASS_POINTS[Math.round((((heading % 360) + 360) % 360) / 22.5) % 16];
+  let selected = null;
+  selectPeak = (peak) => {
+    selected = peak;
+    showSelectedPeak(peak);
+    if (!peak) { card.classList.remove('open'); return; }
+    const km = distanceTo(peak.lat, peak.lon) / 1000;
+    const heading = (bearingTo(peak.lat, peak.lon) + 360) % 360;
+    const elevation = peak.ele !== undefined && peak.ele !== '' ? `${Math.round(Number(peak.ele)).toLocaleString('en')} m  ·  ` : '';
+    card.querySelector('.name').textContent = peak.name;
+    card.querySelector('.name').title = peak.name;
+    card.querySelector('.meta').textContent = `${elevation}${km.toFixed(km < 10 ? 1 : 0)} km  ·  ${Math.round(heading)}° ${toCompass(heading)}`;
+    card.classList.add('open');
+  };
+  card.querySelector('.look').onclick = () => {
+    // Our rotation is minus the heading.
+    if (selected) { setCamera(-bearingTo(selected.lat, selected.lon), lastTilt); }
+  };
+  card.querySelector('.fly').onclick = async () => {
+    if (!selected) { return; }
+    const heading = bearingTo(selected.lat, selected.lon);
+    LAT = selected.lat;
+    LON = selected.lon;
+    selectPeak(null);
+    groundMetres = await readGround().catch(() => groundMetres);
+    setCamera(-heading, lastTilt);
+    rebuildPeaks(); // the eye's altitude is in the labels' rank
+    refreshLink?.();
+  };
+  card.querySelector('.close').onclick = () => selectPeak(null);
+  addEventListener('keydown', (event) => { if (event.key === 'Escape') { selectPeak(null); document.body.classList.remove('panel-open'); } });
+
+  const compassElement = document.getElementById('compass');
+  const needle = compassElement.querySelector('.needle');
+  compassElement.onclick = () => setCamera(0, lastTilt);
+
+  // Driving surface for experiments: set a parameter, sweep it, or read the camera, from a script or
+  // the console. No rebuild, no device.
+  Object.assign(globalThis, {
+    massif, module, camera, applyAll,
+    // Pan away and back. The reported fault survives a return to the same camera - the tile is
+    // rebuilt, re-bakes its normals against whatever the cache holds NOW, and lands somewhere else
+    // again - so a frame taken before and after a round trip is the test that matters.
+    look: (rotation, tilt) => setCamera(rotation, tilt ?? num('tilt', 4)),
+    fov: setFov,
+    ink: (name, value) => { INK[name] = value; param('massifSetReliefParam', name, value); },
+    surface: (name, value) => { SURFACE[name] = value; param('massifSetSurfaceParam', name, value); },
+    terrain: (name, value) => { TERRAIN[name] = value; param('massifSetTerrainFloat', name, value); },
+    debug: (view) => { globalThis.ink('uDebugView', view); globalThis.surface('uDebugView', view); },
+    select: (peak) => selectPeak(peak),
+    ready: () => true
+  });
+
+
+  // THE TUNING PANEL. Every number that decides the look, on a slider, writing the query string back
+  // as it moves - so a look that works is a LINK to paste rather than a list of values to retype,
+  // and the same link reproduces it headless. ?panel=0 hides it for a capture.
+  if (query.get('panel') === '0') { document.body.classList.add('no-panel'); }
+  if (query.get('panel') === '1') { document.body.classList.add('panel-open'); }
+  if (query.get('hud') === '1') { document.body.classList.add('show-hud'); }
+  document.getElementById('panel-toggle').onclick = () => document.body.classList.toggle('panel-open');
+  const CONTROLS = [
+    ['ink', 'uOutlineGain', 0, 80, 1, 'gain'],
+    ['ink', 'uOutlinePower', 0.05, 2, 0.01, 'power - low draws the slope wash, high draws lines only'],
+    ['ink', 'uOutlineFloor', 0, 0.2, 0.002, 'floor - cuts the slope wash, leaves the steps'],
+    ['ink', 'uIntensity', 0, 1, 0.01, 'overall ink'],
+    ['ink', 'uOutlineWidth', 1, 4, 1, 'line width, texels'],
+    ['ink', 'uHorizonWidth', 1, 8, 1, 'skyline stroke width'],
+    ['ink', 'uHorizonBoost', 0, 1, 0.01, 'skyline strength'],
+    ['ink', 'uOperator', 0, 2, 1, 'operator - 0 geo-three, 1 relative, 2 silhouettes only'],
+    ['ink', 'uDepthNear', 0, 1000, 10, 'depth range near, m (operator 0)'],
+    ['ink', 'uDepthFar', 0, 400000, 1000, 'depth range far, m (operator 0) - 0 is the frame far plane'],
+    ['s', 'uRidgeInkStrength', 0, 3, 0.01, 'ridge ink - the normal turn across a pixel'],
+    ['s', 'uSlopeShade', 0, 2, 0.01, 'slope ink - sine of the tilt'],
+    ['s', 'uShadeStrength', 0, 2, 0.01, 'sun: how much ink a face turned away allows'],
+    ['s', 'uAmbient', 0, 1, 0.01, 'ink allowed whatever the sun'],
+    ['s', 'uInkCap', 0, 1, 0.01, 'most ink the surface may carry'],
+    ['s', 'uHillshade', 0, 1, 0.01, 'hillshade - faces turned from the sun, added after the cap'],
+    ['t', 'normalSampleDistance', 0, 200, 5, 'ground span of the normal and the ridge curvature, m'],
+    ['t', 'exaggeration', 0.5, 2.5, 0.025, 'vertical exaggeration'],
+    ['t', 'viewDistance', 20000, 300000, 5000, 'how far the map is drawn, m']
+  ];
+  const panel = document.getElementById('panel');
+  const link = document.createElement('a');
+  const pfLink = document.createElement('a');
+  pfLink.target = '_blank';
+  const setParam = (scope, name, value) => {
+    if (scope === 'ink') { globalThis.ink(name, value); }
+    else if (scope === 't') { globalThis.terrain(name, value); }
+    else { globalThis.surface(name, value); }
+  };
+  const refreshLink = () => {
+    const next = new URLSearchParams(query);
+    for (const [scope, name] of CONTROLS) {
+      const from = scope === 'ink' ? INK : scope === 't' ? TERRAIN : SURFACE;
+      next.set(scope + '.' + name, String(from[name]));
+    }
+    next.set('elevation', String(Math.round(eyeMetres)));
+    if (query.get('look') === 'peakfinder') { next.set('paper', String(paperGrey)); }
+    if (PEAKS) {
+      next.set('peakLayout', PEAK_STYLE.layout);
+      next.set('peakOcclusion', String(peakOcclusion));
+      for (const [name, key] of [['band', 'peakBand'], ['angle', 'peakAngle'], ['minDistance', 'peakMinDistance'], ['rows', 'peakRows'], ['size', 'peakSize'], ['wrap', 'peakWrap']]) {
+        next.set(key, String(PEAK_STYLE[name]));
+      }
+    }
+    next.set('lat', String(LAT));
+    next.set('lon', String(LON));
+    link.href = location.pathname + '?' + next.toString();
+    link.textContent = 'link to this look';
+    // The same view on peakfinder.com, to compare against by eye (it cannot be framed or steered).
+    // Its azi is a heading, ours the opposite; its fov is HORIZONTAL; its alt is a pitch, and at the
+    // Grenoble viewpoint our tilt had to be ~0.8 deg more than its alt to fit the same skyline.
+    const canvas = document.getElementById('map');
+    const fovX = 2 * Math.atan(Math.tan(fovDegrees * Math.PI / 360) * canvas.width / canvas.height) * 180 / Math.PI;
+    pfLink.href = 'https://www.peakfinder.com/?' + new URLSearchParams({
+      lat: String(LAT), lng: String(LON), ele: String(Math.round(groundMetres ?? 0)), off: String(Math.round(eyeMetres)),
+      azi: String(-lastRotation), alt: String(lastTilt), fov: fovX.toFixed(2), cfg: 'es'
+    }).toString() + '&name';
+    pfLink.textContent = 'this view on peakfinder.com';
+  };
+  const slider = (parent, label, value, min, max, step, onInput) => {
+    const wrap = document.createElement('label');
+    wrap.textContent = label;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const input = document.createElement('input');
+    Object.assign(input, { type: 'range', min, max, step, value });
+    const readout = document.createElement('span');
+    readout.className = 'val';
+    readout.textContent = String(value);
+    input.addEventListener('input', () => {
+      const next = parseFloat(input.value);
+      readout.textContent = String(next);
+      onInput(next);
+      refreshLink();
+    });
+    row.append(input, readout);
+    wrap.append(row);
+    parent.append(wrap);
+    return input;
+  };
+  // The eye first: it is the control a panorama is actually about, and the one the app exposes.
+  const eyeHead = document.createElement('h4');
+  eyeHead.textContent = 'viewpoint';
+  panel.append(eyeHead);
+  slider(panel, 'elevation, m above ground', eyeMetres, 0, 4000, 10, setEye);
+  slider(panel, 'field of view', num('fov', 46), 5, 120, 1, setFov);
+  // Their pitch cannot be set from outside - only setPosition and setAzimuth are on their window -
+  // so the vertical is matched from OUR side. Measured at this viewpoint their skyline sits about
+  // 20 px of 470 higher than ours at tilt 4, which at a 24 degree vertical field of view is ~1 deg.
+  slider(panel, 'tilt', lastTilt, -10, 30, 0.25, (next) => setCamera(lastRotation, next));
+  slider(panel, 'sun azimuth', sunAzimuth, 0, 360, 1, (next) => massif.set(sunHandle, 'sunAzimuth', next));
+  slider(panel, 'sun altitude', sunAltitude, 0, 90, 0.5, (next) => massif.set(sunHandle, 'sunAltitude', next));
+  if (query.get('look') === 'peakfinder') {
+    slider(panel, 'paper grey - ground, sky and background', paperGrey, 0.8, 1, 0.005, (next) => setPaper(next, true));
+  }
+  let section = '';
+  for (const [scope, name, min, max, step, hint] of CONTROLS) {
+    const head = scope === 'ink' ? 'outline (post-process)' : 'surface (shading)';
+    if (head !== section) {
+      section = head;
+      const title = document.createElement('h4');
+      title.textContent = head;
+      panel.append(title);
+    }
+    const value = (scope === 'ink' ? INK : scope === 't' ? TERRAIN : SURFACE)[name];
+    slider(panel, name + ' - ' + hint, value, min, max, step, (next) => setParam(scope, name, next));
+  }
+  if (PEAKS) {
+    // Rebuilding the labels is a new decoder and layer, so a drag waits until it settles.
+    let rebuildTimer = 0;
+    const setPeak = (name, value) => {
+      PEAK_STYLE[name] = value;
+      clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(rebuildPeaks, 250);
+    };
+    const head = document.createElement('h4');
+    head.textContent = 'summit names';
+    panel.append(head);
+    const layoutLabel = document.createElement('label');
+    layoutLabel.textContent = 'layout ';
+    const layoutSelect = document.createElement('select');
+    for (const [value, text] of [['band', 'row above the skyline (peakfinder)'], ['top', 'row pinned at a fixed height'], ['skyline', 'over each summit']]) {
+      layoutSelect.append(new Option(text, value, false, PEAK_STYLE.layout === value));
+    }
+    layoutSelect.addEventListener('change', () => { setPeak('layout', layoutSelect.value); refreshLink(); });
+    layoutLabel.append(layoutSelect);
+    panel.append(layoutLabel);
+    slider(panel, 'row height, fraction from the top (a following row: the highest it goes)', PEAK_STYLE.band, 0.05, 0.9, 0.01, (next) => setPeak('band', next));
+    slider(panel, 'name angle, degrees', PEAK_STYLE.angle, 0, 90, 1, (next) => setPeak('angle', next));
+    slider(panel, 'min distance between names, px', PEAK_STYLE.minDistance, 0, 30, 1, (next) => setPeak('minDistance', next));
+    slider(panel, 'rows', PEAK_STYLE.rows, 1, 5, 1, (next) => setPeak('rows', next));
+    slider(panel, 'text size', PEAK_STYLE.size, 8, 24, 0.5, (next) => setPeak('size', next));
+    slider(panel, 'wrap names longer than, px (0 never)', PEAK_STYLE.wrap, 0, 300, 5, (next) => setPeak('wrap', next));
+    // Live: the terrain options are read every placement pass, no rebuild.
+    slider(panel, 'occlusion tolerance, fraction of the distance a summit may sit behind the terrain', peakOcclusion, 0, 1, 0.01, (next) => {
+      peakOcclusion = next;
+      massif.set(optionsHandle, 'terrainOptions.billboardOcclusionTolerance', next);
+      refreshLink();
+    });
+  }
+  panel.append(link, pfLink);
+  refreshLink();
+
+
+  // THE SUN, as peakfinder.com draws it: the day's path across the sky, an hour mark on it, the sun
+  // where it is at the chosen time, and where it rises and sets over the TERRAIN in front of the
+  // viewpoint - not over the flat horizon - with the time next to it.
+  //
+  // All of it through the facade (celestial kind, CelestialLayer methods, TerrainOptions'
+  // calculateHorizon): the SDK knows directions and the skyline, the astronomy lives here, which is
+  // the split the celestial layer was designed around. Sky objects are depth-tested against the map,
+  // so a ridge in front of the path hides it with no work on this side. ?sun=0 turns it off.
+  const SUN = query.get('sun') !== '0';
+  let sunTick = () => {};
+  if (!SUN) { document.body.classList.add('no-sun'); }
+  if (SUN) {
+    const deg = Math.PI / 180;
+    // NOAA's low-accuracy solar position - the SDK's own (LightOptions::setSunPositionFromTime).
+    const sunAt = (time, lat, lon) => {
+      const n = time / 86400000 + 2440587.5 - 2451545.0;
+      const meanLong = (280.460 + 0.9856474 * n) % 360;
+      const meanAnom = ((357.528 + 0.9856003 * n) % 360) * deg;
+      const eclipticLong = (meanLong + 1.915 * Math.sin(meanAnom) + 0.020 * Math.sin(2 * meanAnom)) * deg;
+      const obliquity = (23.439 - 0.0000004 * n) * deg;
+      const rightAsc = Math.atan2(Math.cos(obliquity) * Math.sin(eclipticLong), Math.cos(eclipticLong));
+      const decl = Math.asin(Math.sin(obliquity) * Math.sin(eclipticLong));
+      const gmst = (((18.697374558 + 24.06570982441908 * n) % 24) + 24) % 24;
+      const hourAngle = gmst * 15 * deg + lon * deg - rightAsc;
+      const phi = lat * deg;
+      const alt = Math.asin(Math.sin(phi) * Math.sin(decl) + Math.cos(phi) * Math.cos(decl) * Math.cos(hourAngle));
+      const az = Math.atan2(Math.sin(hourAngle), Math.cos(hourAngle) * Math.sin(phi) - Math.tan(decl) * Math.cos(phi));
+      return { az: (az / deg + 540) % 360, alt: alt / deg };
+    };
+    // Where the air lifts the sun to (Saemundsson), so it is compared with an APPARENT skyline.
+    const apparent = (alt) => alt + (alt > -2 ? 1.02 / Math.tan((alt + 10.3 / (alt + 5.11)) * deg) / 60 : 0);
+    const clock = (time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const layers = massif.find('layers', 'map');
+    const sky = massif.create('layer', 'sky', { type: 'celestial' });
+    massif.call(layers, 'insert', [0, sky]); // the path goes UNDER the summit names...
+    // ...and the sun and the times OVER them: the layer order is the z order, labels included.
+    const skyTop = massif.create('layer', 'sky.top', { type: 'celestial' });
+    massif.call(layers, 'add', [skyTop]);
+    raiseOverPeaks = () => { massif.call(layers, 'remove', [skyTop]); massif.call(layers, 'add', [skyTop]); };
+    const add = (kind, id, spec, layer = sky) => { const handle = massif.create(kind, id, spec); massif.call(layer, 'add', [handle]); return handle; };
+    // Widths are device pixels. Drawn under the horizon too: cut at 0 degrees, the path ended in
+    // mid-air from high up, where the skyline is below it. The terrain hides the rest.
+    const ratio = window.devicePixelRatio || 1;
+    const path = add('celestial', 'sky.path', { type: 'arc', color: '#f59e0bd0', width: 3 * ratio, belowHorizonVisible: true });
+    // In pixels, not its real half degree: a marker for where the sun is, visible at any field of view.
+    const glow = add('celestial', 'sky.glow', { type: 'sprite', screenSize: 56 * ratio, color: '#fbbf2466', softness: 1 }, skyTop);
+    const sun = add('celestial', 'sky.sun', { type: 'sprite', screenSize: 20 * ratio, color: '#f59e0b', softness: 0.15 }, skyTop);
+    const marks = add('celestial', 'sky.marks', { type: 'arc', color: '#b45309', width: 2 * ratio, belowHorizonVisible: true });
+
+    // Text in the sky is a celestial LABEL: the SDK draws it, with the platform's text API, from a
+    // string and a style - nothing is painted here. Anchored by the middle of its bottom edge, so it
+    // stands above the point it names; a rise or a set a little higher, clear of the ridge (the
+    // rendered terrain is flat where the times take the earth's curve, so it draws the ridge a touch
+    // higher than the point computed).
+    const PLATE = { fontName: 'sans-serif Bold', fontSize: 15, textColor: '#92400e', backgroundColor: '#ffffffe6', backgroundRadius: 7, paddingX: 7, paddingY: 3 };
+    const HALO = { fontName: 'sans-serif Medium', fontSize: 13, textColor: '#b45309', haloColor: '#fffffff2', haloWidth: 4 };
+    const skyLabel = (id, style, lift) => {
+      const label = add('celestial', id, { type: 'label', visible: false, ...style }, skyTop);
+      massif.call(label, 'setOffset', [0, lift]);
+      return label;
+    };
+    const hourLabels = Array.from({ length: 24 }, (unused, hour) => skyLabel(`sky.hour.${hour}`, HALO, 4));
+    const riseLabel = skyLabel('sky.rise', PLATE, 14);
+    const setLabelSprite = skyLabel('sky.set', PLATE, 14);
+    // The rise and the set are drawn OVER the terrain, not hidden by the ridge they name.
+    // ?suntimes=behind lets the terrain cover them like the rest of the sky.
+    if (query.get('suntimes') !== 'behind') {
+      for (const sprite of [riseLabel, setLabelSprite]) { massif.set(sprite, 'occludedByMap', false); }
+    }
+
+    const bar = document.getElementById('sunbar');
+    const dateInput = bar.querySelector('.date');
+    const minuteInput = bar.querySelector('.minute');
+    const pad = (value) => String(value).padStart(2, '0');
+    const setNow = () => {
+      const now = new Date();
+      dateInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      minuteInput.value = String(now.getHours() * 60 + now.getMinutes());
+    };
+    setNow();
+    const dayStart = () => { const [y, m, d] = dateInput.value.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+
+    // Where the eye is: the camera's own position, so a pan or a fly-to moves the sky with it.
+    const viewpoint = () => {
+      const focus = camera.focusPos;
+      return focus && Number.isFinite(focus[0]) && Number.isFinite(focus[1]) ? { lon: focus[0], lat: focus[1] } : { lon: LON, lat: LAT };
+    };
+
+    // The sun at the chosen minute: the disc and its glow, under the ground when it is down.
+    const placeSun = () => {
+      const time = dayStart() + Number(minuteInput.value) * 60000;
+      bar.querySelector('.time').textContent = clock(time);
+      const { lat, lon } = viewpoint();
+      const { az, alt } = sunAt(time, lat, lon);
+      for (const handle of [sun, glow]) {
+        massif.call(handle, 'setDirection', [az, apparent(alt), 0]);
+        massif.set(handle, 'visible', alt > -1.5);
+      }
+    };
+
+    // The hour marks are optional (?hours=1, or the bar's button).
+    let showHours = query.get('hours') === '1';
+    const hoursButton = bar.querySelector('.hours');
+    hoursButton.classList.toggle('on', showHours);
+
+    const setLabel = (label, text, az, alt) => {
+      if (!text) { massif.set(label, 'visible', false); return; }
+      massif.set(label, 'text', text);
+      massif.call(label, 'setDirection', [az, alt, 0]);
+      massif.set(label, 'visible', true);
+    };
+
+    // The day's path: the WHOLE circle the sun runs through, down under the horizon as well. The
+    // terrain in front hides what is below the skyline, wherever the eye is, so nothing here has to
+    // know where that skyline is - the path always meets the ground.
+    let samples = [];
+    let dayKey = '';
+    const planPath = () => {
+      const { lat, lon } = viewpoint();
+      const key = `${dateInput.value}|${lat.toFixed(3)}|${lon.toFixed(3)}`;
+      if (key === dayKey) { return false; }
+      dayKey = key;
+      const start = dayStart();
+      samples = [];
+      for (let minute = 0; minute <= 1440; minute += 2) {
+        const time = start + minute * 60000;
+        const { az, alt } = sunAt(time, lat, lon);
+        samples.push({ time, az, alt: apparent(alt) });
+      }
+      massif.call(path, 'setDirections', [samples.flatMap((sample) => [sample.az, sample.alt])]);
+      return true;
+    };
+
+    // Rise and set over the TERRAIN, and the hour marks. calculateHorizon is synchronous and reads the
+    // elevation already loaded, so this runs in the frame the viewpoint changes. It is kept cheap by
+    // measuring the skyline coarsely (every 8 minutes of the path, only where the sun is low enough
+    // to meet it), then finely only across the interval where the sun crosses it.
+    const LOW = -4;
+    const HIGH = 40;
+    const planCrossings = () => {
+      const { lat, lon } = viewpoint();
+      const terrain = massif.getObject(optionsHandle, 'terrainOptions');
+      const skylineOf = (list) => {
+        if (!list.length || !terrain) { return list.map(() => -90); }
+        return Array.from(massif.call(terrain, 'calculateHorizon', [[lon, lat], eyeMetres, list.map((sample) => sample.az), 200000]) ?? []);
+      };
+      const coarse = samples.filter((sample, index) => index % 4 === 0 && sample.alt > LOW && sample.alt < HIGH);
+      const coarseSkyline = skylineOf(coarse);
+      const known = new Map(coarse.map((sample, index) => [sample.time, coarseSkyline[index] > -90 ? coarseSkyline[index] : 0]));
+      // Linear between the coarse measures; under LOW the sun is under any skyline, over HIGH above.
+      const skylineAt = (sample) => {
+        const times = coarse.map((entry) => entry.time);
+        let after = times.findIndex((time) => time >= sample.time);
+        if (after < 0) { after = times.length - 1; }
+        const before = Math.max(0, times[after] === sample.time ? after : after - 1);
+        const t0 = times[before];
+        const t1 = times[after];
+        const h0 = known.get(t0) ?? 0;
+        const h1 = known.get(t1) ?? 0;
+        return t1 === t0 ? h0 : h0 + (h1 - h0) * (sample.time - t0) / (t1 - t0);
+      };
+      const margin = (sample) => (sample.alt <= LOW ? -1 : sample.alt >= HIGH ? 1 : sample.alt - skylineAt(sample));
+      let rise = null;
+      let set = null;
+      const step = 4;
+      for (let index = step; index < samples.length; index += step) {
+        const before = samples[index - step];
+        const after = samples[index];
+        const up0 = margin(before) >= 0;
+        if (up0 === (margin(after) >= 0)) { continue; }
+        // The crossing, measured finely: every sample of the interval against its own skyline.
+        const fine = samples.slice(index - step, index + 1);
+        const fineSkyline = skylineOf(fine);
+        const fineMargin = fine.map((sample, k) => sample.alt - (fineSkyline[k] > -90 ? fineSkyline[k] : 0));
+        let k = 1;
+        while (k < fine.length - 1 && (fineMargin[k] >= 0) === up0) { k++; }
+        const m0 = fineMargin[k - 1];
+        const m1 = fineMargin[k];
+        const fraction = Math.max(0, Math.min(1, m0 / (m0 - m1 || 1)));
+        const crossing = {
+          time: fine[k - 1].time + fraction * (fine[k].time - fine[k - 1].time),
+          az: fine[k - 1].az + fraction * (fine[k].az - fine[k - 1].az),
+          alt: fine[k - 1].alt + fraction * (fine[k].alt - fine[k - 1].alt)
+        };
+        if (!up0) { rise = rise ?? crossing; } else { set = crossing; }
+      }
+      const riseText = rise ? `↑ ${clock(rise.time)}` : '';
+      const setText = set ? `↓ ${clock(set.time)}` : '';
+      bar.querySelector('.riseset').textContent = rise || set ? [riseText, setText].filter(Boolean).join('  ·  ') : 'no sun over the terrain';
+      setLabel(riseLabel, riseText, rise?.az, rise?.alt);
+      setLabel(setLabelSprite, setText, set?.az, set?.alt);
+
+      // On the hour, a short stroke across the path and its time, where the sun is over the skyline
+      // and not next to a rise or a set, whose own label is there.
+      const ticks = [];
+      for (let hour = 0; hour < 24; hour++) {
+        const sample = samples[hour * 30];
+        const next = samples[hour * 30 + 1];
+        const clear = [rise, set].every((crossing) => !crossing || Math.abs(crossing.time - sample.time) > 40 * 60000);
+        if (!showHours || !clear || margin(sample) < 0.5) { setLabel(hourLabels[hour], ''); continue; }
+        setLabel(hourLabels[hour], clock(sample.time), sample.az, sample.alt);
+        const dAz = (next.az - sample.az) * Math.cos(sample.alt * deg);
+        const dAlt = next.alt - sample.alt;
+        const length = Math.hypot(dAz, dAlt) || 1;
+        const nAz = -dAlt / length / Math.cos(sample.alt * deg) * 0.35;
+        const nAlt = dAz / length * 0.35;
+        ticks.push(sample.az - nAz, sample.alt - nAlt, sample.az + nAz, sample.alt + nAlt);
+      }
+      massif.call(marks, 'setSegments', [ticks]);
+    };
+
+    // Replanned in the frame the viewpoint, the eye height or the day changes, and once a second
+    // besides: the terrain the skyline is measured on keeps arriving for a while after a change, and
+    // a skyline measured early (on the few tiles loaded at startup) is lower than the real one.
+    let planKey = '';
+    let plannedAt = 0;
+    const plan = () => {
+      planPath();
+      planCrossings();
+      placeSun();
+    };
+    dateInput.addEventListener('change', () => { planKey = ''; });
+    minuteInput.addEventListener('input', placeSun);
+    bar.querySelector('.now').addEventListener('click', () => { setNow(); planKey = ''; });
+    hoursButton.addEventListener('click', () => {
+      showHours = !showHours;
+      hoursButton.classList.toggle('on', showHours);
+      planKey = '';
+    });
+    sunTick = () => {
+      const { lat, lon } = viewpoint();
+      const key = `${dateInput.value}|${lat.toFixed(5)}|${lon.toFixed(5)}|${eyeMetres.toFixed(1)}`;
+      const now = performance.now();
+      if (key !== planKey || now - plannedAt > 1000) {
+        planKey = key;
+        plannedAt = now;
+        plan();
+      }
+    };
+  }
+
+  const hud = document.getElementById('hud');
+  const logView = document.getElementById('log');
+  let compassHeading = NaN;
+  const tick = () => {
+    sunTick();
+    try {
+      hud.textContent = `zoom ${camera.zoom.toFixed(2)}  rot ${camera.rotation.toFixed(1)}  tilt ${camera.tilt.toFixed(1)}\n` +
+        `focus ${camera.focusPos.map((v) => v.toFixed(5)).join(', ')}\ndebug ${INK.uDebugView}`;
+      // The compass: our rotation is minus the heading, and the needle holds north, so it turns by it.
+      const heading = ((-camera.rotation % 360) + 360) % 360;
+      if (heading !== compassHeading) {
+        compassHeading = heading;
+        needle.setAttribute('transform', `rotate(${-heading} 12 12)`);
+        compassElement.querySelector('.heading').textContent = `${Math.round(heading) % 360}°`;
+        compassElement.querySelector('.cardinal').textContent = toCompass(heading);
+      }
+    } catch (error) {
+      hud.textContent = String(error?.message ?? error);
+    }
+    // Only the tail, and only what a diagnosis needs: a shader that failed, a tile that did not load.
+    const net = globalThis.__net;
+    logView.textContent = `NET ${net.count} ${JSON.stringify(net.byHost)} ${JSON.stringify(net.status)}\n` +
+      net.last.join('\n') + '\n---\n' + globalThis.__log.slice(-400).join('\n');
+    requestAnimationFrame(tick);
+  };
+  tick();
+</script>

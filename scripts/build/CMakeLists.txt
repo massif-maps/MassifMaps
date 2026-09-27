@@ -454,11 +454,13 @@ if(EMSCRIPTEN AND BUILD_WEB_DEMO)
     "-sFETCH=1"
     # stringToNewUTF8/UTF8ToString are what PlatformUtils and the demo read location through; FS is
     # how the host page pushes assets and fonts into the virtual filesystem.
-    "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS,cwrap,ccall,addFunction,removeFunction,getValue,setValue,HEAPU8,HEAP32,HEAPF64"
+    "-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,UTF8ToString,FS,cwrap,ccall,addFunction,removeFunction,getValue,setValue,HEAPU8,HEAP32,HEAPF64,addRunDependency,removeRunDependency"
     "-sEXPORTED_FUNCTIONS=@${SDK_API_C_EXPORTS_FILE}"
     # mm_on and mm_source_create_custom take a caller's function pointer, which on the web means a
     # JavaScript one added to the table at runtime.
-    "-sALLOW_TABLE_GROWTH=1")
+    "-sALLOW_TABLE_GROWTH=1"
+    # IndexedDB behind a mounted directory, so a page can keep its tile caches across reloads.
+    "-lidbfs.js")
   # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
   # /fonts in the virtual filesystem. web/fonts is TRACKED and carries the one face the preview
   # needs - without it a CI build renders geometry and no labels at all, which is exactly what it

@@ -10,18 +10,9 @@
 namespace massif {
 
     /**
-     * A one-channel screen-space mask, at a fraction of the screen resolution, cleared to white.
-     *
-     * Two users, for the same reason: a value that many later fragments need is resolved once per
-     * screen pixel instead of per draw. The terrain shadow, where the lookup is the most expensive
-     * thing a shadowed fragment does and the terrain covers the whole screen - twice over where a
-     * paint is drawn on the drape. And the extrusions' contact shadows, where the overlapping
-     * capsules have to be reduced by MIN before anything multiplies them into the ground.
-     *
-     * The reduced resolution costs nothing visually in either case - both masks are penumbras -
-     * and the LINEAR filter is what keeps its own texels from showing.
-     *
-     * GL thread only.
+     * One-channel screen-space mask at a fraction of screen resolution, cleared to white: resolves a value
+     * (terrain shadow, contact-shadow MIN) once per pixel instead of per draw. Penumbras hide the low
+     * resolution; LINEAR filtering hides the texels. GL thread only.
      */
     class ScreenMaskBuffer {
     public:
@@ -33,14 +24,12 @@ namespace massif {
         int getHeight() const;
 
         /**
-         * Sets the screen size and the divisor the mask is rendered at. Existing resources are
-         * dropped when the resulting size changes.
+         * Sets the screen size and the divisor the mask is rendered at; a size change drops the resources.
          */
         void setSize(int screenWidth, int screenHeight, int divisor);
 
         /**
-         * Returns the mask texture, creating the resources on first use. Returns 0 when the
-         * framebuffer could not be completed.
+         * Returns the mask texture, created on first use, or 0 when the framebuffer is incomplete.
          */
         unsigned int getTexture();
         /**
@@ -53,10 +42,8 @@ namespace massif {
         void endPass(unsigned int previousFrameBuffer, int viewportWidth, int viewportHeight);
 
         /**
-         * Same, for a caller that owns the render state itself: binds, attaches, sets the viewport
-         * and clears to white, and touches nothing else. beginPass above also sets blend, cull and
-         * depth, which is wrong inside a pass that has already established its own (the drape bake
-         * needs culling OFF, and getting that back enabled empties every tile it bakes afterwards).
+         * beginPass without touching blend, cull or depth, for a pass that owns its render state
+         * (the drape bake needs culling off, or every later baked tile comes out empty).
          */
         bool beginPassRaw();
         void endPassRaw(unsigned int previousFrameBuffer, int viewportWidth, int viewportHeight);

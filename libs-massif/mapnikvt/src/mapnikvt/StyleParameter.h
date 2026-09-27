@@ -23,11 +23,8 @@ namespace massif::mvt {
         const std::map<std::string, Value>& getEnumMap() const { return _enumMap; }
 
         /**
-         * True when the style declared this parameter as the one that SELECTS a feature - it is
-         * compared with a feature field, and setting it should repaint rather than decode the tiles
-         * again. Opt-in, because it only works for a style written a particular way and nothing
-         * else should pay for looking: see resolveSelectionParameter, which does not even walk the
-         * rules of a style that declares none.
+         * True when the style declared this parameter as the one that selects a feature, so setting it
+         * repaints rather than re-decodes. Opt-in - see resolveSelectionParameter.
          */
         bool selectsFeatures() const { return _selects; }
 

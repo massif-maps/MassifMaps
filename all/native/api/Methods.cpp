@@ -61,8 +61,7 @@ namespace massif { namespace api {
 
     bool CallArgs::getDouble(int index, double& value) const {
         Variant argument = get(index);
-        // An integer is a valid double: JSON has one number type, and 3 is not a different
-        // argument from 3.0.
+        // JSON has one number type: 3 is the same argument as 3.0.
         if (argument.getType() == VariantType::VARIANT_TYPE_INTEGER) {
             value = static_cast<double>(argument.getLong());
             return true;
@@ -164,8 +163,7 @@ namespace massif { namespace api {
             return false;
         }
         if (converts(_caller, _object)) {
-            // Corner-wise, like Context's own reprojection - right for the axis-aligned
-            // projections reachable by name here.
+            // Corner-wise, like Context's reprojection: right for the axis-aligned projections reachable here.
             value = MapBounds(_object->fromWgs84(_caller->toWgs84(value.getMin())),
                               _object->fromWgs84(_caller->toWgs84(value.getMax())));
         }
@@ -216,13 +214,7 @@ namespace Methods {
             registry()[cppClass][name] = invoke;
         }
 
-        /*
- * The declared list, and the registry, compared.
- *
- * Both directions matter and neither is visible otherwise: an undeclared method cannot be
- * completed or documented, and a declared-but-unregistered one is a call that type-checks in the
- * binding and fails at runtime.
- */
+        // Both directions: undeclared = invisible to bindings; unregistered = type-checks, then fails at runtime.
 void checkDeclarations() {
     for (const MethodDecl* decl = METHOD_DECLS; decl->cppClass; decl++) {
         auto classIt = registry().find(decl->cppClass);
@@ -248,8 +240,7 @@ void checkDeclarations() {
 
 MethodInvoke findMethod(const char* cppClass, const std::string& name) {
             std::lock_guard<std::mutex> lock(mutex());
-            // The base chain comes from the generated table, so a method declared on a base is
-            // callable on every subclass without being registered again.
+            // Walk the generated base chain: a method registered on a base serves every subclass.
             for (const ClassEntry* entry = findClass(cppClass); entry;
                  entry = entry->base ? findClass(entry->base) : nullptr) {
                 auto classIt = registry().find(entry->cppClass);

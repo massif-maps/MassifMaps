@@ -3,12 +3,16 @@
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
 #include "terrain/CameraClearance.h"
+#include "graphics/ViewDistance.h"
 #include "graphics/ZoomConvention.h"
 #include "utils/Const.h"
+#include "utils/FrameProfiler.h"
 #include "utils/GeneralUtils.h"
 #include "utils/Log.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <cglib/mat.h>
@@ -16,10 +20,8 @@
 
 namespace massif {
 
-    // Tangram's constants (core/src/view/view.cpp): the far-plane factor on the camera height,
-    // and the LOD depth whose 2^(d+1)-1 = 127 tile widths cap how far tiles are ever walked.
+    // Tangram's far-plane factor on the camera height (core/src/view/view.cpp).
     static const double TANGRAM_FAR_PLANE_FACTOR = 2.0;
-    static const int MAX_TILE_LOD = 6;
 
     ViewState::ViewState() :
         _cameraPos(0, 0, 1),
@@ -86,12 +88,13 @@ namespace massif {
         }
     }
 
-    void ViewState::setTerrainCameraReference(double terrainZ, double clearanceFloor) {
+    void ViewState::setTerrainCameraReference(double terrainZ, double clearanceFloor, double clearanceFraction) {
         if (terrainZ != _terrainCameraZ) {
             _terrainCameraZ = terrainZ;
             _cameraChanged = true; // the near plane is built on it
         }
         _terrainClearanceFloor = clearanceFloor;
+        _terrainClearanceFraction = clearanceFraction;
         _terrainCameraBound = true;
     }
 
@@ -101,22 +104,22 @@ namespace massif {
             _cameraChanged = true;
         }
         _terrainClearanceFloor = 0;
+        _terrainClearanceFraction = -1;
         _terrainCameraBound = false;
     }
 
     float ViewState::getTerrainMaxZoom() const {
-        // Zooming scales the camera-to-FOCUS vector, so what shrinks as 1/2^zoom is the camera's
-        // height above the focus, not above z=0. CameraClearance::maxZoom solves on that vector and
-        // answers infinity for a camera no zoom can raise.
+        // Zooming scales the camera-to-focus vector, so the height that shrinks as 1/2^zoom is above the focus, not z=0.
         if (!_terrainCameraBound || !(_zoom0Distance > 0)) {
             return std::numeric_limits<float>::infinity();
         }
-        // Heights are INTERNAL and an orbit is a WORLD distance: on a globe those differ by 2.
+        // Heights are internal units and an orbit is a world distance: on a globe those differ by 2.
         double worldPerInternalZ = worldPerInternal();
         double focusZ = (_projectionSurface ? _projectionSurface->calculateMapPos(_focusPos).getZ() : _focusPos(2));
         double cameraZ = (_projectionSurface ? _projectionSurface->calculateMapPos(_cameraPos).getZ() : _cameraPos(2));
         return CameraClearance::maxZoom(_zoom, focusZ, cameraZ, _terrainCameraZ,
-                                        getOrbitDistance(_zoomRange.getMax()) / worldPerInternalZ, _terrainClearanceFloor);
+                                        getOrbitDistance(_zoomRange.getMax()) / worldPerInternalZ, _terrainClearanceFloor,
+                                        _terrainClearanceFraction);
     }
 
     float ViewState::getRenderZoom() const {
@@ -124,11 +127,8 @@ namespace massif {
     }
 
     double ViewState::calculateZoom0Distance(double tanHalfFOVY, const std::shared_ptr<ProjectionSurface>& projectionSurface) const {
-        // The SURFACE's world, not the planar constant: a sphere's equator is twice as wide, so
-        // calibrating on WORLD_SIZE put the globe's camera at half the distance its zoom means -
-        // everything a zoom level too large, and the camera inside the relief by zoom 12.
-        // The surface comes in rather than off the member: on the frame the projection CHANGES the
-        // member is still the old one, and reading it there made the globe jump a zoom on startup.
+        // The surface's world, not WORLD_SIZE: a sphere's equator is twice as wide. The surface is a parameter
+        // because on the frame the projection changes the member is still the old one.
         return ZoomConvention::zoom0Distance(_height, Const::WORLD_SIZE * localWorldPerInternal(projectionSurface), _tileDrawSize, _zoomOffset,
                                              tanHalfFOVY, _dpi / Const::UNSCALED_DPI);
     }
@@ -142,10 +142,8 @@ namespace massif {
         if (!(local > 0) || local == equator) {
             return equator; // a plane answers the same scale everywhere and never reaches the ramp
         }
-        // The LOCAL scale is what makes a zoom frame the same ground as the plane's, but only while
-        // the view is a patch. Ramp back to the equatorial one as the planet fills the frame, or a
-        // cos(85 deg) camera at world view sits 11x too close. The ramp is the ORBIT against the
-        // planet's own radius - a zoom threshold would be a screen size and a DPI in disguise.
+        // The local scale frames the same ground as the plane only while the view is a patch: ramp back to the
+        // equatorial one as the planet fills the frame, by orbit against radius (a zoom threshold would hide screen size and DPI).
         double radius = projectionSurface->getWorldWidth() / (2 * Const::PI);
         double orbit = ZoomConvention::zoom0Distance(_height, projectionSurface->getWorldWidth(), _tileDrawSize, _zoomOffset,
                                                      _tanHalfFOVY, _dpi / Const::UNSCALED_DPI) / std::pow(2.0, static_cast<double>(_zoom));
@@ -240,8 +238,7 @@ namespace massif {
             return;
         }
         _tilt = tilt;
-        // The map camera model: the camera sits at the tilt, and everything below the horizon is
-        // a rotation of the view about it. setViewTilt is the other model, where the camera stays.
+        // A negative tilt is a rotation of the view about the camera; setViewTilt is the model where the camera stays.
         _cameraTilt = std::max(tilt, 0.0f);
     }
 
@@ -343,7 +340,7 @@ namespace massif {
         return _far;
     }
     
-    int ViewState::getFOVY() const {
+    float ViewState::getFOVY() const {
         return _fovY;
     }
     
@@ -447,9 +444,8 @@ namespace massif {
     }
 
     void ViewState::clampZoom(const Options& options) {
-        // The terrain bound applies regardless of restricted panning - it is a property of
-        // the terrain, not of the pan bounds. It only ever STOPS a zoom in: a camera already
-        // under the clearance shell is lifted by MapRenderer, not zoomed out from here.
+        // The terrain bound applies regardless of restricted panning, and only stops a zoom in:
+        // a camera already under the clearance shell is lifted by MapRenderer, not zoomed out here.
         float maxZoom = std::min(options.getZoomRange().getMax(), std::max(getTerrainMaxZoom(), _zoom));
         if ((!options.isRestrictedPanning() && _zoom <= maxZoom) || _width <= 0 || _height <= 0) {
             return;
@@ -480,9 +476,7 @@ namespace massif {
 
         mapPos.setX(GeneralUtils::Clamp(mapPos.getX(), mapBounds.getMin().getX(), mapBounds.getMax().getX()));
         mapPos.setY(GeneralUtils::Clamp(mapPos.getY(), mapBounds.getMin().getY(), mapBounds.getMax().getY()));
-        // The pan bounds are a GROUND rectangle: they clamp x and y only. The focus keeps its
-        // height, so an app can lift the viewpoint off the map plane - zeroing it here pulled the
-        // focus, and with it the camera, back down on every frame.
+        // Pan bounds clamp x and y only: the focus keeps its height, so an app can lift the viewpoint off the map plane.
         mapPos.setZ(oldMapPos.getZ());
 
         if (seamlessPanning && renderProjectionMode == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
@@ -596,9 +590,8 @@ namespace massif {
     }
     
     void ViewState::calculateViewState(const Options& options) {
-        // If FOV or tile draw size changed, recalculate zoom0Distance
         std::shared_ptr<ProjectionSurface> projectionSurface = options.getProjectionSurface();
-        int FOVY = options.getFieldOfViewY();
+        float FOVY = options.getFieldOfViewY();
         int tileDrawSize = options.getTileDrawSize();
         float zoomOffset = options.getZoomOffset();
         float dpi = options.getDPI();
@@ -624,13 +617,10 @@ namespace massif {
             _zoomRange = zoomRange;
             _restrictedPanning = restrictedPanning;
 
-            // tileDrawSize, NOT the zoom-offset tile size: this is the basis the renderer turns a
-            // style's widths and text sizes into screen pixels with, and those are absolute sizes.
-            // Letting it follow the offset would make "adopt maplibre's zoom" mean "draw every
-            // label and line twice as wide", which is the coupling the offset exists to break.
+            // tileDrawSize, not the zoom-offset tile size: style widths and text sizes are absolute, and following
+            // the offset would draw every label and line twice as wide.
             _normalizedResolution = 2 * tileDrawSize * (_dpi / Const::UNSCALED_DPI);
 
-            // Recalculate camera orientation on projection change
             if (_projectionSurface != projectionSurface) {
                 MapPos focusPosInternal(0, 0, 0);
                 if (_projectionSurface) {
@@ -654,13 +644,11 @@ namespace massif {
                 _projectionSurface = projectionSurface;
             }
 
-            // Calculate new camera position
             if (_zoom0Distance > 0) {
                 double length = _zoom0Distance / std::pow(2.0f, _zoom);
                 _cameraPos = _focusPos + cglib::unit(_cameraPos - _focusPos) * length;
             }
 
-            // Calculate min zoom
             if (!_ignoreMinZoom) {
                 _minZoom = calculateMinZoom(options);
             }
@@ -668,9 +656,7 @@ namespace massif {
             _cameraChanged = true;
         }
 
-        // The calibration follows the FOCUS on a globe (see localWorldPerInternal), so the distance
-        // a zoom means changes as the map is panned in latitude. A plane answers the same number
-        // every time and never enters this.
+        // On a globe the calibration follows the focus (localWorldPerInternal), so it changes as the map pans in latitude.
         if (_projectionSurface && _zoom0Distance > 0) {
             double zoom0Distance = calculateZoom0Distance(_tanHalfFOVY, _projectionSurface);
             if (zoom0Distance > 0 && std::abs(zoom0Distance - _zoom0Distance) > _zoom0Distance * 1.0e-4) {
@@ -684,41 +670,34 @@ namespace massif {
         if (_cameraChanged) {
             _cameraChanged = false;
 
-            // Calculate scaling factor for vector elements
             _unitToPXCoef = static_cast<float>(_zoom0Distance / (_height * _tanHalfFOVY) / _2PowZoom);
             _unitToDPCoef = _unitToPXCoef * _dpi / Const::UNSCALED_DPI;
 
             calculateViewDistances(options, _near, _far, _skyVisible, _skyHorizonNDC);
 
-            // Matrices
             _projectionMat = calculatePerspMat(_halfFOVY, _near, _far, options);
             _modelviewMat = calculateLookatMat();
 
-            // Rotation state
             cglib::mat4x4<double> invCameraMatrix = cglib::inverse(_modelviewMat);
             _rotationState.xAxis = cglib::vec3<float>::convert(cglib::proj_o(cglib::col_vector(invCameraMatrix, 0)));
             _rotationState.yAxis = cglib::vec3<float>::convert(cglib::proj_o(cglib::col_vector(invCameraMatrix, 1)));
 
-            // Double precision mvp matrix and frustum
             _modelviewProjectionMat = _projectionMat * _modelviewMat;
             _frustum = cglib::gl_projection_frustum(_modelviewProjectionMat);
 
-            // A label is placed in a band that reaches past the viewport, so the tiles filling that
-            // band have to be culled in too - a label cannot be placed early if its tile is absent.
-            float labelPadding = vt::ViewState::calculateLabelPadding(_tilt);
+            // Labels are placed in a band past the viewport, so the tiles filling that band are culled in too.
+            float labelPadding = vt::ViewState::calculateLabelPadding(_tilt, options.getLabelPadding());
             cglib::mat4x4<double> labelProjectionMat = vt::ViewState::paddedProjectionMatrix(_projectionMat, labelPadding, getAspectRatio(), _normalizedResolution);
             _labelFrustum = cglib::gl_projection_frustum(labelProjectionMat * _modelviewMat);
 
-            // Rte modleview matrix only requires float precision
+            // The RTE modelview matrix only requires float precision.
             _rteModelviewMat = cglib::mat4x4<float>::convert(_modelviewMat);
             _rteModelviewMat(0, 3) = 0.0f;
             _rteModelviewMat(1, 3) = 0.0f;
             _rteModelviewMat(2, 3) = 0.0f;
 
-            // Float precision Rte mvp matrix
             _rteModelviewProjectionMat = cglib::mat4x4<float>::convert(_projectionMat) * _rteModelviewMat;
 
-            // Calculate Rte sky matrix
             float skyFar = _zoom0Distance * options.getDrawDistance();
             cglib::mat4x4<double> skyProjectionMat = calculatePerspMat(_halfFOVY, _near, skyFar, options);
             _rteSkyProjectionMat = cglib::mat4x4<float>::convert(skyProjectionMat) * _rteModelviewMat;
@@ -742,7 +721,6 @@ namespace massif {
         }
         cglib::mat4x4<double> invModelviewProjectionMat = cglib::inverse(modelviewProjectionMat);
 
-        // Transform 2 points with different z values from world to screen
         cglib::vec3<double> screenPos0(screenPos(0) / _width * 2 - 1, 1 - screenPos(1) / _height * 2, -1);
         cglib::vec3<double> screenPos1(screenPos(0) / _width * 2 - 1, 1 - screenPos(1) / _height * 2,  1);
         cglib::vec3<double> worldPos0 = cglib::transform_point(screenPos0, invModelviewProjectionMat);
@@ -767,7 +745,6 @@ namespace massif {
             modelviewProjectionMat = calculateModelViewMat(*options);
         }
 
-        // Transfrom world pos to screen
         cglib::vec3<float> screenPos = cglib::vec3<float>::convert(cglib::transform_point(worldPos, modelviewProjectionMat));
         return cglib::vec2<float>((screenPos(0) + 1) * 0.5f * _width, (1 - screenPos(1)) * 0.5f * _height);
     }
@@ -783,7 +760,6 @@ namespace massif {
 
         cglib::mat4x4<double> invModelviewProjectionMat = cglib::inverse(_modelviewProjectionMat);
 
-        // Try consecutive horizontal points
         cglib::vec3<double> worldPos = cglib::vec3<double>::zero();
         for (int iter = -1; iter < 8; iter++) {
             double dx = (iter < 0 ? 0 : std::pow(2.0f, -iter));
@@ -824,8 +800,7 @@ namespace massif {
         float tanHalfFOVY = std::tan(static_cast<float>(halfFOVY * Const::DEG_TO_RAD));
         float zoom0Distance = static_cast<float>(calculateZoom0Distance(tanHalfFOVY, _projectionSurface));
         float initialZ = std::pow(2.0f, -_zoom) * zoom0Distance / 64.0f;
-        // The direction the camera actually looks along, which above the horizon is not the
-        // direction of the focus point (calculateLookatMat).
+        // Above the horizon the camera does not look at the focus point (calculateLookatMat).
         cglib::vec3<double> zProjVector = calculateViewDir();
 
         cglib::mat4x4<double> projMat = calculatePerspMat(halfFOVY, initialZ, 2.0f * initialZ, options);
@@ -839,9 +814,8 @@ namespace massif {
         far  = near;
         skyVisible = false;
         bool groundVisible = false;
-        // ... and where the sky starts on screen: the bisection below walks each column up to the
-        // first ray that reaches no ground, which IS the horizon. The sky quad is clipped to the
-        // lowest such sample instead of covering the screen, the way tangram's sky mesh is.
+        // The first ray of each bisected column that reaches no ground is the horizon; the sky quad is clipped
+        // to the lowest one, the way tangram's sky mesh is.
         skyHorizonNDC = 1.0f;
         for (double xx : { -1, 0, 1 }) {
             for (double yy : { -1, 0, 1 }) {
@@ -874,25 +848,25 @@ namespace massif {
             }
         }
 
-        double maxDist = std::pow(2.0f, -_zoom) * zoom0Distance * options.getDrawDistance();
+        // Not the orbit alone: that cut off peaks in front of a low camera. See 05-depth-model.md.
+        double orbitDistance = std::pow(2.0f, -_zoom) * zoom0Distance;
+        double cameraHeight = ViewDistance::cameraHeight(orbitDistance, _cameraPos(2));
+        double maxDist = ViewDistance::drawCeiling(cameraHeight, options.getDrawDistance(), Const::WORLD_SIZE * std::pow(2.0, -_zoom),
+                                                   std::sin(_tilt * Const::DEG_TO_RAD));
+        double rayFar = far;
         if (far > maxDist) {
             far = maxDist;
             skyVisible = true;
-            // The ground was cut off by the draw distance rather than by the horizon, so the sky
-            // can reach anywhere the ground no longer does: no clip.
+            // Ground cut off by the draw distance rather than the horizon: the sky can reach anywhere, no clip.
             skyHorizonNDC = -1.0f;
         }
 
         near = std::max(Const::MIN_NEAR, near) * 0.8f;
         far  = std::max(Const::MIN_NEAR, far)  * 1.1f;
 
-        // Floor the near plane at camera height / 50, tangram's `near = m_pos.z / 50.0`: taken from
-        // the nearest visible ground it reaches centimetres against a slope, and that far/near ratio
-        // is the mechanism behind every see-through. docs/internals/rendering/04-terrain.md.
         double viewDistance = calculateViewDistance(options);
-        // Tangram's near is a fiftieth of the distance to what the camera looks at, but their camera
-        // is held off the TERRAIN while ours is held above the ground UNDER it - at a low tilt that
-        // parks the near plane in front of the bottom of the screen. Take the smaller of the two.
+        // Floor near at distance / 50 (tangram's `m_pos.z / 50`): the nearest ground reaches centimetres on a slope (04-terrain.md).
+        // Our camera is held above the ground under it, not off the terrain, so take the smaller distance.
         double cameraDistance = calculateCameraDistance();
         if (_terrainCameraZ != 0 && _cameraPos(2) > _terrainCameraZ) {
             cameraDistance = std::min(cameraDistance, _cameraPos(2) - _terrainCameraZ);
@@ -901,64 +875,89 @@ namespace massif {
         if (viewDistance > 0) {
             float viewDistanceFactor = 1.0f;
             bool absoluteViewDistance = false;
+            double maxDistance = 0;
             if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
                 viewDistanceFactor = terrainOptions->getViewDistanceFactor();
-                // Only when the absolute distance is the one that WON: it merely extends the rule
-                // now, and where the rule is longer this is the plain factor case.
+                // Only when the absolute distance won over the rule and is not under the ceiling.
                 double absolute = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
-                absoluteViewDistance = absolute > 0 && absolute >= viewDistance;
+                maxDistance = terrainOptions->getViewDistanceMax() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
+                absoluteViewDistance = absolute > 0 && absolute >= viewDistance && !(maxDistance > 0 && maxDistance < absolute);
             }
             if (absoluteViewDistance || viewDistanceFactor > 1.0f) {
-                // The app asked for MORE ground than tangram's rule gives, so the far plane has to
-                // follow or the extra tiles are fetched, drawn and clipped. It costs depth precision,
-                // which the whole depth model is calibrated on - an explicit trade, not the default.
+                // More ground than tangram's rule: the far plane follows or the extra tiles are fetched and clipped,
+                // at a depth-precision cost the app opted into.
                 far = std::max(far, static_cast<float>(viewDistance));
             } else {
                 far = std::min(far, std::max(static_cast<float>(viewDistance), terrainNear * 2.0f));
+            }
+            // The ceiling caps the far plane whichever branch ran.
+            if (maxDistance > 0) {
+                far = std::min(far, std::max(static_cast<float>(maxDistance), terrainNear * 2.0f));
             }
         }
         if (_terrainHeightMax > _terrainHeightMin) {
             near = std::max(near, std::min(terrainNear, far * 0.5f));
         }
         if (_cameraTilt != _tilt) {
-            // Looking above the horizon, the loop's ground hits walk off into the distance and the
-            // near plane follows them out, clipping everything close to the camera. What is close
-            // does not move when the view turns, so cap with tangram's `near = m_pos.z / 50`.
+            // Above the horizon the ground hits walk off into the distance, pulling the near plane out with them.
             near = std::min(near, terrainNear);
         }
         if (!groundVisible) {
-            // Nothing but sky: no ray met the ground, so the loop left far == near and the depth
-            // range would collapse onto the near plane, taking the celestial objects parked just
-            // inside far with it. Give it the distance the ground would have been drawn to.
+            // Nothing but sky left far == near: give the celestial objects parked inside far a real depth range.
             near = std::max(near, terrainNear);
             far = std::max(static_cast<float>(viewDistance > 0 ? viewDistance : maxDist), near * 2.0f);
         }
+        logViewDistances(options, near, far, rayFar, maxDist, viewDistance, cameraHeight);
+    }
+
+    // Which of the four limits ended the map, in km: 05-depth-model.md. Atomic limiter: the cull worker calls it too.
+    void ViewState::logViewDistances(const Options& options, float near, float far, double rayFar, double maxDist, double viewDistance, double cameraHeight) const {
+#if MASSIF_FRAME_PROFILER
+        // One limiter per tag, or one ViewState starves the other's log.
+        static std::atomic<long long> lastLogMs[2] = { { 0 }, { 0 } };
+        int logSlot = (_terrainHeightMax > _terrainHeightMin ? 0 : 1);
+        long long nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        long long last = lastLogMs[logSlot].load();
+        if (nowMs - last < 1000 || !lastLogMs[logSlot].compare_exchange_strong(last, nowMs)) {
+            return;
+        }
+        double toKm = Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE / 1000.0;
+        float fogStart = 0, fogEnd = 0;
+        if (std::shared_ptr<FogOptions> fogOptions = options.getFogOptions()) {
+            fogStart = static_cast<float>(fogOptions->getRangeStart() * calculateCameraDistance() * toKm);
+            fogEnd = static_cast<float>(fogOptions->getRangeEnd() * calculateCameraDistance() * toKm);
+        }
+        // Tagged: the cull worker's copy never gets setTerrainHeightRange, so its near plane is a flat world's.
+        Log::Infof("PROF VIEW[%s]: zoom %.2f tilt %.1f | orbit %.2f alt %.2f height %.2f km | terrain %.2f..%.2f km | ray far %.2f ceiling %.2f rule %.2f -> near %.4f far %.2f km | fog %.2f..%.2f km",
+            (_terrainHeightMax > _terrainHeightMin ? "render" : "no-terrain-range"),
+            _zoom, _tilt, calculateCameraDistance() * toKm, _cameraPos(2) * toKm, cameraHeight * toKm,
+            _terrainHeightMin * toKm, _terrainHeightMax * toKm,
+            rayFar * toKm, maxDist * toKm, viewDistance * toKm, near * toKm, far * toKm, fogStart, fogEnd);
+#endif
     }
 
     double ViewState::calculateCameraDistance() const {
-        // Tangram's m_pos.z: the distance to the FOCUS, a function of zoom alone ("using non-zero
-        // elevation for camera reference creates all kinds of problems"). The camera's height above
-        // sea level instead makes the whole depth budget a function of the terrain.
+        // Tangram's m_pos.z: a function of zoom alone, so the depth budget does not depend on the terrain.
         return cglib::length(_cameraPos - _focusPos);
     }
 
     double ViewState::calculateViewDistance(const Options& options) const {
-        // Tangram's rule verbatim (view.cpp): 2*m_pos.z / cos(pitch + fovy/2), capped at 127 tile
-        // widths. The cosine goes to infinity near the horizon, so the cap is what bounds a
-        // near-horizontal view. The factor scales it: 1 is their rule, 0 the ground-derived one.
+        // Tangram's rule (view.cpp): 2*m_pos.z / cos(pitch + fovy/2), capped at 127 tile widths for near-horizontal views.
+        // The factor scales it: 1 is their rule, 0 the ground-derived one.
         float factor = 1.0f;
         double absoluteDistance = 0;
+        // The app's own ceiling. Not derived from the fog: ground above the haze must still be drawn.
+        double maxDistance = 0;
         if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
             absoluteDistance = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
+            maxDistance = terrainOptions->getViewDistanceMax() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
             factor = terrainOptions->getViewDistanceFactor();
         }
         if (!(factor > 0.0f)) {
-            return absoluteDistance;
+            return maxDistance > 0 ? std::min(absoluteDistance, maxDistance) : absoluteDistance;
         }
-        // Tangram's m_pos.z is both the height above the ground plane and the zoom-derived distance
-        // to the focus; with 3D terrain the two part company, and on a 2600 m summit the zoom-derived
-        // one alone draws a few kilometres of panorama. Take the larger of the two.
-        double cameraDistance = std::max(calculateCameraDistance(), _cameraPos(2));
+        // With 3D terrain the height above ground and the focus distance differ; take the larger (a summit needs the height).
+        double cameraDistance = ViewDistance::cameraHeight(calculateCameraDistance(), _cameraPos(2));
 
         // Tilt is measured from the horizontal here and pitch from the vertical there, so the
         // angle from the view axis to the horizon is (90 - tilt) + fovy/2.
@@ -968,13 +967,11 @@ namespace massif {
         if (cosPitch > 0.0) {
             distance = TANGRAM_FAR_PLANE_FACTOR * cameraDistance / cosPitch;
         }
-        // 127 tile widths at this zoom, in internal units.
-        double worldTileSize = Const::WORLD_SIZE * std::pow(2.0, -_zoom);
-        distance = std::min(distance, worldTileSize * (std::pow(2.0, MAX_TILE_LOD + 1) - 1.0));
-        // An absolute distance only ever EXTENDS the rule. Metres are zoom-independent while the
-        // rule scales with 2^-zoom, so letting metres win outright ends the ground in a disc well
-        // inside a zoomed-out screen (MassifMaps#156).
-        return std::max(distance * factor, absoluteDistance);
+        distance = std::min(distance, ViewDistance::tileWalkCap(Const::WORLD_SIZE * std::pow(2.0, -_zoom)));
+        // An absolute distance only extends the rule: metres winning outright end the ground inside a zoomed-out screen (#156).
+        double viewDistance = std::max(distance * factor, absoluteDistance);
+        // Applied last, so it caps the minimum too.
+        return maxDistance > 0 ? std::min(viewDistance, maxDistance) : viewDistance;
     }
     
     float ViewState::calculateMinZoom(const Options& options) const {
@@ -1064,9 +1061,8 @@ namespace massif {
         if (viewPitch == 0) {
             return cglib::lookat4_matrix(_cameraPos, _focusPos, _upVec);
         }
-        // Above the horizon the camera stays where the tilt geometry left it and only the view
-        // direction pitches up: rotating about the focus instead would put the camera under the
-        // ground. About the CAMERA it keeps dist(camera, focus), so zoom and culling are untouched.
+        // Pitch the view about the camera, not the focus: that would put the camera under the ground,
+        // and this keeps dist(camera, focus), so zoom and culling are untouched.
         cglib::vec3<double> viewVec = _focusPos - _cameraPos;
         cglib::vec3<double> axis = cglib::vector_product(viewVec, _upVec);
         if (cglib::length(axis) == 0) {
@@ -1078,19 +1074,17 @@ namespace massif {
     
     cglib::mat4x4<double> ViewState::calculateModelViewMat(const massif::Options& options) const {
         if (_cameraChanged) {
-            // Camera has changed, but the matrices have not been updated yet from the render thread. Calculate far and near distances
+            // The render thread has not updated the matrices for this camera yet.
             float near = 0;
             float far = 0;
             bool skyVisible = false;
             calculateViewDistances(options, near, far, skyVisible);
             
-            // Matrices
             cglib::mat4x4<double> projectionMat = calculatePerspMat(options.getFieldOfViewY() * 0.5f, near, far, options);
             cglib::mat4x4<double> modelviewMat = calculateLookatMat();
             return projectionMat * modelviewMat;
         }
         
-        // Matrices are up to date, no need to calculate a new one
         return _modelviewProjectionMat;
     }
 }

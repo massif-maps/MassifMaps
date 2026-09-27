@@ -28,16 +28,8 @@ namespace massif { namespace api {
     }
 
     namespace {
-        /**
-         * The property table's name for an object's CONCRETE class.
-         *
-         * Every Swig-wrapped class registers its short name in ClassRegistry at static-init time;
-         * the table keys on the qualified one. Interned because a slot keeps the pointer, and
-         * FindClassName returns by value.
-         *
-         * A miss is normal here - the facade's own bridges are not Swig classes - so this asks
-         * without logging and falls back to the declared type.
-         */
+        // Qualified name of the concrete class, interned because a slot keeps the pointer.
+        // A miss is normal (facade bridges are not Swig classes): no log, fall back to the declared type.
         const char* internedClassName(const std::type_info& type, const char* fallback) {
             static std::mutex mutex;
             static std::set<std::string> names;
@@ -55,8 +47,7 @@ namespace massif { namespace api {
         if (!layer) {
             return NULL_HANDLE;
         }
-        // Bound to a reference first: typeid on a smart-pointer dereference is a call, which the
-        // compiler warns is evaluated despite being a typeid operand.
+        // Bound to a reference first: typeid on a smart-pointer dereference triggers an evaluated-operand warning.
         const Layer& concrete = *layer;
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, layer,
@@ -109,8 +100,7 @@ namespace massif { namespace api {
         if (!assets) {
             return NULL_HANDLE;
         }
-        // A binding's own subclass is a Swig director, which ClassRegistry does not know - it logs
-        // a miss and the fallback is the base, which is the class a spec's `assets` key requires.
+        // A binding's subclass is a Swig director unknown to ClassRegistry; the base fallback is what `assets` requires.
         const AssetPackage& concrete = *assets;
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, assets,
@@ -125,16 +115,13 @@ namespace massif { namespace api {
         if (!view) {
             return NULL_HANDLE;
         }
-        // Registered as the base, not the concrete class: the camera methods are declared on
-        // BaseMapView and every platform's map view is that same class underneath.
+        // Registered as the base: the camera methods are declared on BaseMapView.
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, view, "massif::BaseMapView",
                                                   handle) != RESULT_OK) {
             return NULL_HANDLE;
         }
-        // The view declares no projection of its own, so it carries the map's - which is what
-        // tells moveTo that a position handed to it is in WGS84 rather than in map coordinates.
-        // Read once: an app that changes Options.baseProjection afterwards has to re-adopt.
+        // Tells moveTo its positions are WGS84. Read once: changing Options.baseProjection later needs a re-adopt.
         Context::GetDefault()->setObjectProjection(handle,
                                                    view->getOptions()->getBaseProjection());
         return static_cast<int>(handle);
@@ -146,8 +133,7 @@ namespace massif { namespace api {
     }
 
     std::shared_ptr<TileDataSource> MassifInterop::getSourceByHandle(int handle) {
-        // The class is CHECKED, not asserted: a handle can name anything, and the cast that
-        // follows is from a type-erased pointer.
+        // Class is checked: a handle can name anything and the cast is from a type-erased pointer.
         return std::static_pointer_cast<TileDataSource>(
             Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::TileDataSource"));
     }

@@ -13,10 +13,8 @@
 namespace massif {
 
     /**
-     * The auto-flatten rule: when 3D terrain stops earning its cost, and how fast it sinks flat.
-     * Free of the renderer and of TerrainOptions on purpose - this is the part with the state,
-     * the hysteresis and the arithmetic, so it is the part worth testing on the host.
-     * See TerrainOptions::setAutoFlattenParallax and docs/internals/rendering/04-terrain.md.
+     * The auto-flatten rule and its ramp, free of the renderer so the host tests can check it.
+     * See docs/internals/rendering/04-terrain.md.
      */
     struct AutoFlatten {
         // Restore 3D at 1.5x the parallax threshold, and 2 degrees below the tilt one.
@@ -24,9 +22,8 @@ namespace massif {
         static constexpr float TILT_HYSTERESIS = 2.0f;
 
         /**
-         * How far the highest ground in view moves on screen because it is displaced, in pixels.
-         * heightRange and cameraDistance are in the same units; both are internal units here, so
-         * the metres-to-internal latitude scale cancels.
+         * On-screen displacement of the highest ground in view, in pixels. heightRange and
+         * cameraDistance share internal units, so the metres-to-internal latitude scale cancels.
          */
         static double parallax(double halfDiagonalPixels, double heightRange, double cameraDistance) {
             if (!(cameraDistance > 0)) {
@@ -36,10 +33,8 @@ namespace massif {
         }
 
         /**
-         * Whether the terrain should be flat. A threshold of 0 disables that half of the rule;
-         * with both disabled the answer is always false. flattening is the state we are already
-         * in, and is what widens the thresholds - a camera parked on one would otherwise
-         * oscillate between the two modes for as long as it sits there.
+         * Whether the terrain should be flat. A threshold of 0 disables that half of the rule.
+         * flattening (the current state) widens the thresholds, so a camera parked on one does not oscillate.
          */
         static bool shouldFlatten(double parallaxPixels, float parallaxThreshold, float tilt, float tiltThreshold, bool flattening) {
             if (tiltThreshold > 0 && tilt >= (flattening ? tiltThreshold - TILT_HYSTERESIS : tiltThreshold)) {
@@ -52,21 +47,15 @@ namespace massif {
         }
 
         /**
-         * The rule fires on an EDGE, not a level: it writes only when its own answer changes.
-         * Evaluated every frame and written every frame, it would overwrite an app that asked for
-         * the other state on the next frame - so a button could never lead the camera, and a switch
-         * flown towards top-down would flatten only when the tilt finally reached the threshold, at
-         * the very end of the flight. Holding the last answer instead leaves an explicit
-         * setFlattened alone until the camera actually crosses a threshold.
+         * Fires on an edge, not a level: written every frame, the rule would overwrite an app's explicit
+         * setFlattened on the next frame; this way it is left alone until the camera crosses a threshold.
          */
         struct Trigger {
             int last = -1; // -1 until the rule has answered once
 
             /**
-             * cameraPlaced is whether the app has put the camera anywhere yet. Until it has, the
-             * view is the SDK's own default - top-down at world zoom - and the rule does not judge
-             * it: a first frame drawn before the app's moveTo flattened a map that was about to
-             * tilt, and dragged it through the whole 2D->3D switch while its tiles arrived.
+             * cameraPlaced: whether the app has placed the camera yet. The SDK's default view (top-down,
+             * world zoom) is not judged, or a map about to tilt would start flat.
              */
             bool changed(bool decision, bool cameraPlaced = true) {
                 if (!cameraPlaced) {

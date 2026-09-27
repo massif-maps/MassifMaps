@@ -99,6 +99,7 @@ namespace {
         TEST_CHECK(nearly(600 + h - 1000, 200), "landing a floor's worth over the ground");
     }
 
+
     void testMaxZoomLandsOnTheShell() {
         // A camera straight down over flat ground at sea level: the clearance is orbit / 16, and
         // the height IS the orbit, so no zoom in ever breaks it.

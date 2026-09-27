@@ -82,10 +82,8 @@ namespace massif {
          */
         float getStretchFactor();
         /**
-         * Sets the relative stretching coefficient for the line. The bitmap of the line will be stretched 
-         * vertically by the stretch factor and then repeated along the length of the line. For example, 
-         * setting the stretch factor to 2.0 will stretch the bitmap vertically to double the original height 
-         * and reduces the number of times the bitmap gets repeated by half. The default is 1.0.
+         * Sets the relative stretching coefficient for the line. The bitmap is stretched vertically by this factor
+         * before being repeated along the line, so 2.0 doubles its height and halves the repeat count. The default is 1.0.
          * @param stretchFactor The new relative stretching coefficient for the line.
          */
         void setStretchFactor(float stretchFactor);

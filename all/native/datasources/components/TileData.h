@@ -30,20 +30,8 @@ namespace massif {
          */
         TileData(const std::shared_ptr<BinaryData>& data);
         /**
-         * Constructs a TileData object from RAW, already decoded pixels.
-         *
-         * For a source that produces pixels rather than a file - GDAL, a procedural tile, a
-         * decoder of a format the SDK does not know. The alternative is to encode a PNG the SDK
-         * then immediately decodes again, which is two codecs and three copies per tile.
-         *
-         * The layout is RGBA8, premultiplied, tightly packed: exactly width * height * 4 bytes,
-         * no row padding. One format on purpose - a second one would put a switch in every
-         * consumer for a case none of them has.
-         *
-         * Raster tiles only, and NOT persistently cached: the bytes carry no format, so a cache
-         * that stored them would read them back as a compressed file. See
-         * PersistentCacheTileDataSource::store.
-         *
+         * Constructs a TileData object from raw, already decoded pixels: RGBA8, premultiplied, no row padding.
+         * Raster tiles only, and not persistently cached: the bytes carry no format, see PersistentCacheTileDataSource::store.
          * @param pixels width * height * 4 bytes of premultiplied RGBA.
          * @param width The tile width in pixels.
          * @param height The tile height in pixels.
@@ -80,7 +68,7 @@ namespace massif {
         bool isOverZoom() const;
         /**
          * Set the parent overzoom flag.
-         * @return True if the tile should not be drawn. False otherwise.
+         * @param flag True if the tile should not be drawn. False otherwise.
          */
         void setIsOverZoom(bool flag);
         
@@ -108,10 +96,8 @@ namespace massif {
         int getHeight() const;
         
         /**
-         * Returns the meta data map carried by this tile - the meta data of the data source that
-         * produced it. May be null when the source carries none.
-         * The map is immutable and shared by every tile of that source: attaching it costs one
-         * atomic increment, and setMetaDataElement copies before writing.
+         * Returns the meta data map of the data source that produced this tile, or null when it carries none.
+         * The map is immutable and shared by every tile of that source; setMetaDataElement copies before writing.
          * @return The meta data map, or null.
          */
         std::shared_ptr<const std::map<std::string, Variant> > getMetaData() const;

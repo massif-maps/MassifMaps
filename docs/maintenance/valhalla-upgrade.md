@@ -124,10 +124,13 @@ for f in africa antarctica asia australasia backward etcetera europe \
 done
 cmake -DMSVC= -P cmake/ValhallaBin2Header.cmake date_time/windowsZones.xml \
   ../config/tzdb/date_time_windows_zones.h --variable-name date_time_windows_zones_xml --skip 1 --raw
+python3 ../config/tzdb/strip-comments.py
 ```
 
-~4.9 MB of headers, ~800 KB of actual data in the binary (the old hand-rolled `tz_data.h` was
-220 KB — that is the price of the full database). `date_time_windows_zones.h` is only used under
+`strip-comments.py` drops the comment and blank lines the tz parser skips anyway, and asserts the
+parser-visible lines are unchanged: 806 KB → 166 KB of embedded data (`libs-external` `e3b028a`,
+~640 KB per ABI). Skip it and the next tzdata bump silently puts that back. The old hand-rolled
+`tz_data.h` was 220 KB. `date_time_windows_zones.h` is only used under
 `_WIN32`; it has internal linkage so it costs nothing elsewhere.
 
 `HAS_REMOTE_API=0 AUTO_DOWNLOAD=0 USE_SHELL_API=0` must be defined for the whole valhalla target

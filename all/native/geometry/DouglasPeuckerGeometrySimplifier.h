@@ -15,10 +15,8 @@ namespace massif {
     class MapPos;
 
     /**
-     * An implementation of Ramer-Douglas-Peucker algorithm for geometry simplification.
-     * Simplifier works on lines and polygons.
-     * Simplification is done in two passes - first pass uses fast Radial Distance vertex rejection,
-     * second pass uses Ramer-Douglas-Peuckerworst algorithm (with worst case quadratic complexity).
+     * An implementation of Ramer-Douglas-Peucker algorithm for simplifying lines and polygons.
+     * A fast Radial Distance vertex rejection pass runs first, then Ramer-Douglas-Peucker (worst case quadratic complexity).
      */
     class DouglasPeuckerGeometrySimplifier : public GeometrySimplifier {
     public:

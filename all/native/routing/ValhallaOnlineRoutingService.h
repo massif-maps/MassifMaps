@@ -22,18 +22,14 @@ namespace sqlite3pp {
 namespace massif {
 
     /**
-     * An online routing service that uses MapBox Valhalla routing service.
-     * As the class connects to an external (non-Massif) service, this class is provided "as-is",   
-     * future changes from the service provider may not be compatible with the implementation.
-     * Routing and route matching perform network requests and must be executed in non-UI background thread.
-     * Be sure to read the Terms and Conditions of your Valhalla service provider to see if the
-     * service is available for your application.
+     * An online routing service using a (MapBox) Valhalla service, provided "as-is": check the provider's terms.
+     * Routing and route matching make network requests and must run on a non-UI background thread.
      * Note: this class is experimental and may change or even be removed in future SDK versions.
      */
     class ValhallaOnlineRoutingService : public RoutingService {
     public:
         /**
-         * Constructs a new ValhallaOnlineRoutingService instance given database file.
+         * Constructs a new ValhallaOnlineRoutingService instance given an API key.
          * @param apiKey The API key (access token) to use registered with MapBox.
          */
         explicit ValhallaOnlineRoutingService(const std::string& apiKey);
@@ -46,9 +42,8 @@ namespace massif {
          */
         std::string getCustomServiceURL() const;
         /**
-         * Sets the custom backend service URL. 
-         * The custom URL should contain tag "{service}", it will be substituted by the SDK by the service type the SDK needs to perform ("route" or "trace_route").
-         * The custom URL may also contain tag "{api_key}" which will be substituted with the set API key.
+         * Sets the custom backend service URL. The tag "{service}" is substituted with the service type
+         * ("route" or "trace_route"), the optional tag "{api_key}" with the API key.
          * @param serviceURL The custom backend service URL to use. If this is empty, then the default service is used.
          */
         void setCustomServiceURL(const std::string& serviceURL);
@@ -70,8 +65,7 @@ namespace massif {
          */
         std::map<std::string, std::string> getHTTPHeaders() const;
         /**
-         * Sets HTTP headers for all requests. Calling this method will invalidate the datasource and
-         * all layers using this data source will be refreshed.
+         * Sets HTTP headers for all subsequent requests.
          * @param headers A map of HTTP headers that will be used in subsequent requests.
          */
         void setHTTPHeaders(const std::map<std::string, std::string>& headers);

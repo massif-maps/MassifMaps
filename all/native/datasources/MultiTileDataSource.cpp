@@ -92,7 +92,8 @@ namespace massif {
             for (auto it = _cachedOpenDataSources.begin(); it != _cachedOpenDataSources.end(); it++)
             {
                 auto dataSource = it->second;
-                if (zoom < dataSource->getMinZoom() || zoom > dataSource->getMaxZoomWithOverzoom() + 1) {
+                // No + 1: past its maximum a source only costs a query that always misses.
+                if (zoom < dataSource->getMinZoom() || zoom > dataSource->getMaxZoomWithOverzoom()) {
                     continue;
                 }
 
@@ -121,7 +122,7 @@ namespace massif {
                         if (it2 != _cachedOpenDataSources.end() && it2->second == it->second) {
                             continue;
                         }
-                        if (zoom < dataSource->getMinZoom() || zoom > dataSource->getMaxZoomWithOverzoom() + 1) {
+                        if (zoom < dataSource->getMinZoom() || zoom > dataSource->getMaxZoomWithOverzoom()) {
                             continue;
                         }
                         std::shared_ptr<PackageTileMask> tileMask = it->first;

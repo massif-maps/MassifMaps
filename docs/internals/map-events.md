@@ -104,6 +104,40 @@ do not stall kinetic (`_zoomDelta *= factor` runs whether or not the camera actu
 frame loop always draws at least one more frame after the last change (`_redrawExtraFrames`), so the
 terminal kinetic frame's own `onMapIdle` sees the flags already cleared.
 
+## A fling covers the same ground at any frame rate (fixed 2026-09-13)
+
+`KineticEventHandler` decays its delta on a **wall clock** — `factor = pow(1 - SLOWDOWN, dt)`, so a
+fling always runs for about a second whatever the frame rate. Rotation and zoom then step by a
+*fraction of what is left* (`delta * (1 - factor)`, keeping `delta * factor`), which makes the total
+travel `delta` and nothing else. Pan did not: it stepped by the **whole** remaining delta every
+frame and decayed it, so the distance summed to `delta * factor / (1 - factor)` — a frame-count
+term:
+
+| fps | frames of fling | ground covered |
+| --- | --- | --- |
+| 60 | ~65 | 13.4 |
+| 30 | ~26 | 6.9 |
+| 10 | ~11 | 2.7 |
+
+Reported as "launch the pan and it stops during inertia, clearly hanging" at z18.2 in a dense city.
+The map was not hanging and the gesture was not being dropped: the fling was spending its wall-clock
+budget while starved of frames, and died on schedule having covered a fifth of the ground. Any
+frame-time loss anywhere in the renderer therefore read as a broken gesture, which is what sent a
+whole afternoon into bisecting a pan regression that turned out to be a `RelWithDebInfo` build
+measured against a `Release` AAR.
+
+The fix is to make pan do what its two siblings in the same file already did — step by
+`kineticStepFraction()` (`renderers/components/KineticStep.h`) and keep the rest. Because
+`_panDelta` now means *the whole distance left to travel* rather than one frame of it, the three
+constants that size it were multiplied by 12.535, which is what the old per-frame stepping summed
+to at 60 fps: `KINETIC_PAN_DELTA_MULTIPLIER` 7.0 → 87.75, `KINETIC_PAN_DELTA_CLAMP` 1.0 → 12.535,
+`KINETIC_PAN_STOP_TOLERANCE` 0.007 → 0.0878. `KINETIC_PAN_START_TOLERANCE` is tested against the raw measured speed *before* the multiplier, so it
+did not move. 60 fps behaviour is unchanged by construction; every lower frame rate now covers the
+same ground.
+
+`tests/api/KineticStepTest.cpp` pins the invariant (distance and duration equal at 60/30/10 fps) and
+the old frame-count term, so the 12.535 is derived rather than magic.
+
 ## Compared to maplibre / mapbox
 
 They ship one phased camera stream, not two parallel ones: `movestart` / `move` / `moveend` (plus

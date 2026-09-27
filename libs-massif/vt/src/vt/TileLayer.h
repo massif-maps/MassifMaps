@@ -24,9 +24,15 @@ namespace massif::vt {
         explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) {
             // Answered once here so the renderer's per-frame span pass can skip a layer - and, in a
             // style that uses no elevation-mode at all, every layer - without walking its geometry.
+            // Same for the contact shadow: its search cannot stop early, so absence is the costly case.
             for (const std::shared_ptr<TileGeometry>& geometry : _geometries) {
                 if (!geometry->getSpanRecords().empty()) {
                     _hasSpanGeometry = true;
+                }
+                if (geometry->getType() == TileGeometry::Type::POLYGON3DGROUND) {
+                    _hasGroundAOGeometry = true;
+                }
+                if (_hasSpanGeometry && _hasGroundAOGeometry) {
                     break;
                 }
             }
@@ -43,6 +49,8 @@ namespace massif::vt {
 
         /** Whether any geometry here is a SPAN - false for every layer of a style that uses none. */
         bool hasSpanGeometry() const { return _hasSpanGeometry; }
+        /** Whether any geometry here is an extrusion's contact shadow on the ground it stands on. */
+        bool hasGroundAOGeometry() const { return _hasGroundAOGeometry; }
         const std::vector<std::shared_ptr<TileLabel>>& getLabels() const { return _labels; }
 
         std::size_t getFeatureCount() const {
@@ -68,6 +76,7 @@ namespace massif::vt {
         const std::vector<std::shared_ptr<TileBitmap>> _bitmaps;
         const std::vector<std::shared_ptr<TileGeometry>> _geometries;
         bool _hasSpanGeometry = false;
+        bool _hasGroundAOGeometry = false;
         const std::vector<std::shared_ptr<TileLabel>> _labels;
     };
 }

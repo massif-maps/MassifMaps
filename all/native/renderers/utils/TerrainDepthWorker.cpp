@@ -39,14 +39,19 @@ namespace massif {
         // The synchronous read-back stays reachable at runtime, so the two can be compared on
         // one device: 'adb shell setprop debug.massif.asyncdepth 0'.
         static const bool enabled = [] {
+#if MASSIF_DEBUG_PROPERTIES
             char property[PROP_VALUE_MAX] = { 0 };
             return !(__system_property_get("debug.massif.asyncdepth", property) > 0 && property[0] == '0');
+#else
+            return true;
+#endif
         }();
         return enabled;
     }
 
     int TerrainDepthWorker::getMovingSubmitInterval(int defaultInterval) {
         static const int interval = [defaultInterval] {
+#if MASSIF_DEBUG_PROPERTIES
             char property[PROP_VALUE_MAX] = { 0 };
             if (__system_property_get("debug.massif.asyncdepthms", property) > 0) {
                 int value = std::atoi(property);
@@ -54,6 +59,7 @@ namespace massif {
                     return value;
                 }
             }
+#endif
             return defaultInterval;
         }();
         return interval;

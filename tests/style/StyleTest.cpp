@@ -16,6 +16,7 @@ void testInterpolateExpression();
 void testViewStateProperty();
 void testFontNames();
 void testValueJSON();
+void testAnchorLabelId();
 
 int main() {
     testLayerConfig();
@@ -28,6 +29,7 @@ int main() {
     testViewStateProperty();
     testFontNames();
     testValueJSON();
+    testAnchorLabelId();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

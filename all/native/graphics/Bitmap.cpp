@@ -165,7 +165,6 @@ namespace massif {
             return std::shared_ptr<BinaryData>();
         }
     
-        // Set callback for writing data
         std::vector<unsigned char> compressedData;
         png_set_write_fn(pngPtr, &compressedData, writePNGCallback, NULL);
     
@@ -192,16 +191,12 @@ namespace massif {
             return std::shared_ptr<BinaryData>();
         }
     
-        // Set PNG info
         png_set_IHDR(pngPtr, infoPtr, _width, _height, 8, colorType, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     
-        // Write PNG info
         png_write_info(pngPtr, infoPtr);
     
-        // Set row start pointers
         std::vector<png_bytep> rowPointers(_height);
     
-        // Unpremultiply
         std::vector<unsigned char> pixelData = _pixelData;
         if (unpremultiply) {
             for (std::size_t i = 0; i < pixelData.size(); i += _bytesPerPixel) {
@@ -216,20 +211,16 @@ namespace massif {
             }
         }
     
-        // Set the individual row pointers to point at the correct offsets of image data
         unsigned char* pixelDataPtr = pixelData.data();
         int bytesPerRealRow = _width * _bytesPerPixel;
         for (std::size_t i = 0; i < _height; i++) {
             rowPointers[_height - 1 - i] = pixelDataPtr + i * bytesPerRealRow;
         }
     
-        // Write image
         png_write_image(pngPtr, rowPointers.data());
     
-        // Write end
         png_write_end(pngPtr, infoPtr);
     
-        // Free memory
         png_destroy_write_struct(&pngPtr, &infoPtr);
     
         return std::make_shared<BinaryData>(std::move(compressedData));
@@ -265,8 +256,6 @@ namespace massif {
             return std::shared_ptr<Bitmap>();
         }
 
-        // This will only scale the actual image part, the padding that was previously added to make the image
-        // dimensions power of 2 will be ignored
         const unsigned char* dsrc = _pixelData.data();
         std::vector<unsigned char> pixelData(width * height * _bytesPerPixel);
         unsigned char* ddest = pixelData.data();
@@ -274,12 +263,8 @@ namespace massif {
         bool bUpsampleX = (_width < width);
         bool bUpsampleY = (_height < height);
     
-        // If too many input pixels map to one output pixel, our 32-bit accumulation values
-        // could overflow - so, if we have huge mappings like that, cut down the weights:
-        //    256 max color value
-        //   *256 weight_x
-        //   *256 weight_y
-        //   *256 (16*16) maximum # of input pixels (x,y) - unless we cut the weights down...
+        // 32-bit accumulators overflow at 256 (color) * 256 * 256 (weights) * input pixels per output pixel,
+        // so huge mappings shift the weights down.
         int weight_shift = 0;
         float source_texels_per_out_pixel = ((_width / static_cast<float>(width + 1))
                 * (_height / static_cast<float>(height + 1)));
@@ -289,16 +274,14 @@ namespace massif {
         if (weight_div > 1) {
             weight_shift = static_cast<int>(ceilf(logf(weight_div) / logf(2)));
         }
-        weight_shift = std::min(15, weight_shift); // this could go to 15 and still be ok.
+        weight_shift = std::min(15, weight_shift);
     
         float fh = 256 * _height / static_cast<float>(height);
         float fw = 256 * _width / static_cast<float>(width);
-        // Cache x1a, x1b for all the columns
     
         std::vector<int> g_px1ab(width * 2 * 2);
     
         for (std::size_t x2 = 0; x2 < width; x2++) {
-            // Find the x-range of input pixels that will contribute:
             int x1a = static_cast<int>((x2) * fw);
             int x1b = static_cast<int>((x2 + 1) * fw);
             if (bUpsampleX) {
@@ -310,9 +293,7 @@ namespace massif {
             g_px1ab[x2 * 2 + 1] = x1b;
         }
     
-        // For every output pixel
         for (std::size_t y2 = 0; y2 < height; y2++) {
-            // Find the y-range of input pixels that will contribute:
             int y1a = static_cast<int>((y2) * fh);
             int y1b = static_cast<int>((y2 + 1) * fh);
             if (bUpsampleY) {
@@ -324,13 +305,11 @@ namespace massif {
             int y1d = y1b >> 8;
     
             for (std::size_t x2 = 0; x2 < width; x2++) {
-                // Find the x-range of input pixels that will contribute
                 int x1a = g_px1ab[x2 * 2 + 0];
                 int x1b = g_px1ab[x2 * 2 + 1];
                 int x1c = x1a >> 8;
                 int x1d = x1b >> 8;
     
-                // Add ip all input pixels contributing to this output pixel
                 unsigned int r = 0, g = 0, b = 0, a = 0, wa = 0;
                 for (int y = y1c; y <= y1d; y++) {
                     unsigned int weight_y = 256;
@@ -376,7 +355,6 @@ namespace massif {
                     wa = std::numeric_limits<int>::max();
                 }
     
-                // Write results
                 *ddest++ = r / wa;
                 if (_bytesPerPixel > 1) {
                     *ddest++ = g / wa;
@@ -492,7 +470,6 @@ namespace massif {
             }
         }
         
-        // Create new bitmap
         return std::make_shared<Bitmap>(pixelData.data(), _width, _height, ColorFormat::COLOR_FORMAT_RGBA, -static_cast<int>(_width * 4));
     }
     
@@ -535,7 +512,6 @@ namespace massif {
         } else if (IsNUTI(compressedData, dataSize)) {
             return loadNUTI(compressedData, dataSize);
         } else {
-            // Try to decompress with various compression formats
             std::vector<unsigned char> uncompressedData;
 
 
@@ -598,10 +574,8 @@ namespace massif {
         _width = width;
         _height = height;
             
-        // Allocate space
         _pixelData.resize(_width * _height * _bytesPerPixel);
     
-        // Copy data from pixelData to _pixelData
         unsigned int newBytesPerRow = _width * _bytesPerPixel;
         unsigned int newActualBytesPerRow = _width * _bytesPerPixel;
         
@@ -670,7 +644,6 @@ namespace massif {
                 break;
             }
         } else {
-            // Normal copy
             for (unsigned int i = 0; i < _height; i++) {
                 unsigned int flippedI = _height - 1 - i;
                 unsigned int srcIndex = (bytesPerRow < 0 ? flippedI : i) * std::abs(bytesPerRow);
@@ -723,19 +696,17 @@ namespace massif {
         cinfo.err = jpeg_std_error(&jerr.pub);
         jerr.pub.error_exit = JPEGErrorExit;
     
-        // Establish the setjmp return context for JPEGErrorExit to use
+        // JPEGErrorExit longjmps back here.
         if (setjmp(jerr.setjmp_buffer)) {
             jpeg_destroy_decompress(&cinfo);
             Log::Error("Bitmap::loadJPEG: Failed to load JPEG");
             return false;
         }
     
-        // Create decompressing object, set data source
         jpeg_create_decompress(&cinfo);
         unsigned char* compressedDataPtr = const_cast<unsigned char*>(compressedData);
         jpeg_mem_src(&cinfo, compressedDataPtr, static_cast<unsigned long>(dataSize));
     
-        // Read headers, prepare to decompress
         jpeg_read_header(&cinfo, TRUE);
         jpeg_start_decompress(&cinfo);
     
@@ -759,13 +730,12 @@ namespace massif {
         int bytesPerRow = _width * _bytesPerPixel;
         _pixelData.resize(bytesPerRow * _height);
     
-        // Read lines, flip y
+        // Bitmap rows are stored bottom-up.
         while (cinfo.output_scanline < _height) {
             unsigned char* pixelDataPtr = &_pixelData[(_height - 1 - cinfo.output_scanline) * bytesPerRow];
             jpeg_read_scanlines(&cinfo, &pixelDataPtr, 1);
         }
     
-        // Finish and free the memory
         jpeg_finish_decompress(&cinfo);
         jpeg_destroy_decompress(&cinfo);
     
@@ -831,14 +801,11 @@ namespace massif {
             return false;
         }
     
-        // Set callback method for reading data
         LibPNGIOContainer ioContainer(compressedData);
         png_set_read_fn(pngPtr, &ioContainer, readPNGCallback);
     
-        // Read all the info up to the image data
         png_read_info(pngPtr, infoPtr);
     
-        // Get info about png
         int colorType = 0;
         int bitDepth = 0;
         if (png_get_IHDR(pngPtr, infoPtr, &_width, &_height, &bitDepth, &colorType, NULL, NULL, NULL) == 0) {
@@ -847,7 +814,6 @@ namespace massif {
             return false;
         }
     
-        // Expand or strip images to 8 bit
         if (bitDepth == 1 || bitDepth == 2 || bitDepth == 4) {
             png_set_packing(pngPtr);
         } else if (bitDepth == 16) {
@@ -858,17 +824,14 @@ namespace massif {
             return false;
         }
     
-        // Convert palette to rgb
         if (colorType == PNG_COLOR_TYPE_PALETTE) {
             png_set_palette_to_rgb(pngPtr);
         }
     
-        // Convert tRNS to alpha
         if (png_get_valid(pngPtr, infoPtr, PNG_INFO_tRNS)){
             png_set_tRNS_to_alpha(pngPtr);
         }
     
-        // Update png info
         png_read_update_info(pngPtr, infoPtr);
         if (png_get_IHDR(pngPtr, infoPtr, &_width, &_height, &bitDepth, &colorType, NULL, NULL, NULL) == 0) {
             png_destroy_read_struct(&pngPtr, &infoPtr, &endInfo);
@@ -876,7 +839,6 @@ namespace massif {
             return false;
         }
     
-        // Detect color type and necessity for alpha premultiplication
         bool premultiply = false;
         switch (colorType) {
         case PNG_COLOR_TYPE_GRAY:
@@ -905,23 +867,18 @@ namespace massif {
     
         int bytesPerRow = _width * _bytesPerPixel;
     
-        // Allocate the image_data as a big block, to be given to opengl
         _pixelData.resize(bytesPerRow * _height);
         unsigned char* pixelDataPtr = _pixelData.data();
     
-        // Set row start pointers
         std::vector<png_bytep> rowPointers(_height);
     
-        // Set the individual row pointers to point at the correct offsets of image data
         for (std::size_t i = 0; i < _height; i++) {
             rowPointers[_height - 1 - i] = pixelDataPtr + i * bytesPerRow;
         }
     
-        // Read the png into image_data through row_pointers
         png_read_image(pngPtr, rowPointers.data());
     
         if (premultiply) {
-            // Premultiply alpha
             for (std::size_t i = 0; i < _pixelData.size(); i += _bytesPerPixel) {
                 for (std::size_t j = 0; j < _bytesPerPixel - 1; j++) {
                     _pixelData[i + j] = (_pixelData[i + j] * _pixelData[i + _bytesPerPixel - 1]) / 255;
@@ -929,7 +886,6 @@ namespace massif {
             }
         }
     
-        // Free memory
         png_destroy_read_struct(&pngPtr, &infoPtr, &endInfo);
     
         return true;

@@ -23,6 +23,7 @@
 %import "graphics/Color.i"
 
 !polymorphic_shared_ptr(massif::CelestialObject, celestial.CelestialObject)
+!method(massif::CelestialObject, setDirection, arg(azimuth, float), arg(altitude, float), arg(distance, float), returns(void))
 !value_type(std::vector<std::shared_ptr<massif::CelestialObject> >, celestial.CelestialObjectVector)
 
 %attribute(massif::CelestialObject, bool, DirectionAnchored, isDirectionAnchored)
@@ -33,6 +34,7 @@
 %attribute(massif::CelestialObject, double, PositionAltitude, getPositionAltitude)
 %attributeval(massif::CelestialObject, massif::Color, Color, getColor, setColor)
 %attribute(massif::CelestialObject, bool, Visible, isVisible, setVisible)
+%attribute(massif::CelestialObject, bool, OccludedByMap, isOccludedByMap, setOccludedByMap)
 %ignore massif::CelestialObject::calculateDirectionVector;
 %ignore massif::CelestialObject::setComponents;
 %ignore massif::CelestialObject::getLayer;

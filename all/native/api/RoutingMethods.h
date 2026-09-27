@@ -11,13 +11,7 @@
 
 namespace massif { namespace api {
 
-    /**
-     * The routing methods, in their own translation unit and with their own entry point.
-     *
-     * Same reason as GeometryMethods: a request, a result and the RoutingService base need nothing
-     * but a projection, so the host tests link these while the concrete Valhalla services - which
-     * need sqlite and the routing library - stay out.
-     */
+    /** Registers the routing methods; own TU so host tests link them without the Valhalla services. */
     void registerRoutingMethods();
 
 } }

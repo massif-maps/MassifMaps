@@ -14,9 +14,8 @@
 namespace massif {
 
     /**
-     * An asset package based on the assets bundled with the application.
-     * On Android these live inside the APK, where no file path reaches them - which is what
-     * separates this from DirAssetPackage; on iOS and Windows they are the app bundle's own files.
+     * An asset package based on the assets bundled with the application (inside the APK on Android,
+     * where no file path reaches them, unlike DirAssetPackage; the app bundle's files on iOS and Windows).
      * Note: assets and directories with names starting with '.' are ignored.
      */
     class BundleAssetPackage : public AssetPackage {

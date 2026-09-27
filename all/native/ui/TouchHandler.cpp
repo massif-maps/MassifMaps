@@ -36,6 +36,13 @@ namespace massif {
         _idling(true),
         _noDualPointerYet(true),
         _dualPointerReleaseTime(),
+        _lookAnchored(false),
+        _lookAnchorPos(0, 0),
+        _lookAnchorHeading(0),
+        _lookAnchorElevation(0),
+        _lookRotation(0),
+        _lookTilt(0),
+        _lookSampleTime(),
         _mapEventListener(),
         _clickHandlerWorker(std::make_shared<ClickHandlerWorker>(options)),
         _clickHandlerThread(),
@@ -93,13 +100,11 @@ namespace massif {
             handleTouchEvent(action, screenPos1, screenPos2);
         }
 
-        // The pointer count and the event checks run whether or not a listener took the gesture.
-        // A consumed UP used to skip them, leaving _pointersDown stuck and onMapStable dead for good.
+        // Runs even when a listener consumed the event, or a consumed UP leaves _pointersDown stuck and onMapStable dead.
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
             switch (action) {
-            // Assigned, not incremented: a gesture start resyncs the count, so an UP the platform
-            // never delivered costs one gesture instead of every onMapStable that follows.
+            // Assigned, not incremented: a missed UP then costs one gesture, not every later onMapStable.
             case ACTION_POINTER_1_DOWN:
                 _pointersDown = 1;
                 break;
@@ -130,9 +135,12 @@ namespace massif {
             }
             _clickHandlerWorker->pointer1Down(screenPos1);
             _noDualPointerYet = true;
+            _lookAnchored = false;
+            _lookAnchorPos = screenPos1;
             _mapRenderer->getKineticEventHandler().stopPan();
             _mapRenderer->getKineticEventHandler().stopRotation();
             _mapRenderer->getKineticEventHandler().stopZoom();
+            _mapRenderer->getKineticEventHandler().stopLook();
             break;
     
         case ACTION_POINTER_2_DOWN:
@@ -164,8 +172,7 @@ namespace massif {
                 {
                     auto deltaTime = std::chrono::steady_clock::now() - _dualPointerReleaseTime;
                     if (deltaTime >= DUAL_STOP_HOLD_DURATION) {
-                        // Free roam turns the one-finger drag into a look: panning moves to two
-                        // fingers, which dualPointerPan already does.
+                        // Free roam turns the one-finger drag into a look; panning moves to two fingers.
                         if (_options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_OFF) {
                             singlePointerLook(screenPos1, viewState);
                         } else {
@@ -221,9 +228,12 @@ namespace massif {
             }
             case SINGLE_POINTER_PAN:
                 _gestureMode = SINGLE_POINTER_CLICK_GUESS;
-                // A first person drag is a look, and a look does not glide on after the finger
-                // leaves: every kinetic handler pans, rotates or zooms the MAP.
+                // A first person drag glides on as a look, turning the view about the camera,
+                // unless the finger rested before it lifted.
                 if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                    if (_lookAnchored && std::chrono::steady_clock::now() - _lookSampleTime < LOOK_KINETIC_REST) {
+                        _mapRenderer->getKineticEventHandler().startLook();
+                    }
                     break;
                 }
                 if (_noDualPointerYet) {
@@ -254,9 +264,11 @@ namespace massif {
             case DUAL_POINTER_FREE:
             case DUAL_POINTER_MOVE:
                 _dualPointerReleaseTime = std::chrono::steady_clock::now();
+                _lookAnchored = false;
+                _lookAnchorPos = screenPos2;
                 _prevScreenPos1 = screenPos2;
                 _gestureMode = SINGLE_POINTER_PAN;
-                updatePanScale(screenPos2, viewState); // a new pan starts here: a new speed
+                updatePanScale(screenPos2, viewState); // a new pan starts here
                 break;
             }
             break;
@@ -276,7 +288,7 @@ namespace massif {
                  _dualPointerReleaseTime = std::chrono::steady_clock::now();
                  _prevScreenPos1 = screenPos1;
                  _gestureMode = SINGLE_POINTER_PAN;
-                 updatePanScale(screenPos1, viewState); // a new pan starts here: a new speed
+                 updatePanScale(screenPos1, viewState); // a new pan starts here
                  break;
             default:
                 break;
@@ -341,11 +353,10 @@ namespace massif {
     }
 
     void TouchHandler::checkMapStable() {
-        bool atRest = !_mapRenderer->getKineticEventHandler().isPanning() && !_mapRenderer->getKineticEventHandler().isRotating() && !_mapRenderer->getKineticEventHandler().isZooming();
+        bool atRest = !_mapRenderer->getKineticEventHandler().isPanning() && !_mapRenderer->getKineticEventHandler().isRotating() && !_mapRenderer->getKineticEventHandler().isZooming() && !_mapRenderer->getKineticEventHandler().isLooking();
 
-        // Edge-triggered: the end of a movement, reported once, with what caused it. Taking the
-        // reason IS the edge - a second at-rest check finds nothing pending and stays quiet, and a
-        // touch that never moved the camera never sets one.
+        // Edge-triggered: taking the pending reason is the edge, so a second at-rest check stays quiet
+        // and a touch that never moved the camera never reports.
         std::optional<MapMoveReason::MapMoveReason> reason;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
@@ -393,11 +404,7 @@ namespace massif {
         _prevScreenPos1 = screenPos;
     }
 
-    /**
-     * Move the map so that what was under prevScreenPos ends up under screenPos - the one pan
-     * both the one-finger drag and the two-finger gesture go through, so they cannot disagree
-     * about the speed mode or about what a grazing ray is allowed to do.
-     */
+    // The one pan both the one- and two-finger gestures use, so they agree on speed mode and grazing-ray handling.
     void TouchHandler::panBetween(const ScreenPos& prevScreenPos, const ScreenPos& screenPos, const ViewState& viewState) {
         std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
         if (!projectionSurface) {
@@ -412,15 +419,11 @@ namespace massif {
 
         double panScale = _panScale.load();
         if (_options->getPanningSpeedMode() != PanningSpeedMode::PANNING_SPEED_MODE_MAP && panScale > 0) {
-            // The pan travels the SCREEN delta at the scale the gesture started with. Grabbing the
-            // world exactly re-derives that scale from where the finger is now, so a drag up the
-            // screen speeds up as it goes.
+            // Screen delta at the gesture's starting scale: grabbing the world exactly would speed up a drag up the screen.
             cglib::vec3<double> focusPos = viewState.getFocusPos();
             MapPos focusMapPos = projectionSurface->calculateMapPos(focusPos);
             cglib::vec3<double> normal = projectionSurface->calculateNormal(focusMapPos);
-            // NOT '== 0': looking straight down this cross product should collapse and hand over to
-            // the up vector, but a tilt reached BY GESTURE is vertical only to within rounding, so
-            // it comes out at ~1e-16 and unit() turns the noise into a vector pointing anywhere.
+            // Threshold, not '== 0': a gesture-reached vertical view leaves a ~1e-16 cross product that unit() turns into noise.
             cglib::vec3<double> right = cglib::vector_product(viewState.calculateViewDir(), normal);
             if (cglib::length(right) < VIEW_AXIS_EPSILON) {
                 right = cglib::vector_product(viewState.getUpVec(), normal); // straight up or down
@@ -435,8 +438,6 @@ namespace massif {
             }
             forward = cglib::unit(forward);
 
-            // Dragging the world down brings what was beyond the top edge into view, i.e. the
-            // camera goes forward; dragging it right takes the camera left.
             cglib::vec3<double> offset = forward * (dy * panScale) + right * (-dx * panScale);
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(focusMapPos, projectionSurface->calculateMapPos(focusPos + offset)));
@@ -452,14 +453,11 @@ namespace massif {
         MapPos prevPos = mapScreenPosition(prevScreenPos, viewState);
 
         if (viewState.getTilt() < PAN_CLAMP_MAX_TILT) {
-            // Tangram's guard (inputHandler.cpp getTranslation): near the horizon the two rays run
-            // almost parallel to the ground and their hits fly apart, so a few pixels come out as
-            // kilometres. Cap the travel at what those pixels are worth at the map scale.
+            // Tangram's guard (inputHandler.cpp getTranslation): near the horizon ground hits fly apart,
+            // so cap the travel at what the pixels are worth at the map scale.
             cglib::vec3<double> pos0 = projectionSurface->calculatePosition(currentPos);
             cglib::vec3<double> pos1 = projectionSurface->calculatePosition(prevPos);
             double travel = projectionSurface->calculateDistance(pos0, pos1);
-            // What a pixel is worth at the focus - their pixelsPerMeter, which is the map scale
-            // and knows nothing about where on the screen the finger is.
             double unitsPerPixel = 2.0 * viewState.calculateCameraDistance() * viewState.getTanHalfFOVY() / std::max(1, viewState.getHeight());
             double limit = std::sqrt(static_cast<double>(dx) * dx + static_cast<double>(dy) * dy) * unitsPerPixel;
             if (limit > 0 && travel > limit) {
@@ -474,7 +472,88 @@ namespace massif {
         _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
     }
 
+    namespace {
+        // Heading (clockwise from north) and elevation, radians, of the ray through screen offset (a, b)
+        // (right and up, in focal lengths) for a camera at `heading` and `pitch` (up positive).
+        void lookRayDirection(double a, double b, double heading, double pitch, double& rayHeading, double& rayElevation) {
+            double forward = std::cos(pitch) - b * std::sin(pitch);
+            rayHeading = heading + std::atan2(a, forward);
+            rayElevation = std::atan2(std::sin(pitch) + b * std::cos(pitch), std::sqrt(a * a + forward * forward));
+        }
+    }
+
+    void TouchHandler::firstPersonLook(const ScreenPos& screenPos, const ViewState& viewState) {
+        // The direction under the finger at the look's start stays under it (peakfinder.com, geo-three),
+        // solved against the camera the look asked for: the view state lags queued events by a frame.
+        // Pitch is minus the tilt (90 = straight down); heading is minus the rotation.
+        double focal = 0.5 * viewState.getHeight() / std::max(viewState.getTanHalfFOVY(), 1.0e-6);
+        if (!(focal > 0)) {
+            return;
+        }
+        auto offsets = [&](const ScreenPos& pos, double& a, double& b) {
+            a = (pos.getX() - 0.5 * viewState.getWidth()) / focal;
+            b = -(pos.getY() - 0.5 * viewState.getHeight()) / focal;
+        };
+        double a = 0, b = 0;
+        if (!_lookAnchored) {
+            _lookRotation = viewState.getRotation();
+            _lookTilt = viewState.getTilt();
+            offsets(_lookAnchorPos, a, b);
+            lookRayDirection(a, b, -_lookRotation * Const::DEG_TO_RAD, -_lookTilt * Const::DEG_TO_RAD, _lookAnchorHeading, _lookAnchorElevation);
+            _lookAnchored = true;
+            _lookSampleTime = std::chrono::steady_clock::now();
+        }
+        offsets(screenPos, a, b);
+        // Ray elevation is monotonic in pitch, so bisect within the tilt range.
+        double pitchMin = -_options->getTiltRange().getMax() * Const::DEG_TO_RAD;
+        double pitchMax = -_options->getTiltRange().getMin() * Const::DEG_TO_RAD;
+        double low = pitchMin, high = pitchMax;
+        double rayHeading = 0, rayElevation = 0;
+        for (int i = 0; i < 40; i++) {
+            double pitch = 0.5 * (low + high);
+            lookRayDirection(a, b, 0.0, pitch, rayHeading, rayElevation);
+            (rayElevation < _lookAnchorElevation ? low : high) = pitch;
+        }
+        double pitch = 0.5 * (low + high);
+        lookRayDirection(a, b, 0.0, pitch, rayHeading, rayElevation);
+        float rotation = static_cast<float>(-(_lookAnchorHeading - rayHeading) * Const::RAD_TO_DEG);
+        float tilt = static_cast<float>(-pitch * Const::RAD_TO_DEG);
+
+        float rotationDelta = std::remainder(rotation - _lookRotation, 360.0f);
+        float tiltDelta = tilt - _lookTilt;
+        _lookRotation = rotation;
+        _lookTilt = tilt;
+
+        auto now = std::chrono::steady_clock::now();
+        float seconds = std::chrono::duration<float>(now - _lookSampleTime).count();
+        _lookSampleTime = now;
+        _mapRenderer->getKineticEventHandler().setLookDelta(rotationDelta, tiltDelta, seconds);
+
+        if (rotationDelta != 0) {
+            CameraRotationEvent cameraEvent;
+            cameraEvent.setRotationDelta(rotationDelta);
+            _cameraEvents.fetch_or(CAMERA_ROTATE);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
+        }
+        if (tiltDelta != 0) {
+            CameraTiltEvent cameraEvent;
+            cameraEvent.setTiltDelta(tiltDelta);
+            _cameraEvents.fetch_or(CAMERA_TILT);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
+        }
+    }
+
     void TouchHandler::singlePointerLook(const ScreenPos& screenPos, const ViewState& viewState) {
+        if (_options->isUserInput() && _options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+            _mapRenderer->getAnimationHandler().stopPan();
+            _mapRenderer->getAnimationHandler().stopRotation();
+            _mapRenderer->getAnimationHandler().stopTilt();
+            _mapRenderer->getAnimationHandler().stopZoom();
+            _mapRenderer->getAnimationHandler().stopFlight();
+            firstPersonLook(screenPos, viewState);
+            _prevScreenPos1 = screenPos;
+            return;
+        }
         if (_options->isUserInput()) {
             _mapRenderer->getAnimationHandler().stopPan();
             _mapRenderer->getAnimationHandler().stopRotation();
@@ -486,27 +565,28 @@ namespace massif {
             float dx = screenPos.getX() - _prevScreenPos1.getX();
             float dy = screenPos.getY() - _prevScreenPos1.getY();
 
-            // Sideways turns the heading, left-drag turning the view right as dragging the world
-            // does. About the CAMERA, not the focus: rotating about the focus swings the camera
-            // around a circle of the focus distance, which at a low tilt walks it through terrain.
+            // The orbiting 'look' mode. Rotates about the camera, not the focus: orbiting the focus
+            // at a low tilt walks the camera through terrain.
             if (dx != 0) {
                 std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
                 CameraRotationEvent cameraEvent;
-                cameraEvent.setRotationDelta(dx * _options->getFreeRoamLookSensitivity() / dpi);
-                if (projectionSurface && _options->getFreeRoamMode() != FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                float lookDelta = dx * _options->getFreeRoamLookSensitivity() / dpi;
+                cameraEvent.setRotationDelta(lookDelta);
+                if (projectionSurface) {
                     cameraEvent.setTargetPos(projectionSurface->calculateMapPos(viewState.getCameraPos()));
                 }
                 _cameraEvents.fetch_or(CAMERA_ROTATE);
                 _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
-            // Up and down changes the tilt, in the same direction the two-finger tilt uses.
+            // Opposite to the two-finger tilt: a look drags the view, not the ground (Street View convention).
             if (dy != 0) {
-                float scale = INCHES_TO_TILT_DELTA / dpi;
+                float scale = -INCHES_TO_TILT_DELTA / dpi;
                 if (_options->isTiltGestureReversed()) {
                     scale = -scale;
                 }
+                float tiltDelta = dy * scale;
                 CameraTiltEvent cameraEvent;
-                cameraEvent.setTiltDelta(dy * scale);
+                cameraEvent.setTiltDelta(tiltDelta);
                 _cameraEvents.fetch_or(CAMERA_TILT);
                 _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
@@ -522,9 +602,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
             
-            // No ground hit required: this zoom is a vertical drag about the FOCUS, and gating it
-            // on one killed the gesture wherever the fingers' rays miss - a low camera over
-            // terrain, where the ground under half the screen is past the far plane.
+            // No ground hit required: zooms about the focus, so it also works where the fingers' rays miss the ground.
             float dpi = _options->getDPI();
             cglib::vec2<float> tempSwipe1(screenPos.getX() - _prevScreenPos1.getX(), screenPos.getY() - _prevScreenPos1.getY());
             _swipe1 += tempSwipe1 * (1.0f / dpi);
@@ -567,7 +645,6 @@ namespace massif {
             float prevSwipe1Length = cglib::length(_swipe1);
             float prevSwipe2Length = cglib::length(_swipe2);
 
-            // Calculate swipe vectors
             cglib::vec2<float> tempSwipe1(screenPos1.getX() - _prevScreenPos1.getX(), screenPos1.getY() - _prevScreenPos1.getY());
             _swipe1 += tempSwipe1 * (1.0f / dpi);
             cglib::vec2<float> tempSwipe2(screenPos2.getX() - _prevScreenPos2.getX(), screenPos2.getY() - _prevScreenPos2.getY());
@@ -576,7 +653,6 @@ namespace massif {
             float swipe1Length = cglib::length(_swipe1);
             float swipe2Length = cglib::length(_swipe2);
     
-            // Check if swipes have opposite directions or same directions
             if (((swipe1Length > GUESS_MIN_SWIPE_LENGTH_OPPOSITE_INCHES && prevSwipe1Length > 0) ||
                  (swipe2Length > GUESS_MIN_SWIPE_LENGTH_OPPOSITE_INCHES && prevSwipe2Length > 0))
                 && _swipe1(1) * _swipe2(1) <= 0) {
@@ -584,7 +660,6 @@ namespace massif {
             } else if ((swipe1Length > GUESS_MIN_SWIPE_LENGTH_SAME_INCHES ||
                         swipe2Length > GUESS_MIN_SWIPE_LENGTH_SAME_INCHES) 
                        && _swipe1(1) * _swipe2(1) > 0) {
-                // Check if the angle of the same direction swipes
                 if (std::abs(_swipe1(0) / swipe1Length) > GUESS_SWIPE_ABS_COS_THRESHOLD ||
                     std::abs(_swipe2(0) / swipe2Length) > GUESS_SWIPE_ABS_COS_THRESHOLD) {
                     _gestureMode = DUAL_POINTER_FREE;
@@ -607,8 +682,6 @@ namespace massif {
             }
         }
     
-        // The general case requires _previous coordinates for both pointers,
-        // calculate them
         switch (_gestureMode) {
         case DUAL_POINTER_ROTATE:
         case DUAL_POINTER_SCALE:
@@ -659,9 +732,8 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
 
-            // First person movement: the two fingers are the movement keys, and the camera keeps its
-            // height, heading and zoom. Nothing is anchored to the ground, so it works with the view
-            // aimed at the sky, where a map pan has nothing to hold on to.
+            // First person movement keeps height, heading and zoom; nothing is anchored to the ground,
+            // so it works with the view aimed at the sky.
             float dx = (screenPos1.getX() + screenPos2.getX()) * 0.5f - (_prevScreenPos1.getX() + _prevScreenPos2.getX()) * 0.5f;
             float dy = (screenPos1.getY() + screenPos2.getY()) * 0.5f - (_prevScreenPos1.getY() + _prevScreenPos2.getY()) * 0.5f;
             _prevScreenPos1 = screenPos1;
@@ -670,14 +742,11 @@ namespace massif {
                 return;
             }
 
-            // The horizontal frame the movement happens in, taken from the view itself: forward is
-            // where the camera looks, flattened onto the ground.
             cglib::vec3<double> cameraPos = viewState.getCameraPos();
             MapPos cameraMapPos = projectionSurface->calculateMapPos(cameraPos);
             cglib::vec3<double> normal = projectionSurface->calculateNormal(cameraMapPos);
             cglib::vec3<double> viewDir = viewState.calculateViewDir();
-            // Threshold, not '== 0' - see singlePointerPan: a view that is vertical only to within
-            // rounding leaves a ~1e-16 cross product, and normalising that is normalising noise.
+            // Threshold, not '== 0' - see panBetween.
             cglib::vec3<double> right = cglib::vector_product(viewDir, normal);
             if (cglib::length(right) < VIEW_AXIS_EPSILON) {
                 right = cglib::vector_product(viewState.getUpVec(), normal); // looking straight up or down
@@ -692,11 +761,12 @@ namespace massif {
             }
             forward = cglib::unit(forward);
 
-            // Distance per inch of drag, as a fraction of the camera to focus distance, so a move
-            // covers the same part of the view at any zoom.
-            double perInch = _options->getFreeRoamMoveSpeed() * viewState.calculateCameraDistance();
-            double dpi = _options->getDPI();
-            cglib::vec3<double> offset = forward * (-dy / dpi * perInch) + right * (-dx / dpi * perInch);
+            double cameraDistance = viewState.calculateCameraDistance();
+            double viewHeight = viewState.getHeight();
+            double perPixel = (viewHeight > 0
+                ? 2.0 * std::tan(viewState.getHalfFOVY() * Const::DEG_TO_RAD) * cameraDistance / viewHeight
+                : 0.0) * _options->getFreeRoamMoveSpeed();
+            cglib::vec3<double> offset = forward * (dy * perPixel) + right * (-dx * perPixel);
 
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(cameraMapPos, projectionSurface->calculateMapPos(cameraPos + offset)));
@@ -718,9 +788,7 @@ namespace massif {
             _mapRenderer->getAnimationHandler().stopZoom();
             _mapRenderer->getAnimationHandler().stopFlight();
 
-            // The scale and the angle are what the FINGERS did, taken from the SCREEN, as tangram
-            // takes them. Deriving them from where the rays meet the ground hands a grazing ray to
-            // the camera: one hit kilometres away turns a few pixels into a wild zoom or spin.
+            // Scale and angle from the screen, as tangram does: ground hits of a grazing ray turn a few pixels into a wild zoom or spin.
             cglib::vec2<float> currentVec(screenPos2.getX() - screenPos1.getX(), screenPos2.getY() - screenPos1.getY());
             cglib::vec2<float> prevVec(_prevScreenPos2.getX() - _prevScreenPos1.getX(), _prevScreenPos2.getY() - _prevScreenPos1.getY());
             double currentDist = cglib::length(currentVec);
@@ -744,9 +812,7 @@ namespace massif {
             }
 
             if (rotate && _options->isRotationGestures() && prevDist > 0 && currentDist > 0) {
-                // Signed angle from the previous finger vector to the current one. Screen y points
-                // down, which is what turns a clockwise turn of the fingers into a positive map
-                // rotation - the same sign the ground-derived cross product produced.
+                // Screen y points down, so a clockwise finger turn gives a positive map rotation.
                 double cross = static_cast<double>(prevVec(0)) * currentVec(1) - static_cast<double>(prevVec(1)) * currentVec(0);
                 double dot = static_cast<double>(prevVec(0)) * currentVec(0) + static_cast<double>(prevVec(1)) * currentVec(1);
                 CameraRotationEvent cameraRotateTargetEvent;
@@ -885,9 +951,7 @@ namespace massif {
         if (!viewState.getProjectionSurface()) {
             return false;
         }
-        // The plane the gesture is actually anchored to (mapScreenPosition uses the same one).
-        // Testing the SEA LEVEL plane instead answers for a surface no gesture uses - in the
-        // mountains the two are hundreds of metres, and at a low tilt kilometres of ray, apart.
+        // Test the gesture's anchor plane (as mapScreenPosition does), not sea level, which is far off in mountains.
         cglib::vec3<double> pos = viewState.screenToWorld(cglib::vec2<float>(screenPos.getX(), screenPos.getY()), _gestureAnchorHeight.load());
         if (std::isnan(cglib::norm(pos))) {
             return false;
@@ -898,8 +962,7 @@ namespace massif {
     }
 
     cglib::ray3<double> TouchHandler::calculateScreenRay(const ScreenPos& screenPos, const ViewState& viewState) const {
-        // The same unprojection ViewState::screenToWorld does, stopping at the ray: two points at
-        // the near and far planes, which is a direction whether or not it ever meets the ground.
+        // ViewState::screenToWorld's unprojection stopped at the ray, valid whether or not it meets the ground.
         if (viewState.getWidth() <= 0 || viewState.getHeight() <= 0) {
             double nan = std::numeric_limits<double>::quiet_NaN();
             return cglib::ray3<double>(viewState.getCameraPos(), cglib::vec3<double>(nan, nan, nan));
@@ -916,18 +979,13 @@ namespace massif {
         _panScale.store(calculatePanScale(screenPos, viewState));
     }
 
-    /**
-     * How much map a screen pixel is worth where the gesture starts, which is what fixes the pan
-     * speed for the rest of it. On a tilted view this varies over the screen by orders of
-     * magnitude - that is the whole point of measuring it once.
-     */
+    // Map units per screen pixel where the gesture starts; fixes the pan speed for the whole gesture.
     double TouchHandler::calculatePanScale(const ScreenPos& screenPos, const ViewState& viewState) const {
         std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
         if (!projectionSurface || viewState.getHeight() <= 0) {
             return 0;
         }
-        // A pixel at the FAR plane is the largest a pixel can honestly be worth: near the horizon
-        // the two sample rays run almost parallel to the ground and their hit points fly apart.
+        // Cap at a far-plane pixel: near the horizon the sample rays' ground hits fly apart.
         double maxScale = viewState.getFar() * 2.0 * viewState.getTanHalfFOVY() / viewState.getHeight();
 
         ScreenPos samplePos = screenPos;
@@ -944,8 +1002,7 @@ namespace massif {
                     return std::min(scale, maxScale);
                 }
             }
-            // No ground under the touch - the view is aimed at the sky, or past the horizon. The
-            // centre of the screen is the fallback, and the far plane the last resort.
+            // No ground under the touch: fall back to the screen centre, then to the far plane.
             samplePos = ScreenPos(viewState.getHalfWidth(), viewState.getHalfHeight());
         }
         return maxScale;
@@ -956,12 +1013,7 @@ namespace massif {
         return viewState.getProjectionSurface()->calculateMapPos(pos);
     }
 
-    /**
-     * The point a zoom or a rotation turns about: what is under the fingers when the map is
-     * there, the focus otherwise. A missing ground hit must NOT cancel the gesture - that is what
-     * left the map frozen with the camera close to the terrain, where half the screen is sky or
-     * ground past the far plane.
-     */
+    // A missing ground hit falls back to the focus rather than cancelling the gesture (camera close to terrain).
     MapPos TouchHandler::calculatePivotPos(const ScreenPos& screenPos, const ViewState& viewState) const {
         if (_options->getPivotMode() == PivotMode::PIVOT_MODE_TOUCHPOINT && isValidScreenPosition(screenPos, viewState)) {
             return mapScreenPosition(screenPos, viewState);
@@ -982,10 +1034,17 @@ namespace massif {
         if (std::isnan(cglib::norm(worldPos))) {
             return 0;
         }
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         cglib::ray3<double> ray(viewState.getCameraPos(), worldPos - viewState.getCameraPos());
         double t = 0;
-        if (terrainOptions->getElevationManager()->intersectRay(ray, t) && t > 0) {
+        if (elevationManager->intersectRay(ray, t) && t > 0) {
             return ray(t)(2);
+        }
+        // No hit (camera under terrain, or DEM not decoded yet): anchor on the focus height, not sea level.
+        double focusHeight = 0;
+        const cglib::vec3<double>& focusPos = viewState.getFocusPos();
+        if (elevationManager->getDisplayHeightCached(focusPos(0), focusPos(1), focusHeight)) {
+            return focusHeight;
         }
         return 0;
     }
@@ -996,9 +1055,7 @@ namespace massif {
 
     void TouchHandler::handleClick(const ClickInfo& clickInfo, const ScreenPos& screenPos) {
         ViewState viewState = _mapRenderer->getViewState();
-        // A touch aimed at the SKY has no ground position - the ray never meets the plane - but it
-        // is still a ray, and layers anchored in the sky (CelestialLayer) live along it. Ask the
-        // layers with the ray alone in that case; there is no map position to report afterwards.
+        // A touch aimed at the sky has no ground position but still hits sky-anchored layers (CelestialLayer) by ray.
         bool groundHit = isValidScreenPosition(screenPos, viewState);
         std::vector<RayIntersectedElement> results;
         MapPos mapPos;
@@ -1018,15 +1075,13 @@ namespace massif {
         std::stable_sort(results.begin(), results.end(), RayIntersectedElementComparator(viewState));
         std::reverse(results.begin(), results.end());
 
-        // Process the results
         for (const RayIntersectedElement& intersectedElement : results) {
             if (intersectedElement.getLayer()->processClick(clickInfo, intersectedElement, viewState)) {
                 return;
             }
         }
 
-        // Click was ignored by layers, call map event listener. Nothing to report for a touch
-        // that never reached the ground.
+        // Click was ignored by layers, call map event listener, unless it never reached the ground.
         if (!groundHit) {
             return;
         }
@@ -1052,8 +1107,7 @@ namespace massif {
         _swipe2 = cglib::vec2<float>(0, 0);
         _prevScreenPos1 = screenPos1;
         _prevScreenPos2 = screenPos2;
-        // First person: two fingers MOVE, and there is nothing to guess between - a pinch and a
-        // two-finger rotation are map gestures, and this control scheme has neither.
+        // First person has no pinch or rotation, so there is nothing to guess.
         _gestureMode = (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON ? DUAL_POINTER_MOVE : DUAL_POINTER_GUESS);
         ScreenPos middlePos((screenPos1.getX() + screenPos2.getX()) * 0.5f, (screenPos1.getY() + screenPos2.getY()) * 0.5f);
         ViewState viewState = _mapRenderer->getViewState();
@@ -1081,8 +1135,7 @@ namespace massif {
     void TouchHandler::MapRendererListener::onMapChanged(MapMoveReason::MapMoveReason reason) {
         if (auto touchHandler = _touchHandler.lock()) {
             touchHandler->noteMapMoved(reason);
-            // NO _mutex here: this runs on the render thread, which holds the renderer's own lock,
-            // and a gesture holds _mutex while it asks the renderer for the view state.
+            // No _mutex: the render thread holds the renderer lock, and a gesture holds _mutex while asking for the view state.
             touchHandler->_idling.store(false);
             if (touchHandler->_cameraEvents.load()) {
                 return; // postpone listener call, will be called together with onMapInteraction
@@ -1126,7 +1179,6 @@ namespace massif {
     const float TouchHandler::INCHES_TO_TILT_DELTA = 32.0f;
 
     const double TouchHandler::VIEW_AXIS_EPSILON = 1.0e-3;
-    // A full turn takes about two swipes across a phone, which is what a look control wants.
 
     const float TouchHandler::INCHES_TO_ZOOM_DELTA = 1.0f;
 
@@ -1135,6 +1187,8 @@ namespace massif {
     const std::chrono::milliseconds TouchHandler::DUAL_KINETIC_HOLD_DURATION = std::chrono::milliseconds(100);
 
     const std::chrono::milliseconds TouchHandler::DUAL_STOP_HOLD_DURATION = std::chrono::milliseconds(75);
+    // A finger that rested this long before lifting meant to stop there: no glide.
+    const std::chrono::milliseconds TouchHandler::LOOK_KINETIC_REST = std::chrono::milliseconds(80);
 
     const std::chrono::milliseconds TouchHandler::ZOOM_GESTURE_ANIMATION_DURATION = std::chrono::milliseconds(250);
 

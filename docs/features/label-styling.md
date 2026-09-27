@@ -262,12 +262,12 @@ builds of this fork.
 
 ## 2D and 3D from one style
 
-`text-orientation-mode` is fixed when the tile is decoded, so it cannot be switched by a style
+`text-placement` is fixed when the tile is decoded, so it cannot be switched by a style
 parameter — branch on the SDK's own
 [`render::3d`](/docs/features/style-parameters#the-render-mode-variable-render3d) instead:
 
 ```css
-#road_label { text-orientation-mode: [render::3d] ? billboard-line : line; }
+#road_label { text-placement: [render::3d] ? billboard-line : line; }
 ```
 
 ## See also

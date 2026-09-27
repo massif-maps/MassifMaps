@@ -14,12 +14,8 @@
 namespace massif {
 
     /**
-     * What a tile download reports, as one object.
-     *
-     * A listener has four callbacks with four different arguments; a facade event carries a payload,
-     * and one payload class over the four is what lets a binding subscribe to "the download" rather
-     * than to each of them. Only the fields the event in question fills are meaningful - `progress`
-     * on download.progress, `tile` on download.failed.
+     * What a tile download reports, as one facade event payload shared by the four listener callbacks.
+     * Only the fields the event fills are meaningful: `progress` on download.progress, `tile` on download.failed.
      */
     class TileDownloadInfo {
     public:

@@ -11,6 +11,7 @@ namespace massif {
     }
 
     void VectorTileDecoder::notifyDecoderChanged() {
+        _configVersion++;
         std::vector<std::shared_ptr<OnChangeListener> > onChangeListeners;
         {
             std::lock_guard<std::mutex> lock(_onChangeListenersMutex);
@@ -22,6 +23,7 @@ namespace massif {
     }
         
     void VectorTileDecoder::notifyDecoderRefreshed() {
+        _configVersion++;
         std::vector<std::shared_ptr<OnChangeListener> > onChangeListeners;
         {
             std::lock_guard<std::mutex> lock(_onChangeListenersMutex);

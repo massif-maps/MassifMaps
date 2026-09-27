@@ -52,10 +52,8 @@ namespace massif {
         const MapPos& getClickPos() const;
         
         /**
-         * Returns the position on the clicked element, that is close to the click position.
-         * For points it will always be the center position, for lines it will be the closest point
-         * on the line, for billboards it will be the anchor point and for polygons it's equal to
-         * getClickPos().
+         * Returns the position on the clicked element that is closest to the click position: the center
+         * for points, the closest point for lines, the anchor point for billboards, getClickPos() for polygons.
          * @return The element click position in the coordinate system of the data source.
          */
         const MapPos& getElementClickPos() const;

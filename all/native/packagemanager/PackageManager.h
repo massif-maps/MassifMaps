@@ -42,11 +42,9 @@ namespace massif {
     class PackageHandler;
 
     /**
-     * Base class for offline map package manager. Package manager supports downloading/removing packages.
-     * It can be queried about available packages and status of the packages. It works asynchronously in
-     * the background and can inform app when packages have been updated.
-     * It works persistently. If a package download is started and app is closed, the download will resume
-     * when the package manager is started next time.
+     * Base class for offline map package manager: downloads, imports and removes packages asynchronously
+     * in the background and notifies the app of updates. Tasks are persistent: a download interrupted by
+     * closing the app resumes when the package manager is started next time.
      */
     class PackageManager {
     public:
@@ -69,7 +67,7 @@ namespace massif {
 
             /**
              * Called when a package has been added, removed or updated.
-             * @param type The type of changes.
+             * @param changeType The type of changes.
              */
             virtual void onPackagesChanged(PackageChangeType changeType) = 0;
 

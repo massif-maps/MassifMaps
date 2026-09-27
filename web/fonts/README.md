@@ -1,6 +1,6 @@
 # Fonts the web build ships
 
-One text face, preloaded into the wasm module's virtual filesystem at `/fonts` and used as the
+Roboto, regular and bold (the peak finder bench draws a selected name bold), preloaded into the wasm module's virtual filesystem at `/fonts` and used as the
 fallback for any face a style names that the build does not carry. Without it the module renders
 geometry and **no labels at all** — which is what the CI build did before this directory existed,
 since `web/demo/fonts/` is gitignored and only ever held fonts dropped in by hand.
@@ -8,6 +8,7 @@ since `web/demo/fonts/` is gitignored and only ever held fonts dropped in by han
 | File | Face | Licence |
 |---|---|---|
 | `Roboto.ttf` | Roboto Regular, version 2.138 | Apache License 2.0 |
+| `Roboto-Bold.ttf` | Roboto Bold, version 1.100141 | Apache License 2.0 |
 
 Roboto is © 2011 Google Inc., licensed under the Apache License 2.0
 (<http://www.apache.org/licenses/LICENSE-2.0>) — the licence and its URL are recorded in the font's

@@ -19,10 +19,7 @@ namespace massif::mvt {
     struct ValueObject;
 
     /**
-     * A style value. Beyond the scalars, a value can be an array or an object: a style parameter
-     * may hold a table the style indexes into - get([param::poi_colors], [class]) - so an app can
-     * own a colour per POI class without the style declaring one parameter per class.
-     *
+     * A style value: a scalar, or an array/object a style parameter can hold as a table (get([param::poi_colors], [class])).
      * The containers are shared and immutable, so copying a Value stays cheap.
      */
     using Value = std::variant<std::monostate, bool, long long, double, std::string, std::shared_ptr<const ValueArray>, std::shared_ptr<const ValueObject>>;
@@ -51,8 +48,7 @@ namespace massif::mvt {
     bool isContainerValue(const Value& value);
 
     /**
-     * A value as JSON, and back. This is how a container survives the places a value is carried as
-     * text - the Mapnik XML a style compiles to, and the string-valued parameter API.
+     * A value as JSON, and back, for where a container is carried as text (Mapnik XML, the string parameter API).
      */
     std::string valueToJSON(const Value& value);
     Value valueFromJSON(const std::string& json);
@@ -63,11 +59,8 @@ namespace massif::mvt {
     long long getValueSize(const Value& container);
 
     /**
-     * A hash that agrees with '=': two values hash alike exactly when the operator calls them
-     * equal. Numbers therefore hash as doubles, whatever alternative holds them, and a string never
-     * hashes like a number. This is what lets a decoded tile carry the value a style parameter is
-     * compared with as 64 bits, so a selection change is a comparison of two hashes rather than a
-     * decode. Above 2^53 two long longs can collide, as they already compare equal to one double.
+     * A hash that agrees with '=': numbers hash as doubles whatever alternative holds them, and a string never
+     * hashes like a number. Above 2^53 two long longs can collide, as they already compare equal as doubles.
      */
     std::uint64_t hashValue(const Value& val);
 }

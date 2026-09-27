@@ -110,7 +110,7 @@ which a JSON spec has no form for. Build it, then
 [surface API](/docs/api/):
 
 ```java
-Massif.adopt("source", "floorplan", source);
+Massif.adopt("floorplan", source);
 map.addLayer("floorplan", Spec.of("raster").set("source", "floorplan"));
 ```
 :::
@@ -121,7 +121,7 @@ map.addLayer("floorplan", Spec.of("raster").set("source", "floorplan"));
   pixels. A mirrored overlay is almost always this.
 - **`zoomLevelBias`** compensates for the upsampling a high-DPI screen applies. Without it a
   floorplan looks blurry at every zoom.
-- **`TILE_SUBSTITUTION_POLICY_VISIBLE`** stops the layer standing in with a stretched neighbouring
-  tile outside the overlay's own extent.
+- **`TILE_SUBSTITUTION_POLICY_VISIBLE`** lets a loading tile be stood in for only by tiles already
+  visible, not by everything cached — the policy recommended for a local, low-latency source.
 - The overlay is an ordinary raster layer, so `opacity` and layer order work as usual — and it
   drapes onto [3D terrain](/docs/features/3d-terrain) like any other raster.

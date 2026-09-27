@@ -18,6 +18,7 @@
 
 namespace massif {
     class Bitmap;
+    class CelestialLabel;
     class CelestialLayer;
     class CelestialObject;
     class GLResourceManager;
@@ -30,15 +31,9 @@ namespace massif {
     class ViewState;
 
     /**
-     * Draws the objects of a CelestialLayer.
-     *
-     * Sprites are billboards expanded in the vertex shader and batched by bitmap, so any number of
-     * objects sharing one bitmap - or none, the plain disc case - is a single draw call. Arcs are
-     * line strips built once per change and drawn together.
-     *
-     * Depth: objects are drawn depth-TESTED but do not write depth. A direction-anchored object is
-     * placed just inside the far plane, so the map and the terrain in front of it cover it exactly
-     * as they should, while it never occludes anything itself.
+     * Draws the objects of a CelestialLayer: sprites batched by bitmap, arcs widened in the vertex shader
+     * (line width is ignored on WebGL). Depth-tested but never depth-writing, so the map covers them;
+     * occludedByMap off disables the test.
      */
     class CelestialRenderer {
     public:
@@ -54,13 +49,15 @@ namespace massif {
         void calculateRayIntersectedElements(const std::shared_ptr<CelestialLayer>& layer, const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
 
     private:
-        // A sprite ready to draw: its world position for this frame, and the size that position
-        // implies in world units.
         struct SpriteInstance {
             std::shared_ptr<CelestialObject> object;
             cglib::vec3<double> worldPos;
-            float halfSize;                 // world units at worldPos
+            float halfWidth;                // world units at worldPos
+            float halfHeight;
+            float shiftRight;               // the quad's centre off worldPos, world units, on screen
+            float shiftUp;
             float softness;
+            bool occluded;
             unsigned char color[4];
             std::shared_ptr<Bitmap> bitmap;
         };
@@ -69,6 +66,7 @@ namespace massif {
         void setupFogUniforms(GLuint progId, const ViewState& viewState) const;
         bool resolveWorldPos(const std::shared_ptr<CelestialObject>& object, const ViewState& viewState, cglib::vec3<double>& worldPos, double& distance) const;
         void buildSprites(const ViewState& viewState, float opacity, std::vector<SpriteInstance>& instances) const;
+        bool buildLabel(const std::shared_ptr<CelestialLabel>& label, const ViewState& viewState, double distance, SpriteInstance& instance) const;
         void drawSprites(const std::vector<SpriteInstance>& instances, const ViewState& viewState);
         void drawArcs(const ViewState& viewState, float opacity);
         void calculateRayIntersectedArcs(const std::shared_ptr<CelestialLayer>& layer, const cglib::ray3<double>& ray, const cglib::vec3<double>& rayDir, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
@@ -81,8 +79,7 @@ namespace massif {
         static const std::string ARC_FRAGMENT_SHADER_PREFIX;
         static const std::string ARC_FRAGMENT_SHADER_MAIN;
 
-        // How far inside the far plane an infinitely distant object is placed. Far enough that the
-        // map is always in front of it, close enough that it never clips.
+        // Fraction of the far plane an infinitely distant object sits at: behind the map, never clipped.
         static const double INFINITE_DISTANCE_FACTOR;
 
         std::shared_ptr<Shader> _spriteShader;

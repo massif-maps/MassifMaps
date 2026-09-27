@@ -37,10 +37,8 @@ namespace massif {
          */
         std::string getFilterExpression() const;
         /**
-         * Sets the string based search expression.
-         * A various conditions based on the fields and geometry can be used.
-         * For example, "name='X' OR (name='Y' AND gender IS NOT NULL)" is a valid expression,
-         * assuming elements contains fields 'name' and 'gender'.
+         * Sets the string based search expression over fields and geometry,
+         * e.g. "name='X' OR (name='Y' AND gender IS NOT NULL)".
          * Note: This feature is currently in experimental state and may change in the future!
          * @param expr The string based expression to use.
          */

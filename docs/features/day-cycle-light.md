@@ -126,8 +126,9 @@ three different kinds have no order anybody would guess:
 ]
 ```
 
-That **is** the built-in curve — MapBox Standard's four light setups at the sun heights it states
-them for. Passing an empty list selects exactly it.
+That **is** the built-in curve for a setting sun — MapBox Standard's four light setups at the sun
+heights it states them for. A rising sun gets Standard's dawn at the two twilight stops instead
+(ambient `#ffecdc` × 0.75, sun `#feca8b` × 0.5). Passing an empty list selects that built-in pair.
 
 The night ambient is the one value that is **not** Standard's own (`hsl(217,100%,11%)`). Their night
 preset keeps a directional light 30° above the horizon whatever the hour — an artistic moon — and
@@ -143,7 +144,7 @@ reproduce what Standard *renders*, not what it states.
 - The doubled twilight stop is deliberate: it holds the light flat from 3° to 12°, so the sun passes
   **through** dusk instead of crossing it.
 - `dayCycleRisingLightStops` gives a rising sun its own curve, which is how dawn differs from dusk
-  at the same height. Left empty, the one curve is used all day.
+  at the same height. Left empty while `dayCycleLightStops` is set, that one curve is used all day.
 
 Set it and everything downstream follows — the 2D grade, the sun and ambient the buildings and the
 terrain are lit with, and `view::brightness`. There is no second theme to keep in step.
@@ -155,8 +156,8 @@ terrain are lit with, and `view::brightness`. There is no second theme to keep i
 however high the strength goes. The renderer says so if you read its log:
 
 ```
-MapRenderer: shadows off    (strength 1.00, terrain lighting 1, cover tiles 0)
-MapRenderer: shadows ACTIVE (strength 1.00, terrain lighting 1, cover tiles 1)
+MapRenderer: shadows off (strength 1.00, requested map 2048 x 2 cascades, terrain lighting 1, cover tiles 0)
+MapRenderer: shadows ACTIVE (strength 1.00, requested map 2048 x 2 cascades, terrain lighting 1, cover tiles 1)
 ```
 
 A flat city still wants one — it is there for the light, not the relief:

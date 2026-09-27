@@ -39,10 +39,8 @@ namespace massif {
     }
     
     /**
-     * A tile data source that loads tiles from a local Sqlite database.
-     * The database must contain table "tiles" with the following fields:
-     * "zoom_level" (tile zoom level), "tile_column" (tile x coordinate),
-     * "tile_row" (tile y coordinate), "tile_data" (compressed tile image).
+     * A tile data source that loads tiles from a local Sqlite database, whose table "tiles" must have the fields
+     * "zoom_level", "tile_column" (x), "tile_row" (y) and "tile_data" (compressed tile image).
      */
     class MBTilesTileDataSource : public TileDataSource {
     public:
@@ -98,6 +96,9 @@ namespace massif {
         static std::unique_ptr<sqlite3pp::database> OpenDatabase(const std::string& path);
 
         bool loadZoomLevels(int& minZoom, int& maxZoom) const;
+        /** Caches a maximum the caller named; an unnamed one is left to the database. */
+        void cacheDeclaredMaxZoom(int maxZoom);
+        void cacheZoomLevels() const;
         bool loadDataExtent(MapBounds& mapBounds) const;
 
         MBTilesScheme::MBTilesScheme _scheme;

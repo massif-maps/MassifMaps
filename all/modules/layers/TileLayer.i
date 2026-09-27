@@ -59,6 +59,7 @@
 %ignore massif::TileLayer::shadowCasterFadeSignature;
 %ignore massif::TileLayer::prepareTerrainDrapeFrame;
 // Internal cross-layer terrain drape / shadow plumbing, driven by MapRenderer.
+%ignore massif::TileLayer::getTerrainDecodePendingCount;
 %ignore massif::TileLayer::collectDrapeLayers;
 %ignore massif::TileLayer::setExternalDrapeTarget;
 %ignore massif::TileLayer::setExternalDrapeTiles;

@@ -35,9 +35,10 @@ public class Switch2D3DExample extends MapExample {
     private static final long SOURCE_HILLSHADE = 1;
     private static final long SOURCE_VECTOR = 2;
 
-    /** What the 3D view looks AT. The viewpoint it is seen from is derived - see frameFlatStart. */
+    /** Where the map opens; later switches start from wherever the user has got to. */
     private static final Position SUMMIT = new Position(7.6586, 45.9763);
 
+    /** The opening zoom only. A switch keeps the zoom it is given - see fly(). */
     private static final float ZOOM = 12.5f;
     /** One rotation for both states: north up flat, looking north tilted. A switch that also spun
      *  the map 180 degrees made it impossible to tell where you had come out. */
@@ -276,10 +277,27 @@ public class Switch2D3DExample extends MapExample {
     }
 
     private void fly() {
-        // Where the camera IS, not what it is looking at: at tilt 20 the focus is kilometres out in
-        // front, so re-centring on it would jump the map forward.
-        Position target = in3D ? SUMMIT : map.camera().eyePosition();
-        map.camera().animate(seconds).moveTo(target, ZOOM, ROTATION, in3D ? TILT_3D : TILT_2D);
+        // Sinking centres on the eye's ground point (at tilt 20 the focus is km ahead); rising is the
+        // inverse, or every round trip drifts back by that offset.
+        Position target = in3D ? focusPutting3DCameraOver(map.camera().position())
+                               : map.camera().eyePosition();
+        // Zoom carries across so tilt alone sets the eye height and a round trip returns where it started.
+        map.camera().animate(seconds).moveTo(target, map.camera().zoom(), ROTATION, in3D ? TILT_3D : TILT_2D);
+    }
+
+    /**
+     * Focus whose 3D camera stands over pos. The offset depends on viewport, zoom and tilt, so probe
+     * it; both moves are instant in one callback, so no frame is drawn in between.
+     */
+    private Position focusPutting3DCameraOver(Position pos) {
+        Position was = map.camera().position();
+        float wasZoom = map.camera().zoom();
+        float wasRotation = map.camera().rotation();
+        float wasTilt = map.camera().tilt();
+        map.camera().moveTo(pos, wasZoom, ROTATION, TILT_3D);
+        Position eye = map.camera().eyePosition();
+        map.camera().moveTo(was, wasZoom, wasRotation, wasTilt);
+        return new Position(2 * pos.lng - eye.lng, 2 * pos.lat - eye.lat);
     }
 
     /** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */

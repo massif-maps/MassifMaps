@@ -16,15 +16,9 @@ namespace massif {
     class ElevationTileGrid;
 
     /**
-     * A tile transformer that adds terrain to a BASE transformer - the plane or the globe - rather
-     * than replacing it. The shape of the world stays the base's: every position, normal, vector
-     * and metres-to-tile-local conversion is forwarded, because tile geometry is built FLAT and the
-     * draping shader supplies the displacement (see TerrainVertexTransformer::calculatePoint).
-     * What this adds is the adaptive subdivision that flat geometry needs before the shader can
-     * displace it, and a tile bounding box grown by the elevation range.
-     * Subdivision thresholds are in world units and split by binary halving, so the subdivision
-     * points of different-zoom tiles coincide.
-     * Internal class, not exposed in the public API.
+     * Adds terrain to a base transformer (plane or globe): geometry is built flat and displaced by the shader,
+     * so this only adds subdivision and an elevation-grown bbox. Thresholds are in world units, split by
+     * binary halving, so different-zoom tiles subdivide at the same points. Internal, not in the public API.
      */
     class TerrainTileTransformer final : public vt::TileTransformer {
     public:
@@ -44,8 +38,7 @@ namespace massif {
             virtual void tesselateTriangles(const std::size_t* indices, std::size_t count, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& tesselatedIndices) const override;
 
         private:
-            // The terrain half of each tesselation. The public entry points run these and then
-            // hand the result to the base, which is what curves it on a globe.
+            // The terrain half of each tesselation; the public entry points then hand the result to the base.
             void tesselateLineStringTerrain(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const;
             void tesselateLabelLineStringTerrain(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const;
             void tesselateTrianglesTerrain(const std::size_t* indices, std::size_t count, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& tesselatedIndices) const;
@@ -53,13 +46,11 @@ namespace massif {
             double calculateLocalHeight(const cglib::vec2<float>& pos) const;
 
             void tesselateSegment(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, float dist, float threshold, vt::VertexArray<cglib::vec2<float>>& points) const;
-            // Splits a segment only where the terrain under it leaves the chord, until the residual
-            // sag is under the tolerance. A cut costs one elevation sample, so a valley floor is not
-            // cut at all - unlike the lattice, whose cost is the cell count whatever the relief.
+            // Splits only where the terrain leaves the chord, until the sag is under tolerance; unlike the
+            // lattice, a flat valley floor is not cut at all.
             void tesselateSegmentBySag(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, double h0, double h1, float dist, int depth, vt::VertexArray<cglib::vec2<float>>& points) const;
-            // Splits a segment where it crosses surface cell edges and each cell's diagonal, so
-            // every sub-segment lies inside ONE surface triangle. False when the segment spans too
-            // many cells to be worth it, and the caller falls back to halving by threshold.
+            // Splits at surface cell edges and diagonals so each sub-segment lies in one surface triangle.
+            // False when it spans too many cells; the caller then halves by threshold.
             bool tesselateSegmentOnLattice(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, vt::VertexArray<cglib::vec2<float>>& points) const;
             void tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& indices) const;
 
@@ -97,21 +88,17 @@ namespace massif {
         virtual cglib::vec3<double> calculateElevatedPos(const cglib::vec3<double>& pos, double height) const override { return _base->calculateElevatedPos(pos, height); }
 
     private:
-        // Metres per internal unit at the tile's centre latitude - the Mercator stretch, which the
-        // elevation range from getMinMaxDisplayHeight carries and the base's world does not.
+        // At the tile's centre latitude: the Mercator stretch the elevation range carries and the base's world does not.
         static double metersPerInternalUnit(const vt::TileId& tileId);
 
         static constexpr float FLAT_HEIGHT_RANGE_EPSILON = 0.001f;
-        // Regular-grid draped LINES subdivide to this fraction of a surface cell (< 1 = finer) so
-        // they stop chording the cell's anti-diagonal fold. Lower = fewer cracks, more vertices.
+        // Draped lines subdivide to this fraction of a surface cell so they stop chording its diagonal fold.
         // Triangles stay at one cell: their sag is bounded and area content costs 1/factor^2.
         static constexpr double REGULAR_GRID_LINE_SUBDIVISION = 0.35;
-        // A segment crossing more cells than this is split by halving instead of by lattice
-        // crossings - the crossing list would cost more than it saves.
+        // Past this, halving is cheaper than the lattice crossing list.
         static constexpr int MAX_LATTICE_SPLITS_PER_SEGMENT = 64;
 
-        // Recursion guard for the sag-driven line split: 2^10 sub-segments is far past anything a
-        // real DEM asks for, and it bounds the work a pathological cliff can demand.
+        // Recursion guard for the sag split: bounds the work a pathological cliff can demand.
         static constexpr int MAX_SAG_SPLIT_DEPTH = 10;
 
         const std::shared_ptr<const vt::TileTransformer> _base;

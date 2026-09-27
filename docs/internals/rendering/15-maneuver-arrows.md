@@ -47,7 +47,7 @@ tiling time, in tile pixels, which is the unit that matters.
 
 ## Styling contract
 
-Two rules, no assets:
+Four rules, no assets:
 
 ```css
 #maneuver::case     { line-color: @casing; line-width: linear([view::zoom], (12, 3.9), (17, 13));
@@ -107,9 +107,10 @@ is what maplibre does — and every one of these had to be fought:
 - **Terrain drape clipped it.** With `marker-clip: true` (plain geometry) the head is baked into the
   per-tile drape texture and cut in half at every tile edge it overhangs. A bigger layer buffer does
   not help — the cut is the drape, not the tile data. `--es drape false` renders it whole, which is
-  how this was pinned down. (Also worth knowing: `GeoJSONVectorTileDataSource`'s layer buffer is a
-  **fraction of a tile**, default 4 — not pixels, as its doc comment says; 64 wraps the `uint16` in
-  `MBVTTileBuilder::makeTileOptions` to zero.)
+  how this was pinned down. (Also worth knowing: `GeoJSONVectorTileDataSource`'s layer buffer, default 4, is in
+  tile pixels now — `MBVTTileBuilder::createLayer` divides by `TILE_PIXELS`. When this was pinned
+  down it was applied as a fraction of a tile, and 64 wrapped the `uint16` in `makeTileOptions` to
+  zero.)
 - **`marker-clip: false`** avoids the drape (labels are not baked into it) but puts the head on the
   label path, where it is sized differently and two markers on one point collide over a label id.
 
@@ -127,7 +128,7 @@ what the demo does (`DemoMap.createManeuversLayer`), because it works with any s
 **A slot inside the base style.** With a `CompositeVectorTileLayer` base map,
 `addVectorDataSource("maneuver", source)` puts the arrow at the position of the `maneuver` entry in
 the style's `layers` array — over the roads, under the labels ([09-composite-layer.md](09-composite-layer.md)).
-This is the production wiring, and it needs the two rules above to live in the style rather than in
+This is the production wiring, and it needs the rules above to live in the style rather than in
 an inline CartoCSS string. Note that with this wiring the route line itself should move into a tile
 source too, or the arrow (inside the base layer) ends up under a route drawn as a `VectorLayer`.
 

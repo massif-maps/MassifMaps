@@ -22,6 +22,9 @@ using namespace massif;
 
 #include "TestCheck.h"
 
+void testTargetTileZoomHysteresis();
+void testStyleTileZoomStaleness();
+
 void testTileStyleZoom() {
     // The near field: the tile IS the zoom the camera asked for, so nothing moves. Every style that
     // renders correctly today does so at this case, and it has to stay byte-identical.
@@ -46,4 +49,66 @@ void testTileStyleZoom() {
     // Before the first cull the target is -1, and every tile has to style as itself rather than
     // collapse to zoom 0.
     TEST_CHECK(calculateStyleTileZoom(12, -1, 2) == 12, "an unset target leaves the tile's own zoom");
+
+    testTargetTileZoomHysteresis();
+    testStyleTileZoomStaleness();
+}
+
+// A target-zoom change re-decodes every visible tile, and in terrain mode the zoom wobbles around
+// a boundary (12.05 -> 11.95 and back), so it needs hysteresis.
+void testTargetTileZoomHysteresis() {
+    const double H = 0.15;
+
+    TEST_CHECK(calculateTargetTileZoom(12.05, -1, H) == 12, "an unset target takes the camera's level");
+    TEST_CHECK(calculateTargetTileZoom(11.95, -1, H) == 11, "and does so below the boundary too");
+
+    TEST_CHECK(calculateTargetTileZoom(12.05, 12, H) == 12, "a zoom inside the level holds it");
+    TEST_CHECK(calculateTargetTileZoom(12.99, 12, H) == 12, "right up to the top of it");
+
+    TEST_CHECK(calculateTargetTileZoom(11.95, 12, H) == 12, "a tenth of a level below the boundary holds");
+    TEST_CHECK(calculateTargetTileZoom(11.97, 12, H) == 12, "and holds on the way back");
+    TEST_CHECK(calculateTargetTileZoom(12.05, 11, H) == 11, "the same wobble the other way round holds too");
+
+    TEST_CHECK(calculateTargetTileZoom(11.85, 12, H) == 11, "clear of the margin, the level follows");
+    TEST_CHECK(calculateTargetTileZoom(12.15, 11, H) == 12, "and upwards at the margin as well");
+    TEST_CHECK(calculateTargetTileZoom(14.50, 11, H) == 14, "a jump lands where it lands, not one level on");
+
+    TEST_CHECK(calculateTargetTileZoom(11.99, 12, 0.0) == 11, "a zero margin follows every crossing");
+}
+
+// Whether a cached tile still styles the way the camera asks. Tasks in flight survive a
+// target-zoom change and land looking fresh; time-based validity cannot see that, the stamp can.
+void testStyleTileZoomStaleness() {
+    TEST_CHECK(isStyleTileZoomCurrent(12, 12, 12, 2), "a tile decoded at the current target is current");
+    TEST_CHECK(isStyleTileZoomCurrent(11, 13, 13, 2), "a lifted tile is current while the lift holds");
+
+    // Queued at target 13 (lift 2, so styled 13), landed after the camera went to 11.
+    TEST_CHECK(!isStyleTileZoomCurrent(11, 13, 11, 2), "a tile styled for the zoom the camera left is stale");
+    TEST_CHECK(!isStyleTileZoomCurrent(10, 12, 10, 2), "and so is one that outlived a smaller step");
+
+    TEST_CHECK(isStyleTileZoomCurrent(11, 11, 11, 2), "the re-decode settles it");
+
+    TEST_CHECK(!isStyleTileZoomCurrent(11, 13, 13, 0), "dropping the lift invalidates what the lift styled");
+
+    // No false staleness on the horizon band, which is most of a tilted frame.
+    TEST_CHECK(isStyleTileZoomCurrent(9, 9, 13, 2), "a tile past the lift stays current as the target moves");
+
+    // Target -1 before the first cull must not re-fetch the whole map.
+    TEST_CHECK(isStyleTileZoomCurrent(12, 12, -1, 2), "an unset target is not staleness");
+
+    // Why VectorTileLayer::FetchTask::loadTile reads the target at decode time, not queue time.
+    TEST_CHECK(calculateStyleTileZoom(17, 19, 2) == 19, "queued under the old target, it styled at 19");
+    TEST_CHECK(!isStyleTileZoomCurrent(17, 19, 17, 2), "which the settled camera then threw away");
+    TEST_CHECK(calculateStyleTileZoom(17, 17, 2) == 17, "read at decode time it styles at 17 instead");
+    TEST_CHECK(isStyleTileZoomCurrent(17, 17, 17, 2), "and is not re-decoded at all");
+
+    TEST_CHECK(calculateStyleTileZoom(15, 17, 2) == 17, "zooming in, a coarse tile still lifts");
+
+    // A crossing stales only the lifted tiles, which is why a per-tile stamp beats wiping the cache.
+    TEST_CHECK(!isStyleTileZoomCurrent(15, 17, 16, 2), "a lifted tile is staled by the crossing");
+    TEST_CHECK(isStyleTileZoomCurrent(16, 16, 16, 2), "a tile at the new target is untouched");
+    TEST_CHECK(isStyleTileZoomCurrent(13, 13, 16, 2), "and so is one past the lift");
+
+    TEST_CHECK(isStyleTileZoomCurrent(15, 15, 17, 0), "at lift 0 a crossing stales nothing");
+    TEST_CHECK(calculateStyleTileZoom(15, 17, 0) == 15, "because every tile styles at its own zoom");
 }

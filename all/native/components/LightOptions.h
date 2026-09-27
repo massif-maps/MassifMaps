@@ -53,7 +53,6 @@ namespace massif {
         float getSunAzimuth() const;
         /**
          * Sets the sun azimuth in degrees, measured clockwise from north (0 = north, 90 = east).
-         * The classic cartographic hillshade light comes from the north-west, which is the default.
          * @param azimuth The new sun azimuth in degrees.
          */
         void setSunAzimuth(float azimuth);
@@ -71,9 +70,8 @@ namespace massif {
         void setSunAltitude(float altitude);
 
         /**
-         * Sets the sun position from a date, a time and a location, using the standard
-         * solar position algorithm. This is a convenience wrapper that computes and stores
-         * the azimuth and the altitude; reading them back returns the computed values.
+         * Sets the sun position from a date, a time and a location, using the standard solar position
+         * algorithm; stores the computed azimuth and altitude.
          * @param year The year (for example 2026).
          * @param month The month, 1..12.
          * @param day The day of the month, 1..31.
@@ -108,12 +106,12 @@ namespace massif {
 
         /**
          * Returns the ambient light intensity.
-         * @return The ambient intensity. The default is 0.35.
+         * @return The ambient intensity. The default is 1.
          */
         float getAmbientIntensity() const;
         /**
-         * Sets the ambient light intensity, the amount of light reaching surfaces that face
-         * away from the sun. This is also the brightness floor inside shadows.
+         * Sets the ambient light intensity: light reaching surfaces facing away from the sun, and the
+         * brightness floor inside shadows.
          * @param intensity The new ambient intensity (clamped to 0..1).
          */
         void setAmbientIntensity(float intensity);
@@ -124,19 +122,15 @@ namespace massif {
          */
         Color getAmbientColor() const;
         /**
-         * Sets the ambient light color - the tint of the light reaching surfaces that face away
-         * from the sun, i.e. the colour of everything in shadow. White keeps the neutral grey
-         * shading; a cool blue is what makes a dusk or night scene read as lit by the sky rather
-         * than simply darker. Applies to the terrain surface and to 3D buildings alike.
+         * Sets the ambient light color: the tint of everything in shadow, on terrain and 3D buildings.
+         * White keeps neutral grey shading; a cool blue reads as sky-lit dusk or night.
          * @param color The new ambient color.
          */
         void setAmbientColor(const Color& color);
 
         /**
-         * Returns whether anything has SET the sun intensity, as opposed to leaving it at its
-         * default. 3D extrusions follow a stated sun; against the default they keep their own,
-         * which is what stops an unlit style's roofs summing past full light. Not part of the
-         * bound API - it exists for StyleEnvironment::resolveLighting.
+         * Returns whether the sun intensity was set; 3D extrusions follow only a stated sun, so an unlit
+         * style's roofs do not sum past full light. Not bound - for StyleEnvironment::resolveLighting.
          * @return True if setSunIntensity has been called.
          */
         bool isSunIntensityStated() const;
@@ -147,14 +141,8 @@ namespace massif {
          */
         bool isSunOverridingStyle() const;
         /**
-         * Sets whether this sun overrides the one a style states.
-         *
-         * A style may state its own sun - a converted MapBox style does, one direction per light
-         * preset - and by default that is what lights the map, so it looks as its source does with
-         * no application code at all. An application that moves the sun itself, a day/night cycle
-         * being the usual reason, sets this and its own azimuth and altitude win instead.
-         *
-         * Only the DIRECTION is affected. Intensities and colours merge as before.
+         * Sets whether this sun's direction overrides the one a style states (e.g. for an app-driven
+         * day/night cycle). Intensities and colours merge as before.
          * @param overriding True to let this object's sun win over the style's.
          */
         void setSunOverridingStyle(bool overriding);
@@ -165,39 +153,21 @@ namespace massif {
          */
         bool isDayCycleLightsEnabled() const;
         /**
-         * Sets whether the light COLOURS follow the sun's position instead of being stated.
-         *
-         * A map that moves its sun with the clock wants the light to change with it: warm and low
-         * at dawn, white overhead, orange against a blue sky at dusk, and a dim blue at night. With
-         * this on, the ambient and sun colours and their intensities are derived from the sun's own
-         * height, interpolated between the four light setups MapBox Standard ships - so an hour of
-         * 12 renders as its `day` preset and 19 as its `dusk`, with everything in between.
-         *
-         * It replaces what the style and this object state for those four values; the DIRECTION is
-         * still whatever the sun position says. Off, nothing is derived and the values are taken as
-         * before.
+         * Sets whether the ambient and sun colours and intensities are derived from the sun's height
+         * (the day-cycle curve), replacing what the style and this object state. The direction is unaffected.
          * @param enabled True to derive the light colours from the sun's height.
          */
         void setDayCycleLightsEnabled(bool enabled);
 
         /**
-         * Returns the day-cycle light curve - the "formula" an hour is turned into a look by.
+         * Returns the day-cycle light curve.
          * @return The stops, sorted by sun height. Empty means the built-in MapBox Standard curve.
          */
         std::vector<LightStop> getDayCycleLightStops() const;
         /**
-         * Sets the day-cycle light curve, replacing the built-in one.
-         *
-         * The list IS the formula: every colour on the map is derived from the light it returns -
-         * the grade a 2D surface takes, the sun and ambient a building and the terrain are lit
-         * with, and the brightness a style ramps its labels over - so one list changes the whole
-         * palette at every hour, in 2D and in 3D, with no second theme and no re-decode.
-         *
-         * Stops are read in the order given and should be sorted by sun height; below the first and
-         * above the last the curve holds, and between two it interpolates in linear colour space.
-         * Pass an empty list to go back to the built-in curve, which is MapBox Standard's own.
-         *
-         * Only used while DayCycleLightsEnabled is on.
+         * Sets the day-cycle light curve, from which every map colour at every hour derives. Clamped at
+         * the ends, interpolated in linear colour space between; empty restores the built-in (MapBox
+         * Standard) curve. Only used while DayCycleLightsEnabled is on.
          * @param stops The stops, sorted by sun height.
          */
         void setDayCycleLightStops(const std::vector<LightStop>& stops);
@@ -208,11 +178,8 @@ namespace massif {
          */
         std::vector<LightStop> getDayCycleRisingLightStops() const;
         /**
-         * Sets a separate curve for a RISING sun, so dawn need not look like dusk.
-         *
-         * Nothing but the direction of travel distinguishes the two at the same sun height, and
-         * MapBox states them as different lights - dawn warm and bright, dusk cold. Left empty, the
-         * one curve is used all day.
+         * Sets a separate curve for a rising sun, so dawn need not look like dusk. Empty uses the one
+         * curve all day.
          * @param stops The stops, sorted by sun height.
          */
         void setDayCycleRisingLightStops(const std::vector<LightStop>& stops);
@@ -223,11 +190,8 @@ namespace massif {
          */
         bool isTerrainLightingEnabled() const;
         /**
-         * Sets whether the sun lights the 3D terrain surface. When enabled, the terrain
-         * surface shader computes the slope from the elevation data and shades the map with
-         * the current sun position - a live hillshade that follows the time of day, replacing
-         * the pre-baked hillshade raster layer for the common case. Requires 3D terrain with
-         * draping enabled (TerrainOptions.setDrapeFillsEnabled).
+         * Sets whether the sun lights the 3D terrain surface: a live hillshade following the sun.
+         * Requires 3D terrain with draping enabled (TerrainOptions.setDrapeFillsEnabled).
          * @param enabled True to light the terrain surface with the sun.
          */
         void setTerrainLightingEnabled(bool enabled);
@@ -238,13 +202,8 @@ namespace massif {
          */
         float getShadowStrength() const;
         /**
-         * Sets how strongly the sun's shadows darken the terrain. Shadows are cast by the terrain
-         * itself onto the terrain, so ridges shade valleys at low sun. Requires terrain lighting.
-         *
-         * NOT the depth drawn: a shadow only hides the direct light, so this is multiplied by the
-         * sun's share of the scene light, which is 0 once the sun is under the horizon. 1 is
-         * therefore the physically correct shadow - MapBox's - and not a maximum: values above it
-         * exaggerate, and are clamped where the two are resolved together.
+         * Sets how strongly the sun's shadows darken the terrain; requires terrain lighting. Scaled by the
+         * sun's share of the light (0 below the horizon), so 1 is the physical (MapBox) shadow, not a maximum.
          * @param strength The new shadow strength (0 = off, 1 = physical; negatives clamped away).
          */
         void setShadowStrength(float strength);
@@ -255,10 +214,9 @@ namespace massif {
          */
         int getShadowMapSize() const;
         /**
-         * Sets the shadow map resolution in pixels, per cascade. Higher is sharper and costs
-         * more memory (size * size * 4 bytes per cascade) and fill rate. The cascades share one
-         * texture, so the size is clamped to what fits: 4096 / cascades.
-         * @param size The new shadow map size (clamped to 256..4096 / cascades).
+         * Sets the shadow map resolution in pixels, per cascade; costs size * size * 4 bytes per cascade.
+         * The cascades share one texture, so the renderer also caps it at the max texture size / cascades.
+         * @param size The new shadow map size (clamped to 256..4096).
          */
         void setShadowMapSize(int size);
 
@@ -268,12 +226,8 @@ namespace massif {
          */
         int getShadowCascades() const;
         /**
-         * Sets how many shadow map cascades are rendered (1 to 4). One map has to cover
-         * everything visible, so at a tilt its texels are metres of ground and shadow edges
-         * become staircases. Cascades split the view distance: the near one covers a small
-         * region with the same number of texels, the far one - where a screen pixel is tens of
-         * metres of ground anyway - keeps the coarse cover. Each cascade costs one more caster
-         * pass and one more page of shadow texture.
+         * Sets how many shadow map cascades split the view distance, sharpening near shadows at a tilt.
+         * Each costs one more caster pass and one more shadow texture page.
          * @param cascades The new cascade count (clamped to 1..4).
          */
         void setShadowCascades(int cascades);
@@ -285,12 +239,8 @@ namespace massif {
          */
         float getShadowDistance() const;
         /**
-         * Sets how far shadows reach from the camera, in multiples of the camera-to-focus
-         * distance - the same unit FogOptions uses for its range, and mapbox's shadow model. The
-         * shadow map has a fixed resolution, so the further shadows reach the coarser its texels;
-         * ground beyond the distance simply has no shadows, faded out over the last stretch. The
-         * unit is relative on purpose: the camera-to-focus distance follows the zoom, so one value
-         * holds from a city to a massif where a metric radius cannot. 0 uses the built-in 4.5.
+         * Sets how far shadows reach, in multiples of the camera-to-focus distance (as FogOptions ranges),
+         * so one value holds at every zoom. Further is coarser; beyond it shadows fade out. 0 uses 4.5.
          * @param distance The new shadow distance, in multiples of the camera-to-focus distance.
          */
         void setShadowDistance(float distance);
@@ -301,15 +251,8 @@ namespace massif {
          */
         int getShadowCasterMargin() const;
         /**
-         * Sets how many tiles wide the ring of extra shadow casters around the visible ones is.
-         * A mountain off screen still casts its shadow into the view, and without the ring that
-         * shadow disappears as you zoom in and the mountain leaves the visible set.
-         *
-         * The ring's REACH is not this value: it is the distance a shadow can be thrown, the
-         * relief over the tangent of the sun altitude. This value sets the ring's RESOLUTION - the
-         * ring is generated at the coarsest tile zoom that still spans that throw in this many
-         * tiles, so the reach holds at every zoom while the count stays bounded. Raising it makes
-         * the distant casters finer and costs one caster draw per extra tile; 0 removes the ring.
+         * Sets the resolution of the ring of off-screen shadow casters: its reach is the shadow throw,
+         * spanned in this many tiles. Higher is finer and costs one caster draw per tile; 0 removes the ring.
          * @param margin The new caster margin in tiles (clamped to 0..8).
          */
         void setShadowCasterMargin(int margin);
@@ -320,8 +263,7 @@ namespace massif {
          */
         float getShadowSoftness() const;
         /**
-         * Sets the shadow edge softness, as a radius in shadow-map texels. Larger values blur the
-         * shadow edges, which also hides the stair-stepping of a low-resolution shadow map.
+         * Sets the shadow edge softness, as a PCF radius in shadow-map texels.
          * @param softness The new softness (clamped to 0..8).
          */
         void setShadowSoftness(float softness);
@@ -332,14 +274,9 @@ namespace massif {
          */
         float getShadowBias() const;
         /**
-         * Scales the shadow depth bias: the depth slack that keeps a lit surface from shadowing
-         * itself. Too small gives acne (dark speckle on lit slopes), too large detaches shadows
-         * from what casts them.
-         *
-         * UNITLESS. The bias itself is MapBox's - a constant plus a term growing with the angle
-         * between the surface and the light, capped - in normalised light depth, so 1 is their
-         * shadow exactly and this only scales it.
-         * @param bias The new shadow bias scale.
+         * Scales MapBox's shadow depth bias (unitless; 1 = theirs). Too small gives acne, too large
+         * detaches shadows from their casters.
+         * @param bias The new shadow bias scale (clamped to 0..50).
          */
         void setShadowBias(float bias);
 
@@ -349,12 +286,8 @@ namespace massif {
          */
         float getShadowNormalOffset() const;
         /**
-         * Sets how far a receiving surface is pushed along its own normal before it looks itself
-         * up in the shadow map, in shadow-map texels. This is what keeps a wall from shadowing
-         * itself: the sample moves sideways instead of the depth being lifted, so the shadow stays
-         * attached to the foot of the building that casts it, where a depth bias large enough to
-         * clear the same acne detaches it. Applies to 3D extrusions; the terrain surface takes its
-         * normal per fragment and is unaffected. 0 disables it.
+         * Sets how far a receiver is pushed along its normal before the shadow lookup, which clears wall
+         * acne without detaching the shadow. 3D extrusions only; 0 disables it.
          * @param offset The new normal offset in shadow-map texels (clamped to 0..16).
          */
         void setShadowNormalOffset(float offset);

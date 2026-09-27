@@ -15,16 +15,9 @@ namespace massif {
     class ElevationProvider;
 
     /**
-     * A projection surface displaced by terrain elevation. Used when creating vector element draw
-     * data so that elements are placed on top of the terrain (the z coordinate of element positions
-     * is interpreted as height above terrain).
-     * It DECORATES a base surface - the plane or the globe - rather than replacing it: the shape of
-     * the world stays the base's and only the height is added, which works because an internal
-     * MapPos means the same place and the same height on both (18-globe.md).
-     * The elevation version is captured at construction time; VectorLayer creates a new instance
-     * when the version changes, which triggers a draw data rebuild through the existing
-     * projection-surface identity checks.
-     * Internal class, not exposed in the public API.
+     * Decorates a base surface (plane or globe) with terrain height, so vector element z is height above terrain.
+     * The elevation version is captured at construction; a new instance per version triggers the draw data
+     * rebuild through the surface identity checks. Internal class, not exposed in the public API.
      */
     class TerrainProjectionSurface : public ProjectionSurface {
     public:

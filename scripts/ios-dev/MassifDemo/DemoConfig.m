@@ -16,7 +16,6 @@ static NSMutableDictionary *sValues = nil;
         @"base":                @"composite",   // plain | composite
         @"style":               @"inline",      // dir | zip | inline | project
         @"map":                 @YES,
-        @"singlePass":          @YES,
 
         // --- layers ---
         @"satLayer":            @NO,

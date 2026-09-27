@@ -11,11 +11,8 @@
 
 namespace massif::mvt {
     /**
-     * Config symbolizer for a hillshade external source. Carries the settings that the
-     * owning SDK layer applies to a HillshadeRasterTileLayer every frame. All numeric
-     * settings are zoom- and style-parameter-dependent (FloatFunctionProperty), so e.g.
-     * 'hillshade-exaggeration: linear(zoom, [5,0.3], [12,1.0])' works.
-     * CartoCSS: '#name { hillshade-exaggeration: ...; hillshade-shadow-color: ...; ... }'
+     * Config symbolizer for a hillshade external source, applied to a HillshadeRasterTileLayer every frame.
+     * Numeric settings are zoom/parameter functions, e.g. 'hillshade-exaggeration: linear(zoom, [5,0.3], [12,1.0])'.
      */
     class HillshadeConfigSymbolizer : public LayerConfigSymbolizer {
     public:
@@ -31,7 +28,6 @@ namespace massif::mvt {
             bindProperty("contour-interval",       &_contourInterval);
             bindProperty("contour-color",          &_contourColor);
             bindProperty("contour-width",          &_contourWidth);
-            // 'opacity' and 'comp-op' are inherited.
         }
 
     protected:

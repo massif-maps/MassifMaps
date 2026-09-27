@@ -22,8 +22,6 @@ namespace massif {
     /**
      * Abstract base class for envelope based vector data sources. It provides default implementation
      * for listener registration and other common data source methods.
-     * Subclasses need to define their own implementations of loadElements method.
-     *
      * The draw order of vector elements within the data source is undefined.
      */
     class VectorDataSource : public std::enable_shared_from_this<VectorDataSource> {

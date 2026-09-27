@@ -15,15 +15,8 @@ namespace massif {
 
     /**
      * One point on a day-cycle light curve: the scene light at a given sun height.
-     *
-     * A list of these IS the "formula" that turns an hour into a look. Everything downstream is
-     * derived from the two lights it names - the colour every 2D surface is graded by, the sun and
-     * ambient the 3D buildings and the terrain are lit with, and the brightness a style reads as
-     * `view::brightness` - so replacing the list replaces the whole map's palette at every hour,
-     * in 2D and in 3D, without a second theme and without a re-decode.
-     *
-     * The default list is MapBox Standard's own four light setups, which is why a converted
-     * Standard renders as its `day` preset at noon and its `dusk` preset at 19h.
+     * The 2D grade, the 3D sun/ambient and `view::brightness` all derive from these two lights,
+     * so replacing the list re-themes the map at every hour. Default: MapBox Standard's four presets.
      */
     class LightStop {
     public:

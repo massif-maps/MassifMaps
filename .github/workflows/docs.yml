@@ -145,9 +145,9 @@ jobs:
         with:
           name: api-ios
           path: website/static/api/ios
-      # The wasm the /preview page runs, from the newest successful web-preview run. Best-effort:
-      # without it the page says the module is missing and the rest of the site is unaffected.
-      - name: Download the style preview module (if built)
+      # The wasm the /preview page and the live examples run, from the newest successful
+      # web-preview run. Best-effort: without it those pages say the module is missing.
+      - name: Download the web SDK (if built)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -155,9 +155,9 @@ jobs:
           run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow web-preview.yml \
             --branch master --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           test -n "$run_id"
-          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name web-preview \
-            --dir website/static/preview
-          ls -l website/static/preview
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name web-site \
+            --dir website/static
+          ls -l website/static/preview website/static/massif
       - name: Install & build site
         working-directory: website
         # GITHUB_TOKEN lifts the anonymous rate limit for the roadmap issue fetch.

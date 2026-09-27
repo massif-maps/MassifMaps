@@ -100,7 +100,8 @@ every TTF in `/fonts` with `addFallbackFont`, which is what makes the labels app
 ```
 
 The style is passed in rather than fetched because `main()` runs on the browser's main thread,
-where a synchronous fetch is illegal. The JavaScript binding is what will replace it.
+where a synchronous fetch is illegal. An app does not use the bench: it loads the SDK module
+([below](#the-sdk-module)).
 
 Copy `web/demo/config.example.json` to `web/demo/config.json` to set what `/demo/` shows with no
 query string at all. It is gitignored because it holds a tile-provider token; the query string still
@@ -321,11 +322,11 @@ window dragged to another display.
 ### Fonts
 
 A style that names a font it does not ship falls through to `SystemFontUtils`, which on the web
-means `/fonts/<name>.ttf` in the virtual filesystem. Drop TTFs into **`web/demo/fonts/`** and the
-link preloads the directory as `/fonts` — `Roboto.ttf` there is what
-`text-face-name: 'Roboto'` resolves to. The directory is gitignored: fonts are a licensing
-question, so the bench asks for one rather than shipping one. Without it the build carries no font
-and a style with a text rule draws no labels.
+means `/fonts/<name>.ttf` in the virtual filesystem. **`web/fonts/`** (Roboto, regular and bold) is
+tracked and preloaded into every module; a generic name (`sans-serif`, Arial, Helvetica) or a
+fallback lookup gets Roboto, and a bold style Roboto-Bold. Until that mapping existed, every style
+naming `sans-serif` drew no labels on the web. `web/demo/fonts/` (gitignored) adds faces to the
+bench only.
 
 ## The platform layer
 
@@ -341,7 +342,7 @@ SWIG bindings and is meant to be driven through the facade's C ABI.
 | `utils/SystemFontUtils` | Fonts from `/fonts` — a browser has no font API to read outlines out of |
 | `utils/PlatformUtils` | `PLATFORM_TYPE_WEB`; the app identifier is `location.origin`, which is what a tile server checks |
 | `utils/ThreadUtils`, `components/Task` | Trivial; a web worker has no priority to set |
-| `graphics/BitmapCanvasWebImpl` | **Not implemented** — see below |
+| `graphics/BitmapCanvasWebImpl` | The browser's 2D canvas (`OffscreenCanvas` on a worker), for `Text`, `BalloonPopup` and celestial labels |
 
 `vt::parseFontNames` gained a `web` platform tag, so a style can write `web:Inter` next to
 `android:Roboto`.
@@ -375,9 +376,8 @@ response with the two headers and reloads once, which is what makes a static hos
 **`credentialless`**, not `require-corp` — a tile server sends no
 `Cross-Origin-Resource-Policy`, and `require-corp` would block every tile.
 
-**Unverified.** The mechanism is the standard one, but the embedded browser used to build this
-refuses to register any service worker, so the shim has never actually run. Check it in a real
-browser before relying on it:
+Observed working in headless Chromium (2026-09-26): served with no headers, the example runner
+registered the worker, reloaded once under its control, came up isolated and drew. Reproduce it:
 
 ```sh
 python3 web/demo/serve.py --no-headers     # serve the way GitHub Pages does
@@ -400,28 +400,57 @@ too many, so every value arrives as `" 32818\n"`. `Content-Length` then fails
 `boost::lexical_cast<uint64_t>` and every tile load dies as `bad lexical cast`. The impl trims both
 key and value.
 
+## The SDK module
+
+Two executables link the same `libmassif.a`. `massif-web` (`web/module/main.cpp`) is what an app
+loads: it draws nothing until the page asks for a map. `massif-demo` is the bench above.
+
+| Export | What it is |
+|---|---|
+| `massifCreateMap(selector)` | starts the map on a canvas; adopts nothing |
+| `massifAdopt(kind, what, id)` | `MassifInterop::adopt` for `view`, `options` or `layers` |
+| `massifAttachMapEvents(handle)` | `createEventBridge`, chaining the listener already set |
+| `massifBridgeLayerClicks(handle)` | the same for a vector or vector tile layer's clicks |
+
+`scripts/build-web.py` writes the module to `dist/web/`; `node web/package/build.mjs` (after
+`npm run build` in `bindings/js`) turns that directory into the `@massif-maps/web` package, and
+`--website` copies it to `website/static/massif/`. Smoke pages: serve the repo root with
+`web/demo/serve.py --dir .` and open `/web/module/` (the low-level binding) or
+`/dist/web/examples/run.html?id=display-a-map` (the typed API).
+
+- **The typed API is the NativeScript plugin's**, moved to `bindings/js` (`@massif-maps/api`) with
+  the platform behind a `NativeBridge`. `web/js/bridge.mjs` is the web's: the C ABI, with the
+  view, options and layers as tokens `massifAdopt` resolves. `web/js/index.mjs` is `createMap`.
+- **Every event is delivered on the page's thread.** A JavaScript handler is a slot in the page's
+  wasm table, which the pthread workers do not have, so "origin" delivery is refused and
+  `canConsume` is false.
+- **One map per module, and one module per page for the typed API** (its bridge is a module-level
+  value). emscripten keeps one callback per event target, so a second `WebMapView` would take the
+  document's pointer events from the first. The site's examples run one per iframe.
+- **No destroy.** `WebMapView`'s destructor leaves the document and window callbacks pointing at it,
+  so a map lives as long as its page.
+
 ## The JavaScript binding
 
 `web/js/massif.mjs` wraps the facade's C ABI. It is deliberately thin - the facade is a table, so a
 new SDK feature reaches JavaScript without touching the binding:
 
 ```js
-const massif = new Massif(module);          // module is the emscripten Module
-const camera = await MassifCamera.attach(massif);
-camera.zoom;                                 // 13.29
-camera.flyTo({ position: [2.35, 48.86], zoom: 15, duration: 1.5 });
-massif.call(camera.handle, 'screenToMap', { x: 100, y: 200 });
+const massif = await loadMassif();          // massif-web.mjs beside massif.mjs
+const { layers, camera } = massif.createMap(document.getElementById('map'));  // adopts under 'map'
+camera.flyTo([[2.35, 48.86], 15, 0, 90, 0, 1.5]);
+massif.call(camera.handle, 'screenToMap', [100, 200]);
 ```
 
-Three things it has to get right, and each was a bug first:
+What it has to get right, and each was a bug first:
 
 - **`-sEXPORTED_FUNCTIONS` REPLACES the default list**, so `_main` has to be in it or the program is
   stripped and nothing runs at all. The list is generated from `MassifApiC.h` by CMake, so a new
   `mm_` function reaches JavaScript by existing.
 - **The host has to adopt its map** - `MassifInterop::adopt("map", "map", view)` - or the camera has
-  nothing to point at.
-- **`await Module(...)` resolves before `main()` has run** when pthreads are on, so reading the map
-  straight away is a race. `MassifCamera.attach` polls for it.
+  nothing to point at. `createMap` does it; the bench adopts in `main()`.
+- **`await Module(...)` resolves before `main()` has run** when pthreads are on, so reading the
+  bench's map straight away is a race. `MassifCamera.attach` polls for it.
 - **`mm_call` answers with a result HANDLE, not a string buffer.** Read it like any other object and
   release it with `mm_destroy_handle`, or the context holds it forever. Reading it as a string
   buffer silently returned garbage for every method that produces a value.
@@ -433,14 +462,11 @@ Three things it has to get right, and each was a bug first:
 
 ## What the build does not carry
 
-- **`BitmapCanvas`**, and with it the `Text` and `BalloonPopup` vector elements. The other
-  platforms draw those through a system 2D text API; the browser's is asynchronous and
-  main-thread-only, which this synchronous interface cannot reach from a worker. Every call warns
-  once and produces an empty bitmap.
-- **The `lite` profile only** so far: no sqlite, so no persistent tile cache, no offline packages,
-  no routing or geocoding.
-- **3D terrain, shadows and the sky** are barely tested here. They compile, but the MRT and
-  depth-texture paths have never been run against a WebGL 2 driver.
+- **Routing, geocoding and offline packages.** The release and the site build the `standard`
+  profile: sqlite (so the persistent tile cache, on IndexedDB) but no Valhalla, no geocoder and no
+  package manager. `--profile full` builds and runs; nothing ships it.
+- **Shadows and the sky** are barely tested here. 3D terrain, the depth pre-pass and a post-process
+  effect are exercised by the peak finder example; shadows are not.
 Raster tiles, MVT decoded through mapnikvt and styled by CartoCSS, and labels with halos and
 accented glyphs all render — that part is observed, not inferred.
 

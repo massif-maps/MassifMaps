@@ -51,6 +51,18 @@ def buildWebLib(args):
     return False
   if not (makedirs(distDir) and copyfile('%s/libmassif.a' % buildDir, '%s/libmassif.a' % distDir)):
     return False
+  # The module apps load; website/static/massif is where the site's live examples load it from.
+  if args.website and not makedirs('%s/website/static/massif' % baseDir):
+    return False
+  for name in ['massif-web.mjs', 'massif-web.wasm', 'massif-web.data']:
+    if not copyfile('%s/%s' % (buildDir, name), '%s/%s' % (distDir, name)):
+      return False
+    if args.website and not copyfile('%s/%s' % (buildDir, name), '%s/website/static/massif/%s' % (baseDir, name)):
+      return False
+  # The binding beside the module, so loadMassif() finds it with no URL: this directory IS the package.
+  for target in [distDir] + (['%s/website/static/massif' % baseDir] if args.website else []):
+    if not copyfile('%s/web/js/massif.mjs' % baseDir, '%s/massif.mjs' % target):
+      return False
   if args.builddemo:
     # website/static/preview is where the Docusaurus /preview page loads the module from, and is
     # gitignored: the binary is a build artefact, downloaded by the docs workflow.
@@ -80,7 +92,7 @@ parser.add_argument('--configuration', dest='configuration', default='Release', 
 parser.add_argument('--build-number', dest='buildnumber', default='', help='Build sequence number, goes to version str')
 parser.add_argument('--build-version', dest='buildversion', default='%s-devel' % SDK_VERSION, help='Build version, goes to distributions')
 parser.add_argument('--build-demo', dest='builddemo', default=False, action='store_true', help='Also link web/demo into web/demo/massif-demo.mjs')
-parser.add_argument('--website', dest='website', default=False, action='store_true', help='Also copy the demo module into website/static/preview for the /preview page')
+parser.add_argument('--website', dest='website', default=False, action='store_true', help='Also copy the modules into website/static for the /preview page and the live examples')
 args = parser.parse_args()
 args.defines += ';' + getProfile(args.profile).get('defines', '')
 args.cmakeoptions += ';' + getProfile(args.profile).get('cmake-options', '')

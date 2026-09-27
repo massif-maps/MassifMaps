@@ -508,6 +508,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> MAIN_LIGHT_DIRECTION = MassifObject.key("mainLightDirection");
     /** Returns the drag position in projection coordinate system of the layer. */
     public static final MassifObject.Key<String> MAP_POS = MassifObject.key("mapPos");
+    /** Returns the MapRenderer object, that can be used for controlling rendering options. */
+    public static final MassifObject.Key<MassifObject> MAP_RENDERER = MassifObject.key("mapRenderer");
     /** Returns the map renderer listener. Can be null. */
     public static final MassifObject.Key<MassifObject> MAP_RENDERER_LISTENER = MassifObject.key("mapRendererListener");
     /** Returns the tile id of the clicked feature. */
@@ -646,6 +648,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> POSITION_ALTITUDE = MassifObject.key("positionAltitude");
     /** Returns the downscale factor of the packed depth/normal texture post-process effects read. */
     public static final MassifObject.Key<Long> POST_PROCESS_DOWNSCALE = MassifObject.key("postProcessDownscale");
+    /** Returns the current post-process effect. Can be null. */
+    public static final MassifObject.Key<MassifObject> POST_PROCESS_EFFECT = MassifObject.key("postProcessEffect");
     /** Returns whether this layer goes through the post-process effect. */
     public static final MassifObject.Key<Boolean> POST_PROCESSED = MassifObject.key("postProcessed");
     /** Returns the postcode of the address. */
@@ -852,6 +856,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> SUN_INTENSITY = MassifObject.key("sunIntensity");
     /** Returns whether this sun overrides the one a style states. */
     public static final MassifObject.Key<Boolean> SUN_OVERRIDING_STYLE = MassifObject.key("sunOverridingStyle");
+    /** Returns the resolution the elevation node field is built at. */
+    public static final MassifObject.Key<Long> SURFACE_NODE_RESOLUTION = MassifObject.key("surfaceNodeResolution");
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     public static final MassifObject.Key<String> SURFACE_SHADER_SOURCE = MassifObject.key("surfaceShaderSource");
     /** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
@@ -1086,6 +1092,7 @@ public final class ApiNames {
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
     public static final String METHOD_SET_SUN_POSITION_FROM_TIME = "setSunPositionFromTime";
+    public static final String METHOD_SET_SURFACE_PARAMETER = "setSurfaceParameter";
     public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";
     public static final String METHOD_STOP_ALL_DOWNLOADS = "stopAllDownloads";
     public static final String METHOD_STOP_FLIGHT = "stopFlight";
@@ -1109,6 +1116,7 @@ public final class ApiNames {
 
     public static final String KIND_ASSETS = "assets";
     public static final String KIND_CELESTIAL = "celestial";
+    public static final String KIND_EFFECT = "effect";
     public static final String KIND_ELEMENT = "element";
     public static final String KIND_ELEMENTSTYLE = "elementstyle";
     public static final String KIND_FEATURE = "feature";
@@ -1127,6 +1135,7 @@ public final class ApiNames {
     public static final String TYPE_CELESTIAL_ARC = "arc";
     public static final String TYPE_CELESTIAL_LABEL = "label";
     public static final String TYPE_CELESTIAL_SPRITE = "sprite";
+    public static final String TYPE_EFFECT_POSTPROCESS = "postprocess";
     public static final String TYPE_ELEMENT_BALLOON = "balloon";
     public static final String TYPE_ELEMENT_LINE = "line";
     public static final String TYPE_ELEMENT_MARKER = "marker";

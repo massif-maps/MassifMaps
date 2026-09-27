@@ -1,0 +1,22 @@
+{
+  "name": "@massif-maps/api",
+  "version": "0.0.0",
+  "description": "The typed Massif Maps surface API, shared by the web and NativeScript bindings",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "typings": "node scripts/api-typings/index.mjs",
+    "build": "tsc -p tsconfig.json && cp src/massif-api.d.ts dist/",
+    "check": "tsc -p scripts/api-typings/typecheck/tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

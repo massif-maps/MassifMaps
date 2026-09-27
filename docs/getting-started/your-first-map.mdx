@@ -41,6 +41,15 @@ view = mapView
 ```
 
 </TabItem>
+<TabItem value="web" label="Web">
+
+```html
+<canvas id="map" style="width: 100%; height: 100vh; display: block"></canvas>
+```
+
+The page must be cross-origin isolated - see [the web guide](/docs/getting-started/web#hosting).
+
+</TabItem>
 </Tabs>
 
 ## Then build the map
@@ -98,6 +107,24 @@ map.addLayer('basemap', {
 });
 
 map.camera().moveTo([-0.8164, 51.2131], { zoom: 5 });
+```
+
+</TabItem>
+<TabItem value="js" label="JavaScript (web)">
+
+```js
+import { createMap } from '@massif-maps/web';
+
+const map = await createMap(document.getElementById('map'));
+
+map.addLayer('basemap', {
+    type: 'vector',
+    source: { type: 'http', url: 'https://example.com/tiles/{z}/{x}/{y}.pbf', maxZoom: 14 },
+    style: { type: 'mbvt', cartocss: { type: 'cartocss', css: '#water { polygon-fill: #9cc3e0; }' } }
+});
+
+// Zoom numbers on the web are MapLibre's: 4 here shows what 5 shows on Android and iOS.
+map.camera().moveTo([-0.8164, 51.2131], { zoom: 4 });
 ```
 
 </TabItem>
@@ -161,7 +188,8 @@ The surface API has no such split — an id and a spec are the same string every
 
 ## Where to go from here
 
-- **[Examples](/examples)** — every one is a single file, in Java, Objective-C and TypeScript.
+- **[Examples](/examples)** — every one is a single file, in Java, Objective-C, TypeScript and
+  JavaScript, and runs live on the web.
 - [Surface API](/docs/api/) — ids, specs, paths and events, and the generated reference.
 - [Vector objects](/docs/guides/vector-objects) — markers, lines, polygons, popups.
 - [Offline maps](/docs/guides/offline-maps) — MBTiles, PMTiles and packaged tiles.

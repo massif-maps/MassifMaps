@@ -113,9 +113,9 @@ half-feature, and it is usually free — but check what yours owes, do not assum
 A `.i` signature change is breaking for every binding even when the C++ compiles. Demo every new
 knob in `scripts/android-dev/.../demo/DemoLive.java`.
 
-## Examples — three platforms or none
+## Examples — four platforms or none
 
-A gallery example is ONE id on Android, iOS **and** NativeScript, plus two generators. Use the
+A gallery example is ONE id on Android, iOS, NativeScript **and** the web, plus two generators. Use the
 [add-example](.claude/skills/add-example/SKILL.md) skill; details in
 [docs/contributing/examples.md](docs/contributing/examples.md).
 

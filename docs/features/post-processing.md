@@ -38,16 +38,20 @@ mapView.mapRenderer.postProcessEffect = effect
 ```
 
 :::note Surface API
-`PostProcessEffect` has no spec type and is attached to the `MapRenderer` rather than to a
-registry object, so attaching it stays object-API; an attached effect's `setFloatParameter` is a
-surface-API method (colours have no argument type there — inline them in the shader). See
-[value types](/docs/api/reference/types#postprocesseffect) for what is readable through the
-table. What every layer *does* expose is `postProcessed`, so keeping a layer out of the effect is
-one path:
+The facade builds an effect with the `effect` kind and attaches it through the map's
+`mapRenderer.postProcessEffect`. A float uniform is a call; set the effect again to redraw with it:
 
-```java
-map.layer("labels").set("postProcessed", false);
+```js
+const effect = massif.create('effect', 'relief', {
+  type: 'postprocess', name: 'relief', fragmentShader: source, terrainDepthRequired: true,
+});
+massif.setObject(map, 'mapRenderer.postProcessEffect', effect);
+massif.call(effect, 'setFloatParameter', ['uLineWidth', 1.6]);
+massif.setObject(map, 'mapRenderer.postProcessEffect', effect);
 ```
+
+Colour parameters have no facade call: inline them in the shader source. Keeping a layer out of
+the effect is one path, `map.layer("labels").set("postProcessed", false)`.
 :::
 
 With an effect attached, the sky, background and all layers render into an offscreen colour texture

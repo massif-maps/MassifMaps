@@ -863,6 +863,30 @@
   border: 1px solid var(--ifm-color-emphasis-300);
 }
 
+/* A live example: the runner page, framed like the screenshot it replaces. */
+.exampleLive iframe,
+.exampleLiveWait {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: block;
+  border-radius: 14px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.exampleLiveWait {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.exampleLive a {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
 .exampleDetailSource {
   margin: 0.75rem 0 0;
   font-size: 0.9rem;

@@ -99,7 +99,7 @@ map.set("terrain.autoFlattenParallax", 1.5);
 ```
 
 Every terrain property: [`terrain` in the options reference](/docs/api/reference/options).
-Runnable, on three platforms: [the 3D terrain example](/examples#terrain-3d) and
+Runnable, on four platforms (live on the web): [the 3D terrain example](/examples#terrain-3d) and
 [2D ↔ 3D switching](/examples#terrain-2d-3d).
 
 :::tip Share the DEM with hillshade

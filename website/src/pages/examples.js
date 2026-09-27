@@ -1,6 +1,8 @@
 import {useEffect, useState} from 'react';
 import Layout from '@theme/Layout';
 import CodeBlock from '@theme/CodeBlock';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+import {ensureIsolated} from '../components/StylePreview/engine';
 import manifest from '@site/../docs/examples/examples.json';
 
 /*
@@ -25,6 +27,8 @@ function shotFor(id) {
 }
 
 const LANGUAGES = [
+  // First: it is the code of the map running live on this page.
+  {key: 'js', label: 'JavaScript (web)', prism: 'javascript'},
   {key: 'java', label: 'Java (Android)', prism: 'java'},
   {key: 'objc', label: 'Objective-C (iOS)', prism: 'objectivec'},
   // The NativeScript examples are Svelte files; prismjs has no svelte grammar in this bundle and
@@ -57,6 +61,30 @@ function Card({example, onOpen}) {
   );
 }
 
+/**
+ * The example running, in its own page: the SDK module is one map per page, and the runner is the
+ * same page an app would host (web/examples/run.html). The iframe is only cross-origin isolated
+ * when this page is, which the site's service worker arranges once.
+ */
+function LiveMap({example}) {
+  const runner = useBaseUrl(`/massif/examples/run.html?id=${example.id}`);
+  const worker = useBaseUrl('/coi-serviceworker.js');
+  const [state, setState] = useState({ready: false, reason: ''});
+  useEffect(() => {
+    ensureIsolated(worker).then(({isolated, reason}) => setState({ready: isolated, reason: reason ?? ''}));
+  }, [worker]);
+  return (
+    <div className="exampleLive">
+      {state.ready ? (
+        <iframe src={runner} title={example.title} allow="cross-origin-isolated; fullscreen" />
+      ) : (
+        <div className="exampleLiveWait">{state.reason || 'Starting…'}</div>
+      )}
+      <a href={runner} target="_blank" rel="noopener">Open full screen ↗</a>
+    </div>
+  );
+}
+
 function Detail({example, onClose}) {
   const available = LANGUAGES.filter((language) => example.code[language.key]);
   const [language, setLanguage] = useState(available[0]?.key ?? 'java');
@@ -82,7 +110,11 @@ function Detail({example, onClose}) {
 
       <div className="exampleDetailGrid">
         <div className="exampleDetailMedia">
-          {shot && <img className="exampleDetailShot" src={shot} alt={example.title} />}
+          {example.live ? (
+            <LiveMap example={example} />
+          ) : (
+            shot && <img className="exampleDetailShot" src={shot} alt={example.title} />
+          )}
           <p className="exampleDetailSource">
             <a href={REPO + sourcePath}>This example on GitHub →</a>
           </p>
@@ -153,7 +185,8 @@ export default function ExamplesPage() {
             <h1>Examples</h1>
             <p className="exampleLead">
               Each one is a single file in the demo apps, and each screenshot is that file
-              running. Adding an example to a demo adds it to this page.
+              running. Those with a JavaScript tab run live in the page, on the web SDK.
+              Adding an example to a demo adds it to this page.
             </p>
             {manifest.sections.map((section) => (
               <section key={section.id} style={{marginTop: '2.5rem'}}>

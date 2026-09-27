@@ -40,6 +40,7 @@
 %attribute(massif::BaseMapView, float, Tilt, getTilt)
 %attribute(massif::BaseMapView, bool, FlightActive, isFlightActive)
 %attribute(massif::BaseMapView, float, FlightProgress, getFlightProgress)
+%attributestring(massif::BaseMapView, std::shared_ptr<massif::MapRenderer>, MapRenderer, getMapRenderer)
 
 !method(massif::BaseMapView, moveTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), returns(void))
 // Places the camera, where moveTo places the focus (first-person, panorama). Not doable in a binding:

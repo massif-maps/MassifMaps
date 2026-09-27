@@ -29,6 +29,7 @@
 #include "layers/HillshadeRasterTileLayer.h"
 #include "layers/Layer.h"
 #include "layers/TileLayer.h"
+#include "renderers/PostProcessEffect.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "vectortiles/VectorTileDecoder.h"
 #include "utils/Log.h"
@@ -451,6 +452,28 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** setSurfaceParameter(name, value) - a float uniform of the terrain's surface shader. */
+        Result setSurfaceParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string name;
+            double value = 0;
+            if (!args.getString(0, name) || !args.getDouble(1, value)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<TerrainOptions*>(obj)->setSurfaceParameter(name, static_cast<float>(value));
+            return RESULT_OK;
+        }
+
+        /** setFloatParameter(name, value) - a float uniform of a post-process effect. */
+        Result setEffectFloatParameter(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string name;
+            double value = 0;
+            if (!args.getString(0, name) || !args.getDouble(1, value)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<PostProcessEffect*>(obj)->setFloatParameter(name, static_cast<float>(value));
+            return RESULT_OK;
+        }
+
         /**
          * calculateHorizon(pos, eyeHeight, [azimuths], maxDistance) -> a handle onto one apparent
          * altitude per azimuth (ElevationManager::calculateHorizon). WGS84, like getElevation.
@@ -781,6 +804,8 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialLabel", "setAnchorPoint", &setLabelAnchorPoint);
         registerMethod("massif::CelestialLabel", "setOffset", &setLabelOffset);
         registerMethod("massif::TerrainOptions", "calculateHorizon", &calculateHorizon);
+        registerMethod("massif::TerrainOptions", "setSurfaceParameter", &setSurfaceParameter);
+        registerMethod("massif::PostProcessEffect", "setFloatParameter", &setEffectFloatParameter);
         registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);

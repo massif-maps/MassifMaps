@@ -439,13 +439,11 @@ if(EMSCRIPTEN)
   message(STATUS "Web build exports ${SDK_API_C_EXPORTS_COUNT} C ABI symbols to JavaScript")
 endif()
 
-if(EMSCRIPTEN AND BUILD_WEB_DEMO)
-  # The link options the web build needs, in one place. PTHREAD_POOL_SIZE covers the tile and
-  # envelope pools plus the cull, label and billboard workers - a pool too small deadlocks, because
+if(EMSCRIPTEN)
+  # The link options every web executable needs. PTHREAD_POOL_SIZE covers the tile and envelope
+  # pools plus the cull, label and billboard workers - a pool too small deadlocks, because
   # pthread_create on the main browser thread cannot block waiting for a worker.
-  add_executable(massif-demo "${SDK_BASE_DIR}/web/demo/main.cpp")
-  target_link_libraries(massif-demo massif)
-  target_link_options(massif-demo PRIVATE
+  set(SDK_WEB_LINK_OPTIONS
     "-pthread" "-fwasm-exceptions"
     "-sPTHREAD_POOL_SIZE=8"
     "-sMIN_WEBGL_VERSION=2" "-sMAX_WEBGL_VERSION=2" "-sFULL_ES3"
@@ -460,12 +458,23 @@ if(EMSCRIPTEN AND BUILD_WEB_DEMO)
     # JavaScript one added to the table at runtime.
     "-sALLOW_TABLE_GROWTH=1"
     # IndexedDB behind a mounted directory, so a page can keep its tile caches across reloads.
-    "-lidbfs.js")
-  # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
-  # /fonts in the virtual filesystem. web/fonts is TRACKED and carries the one face the preview
-  # needs - without it a CI build renders geometry and no labels at all, which is exactly what it
-  # did before this line existed.
-  target_link_options(massif-demo PRIVATE "SHELL:--preload-file ${SDK_BASE_DIR}/web/fonts@/fonts")
+    "-lidbfs.js"
+    # A style that names a font it does not ship falls back to SystemFontUtils, which on the web is
+    # /fonts in the virtual filesystem. web/fonts is TRACKED - without it no label draws at all.
+    "SHELL:--preload-file ${SDK_BASE_DIR}/web/fonts@/fonts")
+
+  # The module apps load (web/module): no map until the page creates one.
+  add_executable(massif-web "${SDK_BASE_DIR}/web/module/main.cpp")
+  target_link_libraries(massif-web massif)
+  target_link_options(massif-web PRIVATE ${SDK_WEB_LINK_OPTIONS})
+  set_target_properties(massif-web PROPERTIES SUFFIX ".mjs")
+endif()
+
+if(EMSCRIPTEN AND BUILD_WEB_DEMO)
+  # The bench: one map configured from the query string.
+  add_executable(massif-demo "${SDK_BASE_DIR}/web/demo/main.cpp")
+  target_link_libraries(massif-demo massif)
+  target_link_options(massif-demo PRIVATE ${SDK_WEB_LINK_OPTIONS})
   # And web/demo/fonts on top, for faces dropped in by hand while developing. Not tracked.
   if(EXISTS "${SDK_BASE_DIR}/web/demo/fonts")
     # SHELL: keeps the flag and its path as one argument - CMake de-duplicates a repeated

@@ -25,13 +25,14 @@ cd "$(dirname "$0")"
 python3 gen-api-tables.py --profile full --schema ../docs/api/massif-api.json
 python3 gen-api-typescript.py
 python3 gen-api-constants.py
+node ../bindings/js/scripts/api-typings/index.mjs
 
 if [ "$1" = "--check" ]; then
     cd ..
     # The other half of "the facade is carriable by a hand-written binding": generated typings are
     # useless if MassifApi itself grew an SDK type.
     scripts/check-facade-abi.sh
-    if ! git diff --quiet -- docs/api/massif-api.json bindings/typescript/massif.d.ts \
+    if ! git diff --quiet -- docs/api/massif-api.json bindings/typescript/massif.d.ts bindings/js/src \
             ios/objc/api/MassifApiNames.h ios/objc/api/MassifApiNames.m \
             android/java/com/massifmaps/api/ApiNames.java \
             all/native/api/massif_api_names.h all/native/api/massif_api_names.c; then
@@ -39,7 +40,7 @@ if [ "$1" = "--check" ]; then
         echo "The generated API bindings are out of date. Run scripts/gen-api-bindings.sh and"
         echo "commit the result - an integration reads these, and a stale one is a missing class."
         echo ""
-        git --no-pager diff --stat -- docs/api/massif-api.json bindings/typescript/massif.d.ts \
+        git --no-pager diff --stat -- docs/api/massif-api.json bindings/typescript/massif.d.ts bindings/js/src \
             ios/objc/api/MassifApiNames.h ios/objc/api/MassifApiNames.m \
             android/java/com/massifmaps/api/ApiNames.java \
             all/native/api/massif_api_names.h all/native/api/massif_api_names.c

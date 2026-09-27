@@ -19,6 +19,8 @@
 
 !shared_ptr(massif::PostProcessEffect, renderers.PostProcessEffect)
 
+!spec(massif::PostProcessEffect, effect, postprocess)
+
 %attributestring(massif::PostProcessEffect, std::string, Name, getName)
 %attributestring(massif::PostProcessEffect, std::string, FragmentShader, getFragmentShader)
 %attribute(massif::PostProcessEffect, bool, TerrainDepthRequired, isTerrainDepthRequired, setTerrainDepthRequired)

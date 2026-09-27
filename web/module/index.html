@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Smoke test of the SDK module: build with scripts/build-web.py, serve the repo root with
+     web/demo/serve.py --dir . and open /web/module/. -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Massif Maps - module</title>
+  <style>html, body, canvas { margin: 0; width: 100%; height: 100%; display: block; }</style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <script type="module">
+    import { loadMassif } from '../../dist/web/massif.mjs';
+    const massif = await loadMassif();
+    const { layers, camera } = massif.createMap(document.getElementById('map'));
+    const layer = massif.create('layer', 'osm', {
+      type: 'raster',
+      source: { type: 'http', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', minZoom: 0, maxZoom: 19 },
+    });
+    massif.call(layers, 'add', [layer]);
+    camera.moveTo([[2.3522, 48.8566], 12, 0, 90]);
+    window.massif = massif;
+  </script>
+</body>
+</html>

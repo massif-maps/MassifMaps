@@ -88,8 +88,9 @@ export default function ComparePage() {
         <h2>Where Massif Maps is the weaker choice</h2>
         <ul>
           <li>
-            <strong>Only Android and iOS today.</strong> If you need the same renderer on the web,
-            MapLibre is one project across native and GL JS. Desktop and web are on{' '}
+            <strong>No desktop build, and a young web one.</strong> The web build is the same
+            renderer in WebAssembly, but it needs a cross-origin isolated page and draws one map
+            per page; MapLibre GL JS has neither constraint. Desktop is on{' '}
             <Link to="/roadmap">the roadmap</Link>, not shipped.
           </li>
           <li>

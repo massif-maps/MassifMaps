@@ -591,6 +591,66 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  build-web:
+    # The web SDK: the wasm module and its typed API, as a zip on the release and two npm packages
+    # (@massif-maps/api, shared with NativeScript, and @massif-maps/web). docs/getting-started/web.md.
+    runs-on: ubuntu-latest
+    needs: [create-release, release-preflight]
+    if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped')
+    permissions:
+      contents: write
+      id-token: write # npm provenance
+    env:
+      EMSDK_VERSION: '6.0.9'
+      VERSION: ${{ needs.create-release.outputs.VERSION || '0.0.0-devel' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: fetch externals
+        run: |
+          git submodule update --init libs-external || true
+          git -C libs-external submodule update --init --recursive || true
+      - name: Prepare Boost
+        uses: ./.github/actions/prepare-boost
+      - name: Install emsdk
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install "$EMSDK_VERSION"
+          ./emsdk activate "$EMSDK_VERSION"
+      - name: Build the module
+        run: |
+          . "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          python3 scripts/build-web.py --profile standard --configuration Release --build-version "$VERSION"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+      - name: Build the packages
+        run: |
+          (cd bindings/js && npm ci && npm version "$VERSION" --no-git-tag-version --allow-same-version && npm run build && npm run check)
+          (cd web/package && npm ci && node build.mjs --version "$VERSION")
+          (cd dist/web && zip -r "../MassifMaps-web-$VERSION.zip" . -x libmassif.a -x 'examples/*')
+      - name: Upload Release Asset
+        if: github.event.inputs.publish == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} "dist/MassifMaps-web-$VERSION.zip"
+      # The API first: @massif-maps/web depends on the same version of it.
+      - name: Publish to npm
+        if: github.event.inputs.publish == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          (cd bindings/js && npm publish --provenance --access public)
+          (cd dist/web && npm publish --provenance --access public)
+      - uses: actions/upload-artifact@v4
+        if: github.event.inputs.publish != 'true'
+        with:
+          name: massif-web
+          path: dist/MassifMaps-web-*.zip
+          retention-days: 7
+          if-no-files-found: error
+
   create-jitpack-swiftpackage-release:
     runs-on: ubuntu-latest
     needs: [prepare, build, build-routing]
@@ -733,7 +793,7 @@ jobs:
 
   update-release:
     runs-on: ubuntu-latest
-    needs: [create-release, build, build-routing, create-jitpack-swiftpackage-release]
+    needs: [create-release, build, build-routing, build-web, create-jitpack-swiftpackage-release]
     if: github.event.inputs.publish == 'true'
     permissions:
       contents: write # release changes require contents write

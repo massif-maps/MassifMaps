@@ -16,6 +16,8 @@
 # The wasm the /preview page runs: built by scripts/build-web.py --website, or downloaded from the
 # web-preview workflow's artefact. Too big to track, and it must match the SDK it was built from.
 /static/preview
+# The same for the SDK module the live examples load.
+/static/massif
 
 # Misc
 .DS_Store

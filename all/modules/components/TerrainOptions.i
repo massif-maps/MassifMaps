@@ -86,6 +86,8 @@
 %attribute(massif::TerrainOptions, int, MaxZoom, getMaxZoom, setMaxZoom)
 %attribute(massif::TerrainOptions, float, TextOcclusionOpacity, getTextOcclusionOpacity, setTextOcclusionOpacity)
 %attributestring(massif::TerrainOptions, std::string, SurfaceShaderSource, getSurfaceShaderSource, setSurfaceShaderSource)
+%attribute(massif::TerrainOptions, int, SurfaceNodeResolution, getSurfaceNodeResolution, setSurfaceNodeResolution)
+!method(massif::TerrainOptions, setSurfaceParameter, arg(name, string), arg(value, float), returns(void))
 %std_exceptions(massif::TerrainOptions::TerrainOptions)
 
 %ignore massif::TerrainOptions::getSurfaceParameters;

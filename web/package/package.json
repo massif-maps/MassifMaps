@@ -1,0 +1,12 @@
+{
+  "name": "massif-web-package-builder",
+  "private": true,
+  "description": "Assembles dist/web into the @massif-maps/web package - see web/package/build.mjs",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

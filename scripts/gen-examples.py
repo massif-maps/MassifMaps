@@ -213,8 +213,40 @@ def nativeScriptExampleIds(nsDir):
   return found
 
 
+# Files in web/examples that are the framework, not examples.
+WEB_FRAMEWORK = {'host.mjs', 'shared.mjs'}
+WEB_TAG = re.compile(r'^\s*\*\s*@(title|section|order)\s+(.+?)\s*$', re.M)
+
+
+def webExamples(webDir):
+  """
+  Every web example, keyed by id - its file name. A web-only one (no Android twin) names its own
+  @title, @section and @order in its header comment, and the rest of that comment describes it.
+  """
+  found = {}
+  if not webDir or not os.path.isdir(webDir):
+    return found
+  for fileName in sorted(os.listdir(webDir)):
+    if not fileName.endswith('.mjs') or fileName in WEB_FRAMEWORK:
+      continue
+    full = os.path.join(webDir, fileName)
+    with open(full) as f:
+      source = f.read()
+    fields = {'id': fileName[:-len('.mjs')], 'path': full}
+    header = re.match(r'\s*/\*\*(.*?)\*/', source, re.S)
+    if header:
+      fields.update({key: value for key, value in WEB_TAG.findall(header.group(1))})
+      text = [re.sub(r'^\s*\*\s?', '', line) for line in header.group(1).splitlines()]
+      fields['description'] = ' '.join(line.strip() for line in text
+                                       if line.strip() and not line.strip().startswith('@'))
+    if 'order' in fields:
+      fields['order'] = int(fields['order'])
+    found[fields['id']] = fields
+  return found
+
+
 def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir, iosDir=None,
-                 nsDir=None, repoRoot=None):
+                 nsDir=None, repoRoot=None, webDir=None):
   """
   The website's copy of the same list, with each example's source and screenshot.
 
@@ -225,6 +257,7 @@ def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir,
   bySection = {section['id']: [] for section in sections}
   missing = []
   nsById = nativeScriptExampleIds(nsDir)
+  webById = webExamples(webDir)
 
   def repoPath(full):
     """Repo-relative, so the website can link the file on GitHub."""
@@ -242,6 +275,10 @@ def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir,
     if nsSource:
       code['ts'] = open(nsSource).read()
       sources['ts'] = repoPath(nsSource)
+    web = webById.get(fields['id'])
+    if web:
+      code['js'] = open(web['path']).read()
+      sources['js'] = repoPath(web['path'])
     shot = os.path.join(screenshotDir, fields['id'] + '.png')
     if not os.path.exists(shot):
       missing.append(fields['id'])
@@ -259,6 +296,24 @@ def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir,
       # reference; Objective-C and the NativeScript/Svelte source appear for an example
       # those demos have ported.
       'code': code,
+      # A web port runs live on the site, in web/examples/run.html.
+      'live': bool(web),
+    })
+  androidIds = set(fields['id'] for _, fields in ordered)
+  for web in sorted(webById.values(), key=lambda w: w.get('order', 100)):
+    if web['id'] in androidIds or 'title' not in web:
+      continue
+    shot = os.path.join(screenshotDir, web['id'] + '.png')
+    bySection.setdefault(web.get('section', ''), []).append({
+      'id': web['id'],
+      'title': web['title'],
+      'description': web.get('description', ''),
+      'source': repoPath(web['path']),
+      'sources': {'js': repoPath(web['path'])},
+      'screenshot': 'screenshots/' + web['id'] + '.png',
+      'hasScreenshot': os.path.exists(shot),
+      'code': {'js': open(web['path']).read()},
+      'live': True,
     })
   manifest = {
     '_generated': 'scripts/gen-examples.py - do not edit',
@@ -293,6 +348,8 @@ parser.add_argument('--ios', default=os.path.join(here, 'ios-dev/MassifDemo/Exam
 parser.add_argument('--nativescript', default=os.path.join(
     here, '../integrations/nativescript/demo-snippets/svelte/examples'),
     help='the NativeScript demo\'s examples, matched to the Android ones by id')
+parser.add_argument('--web', default=os.path.join(here, '../web/examples'),
+                    help='the web examples, matched by file name; a web-only one carries @title')
 parser.add_argument('--strict', action='store_true',
                     help='exit non-zero when an example is malformed, for CI')
 args = parser.parse_args()
@@ -314,18 +371,30 @@ missing = emitManifest(ordered, sections, os.path.join(args.docs, 'examples.json
                        'scripts/android-dev/app/src/main/java/'
                        + args.package.replace('.', '/'),
                        args.examples, args.ios, args.nativescript,
-                       os.path.abspath(os.path.join(here, '..')))
+                       os.path.abspath(os.path.join(here, '..')), args.web)
 
 ported = iosExampleIds(args.ios)
 nsPorted = nativeScriptExampleIds(args.nativescript)
+webPorted = webExamples(args.web)
 ids = set(f['id'] for _, f in examples)
 orphans = sorted((set(ported) | set(nsPorted)) - ids)
+known = set(section['id'] for section in sections)
+for web in webPorted.values():
+  if web['id'] in ids:
+    continue
+  if 'title' not in web:
+    problems.append('%s.mjs matches no Android example and has no @title' % web['id'])
+  elif web.get('section') not in known:
+    problems.append('%s.mjs: unknown @section "%s"' % (web['id'], web.get('section')))
 
 print('%d examples over %d sections' % (len(ordered), len(set(f['section'] for _, f in examples))))
 if ported:
   print('  %d of them ported to iOS' % len(set(ported) & ids))
 if nsPorted:
   print('  %d of them ported to NativeScript' % len(set(nsPorted) & ids))
+if webPorted:
+  print('  %d of them ported to the web, plus %d web-only'
+        % (len(set(webPorted) & ids), len(set(webPorted) - ids)))
 for orphan in orphans:
   where = ported.get(orphan) or os.path.basename(nsPorted[orphan])
   problems.append('%s declares id "%s", which no Android example has'

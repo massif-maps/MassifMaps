@@ -729,7 +729,7 @@ One line per class in its `.i` says what to call it and how to spell the awkward
   hand-written factory ever exposed. `HillshadeRasterTileLayer`'s `elevationDecoder` overload is
   still skipped: no kind builds an `ElevationDecoder` (see the report below).
 
-Fifty-eight classes over fourteen kinds build this way (full profile), and everything left
+Fifty-nine classes over fifteen kinds build this way (full profile), and everything left
 hand-written in `SpecFactories.cpp` is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |

@@ -402,7 +402,7 @@ namespace massif {
                     int dy = visTile.getY() >> visTile.getZoom();
                     vtTileId = vt::TileId(closestTile.getZoom(), closestTile.getX() + (dx << closestTile.getZoom()), closestTile.getY() + (dy << closestTile.getZoom()));
                 }
-                _tempDrawDatas.push_back(std::make_shared<TileDrawData>(vtTileId, tile, closestTileId, preloadingTile));
+                _tempDrawDatas.push_back(std::make_shared<TileDrawData>(vtTileId, tile, closestTileId, preloadingTile, isCollectingShadowCasters()));
             }
         }
     }

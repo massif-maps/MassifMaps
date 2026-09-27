@@ -49,6 +49,7 @@
 %ignore massif::TileLayer::setTerrainDepthWriteMode;
 %ignore massif::TileLayer::drapeStackSignature;
 %ignore massif::TileLayer::paintsEveryDrapeTile;
+%ignore massif::TileLayer::castsExtrusionShadows;
 %ignore massif::TileLayer::setTerrainPaintTiles;
 %ignore massif::TileLayer::setTerrainGroundTiles;
 %ignore massif::TileLayer::setTerrainLayerOrdinalBase;

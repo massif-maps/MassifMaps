@@ -345,6 +345,17 @@ Design points, each measured:
   SCALE-FREE: capping it in metres instead (`uShadowBias.z * depthScale`) collapses to nothing in
   normalised depth as the light box grows, so the bias dies at low zoom and the mesh returns — which
   is exactly what a metric cap did before this was understood.
+
+  **Per tap, and a whole texel under hardware PCF.** The plane term was subtracted once, for half a
+  texel, and every PCF tap compared that one depth — but the taps sit ~0.9 texel out (`0.75 x`
+  softness), and a hardware `sampler2DShadow` compare reads a 2x2 of texels up to one texel away. On
+  a lit slope the uphill taps read ground above the receiver: a fine hatch along the terrain mesh's
+  diagonals over every slope, worst with a strong shadow (Belledonne above Gavet, 5.8804/45.0536
+  z14 tilt 45, `shadow 5`). `shadowBias 4` hid it, and detaches shadows everywhere. The fix is the
+  textbook receiver-plane depth bias: each tap compares `ref + dot(dzduv, offset)`, and the
+  quantisation term is one texel under `SHADOW_HW`, half on the manual path. Ground only, like the
+  plane term itself. Device-checked on the Crosscall at that camera: hatch gone at the default bias,
+  cast shadows unchanged in shape.
 - **The cascade count IS part of it, and 2 — mapbox's own count — is now the default.** This was
   read the other way round once: dropping to 2 was called a masking effect of a coarser near box and
   reverted. It is not. More cascades make each box smaller, which raises the screen-space
@@ -413,6 +424,10 @@ Design points, each measured:
   refreshed keeps the matrix it was drawn with, so the uniforms are taken from what the pages hold,
   not from this frame's fit. Refreshing only the changed pages needs a scissored clear
   (`TerrainShadowMap::clearCascade`).
+- **Each caster is culled by its own height range**, not the whole scene's slab: swept up to the
+  summits, a flat valley tile's light-space footprint reached kilometres sunward and landed in every
+  cascade. Its own min/max plus the 200 m standing headroom (what extrusions add) is exact.
+  Grenoble z17.2 tilt 45: near cascade 58 → 50 caster tiles.
 - **The per-cascade caster cull is exact.** The sides are snapped *before* the casters are culled
   against them, so the cull uses the final box and a one-texel margin; culling against the unsnapped
   box needed a 20% slop, which on the outer cascade is kilometres of ground. Cost of the pass on the
@@ -437,6 +452,61 @@ So the caster pass is about **4 ms** of the 33 and the rest is the **receiver**:
 ~6 ms and the remainder is per-vertex and per-fragment overhead that scales with the terrain mesh —
 one shadow matrix per vertex and one highp vec3 varying per cascade. Optimising the caster pass
 further (fewer tiles, coarser caster mesh, cheaper pages) is therefore not where the frame is.
+
+### Keeping the caster pass off the frame (terrain mesh 128)
+
+Measured on the Crosscall, `day-cycle-light` at Grenoble (5.7245 / 45.1885 z17.2 tilt 45, hour 14.5,
+`meshResolution 128`), continuous 4 s drags, profile APK:
+
+| Build | shadows on | shadows off |
+|---|---|---|
+| master `c99e4b31f` | 6.8 fps | 15.8 fps |
+| + padded light box | 8.5–9.1 fps | 14.7–15.2 fps |
+| + shadow grid capped at 64 | 10.8–11.1 fps | 14.6 fps |
+
+Buildings cost nothing measurable here: the style's `buildings` parameter 2 (extrusions) and 1
+(footprints) give the same fps with shadows on and off. The frame is **terrain vertices**.
+
+- **The light box is padded (`SHADOW_BOX_PADDING`, 20 %) and its centre rounded to a lattice finer
+  than the padding** (`vt/ShadowBox.h`). The page cache already skips a pass when the matrix repeats
+  bit-for-bit, but a box snapped to single texels moved on every panning frame: 43 caster passes over
+  97 panning frames, every one re-rendering ~120 terrain tiles at 32 k triangles. Padded: 10 passes,
+  and matrix-driven refreshes went from 84 to 0 — what is left is new tiles and fading buildings. The
+  price is texels 20 % wider.
+- **The shadow side of the terrain is drawn at most 64 × 64** (`SHADOW_GRID_MAX_RESOLUTION`), whatever
+  `meshResolution` is: the caster pass and the screen-space mask pass, both sides of the depth
+  compare, so they stay consistent with each other and no acne comes from the mismatch. The
+  on-screen surface keeps its 128 — it samples the mask, it never compares depths itself. At 128 the
+  mask alone redrew every cover tile at full mesh a second time, which was the whole shadow cost.
+  A/B at the Bastille (z15.5): same large-scale shading, fewer DEM-noise specks on the slopes.
+
+### Casters past the view
+
+A building just past the screen edge on the sun's side throws its shadow into the view, and the
+caster pass only had the tiles the layer draws. mapbox fetches extra caster tiles for this
+(`extendTileCover(direction)` in source_cache.ts, from `SHADOWS_MIN_ZOOM_EXTRA_TILES = 16`); the port
+is `ShadowCasterRing::sunwardTiles`: from tile zoom 16, the visible tiles' neighbours on the sun's side
+that overlap no visible tile. `MapRenderer::getShadowSunDir` hands the layers the sun of the last
+pass that drew shadows, so nothing is fetched while shadows are off.
+
+They travel as `TileDrawData::isShadowCasterTile` to `GLTileRenderer::setVisibleTiles`, which gives
+them render tiles but no surface and no labels. The caster pass takes them without the per-cascade
+coverage test (they are next to the view by construction), and that test is now an intersection
+rather than containment — a render tile inside a coarser ring tile never matched before.
+
+Device check: the tiles are fetched and reach vt (8–13 at z17.2 tilt 45); vt's own visibility,
+inflated by the extrusion headroom, usually counts them visible, so their buildings draw and cast like
+any other. A frame where an off-screen building's shadow visibly appears has **not** been captured:
+at a 31° sun nothing near the edges threw far enough, and at 15° the scene was dominated by the
+next issue.
+
+### Open: the DEM casts buildings
+
+Mapterhorn over Grenoble is not a bare-earth DEM at this resolution: the steepest texel step inside
+flat downtown z17 tiles is a slope of 2–6, walls and quays included. Since our terrain casts (mapbox's
+does not), at a 15° sun the ground throws building-shaped blocks of shadow at shadow-map resolution,
+with extrusions off as well as on. A "max slope below tan(sun)" skip for ground casters was tried and
+skipped nothing for that reason.
 
 ### The screen-space shadow mask
 

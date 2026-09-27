@@ -4,11 +4,12 @@
 
 namespace massif {
 
-    TileDrawData::TileDrawData(const vt::TileId& vtTileId, const std::shared_ptr<const vt::Tile>& vtTile, long long tileId, bool preloadingTile) :
+    TileDrawData::TileDrawData(const vt::TileId& vtTileId, const std::shared_ptr<const vt::Tile>& vtTile, long long tileId, bool preloadingTile, bool shadowCasterTile) :
         _vtTileId(vtTileId),
         _vtTile(vtTile),
         _tileId(tileId),
-        _preloadingTile(preloadingTile)
+        _preloadingTile(preloadingTile),
+        _shadowCasterTile(shadowCasterTile)
     {
     }
     
@@ -25,6 +26,10 @@ namespace massif {
         
     bool TileDrawData::isPreloadingTile() const {
         return _preloadingTile;
+    }
+
+    bool TileDrawData::isShadowCasterTile() const {
+        return _shadowCasterTile;
     }
     
     long long TileDrawData::getTileId() const {

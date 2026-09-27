@@ -2201,6 +2201,12 @@ namespace massif {
     static int shadowCastersNoElevation = 0;
     static double shadowMsSum = 0;
 
+    bool MapRenderer::getShadowSunDir(cglib::vec3<float>& sunDir) const {
+        std::lock_guard<std::mutex> lock(_shadowSunMutex);
+        sunDir = _shadowSunDir;
+        return _shadowSunActive;
+    }
+
     void MapRenderer::applyTerrainShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, TerrainShadowMap::MAX_CASCADES>& shadowTexelMeters) {
         // Casters and receivers share one vertex shader and elevation fetch, so they cannot disagree.
         float shadowStrength = 0.0f;
@@ -2396,13 +2402,26 @@ namespace massif {
                     }
                 }
                 // The slab must hold the ring casters too, or the near plane truncates a taller ridge's shadow.
+                // Each caster's own range too: extruded over the whole slab, a valley tile reaches every cascade.
+                std::vector<std::pair<double, double> > casterHeights(casterTileIds.size());
+                std::vector<bool> casterHeightKnown(casterTileIds.size(), false);
                 if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
-                    for (const vt::TileId& tileId : casterTileIds) {
+                    for (std::size_t i = 0; i < casterTileIds.size(); i++) {
+                        const vt::TileId& tileId = casterTileIds[i];
                         double casterMin = 0, casterMax = 0;
-                        if (elevationManager->getMinMaxDisplayHeightCached(MapTile(tileId.x, tileId.y, tileId.zoom, 0), casterMin, casterMax) && casterMax > casterMin) {
-                            minHeight = std::min(minHeight, casterMin);
-                            maxHeight = std::max(maxHeight, casterMax);
+                        if (elevationManager->getMinMaxDisplayHeightCached(MapTile(tileId.x, tileId.y, tileId.zoom, 0), casterMin, casterMax)) {
+                            casterHeights[i] = std::make_pair(casterMin, casterMax);
+                            casterHeightKnown[i] = true;
+                            if (casterMax > casterMin) {
+                                minHeight = std::min(minHeight, casterMin);
+                                maxHeight = std::max(maxHeight, casterMax);
+                            }
                         }
+                    }
+                }
+                for (std::size_t i = 0; i < casterHeights.size(); i++) {
+                    if (!casterHeightKnown[i]) {
+                        casterHeights[i] = std::make_pair(minHeight, maxHeight);
                     }
                 }
                 // One light box per cascade, near slice first; a single box staircases every edge at a tilt.
@@ -2412,7 +2431,7 @@ namespace massif {
                 std::array<std::vector<vt::TileId>, TerrainShadowMap::MAX_CASCADES> cascadeCasterTiles;
                 for (int cascade = 0; cascade < cascades; cascade++) {
                     double depthRangeMeters = 1.0, texelMeters = 0;
-                    if (tileLayers.front()->calculateShadowViewProj(coverTileIds, casterTileIds, shadowSunDir, tileHeights, minHeight, maxHeight, lighting.shadowDistance, cglib::length(viewState.getCameraPos() - viewState.getFocusPos()), _terrainShadowMap->getSize(), cascade, cascades, cascadeCasterTiles[cascade], depthRangeMeters, texelMeters, lightViewProjs[cascade])) {
+                    if (tileLayers.front()->calculateShadowViewProj(coverTileIds, casterTileIds, casterHeights, shadowSunDir, tileHeights, minHeight, maxHeight, lighting.shadowDistance, cglib::length(viewState.getCameraPos() - viewState.getFocusPos()), _terrainShadowMap->getSize(), cascade, cascades, cascadeCasterTiles[cascade], depthRangeMeters, texelMeters, lightViewProjs[cascade])) {
                         // The bias is metric, the shader wants a fraction of the normalised light
                         // depth, and each cascade's box spans its own - so divide per cascade.
                         shadowTexelMeters[cascade] = texelMeters;
@@ -2524,6 +2543,11 @@ namespace massif {
         }
         if (!shadowsWanted) {
             _shadowMapValid = false; // shadows off: whatever the map holds is stale
+        }
+        if (castShadows) {
+            std::lock_guard<std::mutex> lock(_shadowSunMutex);
+            _shadowSunActive = (shadowTexture != 0);
+            _shadowSunDir = shadowSunDir;
         }
         // Logged on change only: shadows going away looks like shadows drawn badly.
         {

@@ -961,8 +961,12 @@ namespace massif::vt {
             if (page > 2.5) { depthScale = uShadowDepthScale.w; }
         #endif
             ref -= (0.5 * uShadowBias.x + clamp(uShadowBias.y * slope, 0.0, uShadowBias.z)) * depthScale;
-            // Rise over half a texel: the worst-case texel-centre quantisation error.
+            // Rise over the texels a compare reads: half a texel, a whole one under hardware PCF's 2x2.
+        #ifdef SHADOW_HW
+            ref -= uShadowParams.x * (abs(dzduv.x) + abs(dzduv.y));
+        #else
             ref -= 0.5 * uShadowParams.x * (abs(dzduv.x) + abs(dzduv.y));
+        #endif
             // Offsets stay in page space so the kernel is square in the map.
             highp vec2 atlasScale = vec2(uShadowParams.w, 1.0);
             highp vec2 atlasBase = vec2(page * uShadowParams.w, 0.0);
@@ -975,7 +979,8 @@ namespace massif::vt {
             for (int j = 0; j < 2; j++) {
                 for (int i = 0; i < 2; i++) {
                     highp vec2 offset = vec2(float(i) * 2.0 - 1.0, float(j) * 2.0 - 1.0) * d;
-                    lit += shadowTap(atlasBase + (pos.xy + offset) * atlasScale, ref);
+                    // Each tap on the receiver's own plane, or the uphill taps read the ground above it.
+                    lit += shadowTap(atlasBase + (pos.xy + offset) * atlasScale, ref + dot(dzduv, offset));
                 }
             }
             lit *= 0.25;

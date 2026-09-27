@@ -184,6 +184,11 @@ namespace massif {
          * GL thread only. Internal method.
          */
         const ResolvedFog& getFrameFog() const { return _frameFog; }
+        /**
+         * The sun the last shadow pass cast from, towards the sun; false while no shadows are drawn.
+         * Any thread. Internal method.
+         */
+        bool getShadowSunDir(cglib::vec3<float>& sunDir) const;
 
         std::vector<std::shared_ptr<BillboardDrawData> > getBillboardDrawDatas() const;
     
@@ -362,6 +367,9 @@ namespace massif {
         std::unique_ptr<ScreenMaskBuffer> _labelOcclusionBuffer;
         std::unique_ptr<ScreenMaskBuffer> _groundAODrapeBuffer;
         bool _shadowMapValid = false;
+        mutable std::mutex _shadowSunMutex;
+        bool _shadowSunActive = false;
+        cglib::vec3<float> _shadowSunDir = cglib::vec3<float>(0, 0, 1);
         int _shadowMapSize = 0;
         int _shadowMapCascades = 0;
         int _shadowMapAge = 0;

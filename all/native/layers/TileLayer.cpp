@@ -850,16 +850,7 @@ namespace massif {
                 }
             }
         }
-        
-        {
-            static int pr = 0;
-            if ((pr++ % 1) == 0) {
-                int minZ = 99, maxZ = -1;
-                for (const MapTile& t : _visibleTiles) { minZ = std::min(minZ, t.getZoom()); maxZ = std::max(maxZ, t.getZoom()); }
-                Log::Infof("PROBE cull layer %p visible %d (zoom %d..%d) preload %d, maxVisDist %.1f, lodMaxArea %.1f, targetZoom %d, terrainMinZoom %d, tilt %.1f",
-                    (void*)this, (int)_visibleTiles.size(), minZ, maxZ, (int)_preloadingTiles.size(), _maxVisibleDistance, _lodMaxTileArea, _targetTileZoom, _terrainMinTileZoom, cullState->getViewState().getTilt());
-            }
-        }
+
         sortTiles(_visibleTiles, cullState->getViewState(), false);
         sortTiles(_labelTiles, cullState->getViewState(), true);
         sortTiles(_preloadingTiles, cullState->getViewState(), true);

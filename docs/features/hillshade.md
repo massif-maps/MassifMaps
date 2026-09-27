@@ -29,9 +29,9 @@ val dem = HTTPTileDataSource(0, 12, "https://your.tiles/dem/{z}/{x}/{y}.png").ap
 }
 
 val hillshade = HillshadeRasterTileLayer(dem).apply {
-    setHillshadeMethod(HillshadeMethod.MULTIDIRECTIONAL)
+    setHillshadeMethod(HillshadeMethod.COMBINED)
     setExaggeration(1.3f)               // smooth per-frame relief factor (shader uniform)
-    setIlluminationDirection(315f)      // light azimuth in degrees
+    setIlluminationDirection(MapVec(-0.7071, 0.7071, -0.7071))   // azimuth 315°, altitude 45°
 }
 mapView.layers.add(hillshade)
 ```
@@ -49,7 +49,7 @@ map.addLayer("hillshade", Spec.of("hillshade")
         .set("maxZoom", 12)
         // Attached to every tile the source loads; it is what picks the elevation decoder.
         .set("metaData", Spec.object().set("dem_encoding", "terrarium")))
-    .set("hillshadeMethod", "HILLSHADE_METHOD_MULTIDIRECTIONAL")
+    .set("hillshadeMethod", "MULTIDIRECTIONAL")
     .set("exaggeration", 1.3)
     .set("contrast", 0.6));
 
@@ -61,14 +61,14 @@ Every property and its enum values: [`hillshade` in the layer reference](/docs/a
 
 ## Hillshade methods
 
-`setHillshadeMethod(...)` selects the algorithm:
+`setHillshadeMethod(...)` selects the algorithm (default `IGOR`):
 
 | Method | Description |
 |---|---|
 | `STANDARD` | MapLibre's legacy hillshade algorithm. |
 | `COMBINED` | Combined algorithm based on GDAL. |
 | `IGOR` | Igor's soft hillshade (GDAL). |
-| `MULTIDIRECTIONAL` | Multiple light sources for richer relief. |
+| `MULTIDIRECTIONAL` | Four light sources for richer relief; ignores the illumination azimuth, uses only its altitude. |
 | `BASIC` | Basic algorithm based on GDAL. |
 
 ## Appearance controls
@@ -76,7 +76,7 @@ Every property and its enum values: [`hillshade` in the layer reference](/docs/a
 | Setter | Purpose |
 |---|---|
 | `setExaggeration(float)` | Per-frame relief factor (no re-decode). Default `1.0`. |
-| `setIlluminationDirection(float)` | Light azimuth (degrees). |
+| `setIlluminationDirection(MapVec)` | Light direction vector, `(0,0,-1)` straight down. Default MapLibre's azimuth 335° at 45° altitude. |
 | `setHeightScale(float)` / `setExagerateHeightScaleEnabled(bool)` | Vertical scale of the elevation. |
 | `setContrast(float)` | Shading contrast. |
 | `setShadowColor` / `setAccentColor` / `setHighlightColor` | Tint the shadow / accent / highlight bands. |

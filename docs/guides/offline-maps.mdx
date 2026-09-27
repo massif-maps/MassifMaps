@@ -73,14 +73,15 @@ user setting.
 
 ## Pre-download an area
 
-`startDownloadArea` fills the same cache ahead of time, for a bounding box and a zoom range:
+`startDownloadArea` fills the same cache ahead of time, for a bounding box (in the source's
+projection), a zoom range and a delay between requests:
 
 ```java
 MapBounds bounds = new MapBounds(
     projection.fromWgs84(new MapPos(-77.08, 38.85)),
     projection.fromWgs84(new MapPos(-76.94, 38.93)));
 
-cache.startDownloadArea(bounds, 0, 10, new TileDownloadListener() {
+cache.startDownloadArea(bounds, 0, 10, 0 /* fetchDelay */, new TileDownloadListener() {
     @Override public void onDownloadProgress(float progress) { … }
     @Override public void onDownloadCompleted() { … }
 });
@@ -157,8 +158,8 @@ Converting a MapBox style into one: [the style CLI](/docs/tools/style-cli).
 
 ## Mixing offline and online
 
-`ordered` and `combined` sources put one source in front of another — an offline file first,
-falling back to the network where it has no tile:
+An `ordered` source puts one source in front of another — an offline file first, falling back to
+the network where it has no tile (`combined` instead switches source at a fixed `zoomLevel`):
 
 ```json
 {"type": "ordered",

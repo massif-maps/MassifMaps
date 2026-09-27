@@ -14,15 +14,9 @@
 namespace massif {
 
     /**
-     * How far a queued elevation tile is from the point prefetching orders against - both in
-     * normalised mercator (u east, v south, 0..1 over the world), the tile taken at its centre.
-     * Kept out of ElevationManager so the ordering can be tested on the host: the manager itself
-     * drags in the data source and the grid cache and cannot be linked there.
-     *
-     * The result is in TILE WIDTHS at the tile's own zoom, not in mercator units, because the
-     * queue mixes levels: a coarse ancestor covering the focus and a fine tile sitting on it are
-     * both "the ground under the camera" and must rank alike, which raw mercator distance would
-     * not do - it would put the ancestor's centre up to eight tiles away.
+     * Distance of a queued elevation tile's centre from the prefetch focus (normalised mercator, u east, v south),
+     * in tile widths at the tile's own zoom: the queue mixes levels, and a coarse ancestor covering the focus
+     * must rank like a fine tile on it.
      */
     inline double prefetchTileDistance(const MapTile& tile, double focusU, double focusV) {
         double extent = static_cast<double>(1 << tile.getZoom());

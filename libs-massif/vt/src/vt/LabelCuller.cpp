@@ -1,7 +1,9 @@
 #include "LabelCuller.h"
+#include "LabelSlice.h"
 #include "RenderStats.h"
 
 #include <array>
+#include <cmath>
 #include <vector>
 #include <list>
 #include <unordered_map>
@@ -42,9 +44,7 @@ namespace {
             float min1, max1, min2, max2;
             gatherPolygonProjectionExtents(vertList1, proj, min1, max1);
             gatherPolygonProjectionExtents(vertList2, proj, min2, max2);
-            // The buffer widens the AXIS, not this one edge: measured against the edge, the OPPOSITE
-            // edge of a rectangle reported a separating axis before the near one was tested. 'proj' is
-            // not normalized, so the gap is scaled the way the extents are.
+            // The buffer widens the whole axis, not this edge; 'proj' is not normalized, so scale the gap like the extents.
             float gap = buffer * cglib::length(proj);
             if (max1 + gap < min2 || min1 - gap > max2) {
                 return true;
@@ -62,9 +62,8 @@ namespace {
 }
 
 namespace {
-    // Holds a mutex across a loop, handing it back every 'batch' iterations. The GL thread holds
-    // the label mutex while it builds label vertices, so a placement pass may not keep it for its
-    // whole run - but taking it once per label spent more time contending for it than working.
+    // Holds a mutex across a loop, handing it back every 'batch' iterations: the GL thread needs the
+    // label mutex to build vertices, and locking once per label costs more in contention than work.
     class BatchLock final {
     public:
         BatchLock(std::mutex& mutex, int batch) : _lock(mutex), _batch(batch) { }
@@ -111,6 +110,18 @@ namespace massif::vt {
         _metersToInternal = metersToInternal;
     }
 
+    void LabelCuller::setLabelViewDistance(double viewDistance) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _labelViewDistance = viewDistance;
+    }
+
+    void LabelCuller::setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _occlusionTest = std::move(test);
+    }
+
     void LabelCuller::beginSlice(double budgetMs) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -141,94 +152,103 @@ namespace massif::vt {
         VT_STAT_INC(cullerPasses);
         VT_STAT_CLOCK(cullerClock);
 
-        // The grid is intentionally NOT cleared here: one culler is shared by every layer in a placement
-        // pass, so records must accumulate across process() calls for labels of different layers to
-        // collide. Each pass builds a fresh culler, so no stale records survive.
+        // The grid is not cleared: one culler serves every layer of a pass, so labels of different layers collide.
 
-        // Start by collecting valid labels and updating label placements
         std::vector<LabelInfo> validLabelList;
         validLabelList.reserve(labelList.size());
-        // The view a ranking expression is evaluated against: the frame's, plus the distance to
-        // the label being ranked (style variable view::distance). Kept out of the loop - a
-        // ViewState carries the matrices and the frustum, and only its distance changes here.
+        // Only labelDistance (view::distance) changes per label, so the ViewState copy stays out of the loop.
         ViewState rankViewState = _viewState;
-        // Reused across labels: a pass walks a couple of thousand of them, and both buffers would
-        // otherwise be a heap allocation each, per label, per pass.
+        // Reused across labels to avoid two heap allocations per label per pass.
         std::vector<std::array<cglib::vec3<float>, 4>> worldEnvelopes;
         std::vector<CullRecord> variants;
         VT_STAT_CLOCK(phaseClock);
         BatchLock labelLock(labelMutex, LABEL_LOCK_BATCH);
-        // Collect is ~90% of a pass (performance-log 28), and it runs BEFORE the sort, so cutting
-        // it short costs no ordering among the labels that do get collected.
+        // Slicing the collect (most of a pass, performance-log 28) runs before the sort, so it costs no ordering.
+        const std::size_t sliceStart = cursor;
         std::size_t index = cursor;
         for (; index < labelList.size(); index++) {
-            if (_sliceBudgeted && (index & 0x1f) == 0 && std::chrono::steady_clock::now() > _sliceDeadline) {
+            if (_sliceBudgeted && labelSliceMayStop(index, sliceStart, MIN_SLICE_LABELS) && std::chrono::steady_clock::now() > _sliceDeadline) {
                 _sliceExhausted = true;
                 break;
             }
             const std::shared_ptr<Label>& label = labelList[index];
             labelLock.step();
 
-            // Analyze only active and valid labels
             if (!label->isActive()) {
                 continue;
             }
             VT_STAT_INC(cullerConsidered);
 
-            // Capture visibility from the previous frame BEFORE updatePlacement, which may
-            // reset opacity to 0 even for labels that were already visible on screen.
+            // Before updatePlacement, which may reset opacity to 0 even for a label already on screen.
             bool wasVisible = label->isVisible();
 
-            // Style max-distance: a label glyph is screen-space, so an unlimited view fills its horizon
-            // band with full-size labels for features kilometres away. HIDDEN rather than skipped, so
-            // the GL thread's existing opacity animation fades it out and back in.
+            // Glyphs are screen-space, so distant features would fill the horizon with full-size labels.
+            // Hidden rather than skipped, so the GL thread's opacity animation fades them.
             const std::shared_ptr<const TileLabel::Style>& style = label->getStyle();
             bool ranked = !(style->rankFunc == FloatFunction(0.0f));
             float maxDistance = style->maxDistance;
             float distance = 0; // meters, 0 when it could not be resolved
             double cameraToCenter = _viewState.focusDistance;
-            if ((maxDistance > 0 || ranked || cameraToCenter > 0) && (_metersToInternal > 0 || cameraToCenter > 0)) {
+            bool measurable = (maxDistance > 0 || ranked || cameraToCenter > 0) && (_metersToInternal > 0 || cameraToCenter > 0);
+            bool measured = false;
+            // Returns false when the distance alone hides the label.
+            auto measureDistance = [&]() {
                 cglib::vec3<double> position(0, 0, 0);
-                if (label->calculateCenter(position)) {
-                    double internalDistance = cglib::length(position - _viewState.origin);
-                    // The perspective cut comes FIRST and costs one length: everything below it -
-                    // updatePlacement, the variant envelopes, the grid test - is per label, and the
-                    // horizon band is where most of the labels are (performance-log 27).
-                    if (cameraToCenter > 0 &&
-                        LabelDistance::perspectiveRatio(cameraToCenter, internalDistance) < LabelDistance::PERSPECTIVE_RATIO_CUTOFF) {
-                        VT_STAT_INC(cullerDistanceCut);
+                if (!label->calculateCenter(position)) {
+                    return true;
+                }
+                measured = true;
+                double internalDistance = cglib::length(position - _viewState.origin);
+                if (LabelDistance::isTooFar(cameraToCenter, internalDistance, _labelViewDistance)) {
+                    VT_STAT_INC(cullerDistanceCut);
+                    label->setVisible(false);
+                    return false;
+                }
+                if (_metersToInternal > 0) {
+                    distance = static_cast<float>(internalDistance / _metersToInternal);
+                    if (maxDistance > 0 && distance > maxDistance) {
+                        VT_STAT_INC(cullerMaxDistanceCut);
                         label->setVisible(false);
-                        continue;
-                    }
-                    if (_metersToInternal > 0) {
-                        distance = static_cast<float>(internalDistance / _metersToInternal);
-                        if (maxDistance > 0 && distance > maxDistance) {
-                            label->setVisible(false);
-                            continue;
-                        }
+                        return false;
                     }
                 }
+                return true;
+            };
+            // The perspective cut first: one length, before any per-label work (performance-log 27).
+            if (measurable && !measureDistance()) {
+                continue;
             }
 
             if (label->updatePlacement(_viewState)) {
                 label->setOpacity(0);
             }
+            // A first-time label has no centre until updatePlacement; at distance 0 it would outrank nearer ones.
+            if (measurable && !measured && !measureDistance()) {
+                continue;
+            }
 
             if (!label->isValid()) {
                 VT_STAT_INC(cullerInvalid);
             }
+            // Hidden by the terrain: take no collision slot (see setOcclusionTest). After updatePlacement
+            // because most considered labels are off-screen and the test is not cheap.
+            if (label->isValid() && _occlusionTest) {
+                cglib::vec3<double> anchor(0, 0, 0);
+                if (label->calculateCenter(anchor) && _occlusionTest(anchor)) {
+                    VT_STAT_INC(cullerOccluded);
+                    label->setVisible(false);
+                    continue;
+                }
+            }
             if (label->isValid()) {
                 float size = (style->sizeFunc)(_viewState);
-                // Ranking is the label's own priority plus what the style makes of the view - the one
-                // per-label evaluation, so the one place view::distance means anything. It only reorders
-                // the greedy insertion below; size and colour still come from the batch.
+                // The one per-label style evaluation, so the only place view::distance means anything;
+                // it only reorders the greedy insertion below.
                 float priority = label->getPriority();
                 if (ranked) {
                     rankViewState.labelDistance = distance;
                     priority += (style->rankFunc)(rankViewState);
                 }
-                // Every side in one call - they share the placement and the label's screen axes,
-                // so this is one placement per label however many sides it has.
                 bool valid = label->calculateVariantEnvelopes(size, EXTRA_LABEL_BUFFER, _viewState, worldEnvelopes);
                 variants.clear();
                 for (const std::array<cglib::vec3<float>, 4>& worldEnvelope : worldEnvelopes) {
@@ -240,8 +260,6 @@ namespace massif::vt {
                     record.allowOverlapSameFeatureId = label->allowOverlapSameFeatureId();
                 }
                 int variantIndex = std::min(static_cast<int>(variants.size()) - 1, std::max(0, label->getVariantIndex()));
-                // Only a label with several sides needs them kept - one layout is fully described
-                // by its cull record.
                 validLabelList.push_back({ valid, wasVisible, priority, label->getLayerIndex(), size, label->getOpacity(), label, variants[variantIndex],
                                            variants.size() > 1 ? variants : std::vector<CullRecord>() });
             }
@@ -250,20 +268,18 @@ namespace massif::vt {
         cursor = index;
         VT_STAT_ADD(cullerSorted, static_cast<long long>(validLabelList.size()));
 
-        // Handed back around the sort: it is the one stretch of a pass long enough for the GL
-        // thread to notice, and it reads no label state that thread writes.
+        // Released around the sort: long enough for the GL thread to notice, and it reads no state that thread writes.
         labelLock.release();
         VT_STAT_SPLIT(cullerCollectNs, phaseClock);
 
-        // Sort by priority/wasVisible/layerIndex/size/opacity: a label visible in the previous frame is
-        // placed before a new one of equal priority, which is MapLibre's "committed placement". The
-        // isVisible() boolean beats opacity, which updatePlacement() can reset even for visible labels.
+        // Previously visible labels go before new ones of equal priority (MapLibre's committed placement);
+        // wasVisible, not opacity, since updatePlacement() can reset the opacity of a visible label.
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
             if (labelInfo1.priority != labelInfo2.priority) {
                 return labelInfo1.priority > labelInfo2.priority;
             }
             if (labelInfo1.wasVisible != labelInfo2.wasVisible) {
-                return labelInfo1.wasVisible; // previously-visible labels claim grid slots first
+                return labelInfo1.wasVisible;
             }
             if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
                 return labelInfo1.layerIndex < labelInfo2.layerIndex;
@@ -279,13 +295,11 @@ namespace massif::vt {
 
         VT_STAT_SPLIT(cullerSortNs, phaseClock);
 
-        // Update label visibility flag based on overlap analysis
         std::unordered_map<long long, std::vector<const LabelInfo*>> groupMap;
         groupMap.reserve(validLabelList.size());
         bool changed = false;
-        // The group's minimum distance: labels of one group must not only miss each other but stay that
-        // many pixels apart. A callout is tested for it AT EVERY ROW it tries - testing after placement
-        // would put it on a free row and then hide it, which is what the stacking exists to avoid.
+        // Labels of one group must stay the group's minimum distance apart. A callout tests it at every row
+        // it tries; testing after placement would take a free row and then hide the label anyway.
         auto testGroupDistance = [&groupMap](const LabelInfo& info) {
             long long groupId = info.label->getGroupId();
             if (groupId <= 0) {
@@ -300,6 +314,20 @@ namespace massif::vt {
             return true;
         };
 
+        // A following band sits just above the highest summit it names (peakfinder's row), capped by the screen anchor.
+        _highestCalloutAnchorY = -1.0f;
+        for (const LabelInfo& labelInfo : validLabelList) {
+            const std::shared_ptr<const TileLabel::Style>& style = labelInfo.label->getStyle();
+            if (labelInfo.valid && style->orientation == LabelOrientation::CALLOUT && style->calloutScreenAnchor >= 0 && style->calloutBandFollow) {
+                float anchorY = labelInfo.label->calculateAnchorScreenY(_viewState);
+                cglib::vec3<double> anchorPosition(0, 0, 0);
+                if (anchorY > 0 && anchorY < _viewState.resolution && anchorY > _highestCalloutAnchorY && labelInfo.label->calculateCenter(anchorPosition)) {
+                    _highestCalloutAnchorY = anchorY;
+                    _highestCalloutAnchorPosition = anchorPosition;
+                }
+            }
+        }
+
         labelLock.acquire();
         for (LabelInfo& labelInfo : validLabelList) {
             labelLock.step();
@@ -308,7 +336,7 @@ namespace massif::vt {
 
             long long groupId = label->getGroupId();
 
-            // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
+            // A negative group id means always visible.
             bool visible;
             if (label->getStyle()->orientation == LabelOrientation::CALLOUT && groupId >= 0) {
                 visible = labelInfo.valid && placeCalloutLabel(labelInfo, testGroupDistance);
@@ -317,6 +345,12 @@ namespace massif::vt {
             } else {
                 visible = groupId >= 0 ? labelInfo.valid && testGridOverlap(labelInfo) : labelInfo.valid;
                 visible = visible && testGroupDistance(labelInfo);
+            }
+
+            if (!labelInfo.valid) {
+                VT_STAT_INC(cullerNotFacing);
+            } else if (!visible) {
+                VT_STAT_INC(cullerCollided);
             }
 
             if (visible) {
@@ -345,9 +379,8 @@ namespace massif::vt {
         return changed;
     }
 
-    // The grid spans the PADDED viewport, not the screen: a label is now placed up to labelPadding
-    // pixels outside it (ViewState), and a grid that stopped at the screen edge would clamp every
-    // one of those into the border cells and let them collide with everything drawn there.
+    // Spans the padded viewport: labels are placed up to labelPadding outside the screen, and a grid
+    // clamped at the screen edge would pile them into the border cells.
     cglib::vec2<int> LabelCuller::getGridIndex(const cglib::vec2<float>& pos) const {
         float padding = _viewState.labelPadding;
         float width = _viewState.resolution * _viewState.aspect + 2 * padding;
@@ -357,11 +390,8 @@ namespace massif::vt {
         return cglib::vec2<int>(x, y);
     }
 
-    // Entirely outside the REAL viewport, though inside the padded one it was placed against. This
-    // is maplibre's JointPlacement::skipFade: "Because these symbols aren't onscreen yet, we can
-    // skip the fade in animation, and if a subsequent viewport change brings them into view, they'll
-    // be fully visible right away." Without it a label starts its fade at the edge and is still
-    // fading when it has reached the middle of the screen.
+    // Outside the real viewport but inside the padded one: maplibre's JointPlacement::skipFade, so a label
+    // panned into view is already drawn instead of still fading in mid-screen.
     bool LabelCuller::isOffscreen(const CullRecord& cullRecord) const {
         float width = _viewState.resolution * _viewState.aspect, height = _viewState.resolution;
         return cullRecord.bounds.max(0) < 0 || cullRecord.bounds.min(0) > width ||
@@ -392,8 +422,7 @@ namespace massif::vt {
     }
 
     bool LabelCuller::testRecordOverlap(const CullRecord& record1, const CullRecord& record2, float buffer) {
-        // Two screen-aligned rectangles whose bounds already intersect overlap, full stop - the
-        // separating-axis test can only confirm it. This is the common case: labels are billboards.
+        // Callers pass records whose bounds intersect; for two axis-aligned boxes that already is an overlap.
         if (buffer <= 0 && record1.axisAligned && record2.axisAligned) {
             return true;
         }
@@ -426,15 +455,22 @@ namespace massif::vt {
         const std::shared_ptr<Label>& label = labelInfo.label;
         const std::shared_ptr<const TileLabel::Style>& style = label->getStyle();
 
-        auto envelopeAt = [this, &labelInfo, &label](float offset) {
-            label->setCalloutPlacement(offset, label->calculateAnchorScreenY(_viewState));
+        bool banded = style->calloutScreenAnchor >= 0;
+        bool following = banded && style->calloutBandFollow && _highestCalloutAnchorY >= 0;
+        auto envelopeAt = [this, &labelInfo, &label, banded, following](float offset) {
+            if (!banded) {
+                label->setCalloutOffset(offset);
+            } else if (following) {
+                label->setCalloutPlacement(offset, label->calculateAnchorScreenY(_viewState), _highestCalloutAnchorPosition, _highestCalloutAnchorY);
+            } else {
+                label->setCalloutPlacement(offset, label->calculateAnchorScreenY(_viewState));
+            }
             labelInfo.valid = calculateScreenEnvelope(label, labelInfo.size, labelInfo.cullRecord);
             return labelInfo.valid;
         };
 
-        // Which point of the label the band line runs through. The default is the bottom of the
-        // box, but a tilted panorama name reads as a row only when every label hangs from the SAME
-        // corner - its first letter, or its last one - which is what the style anchor picks.
+        // The point the band line runs through: the box bottom by default; tilted names read as a row
+        // only when all hang from the same corner, which the style anchor picks.
         auto bandAnchorY = [&labelInfo, &style]() {
             if (!style->calloutBandAnchor) {
                 return labelInfo.cullRecord.bounds.min(1);
@@ -446,51 +482,74 @@ namespace massif::vt {
             return bottom + (top - bottom) * v;
         };
 
-        // Where it ended up last time. A callout is re-placed from scratch on every pass, and a panning
-        // map runs one whenever its tile set changes, so keeping the row it already holds is what stops
-        // a screen of names re-flowing under the camera.
+        // Every pass re-places a callout from scratch; keeping its old row stops names re-flowing while panning.
         float previousOffset = label->getCalloutOffset();
 
-        // Where the label wants to sit before anything else is taken into account: either a band
-        // at a fixed height on screen - which is what makes a panorama read as one row of names
-        // over the ridges - or straight above its own anchor.
+        // Either a band at a fixed screen height (one row of names over the ridges) or above its own anchor.
         if (!envelopeAt(0)) {
             return false;
         }
         float anchorY = bandAnchorY();
         float top = labelInfo.cullRecord.bounds.max(1);
 
-        // Everything below is in SCREEN PIXELS, and so is the offset the label is given: it is converted
-        // to world units at draw time against the projection at the label's own depth, so a lift of N
-        // pixels stays N pixels while the camera tilts, rises or zooms.
-        float lift = style->calloutOffset;
-        if (style->calloutScreenAnchor >= 0) {
-            float bandY = (1.0f - style->calloutScreenAnchor) * _viewState.resolution;
-            lift = std::max(lift, bandY - anchorY);
+        // Screen pixels from here on; the draw path converts the lift at the label's depth, so it holds
+        // under any camera move. The style's offset and step are device pixels, calloutPixel normalizes them.
+        float calloutPixel = std::max(1.0f, _viewState.resolution * style->scale * 0.5f);
+        if (_viewState.deviceResolution > 0 && _viewState.resolution > 0) {
+            calloutPixel *= _viewState.resolution / _viewState.deviceResolution;
         }
-        // Whatever the band asks for, the label has to stay on screen: lifted away from its anchor, its
-        // own position is no evidence that it is in view. The margin is a CONSTANT - one proportional to
-        // the label's height would push long names further down than short ones.
+        float calloutOffset = style->calloutOffset * calloutPixel;
+        float lift = calloutOffset;
+        if (banded) {
+            float bandY = (1.0f - style->calloutScreenAnchor) * _viewState.resolution;
+            if (following) {
+                bandY = std::min(bandY, _highestCalloutAnchorY + calloutOffset + calloutPixel);
+            }
+            float bandLift = bandY - anchorY;
+            // The band is the height, not a floor: a name that cannot reach it clear of its feature is dropped.
+            if (bandLift < calloutOffset) {
+                label->setCalloutFailures(0);
+                return false;
+            }
+            lift = bandLift;
+        }
+        // A lifted label must stay on screen; its anchor being in view proves nothing. A constant margin,
+        // so tall names are not pushed down further than short ones.
         float maxLift = _viewState.resolution - top - SCREEN_EDGE_MARGIN;
-        // Rows may go down (negative step), but never below the lift the style asks for: the label
-        // belongs ABOVE its feature, and its leader line only exists while it is.
-        float minLift = std::max(style->calloutOffset, SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1));
-        // A summit already so high on screen that its name would not fit above it has no place for that
-        // name: drop it. Pulling the label down to the screen edge instead put it BELOW its own summit,
-        // off the band the style asks for and with its leader line pointing down.
-        if (lift > maxLift || minLift > maxLift) {
+        // Rows may step down, but never below the style's lift: the leader line only exists above the feature.
+        float minLift = std::max(calloutOffset, SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1));
+        if (minLift > maxLift) {
             label->setCalloutFailures(0);
             return false;
         }
-        lift = std::max(lift, minLift);
+        // A band or nothing: clamping to maxLift, built from the label's own top, would offset each name by its height.
+        if (banded) {
+            if (lift > maxLift) {
+                label->setCalloutFailures(0);
+                return false;
+            }
+            lift = std::max(lift, minLift);
+        } else {
+            lift = std::max(std::min(lift, maxLift), minLift);
+        }
 
-        float step = (style->calloutStep > 0 ? style->calloutStep : labelInfo.size * 1.2f);
+        // Not '> 0': a negative step stacks rows downwards, the only room a band near the top has.
+        float step = (style->calloutStep != 0.0f ? style->calloutStep * calloutPixel : labelInfo.size * 1.2f * calloutPixel);
 
-        // The row it already holds is tried first, as long as it is still one this pass would
-        // offer: a label that keeps changing row while the camera moves reads as flicker even
-        // though it never disappears.
+        // The held row first, if this pass still offers it; changing rows while the camera moves reads as flicker.
         if (labelInfo.wasVisible && previousOffset > 0) {
-            if (previousOffset >= lift - 0.5f && previousOffset <= maxLift + 0.5f) {
+            bool holdsOfferedRow = previousOffset >= minLift - 0.5f && previousOffset <= maxLift + 0.5f;
+            // A band's held offset must be one of this pass's rows: the band's lift moves with tilt.
+            if (holdsOfferedRow && banded) {
+                holdsOfferedRow = false;
+                for (int row = 0; row < std::max(1, style->calloutMaxRows); row++) {
+                    if (std::abs(previousOffset - (lift + row * step)) < 0.5f) {
+                        holdsOfferedRow = true;
+                        break;
+                    }
+                }
+            }
+            if (holdsOfferedRow) {
                 if (envelopeAt(previousOffset) && testGridOverlap(labelInfo) && testGroupDistance(labelInfo)) {
                     label->setCalloutFailures(0);
                     return true;
@@ -498,13 +557,10 @@ namespace massif::vt {
             }
         }
 
-        // Then row by row, in the direction the style's step points (DOWN for a negative one - a band
-        // pinned to the top of the screen has no room above it), until the screen is free. Stepping
-        // instead of hiding is the point: a summit that loses its slot still gets its name.
         for (int row = 0; row < std::max(1, style->calloutMaxRows); row++) {
             float rowLift = lift + row * step;
             if (rowLift > maxLift || rowLift < minLift) {
-                break; // the rows all go the same way, so nothing beyond this one fits either
+                break; // rows are monotonic, nothing further fits
             }
             if (!envelopeAt(rowLift)) {
                 return false;
@@ -515,12 +571,9 @@ namespace massif::vt {
             }
         }
 
-        // Nothing free. A name already on screen may hold its place for a few passes rather than blink
-        // out as tiles stream in. It may sit closer than the group's minimum distance while it does, but
-        // NOT on top of a neighbour - an overlap granted here stays until something else moves.
+        // A name on screen may persist a few passes rather than blink as tiles stream in: on the band's line,
+        // ignoring the group distance but never overlapping, since a granted overlap would stick.
         if (labelInfo.wasVisible && label->getCalloutFailures() < style->calloutPersistPasses) {
-            // Held over ON THE LINE the band asks for, and nowhere else: a name kept at its old
-            // lift is a name off the row, and the row is the whole point of the band.
             if (envelopeAt(lift) && testGridOverlap(labelInfo)) {
                 label->setCalloutFailures(label->getCalloutFailures() + 1);
                 return true;
@@ -534,9 +587,7 @@ namespace massif::vt {
         const std::shared_ptr<Label>& label = labelInfo.label;
         int count = static_cast<int>(labelInfo.variants.size());
 
-        // The side the label already holds is tried first, so a pass that changes nothing else leaves it
-        // there - a name changing side under a moving camera reads as flicker. Never the icon-only
-        // variant: it always fits, so a label that fell back to it once would keep it for good.
+        // The held side first, against flicker; never the icon-only variant, which always fits and would stick.
         std::vector<int> candidates;
         candidates.reserve(count + 1);
         int preferred = (label->drawsText() ? label->getVariantIndex() : -1);
@@ -556,8 +607,7 @@ namespace massif::vt {
             }
         }
 
-        // Nothing free. Leave it where it was, so that a label on its way out fades where it last
-        // was instead of jumping to the last side it tried.
+        // Nothing free: fade out on the side it held, not the last one tried.
         takeVariant(labelInfo, std::max(0, std::min(count - 1, label->getVariantIndex())));
         return false;
     }

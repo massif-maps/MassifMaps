@@ -21,40 +21,22 @@
 namespace massif {
 
     /**
-     * One read-back of the packed terrain depth (RGB = linear eye depth relative to the far
-     * plane, A = terrain coverage), at BUFFER_DOWNSCALE resolution. Immutable once published,
-     * so it can be handed to the label placement worker as a whole.
+     * One read-back of the packed terrain depth (RGB = linear eye depth / far, A = coverage) at
+     * BUFFER_DOWNSCALE resolution. Immutable once published, for the label placement worker.
      */
     struct TerrainDepthBuffer {
         std::vector<std::uint8_t> data;
         int width = 0;
         int height = 0;
         float far = 0;
-        // The camera this was rendered from. An occlusion query must project with THIS matrix,
-        // not the current frame's: the buffer lags a moving camera by up to the submit interval,
-        // and comparing a current-camera distance against it inverts the answer while zooming.
+        // Occlusion queries must project with this matrix: the buffer lags a moving camera.
         cglib::mat4x4<double> mvpMatrix = cglib::mat4x4<double>::zero();
     };
 
     /**
-     * Renders the terrain occlusion depth buffer and reads it back on a thread of its own,
-     * with its own GL context.
-     *
-     * The read-back is a glReadPixels, i.e. a full pipeline stall - measured at 55-62 ms on an
-     * Adreno 610. On the render thread that stall IS the frame, which is why the synchronous
-     * path can only afford it every few hundred ms while the camera moves. Here it happens on
-     * a thread whose stalling costs nothing, and the render thread only pays for collecting
-     * the meshes to draw.
-     *
-     * The context needs nothing from the render context and is deliberately NOT shared with it:
-     * the depth pass draws CPU-built meshes from client memory with its own program and its own
-     * framebuffer, so there are no cross-context object lifetime or flush-ordering rules to get
-     * right. Meshes are held alive through the job for as long as the worker needs them.
-     *
-     * EGL-only, so it is active on Android (and any ANGLE-backed build); elsewhere isSupported()
-     * is false and the caller keeps the synchronous path.
-     *
-     * Internal class, not exposed in the public API.
+     * Renders and reads back the terrain occlusion depth on its own thread and unshared EGL context, so the
+     * glReadPixels stall stays off the render thread. EGL only (Android, ANGLE); elsewhere isSupported()
+     * is false. See docs/internals/rendering/04-terrain.md. Internal class.
      */
     class TerrainDepthWorker {
     public:
@@ -80,34 +62,29 @@ namespace massif {
         virtual ~TerrainDepthWorker();
 
         /**
-         * False when this build has no offscreen GL context to render on. The caller must then
-         * fall back to rendering and reading back on the render thread.
+         * False without an offscreen GL context; the caller then reads back on the render thread.
          */
         static bool isSupported();
 
         /**
-         * Minimum interval (ms) between jobs while the camera moves, so the two contexts do not
-         * contend on every frame. Overridable for measurement with
-         * 'adb shell setprop debug.massif.asyncdepthms N'.
+         * Minimum interval (ms) between jobs while the camera moves, so the two contexts do not contend
+         * every frame. Demo builds: 'adb shell setprop debug.massif.asyncdepthms N' overrides it.
          */
         static int getMovingSubmitInterval(int defaultInterval);
 
         /**
-         * False once the offscreen context turned out not to work (it is created on the worker
-         * thread, so this only settles after the first job was offered). The caller must then
-         * go back to the synchronous path rather than wait for results that never come.
+         * False once the offscreen context failed; settles only after the first job. The caller must then
+         * go back to the synchronous path.
          */
         bool isUsable() const;
 
         /**
-         * True while a job is being rendered or read back. Submitting is pointless until it
-         * clears - a newer camera would only queue up behind an already stale one.
+         * True while a job is being rendered or read back; submitting before it clears is pointless.
          */
         bool isBusy() const;
 
         /**
-         * Hands a job over. Never blocks and never touches the render context. Returns false
-         * when the worker is busy or unusable, in which case nothing was taken over.
+         * Never blocks or touches the render context. Returns false, taking nothing, when busy or unusable.
          */
         bool submit(Job job);
 
@@ -127,8 +104,7 @@ namespace massif {
         const std::string _vertexShaderSource;
         const std::string _fragmentShaderSource;
 
-        // EGL/GL handles, kept as opaque types so the header does not drag in the GL headers.
-        // Touched only from the worker thread.
+        // Opaque to keep GL headers out; worker thread only.
         void* _display = nullptr;
         void* _context = nullptr;
         void* _surface = nullptr;

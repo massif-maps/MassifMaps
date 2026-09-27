@@ -23,12 +23,7 @@ namespace massif { namespace api {
 
     namespace {
 
-        /**
-         * calculateRoute([requestHandle]) -> a RoutingResult handle.
-         *
-         * Blocking, and for the online service that means an HTTP round trip on the calling thread,
-         * so it belongs on callAsync exactly like findFeatures.
-         */
+        /** calculateRoute([requestHandle]) -> a RoutingResult handle. Blocking (HTTP when online): use callAsync. */
         Result calculateRoute(Context& context, void* obj, const CallArgs& args,
                               PropertyValue& result) {
             Handle requestHandle = NULL_HANDLE;
@@ -45,12 +40,7 @@ namespace massif { namespace api {
                                 "massif::RoutingResult", result);
         }
 
-        /**
-         * matchRoute([requestHandle]) -> a RouteMatchingResult handle.
-         *
-         * Map matching: what turns a recorded track into edges carrying surface, grade and road
-         * class. Blocking like calculateRoute, so it belongs on callAsync.
-         */
+        /** matchRoute([requestHandle]) -> a RouteMatchingResult handle. Blocking: use callAsync. */
         Result matchRoute(Context& context, void* obj, const CallArgs& args,
                           PropertyValue& result) {
             Handle requestHandle = NULL_HANDLE;
@@ -67,13 +57,7 @@ namespace massif { namespace api {
                                 "massif::RouteMatchingResult", result);
         }
 
-        /**
-         * getInstruction(i) -> a handle onto a COPY of the maneuver.
-         *
-         * A RoutingInstruction is a value type, not a shared_ptr one, so the element is copied onto
-         * the heap to have a handle at all. It is nine scalars; the alternative is a per-field
-         * method. instructionCount is a property, so the loop reads the same as a feature loop.
-         */
+        /** getInstruction(i) -> a handle onto a heap copy of the maneuver (a value type, so it needs one). */
         Result getInstruction(Context& context, void* obj, const CallArgs& args,
                               PropertyValue& result) {
             long long index = 0;
@@ -86,12 +70,7 @@ namespace massif { namespace api {
             return objectResult(context, instruction, "massif::RoutingInstruction", result);
         }
 
-        /**
-         * getPoints() -> the path, flat, as x0,y0,x1,y1,… through the bulk numeric channel.
-         *
-         * A route is thousands of positions and `points` is a struct property with no codec on
-         * purpose: JSON is what this channel exists to avoid. Read it with getDoubles.
-         */
+        /** getPoints() -> the path as flat x0,y0,x1,y1,… on the bulk numeric channel; read with getDoubles. */
         Result getRoutePoints(Context& context, void* obj, const CallArgs&, PropertyValue& result) {
             auto flat = std::make_shared<std::vector<double> >();
             const std::vector<MapPos>& points = static_cast<RoutingResult*>(obj)->getPoints();
@@ -126,12 +105,7 @@ namespace massif { namespace api {
 
 #ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
 
-        /**
-         * add(path) / remove(path) on the multi-database offline service.
-         *
-         * One .vtiles per downloaded area, found by scanning at run time, so the databases cannot
-         * be constructor arguments.
-         */
+        /** add(path) / remove(path) on the multi-database offline service. */
         Result addRoutingDatabase(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             std::string database;
             if (!args.getString(0, database)) {

@@ -14,6 +14,7 @@
 #include "components/DirectorPtr.h"
 #include "datasources/TileDataSource.h"
 #include "layers/Layer.h"
+#include "layers/TerrainDecodeWait.h"
 
 #include <vt/TileId.h>
 
@@ -90,12 +91,7 @@ class ProjectionSurface;
         void setUTFGridDataSource(const std::shared_ptr<TileDataSource>& dataSource);
     
         /**
-         * Returns the current frame number.
-         * @return The current frame number.
-         */
-        /**
-         * How many tiles the last cull put on screen, and how many are preloaded around them.
-         * A diagnostic: it is what the tile LOD numbers actually cost.
+         * How many tiles the last cull put on screen. A diagnostic: it is what the tile LOD numbers actually cost.
          * @return The tile count after the last cull pass.
          */
         int getVisibleTileCount() const;
@@ -104,6 +100,10 @@ class ProjectionSurface;
          */
         int getPreloadingTileCount() const;
 
+        /**
+         * Returns the current frame number.
+         * @return The current frame number.
+         */
         int getFrameNr() const;
         /**
          * Sets the frame number, only used for animated tiles. 
@@ -118,12 +118,9 @@ class ProjectionSurface;
          */
         bool isPreloading() const;
         /**
-         * Sets the state of preloading for this layer. Preloading allows the downloading of tiles that are not
-         * currently visible on screen, but are adjacent to ones that are. This means that the user can pan the map without
-         * immediately noticing any missing tiles.
-         *
-         * Enabling this option might introduce a small performance hit on slower devices. It should also be noted that this
-         * will considerably increase network traffic if used with online maps. The default is false.
+         * Sets the state of preloading for this layer: tiles adjacent to the visible ones are downloaded too, so panning shows no gaps.
+         * It may cost some performance on slower devices and considerably increases network traffic with online maps.
+         * The default is false.
          * @param preloading The new preloading state of the layer.
          */
         virtual void setPreloading(bool preloading);
@@ -184,19 +181,9 @@ class ProjectionSurface;
          */
         int getMaxStandInLevel() const;
         /**
-         * Sets how many zoom levels up a cached tile may stand in for a missing one while it loads.
-         *
-         * This used to be MaxOverzoomLevel, which is a different thing: that one says how far the
-         * SDK may go for the DATA of a tile the source does not have, and it has to stay deep. The
-         * stand-in is only what is shown meanwhile, and a deep one is visible as a ladder - the same
-         * area redrawn from a z7 tile, then z8, then z9, each magnified 2^N and so 2^N coarser than
-         * it was meant to look. That is glaring for a source whose detail changes with zoom, like
-         * generated contours, and merely wasteful for a raster.
-         *
-         * The default is 6, the same as MaxOverzoomLevel: a zoom-in of several levels must still
-         * find something to show, or the map goes empty exactly when the user asked for more detail.
-         * Lower it (1 = immediate parent only) for a source whose look changes so much with zoom that
-         * a coarse stand-in is worse than nothing.
+         * Sets how many zoom levels up a cached tile may stand in for a missing one while it loads (unlike MaxOverzoomLevel,
+         * which bounds where the data of a missing tile comes from). The default is 6. Lower it (1 = immediate parent only)
+         * for a source whose look changes so much with zoom, like generated contours, that a coarse stand-in is worse than nothing.
          * @param standInLevel The new maximum stand-in level.
          */
         void setMaxStandInLevel(int standInLevel);
@@ -272,9 +259,25 @@ class ProjectionSurface;
          * switch waits on it before it lets the terrain rise. Internal method.
          * @return True if no tile is still waiting for the current terrain decode state.
          */
-        bool isTerrainDecodeSettled();
+        virtual bool isTerrainDecodeSettled();
+
+        /** Tile passes completed so far. Internal method. */
+        unsigned int getTileCalculationCount() const;
+        /** A tile pass has completed since `count` and no visible tile is still loading. Internal method. */
+        bool areVisibleTilesSettledSince(unsigned int count) const;
+
+        /**
+         * How many visible tiles the 2D/3D switch still waits on, -1 before the next cull. Internal method.
+         * @return The number of pending tiles in this layer.
+         */
+        virtual int getTerrainDecodePendingCount() const;
 
     protected:
+        /**
+         * Marks the visible tiles as waiting for a new terrain decode; the next cull names which ones.
+         */
+        void markTerrainDecodeUnsettled();
+
         class DataSourceListener : public TileDataSource::OnChangeListener {
         public:
             explicit DataSourceListener(const std::shared_ptr<TileLayer>& layer);
@@ -442,9 +445,8 @@ class ProjectionSurface;
         // plus - for a layer whose bake does not come from its tiles - whatever its appearance
         // depends on, since it has no per-tile fingerprint to be noticed through.
         virtual std::size_t drapeStackSignature() const;
-        // Whether this layer's drape contribution is not made of tiles: a terrain paint bakes into
-        // EVERY tile of the shared drape and reports none. A stack of only such layers needs the
-        // terrain's own cover, and every tile of it must expect this layer's content.
+        // A terrain paint bakes into every tile of the shared drape and reports none: a stack of only such
+        // layers needs the terrain's own cover, and every tile of it must expect this layer's content.
         virtual bool paintsEveryDrapeTile() const { return false; }
         // The terrain cover a paint layer draws itself on when nothing bakes it. Ignored by
         // layers that are not paints.
@@ -456,9 +458,8 @@ class ProjectionSurface;
         // The shared terrain ground: the cover every layer of the stack composites onto, drawn
         // once per frame by the front layer (see vt::GLTileRenderer::setTerrainGroundTiles).
         void setTerrainGroundTiles(const std::vector<vt::TileId>& tileIds, const std::vector<int>& proxyDepths);
-        // Where this layer's style layers start in the stack's depth ordering. Tangram has ONE
-        // ordered style list; our stack is several renderers, so the owner numbers them in draw
-        // order - or a composite's children all claim ordinal 0.
+        // Where this layer's style layers start in the stack's depth ordering: the stack is several renderers,
+        // so the owner numbers them in draw order, or a composite's children all claim ordinal 0.
         void setTerrainLayerOrdinalBase(int base);
         int getStyleLayerCount() const;
         int renderTerrainGround(const Color& color);
@@ -491,6 +492,8 @@ class ProjectionSurface;
         int renderTerrainShadowMask(const std::vector<vt::TileId>& tileIds);
         bool isGroundAOActive() const;
         bool isGroundAOBakeable() const;
+        // Whether this layer's visible tiles draw anything on the ground, rather than labels alone.
+        bool hasGroundContent() const;
         void setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize);
         bool isLabelOcclusionWanted() const;
         int renderLabelOcclusionDepth();
@@ -505,8 +508,8 @@ class ProjectionSurface;
         int getTargetTileZoom() const { return _targetTileZoom; }
         int getTileStyleZoomLift() const { return _tileStyleZoomLift; }
 
-        // Nothing to do for a layer whose tiles decode the same however the camera is placed - only
-        // a styled tile carries the target zoom into its content.
+        // A hook, not an invalidation: tileValid() compares each tile's style zoom stamp, and wiping
+        // the caches here re-decoded the whole map on every integer zoom crossing.
         virtual void onTargetTileZoomChanged() { }
 
         const DirectorPtr<TileDataSource> _dataSource;
@@ -516,7 +519,7 @@ class ProjectionSurface;
     
         FetchingTileTasks _fetchingTileTasks;
 
-        // Tiles fetched UNSEEN so a bridge's chord can resolve - see collectSpanReferenceTiles.
+        // Tiles fetched unseen so a bridge's chord can resolve - see collectSpanReferenceTiles.
         // The subclass hands their decoded tiles to the renderer from refreshDrawData.
         std::vector<MapTile> _spanReferenceTiles;
         
@@ -537,6 +540,8 @@ class ProjectionSurface;
         int findChildTiles(const MapTile& visTile, const MapTile& tile, int depth, bool preloadingCache, bool preloadingTile);
 
         static const float DISCRETE_ZOOM_LEVEL_BIAS;
+        // Margin past a level boundary before the target tile zoom follows (see calculateTargetTileZoom).
+        static const double TARGET_TILE_ZOOM_HYSTERESIS;
 
         // Ceiling on the terrain tile cover, used to relax the coarsening floor when the
         // view distance would otherwise demand more tiles than a frame can carry.
@@ -548,9 +553,7 @@ class ProjectionSurface;
 
         static const int PARENT_PRIORITY_OFFSET;
         static const int PRELOADING_PRIORITY_OFFSET;
-        // How many zoom levels coarser than a stranded span piece its reference tile is fetched
-        // at: 8x the tile edge, so a 2.4 km viaduct seen at z17 is looked for in z14 tiles rather
-        // than walked twenty tiles at a time. And how many such tiles one cull may ask for.
+        // A stranded span piece's reference tile is fetched this many levels coarser (8x the edge), and a cull asks for so many.
         static const int SPAN_REFERENCE_ZOOM_DROP;
         static const int SPAN_REFERENCE_MIN_ZOOM;
         static const std::size_t MAX_SPAN_REFERENCE_TILES;
@@ -559,6 +562,7 @@ class ProjectionSurface;
         
         std::atomic<bool> _calculatingTiles;
         std::atomic<bool> _refreshedTiles;
+        std::atomic<unsigned int> _tileCalculationCount; // completed tile passes, see areVisibleTilesSettledSince
         
         ThreadSafeDirectorPtr<TileDataSource> _utfGridDataSource;
         
@@ -597,9 +601,7 @@ class ProjectionSurface;
         // handed to the renderer whatever isPreloading() says, purely so their labels exist in time.
         std::vector<MapTile> _labelTiles;
         std::vector<MapTile> _preloadingTiles;
-        // STICKY: a reference tile is kept once named. Rebuilt from scratch each cull, a tile no
-        // longer named dropped out, its pieces vanished, the ends they had resolved came back and
-        // named it again - a cull storm that fetched and decoded without end (OOM-killed at 2.8 GB).
+        // Sticky once named: rebuilt each cull, a resolved tile would drop out, un-resolve its ends and be named again, forever.
         struct SpanReference {
             MapTile tile;
             unsigned int lastNamed = 0;
@@ -623,7 +625,10 @@ class ProjectionSurface;
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with
         bool _terrainActive = false; // last TerrainOptions active state a cull ran with
-        std::atomic<bool> _terrainDecodeSettled { true }; // false while a 2D/3D switch's tiles are on their way
+        // Its own mutex: the render thread reads this every frame while the switch waits, and
+        // _mutex is held for a whole cull.
+        mutable std::mutex _terrainDecodeMutex;
+        TerrainDecodeWait _terrainDecodeWait;
     };
     
 }

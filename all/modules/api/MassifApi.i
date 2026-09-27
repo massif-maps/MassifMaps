@@ -20,10 +20,8 @@
 %import "api/EventListener.i"
 %import "api/UiDispatcher.i"
 
-// A bulk result is thousands of numbers, so it crosses as one array rather than as the
-// DoubleVector proxy, which is a JNI call per element. AFTER the imports on purpose: DoubleVector.i
-// installs its own value_type typemaps for std::vector<double> and the last one declared wins.
-// getDoubles is the only one in this module, so the typemap needs no name to key on.
+// Bulk results cross as one array, not the DoubleVector proxy (a JNI call per element). Must follow
+// the imports: DoubleVector.i installs its own std::vector<double> typemaps and the last one wins.
 #if SWIGJAVA
 %typemap(jni) std::vector<double> "jdoubleArray"
 %typemap(jtype) std::vector<double> "double[]"
@@ -36,8 +34,7 @@
   jenv->SetDoubleArrayRegion($result, 0, static_cast<jsize>($1.size()), $1.data());
 }
 #endif
-// The same on iOS: NSData over the raw doubles, which is what a flat array is there. Read it with
-// -bytes cast to const double*, or -getBytes:length:.
+// iOS: NSData over the raw doubles; read it with -bytes cast to const double*.
 #ifdef SWIGOBJECTIVEC
 %typemap(objctype) std::vector<double> "NSData*"
 %typemap(objcout) std::vector<double> %{

@@ -31,10 +31,11 @@ namespace massif {
         _scheme(MBTilesScheme::MBTILES_SCHEME_TMS),
         _database(OpenDatabase(path)),
         _cachedMinZoom(minZoom),
-        _cachedMaxZoom(maxZoom),
+        _cachedMaxZoom(),
         _cachedDataExtent(),
         _mutex()
     {
+        cacheDeclaredMaxZoom(maxZoom);
     }
     
     MBTilesTileDataSource::MBTilesTileDataSource(int minZoom, int maxZoom, const std::string& path, MBTilesScheme::MBTilesScheme scheme) :
@@ -42,10 +43,11 @@ namespace massif {
         _scheme(scheme),
         _database(OpenDatabase(path)),
         _cachedMinZoom(minZoom),
-        _cachedMaxZoom(maxZoom),
+        _cachedMaxZoom(),
         _cachedDataExtent(),
         _mutex()
     {
+        cacheDeclaredMaxZoom(maxZoom);
     }
         
     MBTilesTileDataSource::~MBTilesTileDataSource() {
@@ -74,6 +76,25 @@ namespace massif {
         }
     }
 
+    void MBTilesTileDataSource::cacheDeclaredMaxZoom(int maxZoom) {
+        // MAX_SUPPORTED_ZOOM_LEVEL means "unspecified" (the binding default), so the database decides.
+        if (maxZoom < Const::MAX_SUPPORTED_ZOOM_LEVEL) {
+            _cachedMaxZoom = maxZoom;
+        }
+    }
+
+    void MBTilesTileDataSource::cacheZoomLevels() const {
+        int minZoom = 0, maxZoom = -1;
+        loadZoomLevels(minZoom, maxZoom);
+        if (!_cachedMinZoom) {
+            _cachedMinZoom = minZoom;
+        }
+        // Must be the real deepest level: each declared level above it costs every fetch an ancestor probe.
+        if (!_cachedMaxZoom) {
+            _cachedMaxZoom = maxZoom < 0 ? TileDataSource::getMaxZoom() : maxZoom;
+        }
+    }
+
     int MBTilesTileDataSource::getMinZoom() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
@@ -84,10 +105,7 @@ namespace massif {
                 return 0;
             }
 
-            int minZoom = 0, maxZoom = -1;
-            loadZoomLevels(minZoom, maxZoom);
-            _cachedMinZoom = minZoom;
-            _cachedMaxZoom = maxZoom;
+            cacheZoomLevels();
         }
         return *_cachedMinZoom;
     }
@@ -102,10 +120,7 @@ namespace massif {
                 return -1;
             }
 
-            int minZoom = 0, maxZoom = -1;
-            loadZoomLevels(minZoom, maxZoom);
-            _cachedMinZoom = minZoom;
-            _cachedMaxZoom = maxZoom;
+            cacheZoomLevels();
         }
         return *_cachedMaxZoom;
     }
@@ -214,7 +229,8 @@ namespace massif {
                     foundMinZoom = true;
                 } else if (name == "maxzoom") {
                     maxZoom = numValue;
-                    foundMaxZoom = true;
+                    // "inf" is not a real level: fall through to the tiles table for the actual one.
+                    foundMaxZoom = numValue < Const::MAX_SUPPORTED_ZOOM_LEVEL;
                 }
             }
             query.finish();

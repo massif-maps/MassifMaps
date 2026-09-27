@@ -88,14 +88,16 @@ namespace massif {
         refresh();
     }
 
+    // Own mutex: the render thread reads this every frame, and refreshDrawData holds the layer
+    // mutex across a whole tile-set change.
     MapRange Layer::getVisibleZoomRange() {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_visibleZoomRangeMutex);
         return _visibleZoomRange;
     }
     
     void Layer::setVisibleZoomRange(const MapRange& range) {
         {
-            std::lock_guard<std::recursive_mutex> lock(_mutex);
+            std::lock_guard<std::mutex> lock(_visibleZoomRangeMutex);
             _visibleZoomRange = range;
         }
         refresh();
@@ -115,6 +117,9 @@ namespace massif {
         if (cullState) {
             // Reload data using the last known cull state.
             loadData(cullState);
+            // ...and a frame: refreshDrawData only redraws when the tile set changed, so opacity,
+            // visibility or filter changes on loaded tiles would not show until the next pan.
+            redraw();
         } else {
             // Last cullstate not known yet. Let renderer do async update.
             if (auto mapRenderer = getMapRenderer()) {
@@ -184,20 +189,23 @@ namespace massif {
                               const std::weak_ptr<TouchHandler>& touchHandler)
     {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (mapRenderer.lock() == _mapRenderer.lock()) {
-            return;
-//        } else if (mapRenderer.lock() && _mapRenderer.lock()) {
-//            throw InvalidArgumentException("Layer already attached to a different renderer");
+        {
+            std::lock_guard<std::mutex> componentLock(_componentMutex);
+            if (mapRenderer.lock() == _mapRenderer.lock()) {
+                return;
+//            } else if (mapRenderer.lock() && _mapRenderer.lock()) {
+//                throw InvalidArgumentException("Layer already attached to a different renderer");
+            }
+
+            // This method is called only when the layer is added/removed from Layers object,
+            // access to these threadpools is thread safe
+            _envelopeThreadPool = envelopeThreadPool;
+            _tileThreadPool = tileThreadPool;
+            _mapRenderer = mapRenderer;
+            _touchHandler = touchHandler;
+            _options = options;
         }
 
-        // This method is called only when the layer is added/removed from Layers object,
-        // access to these threadpools is thread safe
-        _envelopeThreadPool = envelopeThreadPool;
-        _tileThreadPool = tileThreadPool;
-        _mapRenderer = mapRenderer;
-        _touchHandler = touchHandler;
-        _options = options;
-    
         // Let the datasource know, that this layer is using it / not using it anymore, so it can
         // notify this layer when the data changes
         if (mapRenderer.lock()) {
@@ -213,17 +221,17 @@ namespace massif {
     }
 
     std::shared_ptr<Options> Layer::getOptions() const {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_componentMutex);
         return _options.lock();
     }
 
     std::shared_ptr<MapRenderer> Layer::getMapRenderer() const {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_componentMutex);
         return _mapRenderer.lock();
     }
 
     std::shared_ptr<TouchHandler> Layer::getTouchHandler() const {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_componentMutex);
         return _touchHandler.lock();
     }
 

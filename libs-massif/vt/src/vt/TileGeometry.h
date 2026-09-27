@@ -26,16 +26,14 @@
 #include <cglib/mat.h>
 
 namespace massif::vt {
-    // The hash of the value a style parameter currently holds, shared between whoever sets it and the
-    // renderer. A feature keeps the hash of the field value it is compared with, so a selection change
-    // is a byte rewrite rather than a tile decode. Written by the app thread, read by the render one.
+    // Hash of a style parameter's current value, so a selection change is a byte rewrite, not a tile
+    // decode. Written by the app thread, read by the render thread.
     using StyleStateRef = std::shared_ptr<const std::atomic<std::uint64_t>>;
 
     class TileGeometry final {
     public:
         enum class Type {
-            // POLYGON3DGROUND is the contact shadow an extrusion casts on the ground it stands on:
-            // a flat skirt around the footprint, drawn multiplied over whatever is already there.
+            // POLYGON3DGROUND: an extrusion's contact shadow, a flat skirt drawn multiplied over the ground.
             NONE, POINT, LINE, POLYGON, POLYGON3D, POLYGON3DGROUND
         };
 
@@ -54,24 +52,21 @@ namespace massif::vt {
             std::array<ColorFunction, MAX_PARAMETERS> borderColorFuncs;
             std::array<FloatFunction, MAX_PARAMETERS> borderWidthFuncs;
             std::array<float, MAX_PARAMETERS> strokeScales; // for patterned lines
-            // 1 where the slot samples 'pattern', 0 where it is a plain fill. Lines and points
-            // leave it at 1 - a line selects its stroke through the stroke atlas instead.
+            // 1 where the slot samples 'pattern', 0 for a plain fill; lines and points keep 1.
             std::array<float, MAX_PARAMETERS> patternScales;
             std::shared_ptr<const BitmapPattern> pattern;
             std::optional<cglib::vec2<float>> translate;
             CompOp compOp;
             int glyphRenderSize;
-            // An EXTRUSION's emissive, for the whole geometry rather than per slot: the 3D lighting runs
-            // per fragment against one uniform, while emissiveFuncs above fold into the colour on the
-            // CPU - which would grade it toward the ground radiance AND then light it.
+            // An extrusion's emissive, one uniform for the whole geometry: folding it into the colour
+            // on the CPU like emissiveFuncs would grade it and then light it again.
             std::optional<FloatFunction> polygon3DEmissiveFunc;
 
             StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
-        // A run of vertices a style parameter can repoint, so a feature it picks out repaints instead of
-        // the tile being decoded again. Both styles the run can take are already slots of this geometry:
-        // styleIndices[1] while the parameter hashes to stateKey, styleIndices[0] otherwise.
+        // A run of vertices a style parameter can repoint without a decode: styleIndices[1] while the
+        // parameter hashes to stateKey, styleIndices[0] otherwise.
         struct FeatureStyleRange {
             std::uint64_t stateKey;
             std::uint32_t firstVertex;
@@ -80,25 +75,20 @@ namespace massif::vt {
             std::uint8_t styleIndices[2];
         };
 
-        // Written into every extrusion's base slot at pack time and recognised by polygon3DVsh.
-        // Any value a real ground could take would be indistinguishable from a resolved base.
+        // Packed into every extrusion's base slot and recognised by polygon3DVsh; no real ground can take it.
         static constexpr float UNRESOLVED_BASE = -1.0e30f;
 
         /**
-         * One span feature's piece INSIDE this tile: its own two ends and how much of the line
-         * they are. A long bridge is cut by the tile grid, so a piece rarely holds both portals -
-         * `portal0`/`portal1` say which end is a real portal and which is a cut, and the renderer
-         * unions the pieces by `featureId` across tiles to recover the two the deck spans between.
-         * CPU-side on purpose: no shader reads this, only the chord height it produces.
+         * One span feature's piece inside this tile; `portal0`/`portal1` tell a real portal from a
+         * tile cut, and the renderer unions pieces by `featureId` across tiles. CPU-side only.
          */
         struct SpanRecord {
             long long featureId = 0;
             cglib::vec2<float> p0, p1;                 // in packed vertex space
             bool portal0 = false, portal1 = false;     // an end the tile did NOT cut
             std::size_t vertexOffset = 0, vertexCount = 0;
-            // Where the piece sits relative to its chord, in METRES (resolveSpanBases converts). A deck
-            // HANGS under the road it carries, which a negative vertex height cannot express - the
-            // shader only takes the resolved base where the height is positive.
+            // Offset from the chord in metres: a deck hangs under its road, which a negative vertex
+            // height cannot express (the shader takes the base only where the height is positive).
             float baseOffset = 0.0f;
         };
 
@@ -111,13 +101,11 @@ namespace massif::vt {
             int normalOffset;
             int binormalOffset;
             int heightOffset;
-            // Extrusions only: the ground the prism stands on, in internal z units, resolved on the CPU.
-            // Sampled in the vertex shader it came from whichever tile was being drawn, so a building
-            // spanning two tiles cracked apart. UNRESOLVED_BASE reads as "the ground under this vertex".
+            // Extrusions: the ground under the prism in internal z units, resolved on the CPU so a building
+            // across two tiles stays whole. UNRESOLVED_BASE = the ground under this vertex.
             int baseOffset;
-            // Span fills and decks only: where the vertex sits along its chord, unclamped
-            // (SpanGeometry::chordParamRaw), resolved with the base. The shader discards the
-            // deck past its portals. 0.5 until resolved, so an unresolved deck is left whole.
+            // Span fills and decks: unclamped chord parameter (SpanGeometry::chordParamRaw); the shader
+            // discards past the portals. 0.5 until resolved, leaving the deck whole.
             int chordOffset;
             float coordScale;
             float texCoordScale;
@@ -149,9 +137,7 @@ namespace massif::vt {
             _appliedStateKey = stateKey;
         }
 
-        // Repoints the recorded runs at the style slot the parameter now picks. Called on the
-        // render thread before the vertex data is used, so the byte rewrite and the upload of the
-        // dirty range happen in the same place and no other thread touches the vertex data.
+        // Render thread only, before the vertex data is used, so no other thread touches it.
         bool applyStyleState() {
             if (!_styleState) {
                 return false;
@@ -169,9 +155,7 @@ namespace massif::vt {
             return changed;
         }
 
-        // Repoints one run at another of the geometry's style slots, in the vertex data that is
-        // already uploaded. Returns true if anything changed, in which case the renderer re-uploads
-        // the dirty byte range before the next draw.
+        // True if anything changed; the renderer then re-uploads the dirty byte range.
         bool setFeatureStyleIndex(std::size_t rangeIndex, int styleIndex) {
             FeatureStyleRange& range = _featureStyleRanges.at(rangeIndex);
             if (range.styleIndex == styleIndex || _vertexGeometryLayoutParameters.attribsOffset < 0 || _vertexGeometry.empty()) {
@@ -189,11 +173,8 @@ namespace massif::vt {
         }
 
         /**
-         * Writes the CPU-resolved ground height (metres) of one vertex, the same way a style slot
-         * is repointed: patch the bytes already uploaded and grow the dirty range.
-         *
-         * Every vertex of one footprint gets the SAME value - that is the whole point, and it is
-         * what a vertex-shader sample could not guarantee across a tile border.
+         * Writes the CPU-resolved base (internal z units) of one vertex into the uploaded bytes. Every
+         * vertex of a footprint gets the same value, which a shader sample cannot guarantee across tiles.
          */
         bool setVertexBase(std::size_t vertexIndex, float base) {
             return patchVertexFloat(_vertexGeometryLayoutParameters.baseOffset, vertexIndex, base);
@@ -212,10 +193,7 @@ namespace massif::vt {
         unsigned int getBaseElevationVersion() const { return _baseElevationVersion; }
         void setBaseElevationVersion(unsigned int version) { _baseElevationVersion = version; }
 
-        /**
-         * One footprint as the base pass reads it: where it samples the ground, the few footprint
-         * vertices the floor under it is read at, and its tallest vertex in raw height units.
-         */
+        /** One footprint: its ground sample point, the support vertices for the floor, its tallest vertex in raw height units. */
         struct BaseAnchor {
             cglib::vec2<float> pos;
             std::array<cglib::vec2<float>, ExtrusionFloor::SUPPORT_DIRECTIONS> supports;
@@ -226,11 +204,7 @@ namespace massif::vt {
         struct BaseRun {
             std::uint32_t begin = 0, end = 0, anchorIndex = 0;
         };
-        /**
-         * The footprints, found by ONE walk of the vertex data and kept for the geometry's life:
-         * they depend on the vertices alone, so a DEM arrival re-samples the ground without
-         * re-walking anything. See GLTileRenderer::resolveExtrusionBases.
-         */
+        /** Found once from the vertex data, so a DEM arrival re-samples without re-walking (resolveExtrusionBases). */
         const std::vector<BaseAnchor>& getBaseAnchors() const { return _baseAnchors; }
         const std::vector<BaseRun>& getBaseRuns() const { return _baseRuns; }
         void setBaseFootprints(std::vector<BaseAnchor> anchors, std::vector<BaseRun> runs) {
@@ -245,10 +219,8 @@ namespace massif::vt {
             _spanRecordChords.assign(_spanRecords.size(), SpanChordRef());
         }
         /**
-         * The chord (portals, world coordinates) each span record last resolved on. A piece drawn
-         * from a tile the cull no longer holds - retained while its replacement loads - has no
-         * union that cull; with the chord it stood on remembered it keeps reading that chord's
-         * heights, so it follows an exaggeration ramp like every other piece instead of freezing.
+         * The chord (world portals) each span record last resolved on, so a retained tile with no union
+         * this cull still follows its chord's heights instead of freezing.
          */
         struct SpanChordRef {
             cglib::vec2<double> portal0, portal1;
@@ -259,9 +231,7 @@ namespace massif::vt {
             _spanRecordChords[index] = SpanChordRef { portal0, portal1, true };
         }
 
-        /** The cross-tile span union version the chords were resolved against - a neighbouring
-         *  tile arriving completes a bridge and must redo them.
-         */
+        /** The cross-tile span union version the chords were resolved against. */
         unsigned int getBaseSpanVersion() const { return _baseSpanVersion; }
         void setBaseSpanVersion(unsigned int version) { _baseSpanVersion = version; }
 
@@ -270,8 +240,7 @@ namespace massif::vt {
         void clearDirtyVertexBytes() { _dirtyVertexBytes.reset(); }
 
         void releaseVertexArrays() {
-            // The vertex data is what a style slot change patches - and what the extrusion base
-            // pass rewrites every time a DEM tile lands, so a base slot pins it too.
+            // Kept when style ranges or the extrusion base pass still patch it.
             if (_featureStyleRanges.empty() && _vertexGeometryLayoutParameters.baseOffset < 0) {
                 _vertexGeometry.clear();
                 _vertexGeometry.shrink_to_fit();
@@ -340,7 +309,7 @@ namespace massif::vt {
         VertexArray<std::uint8_t> _vertexGeometry;
         VertexArray<std::uint16_t> _indices;
         std::vector<std::pair<std::size_t, long long>> _ids; // vertex count, feature id
-        std::vector<std::pair<std::size_t, std::uint16_t>> _geoPosIndexes; // vertex count, feature id
+        std::vector<std::pair<std::size_t, std::uint16_t>> _geoPosIndexes; // vertex count, geo point index
     };
 }
 

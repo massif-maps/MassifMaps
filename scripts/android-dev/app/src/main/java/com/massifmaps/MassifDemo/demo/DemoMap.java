@@ -394,7 +394,6 @@ public class DemoMap {
 
         CompositeVectorTileLayer layer = new CompositeVectorTileLayer(vectorSource(), baseDecoder);
         layer.setLabelRenderOrder(VectorTileRenderOrder.VECTOR_TILE_RENDER_ORDER_LAST);
-        layer.setSinglePassRenderingEnabled(DemoConfig.COMPOSITE_SINGLE_PASS);
         compositeLayer = layer;
         baseLayer = layer;
         layer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);

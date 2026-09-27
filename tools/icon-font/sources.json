@@ -1,0 +1,76 @@
+{
+  "$comment": [
+    "Where each icon of sprites.txt comes from. A name absent here and present in maki is taken",
+    "from maki under its own name - that is the majority, and listing it would be noise.",
+    "",
+    "'letter' is not artwork: the roundel's content IS a character, so the font map carries that",
+    "character and no glyph has to be drawn. The disc, its ring and the colours are the style's",
+    "(shield-icon-background-*), so only the content is sourced here.",
+    "",
+    "'alias' takes another set's icon under a different name. 'approx' says the shape is a stand-in,",
+    "not the same drawing - it is listed so a reviewer can disagree with the choice."
+  ],
+
+  "alias": {
+    "atm":                 { "set": "temaki", "icon": "atm" },
+    "gate-label":          { "set": "maki",   "icon": "gate" },
+    "intersection":        { "set": "temaki", "icon": "junction" },
+    "traffic-signal":      { "set": "temaki", "icon": "traffic_signals" },
+    "restaurant-casual":   { "set": "maki",   "icon": "restaurant" },
+    "road-closure":        { "set": "maki",   "icon": "roadblock" },
+    "ride-share":          { "set": "temaki", "icon": "car_pool" },
+    "external_door":       { "set": "maki",   "icon": "entrance",      "approx": "a doorway, not a building's outer door" },
+    "inter_building_door": { "set": "maki",   "icon": "entrance-alt1", "approx": "a doorway, not a between-buildings one" },
+    "cliff":               { "set": "temaki", "icon": "cliff_falling_rocks", "approx": "carries falling rocks, which maki's cliff does not" },
+    "security":            { "set": "temaki", "icon": "checkpoint",    "approx": "a checkpoint stands in for a security post" },
+    "area-security":       { "set": "temaki", "icon": "checkpoint",    "approx": "same shape as `security`" }
+  },
+
+  "commons": {
+    "$comment": [
+      "Transit marks no open icon set carries, from Wikimedia Commons. `node fetch-commons.mjs`",
+      "downloads each into local/ under the SPRITE name. Every one of these is tagged Public",
+      "domain there - simple geometric shapes and text, below the threshold of originality - which",
+      "settles COPYRIGHT and not trademark: these are live marks of TfL, RATP/SNCF, MTA and the",
+      "rest. Labelling that network's own stations is the nominative use; anything else is not.",
+      "",
+      "The files are the whole badge. Only the content belongs in a glyph, so each still has to be",
+      "stripped of its disc and its colours - except where the ring IS the mark (the roundels, the",
+      "National Rail double arrow), which keep it."
+    ],
+    "gb-national-rail":   "National Rail logo.svg",
+    "london-underground": "Underground (no text).svg",
+    "london-overground":  "Overground roundel (no text).svg",
+    "london-dlr":         "DLR roundel (no text).svg",
+    "london-tfl-rail":    "TFL Rail roundel.svg",
+    "paris-transilien":   "Paris transit icons - Train.svg",
+    "tokyo-metro":        "Tokyo Metro logo (full).svg",
+    "new-york-subway":    "MTA New York City Subway logo.svg",
+    "osaka-subway":       "Osaka Metro logo.svg",
+    "taipei-metro":       "Taipei mrt logo.svg",
+    "delhi-metro":        "Delhi Metro logo.svg",
+    "san-francisco-bart": "Bart-logo.svg",
+    "philadelphia-septa": "SEPTA.svg"
+  },
+
+  "letter": {
+    "$comment": "Content only - Massif draws the disc and the ring from the style's own colours.",
+    "paris-metro":      "M",
+    "paris-rer":        "RER",
+    "barcelona-metro":  "M",
+    "madrid-metro":     "M",
+    "milan-metro":      "M",
+    "mexico-city-metro": "M",
+    "washington-metro": "M",
+    "de-u-bahn":        "U",
+    "vienna-u-bahn":    "U",
+    "de-s-bahn":        "S",
+    "boston-t":         "T",
+    "stockholm-metro":  "T",
+    "oslo-metro":       "T",
+    "moscow-metro":     "М",
+    "kiev-metro":       "М",
+    "singapore-mrt":    "MRT",
+    "hong-kong-mtr":    "MTR"
+  }
+}

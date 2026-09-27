@@ -117,14 +117,11 @@ namespace massif {
             response.statusCode = statusCode;
             response.headers.insert(headers.begin(), headers.end());
 
-            // Read Content-Range
             if (statusCode == 206) {
                 auto it = response.headers.find("Content-Range");
                 if (it == response.headers.end()) {
-                    // A browser hides Content-Range from the page unless the server opts in with
-                    // Access-Control-Expose-Headers, and most tile hosts do not - so the offset
-                    // cannot be checked there. The server still honoured the Range, and refusing
-                    // it makes every PMTiles archive unreadable on the web.
+                    // Browsers hide Content-Range without Access-Control-Expose-Headers; trust the Range
+                    // was honoured, or no PMTiles archive is readable on the web.
                     contentOffset = offset;
                 } else {
                     std::cmatch what;
@@ -140,7 +137,6 @@ namespace massif {
                 }
             }
 
-            // Read Content-Length
             auto it = response.headers.find("Content-Length");
             if (it != response.headers.end()) {
                 contentLength = boost::lexical_cast<std::uint64_t>(it->second);

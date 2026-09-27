@@ -36,10 +36,9 @@ namespace massif {
         static const std::string ENCODING_KEY;
 
         /**
-         * Resolves the decoder for one elevation tile: the tile's own "dem_encoding" first - two
-         * sources of different encodings can sit behind one OrderedTileDataSource, and only the
-         * tile knows which answered - then the source's, then 'preferred', then MapBox.
-         * Both arguments may be null. The returned decoders are shared singletons.
+         * Resolves the decoder for one elevation tile: the tile's own "dem_encoding" first (sources behind
+         * one OrderedTileDataSource may differ), then the source's, then 'preferred', then MapBox.
+         * The returned decoders are shared singletons.
          * @param tileData The loaded elevation tile, or null.
          * @param dataSource The elevation data source, or null.
          * @param preferred The decoder the caller was configured with, or null.

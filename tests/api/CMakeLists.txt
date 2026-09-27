@@ -221,6 +221,10 @@ add_executable(api_tests
   DrapeStackCutsTest.cpp
   # Same: DrapeStandIn.h is the cover of cached tiles a leaf stands in on, and nothing else.
   DrapeStandInTest.cpp
+  # Same: DrapeEviction.h is what the drape cache may drop when over budget, and nothing else.
+  DrapeEvictionTest.cpp
+  # Same: StyleConfigZoom.h is the zoom a style config is resolved at, and nothing else.
+  StyleConfigZoomTest.cpp
   # Same: DrapeTuning.h is the bake resolution arithmetic and nothing else.
   DrapeTuningTest.cpp
   # Same: ZoomConvention.h is what a zoom number means - camera distance and nominal tile.
@@ -231,6 +235,8 @@ add_executable(api_tests
   TerrainTesselationTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
+  # Same: TerrainDecodeWait.h is what one layer makes that switch wait for, nothing else.
+  TerrainDecodeWaitTest.cpp
   # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.
   ElevationNodeFieldTest.cpp
   # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.
@@ -241,6 +247,8 @@ add_executable(api_tests
   PrefetchOrderTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
+  # Same: KineticStep.h is the per-frame fraction of a kinetic delta, and nothing else.
+  KineticStepTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.
   TileLODRuleTest.cpp
   # The globe's surface against the planar one - the conventions terrain-on-globe rests on.
@@ -258,6 +266,14 @@ add_executable(api_tests
   # needs the data source and the grid cache and does not link here.
   TerrainSurfaceTest.cpp
   "${SDK_BASE_DIR}/all/native/terrain/TerrainProjectionSurface.cpp"
+  # Same: FlattenSwitchTimeline.h is what each half of a 2D/3D switch cost, and nothing else.
+  FlattenSwitchTimelineTest.cpp
+  # Same: ViewDistance.h is the camera height the draw ceiling is a multiple of, and nothing else.
+  ViewDistanceTest.cpp
+  # Same: FogPitchFade.h is mapbox's fog pitch smoothstep, and nothing else.
+  FogPitchFadeTest.cpp
+  # Same: TerrainOcclusion.h is the label-vs-terrain depth compare, and nothing else.
+  TerrainOcclusionTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

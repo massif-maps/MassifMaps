@@ -39,7 +39,8 @@ mapView.mapRenderer.postProcessEffect = effect
 
 :::note Surface API
 `PostProcessEffect` has no spec type and is attached to the `MapRenderer` rather than to a
-registry object, so this stays object-API for now — see
+registry object, so attaching it stays object-API; an attached effect's `setFloatParameter` is a
+surface-API method (colours have no argument type there — inline them in the shader). See
 [value types](/docs/api/reference/types#postprocesseffect) for what is readable through the
 table. What every layer *does* expose is `postProcessed`, so keeping a layer out of the effect is
 one path:
@@ -68,7 +69,9 @@ GLSL ES 1.00. The renderer sets each uniform only if the shader declares it:
 | named parameters | every `setFloatParameter` / `setColorParameter`, by name |
 
 The depth texture is `RGB` = 24-bit linear eye depth relative to the far plane, `A` = terrain
-coverage (0 = sky). Eye position of a pixel:
+coverage (0 = sky). With `TerrainNormalsRequired` (implies `TerrainDepthRequired`) it packs the
+surface normal instead: `RG` = sqrt depth (`enc = dot(rg, vec2(1, 1/255))`, `depth = enc * enc`, sky at
+`enc >= 1`), `BA` = the octahedral normal, z up. Eye position of a pixel, default packing:
 
 ```glsl
 float depth = dot(texture2D(uTerrainDepthTex, uv).rgb, vec3(1.0, 1.0/255.0, 1.0/65025.0));
@@ -77,8 +80,8 @@ vec3  eyePos = vec3((uv * 2.0 - 1.0) * uProjInvScale, -1.0) * depth * uFar;
 
 Three rules that any effect drawing lines from that depth will otherwise re-derive the hard way:
 
-- **Sample at least one depth texel apart** — the depth texture is rendered at **half resolution**,
-  so the floor is `2 * uInvScreenSize`. A smaller step lands all four neighbours on the same texel,
+- **Sample at least one depth texel apart** — the depth texture is rendered at **half resolution**
+  (`TerrainOptions.PostProcessDownscale`, default `2`), so the floor is `2 * uInvScreenSize`. A smaller step lands all four neighbours on the same texel,
   the tangents come out zero and `normalize(vec3(0))` paints the near field flat grey. Pass that
   floor in as a float parameter if the shader needs it as one.
 - **A silhouette belongs to the nearer side.** Testing `abs(neighbour - depth)` draws every ridge
@@ -110,7 +113,7 @@ terrainOptions.surfaceShaderSource = myTerrainSurfaceShader
 That shader is what paints the ground where no tile layer does — pair it with `--es map false`-style
 configuration (no base map, no hillshade) for a pure panorama.
 
-## Cost (measured, emulator)
+## Cost (measured on device)
 
 Crosscall HLTE556N (Adreno 610), Grenoble panorama z13.2 tilt 25, 8 pan swipes:
 
@@ -125,5 +128,5 @@ The effect itself is ~3 ms of GPU. The rest is the terrain depth texture, drawn 
 terrain's **own** mesh resolution (a coarser depth mesh draws its own triangulation as fold lines),
 so `TerrainOptions.MeshResolution` is the knob that trades line quality for frames.
 
-Known limits: the depth texture is half resolution, so lines quantise at 2 px; the effect resolves
+Known limits: the depth texture is half resolution by default, so lines quantise at 2 px; the effect resolves
 once per frame over the whole screen — there are no layer-level effects.

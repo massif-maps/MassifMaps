@@ -18,7 +18,7 @@ and *still different*, the latter with the reason it is not simply copied.
 | | tangram-ng | this fork | state |
 |---|---|---|---|
 | terrain surface | ONE shared static 64-grid VBO for every tile, per-tile uniforms (`core/src/style/rasterStyle.cpp:61`) | same shared grid (`buildCompiledTerrainGridSurfaces`), resolution = `MeshResolution` | **ported** |
-| content on terrain | displaced per vertex, one `texture2D` fetch (`res/scenes/terrain-3d.yaml`) | same | **ported** |
+| content on terrain | displaced per vertex, one `texture2D` fetch (`res/scenes/terrain-3d.yaml`) | fills and lines draped by default; live content (`DrapeFillsEnabled` false, `NoDrapeLayerFilter`) displaced as theirs | **different by default** |
 | content depth | `gl_Position.z += (proxy − layer)·(2⁻¹⁹·w + depth_shift)`, `depth_shift` a flat 0.02, `proxy *= 48` for the raster | same, with the shift derived from the stack's ordinal span so the *budget* matches | **ported** ([05](05-depth-model.md)) |
 | near plane | `m_pos.z / 50` (`core/src/view/view.cpp:452`), with the camera held a distance from the TERRAIN | `min(focus distance, height over the terrain under the camera) / 50` — their rule against our clearance model ([04](04-terrain.md#near-and-far-planes)) | **ported with a difference** |
 | pinch / rotate gesture | scale and angle from the platform gesture detector, i.e. the SCREEN (`core/src/util/inputHandler.cpp`) | same; the pan stays world-anchored and is capped below tilt 15 by their `getTranslation` guard ([04](04-terrain.md#the-camera-against-the-terrain)) | **ported** |
@@ -32,7 +32,7 @@ and *still different*, the latter with the reason it is not simply copied.
 | line width | extrude in model space, displace per vertex, no ceiling (`core/shaders/polyline.vs`) | same, capped at the nominal width so a near line cannot grow into a blob | **ported with a bound** ([03](03-vt-renderer.md#lines-over-terrain)) |
 | arrow-ended lines | none — an arrow is a sprite in the scene | `line-end-arrow`, built into the line tesselation so shaft and head are one shape | **ours** ([03](03-vt-renderer.md#line-end-arrows)) |
 | line antialias | none — hard-edged quads (`core/shaders/polyline.fs`) | ramp over one device pixel (`uAntialiasScale`) | **different — we antialias** |
-| content subdivision | none at all | area fills to two surface cells; lines cut at the lattice | **different — see below** |
+| content subdivision | none at all | none for draped content; live fills to two surface cells, live lines cut by their sag | **different — see below** |
 | elevation texture | source raster bound directly, ancestors via uv sub-rects, edges extrapolated in-shader (`res/scenes/elevation.yaml`) | per-tile CPU re-encode with a 1-texel border from up to 8 neighbours | **different — see below** |
 | tile LOD | subdivide while screen area > `(2·pixelScale·256)²` (`core/src/tile/tileManager.cpp:214`) | same rule, `Options::TileLODFactor` scaling it | ported whole |
 | LOD tile height | terrain depth at the screen centre, one value per frame (`View::getTileScreenArea`) | each tile's own elevation band midpoint | **different — see below** |
@@ -43,10 +43,11 @@ and *still different*, the latter with the reason it is not simply copied.
 
 ## The differences that are deliberate
 
-### Area fills are still subdivided
+### Live area fills are still subdivided
 
-Tangram does not subdivide anything, and for lines neither do we (they are cut exactly at the
-surface lattice, which is cheaper *and* exact). Fills are the one place their model cannot be copied
+Only content drawn live, not draped ([02](02-tiles.md#geometry-density-what-gets-subdivided-and-why)).
+Tangram does not subdivide anything, and for lines neither do we (they are cut by their sag, which is
+cheaper than density *and* keeps them on the ground). Fills are the one place their model cannot be copied
 verbatim: **their terrain base map is a raster inside the ground draw**, so they have no large flat
 polygons draped over relief to begin with. Ours does — a landcover polygon can span a whole valley —
 and an un-subdivided one chords far enough below the displaced surface that no affordable
@@ -62,8 +63,10 @@ extrapolate edges in the shader. Ours re-encodes a padded texture per tile with 
 to eight neighbour grids, including a **cross-level box filter** along shared edges.
 
 That border machinery is a seam feature they do not have: it is what makes DEM tiles from different
-zoom levels meet without a visible ridge. The port that keeps it is to upload the grid's own samples
-and patch the borders as small `glTexSubImage2D` strips — not to drop the feature.
+zoom levels meet without a visible ridge. A neighbour landing now patches only the border ring with
+`glTexSubImage2D` strips (`ElevationTextureCache::applyBorderPatches`) instead of re-encoding the
+tile — 93% fewer re-encodes and no fps change, because the encode was never on the render thread
+([10](10-performance.md#measured-not-to-matter--do-not-re-run-these)).
 
 ### An icon and its name are one label, not two
 
@@ -134,9 +137,12 @@ crossing itself blends twice for them too.
 [03-vt-renderer.md](03-vt-renderer.md#translucent-layers-no-single-blend-pass-removed) has the
 measurement and the alternative (`opacity` + `comp-op`).
 
-### Draped fills (the old path) are being removed, not maintained
+### Flat content is draped; tangram has no drape
 
-Not documented here on purpose; see [the render-pipeline index](index.mdx#two-rules-that-shaped-the-render-code).
+Their base map is a raster inside the ground draw, so there is nothing to drape. Ours bakes fills
+and lines per tile into a drape texture the shared ground samples — see
+[the render-pipeline index](index.mdx#two-rules-that-shaped-the-render-code) and
+[04-terrain.md](04-terrain.md#the-drape-cache-budget-seeding-and-completeness).
 
 ### Coincident extrusion walls are deduped; neither tangram nor mapbox does that
 

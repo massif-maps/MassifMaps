@@ -14,7 +14,9 @@ Added in PR [#18](https://github.com/massif-maps/MassifMaps/pull/18).
 
 ## What it does
 
-The layer draws a raster source through a fragment shader you supply. Inside the shader you can:
+The layer draws a raster source through a fragment shader you supply. The shader defines
+`vec4 applyLighting(lowp vec4 color, mediump vec3 normal, mediump vec3 surfaceNormal, mediump float intensity)`
+(the hillshade entry point, shared), and inside it you can:
 
 - read the source pixel with `getRawColor()`,
 - read the current zoom with `getMapZoom()`,
@@ -34,7 +36,7 @@ val layer = CustomRasterTileLayer(source)
 
 layer.setShaderSource("""
     // GLSL fragment "filter". Return a premultiplied vec4.
-    vec4 filterColor() {
+    vec4 applyLighting(lowp vec4 color, mediump vec3 normal, mediump vec3 surfaceNormal, mediump float intensity) {
         vec4 c = getRawColor();
         float g = dot(c.rgb, vec3(0.299, 0.587, 0.114)); // grayscale
         return vec4(vec3(g) * c.a, c.a);
@@ -55,14 +57,14 @@ MassifLayer tinted = Massif.adopt("tinted", new CustomRasterTileLayer(source));
 tinted.set("shaderSource", grayscaleFilter);
 ```
 
-`shaderSource` is also inherited by the [`hillshade`](/docs/api/reference/layer) layer, which
-*does* have a spec — so a shaded-relief layer with a custom filter needs no adoption at all.
+A [`hillshade`](/docs/api/reference/layer) layer inherits `shaderSource` but does not use it: its
+custom shader is `normalMapLightingShader`, a property of the `hillshade` spec — so a shaded-relief
+layer with a custom shader needs no adoption at all.
 
 | Member | Purpose |
 |---|---|
-| `setShaderSource(String)` | Install the GLSL filter shader. |
+| `setShaderSource(String)` | Install the GLSL filter shader; empty resets to the passthrough. |
 | `getShaderSource()` | The shader you set. |
-| `getEffectiveShaderSource()` | The full shader actually compiled (with SDK boilerplate). |
 | `getRawColor()` *(in shader)* | The source pixel. |
 | `getMapZoom()` *(in shader)* | Current map zoom, for zoom-dependent effects. |
 

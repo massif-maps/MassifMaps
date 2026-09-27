@@ -11,13 +11,9 @@
 
 namespace massif::mvt {
     /**
-     * Optional config symbolizer for a contour external source (ContourTileDataSource).
-     *
-     * A ContourTileDataSource emits MVT line/label features, so its VISUAL styling uses the
-     * ordinary line/text symbolizers on the '#contour' layer. This symbolizer only carries
-     * the datasource GENERATION parameters (base interval, tracing resolution, ...). Because
-     * changing them regenerates tiles, the owning SDK layer applies these to the
-     * ContourTileDataSource on style/parameter changes - NOT every frame.
+     * Optional config symbolizer carrying a ContourTileDataSource's generation parameters; its visual styling
+     * uses ordinary line/text symbolizers. Changing these regenerates tiles, so they are applied on
+     * style/parameter changes, not every frame.
      */
     class ContourConfigSymbolizer : public LayerConfigSymbolizer {
     public:

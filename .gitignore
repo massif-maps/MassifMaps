@@ -27,5 +27,10 @@ boost*
 /web/demo/styles/
 /web/demo/config.json
 
+# Generated from alpimaps' reliefShaders.ts by web/demo/gen-relief-shaders.mjs. Tracking it would
+# let the bench's shaders drift from the app's, which is the one thing the generator exists to stop.
+/web/demo/relief-shaders.js
+/web/demo/peaks-style.js
+
 # Written by `massif-style mapbox2css` from the style JSON beside it, never by hand.
 /styles/*/carto/

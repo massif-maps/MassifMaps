@@ -1,5 +1,6 @@
 #include "TileLayer.h"
 #include "layers/TileLODRule.h"
+#include "layers/TileStyleZoom.h"
 #include "core/BinaryData.h"
 #include "components/Exceptions.h"
 #include "components/CancelableTask.h"
@@ -35,7 +36,7 @@
 
 namespace massif {
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     static bool isLineSourceDensityForced() {
         static const bool forced = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -44,8 +45,7 @@ namespace massif {
         return forced;
     }
 
-    // Measurement switch for what AREA subdivision costs: it is the expensive half and it is on for
-    // correctness, not speed - an un-subdivided fill floats above the ground. Off = shipped.
+    // Forces area source density even for undraped fills (an un-subdivided fill floats above the ground).
     //   adb shell setprop debug.massif.areasourcedensity 1
     static bool isAreaSourceDensityForced() {
         static const bool forced = [] {
@@ -220,18 +220,34 @@ namespace massif {
         return !_fetchingTileTasks.getAll().empty();
     }
 
+    unsigned int TileLayer::getTileCalculationCount() const {
+        return _tileCalculationCount.load();
+    }
+
+    bool TileLayer::areVisibleTilesSettledSince(unsigned int count) const {
+        return _tileCalculationCount.load() != count && !_calculatingTiles && _fetchingTileTasks.getVisibleCount() == 0;
+    }
+
     bool TileLayer::isTerrainDecodeSettled() {
-        if (_terrainDecodeSettled) {
-            return true;
-        }
-        // A cull is running, or a visible tile is still being fetched. The invalidation happens
-        // inside loadData, with _calculatingTiles already set, so this never reads settled in the
-        // window before the fetch list exists.
-        if (_calculatingTiles || _fetchingTileTasks.getVisibleCount() != 0) {
+        std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+        return _terrainDecodeWait.settle([this](long long tileId) {
+            for (const std::shared_ptr<FetchTaskBase>& task : _fetchingTileTasks.get(tileId)) {
+                if (!task->isPreloadingTile() && !task->isCanceled()) {
+                    return true;
+                }
+            }
             return false;
-        }
-        _terrainDecodeSettled = true;
-        return true;
+        });
+    }
+
+    int TileLayer::getTerrainDecodePendingCount() const {
+        std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+        return _terrainDecodeWait.getPendingCount();
+    }
+
+    void TileLayer::markTerrainDecodeUnsettled() {
+        std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+        _terrainDecodeWait.markUnsettled();
     }
 
     TileLayer::DataSourceListener::DataSourceListener(const std::shared_ptr<TileLayer>& layer) :
@@ -255,6 +271,7 @@ namespace massif {
         _fetchingTileTasks(),
         _calculatingTiles(false),
         _refreshedTiles(false),
+        _tileCalculationCount(0),
         _utfGridDataSource(),
         _tileLoadListener(),
         _utfGridEventListener(),
@@ -295,7 +312,6 @@ namespace massif {
         Layer::setComponents(envelopeThreadPool, tileThreadPool, options, mapRenderer, touchHandler);
         _tileRenderer->setComponents(options, mapRenderer);
 
-        // To reduce memory usage, release all the caches now
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         clearTileCaches(true);
         _projectionSurface.reset();
@@ -303,12 +319,10 @@ namespace massif {
     }
 
     void TileLayer::loadData(const std::shared_ptr<CullState>& cullState) {
-        // This method (from update() or refresh()) might be called from multiple threads
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
         _calculatingTiles = true;
 
-        // Check if we need to invalidate caches
         std::shared_ptr<ProjectionSurface> projectionSurface;
         std::shared_ptr<GLResourceManager> glResourceManager;
         if (auto mapRenderer = getMapRenderer()) {
@@ -318,39 +332,32 @@ namespace massif {
         if (_projectionSurface.lock() != projectionSurface || _glResourceManager.lock() != glResourceManager) {
             clearTileCaches(true);
             resetTileTransformer();
-            // The tile set was calculated against the old transformer; keeping it here froze a set
-            // built before the surface existed, and the camera is still, so nothing recalculated it.
+            // The tile set was calculated against the old transformer, and a still camera would never recalculate it.
             _tileCullState.reset();
             _projectionSurface = projectionSurface;
             _glResourceManager = glResourceManager;
         }
 
-        // Check if the terrain configuration has changed. Any change requires tiles to be rebuilt.
         {
             std::shared_ptr<TerrainOptions> terrainOptions;
             if (auto options = getOptions()) {
                 terrainOptions = options->getTerrainOptions();
             }
-            // The DECODE state, not isEnabled(): with TerrainFlattenMode FULL a flat map decodes as
-            // a plain 2D one, and the switch only ever moves this while the map IS flat.
+            // The decode state, not isEnabled(): with TerrainFlattenMode FULL a flat map decodes as a plain 2D one.
             bool terrainEnabled = terrainOptions && terrainOptions->isDecodeActive();
             int terrainMeshResolution = terrainOptions ? terrainOptions->getMeshResolution() : 0;
             int terrainMinZoom = terrainOptions ? terrainOptions->getMinZoom() : 0;
-            // Fills stay subdivided even under draping: draping is decided per tile at render time,
-            // this density globally at decode time. MUST match what resetTileTransformer() passes,
-            // or tiles decoded for the other mode stay in the cache forever.
+            // Must match resetTileTransformer(), or tiles decoded for the other mode stay cached forever.
             bool terrainTangramContent = terrainEnabled && terrainOptions && !terrainOptions->isDrapeFillsEnabled();
-            bool terrainSourceDensity = isAreaSourceDensityForced();
+            bool terrainSourceDensity = (terrainOptions && terrainOptions->isDrapeFillsEnabled()) || isAreaSourceDensityForced();
             bool terrainSourceDensityLines = terrainTangramContent || (terrainOptions && terrainOptions->isDrapeLinesEnabled()) || isLineSourceDensityForced();
-            // NOT the exaggeration: only the GPU reads it (via the elevation texture's
-            // metersToInternal), so comparing it here re-decoded the whole map on every 'expand' frame.
+            // Not the exaggeration: only the GPU reads it, so comparing it would re-decode the map every frame it animates.
             if (_terrainOptions.lock() != terrainOptions || _terrainEnabled != terrainEnabled || _terrainMeshResolution != terrainMeshResolution || _terrainMinZoom != terrainMinZoom || _terrainSourceDensity != terrainSourceDensity || _terrainSourceDensityLines != terrainSourceDensityLines) {
-                // Keep the visible tiles ON SCREEN and re-fetch them, rather than clear them: the
-                // 2D/3D switch only changes this while the map is flat, where the old tesselation
-                // draws exactly the same picture. Clearing them blanks the map for a whole decode.
+                // Keep the visible tiles on screen while re-fetching: this only changes while the map is flat,
+                // where the old tesselation draws the same picture, and clearing would blank it for a whole decode.
                 invalidateTiles(false);
                 clearTiles(true);
-                _terrainDecodeSettled = false;
+                markTerrainDecodeUnsettled();
                 resetTileTransformer();
                 _terrainOptions = terrainOptions;
                 _terrainEnabled = terrainEnabled;
@@ -361,7 +368,6 @@ namespace massif {
             }
         }
 
-        // Remove UTF grid tiles that are missing from the cache
         for (auto it = _utfGridTiles.begin(); it != _utfGridTiles.end(); ) {
             long long tileId = getTileId(it->first);
             if (!tileExists(tileId, false) && !tileExists(tileId, true)) {
@@ -371,28 +377,25 @@ namespace massif {
             }
         }
     
-        // Check if layer should be drawn
         if (!isVisible() || !getVisibleZoomRange().inRange(cullState->getViewState().getZoom()) || getOpacity() <= 0) {
             _calculatingTiles = false;
             VT_STAT_INC(tileLayersSkipped);
+            {
+                std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+                _terrainDecodeWait.settleNow();
+            }
 
-            // Report the real change, not an unconditional one: this runs on every cull pass while
-            // the layer stays hidden, and a hardcoded 'changed' burns a placement pass over every
-            // OTHER layer's labels, several times a second, on a completely still map.
+            // Not 'changed': this runs every cull while hidden, and would trigger label placement on a still map.
             refreshDrawData(cullState, false);
             return;
         }
 
-        // The view distance and the LOD threshold decide which tiles are visible, but neither is
-        // part of the view matrix: changing one on a still map would otherwise only take effect the
-        // next time the camera moves (the option looks dead, then the ground suddenly ends mid-pan).
+        // Visibility inputs outside the view matrix: without this a change on a still map waits for the camera to move.
         {
             float viewDistanceFactor = 0.0f;
             float lodFactor = 0.0f;
             int coarsening = 0;
-            // The DECODE state, not the render one: the tile set is what 3D is PREPARED with, and
-            // the switch waits for it. Following the render state re-culls at the instant the
-            // terrain appears, which is the tile set arriving late over a map already in 3D.
+            // The decode state, not the render one: the 2D/3D switch waits for the tile set it prepares.
             bool terrainActive = false;
             if (auto options = getOptions()) {
                 lodFactor = options->getTileLODFactor();
@@ -411,10 +414,8 @@ namespace massif {
             }
         }
 
-        // The style zoom lift, unlike the rest, is baked INTO a decoded tile - moving it is a
-        // re-decode, not a re-cull.
-        // Only when the options are actually there: reading a default through a dropped weak_ptr
-        // makes this differ from itself every other cull, and each difference re-decodes the map.
+        // The style zoom lift is baked into decoded tiles: a change is a re-decode. Skipped without options,
+        // or a default read through a dropped weak_ptr would flip-flop and re-decode the map.
         if (auto options = getOptions()) {
             int styleZoomLift = options->getTileStyleZoomLift();
             if (_tileStyleZoomLift != styleZoomLift) {
@@ -423,34 +424,27 @@ namespace massif {
             }
         }
 
-        // An empty tile set counts as "needs recalculating": the set is otherwise frozen until the
-        // MVP changes, so one cull that ran before the layer had what it needs leaves it blank until
-        // the user pans. Cheap to redo - an empty set stops the recursion at the root tile.
+        // An empty set is recalculated too, or an early cull leaves the layer blank until the user pans; it is cheap.
         bool recalculateTiles = (!_tileCullState || _visibleTiles.empty() || _frameNr != _lastFrameNr || cullState->getViewState().getModelviewProjectionMat() != _tileCullState->getViewState().getModelviewProjectionMat());
         if (recalculateTiles) {
             VT_STAT_INC(tileRecalculations);
-            // If the view has changed calculate new visible tiles, otherwise use the old ones
             calculateVisibleTiles(cullState);
 
             _tileCullState = cullState;
         }
     
-        // Find replacements for visible tiles, create fetch list
         std::vector<FetchTileInfo> fetchTileList;
         buildFetchTiles(_visibleTiles, false, fetchTileList);
-        // Not gated on _preloading: these are the tiles the label band reaches into, and a label
-        // there is the difference between arriving drawn and fading in mid-screen. They are cached
-        // and handed over like preloading tiles, so nothing else about them is special.
+        // Not gated on _preloading: label-band tiles let labels arrive drawn instead of fading in mid-screen.
         buildFetchTiles(_labelTiles, true, fetchTileList);
         if (_preloading) {
             buildFetchTiles(_preloadingTiles, true, fetchTileList);
         }
-        // The tiles a stranded bridge's chord is in, fetched like preloading tiles: cached in the
-        // preloading cache, handed to the renderer, never drawn (they are outside the view).
+        // The tiles a stranded bridge's chord is in, fetched like preloading tiles and never drawn.
         collectSpanReferenceTiles();
         buildFetchTiles(_spanReferenceTiles, true, fetchTileList, true);
 
-        // If there are multiple missing visible tiles with shared parent, then fetch the parent tile to provide quick rendering
+        // Several missing visible tiles sharing a parent: fetch the parent too, as a quick preview.
         std::unordered_map<MapTile, int> childTileCountMap;
         for (const FetchTileInfo& fetchTile : fetchTileList) {
             if (!fetchTile.preloading && fetchTile.tile.getZoom() > 0) {
@@ -466,8 +460,6 @@ namespace massif {
             }
         }
 
-        // Sort the fetch tile list.
-        // The sorting order is based on priority delta, preloading flag and finally on whether the tile has parents in the fetch list.
         std::stable_sort(fetchTileList.begin(), fetchTileList.end(), [&childTileCountMap](const FetchTileInfo& fetchTile1, const FetchTileInfo& fetchTile2) {
             if (fetchTile1.priorityDelta != fetchTile2.priorityDelta) {
                 return fetchTile1.priorityDelta > fetchTile2.priorityDelta;
@@ -478,16 +470,18 @@ namespace massif {
             return (childTileCountMap[fetchTile1.tile.getParent()] > 1) < (childTileCountMap[fetchTile2.tile.getParent()] > 1);
         });
 
-        // Fetch the tiles
         std::unordered_set<long long> fetchedTiles;
+        std::unordered_set<long long> visibleFetchedTiles;
         for (const FetchTileInfo& fetchTileInfo : fetchTileList) {
             long long tileId = getTileId(fetchTileInfo.tile);
+            if (!fetchTileInfo.preloading) {
+                visibleFetchedTiles.insert(tileId);
+            }
             if (fetchedTiles.find(tileId) != fetchedTiles.end()) {
                 continue;
             }
             fetchedTiles.insert(tileId);
 
-            // If there is an existing task for this tile, keep it. Otherwise fetch it.
             bool found = false;
             for (std::shared_ptr<FetchTaskBase> task : _fetchingTileTasks.get(tileId)) {
                 if (!task->isCanceled()) {
@@ -503,16 +497,20 @@ namespace massif {
             }
         }
 
-        // Cancel old tasks
         for (const std::shared_ptr<FetchTaskBase>& task : _fetchingTileTasks.getAll()) {
             if (fetchedTiles.find(task->getTileId()) == fetchedTiles.end()) {
                 task->cancel();
             }
         }
     
-        // Done. Refresh.
+        {
+            std::lock_guard<std::mutex> lock(_terrainDecodeMutex);
+            _terrainDecodeWait.recordFetched(visibleFetchedTiles);
+        }
+
         _calculatingTiles = false;
         _refreshedTiles = true;
+        _tileCalculationCount++;
         
         refreshDrawData(cullState, recalculateTiles);
     }
@@ -521,16 +519,14 @@ namespace massif {
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
 
-            // Reset cullstate. This will force recalculation of visible tiles, which is important if data extent has changed.
+            // Forces recalculation of visible tiles, in case the data extent has changed.
             _tileCullState.reset();
 
-            // Invalidate current tasks
             for (const std::shared_ptr<FetchTaskBase>& task : _fetchingTileTasks.getAll()) {
                 task->invalidate();
                 task->cancel();
             }
 
-            // Flush caches
             if (removeTiles) {
                 clearTiles(false);
                 clearTiles(true);
@@ -550,12 +546,10 @@ namespace massif {
         if (!calculatingTiles && tileLoadListener) {
             bool refreshedTiles = std::atomic_exchange(&_refreshedTiles, false);
     
-            // Check if visible tiles have finished loading, notify listener
             if (refreshedTiles && _fetchingTileTasks.getVisibleCount() == 0) {
                 tileLoadListener->onVisibleTilesLoaded();
             }
     
-            // Check if preloading tiles have finished loading, notify listener
             if (isPreloading() && refreshedTiles && _fetchingTileTasks.getPreloadingCount() == 0) {
                 tileLoadListener->onPreloadingTilesLoaded();
             }
@@ -574,7 +568,6 @@ namespace massif {
             return;
         }
 
-        // Find intersection with projection surface
         double t = -1;
         if (!projectionSurface->calculateHitPoint(ray, 0, t) || t < 0) {
             return;
@@ -583,7 +576,6 @@ namespace massif {
         MapPos mapPos = utfGridDataSource->getProjection()->fromInternal(projectionSurface->calculateMapPos(ray(t)));
         int zoom = std::min(getMaxZoom(), static_cast<int>(viewState.getZoom() + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
 
-        // Try to get the tile from cache
         std::shared_ptr<UTFGridTile> utfGridTile;
         int utfGridTileZoom = -1;
         for (MapTile flippedTile = calculateMapTile(mapPos, utfGridDataSource->getMaxZoom()).getFlipped(); true; flippedTile = flippedTile.getParent()) {
@@ -603,7 +595,6 @@ namespace massif {
             }
         }
 
-        // If succeeded and valid key under the click position, call the listener
         if (utfGridTile) {
             MapTile mapTile = calculateMapTile(mapPos, std::min(utfGridDataSource->getMaxZoom(), std::max(utfGridDataSource->getMinZoom(), utfGridTileZoom)));
             double tileWidth = utfGridDataSource->getProjection()->getBounds().getDelta().getX() / (1 << mapTile.getZoom());
@@ -644,9 +635,8 @@ namespace massif {
     }
 
     void TileLayer::collectSpanReferenceTiles() {
-        // A span piece cut by the tile grid takes its chord from the portals of the whole structure,
-        // which live in other tiles. The renderer reports every cut end it could not resolve, and the
-        // tile that point lands in - a few levels COARSER - is fetched unseen to lend the chord back.
+        // A span piece cut by the tile grid takes its chord from portals in other tiles: the tile each unresolved
+        // cut end lands in, a few levels coarser, is fetched unseen to lend the chord back.
         _spanReferenceTiles.clear();
         if (!_terrainActive || !_tileRenderer) {
             _spanReferences.clear();
@@ -659,15 +649,12 @@ namespace massif {
         for (const SpanReference& reference : _spanReferences) {
             seen.insert(getTileId(reference.tile));
         }
-        // Finest zoom first: the renderer lists its ends coarsest first, and in that order the
-        // horizon's pieces took every slot. HARD bound too - a city view at z14 grew the set to
-        // 121 tiles and a second per union build.
+        // Finest zoom first (the renderer lists coarsest first, which gave every slot to the horizon), and bounded.
         std::size_t named = 0;
         for (auto endIt = ends.rbegin(); endIt != ends.rend(); endIt++) {
             const std::pair<int, cglib::vec2<double>>& end = *endIt;
-            // Coarser than the piece, but not below where a tile set still carries its bridges
-            // (z13-14), and never past the source's max zoom - beyond it the same data is cut again
-            // at a finer grid. A piece at the floor walks to its NEIGHBOUR instead, one hop per cull.
+            // Coarser than the piece, but not below where tiles still carry bridges, nor past the source's max zoom.
+            // A piece at the floor walks to its neighbour instead, one hop per cull.
             int zoom = std::max(getMinZoom(), std::min(end.first, std::max(SPAN_REFERENCE_MIN_ZOOM, end.first - SPAN_REFERENCE_ZOOM_DROP)));
             if (std::shared_ptr<TileDataSource> dataSource = getDataSource()) {
                 zoom = std::min(zoom, dataSource->getMaxZoom());
@@ -713,7 +700,7 @@ namespace massif {
         for (const SpanReference& reference : _spanReferences) {
             _spanReferenceTiles.push_back(MapTile(reference.tile.getX(), reference.tile.getY(), reference.tile.getZoom(), _frameNr));
         }
-        // Rare and short-lived: a line per change is what says whether a stranded deck converged.
+        // A line per change shows whether a stranded deck converged.
         if (_spanReferenceTiles.size() != _lastSpanReferenceCount) {
             _lastSpanReferenceCount = _spanReferenceTiles.size();
             Log::Infof("TileLayer: %d span reference tiles for %d stranded span ends", static_cast<int>(_spanReferenceTiles.size()), static_cast<int>(ends.size()));
@@ -731,29 +718,25 @@ namespace massif {
     }
 
     void TileLayer::calculateVisibleTiles(const std::shared_ptr<CullState>& cullState) {
-        // Remove last visible, label and preloading tiles
         _visibleTiles.clear();
         _labelTiles.clear();
         _preloadingTiles.clear();
 
-        // Read first: everything below that turns a camera zoom into a tile zoom needs it.
         _lodZoomOffset = 0;
         if (auto options = getOptions()) {
             _lodZoomOffset = options->getZoomOffset();
         }
 
-        // In terrain mode the distance-based LOD picks higher-zoom tiles near the camera than flat
-        // rendering would, so a style that renders differently per tile zoom shows LOD rings.
-        // TerrainOptions::setMaxTileZoomOffset caps the tile detail against the flat case.
+        // Terrain LOD picks finer tiles near the camera than flat rendering, showing LOD rings in per-tile-zoom styles;
+        // TerrainOptions::setMaxTileZoomOffset caps that.
         _terrainMaxTileZoom = 1000;
         _terrainMinTileZoom = 0;
         _terrainOverzoomTargets = false;
         if (auto options = getOptions()) {
             if (auto terrainOptions = options->getTerrainOptions()) {
                 if (terrainOptions->isDecodeActive()) {
-                    // Terrain mode: allow target tiles BEYOND the data source maximum zoom. The
-                    // tile surfaces are the depth occluders and their tesselation follows the tile
-                    // size, so a capped coarse tile has blunted ridges that content shows through.
+                    // Allow targets beyond the source max zoom: tile surfaces are the depth occluders, and a capped
+                    // coarse tile has blunted ridges that content shows through.
                     _terrainOverzoomTargets = true;
                     const ViewState& viewState = cullState->getViewState();
                     int cameraTileZoom = static_cast<int>(viewState.getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS);
@@ -761,26 +744,30 @@ namespace massif {
                         _terrainMaxTileZoom = cameraTileZoom + terrainOptions->getMaxTileZoomOffset();
                     }
                     _terrainMinTileZoom = cameraTileZoom - terrainOptions->getMaxTileZoomCoarsening();
+                    // Cap at the DEM's detail limit so far tiles stop refining with the camera zoom.
+                    // Planar only: on the globe the zoom carries 2*cos(lat) and the cap flattens the relief.
+                    if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+                        if (auto elevationManager = terrainOptions->getElevationManager()) {
+                            _terrainMinTileZoom = std::min(_terrainMinTileZoom, elevationManager->getDetailZoomLimit());
+                        }
+                    }
                 }
             }
         }
 
-        // The zoom the camera asks for. Tile-independent, so it is also the zoom the STYLE of every
-        // tile evaluates at, however coarse the LOD lets that tile be; when it moves, the tiles
-        // already decoded carry a stale [zoom] and have to go through the decoder again.
+        // Every tile's style evaluates at this zoom however coarse its LOD, so a change re-decodes the tiles.
         {
             int maxTargetZoom = getMaxZoom() + (_terrainOverzoomTargets ? getMaxOverzoomLevel() : 0);
-            int targetTileZoom = std::min(maxTargetZoom, static_cast<int>(cullState->getViewState().getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS));
-            targetTileZoom = std::min(targetTileZoom, _terrainMaxTileZoom);
+            double cameraZoom = cullState->getViewState().getZoom() + _lodZoomOffset + getZoomLevelBias() + DISCRETE_ZOOM_LEVEL_BIAS;
+            int targetTileZoom = calculateTargetTileZoom(cameraZoom, _targetTileZoom, TARGET_TILE_ZOOM_HYSTERESIS);
+            targetTileZoom = std::min(targetTileZoom, std::min(maxTargetZoom, _terrainMaxTileZoom));
             if (_targetTileZoom != targetTileZoom) {
                 _targetTileZoom = targetTileZoom;
                 onTargetTileZoomChanged();
             }
         }
 
-        // How far the map is drawn: tangram's view distance, which the style may EXTEND with an
-        // absolute one in metres. Along the ground the camera sees hundreds of tiles to the horizon,
-        // each carrying its own labels. Pair a short one with fog, or the ground simply ends.
+        // Tangram's view distance, which the style may extend with an absolute one in metres.
         _maxVisibleDistance = 0;
         {
             StyleEnvironment env;
@@ -789,7 +776,7 @@ namespace massif {
                 _maxVisibleDistance = cullState->getViewState().calculateViewDistance(*options);
             }
             if (getStyleEnvironment(cullState->getViewState(), env) && env.terrainMaxVisibleDistance && *env.terrainMaxVisibleDistance > 0) {
-                // Metres to WORLD units, which is the surface's own world - twice as wide on a globe.
+                // Metres to the surface's world units, twice as wide on a globe.
                 double worldWidth = (options && options->getProjectionSurface() ? options->getProjectionSurface()->getWorldWidth() : static_cast<double>(Const::WORLD_SIZE));
                 _maxVisibleDistance = std::max(_maxVisibleDistance, *env.terrainMaxVisibleDistance * worldWidth / Const::EARTH_CIRCUMFERENCE);
             }
@@ -798,12 +785,11 @@ namespace massif {
         // A coarsening floor and a view distance are set independently and multiply into the tile
         // count; relax the floor rather than shorten the view (docs/internals/rendering/02-tiles.md).
         if (_terrainMinTileZoom > 0 && _maxVisibleDistance > 0) {
-            // Tiles across the covered ground, worst case (a square of side 2 * distance):
-            //     (2 * distance / tileWidth)^2 <= budget,   tileWidth = WORLD_SIZE / 2^zoom
+            // Worst case: (2 * distance / tileWidth)^2 <= budget, tileWidth = worldWidth / 2^zoom.
             double coverWorldWidth = static_cast<double>(Const::WORLD_SIZE);
             if (auto budgetOptions = getOptions()) {
                 if (auto surface = budgetOptions->getProjectionSurface()) {
-                    coverWorldWidth = surface->getWorldWidth(); // a tile is this wide over 2^zoom, on either surface
+                    coverWorldWidth = surface->getWorldWidth();
                 }
             }
             double maxTileZoom = std::log2(coverWorldWidth * std::sqrt(static_cast<double>(TERRAIN_COVER_TILE_BUDGET)) / (2 * _maxVisibleDistance));
@@ -836,22 +822,18 @@ namespace massif {
 
         _lodMaxTileArea = 0;
         _lodCosThetaExponent = 0;
+        // One vertical leg for the whole frame, as maplibre (covering_tiles.ts distanceZ); per tile it is a cliff.
         if (auto options = getOptions()) {
             const ViewState& viewState = cullState->getViewState();
-            // TileDrawSize alone: the zoom offset belongs to the target-zoom cap, not to this
-            // screen-area rule. Scaling it here fetches a level coarser and doubles every label
-            // (docs/maintenance/web-build.md).
+            // TileDrawSize alone: the zoom offset here would fetch a level coarser (docs/maintenance/web-build.md).
             double tileSizePixels = options->getTileDrawSize() * viewState.getDPI() / Const::UNSCALED_DPI;
-            // Options::TileLODFactor scales it: 1 is their rule verbatim, larger keeps tiles
-            // coarser (fewer tiles, fewer labels, less detail), smaller refines further.
+            // TileLODFactor 1 is their rule verbatim, larger keeps tiles coarser.
             double maxEdge = 2.0 * tileSizePixels * std::max(0.0f, options->getTileLODFactor());
-            // A source whose tiles are bigger than the nominal size carries a zoom bias; the same
-            // bias applies to the area it is allowed to cover (tangram: maxArea * exp2(2*zoomBias)).
+            // Tangram: maxArea * exp2(2*zoomBias).
             _lodMaxTileArea = maxEdge * maxEdge * std::pow(4.0, -getZoomLevelBias());
 
-            // maplibre's rule on top of it: an exponent on the area's cos(incidence) term, and a
-            // level dropped from every tile to keep the pitched tile count in budget. A level is
-            // 4x the area threshold (TileLODRule.h, docs/internals/rendering/02-tiles.md).
+            // maplibre's rule on top: a cos(incidence) exponent and a uniform level drop (4x area) for pitched views.
+            // See TileLODRule.h and docs/internals/rendering/02-tiles.md.
             double pitch = 90.0 - viewState.getTilt();
             TileLODRule lodRule = calculateTileLODRule(options->getTileLODMaxZoomLevelsOnScreen(), options->getTileLODTileCountRatio(),
                                                        viewState.getFOVY(), std::max(0.0, pitch) * Const::DEG_TO_RAD);
@@ -859,11 +841,9 @@ namespace massif {
             _lodMaxTileArea *= std::pow(4.0, lodRule.uniformLevelDrop);
         }
 
-        // Recursively calculate visible tiles
         calculateVisibleTilesRecursive(cullState, MapTile(0, 0, 0, _frameNr), _dataSource->getDataExtent());
         if (auto options = getOptions()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR && options->isSeamlessPanning()) {
-                // Additional visibility testing has to be done if seamless panning is enabled
                 for (int i = 1; i <= 5; i++) {
                     calculateVisibleTilesRecursive(cullState, MapTile(-i, 0, 0, _frameNr), _dataSource->getDataExtent());
                     calculateVisibleTilesRecursive(cullState, MapTile( i, 0, 0, _frameNr), _dataSource->getDataExtent());
@@ -908,9 +888,7 @@ namespace massif {
         if (!inPreloadingFrustum) {
             return;
         }
-        // Beyond the view distance nothing is drawn, so nothing is fetched either - and the
-        // recursion stops here rather than subdividing a tile that will never be seen. The test
-        // is against the NEAREST point of the tile, so a tile straddling the limit still counts.
+        // Against the tile's nearest point, so a tile straddling the view distance still counts.
         if (_maxVisibleDistance > 0) {
             const cglib::vec3<double>& cameraPos = viewState.getCameraPos();
             cglib::vec3<double> nearestPos = cameraPos;
@@ -923,14 +901,10 @@ namespace massif {
         }
         bool inVisibleFrustum = visibleFrustum.inside(tileBounds);
 
-        // Tangram's rule (View::getTileScreenArea): project the four corners at surface level and
-        // compare the area they enclose. A tile crossing the camera plane has no meaningful
-        // projected area and is always subdivided.
+        // Tangram's rule (View::getTileScreenArea): the projected area of the tile; one crossing the camera plane subdivides.
         const cglib::mat4x4<double>& mvpMat = viewState.getModelviewProjectionMat();
         cglib::mat4x4<double> tileMat = tileTransformer->calculateTileMatrix(vtTileId, 1.0f);
-        // The height THIS tile sits at, not the height under the screen centre that tangram uses for
-        // every tile - at a low tilt the focus can be a kilometre above the near ground. The band
-        // midpoint, not its top: see docs/internals/rendering/02-tiles.md, the LOD rule.
+        // This tile's height band midpoint, not tangram's screen-centre height (02-tiles.md, the LOD rule).
         double lodElevation = _lodElevation;
         if (_lodElevationManager) {
             double minZ = 0, maxZ = 0;
@@ -940,12 +914,8 @@ namespace massif {
         }
         double screenArea = std::numeric_limits<double>::infinity();
         {
-            // The tile's own surface, through the vertex transformer: tile-local xy is the unit
-            // square only on a plane, and on a sphere the matrix alone sent the corners off the
-            // surface - the projected area was then meaningless and tiles refined far too late.
-            // A sphere needs the INTERIOR too: a coarse tile's four corners land on top of each
-            // other (the root's are all on the antimeridian) and enclose no area at all, so nothing
-            // ever subdivided. Summing a 3x3 grid's cells is the same number on a plane.
+            // Through the vertex transformer: tile-local xy is the unit square only on a plane. A sphere samples a 3x3 grid,
+            // as a coarse tile's four corners can coincide (the root's all lie on the antimeridian) and enclose no area.
             std::shared_ptr<const vt::TileTransformer::VertexTransformer> vertexTransformer = tileTransformer->createTileVertexTransformer(vtTileId);
             const int steps = (tileTransformer->isSpherical() ? 3 : 2);
             cglib::vec2<double> screenPos[3][3];
@@ -954,7 +924,16 @@ namespace massif {
                 for (int i = 0; i < steps; i++) {
                     cglib::vec2<float> uv(static_cast<float>(i) / (steps - 1), static_cast<float>(j) / (steps - 1));
                     cglib::vec3<double> worldPos = cglib::transform_point(cglib::vec3<double>::convert(vertexTransformer->calculatePoint(uv)), tileMat);
-                    worldPos = tileTransformer->calculateElevatedPos(worldPos, lodElevation);
+                    // Each sample at its own height, or a summit tile seen edge-on drops levels (02-tiles.md).
+                    // Planar only: on the globe worldPos is not internal x,y.
+                    double sampleZ = lodElevation;
+                    if (_lodElevationManager && !tileTransformer->isSpherical()) {
+                        double sampleHeight = 0;
+                        if (_lodElevationManager->getDisplayHeightCached(worldPos(0), worldPos(1), sampleHeight)) {
+                            sampleZ = sampleHeight;
+                        }
+                    }
+                    worldPos = tileTransformer->calculateElevatedPos(worldPos, sampleZ);
                     cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(worldPos(0), worldPos(1), worldPos(2), 1.0), mvpMat);
                     if (!(clipPos(3) > 0)) {
                         projected = false;
@@ -978,10 +957,9 @@ namespace massif {
                     }
                 }
                 screenArea = area;
-                // The area already carries one power of cos(incidence); maplibre's rule wants p of
-                // them, so the exponent applied here is p - 1 and 0 leaves the area rule alone.
+                // The area already carries one power of cos(incidence), so the exponent is maplibre's p - 1.
                 if (_lodCosThetaExponent != 0) {
-                    // Against the tile's own UP, which is the z axis only on a plane.
+                    // Against the tile's own up, the z axis only on a plane.
                     cglib::vec3<double> up = cglib::vec3<double>::convert(vertexTransformer->calculateNormal(cglib::vec2<float>(0.5f, 0.5f)));
                     cglib::vec3<double> toTile = tileTransformer->calculateElevatedPos(tileCenter, lodElevation) - viewState.getCameraPos();
                     double dist = cglib::length(toTile) * cglib::length(up);
@@ -993,9 +971,7 @@ namespace massif {
             }
         }
         bool subDivide = !(_lodMaxTileArea > 0) || screenArea >= _lodMaxTileArea;
-        // TERRAIN: the tile surface is the depth OCCLUDER and its tesselation follows the tile size,
-        // so a freely coarsening tile has chopped crests that finer content shows through - and
-        // layers coarsen independently. Bounding how far BELOW the camera zoom a tile sits bounds it.
+        // Terrain tiles are depth occluders: a too coarse one has chopped crests that finer content shows through.
         if (_terrainMinTileZoom > 0 && tile.getZoom() < _terrainMinTileZoom) {
             subDivide = true;
         }
@@ -1007,12 +983,10 @@ namespace massif {
         }
         
         if (subDivide) {
-            // The tile is too coarse, keep subdividing
             for (int n = 0; n < 4; n++) {
                 calculateVisibleTilesRecursive(cullState, tile.getChild(n), dataExtent);
             }
         } else {
-            // Add the tile to visible tiles, sort by the distnace to the camera
             if (inVisibleFrustum) {
                 _visibleTiles.push_back(tile);
             } else if (viewState.getLabelFrustum().inside(tileBounds)) {
@@ -1026,7 +1000,6 @@ namespace massif {
     void TileLayer::sortTiles(std::vector<MapTile>& tiles, const ViewState& viewState, bool preloadingTiles) {
         typedef std::pair<std::tuple<int, int, double>, MapTile> TaggedMapTile;
 
-        // Create tagged tile list. Store parent/child substitution level and distance from camera center
         std::vector<TaggedMapTile> taggedTiles;
         taggedTiles.reserve(tiles.size());
         for (const MapTile& mapTile : tiles) {
@@ -1050,12 +1023,10 @@ namespace massif {
             taggedTiles.emplace_back(std::make_tuple(parentSubstLevel, childSubstLevel, dist), mapTile);
         }
 
-        // Sort tiles
         std::sort(taggedTiles.begin(), taggedTiles.end(), [](const TaggedMapTile& tile1, const TaggedMapTile& tile2) {
             return tile1.first < tile2.first;
         });
 
-        // Copy sorted tiles back
         std::transform(taggedTiles.begin(), taggedTiles.end(), tiles.begin(), [](const TaggedMapTile& tile) {
             return tile.second;
         });
@@ -1067,9 +1038,7 @@ namespace massif {
             MapTile tile(visTile.getX() & tileMask, visTile.getY() & tileMask, visTile.getZoom(), visTile.getFrameNr());
             long long tileId = getTileId(tile);
 
-            // A tile wanted only for what it CONTAINS, never drawn (a span reference): it takes the
-            // fetch and nothing else. The substitution search below walks a coarse tile's whole
-            // subtree and builds draw data for every cached descendant - hundreds per cull.
+            // Never drawn (a span reference): skip the substitution search, which would build draw data for its subtree.
             if (fetchOnly) {
                 bool cached = tileExists(tileId, preloadingTiles) || tileExists(tileId, !preloadingTiles);
                 bool valid = tileValid(tileId, preloadingTiles) || tileValid(tileId, !preloadingTiles);
@@ -1079,18 +1048,15 @@ namespace massif {
                 continue;
             }
 
-            // Check caches
             if (tileExists(tileId, preloadingTiles) || tileExists(tileId, !preloadingTiles)) {
                 calculateDrawData(visTile, tile, preloadingTiles);
 
-                // Re-fetch invalid tile
                 if (!tileValid(tileId, preloadingTiles) && !tileValid(tileId, !preloadingTiles)) {
                     fetchTileList.push_back({ tile, preloadingTiles, (preloadingTiles ? PRELOADING_PRIORITY_OFFSET : 0) });
                 }
                 continue;
             }
             
-            // Build list of caches to use (based on tile substitution policy)
             std::vector<bool> preloadingCaches;
             switch (getTileSubstitutionPolicy()) {
             case TileSubstitutionPolicy::TILE_SUBSTITUTION_POLICY_ALL:
@@ -1107,7 +1073,6 @@ namespace massif {
                 break;
             }
             for (bool preloadingCache : preloadingCaches) {
-                // Check for a tile with the last frame nr
                 MapTile prevFrameTile(tile.getX(), tile.getY(), tile.getZoom(), _lastFrameNr);
                 long prevFrameTileId = getTileId(prevFrameTile);
                 bool foundSubstitute = tileExists(prevFrameTileId, preloadingCache);
@@ -1115,12 +1080,10 @@ namespace massif {
                 if (foundSubstitute) {
                     calculateDrawData(visTile, prevFrameTile, preloadingTiles);
                 } else {
-                    // Check cache for parent tile
                     if (tile.getZoom() > 0) {
                         foundSubstitute = findParentTile(visTile, tile, getMaxStandInLevel(), preloadingCache, preloadingTiles);
                     }
                     if (!foundSubstitute) {
-                        // Didn't find parent tile, check cache for children tiles
                         foundSubstitute = findChildTiles(visTile, tile, getMaxUnderzoomLevel(), preloadingCache, preloadingTiles) > 0;
                     }
                 }
@@ -1129,7 +1092,6 @@ namespace massif {
                 }
             }
     
-            // Prefetch, add the tile to the fetch list
             if (!prefetchTile(tileId, preloadingTiles)) {
                 fetchTileList.push_back({ tile, preloadingTiles, (preloadingTiles ? PRELOADING_PRIORITY_OFFSET : 0) });
             }
@@ -1144,13 +1106,11 @@ namespace massif {
         MapTile parentTile = tile.getParent();
         long long parentTileId = getTileId(parentTile);
         
-        // Check the cache
         if (tileExists(parentTileId, preloadingCache)) {
             calculateDrawData(visTile, parentTile, preloadingTile);
             return true;
         }
     
-        // Dind't find the parent in the cache
         return findParentTile(visTile, parentTile, depth - 1, preloadingCache, preloadingTile);
     }
     
@@ -1182,9 +1142,7 @@ namespace massif {
     }
 
     void TileLayer::collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState) {
-        // The same gate the draw path uses. Under a cross-layer drape the bake IS the drawing, so a
-        // layer that would not be drawn must not be collected either - or a layer outside its zoom
-        // range is baked into the terrain texture as ground no style asked for.
+        // The draw path's gate: under a cross-layer drape the bake is the drawing.
         if (isVisible() && getVisibleZoomRange().inRange(viewState.getZoom()) && getOpacity() > 0) {
             drapeLayers.push_back(std::static_pointer_cast<TileLayer>(shared_from_this()));
         }
@@ -1195,9 +1153,7 @@ namespace massif {
     }
 
     std::size_t TileLayer::drapeStackSignature() const {
-        // The contact shadows belong here rather than in the per-tile fingerprint: a drape tile is
-        // fingerprinted from render tiles OF ITS OWN ZOOM, while its shadow can come from a coarser
-        // one. A tile baked before the extrusions decoded kept none, and never re-baked.
+        // Contact shadows belong here, not in the per-tile fingerprint: a drape tile's shadow can come from a coarser zoom.
         std::size_t signature = static_cast<std::size_t>(reinterpret_cast<std::uintptr_t>(this));
         if (isGroundAOBakeable()) {
             signature ^= 0x9e3779b9;
@@ -1323,6 +1279,10 @@ namespace massif {
         return _tileRenderer && _tileRenderer->isGroundAOActive();
     }
 
+    bool TileLayer::hasGroundContent() const {
+        return _tileRenderer && _tileRenderer->hasGroundContent();
+    }
+
     bool TileLayer::isGroundAOBakeable() const {
         return _tileRenderer && _tileRenderer->isGroundAOBakeable();
     }
@@ -1377,11 +1337,9 @@ namespace massif {
             base = options->getTileTransformer();
             if (auto terrainOptions = options->getTerrainOptions()) {
                 if (terrainOptions->isDecodeActive()) {
-                    // MUST match what calculateDrawData compares against: these decide the
-                    // tesselation the cached tiles were built with, so a mismatch leaves tiles
-                    // decoded for the other mode in place forever.
+                    // Must match what loadData compares against, or tiles decoded for the other mode stay cached forever.
                     bool tangramContent = !terrainOptions->isDrapeFillsEnabled();
-                    tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
+                    tileTransformer = std::make_shared<TerrainTileTransformer>(base, terrainOptions->getElevationManager(), terrainOptions->getMeshResolution(), terrainOptions->getMinZoom(), terrainOptions->isDrapeFillsEnabled() || isAreaSourceDensityForced(), tangramContent || terrainOptions->isDrapeLinesEnabled() || isLineSourceDensityForced());
                 }
             }
         }
@@ -1473,9 +1431,7 @@ namespace massif {
 
         bool refresh = false;
         try {
-            // Warm up the elevation grid cache so that tile geometry can be built
-            // with the correct heights on the first try (elevation lookups during
-            // decoding and surface building are non-blocking).
+            // Elevation lookups while decoding are non-blocking: warm the grid so heights are right on the first build.
             if (auto options = layer->getOptions()) {
                 if (auto terrainOptions = options->getTerrainOptions()) {
                     if (terrainOptions->isEnabled() && _tile.getZoom() >= terrainOptions->getMinZoom() && !isCanceled()) {
@@ -1489,14 +1445,17 @@ namespace massif {
             if (refresh) {
                 loadUTFGridTile(layer);
             }
-            // A span reference tile is fetched as a preloading tile but wanted NOW: nothing reads
-            // it until the next cull, and with the camera still there is none - the deck it was
-            // fetched for stayed stranded until the user panned.
+            // Span reference, label-band and preloading tiles are wanted now: with a still camera no cull would read them.
             if (loaded && _preloadingTile) {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
-                for (const MapTile& referenceTile : layer->_spanReferenceTiles) {
-                    if (layer->getTileId(referenceTile) == _tileId) {
-                        refresh = true;
+                for (const std::vector<MapTile>* wantedTiles : { &layer->_spanReferenceTiles, &layer->_labelTiles, &layer->_preloadingTiles }) {
+                    for (const MapTile& wantedTile : *wantedTiles) {
+                        if (layer->getTileId(wantedTile) == _tileId) {
+                            refresh = true;
+                            break;
+                        }
+                    }
+                    if (refresh) {
                         break;
                     }
                 }
@@ -1549,7 +1508,7 @@ namespace massif {
             std::shared_ptr<UTFGridTile> utfTile = UTFGridTile::DecodeUTFTile(tileData->getData());
             if (utfTile) {
                 std::lock_guard<std::recursive_mutex> lock(tileLayer->_mutex);
-                tileLayer->_utfGridTiles[dataSourceTile] = utfTile; // we ignore expiration info here
+                tileLayer->_utfGridTiles[dataSourceTile] = utfTile; // expiration info ignored
                 refresh = true;
             } else {
                 Log::Error("TileLayer::FetchTaskBase: Failed to decode UTF grid tile");
@@ -1560,21 +1519,17 @@ namespace massif {
     }
 
     const float TileLayer::DISCRETE_ZOOM_LEVEL_BIAS = 0.001f;
+    const double TileLayer::TARGET_TILE_ZOOM_HYSTERESIS = 0.15;
 
-    // Measured at the demo's mountain camera: a sane cover is ~50 tiles and the pathological
-    // one was 550, so this only engages on a configuration that is already unaffordable.
+    // Only engages on an already unaffordable configuration.
     const int TileLayer::TERRAIN_COVER_TILE_BUDGET = 256;
 
     const int TileLayer::MAX_PARENT_SEARCH_DEPTH = 6;
-    // As deep as the parent search: a stand-in must cover a zoom-in of several levels, or the map
-    // goes EMPTY exactly when the user asked to see more. A deep stand-in only looked bad while
-    // coarse parents were fetched AHEAD of the wanted tiles.
+    // As deep as the parent search, or the map goes empty on a zoom-in of several levels.
     const int TileLayer::MAX_STAND_IN_DEPTH = MAX_PARENT_SEARCH_DEPTH;
     const int TileLayer::MAX_CHILD_SEARCH_DEPTH = 3;
 
-    // NEGATIVE on purpose: the parent fetched as a preview is dispatched AFTER the tiles actually
-    // wanted. At +1 the map showed a coarse stand-in even when the real tile arrived just as fast,
-    // and for a generating source (traced contours) that preview is a full pass thrown away.
+    // Negative: the preview parent is dispatched after the wanted tiles, which a generating source would otherwise redo.
     const int TileLayer::PARENT_PRIORITY_OFFSET = -1;
     const int TileLayer::PRELOADING_PRIORITY_OFFSET = -2;
     const int TileLayer::SPAN_REFERENCE_ZOOM_DROP = 3;

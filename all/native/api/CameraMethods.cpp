@@ -10,17 +10,8 @@ namespace massif { namespace api {
 
     namespace {
 
-        /*
-         * Why the camera is METHODS and not writable properties.
-         *
-         * Four setters animate on four clocks and visibly fight each other, which is the whole
-         * reason BaseMapView::moveTo/flyTo exist. A property surface would have re-created that
-         * problem in every binding, so the facade exposes the position, zoom, rotation and tilt as
-         * READ-ONLY attributes and moves the camera only through these.
-         *
-         * Positions cross as JSON arrays, like every other struct on this surface - see
-         * StructCodec and docs/internals/api-facade.md. A screen point is [x, y] too.
-         */
+        // Camera moves are methods, not writable properties: four setters animate on four clocks and
+        // fight. Positions cross as JSON arrays (see StructCodec); a screen point is [x, y].
 
         Result moveTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             auto view = static_cast<BaseMapView*>(obj);
@@ -35,6 +26,20 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        // moveTo places the focus, which at a panorama's tilt sits kilometres ahead of the eye.
+        Result moveCameraTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            auto view = static_cast<BaseMapView*>(obj);
+            MapPos pos;
+            double zoom = 0, rotation = 0, tilt = 0;
+            if (!args.getPos(0, pos) || !args.getDouble(1, zoom) || !args.getDouble(2, rotation) ||
+                !args.getDouble(3, tilt)) {
+                return RESULT_BAD_SPEC;
+            }
+            view->moveCameraTo(pos, static_cast<float>(zoom), static_cast<float>(rotation),
+                               static_cast<float>(tilt));
+            return RESULT_OK;
+        }
+
         Result flyTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             auto view = static_cast<BaseMapView*>(obj);
             MapPos pos;
@@ -44,8 +49,7 @@ namespace massif { namespace api {
                 !args.getDouble(5, seconds)) {
                 return RESULT_BAD_SPEC;
             }
-            // climbHeight arches the path - highest halfway, nothing at either end, which is what
-            // clears the ridge between two valleys. 0 is the straight flight.
+            // climbHeight arches the path, highest halfway; 0 is a straight flight.
             view->flyTo(pos, static_cast<float>(zoom), static_cast<float>(rotation),
                         static_cast<float>(tilt), static_cast<float>(climbHeight),
                         static_cast<float>(seconds));
@@ -54,9 +58,7 @@ namespace massif { namespace api {
 
         Result fitBounds(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             auto view = static_cast<BaseMapView*>(obj);
-            // Bounds and a screen rectangle have no argument type of their own - they are four
-            // numbers each, and adding two ARG_TYPES for two call sites would be the wrong trade.
-            // They arrive as the same JSON the property channel already carries them in.
+            // Bounds arrive as property-channel JSON: two ARG_TYPES for two call sites is the wrong trade.
             MapBounds bounds;
             ScreenBounds screenBounds;
             bool integerZoom = false, resetRotation = false, resetTilt = false;
@@ -105,6 +107,7 @@ namespace massif { namespace api {
 
     void registerCameraMethods() {
         Methods::registerMethod("massif::BaseMapView", "moveTo", &moveTo);
+        Methods::registerMethod("massif::BaseMapView", "moveCameraTo", &moveCameraTo);
         Methods::registerMethod("massif::BaseMapView", "flyTo", &flyTo);
         Methods::registerMethod("massif::BaseMapView", "fitBounds", &fitBounds);
         Methods::registerMethod("massif::BaseMapView", "screenToMap", &screenToMap);

@@ -27,14 +27,8 @@
 namespace massif { namespace api {
 
     /**
-     * JSON for the small by-value structs the SDK passes around.
-     *
-     * These are the `%attributeval` properties - `MapPos`, `MapRange` and friends - which are too
-     * structured for a scalar and too small to deserve a handle. A position is `[x, y]` or
-     * `[x, y, z]` and a range is `[min, max]`, because that is what an app writes in a spec.
-     *
-     * Decoding is lenient in one direction only: a missing z is 0, but a wrong shape fails rather
-     * than being guessed at.
+     * JSON for the small by-value `%attributeval` structs: a position is `[x, y]` or `[x, y, z]`,
+     * a range `[min, max]`. A missing z decodes as 0; a wrong shape fails.
      */
     namespace StructCodec {
 
@@ -46,27 +40,18 @@ namespace massif { namespace api {
         std::string encode(const ScreenBounds& value);
         /** A tile, as [x, y, zoom] - the same spelling a call argument uses. */
         std::string encode(const MapTile& value);
-        /**
-         * A click, as an OBJECT rather than an array: its two fields mean different things and
-         * neither order is natural. A path walks into it, so clickInfo.clickType reads directly.
-         */
+        /** A click, as an object, so a path can read clickInfo.clickType directly. */
         std::string encode(const ClickInfo& value);
         std::string encode(const Variant& value);
-        /**
-         * One day-cycle light stop, as an OBJECT: five fields of three different kinds, and no
-         * order for them that an app would guess right.
-         */
+        /** One day-cycle light stop, as an object: five fields with no natural order. */
         std::string encode(const LightStop& value);
-        /** A light CURVE, as [stop, …] - the whole formula an hour is turned into a look by. */
+        /** A light curve, as [stop, …]. */
         std::string encode(const std::vector<LightStop>& value);
         /** A list of names - the shape a "which layers" filter has. */
         std::string encode(const std::vector<std::string>& value);
         /**
-         * A list of positions, as [[x,y],…].
-         *
-         * Deliberately NOT in the generator's CODEC_TYPES, so no property accessor is emitted for
-         * a vector<MapPos>: a route is thousands of positions and JSON is what the bulk channel
-         * exists to avoid. This is for the handful a spec or an argument list carries.
+         * A list of positions, as [[x,y],…], for specs and arguments. Deliberately not in the generator's
+         * CODEC_TYPES: large position lists go through the bulk channel, not JSON.
          */
         std::string encode(const std::vector<MapPos>& value);
         /** Rings: a polygon's outline and its holes, as [[[x,y],…],…]. */
@@ -93,24 +78,16 @@ namespace massif { namespace api {
         bool decode(const std::string& json, std::map<std::string, Variant>& value);
 
         /**
-         * A colour, from "#rgb", "#rgba", "#rrggbb", "#rrggbbaa" or a plain ARGB number.
-         *
-         * The ONE decoder for every colour the facade takes, so a struct field, a property and a
-         * spec key all read the same spelling - and the SAME one mvt::parseCSSColor gives a style
-         * sheet. A NUMBER stays ARGB: that is what Color is built from and reads back as.
-         *
+         * A colour, from "#rgb", "#rgba", "#rrggbb", "#rrggbbaa" or a plain ARGB number. The one
+         * decoder for every facade colour, matching mvt::parseCSSColor.
          * @return false for anything else, so the caller leaves the value alone.
          */
         bool decodeColor(const Variant& value, Color& color);
         bool decodeColor(const PropertyValue& value, Color& color);
 
         /**
-         * One entry of a bag property - see IndexedAccess. Overloaded rather than templated so the
-         * generated thunk is the same line whatever the bag holds.
-         *
-         * A Variant entry keeps its own type, so {"level":3} reads back as a number. It answers
-         * false for a NULL one, which is what a Variant bag returns for a key it does not hold -
-         * so a JSON null in a bag and a missing key are the same thing here.
+         * One entry of a bag property - see IndexedAccess. A Variant entry keeps its type; a null
+         * one reads false, so a JSON null and a missing key are the same here.
          */
         bool readEntry(const std::string& entry, PropertyValue& value);
         bool readEntry(const Variant& entry, PropertyValue& value);

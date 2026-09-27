@@ -21,8 +21,7 @@ placed by the app, lines, polygons, 3D polygons, NML models — plus how a tap i
 | `PolygonRenderer` | filled polygons |
 | `Polygon3DRenderer` | extruded polygons |
 | `GeometryCollectionRenderer` | mixed collections, delegating per geometry |
-| `BillboardRenderer` | markers, popups, labels, balloons — anything screen-facing |
-| `NMLModelRenderer`, `NMLModelLODTreeRenderer` | NML models and LOD trees |
+| `BillboardRenderer` | markers, popups, labels, balloons, NML models — anything screen-facing (`NMLModel` is a `Billboard`) |
 
 Elements are converted to *draw data* (`renderers/drawdatas/`) when they change, and the renderer
 consumes draw data, not the elements themselves — so an element edited from the app thread never
@@ -50,7 +49,7 @@ same system-font matching as a style's `text-face-name`; see
 Two mechanisms, and they are different things:
 
 **1. Occlusion (billboards).** A marker behind a ridge must fade out. The terrain depth is rendered
-into an FBO and read back (`TerrainRenderer`, `getDepthW(screenX, screenY)`), and each billboard's
+into an FBO and read back (`TerrainRenderer`, `sampleDepthW`), and each billboard's
 draw data carries a `terrainOcclusionOpacity` that is *animated* toward the target
 (`updateTerrainOcclusionOpacity`) rather than switched, so a marker crossing a crest fades instead of
 blinking. The read-back is a pipeline stall, so it runs on `TerrainDepthWorker` at an interval and

@@ -58,8 +58,8 @@ independent; an archive commonly gzips directories and leaves already-compressed
 
 One `std::recursive_mutex` guards every public entry point, because the object owns a single
 `std::ifstream` and a seek/read pair is not atomic. Tiles are therefore fetched **serialised** even
-though `TileLayer` calls from a pool — the default pool size is 1, so this is not currently the
-bottleneck.
+though `TileLayer` calls from a pool — the default pool (`Options::setTileThreadPoolSize`) has 2
+threads, so at most one waits; not measured as a bottleneck.
 
 Cached for the object's lifetime, none of it bounded:
 

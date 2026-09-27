@@ -61,7 +61,7 @@ val demSource = MemoryCacheTileDataSource(
 val terrain = TerrainOptions(demSource).apply {
     isEnabled = true
     isDrapeFillsEnabled = true        // render-to-texture fill draping (default on)
-    meshResolution = 64               // grid cells per tile edge (2..256)
+    meshResolution = 64               // grid cells per tile edge (2..1024, default 64)
     exaggeration = 1.0f               // 1.0 = true-to-scale
 }
 
@@ -143,12 +143,12 @@ resamples through metres instead of copying texels, so the seam is continuous.
 |---|---|---|
 | `Enabled` | `true` | When off, the map renders flat but the DEM stays attached. |
 | `Exaggeration` | `1.0` | Height multiplier. Changing it re-tesselates loaded tiles (costly). |
-| `MeshResolution` | `32` | Grid cells per tile edge, clamped `2..256`. Limited by DEM resolution. |
+| `MeshResolution` | `64` | Grid cells per tile edge, clamped `2..1024`. Limited by DEM resolution. |
 | `DrapeFillsEnabled` | `true` | Render-to-texture fill/background draping. |
 | `DrapeLinesEnabled` | `true` | Drape tile lines too (softer, zero-cost hug). |
 | `Bridges3DEnabled` | `false` | Lift `span` features onto the chord between their portals and draw span decks as extrusions. Off, they drape like the ground and none of the span machinery runs. |
-| `DrapeResolution` | `0` | Drape texture size; `0` = derived from the tile size. |
-| `NoDrapeLayerFilter` | — | Layer-name pattern kept out of the drape (sharp geometry). |
+| `DrapeResolution` | `0` | Drape texture size, clamped `128..2048`; `0` = derived from the screen. |
+| `NoDrapeLayerFilter` | `^contour\|maneuver.*` | Regular expression on style layer names kept out of the drape (sharp geometry); empty drapes everything. |
 | `SeamlessTileEdgesEnabled` | `true` | Backfill the 1-texel DEM border from the neighbour level — removes the ridge at tile borders. |
 | `ElevationPrefetchEnabled` | `true` | Also request the neighbours of every visible terrain tile. |
 | `TileEdgeStitchingEnabled` | `true` | Stitch the mesh across tiles of different levels. |
@@ -156,17 +156,11 @@ resamples through metres instead of copying texels, so the seam is continuous.
 | `BackgroundBitmapEnabled` | `false` | Drape `Options.getBackgroundBitmap()` over the terrain (world-anchored, repeats). |
 | `ViewDistanceFactor` / `ViewDistance` | `1.0` / `0` | Where the ground ends; `ViewDistance` is a **minimum** in metres and only extends the factor rule. Pair it with fog ([FogOptions](/docs/features/sky-sun-shadows)). |
 | `AutoFlattenParallax` / `AutoFlattenTilt` | `2` / `88` | Render flat once 3D stops earning its cost — see below. `0` disables each half. |
-| `AutoFlattenDuration` / `Flattened` | `0.3` / — | Length of the flattening animation, and a read-only "is it flat right now". |
+| `AutoFlattenDuration` / `Flattened` | `0.3` / `false` | Length of the flattening animation (seconds), and the 2D/3D state — set it to switch by hand, read it to know what auto-flattening chose. |
 | `MaxTileZoomCoarsening` | `3` | How much coarser far tiles may get. |
-| `BillboardOcclusionEnabled` / `…Tolerance` | `true` / `0.02` | Hide markers and popups behind a ridge. |
+| `BillboardOcclusionEnabled` / `…Tolerance` | `true` / `0.2` | Hide markers and popups behind a ridge. |
 | `SurfaceShaderSource` | — | Replace the terrain surface shader ([post-processing](/docs/features/post-processing)). |
 | `MinZoom` / `DepthBias` | `5` / `0.0002` | LOD floor and depth slack for draped geometry. |
-
-Recommended configuration:
-
-```java
-terrainOptions.setMeshResolution(64);   // the defaults already drape fills and lines
-```
 
 ## Rendering flat when 3D buys nothing
 
@@ -187,7 +181,7 @@ transition is animated (`AutoFlattenDuration`), `isFlattened()` tells you what t
 
 ## Querying elevation
 
-`TerrainOptions` (and the shared `ElevationManager`) can return heights for map positions:
+`TerrainOptions` can return heights for map positions:
 
 ```kotlin
 val metres: Double = terrain.getElevation(mapPos)          // single
@@ -199,8 +193,8 @@ val many: DoubleVector = terrain.getElevations(mapPosVector) // batched
 - **Draped content skips terrain subdivision** (it is baked flat), so vertex buffers upload at
   source density instead of ~`meshResolution²` per tile. This, plus an LRU elevation-texture cache
   (no full flush), removes most of the fast-zoom render-thread stall.
-- Prefer `meshResolution = 64` as a good quality/cost balance; go higher only if you see terraced
-  slopes at close range.
+- The default `meshResolution = 64` is a good quality/cost balance; go higher only if you see
+  terraced slopes at close range.
 - The shared regular grid and the painter-order depth model are always on where the GPU supports
   vertex texture fetch; there is no per-tile CPU tesselation to pay for there.
 

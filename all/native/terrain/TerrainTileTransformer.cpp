@@ -19,14 +19,11 @@ namespace massif {
     //   adb shell setprop debug.massif.areathreshold 4
     static constexpr float AREA_THRESHOLD_CELLS = 2.0f;
 
-    // How far a draped line may chord away from the terrain, in METRES. Chosen for margin, not for
-    // speed: 0.5-4 m all measure the same, and a draped line is lifted 25 m off the surface anyway
-    // (DEFAULT_LINE_CLEARANCE_METERS). Numbers in docs/internals/rendering/04-terrain.md.
+    // How far a draped line may chord away from the terrain, in metres; chosen for margin, not speed
+    // (see docs/internals/rendering/04-terrain.md).
     static constexpr float DEFAULT_LINE_SAG_METERS = 2.0f;
-#ifdef __ANDROID__
-    // The same for LINES - the expensive half, drawn as terrain geometry every frame.
-    //   adb shell setprop debug.massif.linethreshold 4
-    // Relief (m in the tile) under which the LATTICE split is skipped: the cell fold it guards
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
+    // Relief (m in the tile) under which the lattice split is skipped: the cell fold it guards
     // against is a fraction of the relief, so a valley floor needs none.
     //   adb shell setprop debug.massif.latticerelief 50
     static float latticeReliefThreshold() {
@@ -43,8 +40,7 @@ namespace massif {
         return relief;
     }
 
-    // Max chord sag a draped line may keep, in METRES - the same currency as uDepthClearance
-    // (04-terrain.md). 0 goes back to the lattice/threshold split, which is how the two are A/B'd.
+    // Max chord sag a draped line may keep, in metres like uDepthClearance; 0 goes back to the lattice split.
     //   adb shell setprop debug.massif.linesag 0
     static float lineSagToleranceMeters() {
         static const float tolerance = [] {
@@ -60,6 +56,8 @@ namespace massif {
         return tolerance;
     }
 
+    // The same for lines, the expensive half, drawn as terrain geometry every frame.
+    //   adb shell setprop debug.massif.linethreshold 4
     static float lineThresholdScale() {
         static const float scale = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -115,14 +113,12 @@ namespace massif {
         _latticeCell(latticeCell)
     {
         double zoomScale = 1.0 / (1 << tileId.zoom);
-        // Tile-local length to metres, at the EQUATOR: the thresholds this feeds were calibrated
-        // against it. It is the planar convention - the globe's tile-local unit is 2 * PI smaller -
-        // so it holds only while terrain is planar-only (docs/internals/rendering/18-globe.md).
+        // At the equator, as the thresholds were calibrated. Planar convention (the globe's unit is 2 * PI
+        // smaller), so it holds only while terrain is planar-only (docs/internals/rendering/18-globe.md).
         _tileScaleMeters = EARTH_CIRCUMFERENCE * zoomScale;
 
         if (sagToleranceMeters > 0.0f) {
-            // The tolerance is in METRES to match the depth clearance (04-terrain.md); heights are
-            // tile-local, so convert once at the tile centre - the latitude factor barely moves.
+            // Converted once at the tile centre: the latitude factor barely moves across a tile.
             _sagToleranceLocal = calculateHeight(cglib::vec2<float>(0.5f, 0.5f), sagToleranceMeters);
             // The DEM cannot describe relief finer than its own texel, so cutting below it only
             // resamples the same interpolated slope.
@@ -133,14 +129,12 @@ namespace massif {
     }
 
     cglib::vec3<float> TerrainTileTransformer::TerrainVertexTransformer::calculatePoint(const cglib::vec2<float>& pos) const {
-        // The base's surface, undisplaced: tile geometry is built FLAT and the draping shader
-        // replaces the z of every draped vertex (calculateLocalHeight).
+        // Undisplaced: the draping shader replaces the z of every draped vertex.
         return _base->calculatePoint(pos);
     }
 
     cglib::vec3<float> TerrainTileTransformer::TerrainVertexTransformer::calculateNormal(const cglib::vec2<float>& pos) const {
-        // The base's 'up', not the terrain's: it is the extrusion direction for 3D geometry
-        // (buildings must stay vertical) and keeps hillshade and lighting as the base has them.
+        // The base's up, not the terrain's: buildings extrude vertically, and lighting stays the base's.
         return _base->calculateNormal(pos);
     }
 
@@ -153,15 +147,12 @@ namespace massif {
     }
 
     float TerrainTileTransformer::TerrainVertexTransformer::calculateHeight(const cglib::vec2<float>& pos, float height) const {
-        // The base owns metres-to-tile-local: on the globe a height is radial and carries no
-        // Mercator stretch, on the plane it carries one, and the two differ by 2 * PI besides.
+        // The base owns metres-to-tile-local: the globe's radial height has no Mercator stretch, the plane's does.
         return _base->calculateHeight(pos, height);
     }
 
-    // Terrain refines for the RELIEF, then the base refines for the SHAPE. Without the second
-    // pass a globe tile keeps whatever chords the terrain thresholds happened to leave, and at low
-    // zoom those cut straight through the planet - the tile then loses its depth test and the
-    // background shows through it. On a plane the base is a pass-through and this costs a copy.
+    // Terrain refines for the relief, then the base for the shape: otherwise low-zoom globe chords cut
+    // through the planet and the tile loses its depth test. On a plane the base pass is a copy.
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateLineString(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
         vt::VertexArray<cglib::vec2<float>> terrainPoints;
         tesselateLineStringTerrain(points, count, terrainPoints);
@@ -186,9 +177,8 @@ namespace massif {
             for (std::size_t i = 0; i + 1 < count; i++) {
                 const cglib::vec2<float>& pos0 = points[i + 0];
                 const cglib::vec2<float>& pos1 = points[i + 1];
-                // Regular-grid mode: cut the segment where it LEAVES a surface triangle instead of
-                // halving until the error hides. Every sub-segment then lies in one triangle, so it
-                // follows the surface exactly, and with fewer vertices.
+                // Regular-grid mode: cut where the segment leaves a surface triangle, so it follows the
+                // surface exactly with fewer vertices than halving.
                 float dist = cglib::length(pos1 - pos0) * static_cast<float>(_tileScaleMeters);
                 if (_sagToleranceLocal > 0.0f) {
                     // Cut by the sag the terrain actually has, not by the tile's cell count.
@@ -204,9 +194,8 @@ namespace massif {
     }
 
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateLabelLineStringTerrain(const cglib::vec2<float>* points, std::size_t count, vt::VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
-        // A label line is READ, never drawn, so the lattice split buys a glyph run nothing - halve
-        // to the SURFACE cell instead. Every vertex dropped here is an elevation sample dropped from
-        // every re-anchor: with no line subdivision, 'prepare' goes 154 -> 68 ms on the north pan.
+        // A label line is read, never drawn, so halve to the surface cell only: each vertex dropped is an
+        // elevation sample dropped from every re-anchor.
         if (count > 0) {
             tesselatedPoints.append(points[0]);
             for (std::size_t i = 0; i + 1 < count; i++) {
@@ -278,9 +267,7 @@ namespace massif {
     }
 
     double TerrainTileTransformer::TerrainVertexTransformer::calculateLocalHeight(const cglib::vec2<float>& pos) const {
-        // Tile geometry is built FLAT: the draping shader replaces the z of every draped vertex
-        // with the shared elevation sample, so sampling at build time is wasted work - it was by far
-        // the most expensive part of terrain tile decodes.
+        // Built flat: the draping shader replaces z, and sampling here dominated terrain tile decodes.
         return 0.0;
     }
 
@@ -299,8 +286,7 @@ namespace massif {
         if (depth < MAX_SAG_SPLIT_DEPTH && dist > _sagMinSegmentMeters) {
             cglib::vec2<float> posM = (pos0 + pos1) * 0.5f;
             double hM = calculateLocalHeight(posM);
-            // How far the terrain leaves the straight chord at its midpoint. Recursing on both
-            // halves keeps this a bound on the WHOLE sub-segment, not only on its centre.
+            // Midpoint sag; recursing on both halves makes it a bound on the whole sub-segment.
             if (std::abs(hM - (h0 + h1) * 0.5) > _sagToleranceLocal) {
                 tesselateSegmentBySag(pos0, posM, h0, hM, dist * 0.5f, depth + 1, points);
                 tesselateSegmentBySag(posM, pos1, hM, h1, dist * 0.5f, depth + 1, points);
@@ -311,9 +297,8 @@ namespace massif {
     }
 
     void TerrainTileTransformer::TerrainVertexTransformer::tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, vt::VertexArray<cglib::vec2<float>>& coords, vt::VertexArray<cglib::vec2<float>>& texCoords, vt::VertexArray<std::size_t>& indices) const {
-        // Red-green refinement with an EDGE-LOCAL split rule: an edge is split at its midpoint iff
-        // IT is longer than the threshold, so both triangles sharing it decide alike and no T-vertex
-        // remains - a T-vertex cracks open under GPU displacement ('white triangles when zooming').
+        // Red-green refinement, edge-local rule: an edge splits iff it is longer than the threshold, so both
+        // triangles sharing it agree and no T-vertex cracks open under GPU displacement.
         bool split01 = dist01 > _divideThreshold;
         bool split02 = dist02 > _divideThreshold;
         bool split12 = dist12 > _divideThreshold;
@@ -321,9 +306,8 @@ namespace massif {
             indices.append(i0, i1, i2);
             return;
         }
-        // ... but only over the tile ITSELF. At overzoom a source tile's buffer scales with the
-        // rest (z14 into z19 reaches 2.2 tile widths), and the upstream gate only INTERSECTS, so one
-        // touching triangle refined across its whole extent - 4096 triangles out of one, a 2.5 GB kill.
+        // Only over the tile itself: at overzoom the source buffer scales too and the upstream gate only
+        // intersects, so one touching triangle would refine across its whole extent (an OOM kill).
         cglib::bbox2<float> bounds(coords[i0]);
         bounds.add(coords[i1]);
         bounds.add(coords[i2]);
@@ -428,9 +412,8 @@ namespace massif {
             MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
             double minZ = 0, maxZ = 0;
             _elevationManager->getMinMaxDisplayHeight(mapTile, minZ, maxZ);
-            // The elevation range is in INTERNAL units, and the base's world is neither internal
-            // nor flat: push the box out along the base's own up, by the world length of that
-            // range. Exactly one on the plane, two cosines of the latitude on the globe.
+            // The range is internal units and the base's world is neither internal nor flat: push the box out
+            // along the base's own up, by the world length of that range.
             std::shared_ptr<const VertexTransformer> vertexTransformer = _base->createTileVertexTransformer(tileId);
             cglib::vec2<float> centre(0.5f, 0.5f);
             cglib::vec3<double> up = cglib::vec3<double>::convert(vertexTransformer->calculateNormal(centre));
@@ -467,13 +450,11 @@ namespace massif {
             double tileScaleMeters = EARTH_CIRCUMFERENCE / (1 << tileId.zoom);
             double threshold = tileScaleMeters / _meshResolution;
 
-            // Subdivide to one cell of the renderer's shared _meshResolution grid - the grid, not
-            // the DEM, is what the depth test compares to. Source-density mode drops FILL subdivision
-            // only: a per-draw slack lifts fills, while 1D lines must stay on the surface.
+            // One cell of the shared mesh grid (what the depth test compares to, not the DEM). Source-density
+            // mode drops fill subdivision only: a per-draw slack lifts fills, lines must stay on the surface.
             divideThreshold = _sourceDensity ? std::numeric_limits<float>::infinity() : static_cast<float>(threshold * areaThresholdScale());
             lineDivideThreshold = _sourceDensityLines ? std::numeric_limits<float>::infinity() : static_cast<float>(threshold * lineThresholdScale());
-            // The lattice split cuts lines at the cell triangle boundaries, killing the chord sag
-            // across a cell's fold. Skipped when the relief cannot fold a cell enough to matter.
+            // Skipped when the relief cannot fold a cell enough to matter.
             bool latticeWorthIt = (grid->getMaxHeight() - grid->getMinHeight()) >= latticeReliefThreshold();
             latticeCell = (_sourceDensityLines || !latticeWorthIt) ? 0.0f : static_cast<float>(1.0 / _meshResolution);
         }

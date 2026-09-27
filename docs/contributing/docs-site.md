@@ -17,11 +17,11 @@ repo root** — one tree, readable on GitHub and published as-is. `website/` hol
 docs/
 ├─ intro.md               getting-started/   guides/      features/   ← app developers
 ├─ api/                   the surface API: index.mdx authored, reference/ GENERATED
-├─ tools/                 the massif-style CLI
+├─ tools/                 the massif-style CLI, the style preview
 ├─ examples/              examples.json + screenshots, GENERATED, read by /examples
 ├─ internals/             rendering/ · build-and-size · performance-log
 ├─ maintenance/           dependency upgrades, platform quirks
-├─ contributing/          this page, release workflow
+├─ contributing/          this page, demo app, examples, style tools, release workflow
 ├─ migration.md
 └─ _archive/              superseded, EXCLUDED from the site, not maintained
 
@@ -36,8 +36,8 @@ python3 scripts/gen-examples.py    # docs/examples/examples.json from the demo a
 ```
 
 `massif-api.json` itself comes from `scripts/gen-api-tables.py --schema`, which runs off
-`all/modules/*.i` — so a new SDK property reaches the published reference on the next SDK build,
-with nothing to write by hand.
+`all/modules/*.i`; `scripts/gen-api-bindings.sh` regenerates it (CI runs it with `--check` and fails
+on a stale one). A new SDK property still needs `gen-api-docs.py` run and committed to reach the site.
 
 Every published page carries front matter (`title`, `description`, `sidebar_position`); the sidebar
 is generated from the folder structure plus each folder's `_category_.json`.
@@ -196,13 +196,11 @@ scripts/docs/capture-screenshots.sh terrain-hero --es lon <lon> --es lat <lat> -
 RECORD=1 scripts/docs/capture-screenshots.sh terrain ...   # still + ~14s video
 ```
 
-The demo streams its terrain data from public online tiles (a terrarium DEM +
-an OpenFreeMap vector basemap), so the emulator only needs internet — no map data is pushed to
-the device. The native libraries are prebuilt under `scripts/android-dev/massif/`, so the
-app builds in seconds. The script builds (`assembleDebug --offline`), installs, launches
-`.BenchActivity` with `--es ui false` plus the extras given, waits `SETTLE` seconds (default 75), grabs a
-screenshot (and optionally a screen recording), then uses `ffmpeg` to crop the Android status/nav
-bars and encode a web-friendly JPEG/MP4. Drop the results into `website/static/img/features/`.
+The script builds (`assembleDebug --offline`; the native code is compiled by gradle's CMake step,
+see [demo-app.md](demo-app.md)), installs, launches `.BenchActivity` with `--es ui false` plus the
+extras given, waits `SETTLE` seconds (default 75), grabs a screenshot (and optionally a screen
+recording), then uses `ffmpeg` to crop the Android status/nav bars and encode a web-friendly
+JPEG/MP4. Drop the results into `website/static/img/features/`.
 
 For distinct shots (top-down hillshade, close-up contours, a low-angle 3D view), pass a different
 camera — `--es lon/lat/zoom/tilt/rotation`, Massif tilt `90` = top-down, low = horizon — and any
@@ -212,5 +210,5 @@ knob from [the demo app page](demo-app.md). Nothing in the app needs editing.
 
 A GitHub Actions workflow
 ([`.github/workflows/docs.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/docs.yml))
-builds the site + API reference and deploys to GitHub Pages on every push to `master` and on every
-published release. See [Release workflow](/docs/release-workflow).
+builds the site + API reference and deploys to GitHub Pages on every push to `master` that touches
+`docs/`, `website/` or `scripts/docs/`, on every published release, and nightly. See [Release workflow](/docs/release-workflow).

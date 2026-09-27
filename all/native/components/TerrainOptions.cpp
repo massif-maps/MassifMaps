@@ -1,7 +1,9 @@
 #include "TerrainOptions.h"
 #include "components/Exceptions.h"
 #include "datasources/TileDataSource.h"
+#include "terrain/CameraClearance.h"
 #include "terrain/ElevationManager.h"
+#include "utils/Log.h"
 
 #include <algorithm>
 
@@ -38,12 +40,19 @@ namespace massif {
         // bench here was run at. 32 leaves draped content visibly floating over the ground; 128
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
         _meshResolution(64),
+        _subdivideDistance(0.0f),
+        // 0: the node field follows the mesh.
+        _surfaceNodeResolution(0),
+        _postProcessDownscale(2),
         _tileEdgeStitchingEnabled(true),
+        _meshCacheSize(0),
+        _sharedGroundEnabled(true),
         _drapeFillsEnabled(true),
         _drapeLinesEnabled(true),
         _bridges3DEnabled(false),
         _drapeResolution(0),
         _minZoom(5),
+        _maxZoom(0),
         _maxTileZoomOffset(100),
         _backgroundColorARGB(0),
         _backgroundBitmapEnabled(false),
@@ -51,16 +60,22 @@ namespace massif {
         // 60 m, not 200: 200 stops the camera well short of the surface, so a close approach swings
         // the view into the nearest hillside instead of flying between the peaks.
         _cameraClearance(0.0f),
+        _cameraClearanceFraction(static_cast<float>(CameraClearance::FRACTION)),
+        _focusLift(0.0f),
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
-        _billboardOcclusionTolerance(0.0f),
+        // 0 drops POIs on slopes facing the camera: covers the anchor-vs-drawn-surface error.
+        _billboardOcclusionTolerance(0.2f),
+        _normalSampleDistance(0.0f),
         _textOcclusionOpacity(1.0f),
         _viewDistanceFactor(1.0f),
         _viewDistance(0.0f),
+        _viewDistanceMax(0.0f),
         // 3, not the demo's 8: 8 only pays for itself next to the demo's fixed 170 km view. On the
         // default view distance it coarsens tiles that are still large on screen, leaving a blurred
         // band with a hard tile edge down the middle.
         _drapeCacheSize(0),
+        _elevationCacheSize(0),
         _drapeWorkingSet(0),
         _maxTileZoomCoarsening(3),
         _noDrapeLayerFilter(DEFAULT_NO_DRAPE_LAYER_FILTER),
@@ -117,6 +132,7 @@ namespace massif {
                     _decodeActive.store(!flattened);
                 }
             }
+            markSwitchingIfRising(flattened ? 1.0f : 0.0f);
             notifyOptionChanged("Flattened");
         }
     }
@@ -157,7 +173,15 @@ namespace massif {
         if (!_flattenSwitchStarted.load()) {
             writeFlattenRatio(value); // no frame has run yet; the switch seeds itself from this
         }
+        markSwitchingIfRising(value);
         notifyOptionChanged("FlattenRatio");
+    }
+
+    void TerrainOptions::markSwitchingIfRising(float askedRatio) {
+        // The renderer only reports the wait on its next frame; set it now so isSwitching() never reads false in between.
+        if (askedRatio < 1.0f && _flattenRatio.load() >= 1.0f && _flattenSwitchStarted.load()) {
+            _switching.store(true);
+        }
     }
 
     bool TerrainOptions::isManualFlatten() const {
@@ -269,9 +293,46 @@ namespace massif {
     }
 
     void TerrainOptions::setMeshResolution(int meshResolution) {
-        int resolution = std::min(256, std::max(2, meshResolution));
+        // 1024 only guards against an allocation that would kill the process.
+        int resolution = std::min(1024, std::max(2, meshResolution));
         if (_meshResolution.exchange(resolution) != resolution) {
             notifyOptionChanged("MeshResolution");
+        }
+    }
+
+    float TerrainOptions::getSubdivideDistance() const {
+        return _subdivideDistance.load();
+    }
+
+    void TerrainOptions::setSubdivideDistance(float distance) {
+        float value = std::max(0.0f, distance);
+        if (_subdivideDistance.exchange(value) != value) {
+            if (_elevationManager) {
+                _elevationManager->setBilinearSurface(value > 0);
+            }
+            notifyOptionChanged("SubdivideDistance");
+        }
+    }
+
+    int TerrainOptions::getSurfaceNodeResolution() const {
+        return _surfaceNodeResolution.load();
+    }
+
+    void TerrainOptions::setSurfaceNodeResolution(int resolution) {
+        int value = (resolution <= 0 ? 0 : std::min(512, std::max(2, resolution)));
+        if (_surfaceNodeResolution.exchange(value) != value) {
+            notifyOptionChanged("SurfaceNodeResolution");
+        }
+    }
+
+    int TerrainOptions::getPostProcessDownscale() const {
+        return _postProcessDownscale.load();
+    }
+
+    void TerrainOptions::setPostProcessDownscale(int downscale) {
+        int scale = std::min(4, std::max(1, downscale));
+        if (_postProcessDownscale.exchange(scale) != scale) {
+            notifyOptionChanged("PostProcessDownscale");
         }
     }
 
@@ -282,6 +343,27 @@ namespace massif {
     void TerrainOptions::setTileEdgeStitchingEnabled(bool enabled) {
         if (_tileEdgeStitchingEnabled.exchange(enabled) != enabled) {
             notifyOptionChanged("TileEdgeStitchingEnabled");
+        }
+    }
+
+    int TerrainOptions::getMeshCacheSize() const {
+        return _meshCacheSize.load();
+    }
+
+    void TerrainOptions::setMeshCacheSize(int meshes) {
+        int clamped = std::max(0, meshes);
+        if (_meshCacheSize.exchange(clamped) != clamped) {
+            notifyOptionChanged("MeshCacheSize");
+        }
+    }
+
+    bool TerrainOptions::isSharedGroundEnabled() const {
+        return _sharedGroundEnabled.load();
+    }
+
+    void TerrainOptions::setSharedGroundEnabled(bool enabled) {
+        if (_sharedGroundEnabled.exchange(enabled) != enabled) {
+            notifyOptionChanged("SharedGroundEnabled");
         }
     }
 
@@ -350,6 +432,21 @@ namespace massif {
         int zoom = std::min(24, std::max(0, minZoom));
         if (_minZoom.exchange(zoom) != zoom) {
             notifyOptionChanged("MinZoom");
+        }
+    }
+
+    int TerrainOptions::getMaxZoom() const {
+        return _maxZoom.load();
+    }
+
+    void TerrainOptions::setMaxZoom(int maxZoom) {
+        int zoom = std::min(24, std::max(0, maxZoom));
+        if (_maxZoom.exchange(zoom) != zoom) {
+            // Cap the data too: capping the mesh alone left the grid cache thrashing and the ground moving.
+            if (_elevationManager) {
+                _elevationManager->setMaxDataZoomCap(zoom);
+            }
+            notifyOptionChanged("MaxZoom");
         }
     }
 
@@ -426,6 +523,21 @@ namespace massif {
         }
     }
 
+    int TerrainOptions::getElevationCacheSize() const {
+        return _elevationCacheSize.load();
+    }
+
+    void TerrainOptions::setElevationCacheSize(int megabytes) {
+        int clamped = std::max(0, megabytes);
+        if (_elevationCacheSize.exchange(clamped) != clamped) {
+            // Never pass 0: setCacheCapacity latches a fixed capacity, so 0 would pin the cache at zero bytes.
+            if (_elevationManager && clamped > 0) {
+                _elevationManager->setCacheCapacity(static_cast<std::size_t>(clamped) * 1024 * 1024);
+            }
+            notifyOptionChanged("ElevationCacheSize");
+        }
+    }
+
     int TerrainOptions::getDrapeWorkingSet() const {
         return _drapeWorkingSet.load();
     }
@@ -467,6 +579,17 @@ namespace massif {
         float clamped = std::max(0.0f, distance);
         if (_viewDistance.exchange(clamped) != clamped) {
             notifyOptionChanged("ViewDistance");
+        }
+    }
+
+    float TerrainOptions::getViewDistanceMax() const {
+        return _viewDistanceMax.load();
+    }
+
+    void TerrainOptions::setViewDistanceMax(float distance) {
+        float clamped = std::max(0.0f, distance);
+        if (_viewDistanceMax.exchange(clamped) != clamped) {
+            notifyOptionChanged("ViewDistanceMax");
         }
     }
 
@@ -513,6 +636,29 @@ namespace massif {
         }
     }
 
+    float TerrainOptions::getCameraClearanceFraction() const {
+        return _cameraClearanceFraction.load();
+    }
+
+    void TerrainOptions::setCameraClearanceFraction(float fraction) {
+        // Below 1 strictly: the shell divides by (1 - fraction), and at 1 no camera height clears it.
+        float value = std::min(0.99f, std::max(0.0f, fraction));
+        if (_cameraClearanceFraction.exchange(value) != value) {
+            notifyOptionChanged("CameraClearanceFraction");
+        }
+    }
+
+    float TerrainOptions::getFocusLift() const {
+        return _focusLift.load();
+    }
+
+    void TerrainOptions::setFocusLift(float lift) {
+        float value = std::max(0.0f, lift);
+        if (_focusLift.exchange(value) != value) {
+            notifyOptionChanged("FocusLift");
+        }
+    }
+
     float TerrainOptions::getCameraClampDuration() const {
         return _cameraClampDuration.load();
     }
@@ -543,6 +689,17 @@ namespace massif {
         float value = std::min(1.0f, std::max(0.0f, tolerance));
         if (_billboardOcclusionTolerance.exchange(value) != value) {
             notifyOptionChanged("BillboardOcclusionTolerance");
+        }
+    }
+
+    float TerrainOptions::getNormalSampleDistance() const {
+        return _normalSampleDistance.load();
+    }
+
+    void TerrainOptions::setNormalSampleDistance(float distance) {
+        float value = std::max(0.0f, distance);
+        if (_normalSampleDistance.exchange(value) != value) {
+            notifyOptionChanged("NormalSampleDistance");
         }
     }
 

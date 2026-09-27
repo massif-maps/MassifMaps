@@ -60,10 +60,11 @@ tools/style-cli/
   wasm/                  build output, gitignored — CI fills it
     massif-style.mjs
     massif-style.wasm
+    mbref.html           gl-js reference page used below — local only, NOT tracked
 ```
 
-The C++ lives in the **`libs-massif` submodule**, under `cartocss/util/`, where `massif-style.cpp`
-dispatches to `css2xml.cpp`.
+The C++ lives in-tree under `libs-massif/cartocss/util/`, where `massif-style.cpp` dispatches to
+`css2xml.cpp` (`mvt2xml` stays out: it needs compiled Boost.Serialization).
 
 ## The property allowlist
 
@@ -89,6 +90,7 @@ Link options:
 
 ```
 -sNODERAWFS=1 -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1
+-sSTACK_SIZE=8MB -sSTACK_OVERFLOW_CHECK=1
 -sMODULARIZE=1 -sEXPORT_ES6=1 -sINVOKE_RUN=0
 -sEXPORTED_RUNTIME_METHODS=callMain
 ```
@@ -99,8 +101,8 @@ Node filesystem both work unchanged, so the C++ needs no virtual-filesystem prel
 rewrite.
 
 Its cost is that the build is **Node-only**: `NODERAWFS` replaces the emscripten filesystem with
-Node's `fs`, so this artifact cannot run in a browser. A browser playground would need a second
-build with `MEMFS` and the assets pushed in from JavaScript.
+Node's `fs`, so this artifact cannot run in a browser. The browser playground came another way —
+the SDK's own web build behind the site's [style preview](../tools/style-preview.md).
 
 Size, measured on the first CI build: **1.68 MB** of `.wasm` plus **73 KB** of `.mjs` loader — a
 little under the 2.2 MB native binary at `MinSizeRel`, and a long way under the ~86 MB unoptimised.
@@ -128,8 +130,10 @@ first emcc build did not.
 
 1. **build-wasm** — checkout with submodules, install emsdk, fetch Boost headers, build, upload the
    two artifacts.
-2. **publish** — build the TypeScript, drop the wasm into the package, `npm publish --provenance`,
-   and attach the same wasm to the GitHub Release for anyone not using npm.
+2. **package** — `gen-cartocss-properties.py --check`, build and test the TypeScript, smoke-test the
+   wasm subcommand, pack the tarball. Also runs on pull requests.
+3. **publish** (only with `publish`) — `npm publish --provenance`, and attach the same wasm to a
+   `style-tools-v<version>` GitHub Release for anyone not using npm.
 
 Two things this repository does not have yet and this workflow is the first to need:
 
@@ -243,17 +247,18 @@ which is what lets them share one `style.mss`.
 
 `["measure-light", "brightness"]` appears **113 times**, always as a two-stop ramp switching a colour
 between a lit and an unlit form (`[0.25, 0.3]` in 66 of them). It is how the style says "night"
-without naming the preset, and our renderer has nothing that measures its own light back into a
-style value.
+without naming the preset. Without `--live-light` it is resolved at conversion time (with it, it
+stays live as `[view::brightness]`, see below).
 
 The number is taken from the style's **own** `lights` block, which is config-driven like everything
-else: the ambient light's lightness times its intensity. That is a proxy, not Mapbox's internal
-formula — but it is read from the style rather than invented, and it separates the four presets the
-way they are written:
+else, through a port of gl-js's `Style.calculateLightsBrightness` (`sceneBrightness` in `config.ts`):
+the directional light counts too, weighted by its elevation, and the luminance is the W3C relative
+one. The ambient-only proxy it replaced (lightness x intensity) read 0.70 / 0.80 / 0.23 / 0.06, so
+every ramp whose stops are not the common `[0.25, 0.3]` pair was sampled at the wrong place:
 
 | preset | dawn | day | dusk | night |
 |---|---|---|---|---|
-| brightness | 0.70 | 0.80 | 0.23 | 0.06 |
+| brightness | 0.397 | 0.478 | 0.026 | 0.013 |
 
 Against the style's own 0.25/0.3 thresholds that puts dawn and day on the lit side, dusk and night
 on the unlit one. Where a ramp's stops are still per-feature expressions there is nothing to blend,
@@ -294,7 +299,8 @@ Measured on the emulator by shifting the camera 0.01 deg and cross-correlating t
 SDK z15 = **3.144** m/CSS px, mapbox-gl z15 = **1.573**. Exactly 2.
 
 So every zoom the style names is shifted a level on the way in — `[view::zoom] - 1` as the input to
-every ramp (one constant, `ZOOM_INPUT`), and `+1` on `minzoom`/`maxzoom`. Read straight, a road at
+every ramp (`zoomInput()`, which shifts by `log2(512 / tileDrawSize)` — see
+[A zoom stop is relative to a tile size](#a-zoom-stop-is-relative-to-a-tile-size)), and `+1` on `minzoom`/`maxzoom`. Read straight, a road at
 z15 is drawn with z15's width on a z14 view: a `street` comes out 1.74x too wide, while a service
 road on a flat ramp moves under a pixel, so the symptom is "only the big roads are too fat".
 
@@ -337,32 +343,28 @@ much of a colour is EMITTED rather than lit: at 1 it is drawn as authored, at 0 
 of the ambient light and goes dark at night. Standard sets it on 103 properties, and **that**, not
 different colours, is how its night preset gets dark.
 
-Our renderer draws every 2D colour as authored — emissive-strength 1 everywhere. So it is folded
-into the colour at conversion time:
+Two ways to carry it:
 
-```
-shown = authored x (emissive + (1 - emissive) x lit)
-```
+- **Default: folded into the colour** at conversion time, per channel —
+  `shown_c = authored_c x (emissive + (1 - emissive) x radiance_c)`, with `radiance` MapBox's own
+  ground radiance for that preset (see [The light, not the colours](#the-light-not-the-colours-how-a-preset-gets-dark)).
+  One palette per preset.
+- **`--live-light`**: colours stay as authored and the strengths are emitted as the SDK's own
+  `*-emissive-strength` properties (`line-`, `polygon-`, `text-`, `shield-`, `marker-`, `building-`,
+  and the `*-halo-emissive-strength` pair), lit at draw time — one palette covers every preset and the
+  hour can change at runtime. `--label-emissive`, `--halo-emissive` and `--geometry-emissive` set its
+  caps and floors.
 
-`lit` is the preset's brightness over the DEFAULT preset's. That ratio is the load-bearing part:
-`sceneBrightness` is an ambient-only proxy whose absolute value is not a light level, but the ratio
-between two presets of one style is meaningful — and normalising this way is what keeps the default
-preset at factor 1, so a converted day render still matches the style it came from.
+An unstated strength takes MapBox's default for that property (1 for a label, 0 for geometry), and a
+zoom-ramped one keeps its ramp.
 
-Measured on the Paris z15 bench, mean screen brightness went **225/255 by day to 56/255 by night**,
-with labels staying bright because Standard marks them fully emissive.
+Measured on the Paris z15 bench with the earlier brightness-ratio fold, mean screen brightness went
+**225/255 by day to 56/255 by night**, with labels staying bright because Standard marks them fully
+emissive.
 
 :::caution This is an approximation
-No directional term, no per-vertex normal, no colour cast from the light: only lightness moves. It
-is applied only where the style STATES an emissive strength — an unstated one is left as authored
-rather than assuming a default. A zoom-ramped strength takes the mean of its stops.
-:::
-
-:::caution What does not survive
-Standard does most of its day/night with the **3D lighting**, not with different colours: 103
-`*-emissive-strength` properties, which have no CartoCSS equivalent and are dropped. The converted
-night palette is a real recolour — hillshade, ferries, landuse and labels all change — but it is
-not the whole difference, and a converted Standard will not look as dark as Mapbox's own.
+No per-vertex normal: every 2D surface is lit as if it faced up. Without `--live-light` the light is
+baked per preset, so the hour cannot change at runtime.
 :::
 
 ### One style, four palettes
@@ -388,7 +390,7 @@ fetch — it resolves to `https://api.mapbox.com/styles/v1/<user>/<style>/sprite
 cache token the path does not need.
 
 Measured with sprites: **standard 69%** (660/958). Every preset project compiles with `css2xml`.
-What is left is mostly genuine: `*-emissive-strength` (approximated, not carried) and
+What is left is mostly genuine: `*-emissive-strength` (folded into the colour unless `--live-light`) and
 `feature-state` (runtime interaction state, which the SDK has no notion of).
 
 **Its tiles are a separate problem.** Standard reads `mapbox-streets-v8`, whose layer names are not
@@ -680,9 +682,10 @@ turns any drop into a non-zero exit. What it refuses, and why:
   every `*-translate`, most `raster-*` adjustments. These are the CartoCSS gaps, not converter bugs.
 - **Expressions with no CartoCSS form**: `feature-state`, `within`, `number-format`,
   `image`, `%` (absent from the grammar), `abs`/`floor`/`ceil` (absent from `_basicFuncMap`), and
-  any `interpolate` over something other than zoom or with an exponential base other than 1.
+  any `interpolate` over something other than zoom (or the scene brightness). An exponential base
+  other than 1 is carried as `exponential()`, and `cubic-bezier` is taken as linear.
 - **A model layer.** Standard plants its trees as glTF models from `mapbox-models-v1`; nothing here
-  draws one.
+  draws one, so only trees survive, as a canopy dot ([below](#a-tree-is-a-canopy-dot)).
 
 Three traps the CartoCSS grammar sets, all of which the tests pin:
 
@@ -727,7 +730,7 @@ highest priority.
 
 **Corrected 2026-08-27.** This section used to say a property value cannot read a feature field at
 all, and `split.ts` exists because of it. It can. The decoder binds the feature before it builds the
-processor ([`TileReader::processLayer`](https://github.com/massif-maps/massif-maps-libs/blob/develop/mapnikvt/src/mapnikvt/TileReader.cpp)
+processor ([`TileReader::processLayer`](https://github.com/massif-maps/MassifMaps/blob/master/libs-massif/mapnikvt/src/mapnikvt/TileReader.cpp)
 calls `exprContext.setFeatureData(symbolizerFeatureData)`), and `Rule::calculateReferencedFields`
 gathers the fields a symbolizer property references so they are in that data. Pinned by
 `tests/style/DataDrivenPropertyTest.cpp`.
@@ -751,7 +754,7 @@ it looked like "some tiles have no roads, others do".
 
 Worth knowing for anything built on this: a field-driven value folds to a **constant per feature**,
 so two features answering alike hand back equal `ColorFunction`s and
-[`TileLayerBuilder`](https://github.com/massif-maps/massif-maps-libs/blob/develop/vt/src/vt/TileLayerBuilder.cpp)
+[`TileLayerBuilder`](https://github.com/massif-maps/MassifMaps/blob/master/libs-massif/vt/src/vt/TileLayerBuilder.cpp)
 dedups them into one of the geometry's 16 style slots. A field-driven colour costs slots, not
 batches.
 
@@ -890,13 +893,17 @@ fractional edge would round outwards on both sides and draw the seam twice.
 ## The light, not the colours: how a preset gets dark
 
 Standard's night preset uses the **same authored colours as day** — `colorLand` is
-`hsl(20, 20%, 95%)` in both. What changes is the scene light, and gl-js applies it at draw time. The
-SDK draws every 2D colour as authored, so the light is folded into the colour at conversion
+`hsl(20, 20%, 95%)` in both. What changes is the scene light, and gl-js applies it at draw time.
+Without `--live-light` the light is folded into the colour at conversion
 ([`emissive.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/emissive.ts)):
 
 ```
-shown_c = authored_c x (emissive + (1 - emissive) x brightness^(2/3) x cast_c)
+shown_c = authored_c x (emissive + (1 - emissive) x radiance_c)
 ```
+
+which is gl-js's `mix(apply_lighting_ground(color), color, emissive_strength)` written out.
+`radiance` is `groundRadiance`, a port of gl-js's `calculateGroundRadiance` (`3d-style/render/lights.ts`)
+for an upward normal: ambient and directional light in linear space, per channel.
 
 Three things that each cost a round to get right:
 
@@ -906,22 +913,22 @@ Three things that each cost a round to get right:
   and its trees stayed bright green.
 - **The light has a colour.** Night's ambient is `hsl(217, 100%, 11%)` with the directional light at
   intensity 0, so the only light in the scene is blue; with the lightness alone the land came out
-  brown. `cast` is this preset's ambient chroma over the DEFAULT preset's — 1 for a white light, so
-  the default preset is still exactly as authored — floored at neutral, because a light tints and
-  does not subtract.
-- **The ambient-only proxy under-reads the light**, and both gammas are fitted to a MEASURED gl-js
-  night render (`wasm/mbref.html` over Les Halles, 2.34580 / 48.86300, z16.78):
+  brown.
+- **A fitted proxy was not enough.** Before the port, the factor was `brightness^(2/3) x cast_c` —
+  an ambient-only brightness and this preset's ambient chroma over the default's, floored at
+  neutral, both gammas fitted to a MEASURED gl-js night render (`wasm/mbref.html` over Les Halles,
+  2.34580 / 48.86300, z16.78):
 
   | surface | authored | gl-js draws | emissive |
   |---|---|---|---|
   | land | `hsl(20, 20%, 95%)` | rgb 38, 40, 51 | 0 |
   | park | `hsl(115, 60%, 80%)` | rgb 72, 91, 86 | 0.25 |
 
-  Solving both gives a lit term near (0.18, 0.175, 0.27) — luminance 0.18 where the proxy says
-  0.075, and a blue lift of 1.5x where the raw chroma ratio says 2.9x. A gamma on each keeps the
-  default preset at exactly 1 (`1^g = 1`), which no additive floor can do.
+  It matched night and lost dawn: 8% too dark and NEUTRAL where gl-js draws it at full brightness
+  with a fifth of its blue removed, so day and dawn looked alike, and the neutral floor meant a tint
+  could only lift a channel, never subtract. Porting the radiance fixed both.
 
-Still an APPROXIMATION: no directional term and no per-vertex normal.
+Still an APPROXIMATION: no per-vertex normal.
 
 ## Where a label breaks: `text-wrap-before`
 
@@ -979,11 +986,12 @@ in. The converter adds a ramp of its own — no gl-js equivalent — that scales
 the camera turns onto the map:
 
 ```css
-building-height-view-scale: linear([view::tilt], (80, 1), (90, 0.5));
+building-height-view-scale: 1 - ([param::building_tilt_drop] * 0.01) * linear([view::tilt], (80, 0), (90, 1));
 ```
 
-It starts late (a 3D camera at tilt 55–75 is untouched) and stops at half, so a flattened building
-still shows its storeys instead of collapsing into its footprint.
+It starts late (a 3D camera at tilt 55–75 is untouched). `building_tilt_drop` is a style parameter,
+a percentage defaulting to 90, so a flattened building keeps a tenth of its height — enough to read
+the storeys — and an app changes it with a redraw, not a re-decode.
 
 **Two properties, because the shadow treats them differently**, and that is the whole reason the
 second one exists:
@@ -1009,9 +1017,9 @@ which reads as "the building colour is wrong" and is not. The colours themselves
 `direction` is `[azimuthal, polar]`: the azimuth runs clockwise from north, as `sun-azimuth` does,
 and the polar angle is measured from straight up, so `sun-altitude` is its complement.
 
-**Known limit:** the Map block is written from the default config, and these two are not hoisted
-into the per-preset palettes, so switching `lightPreset` to night keeps the day sun. Standard's dawn
-is `[120, 50]`, so this is visible.
+The sun, like the other Map-block scene settings, is hoisted into the per-preset palettes, so each
+`lightPreset` carries its own — Standard's dawn is `[120, 50]`. Before that every variant kept the
+day sun.
 
 ## MapBox's ground-attenuation is not the SDK's
 
@@ -1091,7 +1099,8 @@ The trap is that the **same operator has two spellings**. CartoCSS writes it `=~
 (`ExpressionGenerator`). Emitting the XML form into a `.mss` does not warn — the whole style fails
 to load, and the app throws `CartoCSS style loading failed: Syntax error` with a line number and
 nothing else. `mapbox2css --validate` exists to catch exactly this by compiling its own output, and
-it could not run here because `css2xml` overflows the wasm stack on a style this size.
+it could not run here then: `css2xml` overflowed emscripten's 64 KB default stack on a style this
+size, fixed since by `-sSTACK_SIZE=8MB`.
 
 ## Room for an icon's halo
 
@@ -1190,10 +1199,10 @@ it is.
 
 **`["interpolate", ["exponential", b], …]`** had no CartoCSS form, so the property was dropped and
 the line fell back to its default width — a pathway drew as a fat solid grey line instead of a thin
-one. CartoCSS has `linear` and `cubic` and no base, so the curve is **resampled** into extra linear
-stops (4 per stop interval): it agrees at every original stop and stays close between them, where
-substituting a plain linear is out by about a third at the midpoint at base 2. A stop that is not a
-plain number has no curve to sample and still falls back to linear, reported.
+one. It is now carried as CartoCSS `exponential(b, …)`, which the SDK interpolates itself. The first
+fix **resampled** the curve into extra linear stops (4 per interval); that only worked when the stops
+were plain numbers, and MapBox writes a road width as an exponential over per-class values — the
+linear fallback made every Standard road nearly three times too wide mid-span.
 
 ## Retargeting at another tile schema (`--schema`)
 
@@ -1658,7 +1667,7 @@ Two consequences worth knowing:
 
 MapTiler streets-v4 draws its shields from 486 extracted icons; topo-v4 has no shields at all.
 
-## Three traps that only show on a device
+## Traps that only show on a device
 
 None of these fail a compile, and each looked like an SDK bug until the style was read.
 
@@ -1743,16 +1752,16 @@ to one threshold is a real loss and is reported as such.
 
 ## What could be better
 
-- **No browser build.** `NODERAWFS` rules it out. A `MEMFS` variant would give a web playground that
-  compiles a style in the page, which is the natural home for a "does my style still work" check.
+- **No browser build of `massif-style`.** `NODERAWFS` rules it out. The playground exists through
+  the SDK web build ([style preview](../tools/style-preview.md)); a `MEMFS` variant would still let a
+  page run `css2xml` itself.
 - **`carto2css` does not exist.** The reverse direction (mapnik XML back to CartoCSS) has no
   generator; `MapGenerator` only goes one way.
 - **Only the size is measured.** Startup time and peak memory for a large style project are still
   unknown; a slow load would push the design towards keeping the module warm across subcommands.
 - **A large style project compiles very slowly, then stops compiling at all.** Three MapTiler styles
   compile in well under a second; a 212-layer OpenMapTiles one had not finished after 25 minutes,
-  natively as well as under wasm. Streets-v4 (140 attachments) aborts the wasm with `memory access
-  out of bounds`, and bisecting the attachment list puts the threshold at 105 — no single rule
-  fails, so the cost is in the total. `buildMap` runs `compileLayer` over the full zoom range per
+  natively as well as under wasm. `buildMap` runs `compileLayer` over the full zoom range per
   layer, so something there is super-linear in attachment count. It affects any app loading a large
-  style project, not just this tool.
+  style project, not just this tool. (Streets-v4 aborting the wasm with `memory access out of
+  bounds` past ~105 attachments was the 64 KB default stack, fixed by `-sSTACK_SIZE=8MB`.)

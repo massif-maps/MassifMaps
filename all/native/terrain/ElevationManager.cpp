@@ -15,9 +15,12 @@
 #include "utils/Log.h"
 #include "utils/TileUtils.h"
 
+#include <vt/RenderStats.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <unordered_set>
 #include <limits>
 
 #ifdef __ANDROID__
@@ -27,13 +30,13 @@
 namespace massif {
 
     static const std::size_t DEFAULT_CACHE_CAPACITY = 64 * 1024 * 1024;
-    // A grid COUNT, not a byte budget - one terrain view needs 122-167 distinct grids whatever the
-    // source resolution, and every grid past the limit evicts one still in use.
-    // See docs/internals/rendering/04-terrain.md for the measured ladder.
+    // A grid count, not a byte budget: a terrain view needs a fixed number of grids whatever the source
+    // resolution, and each one past the limit evicts one in use. See docs/internals/rendering/04-terrain.md.
     static const std::size_t MIN_CACHED_GRIDS = 192;
     static const int FAILED_TILE_TTL_MILLISECONDS = 30 * 1000;
     static const int MAX_ANCESTOR_SEARCH_DEPTH = 8;
-    static const std::size_t MAX_PREFETCH_QUEUE_SIZE = 64;
+    // Must hold a panorama's whole cut (~320 tiles, meshCacheSize/2), or it is shed and re-pushed every frame.
+    static const std::size_t MAX_PREFETCH_QUEUE_SIZE = 384;
     static const int PREFETCH_THREADS = 3; // elevation tiles are network+decode bound; one worker converges too slowly
     static constexpr double NO_DATA_ELEVATION = -1000000.0;
     static constexpr double DEFAULT_MIN_ELEVATION = -500.0;
@@ -69,6 +72,8 @@ namespace massif {
         _seamlessTileEdges(true),
         _surfaceResolution(32),
         _gridSizeHint(256),
+        _maxDataZoom(0),
+        _bilinearSurface(false),
         _neighbourPrefetch(true),
         _version(1),
         _dataVersion(1),
@@ -82,6 +87,7 @@ namespace massif {
     {
         _dataSourceListener = std::make_shared<DataSourceListener>(*this);
         _dataSource->registerOnChangeListener(_dataSourceListener);
+        VT_STAT_INC(elevGridManagers);
     }
 
     ElevationManager::~ElevationManager() {
@@ -99,6 +105,7 @@ namespace massif {
             }
         }
         _dataSource->unregisterOnChangeListener(_dataSourceListener);
+        VT_STAT_ADD(elevGridManagers, -1);
     }
 
     std::shared_ptr<TileDataSource> ElevationManager::getDataSource() const {
@@ -149,6 +156,32 @@ namespace massif {
         _neighbourPrefetch.store(enabled);
     }
 
+    int ElevationManager::getMaxDataZoomCap() const {
+        return _maxDataZoom.load();
+    }
+
+    bool ElevationManager::isBilinearSurface() const {
+        return _bilinearSurface.load();
+    }
+
+    void ElevationManager::setBilinearSurface(bool bilinear) {
+        if (_bilinearSurface.exchange(bilinear) != bilinear) {
+            tilesChanged();
+        }
+    }
+
+    float ElevationManager::sampleSurfaceHeight(const ElevationTileGrid& grid, double internalX, double internalY) const {
+        return (_bilinearSurface.load() ? grid.sampleHeight(internalX, internalY) : grid.sampleNodeHeight(internalX, internalY));
+    }
+
+    void ElevationManager::setMaxDataZoomCap(int maxZoom) {
+        int value = std::max(0, std::min(maxZoom, Const::MAX_SUPPORTED_ZOOM_LEVEL));
+        if (_maxDataZoom.exchange(value) != value) {
+            // Dropped, or the finer cached grids would keep disagreeing with capped neighbours.
+            tilesChanged();
+        }
+    }
+
     std::size_t ElevationManager::getCacheCapacity() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _gridCache.capacity();
@@ -171,6 +204,59 @@ namespace massif {
         }
         MapPos internalPos = _projection->toInternal(dataSourcePos);
         return grid->sampleHeight(internalPos.getX(), internalPos.getY());
+    }
+
+    std::vector<double> ElevationManager::calculateHorizon(const MapPos& pos, double eyeHeight, const std::vector<double>& azimuths, double maxDistance) const {
+        // Refraction modelled as an earth 1/(1 - k) times larger.
+        static const double REFRACTION_COEFFICIENT = 0.13;
+        static const double FIRST_SAMPLE_METERS = 30.0;
+        static const double SAMPLE_GROWTH = 1.008; // ~0.05 degree of the ray a step, near and far alike
+        double effectiveRadius = Const::EARTH_RADIUS / (1.0 - REFRACTION_COEFFICIENT);
+
+        MapPos eye = _projection->toInternal(_projection->fromWgs84(pos));
+        double metersToInternal = getDisplayScale(eye.getY());
+        std::vector<double> horizon(azimuths.size(), -90.0);
+        if (!(metersToInternal > 0)) {
+            return horizon;
+        }
+        std::shared_ptr<ElevationTileGrid> eyeGrid = getGridForInternalPos(eye.getX(), eye.getY(), LoadMode::CACHED_ONLY);
+        if (!eyeGrid) {
+            return horizon;
+        }
+        double eyeZ = eyeGrid->sampleHeight(eye.getX(), eye.getY()) + eyeHeight;
+
+        // Wanted posting ~1/1000 of the distance (under a panorama pixel); coarser grids request it once per tile.
+        int maxZoom = dataMaxZoom();
+        double worldMeters = Const::EARTH_CIRCUMFERENCE * std::cos(pos.getY() * Const::DEG_TO_RAD);
+        std::unordered_set<long long> requested;
+        for (std::size_t i = 0; i < azimuths.size(); i++) {
+            double azimuth = azimuths[i] * Const::DEG_TO_RAD;
+            double dx = std::sin(azimuth), dy = std::cos(azimuth);
+            double best = -90.0;
+            for (double distance = FIRST_SAMPLE_METERS; distance <= maxDistance; distance = std::max(distance * SAMPLE_GROWTH, distance + FIRST_SAMPLE_METERS)) {
+                double x = eye.getX() + dx * distance * metersToInternal;
+                double y = eye.getY() + dy * distance * metersToInternal;
+                std::shared_ptr<ElevationTileGrid> grid = getGridForInternalPos(x, y, LoadMode::CACHED_ONLY);
+                int wantedZoom = std::max(0, std::min(maxZoom, static_cast<int>(std::floor(std::log2(worldMeters / (DEM_TEXELS_PER_TILE_UNIT * std::max(FIRST_SAMPLE_METERS, distance * 0.001)))))));
+                if (!grid || grid->getTile().getZoom() < wantedZoom) {
+                    MapTile tile = getTileForInternalPos(x, y);
+                    while (tile.getZoom() > wantedZoom) {
+                        tile = tile.getParent();
+                    }
+                    if (requested.insert(tile.getTileId()).second) {
+                        requestTileGrid(tile, 0);
+                    }
+                }
+                if (!grid) {
+                    continue;
+                }
+                double drop = distance * distance / (2.0 * effectiveRadius);
+                double altitude = std::atan2(grid->sampleHeight(x, y) - drop - eyeZ, distance) * Const::RAD_TO_DEG;
+                best = std::max(best, altitude);
+            }
+            horizon[i] = best;
+        }
+        return horizon;
     }
 
     std::vector<double> ElevationManager::getElevations(const std::vector<MapPos>& poses) const {
@@ -208,10 +294,15 @@ namespace massif {
         if (!grid) {
             return 0.0;
         }
-        return grid->sampleNodeHeight(wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
+        return sampleSurfaceHeight(*grid, wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
     }
 
     bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height) const {
+        int resolvedZoom = -1;
+        return getDisplayHeightCached(internalX, internalY, height, resolvedZoom);
+    }
+
+    bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height, int& resolvedZoom) const {
         // getDisplayHeight cannot say whether it HAS data - it returns 0 either way, and 0 is a legal
         // height. An extrusion given a base of 0 where the ground is 215 m sinks below the terrain.
         double wrappedX = wrapInternalX(internalX);
@@ -219,7 +310,9 @@ namespace massif {
         if (!grid) {
             return false;
         }
-        height = grid->sampleNodeHeight(wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
+        // Reports which grid answered: a cached-only read may fall back to a much coarser ancestor.
+        resolvedZoom = grid->getTile().getZoom();
+        height = sampleSurfaceHeight(*grid, wrappedX, internalY) * _exaggeration.load() * getDisplayScale(internalY);
         return true;
     }
 
@@ -246,6 +339,14 @@ namespace massif {
         return lookupTileGrid(clampDataTileZoom(dataTile), mode);
     }
 
+    bool ElevationManager::readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid) const {
+        if (!_gridCache.read(tileId, grid)) {
+            return false;
+        }
+        // timed_lru_cache::read ignores expiry (only valid() checks it), which would make a failure marker permanent.
+        return grid || _gridCache.valid(tileId);
+    }
+
     std::shared_ptr<ElevationTileGrid> ElevationManager::lookupTileGrid(const MapTile& tile, LoadMode mode) const {
         if (tile.getZoom() < _dataSource->getMinZoom()) {
             return std::shared_ptr<ElevationTileGrid>();
@@ -268,7 +369,6 @@ namespace massif {
             return memo.grid;
         }
 
-        // Look for the tile or any of its cached ancestors
         bool tileFailed = false;
         if (mode == LoadMode::LOAD_EXACT) {
             // LOAD_EXACT wants THIS level: a cached ancestor must not short-circuit the load, or
@@ -276,7 +376,7 @@ namespace massif {
             // this tile id is the data source saying the level does not exist here, so it stands.
             std::lock_guard<std::mutex> lock(_mutex);
             std::shared_ptr<ElevationTileGrid> grid;
-            if (_gridCache.read(tile.getTileId(), grid)) {
+            if (readCachedGrid(tile.getTileId(), grid)) {
                 if (grid) {
                     return grid;
                 }
@@ -287,8 +387,13 @@ namespace massif {
             MapTile searchTile = tile;
             for (int depth = 0; depth <= MAX_ANCESTOR_SEARCH_DEPTH; depth++) {
                 std::shared_ptr<ElevationTileGrid> grid;
-                if (_gridCache.read(searchTile.getTileId(), grid)) {
+                if (readCachedGrid(searchTile.getTileId(), grid)) {
                     if (grid) {
+#if MASSIF_VT_RENDER_STATS
+                        if (grid->getTile() == tile) { VT_STAT_INC(elevExactHits); }
+                        else if (searchTile == tile) { VT_STAT_INC(elevAncestorAliasHits); }
+                        else { VT_STAT_INC(elevAncestorWalkHits); }
+#endif
                         memo = GridMemo { _instanceId, memoVersion, tile.getTileId(), mode, grid };
                         return grid;
                     }
@@ -307,9 +412,8 @@ namespace massif {
             return std::shared_ptr<ElevationTileGrid>();
         }
 
-        // Single-flight: many tile fetch threads typically request the same elevation tile
-        // at nearly the same time (16 layer tiles can share one clamped elevation tile).
-        // Only the first caller performs the load; the others wait for its result.
+        // Single-flight: many layer tiles share one clamped elevation tile, so only the first caller
+        // loads it and the others wait for its result.
         long long tileId = tile.getTileId();
         std::promise<std::shared_ptr<ElevationTileGrid> > promise;
         {
@@ -347,9 +451,26 @@ namespace massif {
                                static_cast<int>(MIN_CACHED_GRIDS), static_cast<int>(grid->getDataSize() >> 10));
                     _gridCache.resize(minCapacity);
                 }
+#if MASSIF_VT_RENDER_STATS
+                // A second arrival means the grid was evicted while still in use.
+                if (!_everLoadedTiles.insert(grid->getTile().getTileId()).second) {
+                    VT_STAT_INC(elevGridReinserts);
+                }
+                // Max across managers: the gauge is global and several managers write it.
+                {
+                    long long mine = static_cast<long long>(_everLoadedTiles.size());
+                    long long seen = vt::RenderStats::elevGridDistinctEver.load();
+                    while (mine > seen && !vt::RenderStats::elevGridDistinctEver.compare_exchange_weak(seen, mine)) { }
+                }
+                VT_STAT_SET(elevGridSizeKB, static_cast<long long>(grid->getDataSize() >> 10));
+                VT_STAT_INC(elevGridInserts);
+#endif
                 _gridCache.put(grid->getTile().getTileId(), grid, grid->getDataSize());
+                VT_STAT_SET(elevGridBytes, static_cast<long long>(_gridCache.size()));
+                VT_STAT_SET(elevGridCapacity, static_cast<long long>(_gridCache.capacity()));
                 if (grid->getTile() != tile) {
                     // Loaded an ancestor (replace-with-parent); also mark the requested tile as resolved via ancestor
+                    VT_STAT_INC(elevAncestorAliasPuts);
                     _gridCache.put(tileId, grid, 1024);
                 }
                 float maxSeen = _maxSeenElevation.load();
@@ -396,6 +517,22 @@ namespace massif {
         }
     }
 
+    int ElevationManager::getDetailZoomLimit() const {
+        // The inverse of clampTileZoom: the source maximum plus the levels it drops for an oversized grid.
+        int bias = 0;
+        for (int size = _gridSizeHint.load(); size > DEM_TEXELS_PER_TILE_UNIT; size /= 2) {
+            bias++;
+        }
+        // Not dataMaxZoom(): this is the LOD floor, and capping it tessellates coarse tiles into
+        // thousands of sub-surfaces. The cap belongs in tile selection (clampDataTileZoom) only.
+        return _dataSource->getMaxZoom() + bias;
+    }
+
+    MapTile ElevationManager::getTileForInternalPos(double internalX, double internalY) const {
+        MapPos dataSourcePos = _projection->fromInternal(MapPos(wrapInternalX(internalX), internalY, 0));
+        return TileUtils::CalculateClippedMapTile(dataSourcePos, dataMaxZoom(), _projection).getFlipped();
+    }
+
     MapTile ElevationManager::getDataTile(const MapTile& mapTile) const {
         return clampTileZoom(mapTile);
     }
@@ -425,6 +562,10 @@ namespace massif {
         if (!_neighbourPrefetch.load()) {
             return;
         }
+        requestTileGrid(dataTile, priority);
+    }
+
+    void ElevationManager::requestTileGrid(const MapTile& dataTile, int priority) const {
         MapTile tile = clampDataTileZoom(dataTile);
         if (tile.getZoom() < _dataSource->getMinZoom()) {
             return;
@@ -434,7 +575,7 @@ namespace massif {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             std::shared_ptr<ElevationTileGrid> grid;
-            if (_gridCache.read(tileId, grid)) {
+            if (readCachedGrid(tileId, grid)) {
                 return; // already loaded, resolved via an ancestor, or recently failed
             }
             if (_pendingLoads.find(tileId) != _pendingLoads.end()) {
@@ -452,13 +593,18 @@ namespace massif {
             }
             std::deque<PrefetchEntry>& queue = (priority >= 2 ? _prefetchQueueHigh : _prefetchQueue);
             queue.push_back(PrefetchEntry { tile, priority });
+            bool haveFocus = _prefetchFocusValid.load();
+            double focusU = _prefetchFocusU.load(), focusV = _prefetchFocusV.load();
             while (queue.size() > MAX_PREFETCH_QUEUE_SIZE) {
-                // Shed the least useful entry, not the oldest: the low queue mixes edge neighbours
-                // with single-corner diagonals, and a full queue gives up the corners first.
+                // Shed the least useful entry, not the oldest: lowest priority first (corners before edge
+                // neighbours), then the furthest from the camera, so loading converges outwards repeatably.
                 auto victim = queue.begin();
+                double victimDistance = (haveFocus ? prefetchTileDistance(victim->tile, focusU, focusV) : 0.0);
                 for (auto it = queue.begin(); it != queue.end(); it++) {
-                    if (it->priority < victim->priority) {
+                    double distance = (haveFocus ? prefetchTileDistance(it->tile, focusU, focusV) : 0.0);
+                    if (it->priority < victim->priority || (it->priority == victim->priority && distance > victimDistance)) {
                         victim = it;
+                        victimDistance = distance;
                     }
                 }
                 _prefetchTileIds.erase(victim->tile.getTileId());
@@ -521,9 +667,8 @@ namespace massif {
     }
 
     double ElevationManager::getDisplayScale(double internalY) const {
-        // tanh + expm1 measured 21% of the render thread here, so quantise the latitude to
-        // DISPLAY_SCALE_STEP (~40 m, ~4e-7 relative scale) and memo the last step. Quantising rather
-        // than interpolating keeps the height a function of position alone, so nothing oscillates.
+        // tanh + expm1 are hot here, so memo per DISPLAY_SCALE_STEP (~4e-7 relative scale). Quantising
+        // rather than interpolating keeps the height a function of position alone, so nothing oscillates.
         double step = std::floor(internalY / DISPLAY_SCALE_STEP + 0.5);
         struct ScaleMemo {
             double step = std::numeric_limits<double>::quiet_NaN();
@@ -560,6 +705,8 @@ namespace massif {
     }
 
     int ElevationManager::getMaxDataZoom() const {
+        // The source's depth, not dataMaxZoom(): it sizes the projection surface's subdivision
+        // (CalculateSplitThreshold), and the working-set cap must not move tessellation.
         if (std::shared_ptr<TileDataSource> dataSource = getDataSource()) {
             return dataSource->getMaxZoom();
         }
@@ -585,7 +732,7 @@ namespace massif {
             if (!cachedGrid) {
                 return 0.0;
             }
-            return cachedGrid->sampleNodeHeight(wrappedX, internalY) * exaggeration * getDisplayScale(internalY);
+            return sampleSurfaceHeight(*cachedGrid, wrappedX, internalY) * exaggeration * getDisplayScale(internalY);
         };
 
         // Conservative display-space search interval. Use the largest latitude scale along the ray
@@ -638,6 +785,42 @@ namespace massif {
             }
             prevT = curT;
             prevDelta = delta;
+        }
+        return false;
+    }
+
+    bool ElevationManager::isSegmentBlocked(const cglib::vec3<double>& from, const cglib::vec3<double>& to, double maxFraction) const {
+        // Steps grow with the distance, as in calculateHorizon: ~0.01 degree of the line each, from 30 m.
+        static const double FIRST_STEP_METERS = 30.0;
+        static const double STEP_GROWTH = 1.015;
+
+        double length = cglib::length(to - from);
+        if (!(length > 0)) {
+            return false;
+        }
+        cglib::vec3<double> dir = (to - from) * (1.0 / length);
+        float exaggeration = _exaggeration.load();
+        double scale = getDisplayScale(from(1));
+        double zTop = std::max(static_cast<double>(_maxSeenElevation.load()), DEFAULT_MAX_ELEVATION) * exaggeration * scale;
+        double firstStep = FIRST_STEP_METERS * scale;
+        double end = length * maxFraction;
+
+        std::shared_ptr<ElevationTileGrid> grid;
+        for (double distance = firstStep; distance < end; distance = std::max(distance * STEP_GROWTH, distance + firstStep)) {
+            cglib::vec3<double> pos = from + dir * distance;
+            if (pos(2) > zTop) {
+                if (dir(2) >= 0) {
+                    return false; // above every summit and climbing
+                }
+                continue;
+            }
+            double x = wrapInternalX(pos(0));
+            if (!grid || !grid->getInternalBounds().contains(MapPos(x, pos(1), 0))) {
+                grid = getGridForInternalPos(x, pos(1), LoadMode::CACHED_ONLY);
+            }
+            if (grid && pos(2) < sampleSurfaceHeight(*grid, x, pos(1)) * exaggeration * getDisplayScale(pos(1))) {
+                return true;
+            }
         }
         return false;
     }
@@ -734,7 +917,7 @@ namespace massif {
 
     // Mesh cells a node averages the DEM over (ElevationNodeField::DEFAULT_BOX_CELLS), with the
     // measurement override:  adb shell setprop debug.massif.nodebox <cells>
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int ElevationManager::nodeBoxCells() {
         static const int cells = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -764,10 +947,16 @@ namespace massif {
         return clampDataTileZoom(tile);
     }
 
+    int ElevationManager::dataMaxZoom() const {
+        int cap = _maxDataZoom.load();
+        int sourceMax = _dataSource->getMaxZoom();
+        return cap > 0 ? std::min(cap, sourceMax) : sourceMax;
+    }
+
     MapTile ElevationManager::clampDataTileZoom(const MapTile& dataTile) const {
         // Only the data source zoom range: idempotent, safe to apply to an elevation tile.
         MapTile tile = dataTile;
-        int maxZoom = _dataSource->getMaxZoom();
+        int maxZoom = dataMaxZoom();
         while (tile.getZoom() > maxZoom) {
             tile = tile.getParent();
         }
@@ -775,9 +964,8 @@ namespace massif {
     }
 
     std::shared_ptr<ElevationTileGrid> ElevationManager::getGridForInternalPos(double internalX, double internalY, LoadMode mode) const {
-        // A label re-anchor samples every label vertex, and the tile math before the cache lookup
-        // measured 70% of the render thread. Grids are immutable and versioned, so the last grid
-        // containing the point is still the right answer. LOAD_EXACT excluded (no ancestor stand-in).
+        // A label re-anchor samples every label vertex and the tile math before the lookup is hot. Grids are
+        // immutable and versioned, so the last grid containing the point stays right. LOAD_EXACT excluded.
         struct PosMemo {
             unsigned long long instanceId = 0;
             unsigned int version = 0;
@@ -793,9 +981,7 @@ namespace massif {
             }
         }
 
-        MapPos dataSourcePos = _projection->fromInternal(MapPos(internalX, internalY, 0));
-        MapTile mapTile = TileUtils::CalculateClippedMapTile(dataSourcePos, _dataSource->getMaxZoom(), _projection).getFlipped();
-        std::shared_ptr<ElevationTileGrid> grid = getTileGrid(mapTile, mode);
+        std::shared_ptr<ElevationTileGrid> grid = getTileGrid(getTileForInternalPos(internalX, internalY), mode);
         if (memoizable && grid) {
             memo = PosMemo { _instanceId, memoVersion, mode, grid };
         }

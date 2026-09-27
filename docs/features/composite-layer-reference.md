@@ -61,8 +61,8 @@ Drawn as a `RasterTileLayer`.
 > use `raster-opacity` for blending.
 
 ### Hillshade (`COMPOSITE_SOURCE_TYPE_HILLSHADE`)
-Drawn as a `HillshadeRasterTileLayer`. Decoder resolved from the DEM source `encoding`
-(`terrarium`/`mapbox`) unless passed explicitly.
+Drawn as a `HillshadeRasterTileLayer`. Decoder resolved per tile from the DEM's `dem_encoding`
+meta data (`terrarium`/`mapbox`) unless passed explicitly.
 
 | CartoCSS property | Effect | Timing |
 |---|---|---|

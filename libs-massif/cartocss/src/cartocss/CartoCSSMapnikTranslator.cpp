@@ -744,6 +744,7 @@ namespace massif::css {
         { "text-max-distance", "max-distance" },
         { "text-occlusion-opacity", "occlusion-opacity" },
         { "text-callout-screen-anchor", "callout-screen-anchor" },
+        { "text-callout-band-follow", "callout-band-follow" },
         { "text-callout-offset", "callout-offset" },
         { "text-callout-step", "callout-step" },
         { "text-callout-max-rows", "callout-max-rows" },

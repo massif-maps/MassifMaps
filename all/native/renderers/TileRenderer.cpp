@@ -29,6 +29,10 @@
 #endif
 #include "utils/Const.h"
 
+#include <limits>
+#include <atomic>
+#include <chrono>
+
 #include <vt/Label.h>
 #include <vt/LabelCuller.h>
 #include <vt/TileTransformer.h>
@@ -57,10 +61,7 @@ namespace massif {
         _vtRenderer(),
         _interactionMode(false),
         _layerBlendingSpeed(1.0f),
-        // Labels fade in 1/speed seconds, so this is maplibre's fadeDuration of 300 ms
-        // (Style::_updatePlacement). A full second was long enough that a name was still fading in
-        // when it had reached the middle of the screen, and it is the same duration
-        // VTLabelPlacementWorker holds the next placement pass off for.
+        // 300 ms fade: maplibre's fadeDuration, and VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL.
         _labelBlendingSpeed(1.0f / 0.3f),
         _labelPerspectiveScaling(0.5f),
         _labelOrder(0),
@@ -114,13 +115,21 @@ namespace massif {
         _interactionMode = enabled;
     }
 
+    // Timed: what a cull-thread tile-set change costs the frame; refreshTilesLockNs is the other side.
+    std::unique_lock<std::mutex> TileRenderer::lockTimed() const {
+        VT_STAT_CLOCK(lockClock);
+        std::unique_lock<std::mutex> lock(_mutex);
+        VT_STAT_SPLIT(tileRendererLockNs, lockClock);
+        return lock;
+    }
+
     void TileRenderer::setTerrainRenderOrder(int order) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
         _terrainRenderOrder = order;
     }
 
     void TileRenderer::setTerrainDepthWriteMode(bool enabled) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
         _terrainDepthWriteMode = enabled;
     }
     
@@ -175,7 +184,13 @@ namespace massif {
         }
         if (newValue != _normalMapLightingShader) {
             _normalMapLightingShader = newValue;
-            _vtRenderer.reset();
+            // Swapped in place: a reset threw away the layer's whole GL renderer, and until every tile
+            // was uploaded again the map drew without it - black on Mali. Called on the GL thread.
+            if (_vtRenderer && _vtRenderer->isValid()) {
+                if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
+                    tileRenderer->setLightingShaderNormalMap(createNormalMapLightingShader());
+                }
+            }
         }
     }
     void TileRenderer::setNormalMapElevationEncoded(bool enabled) {
@@ -235,11 +250,8 @@ namespace massif {
     }
     
     /**
-     * The three pieces of state GLTileRenderer::renderDrapedSurface refuses to draw without. Pushed
-     * from prepareFrame as well as onDrawFrame because MapRenderer draws the shared ground BEFORE
-     * this layer's onDrawFrame runs: on the first frame of a 2D->3D switch every surface bailed and
-     * the frame had no ground at all - the sky through it, buildings still there.
-     * Caller must hold _mutex.
+     * State renderDrapedSurface needs, pushed from prepareFrame too: the shared ground draws before
+     * onDrawFrame, and the first 3D frame had no ground. Caller must hold _mutex.
      */
     void TileRenderer::pushTerrainDrapeState() {
         std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>());
@@ -256,8 +268,7 @@ namespace massif {
                 }
             }
         }
-        // An ALREADY BUILT cache only: creating one, and its per-frame begin, stay in onDrawFrame,
-        // which runs later in the same frame and pushes the authoritative values over these.
+        // An already built cache only: onDrawFrame creates it and pushes the authoritative values later.
         std::shared_ptr<ElevationTextureCache> elevationTextureCache;
         if (terrainMode) {
             elevationTextureCache = _elevationTextureCache;
@@ -279,12 +290,12 @@ namespace massif {
     }
 
     bool TileRenderer::prepareFrame(float deltaSeconds, const ViewState& viewState) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
         return prepareFrameUnsafe(deltaSeconds, viewState);
     }
 
-    // Caller must hold _mutex. onDrawFrame already does, and _mutex is not recursive.
+    // Caller must hold _mutex (not recursive).
     bool TileRenderer::prepareFrameUnsafe(float deltaSeconds, const ViewState& viewState) {
         if (_framePrepared) {
             return _framePrepareResult;
@@ -295,16 +306,11 @@ namespace massif {
         }
         _framePrepared = true;
         _framePrepareResult = false;
-        // Resolved BEFORE the view state below, for the same reason as the contact shadows: the
-        // drape bake runs before onDrawFrame has resolved any lighting, and a cached drape is never
-        // re-baked for a uniform change - so what it baked with stayed until a zoom rebuilt it.
+        // Resolved here: the drape bake runs before onDrawFrame, and is never re-baked for a uniform change.
         if (auto options = _options.lock()) {
             ResolvedLighting lighting = resolveLighting(options->getLightOptions(), _styleEnvironment);
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
-            // Same reason as the contact shadows above: the DRAPE BAKE evaluates every colour and
-            // runs before onDrawFrame resolves any lighting, and a cached drape is never re-baked
-            // for it - so the ground never followed the sun.
             _resolvedRadiance = lighting.radiance;
             _resolvedBrightness = lighting.brightness;
             _backgroundEmissive = lighting.backgroundEmissive;
@@ -312,24 +318,25 @@ namespace massif {
         _buildingHeightViewScale = lighting.buildingHeightViewScale;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
             _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
-            // Same reason again, and one step earlier than the rest: the owner reads this BEFORE
-            // the layer passes, to decide whether to render the occluder buffer at all.
+            // The owner reads this before the layer passes, to decide on the occluder buffer.
             _textOcclusionOpacity.store(resolveTextOcclusionOpacity(options->getTerrainOptions(), _styleEnvironment));
         }
-        // The cross-layer drape draws the terrain surface from MapRenderer, BEFORE onDrawFrame sets
-        // the view state - so without this the ground lags the buildings by exactly one frame during
-        // a pan and snaps into place when the motion stops.
+        // The shared surface draws before onDrawFrame sets the view state, or the ground lags a frame.
         cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
-        // A label's world size is 2^-zoom of the WORLD, and vt scales it by the planar
-        // Const::WORLD_SIZE: the globe's own world is twice as wide, or labels come out half size.
+        // vt scales labels by the planar WORLD_SIZE; the globe's world is twice as wide.
         prepareViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         prepareViewState.planarProjection = isPlanarProjectionMode();
         prepareViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         prepareViewState.lightBrightness = _resolvedBrightness;
-        // Missing here, vt fell back to the camera's height above the z=0 PLANE - right on a plane,
-        // and on a globe the camera's world z, which sized every label at the 0.05 floor.
+        // vt's fallback (camera height above z=0) is wrong on a globe.
         prepareViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
+        // For screen-space objects not sized from the zoom; setLineAntialiasScale needs the same ratio.
+        prepareViewState.deviceResolution = static_cast<float>(viewState.getHeight());
+        // Label::updatePlacement needs it, or distant labels stay unplaced.
+        if (auto options = _options.lock()) {
+            prepareViewState.labelViewDistance = options->getLabelViewDistance();
+        }
         tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
         tileRenderer->setRadiance(_resolvedRadiance);
@@ -339,6 +346,10 @@ namespace massif {
         pushTerrainDrapeState();
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
+            // Re-anchored labels were placed at their old height; a still camera asks for no new pass.
+            if (tileRenderer->consumeLabelsReanchored()) {
+                _labelPlacementOwed = true;
+            }
         }
         catch (const std::exception& ex) {
             Log::Errorf("TileRenderer::prepareFrame: Failed: %s", ex.what());
@@ -367,13 +378,9 @@ namespace massif {
         if (setting > 0) {
             return setting;
         }
-        // From the SCREEN, not a constant: the tile LOD refines until a tile covers at most a 2x2
-        // block, so 2 * tileDrawSize * pixelScale is the widest it ever gets - one texel per screen
-        // pixel at that bound. Rounded UP to a power of two, since the cache pools one size.
+        // From the screen: a tile is at most 2 * tileDrawSize * pixelScale wide, one texel per pixel there.
         double tileDrawSize = (options ? options->getTileDrawSize() : 256);
-        // ... and then what MEMORY allows, the binding constraint: a 1024 RGBA drape is 4 MB PER
-        // TILE and an unbounded cache thrashes, while pinning 1024 evicts the generation stand-ins
-        // read from. Both ends are the app's (TerrainOptions::DrapeCacheSize / DrapeWorkingSet).
+        // Then capped by memory, the binding constraint (TerrainOptions::DrapeCacheSize / DrapeWorkingSet).
         std::size_t budget = (budgetMegabytes > 0 ? budgetMegabytes * 1024 * 1024 : TerrainDrapeCache::MAX_BYTES);
         std::size_t budgetBytes = (TerrainDrapeCache::isBudgetEnabled() ? budget : 0);
         std::size_t tiles = (workingSet > 0 ? static_cast<std::size_t>(workingSet) : DRAPE_WORKING_SET);
@@ -529,9 +536,7 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            // What the fit falls back on when no tile carries a DEM: the same factor the elevation
-            // cache would report, minus the exaggeration a flat map does not have. Without it a 2D
-            // map failed the fit outright and drew no shadow at all.
+            // Fallback when no tile carries a DEM, or a 2D map's fit fails and draws no shadow.
             tileRenderer->setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE);
             return tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
         }
@@ -591,8 +596,17 @@ namespace massif {
         return false;
     }
 
+    bool TileRenderer::hasGroundContent() const {
+        auto lock = lockTimed();
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            return tileRenderer->hasGroundContent();
+        }
+        return false;
+    }
+
     bool TileRenderer::isGroundAOBakeable() const {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
             return tileRenderer->isGroundAOBakeable();
@@ -663,9 +677,7 @@ namespace massif {
     vt::GLTileRenderer::TerrainLighting TileRenderer::buildTerrainLighting(const ResolvedLighting& lighting) {
         vt::GLTileRenderer::TerrainLighting terrainLighting;
         terrainLighting.enabled = true;
-        // A style whose 2D colours already carry the light is lit NEUTRALLY, not not-at-all: the
-        // shadow multiply lives inside the terrain shading block, so switching that off takes the
-        // shadow with it. White ambient at full weight leaves the authored colour alone.
+        // Prelit colours get neutral light, not none: the shadow multiply lives in the shading block.
         if (lighting.colorsPrelit) {
             terrainLighting.sunDir = lighting.sunDir;
             terrainLighting.sunColor = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
@@ -692,17 +704,20 @@ namespace massif {
             }
             tileRenderer->setRadiance(_resolvedRadiance);
             tileRenderer->setBackgroundEmissive(_backgroundEmissive);
-            // The FALLBACK an extrusion takes when its own rule states no emissive. The 3D
-            // lighting callback uploads this too, but a rule that overrides u_emissive has to be
-            // able to put the map's value back for the next draw (GLTileRenderer).
+            // Fallback emissive, restored after a rule that overrides u_emissive.
             tileRenderer->setBuildingEmissive(_buildingEmissive);
             tileRenderer->setTerrainLighting(terrainLighting);
         }
     }
 
     void TileRenderer::setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
+        // The push takes the vt mutex, which a tile-set change holds for a whole label map rebuild.
+        if (tileIds == _terrainPaintTileIds) {
+            return;
+        }
+        _terrainPaintTileIds = tileIds;
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
             tileRenderer->setTerrainPaintTiles(tileIds);
         }
@@ -729,11 +744,8 @@ namespace massif {
         }
     }
 
-    // Measurement switches, all off by default:
-    //   debug.massif.groundpaint 1  paint drawn AS the ground (tangram): one draw per tile cheaper
-    //   debug.massif.demtaps 4      elevation fetches per terrain vertex (16 / 4 / 1, tangram's)
-    //   debug.massif.tilebg 1       per-layer per-tile background meshes tangram does not have
-#ifdef __ANDROID__
+    // Measurement switches (demo builds): debug.massif.groundpaint, demtaps (16/4/1), tilebg.
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TileRenderer::isTerrainTileBackgroundsForced() {
         static const bool forced = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -747,11 +759,8 @@ namespace massif {
     }
 #endif
 
-    // The stencil tile masks that clip each tile's content to its own footprint, forced on (1) or
-    // off (0) instead of the renderer's own rule. They stop a retained proxy tile painting through
-    // the gaps of its replacement, so the A/B to run is the zoom transitions, not the frame rate.
-    //   adb shell setprop debug.massif.tilemasks 1
-#ifdef __ANDROID__
+    // Stencil masks stop a proxy tile painting through its replacement: A/B the zoom transitions.
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int TileRenderer::tileMasksMode() {
         static const int mode = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -784,7 +793,7 @@ namespace massif {
     }
 #endif
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     int TileRenderer::terrainDemTaps() {
         static const int taps = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -804,7 +813,7 @@ namespace massif {
     }
 #endif
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool TileRenderer::isTerrainPaintOnGroundForced() {
         static const bool forced = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -819,7 +828,8 @@ namespace massif {
 #endif
 
     bool TileRenderer::onDrawFrame(float deltaSeconds, const ViewState& viewState) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
+        VT_STAT_CLOCK(passClock);
 
         if (!initializeRenderer()) {
             return false;
@@ -829,9 +839,7 @@ namespace massif {
             return false;
         }
 
-        // vt has no logger of its own, so the fallback is invisible without this. It means a
-        // program would not build at '#version 300 es' and was rebuilt at 1.00 - the map still
-        // draws, which is exactly why it needs saying out loud.
+        // vt has no logger, and the map still draws after the fallback, so it would go unnoticed.
         if (!_essl3FallbackReported && tileRenderer->hasShaderVersionFallback()) {
             _essl3FallbackReported = true;
             Log::Warn("TileRenderer: a shader fell back from GLSL ES 3.00 to 1.00");
@@ -840,13 +848,16 @@ namespace massif {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getRenderZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
-        vtViewState.planarProjection = isPlanarProjectionMode(); // labels rescale by view depth, so neither terrain elevation nor a tilt blows up their screen size
-        vtViewState.labelPerspectiveScaling = _labelPerspectiveScaling; // how much of that rescale is given back, so a distant label shrinks like maplibre's
-        vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
-        vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
+        vtViewState.planarProjection = isPlanarProjectionMode();
+        vtViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
+        vtViewState.lightBrightness = _resolvedBrightness;
+        vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // see prepareFrameUnsafe
+        vtViewState.deviceResolution = static_cast<float>(viewState.getHeight());
+        if (auto options = _options.lock()) {
+            vtViewState.labelViewDistance = options->getLabelViewDistance();
+        }
         tileRenderer->setViewState(vtViewState);
-        // A line width is given in unscaled-DPI units; this is what one of them is worth in device
-        // pixels, so the antialias ramp can be one pixel wide instead of one unit (see lineFsh).
+        // Device pixels per unscaled-DPI unit, so the antialias ramp is one pixel wide (lineFsh).
         tileRenderer->setLineAntialiasScale(viewState.getNormalizedResolution() > 0 ? viewState.getHeight() / viewState.getNormalizedResolution() : 1.0f);
         tileRenderer->setInteractionMode(_interactionMode);
         tileRenderer->setRasterFilterMode(_rasterFilterMode);
@@ -854,8 +865,7 @@ namespace massif {
         tileRenderer->setLabelBlendingSpeed(_labelBlendingSpeed);
         tileRenderer->setRendererLayerFilter(_rendererLayerFilter);
 
-        // Terrain state: rebuild tile surfaces when the elevation data changes. Debounced, because
-        // during the initial load a new elevation tile can arrive almost every frame.
+        // Surface rebuilds on elevation changes are debounced: the initial load changes it almost every frame.
         bool terrainMode = false;
         float terrainDepthBias = 0.0f;
         std::shared_ptr<TerrainOptions> activeTerrainOptions;
@@ -864,17 +874,13 @@ namespace massif {
                 if (auto terrainOptions = options->getTerrainOptions()) {
                     if (terrainOptions->isActive()) {
                         terrainMode = true;
-                        // Tile geometry lies exactly on the terrain surfaces, so it needs only a small
-                        // equality slack - the vt renderer's slope-scaled polygon offset does the pull.
-                        // A large clip-space bias is hundreds of metres of tolerance far away.
+                        // Small equality slack only: a large clip-space bias is hundreds of metres far away.
                         terrainDepthBias = terrainOptions->getDepthBias() * 0.1f;
                         activeTerrainOptions = terrainOptions;
                         const std::shared_ptr<ElevationManager>& elevationManager = terrainOptions->getElevationManager();
-                        // A CPU base is sampled from the TEXTURE cache, which fills a few frames after
-                        // the grid, so the manager's version alone leaves a base on an ancestor. Scoped
-                        // to the tiles that landed - re-resolving every building on each DEM arrival cost.
+                        // CPU bases come from the texture cache, which fills frames after the grid; scoped to landed tiles.
                         if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
-                            std::vector<MapTile> contentChanges = elevationTextureCache->drainContentChanges();
+                            const std::vector<MapTile>& contentChanges = elevationTextureCache->getFrameContentChanges();
                             if (!contentChanges.empty()) {
                                 std::vector<vt::TileId> contentTileIds;
                                 contentTileIds.reserve(contentChanges.size());
@@ -882,27 +888,29 @@ namespace massif {
                                     contentTileIds.emplace_back(mapTile.getZoom(), mapTile.getX(), mapTile.getY());
                                 }
                                 tileRenderer->invalidateExtrusionBases(contentTileIds);
+                                tileRenderer->invalidateLabelElevation(contentTileIds);
                             }
+                        }
+                        // Every CPU height carries the exaggeration: a 2D/3D ramp step invalidates the whole screen.
+                        float exaggeration = elevationManager->getExaggeration();
+                        if (exaggeration != _elevationExaggeration) {
+                            _elevationExaggeration = exaggeration;
+                            tileRenderer->invalidateLabelElevation();
                         }
                         unsigned int elevationVersion = elevationManager->getVersion();
                         if (elevationVersion != _elevationVersion) {
                             auto now = std::chrono::steady_clock::now();
-                            // Drop only the surfaces over the tiles that changed; the global reset is
-                            // the fallback for whole-data-set changes and change-log overflow. A
-                            // scale-only change leaves the DATA version alone - the GPU displaces.
+                            // Scale-only changes keep the data version: the GPU displaces.
                             unsigned int elevationDataVersion = elevationManager->getDataVersion();
                             bool scaleOnly = (_elevationDataVersion != 0 && elevationDataVersion == _elevationDataVersion);
                             _elevationDataVersion = elevationDataVersion;
 
-                            // An extrusion's base is a CPU getDisplayHeight, so it goes stale on a
-                            // scale change too - the exaggeration is IN that height. Not narrowed to
-                            // the changed tiles: re-resolving a base that did not move uploads nothing.
+                            // Bases carry the exaggeration too; not narrowed, an unmoved base uploads nothing.
                             tileRenderer->invalidateExtrusionBases();
 
                             std::vector<MapTile> changedTiles;
                             if (scaleOnly) {
-                                _elevationVersion = elevationVersion;
-                                tileRenderer->invalidateLabelElevation();
+                                _elevationVersion = elevationVersion; // labels already invalidated above
                             } else if (_elevationVersion != 0 && elevationManager->getChangedTiles(_elevationVersion, changedTiles)) {
                                 _elevationVersion = elevationVersion;
                                 std::vector<vt::TileId> changedTileIds;
@@ -911,9 +919,7 @@ namespace massif {
                                     changedTileIds.emplace_back(changedTile.getZoom(), changedTile.getX(), changedTile.getY());
                                 }
                                 tileRenderer->invalidateTileSurfaces(changedTileIds);
-                                // Labels are anchored the same way, and at one elevation sample per
-                                // label vertex a blanket re-anchor costs several hundred milliseconds
-                                // - the targeted list keeps it to the labels actually affected.
+                                // Targeted: a blanket re-anchor samples elevation per label vertex, hundreds of ms.
                                 tileRenderer->invalidateLabelElevation(changedTileIds);
                             } else if (!_lastSurfaceResetTime || now - *_lastSurfaceResetTime > std::chrono::milliseconds(SURFACE_RESET_DELAY)) {
                                 _elevationVersion = elevationVersion;
@@ -922,9 +928,7 @@ namespace massif {
                                 tileRenderer->invalidateLabelElevation();
                             } else if (auto mapRenderer = _mapRenderer.lock()) {
                                 mapRenderer->requestRedraw(); // apply the pending rebuild on a later frame
-                                // This path asks for a frame without drawing anything new - a handful
-                                // of them while a rebuild is debounced. If the elevation version never
-                                // settles it is an endless render loop, so say so.
+                                // An elevation version that never settles would make this an endless render loop.
                                 static int pendingRebuildFrames = 0;
                                 if ((++pendingRebuildFrames % 300) == 0) {
                                     Log::Infof("TileRenderer: %d frames spent waiting on an elevation rebuild, version %u", pendingRebuildFrames, elevationVersion);
@@ -935,9 +939,7 @@ namespace massif {
                 }
             }
         }
-        // GPU terrain draping: every layer samples the same elevation textures, so all layers agree
-        // on heights exactly. Requires vertex texture fetch; without it the CPU displacement path
-        // with polygon offsets stays active.
+        // GPU draping needs vertex texture fetch; without it CPU displacement with polygon offsets stays.
         vt::GLTileRenderer::TerrainTextureProvider terrainTextureProvider;
         if (terrainMode && activeTerrainOptions) {
             if (_maxVertexTextureUnits < 0) {
@@ -951,59 +953,70 @@ namespace massif {
             if (_maxVertexTextureUnits > 0) {
                 std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
                 if (elevationManager) {
-                    // Cap elevation levels at what the mesh can express - for every elevation
-                    // consumer, not just the drawn surface (billboard occlusion ray marching and
-                    // element placement query the same manager and must see the same heights).
-                    elevationManager->setSurfaceResolution(activeTerrainOptions->getMeshResolution());
+                    // Node field density for every elevation consumer; mesh resolution is only its default.
+                    int nodeResolution = activeTerrainOptions->getSurfaceNodeResolution();
+                    elevationManager->setSurfaceResolution(nodeResolution > 0 ? nodeResolution : activeTerrainOptions->getMeshResolution());
                 }
-                if (_elevationTextureCache && _elevationTextureCache->getElevationManager() != elevationManager) {
-                    _elevationTextureCache.reset();
-                }
-                if (!_elevationTextureCache && elevationManager) {
+                // One cache per map (MapRenderer): a cache per layer meant an encode thread each.
+                _elevationTextureCache.reset();
+                if (elevationManager) {
                     if (auto mapRenderer = _mapRenderer.lock()) {
-                        _elevationTextureCache = std::make_shared<ElevationTextureCache>(elevationManager, mapRenderer->getGLResourceManager());
+                        _elevationTextureCache = mapRenderer->getElevationTextureCache(elevationManager);
                     }
                 }
                 if (_elevationTextureCache) {
-                    // The paint reads the elevation texture per FRAGMENT, so it may ignore the
-                    // mesh's level cap. A dial, not a flag - each level back is 4x the working set.
-                    //   adb shell setprop debug.massif.paintdetail 0|1|2   (2 = the source's own level)
-                    _elevationTextureCache->setDetailLevels(_terrainPaintEnabled && _terrainPaintFullDetail ? terrainPaintDetailLevels() : 0);
-                    _elevationTextureCache->beginFrame(viewState.getZoom());
+                    // Per-fragment paint may exceed the mesh level cap; each level is 4x the working set.
+                    _elevationTextureCache->requestDetailLevels(_terrainPaintEnabled && _terrainPaintFullDetail ? terrainPaintDetailLevels() : 0);
                     std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache;
                     terrainTextureProvider = [elevationTextureCache](const vt::TileId& tileId, vt::GLTileRenderer::TerrainTexture& terrainTexture) {
                         return elevationTextureCache->getTexture(tileId, terrainTexture);
                     };
-                    // Every terrain tile layer works in its own depth domain, and cross-layer
-                    // stacking is pure painter's order, so no per-layer stride is needed - a
-                    // constant-NDC one would shift what vector elements depth-test against.
+                    // Per-layer depth domains in painter's order; a stride would shift vector element depth tests.
                     terrainDepthBias = 0.0f;
                 }
             }
         }
         tileRenderer->setTerrainTextureProvider(terrainTextureProvider);
         if (terrainMode && activeTerrainOptions) {
-            // Labels are anchored when their tile is decoded, possibly before elevation
-            // data arrives - re-anchor them whenever the elevation version changes
             std::shared_ptr<ElevationManager> elevationManager = activeTerrainOptions->getElevationManager();
-            tileRenderer->setLabelElevationProvider([elevationManager](const cglib::vec3<double>& pos) {
-                return elevationManager->getDisplayHeight(pos(0), pos(1), ElevationManager::LoadMode::CACHED_ONLY);
+            // smooth=false reads the grid the texture entry retains. NaN, not 0, when there is no data,
+            // or the label is anchored under the terrain and marked clean for good.
+            std::shared_ptr<ElevationTextureCache> labelTextureCache = _elevationTextureCache;
+            int labelZoom = static_cast<int>(viewState.getZoom());
+            bool firstPerson = false;
+            if (auto options = _options.lock()) {
+                firstPerson = options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
+            }
+            int firstPersonZoom = elevationManager->getDetailZoomLimit();
+            tileRenderer->setLabelElevationProvider([elevationManager, labelTextureCache, labelZoom, firstPerson, firstPersonZoom](const cglib::vec3<double>& pos) {
+                double height = 0;
+                // Bounded ancestor walk, or POIs hang off a coarse ancestor. First person reads only what is held,
+                // at the finest zoom: its cut ignores the camera zoom, and per-label prefetch evicted the DEM.
+                if (labelTextureCache && !firstPerson) {
+                    if (labelTextureCache->getDisplayHeight(pos(0), pos(1), labelZoom, false, height, ElevationTextureCache::LABEL_MAX_ANCESTOR_LEVELS)) {
+                        return height;
+                    }
+                } else {
+                    if (labelTextureCache && labelTextureCache->getDisplayHeight(pos(0), pos(1), firstPersonZoom, false, height, firstPersonZoom, false)) {
+                        return height;
+                    }
+                    if (elevationManager->getDisplayHeightCached(pos(0), pos(1), height)) {
+                        return height;
+                    }
+                }
+                return std::numeric_limits<double>::quiet_NaN();
             });
-            // Label anchors come through in INTERNAL coordinates; the span chords are in vt's
-            // normalized ones, and a deck lookup needs them in the same space.
+            // Label anchors are internal units, span chords vt-normalized.
             tileRenderer->setLabelPositionScale(1.0 / Const::WORLD_SIZE);
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
             {
                 // debug.massif.labelanchor 0: anchor labels in the frame, the pre-2026-09 path.
                 char property[PROP_VALUE_MAX] = { 0 };
                 tileRenderer->setLabelAnchorOnCull(!(__system_property_get("debug.massif.labelanchor", property) > 0 && property[0] == '0'));
             }
 #endif
-            // An extrusion BAKES its ground into its vertices, so it cannot accept "0 means no
-            // data", and it reads the TEXTURE cache rather than the grid LRU - a grid is routinely
-            // evicted while its texture keeps rendering. vt hands over normalized coordinates.
-            // ...and only when the source behind it changed: pushed every frame, it re-resolved
-            // every building's base every frame (1.3 M elevation queries a second on the device).
+            // Extrusions bake their ground, so they read the texture cache (grids get evicted while drawn).
+            // Pushed only on a source change: pushing re-resolves every building base. vt passes normalized coords.
             std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache;
             std::pair<const void*, const void*> providerKey(tileRenderer.get(), elevationTextureCache
                 ? static_cast<const void*>(elevationTextureCache.get())
@@ -1029,64 +1042,45 @@ namespace massif {
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());
-        // The geometry-vs-surface chord error shrinks quadratically with the mesh resolution, so
-        // the depth slack shrinks with it. The default resolution 32 maps to factor 1.
+        // Chord error shrinks quadratically with mesh resolution; 32 maps to 1.
         float terrainSlackScale = 1.0f;
         if (terrainMode && activeTerrainOptions) {
             float resolutionRatio = 32.0f / std::max(32, activeTerrainOptions->getMeshResolution());
             terrainSlackScale = resolutionRatio * resolutionRatio;
         }
         tileRenderer->setTerrainSlackScale(terrainSlackScale);
-        // Tangram's model: one shared grid surface reused for every tile, and painter-order depth
-        // on top of it (the surface is the bottom painter layer, no occluder pre-pass, no slack).
-        // Needs GPU draping - a GPU without vertex texture fetch falls back to adaptive tesselation.
+        // Tangram's model: one shared grid surface, painter-order depth on top. Needs GPU draping.
         bool regularGrid = terrainMode && activeTerrainOptions && (bool) terrainTextureProvider;
         tileRenderer->setTerrainRegularGrid(regularGrid, activeTerrainOptions ? activeTerrainOptions->getMeshResolution() : 0);
-        // Maplibre-style RTT draping. It requires the shared regular grid: the drape UV is the
-        // grid's tile-local [0,1] vertex position, which only the regular grid provides.
+        // Maplibre-style RTT draping; the drape UV is the regular grid's tile-local vertex position.
         bool drapeFills = regularGrid && activeTerrainOptions->isDrapeFillsEnabled();
-        // Tangram's content depth shift (terrain-3d.yaml, a flat 0.02), verbatim and unscaled: it
-        // separates COPLANAR STYLE LAYERS one step each, and is not a budget to spend - scaling it
-        // up let far content over a near ridge. docs/internals/rendering/05-depth-model.md.
-        //   adb shell setprop debug.massif.depthshift <value>   (measurement override)
+        // Tangram's per-step shift between coplanar style layers, unscaled: scaling it let far content
+        // over a near ridge. See docs/internals/rendering/05-depth-model.md.
         float contentDepthShift = getTerrainContentDepthShift();
         if (_terrainGroundActive && contentDepthShift == 0.0f) {
             contentDepthShift = TERRAIN_TANGRAM_DEPTH_SHIFT;
         }
         tileRenderer->setTerrainContentDepthShift(contentDepthShift);
-        // Metre-constant clearance for draped LINES over the shared ground (applyDepthBias in vt):
-        // a line chords over the relief between its vertices, and that sag is what cuts roads into
-        // fragments. In metres, converted at the equator scale.
-        //   adb shell setprop debug.massif.lineclearance <metres>
+        // Lines chord over the relief and get cut into fragments; converted at the equator scale.
         tileRenderer->setTerrainLineClearance(static_cast<float>(terrainLineClearanceMeters() * Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE));
         tileRenderer->setTerrainEdgeStitching(regularGrid && activeTerrainOptions && activeTerrainOptions->isTileEdgeStitchingEnabled());
-        // Draped content is baked FLAT, so lines need no terrain subdivision - but they also take
-        // the drape texture's resolution, which turns dense thin lines into a blurred wash.
-        // DrapeLines trades the one for the other.
+        // Draped lines skip subdivision but blur at drape texture resolution.
         bool drapeLines = drapeFills && activeTerrainOptions && activeTerrainOptions->isDrapeLinesEnabled();
         tileRenderer->setTerrainDrapeFills(drapeFills, drapeLines);
-        // 3D bridges are opt-in: off, a span feature drapes like the ground and the renderer's
-        // span machinery never runs (see GLTileRenderer::setSpansEnabled).
+        // Off, a span feature drapes like the ground (GLTileRenderer::setSpansEnabled).
         tileRenderer->setSpansEnabled(terrainMode && activeTerrainOptions && activeTerrainOptions->isBridges3DEnabled());
-        // ...except the layers the application keeps sharp (contours by default), drawn live instead.
-        //   adb shell setprop debug.massif.nodrapelayers "^contour.*" ("none" drapes everything)
+        // Layers kept sharp (contours by default) are drawn live instead of draped.
         tileRenderer->setNoDrapeLayerFilter(noDrapeLayerFilter(
             activeTerrainOptions ? activeTerrainOptions->getNoDrapeLayerFilter() : std::string()));
         tileRenderer->setTerrainDrapeResolution(resolveDrapeResolution(activeTerrainOptions ? activeTerrainOptions->getDrapeResolution() : 0, viewState, _options.lock(),
             activeTerrainOptions ? static_cast<std::size_t>(activeTerrainOptions->getDrapeCacheSize()) : 0,
             activeTerrainOptions ? activeTerrainOptions->getDrapeWorkingSet() : 0));
-        // Sun lighting of the draped surface: once every 2D layer is baked in, the surface is the
-        // only lit ground geometry, so one directional light shades the whole map and the pre-baked
-        // hillshade raster layer becomes optional.
+        VT_STAT_SPLIT(pass2DStateNs, passClock);
         vt::GLTileRenderer::TerrainLighting terrainLighting;
         if (auto options = _options.lock()) {
-            // The style's values win over the options wherever it has an opinion; the rest of the
-            // sun stays with LightOptions. Both are re-read every frame, so either may depend on
-            // the zoom.
+            // Style values win over LightOptions; re-read every frame, so both may depend on zoom.
             ResolvedLighting lighting = resolveLighting(options->getLightOptions(), _styleEnvironment);
-            // Extrusions light by their OWN resolved pair, so a style can tune the walls without
-            // moving the terrain sun. Captured for the 3D lighting callback, which runs at DRAW
-            // time and cannot resolve anything itself.
+            // Extrusions have their own pair; captured for the draw-time 3D lighting callback.
             _buildingLightIntensity = lighting.buildingLightIntensity;
             _buildingAmbient = lighting.buildingAmbient;
             _buildingVerticalGradient = lighting.buildingVerticalGradient;
@@ -1106,17 +1100,13 @@ namespace massif {
             _backgroundEmissive = lighting.backgroundEmissive;
             _resolvedRadiance = lighting.radiance;
             _resolvedBrightness = lighting.brightness;
-            // The terrain surface exists whenever the stack draws one - baked under a drape, or the
-            // shared ground pass. Gating on the drape alone left the ground and the paint over it
-            // unlit, and with them the shadow, which multiplies the lit colour.
+            // The shared ground pass is lit too, or it and its shadow stay unlit.
             if ((drapeFills || _terrainGroundActive) && lighting.terrainLightingEnabled) {
                 terrainLighting = buildTerrainLighting(lighting);
             }
 
-            // Distance fog, lit by the same sun as the ground (see resolveFog). The range is
-            // camera-relative, so resolveFog already returns internal units - it needs no terrain,
-            // and this is what fogs a plain 2D map as well.
-            ResolvedFog fog = resolveFog(options->getFogOptions(), _styleEnvironment, lighting, viewState.calculateCameraDistance());
+            // Camera-relative range in internal units: fogs a plain 2D map too.
+            ResolvedFog fog = resolveFog(options->getFogOptions(), _styleEnvironment, lighting, viewState.calculateCameraDistance(), viewState.getTilt());
             tileRenderer->setFog(vt::Color(fog.color.getR() / 255.0f, fog.color.getG() / 255.0f, fog.color.getB() / 255.0f, fog.color.getA() / 255.0f),
                                  fog.startDistance, fog.distance, fog.rangeScale, fog.horizonBlend);
             tileRenderer->setFogColors(vt::Color(fog.highColor.getR() / 255.0f, fog.highColor.getG() / 255.0f, fog.highColor.getB() / 255.0f, fog.highColor.getA() / 255.0f),
@@ -1138,9 +1128,7 @@ namespace massif {
         }
         tileRenderer->setDebugWireframe(false); // debug: terrain mesh wireframe + stencil overlay
         tileRenderer->setDebugSurfacePrefill(false); // debug: facing-coded terrain pre-fill (magenta front / cyan back)
-        // The terrain base fill is drawn globally by MapRenderer BEFORE all tile layers, so it
-        // stays visible behind translucent content whatever the stacking order. The per-layer
-        // surface pre-pass here stays depth-only.
+        // MapRenderer draws the base fill before all layers; the per-layer pre-pass stays depth-only.
         tileRenderer->setTerrainBackgroundColor(vt::Color());
         updateLabelOcclusionTest(tileRenderer, viewState, activeTerrainOptions);
 
@@ -1156,9 +1144,8 @@ namespace massif {
             if (_normalIlluminationMapRotationEnabled) {
                 double y = normalIlluminationDir.getY();
                 double x = normalIlluminationDir.getX();
-                // Compass azimuth (0 = north, clockwise) of the horizontal part, counter-rotated by
-                // the map rotation so the light stays anchored to the viewport. The horizontal length
-                // is preserved: an acos(y) form assumes a unit xy and rewrites the balance.
+                // Counter-rotate the compass azimuth so the light stays anchored to the viewport, keeping the
+                // horizontal length (an acos(y) form assumes a unit xy).
                 double xyLength = std::sqrt(x * x + y * y);
                 double azimuthal = std::atan2(x, y) * Const::RAD_TO_DEG - _mapRotation;
                 double sin = std::sin(azimuthal * Const::DEG_TO_RAD) * xyLength;
@@ -1171,24 +1158,29 @@ namespace massif {
 
         bool refresh = false;
         try {
+            VT_STAT_SPLIT(pass2DLightNs, passClock);
             refresh = prepareFrameUnsafe(deltaSeconds, viewState);
+            VT_STAT_SPLIT(pass2DPrepareNs, passClock);
 
             tileRenderer->renderGeometry(true, false);
+            VT_STAT_SPLIT(pass2DGeometryNs, passClock);
             if (_labelOrder == 0) {
                 tileRenderer->renderLabels(true, false);
             }
+            VT_STAT_SPLIT(pass2DLabels2DNs, passClock);
             if (_buildingOrder == 0) {
                 tileRenderer->renderGeometry(false, true);
             }
+            VT_STAT_SPLIT(pass2DExtrusionNs, passClock);
             if (_labelOrder >= 0 && drawsBillboardLabelsHere(0)) {
                 tileRenderer->renderLabels(false, true);
             }
+            VT_STAT_SPLIT(pass2DLabels3DNs, passClock);
         }
         catch (const std::exception& ex) {
             Log::Errorf("TileRenderer::onDrawFrame: Rendering failed: %s", ex.what());
         }
     
-        // Reset GL state to the expected state
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
@@ -1199,10 +1191,9 @@ namespace massif {
     }
     
     bool TileRenderer::onDrawFrame3D(float deltaSeconds, const ViewState& viewState) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        auto lock = lockTimed();
 
-        // The frame ends here regardless of what follows, so clear the prepare latch up front:
-        // leaking it past an early return would make every later frame skip startFrame.
+        // Cleared up front: leaking the latch past an early return would skip every later startFrame.
         _framePrepared = false;
 
         if (!_vtRenderer) {
@@ -1221,9 +1212,7 @@ namespace massif {
             }
             VT_STAT_SPLIT(pass3DLabels2DNs, passClock);
             if (_buildingOrder == 1) {
-                // Inline: the extrusions are the last tile content of the frame, so they can be
-                // drawn straight into the main framebuffer (tangram's way) instead of through the
-                // per-layer 3D overlay - nothing after them depth-tests against what they write.
+                // Inline (tangram's way): nothing after the extrusions depth-tests against them.
                 tileRenderer->renderGeometry(false, true, isInline3DEnabled());
             }
             VT_STAT_SPLIT(pass3DGeometryNs, passClock);
@@ -1238,7 +1227,6 @@ namespace massif {
             Log::Errorf("TileRenderer::onDrawFrame3D: Rendering failed: %s", ex.what());
         }
 
-        // Reset GL state to the expected state
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
@@ -1253,6 +1241,32 @@ namespace massif {
         bool owed = _labelPlacementOwed;
         _labelPlacementOwed = false;
         return owed;
+    }
+
+    void TileRenderer::snapLabelTransition() {
+        std::shared_ptr<vt::GLTileRenderer> tileRenderer;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_vtRenderer) {
+                tileRenderer = _vtRenderer->getTileRenderer();
+            }
+        }
+        if (tileRenderer) {
+            tileRenderer->snapLabelTransition();
+        }
+    }
+
+    void TileRenderer::restartLabelPlacement() {
+        std::shared_ptr<vt::GLTileRenderer> tileRenderer;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_vtRenderer) {
+                tileRenderer = _vtRenderer->getTileRenderer();
+            }
+        }
+        if (tileRenderer) {
+            tileRenderer->restartLabelPlacement();
+        }
     }
 
     bool TileRenderer::cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished) {
@@ -1274,9 +1288,22 @@ namespace massif {
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.zoomScale *= static_cast<float>(viewState.worldPerInternal());
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
+        // A hidden label must take no collision slot from a visible one.
+        culler.setOcclusionTest(getLabelOcclusionTest());
         cullViewState.labelPerspectiveScaling = _labelPerspectiveScaling;
         cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
+        // Must match the draw pass, or callouts are measured at the wrong size.
+        cullViewState.deviceResolution = static_cast<float>(viewState.getHeight());
+        // The placement search applies this cut before the culler does.
+        if (auto options = _options.lock()) {
+            cullViewState.labelViewDistance = options->getLabelViewDistance();
+            // Must match the tile culler's band (ViewState::getLabelFrustum).
+            float labelPadding = options->getLabelPadding();
+            if (labelPadding >= 0.0f) {
+                cullViewState.setLabelPadding(labelPadding);
+            }
+        }
         culler.setViewState(cullViewState);
 
         try {
@@ -1290,42 +1317,45 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
     }
     
     bool TileRenderer::refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas, const std::vector<std::shared_ptr<const vt::Tile> >& spanReferenceTiles) {
-        // Timed separately from the work: this runs inside the layer draw pass, and the tile
-        // threads hold this mutex while storing decoded tiles - which is exactly when the set
-        // changes. A long wait here and a short one inside setVisibleTiles mean different fixes.
+        // Lock wait timed apart from the work: tile threads hold this mutex while storing decoded tiles.
         VT_STAT_CLOCK(refreshClock);
-        std::lock_guard<std::mutex> lock(_mutex);
-        VT_STAT_SPLIT(refreshTilesLockNs, refreshClock);
-
-        // A preloading draw data is a tile OUTSIDE the view frustum - the label band or the
-        // preloading ring. Its labels are wanted, so that they are placed before they scroll in;
-        // its geometry is not, and drawing it was 15% of the render tiles for nothing.
+        std::shared_ptr<vt::GLTileRenderer> tileRenderer;
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles, labelOnlyTiles;
-        for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
-            auto& target = (drawData->isPreloadingTile() ? labelOnlyTiles : tiles);
-            target[drawData->getVTTileId()] = drawData->getVTTile();
-        }
+        int teleportOffset = 0;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            VT_STAT_SPLIT(refreshTilesLockNs, refreshClock);
 
-        bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) ||
-                       (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
-        if (!changed) {
-            return false;
-        }
-
-        if (_vtRenderer) {
-            if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
-                if (_horizontalLayerOffset != 0) {
-                    tileRenderer->teleportVisibleTiles((int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE), 0);
-                }
-                tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles);
+            // Preloading tiles lie outside the frustum: labels placed before they scroll in, geometry not drawn.
+            for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
+                auto& target = (drawData->isPreloadingTile() ? labelOnlyTiles : tiles);
+                target[drawData->getVTTileId()] = drawData->getVTTile();
             }
+
+            bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) ||
+                           (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
+            if (!changed) {
+                return false;
+            }
+
+            if (_vtRenderer) {
+                tileRenderer = _vtRenderer->getTileRenderer();
+            }
+            teleportOffset = (int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE);
+            _tiles = tiles;
+            _labelOnlyTiles = labelOnlyTiles;
+            _spanReferenceTiles = spanReferenceTiles;
+            _horizontalLayerOffset = 0;
         }
-        _tiles = std::move(tiles);
-        _labelOnlyTiles = std::move(labelOnlyTiles);
-        _spanReferenceTiles = spanReferenceTiles;
-        _horizontalLayerOffset = 0;
-        // The changed path only - the unchanged one returns above and costs nothing. INCLUDES
-        // setVisibleTiles, whose own splits break it down further.
+
+        // Off the mutex: setVisibleTiles rebuilds label maps and would block the render thread.
+        if (tileRenderer) {
+            if (teleportOffset != 0) {
+                tileRenderer->teleportVisibleTiles(teleportOffset, 0);
+            }
+            tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles);
+        }
+        // Changed path only, including setVisibleTiles.
         VT_STAT_SPLIT(refreshTilesNs, refreshClock);
         return true;
     }
@@ -1343,8 +1373,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
         tileRenderer->setClickHandlerLayerFilter(_clickHandlerLayerFilter);
 
-        // Tile geometry is built flat in terrain mode (heights are applied on the GPU):
-        // pre-intersect the ray with the terrain surface and pick vertically below the hit
+        // Terrain heights are applied on the GPU: pick vertically below the ray's terrain hit.
         cglib::ray3<double> geometryRay = ray;
         if (auto options = _options.lock()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
@@ -1436,7 +1465,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
     }
 
     float TileRenderer::getTerrainContentDepthShift() {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         static const float depthShift = [] {
             char property[PROP_VALUE_MAX] = { 0 };
             if (__system_property_get("debug.massif.depthshift", property) > 0) {
@@ -1452,7 +1481,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
     std::optional<std::regex> TileRenderer::noDrapeLayerFilter(const std::string& optionFilter) {
         std::string pattern = optionFilter;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         char property[PROP_VALUE_MAX] = { 0 };
         if (__system_property_get("debug.massif.nodrapelayers", property) > 0 && property[0]) {
             pattern = (std::strcmp(property, "none") == 0 ? std::string() : property);
@@ -1478,7 +1507,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return cachedFilter;
     }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     float TileRenderer::terrainLineClearanceMeters() {
         static const float meters = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -1496,8 +1525,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 #endif
 
     int TileRenderer::terrainPaintDetailLevels() {
-#ifdef __ANDROID__
-        // adb shell setprop debug.massif.paintdetail 0|1|2 - elevation levels beyond the mesh cap.
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
         static const int levels = [] {
             char property[PROP_VALUE_MAX] = { 0 };
             if (__system_property_get("debug.massif.paintdetail", property) > 0) {
@@ -1515,9 +1543,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
     }
 
     bool TileRenderer::isPlanarProjectionMode() const {
-        // The label size correction and the pixel-grid snapping belong to the PROJECTION, not to
-        // the terrain: a tilted flat map divides by w exactly the same way, which is what made
-        // labels near the camera far larger than the ones behind them.
+        // Label size correction belongs to the projection: a tilted flat map divides by w too.
         if (auto options = _options.lock()) {
             return options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR;
         }
@@ -1528,35 +1554,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         if (!terrainOptions || !terrainOptions->isBillboardOcclusionEnabled()) {
             _labelOcclusionState.reset();
             tileRenderer->setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)>());
+            setLabelOcclusionTestCopy(std::function<bool(const cglib::vec3<double>&)>());
             return;
-        }
-
-        // Preferred path: pixel-exact occlusion against the read-back terrain depth buffer
-        // (rendered by MapRenderer each frame) - matches what is actually on screen and is
-        // much cheaper than ray-marching the elevation grids per label.
-        if (auto mapRenderer = _mapRenderer.lock()) {
-            if (mapRenderer->getTerrainRenderer() != nullptr) {
-                {
-                    _labelOcclusionState.reset();
-                    std::weak_ptr<MapRenderer> mapRendererWeak = _mapRenderer;
-                    // The tolerance is relative to distance: at its default it only absorbs the
-                    // anchor-vs-terrain mismatch, and raising it lets partly hidden features label.
-                    // The projection belongs to the depth buffer's own camera, so it lives with it.
-                    float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
-                    tileRenderer->setLabelOcclusionTest([mapRendererWeak, occlusionTolerance](const cglib::vec3<double>& pos) {
-                        auto mapRenderer = mapRendererWeak.lock();
-                        if (!mapRenderer) {
-                            return false;
-                        }
-                        TerrainRenderer* terrainRenderer = mapRenderer->getTerrainRenderer();
-                        if (!terrainRenderer) {
-                            return false;
-                        }
-                        return terrainRenderer->isOccludedByTerrain(pos, occlusionTolerance);
-                    });
-                    return;
-                }
-            }
         }
 
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
@@ -1565,7 +1564,6 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         }
         std::shared_ptr<LabelOcclusionState> state = _labelOcclusionState;
 
-        // Invalidate cached results when the camera moves significantly or the elevation data changes
         cglib::vec3<double> cameraPos = viewState.getCameraPos();
         double moveThreshold = 0.01 * cglib::length(viewState.getFocusPos() - cameraPos);
         unsigned int elevationVersion = elevationManager->getVersion();
@@ -1578,11 +1576,10 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             }
         }
 
-        // The ray path lifts the target above the anchor by the same relative tolerance, so
-        // both occlusion paths answer the same question.
-        double rayTolerance = 0.005 + 0.5 * terrainOptions->getBillboardOcclusionTolerance();
-        tileRenderer->setLabelOcclusionTest([state, elevationManager, cameraPos, rayTolerance](const cglib::vec3<double>& pos) -> bool {
-            // Quantize the position for caching (roughly 4m grid)
+        // Terrain in front of the anchor nearer than 1 / (1 + tolerance) of its distance.
+        double rayHitLimit = 1.0 / (1.0 + std::max(static_cast<double>(MIN_OCCLUSION_TOLERANCE), static_cast<double>(terrainOptions->getBillboardOcclusionTolerance())));
+        auto rayTest = [state, elevationManager, cameraPos, rayHitLimit](const cglib::vec3<double>& pos) -> bool {
+            // Cache key: position quantized to 0.1 internal units (~4 m).
             const double QUANT = 10.0;
             long long key = (static_cast<long long>(pos(0) * QUANT) * 73856093LL) ^ (static_cast<long long>(pos(1) * QUANT) * 19349663LL) ^ (static_cast<long long>(pos(2) * QUANT) * 83492791LL);
             {
@@ -1593,16 +1590,81 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 }
             }
 
-            double dist = cglib::length(pos - cameraPos);
-            cglib::vec3<double> target = pos + cglib::vec3<double>(0, 0, dist * rayTolerance);
-            cglib::ray3<double> ray(cameraPos, target - cameraPos);
-            double t = 0;
-            bool occluded = elevationManager->intersectRay(ray, t) && t > 0 && t < 0.995;
+            // Not intersectRay, which ignores a rising ray: every valley-to-summit sight line rises.
+            bool occluded = elevationManager->isSegmentBlocked(cameraPos, pos, rayHitLimit);
             {
                 std::lock_guard<std::mutex> lock(state->mutex);
                 state->results[key] = occluded;
             }
             return occluded;
+        };
+
+        // Preferred: the read-back depth buffer matches the screen and is far cheaper than ray-marching.
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            if (TerrainRenderer* terrainRenderer = mapRenderer->getTerrainRenderer()) {
+                // A new depth changes the verdicts, and a still camera asks for no placement pass.
+                unsigned int depthVersion = terrainRenderer->getDepthSnapshotVersion();
+                if (depthVersion != _labelOcclusionDepthVersion) {
+                    _labelOcclusionDepthVersion = depthVersion;
+                    _labelPlacementOwed = true;
+                }
+                std::weak_ptr<MapRenderer> mapRendererWeak = _mapRenderer;
+                // Relative tolerance: the default absorbs anchor-vs-terrain mismatch; more labels partly hidden features.
+                float occlusionTolerance = 1.0f + std::max(MIN_OCCLUSION_TOLERANCE, terrainOptions->getBillboardOcclusionTolerance());
+                // Outside the read-back viewport, the elevation ray answers.
+                auto depthTest = [mapRendererWeak, occlusionTolerance, rayTest](const cglib::vec3<double>& pos) {
+                    auto mapRenderer = mapRendererWeak.lock();
+                    if (!mapRenderer) {
+                        return false;
+                    }
+                    TerrainRenderer* terrainRenderer = mapRenderer->getTerrainRenderer();
+                    if (!terrainRenderer) {
+                        return false;
+                    }
+                    bool answered = false;
+                    bool occluded = terrainRenderer->isOccludedByTerrain(pos, occlusionTolerance, &answered);
+                    return answered ? occluded : rayTest(pos);
+                };
+                tileRenderer->setLabelOcclusionTest(depthTest);
+                setLabelOcclusionTestCopy(depthTest);
+                return;
+            }
+        }
+
+        tileRenderer->setLabelOcclusionTest(rayTest);
+        setLabelOcclusionTestCopy(rayTest);
+    }
+
+    void TileRenderer::setLabelOcclusionTestCopy(std::function<bool(const cglib::vec3<double>&)> test) {
+        std::lock_guard<std::mutex> lock(_labelOcclusionTestMutex);
+        _labelOcclusionTestCopy = std::move(test);
+    }
+
+    std::function<bool(const cglib::vec3<double>&)> TileRenderer::getLabelOcclusionTest() const {
+        std::lock_guard<std::mutex> lock(_labelOcclusionTestMutex);
+        return _labelOcclusionTestCopy;
+    }
+
+    vt::GLTileRenderer::LightingShader TileRenderer::createNormalMapLightingShader() {
+        return vt::GLTileRenderer::LightingShader(false, _normalMapLightingShader, [this](GLuint shaderProgram, const vt::ViewState& viewState) {
+            // Straight colors; the shader premultiplies them, as MapLibre's does.
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_shadowColor"), _normalMapShadowColor.getR() / 255.0f, _normalMapShadowColor.getG() / 255.0f, _normalMapShadowColor.getB() / 255.0f, _normalMapShadowColor.getA() / 255.0f);
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_accentColor"), _normalMapAccentColor.getR() / 255.0f, _normalMapAccentColor.getG() / 255.0f, _normalMapAccentColor.getB() / 255.0f, _normalMapAccentColor.getA() / 255.0f);
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_highlightColor"), _normalMapHighlightColor.getR() / 255.0f, _normalMapHighlightColor.getG() / 255.0f, _normalMapHighlightColor.getB() / 255.0f, _normalMapHighlightColor.getA() / 255.0f);
+            glUniform3fv(glGetUniformLocation(shaderProgram, "u_lightDir"), 1, _normalLightDir.data() );
+            glUniform1i(glGetUniformLocation(shaderProgram, "u_method"), (_hillshadeMethod));
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_exaggeration"), _hillshadeExaggeration);
+            // MapLibre's 'hillshade-exaggeration', from the layer's contrast; u_exaggeration scales the slope.
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_intensity"), _hillshadeIntensity);
+            // No effect unless the normal map is elevation-encoded (HillshadeRasterTileLayer).
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_elevationEncoded"), _normalMapElevationEncoded ? 1.0f : 0.0f);
+            glUniform2f(glGetUniformLocation(shaderProgram, "u_elevationDecode"), vt::NormalMapBuilder::ELEVATION_SCALE, vt::NormalMapBuilder::ELEVATION_OFFSET);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_contrast"), _hillshadeIntensity);
+            glUniform4f(glGetUniformLocation(shaderProgram, "u_contourColor"), _normalMapContourColor.getR() / 255.0f, _normalMapContourColor.getG() / 255.0f, _normalMapContourColor.getB() / 255.0f, _normalMapContourColor.getA() / 255.0f);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_contourInterval"), _normalMapContourInterval);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_contourWidth"), _normalMapContourWidth);
+            // For per-zoom custom normal-map shaders (getMapZoom()).
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_zoom"), viewState.zoom);
         });
     }
 
@@ -1613,7 +1675,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
         if (!mapRenderer) {
-            return false; // safety check, should never happen
+            return false;
         }
 
         // Null once the surface is gone - a frame still in flight has nothing to create into (#178).
@@ -1627,9 +1689,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
             tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles);
-            // These tiles were handed over before this renderer existed, so their placement pass
-            // found no GL renderer and did nothing. On a still camera nothing asks again, which left
-            // a labels-only layer invisible until the user panned.
+            // These tiles' placement pass found no GL renderer; see consumeLabelPlacementOwed.
             _labelPlacementOwed = !_tiles.empty();
 
             if (!std::dynamic_pointer_cast<PlanarProjectionSurface>(mapRenderer->getProjectionSurface())) {
@@ -1639,12 +1699,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 tileRenderer->setLightingShader2D(lightingShader2D);
             }
 
-            // The RESOLVED sun captured by onDrawFrame - this callback runs at draw time and cannot
-            // resolve it itself. Same values the terrain surface is lit by, so a building and its
-            // ground agree about the hour. Per FRAGMENT, because the shadow term only exists there.
+            // Per fragment, where the shadow term exists; same sun as the terrain surface.
             vt::GLTileRenderer::LightingShader lightingShader3D(false, LIGHTING_SHADER_3D, [this](GLuint shaderProgram, const vt::ViewState& viewState) {
-                // Linear, and already carrying the intensity: the shader sums the two and returns
-                // the sum to sRGB once, so it never needs the intensities apart.
+                // Linear, intensity folded in: the shader sums them and returns to sRGB once.
                 cglib::vec3<float> sunColor = linearColor(_resolvedSunColor, _buildingLightIntensity);
                 cglib::vec3<float> ambientColor = linearColor(_resolvedAmbientColor, _buildingAmbient);
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_sunDir"), 1, _resolvedBuildingSunDir.data());
@@ -1654,9 +1711,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 glUniform1f(glGetUniformLocation(shaderProgram, "u_emissive"), _buildingEmissive);
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_radiance"), 1, _resolvedRadiance.data());
                 glUniform1f(glGetUniformLocation(shaderProgram, "u_mlMode"), _buildingLightingMapLibre ? 1.0f : 0.0f);
-                // MapLibre's default light, anchored to the VIEWPORT: spherical (1.15, 210, 30)
-                // through their sphericalToCartesian, with y negated because their tile y runs
-                // south and this one runs north, then turned by the bearing as they turn it.
+                // MapLibre's viewport-anchored light (ML_LIGHT_POS, y not negated), turned by the bearing.
                 double bearing = viewState.rotation * Const::DEG_TO_RAD;
                 float c = static_cast<float>(std::cos(bearing)), s = static_cast<float>(std::sin(bearing));
                 cglib::vec3<float> light(ML_LIGHT_POS(0) * c - ML_LIGHT_POS(1) * s,
@@ -1667,39 +1722,14 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             });
             tileRenderer->setLightingShader3D(lightingShader3D);
 
-            vt::GLTileRenderer::LightingShader lightingShaderNormalMap(false, _normalMapLightingShader, [this](GLuint shaderProgram, const vt::ViewState& viewState) {
-                    // Straight (non-premultiplied) colors - the shader premultiplies them before
-                    // mixing, which is the form MapLibre's hillshade fragment shader works in.
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_shadowColor"), _normalMapShadowColor.getR() / 255.0f, _normalMapShadowColor.getG() / 255.0f, _normalMapShadowColor.getB() / 255.0f, _normalMapShadowColor.getA() / 255.0f);
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_accentColor"), _normalMapAccentColor.getR() / 255.0f, _normalMapAccentColor.getG() / 255.0f, _normalMapAccentColor.getB() / 255.0f, _normalMapAccentColor.getA() / 255.0f);
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_highlightColor"), _normalMapHighlightColor.getR() / 255.0f, _normalMapHighlightColor.getG() / 255.0f, _normalMapHighlightColor.getB() / 255.0f, _normalMapHighlightColor.getA() / 255.0f);
-                    glUniform3fv(glGetUniformLocation(shaderProgram, "u_lightDir"), 1, _normalLightDir.data() );
-                    glUniform1i(glGetUniformLocation(shaderProgram, "u_method"), (_hillshadeMethod));
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_exaggeration"), _hillshadeExaggeration);
-                    // MapLibre's 'hillshade-exaggeration' (the slope response curve), fed from the
-                    // layer's contrast. Kept separate from u_exaggeration, which scales the slope.
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_intensity"), _hillshadeIntensity);
-                    // Elevation-encoded normal map + contour lines (opt-in). These uniforms have no
-                    // effect unless the normal map was built with elevation encoding (see HillshadeRasterTileLayer).
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_elevationEncoded"), _normalMapElevationEncoded ? 1.0f : 0.0f);
-                    glUniform2f(glGetUniformLocation(shaderProgram, "u_elevationDecode"), vt::NormalMapBuilder::ELEVATION_SCALE, vt::NormalMapBuilder::ELEVATION_OFFSET);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_contrast"), _hillshadeIntensity);
-                    glUniform4f(glGetUniformLocation(shaderProgram, "u_contourColor"), _normalMapContourColor.getR() / 255.0f, _normalMapContourColor.getG() / 255.0f, _normalMapContourColor.getB() / 255.0f, _normalMapContourColor.getA() / 255.0f);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_contourInterval"), _normalMapContourInterval);
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_contourWidth"), _normalMapContourWidth);
-                    // Current fractional map zoom, for per-zoom custom normal-map shaders (getMapZoom()).
-                    glUniform1f(glGetUniformLocation(shaderProgram, "u_zoom"), viewState.zoom);
-            });
-            tileRenderer->setLightingShaderNormalMap(lightingShaderNormalMap);
+            tileRenderer->setLightingShaderNormalMap(createNormalMapLightingShader());
         }
 
         return _vtRenderer && _vtRenderer->isValid();
     }
 
-    // sphericalToCartesian([1.15, 210, 30]), used as maplibre computes it: their extrusion normals
-    // and this SDK's agree on the sign of y, so negating it for the "north-up" axis put the light
-    // on the wrong side and darkened exactly the walls maplibre lights. Left UNNORMALISED, as they
-    // leave it - the 1.15 radius is part of the look.
+    // sphericalToCartesian([1.15, 210, 30]) as maplibre computes it: y not negated (the normals agree),
+    // and unnormalised, as the 1.15 radius is part of the look.
     const cglib::vec3<float> TileRenderer::ML_LIGHT_POS = cglib::vec3<float>(0.2875f, -0.4980f, 0.9959f);
 
     const std::string TileRenderer::LIGHTING_SHADER_2D = R"GLSL(
@@ -1715,68 +1745,46 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         uniform vec3 u_sunColor;     // linear, already scaled by the sun intensity
         uniform vec3 u_ambientColor; // linear, already scaled by the ambient intensity
         uniform vec2 u_verticalGradient; // x = how dark the foot of a wall goes, y = roof shade
-        // How much of the colour is EMITTED rather than lit (mapbox's *-emissive-strength): 1 draws
-        // it as authored whatever the hour, 0 hands it entirely to the scene light.
+        // Emitted fraction (mapbox's *-emissive-strength): 1 = as authored, 0 = fully lit.
         uniform float u_emissive;
-        // What the light does to a flat, upward-facing surface (calculateGroundRadiance), in LINEAR
-        // space. Passed even though the 3D pass computes its own per-face term, because it is what
-        // a replaceable grade is written against and what the emissive mixes back towards.
+        // Linear light on a flat upward surface (calculateGroundRadiance), for replaceable grades.
         uniform vec3 u_radiance;
-        // MapLibre's own fill-extrusion model, for a style that lights nothing (see
-        // StyleEnvironment::resolveLighting). Its light is VIEWPORT-anchored, so u_mlLightPos
-        // arrives already turned by the bearing.
+        // MapLibre's fill-extrusion model for a style that lights nothing; u_mlLightPos is pre-rotated.
         uniform float u_mlMode;
         uniform vec3 u_mlLightPos;
         uniform vec2 u_mlLight; // x = intensity, y = vertical gradient
         vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow, mediump float skyShadow) {
             if (u_mlMode > 0.5) {
-                // fill_extrusion.vertex.glsl, ported: a slight ambient so nothing is ever black, a
-                // directional term whose range NARROWS with the light intensity and with how bright
-                // the surface already is, and a flat darkening of the facades.
+                // Port of maplibre's fill_extrusion.vertex.glsl.
                 mediump vec3 mlColor = color.rgb + 0.03 * color.a;
                 mediump float mlValue = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
                 mediump float mlDir = clamp(dot(normal, u_mlLightPos), 0.0, 1.0);
                 mlDir = mix(1.0 - u_mlLight.x, max(1.0 - mlValue + u_mlLight.x, 1.0), mlDir);
-                // Their gradient is clamped at mix(0.7, 0.98, 1 - intensity), and a building has to
-                // pass ~106 m before the ramp above that floor is reached at all - so for a city
-                // tile the floor IS the term, and a wall wears it whole. A tower taller than that
-                // is lit here a touch flatter than maplibre lights it.
+                // Their gradient floor only, without the ramp above ~106 m: tall towers light slightly flatter.
                 mlDir *= mix(1.0, (1.0 - u_mlLight.y) + u_mlLight.y * mix(0.7, 0.98, 1.0 - u_mlLight.x), sideVertex);
-                // Their shading has no shadow map; the map's own shadow still multiplies it, so a
-                // style that turns shadows on keeps them.
+                // Our shadow still multiplies it.
                 return vec4(min(mlColor * mlDir * shadow, vec3(color.a)), color.a);
             }
-            // Ambient occlusion where a wall meets the ground - the cue that makes an extrusion
-            // stand on the terrain rather than float, which the shadow map cannot resolve. wallT is
-            // baked per vertex from the ABSOLUTE height, so a whole building shares one ramp.
+            // Wall-foot AO grounds the extrusion; wallT is baked from absolute height, one ramp per building.
             lowp vec3 baseColor = color.rgb * mix(u_verticalGradient.y, mix(1.0 - u_verticalGradient.x, 1.0, wallT), sideVertex);
-            // Mapbox's fill-extrusion model (docs/internals/rendering/08-lighting-sky-fog.md).
-            // Ambient and sun simply SUM - no headroom coupling - and the ambient itself is
-            // direction-aware, which is what separates wall tones without any gradient ramp.
+            // Mapbox's fill-extrusion model (docs/internals/rendering/08-lighting-sky-fog.md):
+            // ambient and sun sum, and the direction-aware ambient separates wall tones.
             mediump float ndl = dot(normal, u_sunDir);
-            // CLAMPED, as fill_extrusion does; the WRAPPED calculate_NdotL is for model layers and
-            // lifts a roof halfway to the wall facing the sun. Faded out across the horizon: a wall's
-            // normal has no z, so N.L stays positive with the sun BELOW the map.
+            // Clamped as fill_extrusion (not the wrapped model-layer NdotL); faded below the horizon, where a
+            // wall's N.L stays positive.
             mediump float sunNdl = max(0.0, ndl) * smoothstep(-0.035, 0.0, u_sunDir.z);
-            // Sky is brighter near the sun: faces turned away lose up to 30% of the ambient,
-            // scaled by how bright the sun actually is.
+            // Faces turned from the sun lose up to 30% of the ambient, scaled by sun brightness.
             mediump float dirLuminance = dot(u_sunColor, vec3(0.2126, 0.7152, 0.0722));
             mediump float ambientDirectional = mix(1.0 - 0.3 * min(dirLuminance, 1.0), 1.0, min(ndl + 1.0, 1.0));
             // Environmental light blocked from below: a downward face keeps 92%, a roof all of it.
             mediump float vertical = mix(0.92, 1.0, normal.z * 0.5 + 0.5);
-            // The sun is shadowed by the map AND the back-face rule, the sky only by the map, so a
-            // wall merely turned away keeps all of it. Both raised to 2.2 first, because this sum is
-            // LINEAR while the ground applies its shadow to a finished sRGB colour.
+            // Sky is shadowed by the map only. Linearised: this sum is linear, the ground's shadow is sRGB.
             mediump float linearSky = pow(skyShadow, 2.2);
             mediump float linearSun = pow(shadow, 2.2);
             mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional * linearSky) + u_sunColor * (sunNdl * linearSun);
-            // The light is summed in LINEAR space and only then returned to sRGB, which is the
-            // whole reason their facades stay soft where a straight sRGB multiply crushes them.
-            // Equivalent to linearTosRGB(sRGBToLinear(color) * lit), one pow instead of three.
+            // Summed linear, then to sRGB: soft facades. = linearTosRGB(sRGBToLinear(color) * lit), one pow.
             lit = pow(lit, vec3(1.0 / 2.2));
-            // An EMITTED surface keeps its authored colour whatever the light does - mapbox's
-            // `mix(apply_lighting(color), color, emissive_strength)`. At 0 this is a no-op, which is
-            // what every extrusion in a converted Standard asks for; a lit window asks for more.
+            // mapbox's mix(apply_lighting(color), color, emissive_strength).
             lit = mix(lit, vec3(1.0), clamp(u_emissive, 0.0, 1.0));
             // Premultiplied, so scaling rgb alone is a valid tint and the clamp keeps rgb <= a.
             return vec4(min(baseColor * lit, vec3(color.a)), color.a);
@@ -1791,8 +1799,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         uniform int u_method;
         // Vertical relief multiplier applied to the slope (HillshadeRasterTileLayer exaggeration).
         uniform float u_exaggeration;
-        // MapLibre's 'hillshade-exaggeration': the slope response curve and the overall strength
-        // (HillshadeRasterTileLayer contrast). Default 0.5, matching the MapLibre style spec.
+        // MapLibre's 'hillshade-exaggeration' (HillshadeRasterTileLayer contrast), default 0.5.
         uniform float u_intensity;
 
         #define PI 3.141592653589793
@@ -1802,9 +1809,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         #define MULTIDIRECTIONAL 3
         #define BASIC 4
 
-        // All algorithms below composite in premultiplied alpha (the renderer blends normal map
-        // tiles with GL_ONE, GL_ONE_MINUS_SRC_ALPHA), so the straight colors coming in from the
-        // uniforms are premultiplied first - as MapLibre does before its shader ever runs.
+        // Tiles blend premultiplied (GL_ONE, GL_ONE_MINUS_SRC_ALPHA), so uniform colors are premultiplied first.
         vec4 premul(vec4 color) {
             return vec4(color.rgb * color.a, color.a);
         }
@@ -1936,18 +1941,13 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         }
 
         vec4 applyLighting(lowp vec4 color, mediump vec3 normal, mediump vec3 surfaceNormal, mediump float intensity) {
-            // Recover the height gradient from the perturbed normal: the tangent frame flips x and
-            // y, so -normal.xy/normal.z is (dh/dEast, dh/dNorth). y is negated again to match
-            // MapLibre's north-at-v=0 DEM, or the aspect mirrors about the east-west axis.
+            // -normal.xy/normal.z is (dh/dEast, dh/dNorth); y negated again for MapLibre's north-at-v=0 DEM.
             vec2 deriv = vec2(-normal.x, normal.y) / max(normal.z, 0.001);
 
-            // Extra vertical exaggeration, a Massif addition with no MapLibre equivalent. At the
-            // default of 1.0 the slope is left exactly as the normal map encoded it.
+            // Massif-only extra exaggeration; 1.0 leaves the slope as encoded.
             deriv *= u_exaggeration;
 
-            // u_lightDir is (sin(azimuth), cos(azimuth), -sin(altitude)): horizontal towards the
-            // light, z down. MapLibre adds PI to the compass azimuth for every method, because its
-            // original shader was written to accept (-illuminationDirection - 90).
+            // u_lightDir = (sin(az), cos(az), -sin(alt)); MapLibre adds PI to the azimuth for every method.
             float azimuth = atan(u_lightDir.x, u_lightDir.y) + PI;
             float altitude = asin(clamp(-u_lightDir.z, -1.0, 1.0));
 

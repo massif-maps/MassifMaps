@@ -136,7 +136,7 @@ a real two-pointer `MotionEvent` sequence — same entry point as a finger.
 ## Looking above the horizon: a negative tilt
 
 The tilt may now go **below 0**, and that is what "look up" is. It is opt-in: `MIN_SUPPORTED_TILT_ANGLE`
-is -90 but the default tilt range is still `(0, 90)`, so a map only gets there if it asks —
+is -90 but the default tilt range is still `(3, 90)`, so a map only gets there if it asks —
 `setTiltRange(MapRange(-90, 90))`.
 
 The model matters, because the obvious version does not work. Tilting between 90 and 0 rotates the
@@ -146,7 +146,7 @@ focus point on the ground. That was tried, and it is why the ceiling stood.
 
 What a negative tilt does instead: the camera **stays exactly where the tilt geometry left it** and
 only the view direction pitches up, about the camera (`ViewState::calculateLookatMat`, and
-`getGroundTilt()` — the tilt floored at 0 — is what positions the camera). `dist(camera, focus)` is
+`getCameraTilt()` — the tilt floored at 0 — is what positions the camera). `dist(camera, focus)` is
 untouched, so zoom, the visible tile set and the near/far budget all still mean what they meant.
 `CameraTiltEvent` spends only the part of the tilt at or above the horizon on moving the camera.
 
@@ -160,9 +160,11 @@ Two consequences had to be handled:
   `dist * sin(tilt)`, so approaching the horizon it rises by almost nothing as it zooms out and
   `ViewState::getTerrainMaxZoom` runs off to minus infinity. Clamping to that threw the map from
   z16 to its minimum zoom in a few frames (and, with the per-frame correction in `MapRenderer`,
-  kept walking it out to z-33). Both now drop the bound when the camera is at or below the focus
-  height, or when the bound lands below the zoom range: no zoom clears the terrain at that tilt
-  anyway, and keeping the camera the user asked for beats emptying the world.
+  kept walking it out to z-33). `CameraClearance::maxZoom` now answers +infinity for a camera at or
+  below the focus height, and both clamps (`ViewState`, `CameraZoomEvent`) take
+  `max(getTerrainMaxZoom(), zoom)`, so the bound can stop a zoom-in but never push the map out: no
+  zoom clears the terrain at that tilt anyway, and keeping the camera the user asked for beats
+  emptying the world.
 
 At tilt ≤ 0 the camera sits at the height of its focus, i.e. on the ground — which is exactly right
 for looking at the sky, and means the terrain is seen edge-on at the horizon.

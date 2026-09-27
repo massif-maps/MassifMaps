@@ -29,13 +29,8 @@ namespace massif {
     class TileDownloadListener;
 
     /**
-     * A tile data source that loads tiles from another tile data source
-     * and caches them in an offline sqlite database. Tiles will remain in the database
-     * even after the application is closed.
-     * The database contains table "persistent_cache" with the following fields:
-     * "tileId" (tile id), "compressed" (compressed tile image),
-     * "time" (the time the tile was cached in milliseconds from epoch),
-     * "metaData" (the tile's meta data map as JSON).
+     * A tile data source caching the tiles of another tile data source in an offline sqlite database kept across app runs.
+     * Table "persistent_cache": "tileId", "compressed" (tile data), "time" (cache time, ms from epoch), "metaData" (JSON map).
      * Default cache capacity is 50MB.
      */
     class PersistentCacheTileDataSource : public CacheTileDataSource {

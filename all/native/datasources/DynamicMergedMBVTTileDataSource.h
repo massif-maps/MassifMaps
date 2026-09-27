@@ -18,15 +18,8 @@
 namespace massif {
 
     /**
-     * A tile data source that merges a fixed base MBVT/protobuf source with a dynamically
-     * mutable set of additional MBVT sources, keyed by name. Adding or removing a source
-     * rebuilds an internal MergedMBVTTileDataSource chain and notifies listeners so tiles
-     * are reloaded. Used internally by CompositeVectorTileLayer to support runtime add/remove
-     * of merged vector sources (including ContourTileDataSource) while the owning layer's
-     * data source pointer stays constant.
-     *
-     * As with MergedMBVTTileDataSource, the merged sources are assumed to have distinct
-     * layer ids.
+     * A tile data source merging a fixed base MBVT source with a mutable set of named MBVT sources (distinct layer ids),
+     * so CompositeVectorTileLayer can add/remove merged sources while its own data source pointer stays constant.
      */
     class DynamicMergedMBVTTileDataSource : public TileDataSource {
     public:
@@ -62,7 +55,7 @@ namespace massif {
             DynamicMergedMBVTTileDataSource& _dataSource;
         };
 
-        // Rebuilds _mergedChain from _baseDataSource + _extraDataSources. Must hold _mutex.
+        // Caller holds _mutex.
         void rebuildChain();
 
         const DirectorPtr<TileDataSource> _baseDataSource;

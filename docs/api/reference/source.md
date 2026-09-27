@@ -26,6 +26,7 @@ Where a layer's tiles come from — network, file, cache or another source. Crea
 | [`"ordered"`](#spec-ordered) | `OrderedTileDataSource` |
 | [`"persistent-cache"`](#spec-persistent-cache) | `PersistentCacheTileDataSource` |
 | [`"pmtiles"`](#spec-pmtiles) | `PMTilesTileDataSource` |
+| [`"point-detail"`](#spec-point-detail) | `PointDetailTileDataSource` |
 
 ## `"assets"` — AssetTileDataSource {#spec-assets}
 
@@ -46,7 +47,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -75,7 +76,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -114,7 +115,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -147,7 +148,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -191,7 +192,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -252,7 +253,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -284,7 +285,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -318,7 +319,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -346,7 +347,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -374,7 +375,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -404,7 +405,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -444,7 +445,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -484,7 +485,44 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
+| `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
+| `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
+
+| Method | Arguments | Returns |
+|---|---|---|
+| `getMetaDataElement` | key: string | json |
+| `loadTile` | tile: tile | object |
+| `setMetaDataElement` | key: string, value: json | void |
+
+## `"point-detail"` — PointDetailTileDataSource {#spec-point-detail}
+
+```json
+{"type": "point-detail", "source": …, "layer": …, "detailZoom": …}
+```
+
+| Key | Type | Always required | Notes |
+|---|---|---|---|
+| `source` | object `std::shared_ptr<TileDataSource>` | yes | an id of kind `source`, or an inline spec |
+| `layer` | string | yes |  |
+| `detailZoom` | integer | yes | defaults to `14` |
+
+| Property | Type | Access | Description |
+|---|---|---|---|
+| `detailZoom` | integer | read/write | Returns the zoom whose tiles are read. |
+| `layerName` | string | read-only | Returns the layer that is rebuilt. |
+| `maxDetailLevels` | integer | read/write | Returns how many zoom levels below the requested tile this will reach. |
+| `maxFeatures` | integer | read/write | Returns how many features a rebuilt tile may carry. |
+| `rankProperty` | string | read/write | Returns the property a rebuilt tile's features are ranked by. |
+
+Inherited from `TileDataSource`:
+
+| Property | Type | Access | Description |
+|---|---|---|---|
+| `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
+| `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
+| `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -512,7 +550,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 
@@ -529,7 +567,7 @@ Inherited from `TileDataSource`:
 | `dataExtent` | struct `massif::MapBounds` | read-only | Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. |
 | `maxOverzoomLevel` | integer | read/write | Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" |
 | `maxZoom` | integer | read-only | Returns the maximum zoom level supported by this data source. |
-| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the data source meta data map; changes to it are not reflected in the source. The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder. A wrapper source with no map of its own answers with its wrapped source's. |
 | `minZoom` | integer | read-only | Returns the minimum zoom level supported by this data source. |
 | `projection` | object `projections.Projection` | read-only | Returns the projection of this tile source. |
 

@@ -22,13 +22,8 @@ namespace massif {
     class FogOptions;
 
     /**
-     * The sun, shadow, fog and terrain-distance values a vector tile style provides in its Map
-     * block. Every field is optional: unset means the style said nothing about it and the
-     * application's own LightOptions/TerrainOptions setting stands.
-     *
-     * The values are evaluated per frame from the style expressions, so any of them may be
-     * zoom-dependent (linear(), step functions, whatever the style writes).
-     *
+     * The sun, shadow, fog and terrain-distance values a vector tile style's Map block provides, evaluated
+     * per frame (so zoom-dependent). Unset means the app's LightOptions/TerrainOptions value stands.
      * Internal class, not exposed through the public API.
      */
     struct StyleEnvironment {
@@ -79,8 +74,8 @@ namespace massif {
         std::optional<float> terrainMaxVisibleDistance;
 
         /**
-         * Takes over every value the other environment defines and this one does not. Used to
-         * merge several layers' styles: the first layer that says something about a property wins.
+         * Takes over every value the other environment defines and this one does not:
+         * across layers, the first one to set a property wins.
          */
         void mergeMissing(const StyleEnvironment& other);
 
@@ -96,36 +91,29 @@ namespace massif {
         // Set by a style whose 2D colours are pre-lit: the ground is then drawn as authored while
         // the terrain's shadows and the 3D pass carry on lighting normally.
         bool colorsPrelit = false;
-        // How much of an extrusion's colour is emitted rather than lit - mapbox's
-        // fill-extrusion-emissive-strength. 0 means the scene light owns it entirely.
+        // mapbox's fill-extrusion-emissive-strength: the share of the colour emitted rather than lit.
         float buildingEmissive = 0.0f;
-        // The same for the map BACKGROUND, which is a Map setting rather than a symbolizer - and
-        // the largest surface on screen. 1 = drawn as authored.
+        // The same for the map background (a Map setting, not a symbolizer). 1 = drawn as authored.
         float backgroundEmissive = 1.0f;
         // mapbox's ["measure-light", "brightness"], 0-1 - what a style's `view::brightness` reads.
         float brightness = 1.0f;
-        // What mapbox's light does to a flat, upward-facing surface: calculateGroundRadiance with
-        // the ground normal, in LINEAR space. The one number a colour grade is a function of.
+        // mapbox's calculateGroundRadiance for an upward-facing surface, in linear space; the colour grade's input.
         cglib::vec3<float> radiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         cglib::vec3<float> sunDir = cglib::vec3<float>(0, 0, 1);
         Color sunColor = Color(255, 255, 255, 255);
         float sunIntensity = 1.0f;
         float ambientIntensity = 0.35f;
         Color ambientColor = Color(255, 255, 255, 255);
-        // What the 3D extrusions light with: mapbox's fill-extrusion model, summed in linear space.
-        // Both default to their 0.5, which sums to exactly 1 in full sun. The ambient is the walls'
-        // own, so flattening the ground does not flatten every facade with it.
+        // mapbox's fill-extrusion model, summed in linear space: 0.5 + 0.5 = 1 in full sun.
+        // The ambient is the walls' own, so flattening the ground does not flatten the facades.
         float buildingLightIntensity = 0.5f;
         float buildingAmbient = 0.5f;
-        // How dark the foot of a wall goes, as a fraction of its colour. Off by default: mapbox has
-        // no facade gradient, the direction-aware ambient separates the walls instead. The reach it
-        // fades over is decode-time geometry, not a uniform - see TileLayerBuilder::packGradientT.
+        // Wall-foot darkening as a fraction of its colour; off, as mapbox has no facade gradient.
+        // Its reach is decode-time geometry (TileLayerBuilder::packGradientT).
         float buildingVerticalGradient = 0.0f;
         float buildingRoofShade = 1.0f;
-        // Light the extrusions the way MAPLIBRE does rather than the way mapbox does. Set when
-        // nothing - style, options or day cycle - lights the map, which is every plain converted
-        // style: what its author saw is maplibre's fill-extrusion model, and the two do not agree
-        // about facades. See TileRenderer::LIGHTING_SHADER_3D.
+        // maplibre's fill-extrusion model, used when nothing (style, options, day cycle) lights the map,
+        // as that is what a plain converted style's author saw. See TileRenderer::LIGHTING_SHADER_3D.
         bool buildingLightingMapLibre = false;
         // Every extrusion's height, multiplied - mapbox's fill-extrusion-vertical-scale.
         float buildingHeightScale = 1.0f;
@@ -133,11 +121,9 @@ namespace massif {
         float buildingHeightViewScale = 1.0f;
         // Whether a tile's fade-in raises its buildings; off, as no source style asks for it.
         bool buildingGrowOnAppear = false;
-        // Whether a tile's fade-in fades its buildings in. OFF: a half-transparent wall shows the
-        // shadow it is itself casting, which is drawn at full strength from the first frame.
+        // Off: a half-transparent wall would show its own shadow, drawn at full strength from the first frame.
         bool buildingFadeOnAppear = false;
-        // The contact shadow on the ground around a footprint. Its RADIUS is decode-time geometry
-        // (TileLayerBuilder::appendGroundSkirt); these two shade the skirt it produced.
+        // Shade the ground contact skirt; its radius is decode-time geometry (TileLayerBuilder::appendGroundSkirt).
         float buildingAoIntensity = 0.2f;
         float buildingAoGroundAttenuation = 1.75f;
         float shadowStrength = 0.0f;
@@ -160,10 +146,8 @@ namespace massif {
     float resolveTextOcclusionOpacity(const std::shared_ptr<TerrainOptions>& terrainOptions, const StyleEnvironment& env);
 
     /**
-     * The distance fog to actually render with: FogOptions, with every value the style defines
-     * substituted in, and the colour lit by the sun when terrain lighting is on.
-     * The API expresses the range in multiples of the camera-to-focus distance; the distances
-     * here are the resolved product, in INTERNAL units, which is what every shader wants.
+     * The distance fog to render with: FogOptions with the style's values substituted in, lit by the sun
+     * when terrain lighting is on. Distances are internal units; range* keep the API's camera-distance multiples.
      */
     struct ResolvedFog {
         Color color = Color(0, 0, 0, 0);
@@ -179,9 +163,7 @@ namespace massif {
         float verticalRangeStart = 0.0f;
         float verticalRangeEnd = 0.0f;
         float starIntensity = 0.0f;
-        // FogOptions::getShaderSource, carried here so a renderer that compiles the fog into its
-        // own program does not have to reach for the options a second time. Set even when the fog
-        // is off, so switching it off does not force a shader rebuild.
+        // Set even when the fog is off, so switching it off does not force a shader rebuild.
         std::string shaderSource;
 
         /**
@@ -191,15 +173,11 @@ namespace massif {
     };
 
     /**
-     * Resolves the fog and lights it: fog is air, so it is as bright as the light falling on it.
-     * Without this a fog tuned for daylight stays bright white through the night, floating over a
-     * dark map. Only applied when terrain lighting is on - otherwise there is no sun to speak of
-     * and the configured colour is used as-is.
-     *
-     * cameraDistance is ViewState::calculateCameraDistance() in internal units, which the range is
-     * measured in. It is a function of the zoom alone, so one range setting holds at every zoom.
+     * Resolves the fog and, with terrain lighting on, lights it so a daylight fog darkens at night.
+     * cameraDistance (ViewState::calculateCameraDistance, internal units) scales the range;
+     * tilt fades the fog out towards top-down (FogPitchFade.h).
      */
-    ResolvedFog resolveFog(const std::shared_ptr<FogOptions>& fogOptions, const StyleEnvironment& env, const ResolvedLighting& lighting, double cameraDistance);
+    ResolvedFog resolveFog(const std::shared_ptr<FogOptions>& fogOptions, const StyleEnvironment& env, const ResolvedLighting& lighting, double cameraDistance, float tilt);
 
     /**
      * The sky to actually draw: SkyOptions, with every value the style defines substituted in.

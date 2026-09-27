@@ -45,6 +45,7 @@ namespace massif::mvt {
             bindProperty("max-distance", &_maxDistance);
             bindProperty("occlusion-opacity", &_occlusionOpacity);
             bindProperty("callout-screen-anchor", &_calloutScreenAnchor);
+            bindProperty("callout-band-follow", &_calloutBandFollow);
             bindProperty("callout-offset", &_calloutOffset);
             bindProperty("callout-step", &_calloutStep);
             bindProperty("callout-max-rows", &_calloutMaxRows);
@@ -139,6 +140,8 @@ namespace massif::mvt {
         // 'callout' placement only (see vt::LabelOrientation::CALLOUT). Screen pixels, except
         // the anchor: a fraction of the screen height from the top, < 0 = stack from the anchor.
         FloatProperty _calloutScreenAnchor = FloatProperty(-1.0f);
+        // Band drops to just above the highest on-screen anchor, the screen anchor being its ceiling.
+        BoolProperty _calloutBandFollow = BoolProperty(false);
         FloatProperty _calloutOffset = FloatProperty(0.0f);
         FloatProperty _calloutStep = FloatProperty(0.0f); // negative stacks the rows DOWNWARDS
         FloatProperty _calloutMaxRows = FloatProperty(8.0f);

@@ -11,13 +11,8 @@ namespace massif { namespace api {
 
     /**
      * Registers the SDK's own spec factories and methods, once. Every binding calls it before its
-     * first create or call.
-     *
-     * Declared here and defined in Builtins.cpp so that the registries themselves depend on
-     * nothing: the definition pulls in every source, layer and method implementation, which is
-     * exactly what the host tests cannot link. They define their own instead - a separate program,
-     * so a second definition is not a violation, and it is what lets create() and call() be tested
-     * over a handful of classes.
+     * first create or call. Defined apart from the registries because it links every implementation;
+     * the host tests supply their own definition.
      */
     void registerBuiltins();
 

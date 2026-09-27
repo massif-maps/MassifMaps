@@ -128,12 +128,8 @@ namespace massif {
          */
         bool isPostProcessed() const;
         /**
-         * Sets whether this layer goes through the post-process effect set with
-         * MapRenderer::setPostProcessEffect. A layer that opts out is drawn AFTER the effect
-         * has resolved - so it keeps its own appearance over a stylized map - but still into
-         * the same depth buffer, so it is occluded by the terrain as usual. Such a layer takes
-         * no part in the terrain depth/draping arrangement, so this is meant for overlays
-         * (annotations, sky-anchored objects), not for the tile layers that paint the ground.
+         * Sets whether this layer goes through the MapRenderer::setPostProcessEffect effect. A layer that opts out is drawn after
+         * the effect, still occluded by the terrain but outside draping: meant for overlays, not for layers painting the ground.
          * Has no effect while no post-process effect is set.
          * @param postProcessed The new post-processing state of the layer.
          */
@@ -199,9 +195,7 @@ namespace massif {
         std::shared_ptr<TouchHandler> getTouchHandler() const;
         std::shared_ptr<CullState> getLastCullState() const;
 
-        // Every layer setter funnels through here, so it forwards its CALLER's location rather
-        // than its own - otherwise the renderer's redraw-source tally names this one line for all
-        // twenty of them and says nothing. Callers pass nothing; the compiler fills these in.
+        // Forwards the caller's location to the renderer's redraw-source tally; the compiler fills it in.
 #if defined(__clang__) || defined(__GNUC__)
         void redraw(const char* callerFile = __builtin_FILE(), int callerLine = __builtin_LINE()) const;
 #else
@@ -215,24 +209,17 @@ namespace massif {
         virtual bool onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) = 0;
         virtual bool onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState);
 
-        // Appends every tile layer that participates in terrain draping, in draw order. A layer that
-        // owns children must append them too, or their content is neither baked into the drape nor
-        // told the ground is draped - and paints itself a second time as displaced geometry.
+        // In draw order. A layer owning children appends them too, or they paint a second time as displaced geometry.
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);
 
-        // Appends every vector tile layer whose labels take part in label placement, in draw order.
-        // A layer that owns children must append them too: the culler only sees what is collected
-        // here, and a label that is never placed never becomes visible.
+        // In draw order. A layer owning children appends them too: the culler only places what is collected here.
         virtual void collectLabelLayers(std::vector<std::shared_ptr<VectorTileLayer> >& labelLayers);
 
         virtual std::shared_ptr<Bitmap> getBackgroundBitmap(const ViewState& viewState) const;
-        // The flat colour behind this layer's content. Normally it reaches the screen through the
-        // background plane BackgroundRenderer draws under everything; in terrain draping mode that
-        // plane is behind the terrain, so the drape bake has to start from this colour instead.
+        // In terrain draping mode BackgroundRenderer's plane is behind the terrain, so the drape bake starts from this colour.
         virtual Color getBackgroundColor(const ViewState& viewState) const;
-        // Sun, shadow, fog and terrain-distance values this layer's STYLE provides, evaluated for
-        // this view state. False when the layer has no style opinion at all; what the style leaves
-        // unset stays with the application's LightOptions/TerrainOptions.
+        // Sun, shadow, fog and terrain-distance values from this layer's style; false when it has none.
+        // What the style leaves unset stays with the application's LightOptions/TerrainOptions.
         virtual bool getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const;
         virtual std::shared_ptr<Bitmap> getSkyBitmap(const ViewState& viewState) const;
         
@@ -260,6 +247,7 @@ namespace massif {
         std::atomic<bool> _postProcessed;
 
         MapRange _visibleZoomRange;
+        mutable std::mutex _visibleZoomRangeMutex; // not the layer mutex, see getVisibleZoomRange
 
         std::map<std::string, Variant> _metaData;
 
@@ -268,6 +256,7 @@ namespace massif {
         std::weak_ptr<Options> _options;
         std::weak_ptr<MapRenderer> _mapRenderer;
         std::weak_ptr<TouchHandler> _touchHandler;
+        mutable std::mutex _componentMutex; // guards the three above; not the layer mutex
     };
     
 }

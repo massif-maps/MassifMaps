@@ -18,8 +18,8 @@ built-in geocoding and reverse geocoding.
 ## Why this fork?
 
 CARTO stopped maintaining the original SDK. This fork continues it and adds many features on
-top of the original 4.x API, while keeping the same `com.massifmaps.*` public API namespace so
-existing code keeps working. Highlights added by the fork:
+top of the original 4.x API. The class model is the same, renamed from `com.carto.*` / `NTMapView`
+to `com.massifmaps.*` / `MSFMapView` — see [Migration](/docs/migration). Highlights added by the fork:
 
 - ⛰️ **[3D Terrain](/docs/features/3d-terrain)** — real elevation with render-to-texture fill draping and correct depth occlusion.
 - 〰️ **[On-the-fly contour lines](/docs/features/contours)** — generated directly from RGB elevation tiles, plus GPU shader contours.

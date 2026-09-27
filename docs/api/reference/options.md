@@ -53,7 +53,7 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 |---|---|---|---|
 | `ambientColor` | color | read/write | Returns the ambient light color. |
 | `ambientIntensity` | number | read/write | Returns the ambient light intensity. |
-| `dayCycleLightStops` | struct `std::vector<massif::LightStop>` | read/write | Returns the day-cycle light curve - the "formula" an hour is turned into a look by. |
+| `dayCycleLightStops` | struct `std::vector<massif::LightStop>` | read/write | Returns the day-cycle light curve. |
 | `dayCycleLightsEnabled` | boolean | read/write | Returns whether the sun's COLOURS follow its position. |
 | `dayCycleRisingLightStops` | struct `std::vector<massif::LightStop>` | read/write | Returns the curve used while the sun is RISING, if the app set one. |
 | `shadowBias` | number | read/write | Returns the shadow depth bias scale. |
@@ -122,27 +122,41 @@ Fog, sky, light and terrain — each a spec and a property path. Created with `k
 | `bridges3DEnabled` | boolean | read/write | Returns whether bridges and tunnels stand on their own chord (3D bridges). |
 | `cameraClampDuration` | number | read/write | Returns the duration of the camera terrain-following correction animation. |
 | `cameraClearance` | number | read/write | Returns the camera terrain clearance floor: an explicit minimum height the camera is kept above the terrain surface, in meters. |
+| `cameraClearanceFraction` | number | read/write | Returns the share of the camera's altitude that the terrain clearance takes. |
 | `depthBias` | number | read/write | Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. |
 | `drapeCacheSize` | integer | read/write | Returns the drape cache budget in megabytes. |
 | `drapeFillsEnabled` | boolean | read/write | Returns whether polygon fills are draped as a render-to-texture surface. |
 | `drapeLinesEnabled` | boolean | read/write | Returns whether vt tile lines are also draped (in addition to fills). |
 | `drapeResolution` | integer | read/write | Returns the per-tile drape texture resolution, 0 when it follows the screen. |
 | `drapeWorkingSet` | integer | read/write | Returns how many drape tiles the automatic resolution assumes are cached at once. |
+| `elevationCacheSize` | integer | read/write | Returns the elevation grid cache budget in megabytes, 0 for the SDK's own rule. |
 | `elevationPrefetchEnabled` | boolean | read/write | Returns whether elevation tile prefetching is enabled. |
 | `enabled` | boolean | read/write | Returns the enabled state of the terrain. |
 | `exaggeration` | number | read/write | Returns the terrain height exaggeration factor. |
 | `flattenMode` | [enum](enums.md#enum-terrainflattenmode) | read/write | Returns how far a flattened terrain goes back towards a plain 2D map. |
 | `flattenRatio` | number | read/write | Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). |
 | `flattened` | boolean | read/write | Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. |
+| `focusLift` | number | read/write | Returns the height the viewpoint is lifted above the ground-following focus, in meters. |
 | `maxTileZoomCoarsening` | integer | read/write | Returns how many zoom levels below the camera a tile may coarsen to. |
 | `maxTileZoomOffset` | integer | read/write | Returns the maximum visible tile zoom offset, relative to the camera zoom level. |
+| `maxZoom` | integer | read/write | Returns the maximum tile zoom level the terrain mesh is cut at. |
+| `meshCacheSize` | integer | read/write | Returns how many terrain surface meshes may be cached. |
 | `meshResolution` | integer | read/write | Returns the terrain mesh resolution. |
 | `minZoom` | integer | read/write | Returns the minimum tile zoom level with 3D terrain. |
 | `noDrapeLayerFilter` | string | read/write | Returns the style layers that are kept out of the terrain drape bake. |
+| `normalSampleDistance` | number | read/write | Returns the ground distance the surface normals are measured over, in meters. |
+| `postProcessDownscale` | integer | read/write | Returns the downscale factor of the packed depth/normal texture post-process effects read. |
 | `seamlessTileEdgesEnabled` | boolean | read/write | Returns whether seamless tile edge handling is enabled. |
+| `sharedGroundEnabled` | boolean | read/write | Returns whether the shared ground pass draws the terrain a second time. |
+| `subdivideDistance` | number | read/write | Returns the distance geo-three's terrain LOD subdivides at. |
 | `surfaceShaderSource` | string | read/write | Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. |
 | `switching` | boolean | read-only | Returns whether the switch is holding the ground flat while the tiles 3D needs load. |
 | `textOcclusionOpacity` | number | read/write | Returns the opacity a label keeps while its anchor is behind 3D content. |
 | `tileEdgeStitchingEnabled` | boolean | read/write | Returns whether cross-LOD tile edge stitching is enabled. |
 | `viewDistance` | number | read/write | Returns the minimum view distance, in meters. |
 | `viewDistanceFactor` | number | read/write | Returns the factor applied to the view distance. |
+| `viewDistanceMax` | number | read/write | Returns the maximum view distance, in meters. |
+
+| Method | Arguments | Returns |
+|---|---|---|
+| `calculateHorizon` | pos: pos, eyeHeight: float, azimuths: json, maxDistance: float | doubles |

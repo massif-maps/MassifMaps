@@ -45,7 +45,7 @@ light.setSunPositionFromTime(2026, 8, 14, 7, 30, 45.188, 5.719)   // UTC + lat/l
 | `SunAzimuth` | `315` | Degrees clockwise from north. The classic cartographic light is NW. |
 | `SunAltitude` | `45` | Degrees above the horizon, clamped `-90..90`. |
 | `SunColor` / `SunIntensity` | white / `1.0` | Direct light. |
-| `AmbientIntensity` | `0.35` | Light in the shadow, and the brightness floor everywhere. |
+| `AmbientIntensity` | `1.0` | Light in the shadow, and the brightness floor everywhere. |
 | `AmbientColor` | white | Tint of that shadow light. A cool blue is what makes dusk read as sky-lit rather than just darker. Applies to the terrain surface and to 3D buildings alike. |
 | `TerrainLightingEnabled` | `false` | Shade the terrain surface from its geometric normal. |
 | `ShadowStrength` | `1.0` | `0` = no shadows. Not the depth drawn: it is multiplied by the sun's share of the scene light (MapBox's `calculateGroundShadowFactor`), so `1` is their shadow exactly and shadows fade to nothing as the sun sets. Values above `1` exaggerate. |
@@ -53,11 +53,10 @@ light.setSunPositionFromTime(2026, 8, 14, 7, 30, 45.188, 5.719)   // UTC + lat/l
 | `ShadowBias` / `ShadowSoftness` / `ShadowDistance` | `1.0` / `1.0` / `0` | `ShadowBias` is a UNITLESS scale on MapBox's bias (a constant plus a capped slope term, in normalised light depth), so 1 is theirs unchanged. `ShadowDistance` 0 = derived from the view. |
 | `ShadowCasterMargin` | `3` | Ring of off-screen tiles that may still cast into the view. |
 
-:::caution Terrain cast shadows are wired but off
-The cascaded shadow map, the caster pass and the light boxes all exist, but casting onto the shared
-ground is currently disabled in `MapRenderer::applyTerrainShadows` — with the pass on, the map reads
-as shadow acne instead of shadows. `ShadowStrength` therefore affects 3D objects (buildings), not the
-terrain surface. Sun *lighting* of the terrain (`TerrainLightingEnabled`) is unaffected.
+:::note Cast shadows need the terrain
+Shadows are cast in the terrain drape pass and land on the terrain surface, so they need 3D terrain
+with `TerrainLightingEnabled` on as well as a `ShadowStrength` above 0 — see
+[Cast shadows need a terrain](/docs/features/day-cycle-light#cast-shadows-need-a-terrain).
 :::
 
 ### With the surface API

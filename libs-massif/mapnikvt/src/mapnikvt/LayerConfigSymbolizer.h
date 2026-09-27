@@ -11,19 +11,12 @@
 
 namespace massif::mvt {
     /**
-     * Base class for "external source config" symbolizers (raster / hillshade / contour).
-     *
-     * Unlike geometry symbolizers, a LayerConfigSymbolizer produces NO geometry - its
-     * createFeatureProcessor returns an empty processor. It exists only so that CartoCSS
-     * can parse and validate the corresponding '#name { ... }' block, and so that the
-     * evaluated property values can be read out-of-band (per frame) by the SDK layer that
-     * owns the external data source (e.g. CompositeVectorTileLayer). Reading is done via
-     * Symbolizer::getPropertyNames()/getProperty() + Property::getExpression(), evaluated
-     * against an ExpressionContext + ViewState - see LayerConfigResolver.
+     * Base class for "external source config" symbolizers (raster / hillshade / contour). Emits no geometry:
+     * it only lets CartoCSS parse the '#name { ... }' block so the SDK layer owning the external source
+     * can evaluate its properties per frame - see LayerConfigResolver.
      */
     class LayerConfigSymbolizer : public Symbolizer {
     public:
-        // Never emits geometry.
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override {
             return FeatureProcessor();
         }

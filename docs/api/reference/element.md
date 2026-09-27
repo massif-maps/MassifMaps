@@ -58,7 +58,7 @@ Inherited from `Billboard`:
 | `baseBillboard` | object `std::shared_ptr<massif::Billboard>` | read/write | Returns the base billboard this billboard is attached to. |
 | `bounds` | struct `massif::MapBounds` | read-only | Returns the bounds of this billboard or the base billboard, if there is one. |
 | `geometry` | object `geometry.Geometry` | read/write | Returns the geometry object that defines the location of this billboard. |
-| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard. If this billboard has a location, this method is equavalent to the Billboard::getGeometry method. If this billboard is attached to another billboard, the hierarchy is traveled recursively and the location of the root billboard is returned. |
+| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard: getGeometry() if this billboard has a location, otherwise the location found by following the chain of base billboards to its root. |
 | `rotation` | number | read/write | Returns the rotation angle of this billboard. |
 
 Inherited from `VectorElement`:
@@ -125,7 +125,7 @@ Inherited from `Billboard`:
 | `baseBillboard` | object `std::shared_ptr<massif::Billboard>` | read/write | Returns the base billboard this billboard is attached to. |
 | `bounds` | struct `massif::MapBounds` | read-only | Returns the bounds of this billboard or the base billboard, if there is one. |
 | `geometry` | object `geometry.Geometry` | read/write | Returns the geometry object that defines the location of this billboard. |
-| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard. If this billboard has a location, this method is equavalent to the Billboard::getGeometry method. If this billboard is attached to another billboard, the hierarchy is traveled recursively and the location of the root billboard is returned. |
+| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard: getGeometry() if this billboard has a location, otherwise the location found by following the chain of base billboards to its root. |
 | `rotation` | number | read/write | Returns the rotation angle of this billboard. |
 
 Inherited from `VectorElement`:
@@ -230,7 +230,7 @@ Inherited from `Billboard`:
 | `baseBillboard` | object `std::shared_ptr<massif::Billboard>` | read/write | Returns the base billboard this billboard is attached to. |
 | `bounds` | struct `massif::MapBounds` | read-only | Returns the bounds of this billboard or the base billboard, if there is one. |
 | `geometry` | object `geometry.Geometry` | read/write | Returns the geometry object that defines the location of this billboard. |
-| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard. If this billboard has a location, this method is equavalent to the Billboard::getGeometry method. If this billboard is attached to another billboard, the hierarchy is traveled recursively and the location of the root billboard is returned. |
+| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard: getGeometry() if this billboard has a location, otherwise the location found by following the chain of base billboards to its root. |
 | `rotation` | number | read/write | Returns the rotation angle of this billboard. |
 
 Inherited from `VectorElement`:
@@ -254,7 +254,7 @@ Not constructed directly. Their properties are reachable on every object above t
 | `baseBillboard` | object `std::shared_ptr<massif::Billboard>` | read/write | Returns the base billboard this billboard is attached to. |
 | `bounds` | struct `massif::MapBounds` | read-only | Returns the bounds of this billboard or the base billboard, if there is one. |
 | `geometry` | object `geometry.Geometry` | read/write | Returns the geometry object that defines the location of this billboard. |
-| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard. If this billboard has a location, this method is equavalent to the Billboard::getGeometry method. If this billboard is attached to another billboard, the hierarchy is traveled recursively and the location of the root billboard is returned. |
+| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard: getGeometry() if this billboard has a location, otherwise the location found by following the chain of base billboards to its root. |
 | `rotation` | number | read/write | Returns the rotation angle of this billboard. |
 
 Inherited from `VectorElement`:
@@ -280,7 +280,7 @@ Inherited from `Billboard`:
 | `baseBillboard` | object `std::shared_ptr<massif::Billboard>` | read/write | Returns the base billboard this billboard is attached to. |
 | `bounds` | struct `massif::MapBounds` | read-only | Returns the bounds of this billboard or the base billboard, if there is one. |
 | `geometry` | object `geometry.Geometry` | read/write | Returns the geometry object that defines the location of this billboard. |
-| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard. If this billboard has a location, this method is equavalent to the Billboard::getGeometry method. If this billboard is attached to another billboard, the hierarchy is traveled recursively and the location of the root billboard is returned. |
+| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard: getGeometry() if this billboard has a location, otherwise the location found by following the chain of base billboards to its root. |
 | `rotation` | number | read/write | Returns the rotation angle of this billboard. |
 
 Inherited from `VectorElement`:
@@ -308,7 +308,7 @@ Inherited from `Billboard`:
 | `baseBillboard` | object `std::shared_ptr<massif::Billboard>` | read/write | Returns the base billboard this billboard is attached to. |
 | `bounds` | struct `massif::MapBounds` | read-only | Returns the bounds of this billboard or the base billboard, if there is one. |
 | `geometry` | object `geometry.Geometry` | read/write | Returns the geometry object that defines the location of this billboard. |
-| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard. If this billboard has a location, this method is equavalent to the Billboard::getGeometry method. If this billboard is attached to another billboard, the hierarchy is traveled recursively and the location of the root billboard is returned. |
+| `rootGeometry` | object `geometry.Geometry` | read-only | Returns the location of the root billboard: getGeometry() if this billboard has a location, otherwise the location found by following the chain of base billboards to its root. |
 | `rotation` | number | read/write | Returns the rotation angle of this billboard. |
 
 Inherited from `VectorElement`:

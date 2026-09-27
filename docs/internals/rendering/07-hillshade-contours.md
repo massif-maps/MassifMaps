@@ -70,10 +70,15 @@ Two things the port had to get right:
 
 The terrain caps the elevation grid at what the **mesh** can express, which drops two zoom levels.
 Shading is per fragment and resolves far more than that, so on the paint the cap is visible as blur
-from z15 up. `getFullDetailDataTile` + `ElevationTextureCache::setFullDetail` lift it — and it stays
-**off by default**, because the texture pipeline cannot pay for it: 2.5 fps against 6.7 on device,
-with the working set jumping ~16× past the 96-texture cache. Fixing that is the elevation-texture
-port described in [04-terrain.md](04-terrain.md#the-elevation-texture).
+from z15 up. `ElevationTextureCache::requestDetailLevels(n)` lifts it by `n` levels
+(`ElevationManager::getDetailDataTile`), asked for by a paint with
+`HillshadeRasterTileLayer::setTerrainPaintFullDetailEnabled` (default true) — but `n` is
+`TileRenderer::DEFAULT_PAINT_DETAIL_LEVELS` = **0**, so by default shading and geometry read the
+same elevation tile, tangram's arrangement. The texture pipeline cannot pay for more: full detail
+measured 2.5 fps against 6.7 on device, with the working set jumping ~16× past the cache (96
+textures then, `MAX_CACHED_TEXTURES` = 128 now). `debug.massif.paintdetail 0..4` sets `n` in demo
+builds ([runtime switches](10-performance.md#runtime-switches-no-rebuild)). Fixing the cost is the
+elevation-texture port described in [04-terrain.md](04-terrain.md#the-elevation-texture).
 
 ## Contour lines
 

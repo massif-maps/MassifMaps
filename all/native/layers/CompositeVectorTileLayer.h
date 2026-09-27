@@ -16,11 +16,13 @@
 #include <string>
 #include <vector>
 
+#include <mapnikvt/LayerConfigResolver.h> // ResolvedLayerConfig, held by value in the config cache
+
 namespace massif {
     class TileDataSource;
     class VectorTileDecoder;
+    class MBVectorTileDecoder;
     class ElevationDecoder;
-    namespace mvt { struct ResolvedLayerConfig; }
 
     namespace CompositeSourceType {
         /**
@@ -36,27 +38,17 @@ namespace massif {
              */
             COMPOSITE_SOURCE_TYPE_HILLSHADE,
             /**
-             * Another MBVT/protobuf source (including ContourTileDataSource), drawn at its style
-             * slot as its own child VectorTileLayer using the master decoder, filtered to its own
-             * layer name. Kept separate (not merged) so it overzooms independently via its own
-             * MaxOverzoomLevel and does not need the DEM at the target zoom.
+             * Another MBVT/protobuf source (including ContourTileDataSource), drawn at its style slot as its own
+             * child VectorTileLayer with the master decoder, so it overzooms independently via its own MaxOverzoomLevel.
              */
             COMPOSITE_SOURCE_TYPE_VECTOR
         };
     }
 
     /**
-     * A VectorTileLayer that can weave named external data sources (raster, hillshade,
-     * merged vector / contour) into the master CartoCSS style's layer order.
-     *
-     * Each external source is placed at the position of a matching layer name in the style
-     * project's "layers" array, and configured by a matching '#name { ... }' block in the
-     * CartoCSS (e.g. raster-opacity, hillshade-exaggeration), including zoom- and style-parameter-
-     * parameter-dependent expressions. Raster and hillshade sources are rendered as their
-     * own draped child layers interleaved between the master style layers; merged vector
-     * sources are folded into the master source and styled normally.
-     *
-     * Sources can be added and removed at runtime.
+     * A VectorTileLayer weaving named external data sources (raster, hillshade, vector / contour) into the master style's
+     * layer order, each at its name's position in the style's "layers" array and configured by a matching '#name { ... }'
+     * CartoCSS block (zoom- and parameter-dependent). Sources can be added and removed at runtime.
      */
     class CompositeVectorTileLayer : public VectorTileLayer {
     public:
@@ -70,20 +62,17 @@ namespace massif {
         virtual ~CompositeVectorTileLayer();
 
         /**
-         * Adds a named external data source. For raster and hillshade types the source is
-         * drawn as its own child layer at the style slot named 'name'. For the vector type
-         * the source is merged into the master source (see addVectorDataSource).
+         * Adds a named external data source, drawn as its own child layer at the style slot named 'name'.
          * @param name The source name; must match a layer name in the style "layers" array.
          * @param dataSource The external data source.
          * @param type The source type.
          * @param elevationDecoder Optional elevation decoder for hillshade sources. If null,
-         *        it is resolved from the data source 'encoding' metadata ("terrarium"/"mapbox").
+         *        it is resolved from the data source 'dem_encoding' metadata ("terrarium"/"mapbox").
          */
         void addExternalDataSource(const std::string& name, const std::shared_ptr<TileDataSource>& dataSource, CompositeSourceType::CompositeSourceType type, const std::shared_ptr<ElevationDecoder>& elevationDecoder = std::shared_ptr<ElevationDecoder>());
         /**
-         * Adds a named MBVT/protobuf source (including ContourTileDataSource) merged into the
-         * master source and styled by the master CartoCSS. Equivalent to addExternalDataSource
-         * with COMPOSITE_SOURCE_TYPE_VECTOR.
+         * Adds a named MBVT/protobuf source (including ContourTileDataSource) styled by the master CartoCSS.
+         * Equivalent to addExternalDataSource with COMPOSITE_SOURCE_TYPE_VECTOR.
          * @param name The source name; its layers must be declared in the master style.
          * @param dataSource The vector data source to merge.
          */
@@ -100,30 +89,13 @@ namespace massif {
          */
         std::vector<std::string> getExternalDataSourceNames() const;
         /**
-         * Returns the child layer a slot is drawn by - a RasterTileLayer, a HillshadeRasterTileLayer
-         * or a VectorTileLayer, depending on the source type. This is the way to reach a setting the
-         * config symbolizer does not carry: a HillshadeRasterTileLayer's NormalMapLightingShader is
-         * generated GLSL rather than a style property, and applyConfig never writes it, so a shader
-         * set through this survives the per-frame config pass.
-         *
+         * Returns the child layer a slot is drawn by (RasterTileLayer, HillshadeRasterTileLayer or VectorTileLayer), to reach
+         * settings the config symbolizer does not carry, e.g. a NormalMapLightingShader, which the config pass never overwrites.
          * The child is owned by this layer - do not add it to a map.
          * @param name The source name.
          * @return The child layer, or null if no source is registered under that name.
          */
         std::shared_ptr<Layer> getExternalChildLayer(const std::string& name) const;
-
-        /**
-         * Returns whether single-pass segmented rendering is enabled (Milestone 6, optional).
-         * @return True if single-pass rendering is enabled. The default is false.
-         */
-        bool isSinglePassRenderingEnabled() const;
-        /**
-         * Sets whether to use the optional single-pass segmented renderer instead of the
-         * default one-vt-pass-per-segment path. Intended for A/B comparison; currently a
-         * no-op placeholder until the single-pass renderer lands.
-         * @param enabled True to enable single-pass rendering.
-         */
-        void setSinglePassRenderingEnabled(bool enabled);
 
         /**
          * Sets the zoom level bias for this layer and for every child layer it owns (external
@@ -139,11 +111,28 @@ namespace massif {
         virtual void setPreloading(bool preloading);
 
         /**
-         * Sets the zoom level bias of a single external data source, overriding the layer-wide value.
-         * Use this to fetch a source at a different resolution from the base map - e.g. a bias of 1.0
-         * on a high-resolution DEM source makes the hillshade use one zoom level more detail.
-         * Note that if the style defines a 'zoom-level-bias' value for this source, the style value
-         * wins - the same precedence the other per-source config values have.
+         * Sets the vector tile event listener for this layer and every internal style-group layer,
+         * which otherwise report no clicks above the first external source slot.
+         * @param eventListener The vector tile event listener.
+         */
+        virtual void setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener);
+        /**
+         * Sets the click radius for this layer and for every internal style-group layer it owns.
+         * @param radius The new click radius of vector tile features.
+         */
+        virtual void setClickRadius(float radius);
+        /**
+         * Sets the click handler layer filter for this layer and for every internal style-group
+         * layer it owns.
+         * @param filter The new click handler layer filter.
+         * @throws std::runtime_error If the filter expression is not valid.
+         */
+        virtual void setClickHandlerLayerFilter(const std::string& filter);
+
+        /**
+         * Sets the zoom level bias of a single external data source, overriding the layer-wide value
+         * (e.g. 1.0 on a high-resolution DEM gives the hillshade one zoom level more detail).
+         * A 'zoom-level-bias' value in the style for this source wins over it.
          * @param name The source name.
          * @param bias The new bias value, both positive and negative fractional values are supported.
          * @throws std::invalid_argument If the source does not exist.
@@ -163,9 +152,8 @@ namespace massif {
          */
         void clearExternalDataSourceZoomLevelBias(const std::string& name);
         /**
-         * Sets the maximum overzoom level of a single external data source. Overzooming reuses a
-         * coarser parent tile when the source has no tile at the target zoom level, which is how a
-         * low-resolution DEM keeps covering the map above its own max zoom.
+         * Sets the maximum overzoom level of a single external data source: how many levels a coarser parent tile
+         * may stand in when the source has no tile at the target zoom (e.g. a DEM above its own max zoom).
          * @param name The source name.
          * @param level The new maximum overzoom level.
          * @throws std::invalid_argument If the source does not exist.
@@ -189,6 +177,8 @@ namespace massif {
         virtual void loadData(const std::shared_ptr<CullState>& cullState);
         virtual void offsetLayerHorizontally(double offset);
         virtual bool isUpdateInProgress() const;
+        virtual bool isTerrainDecodeSettled();
+        virtual int getTerrainDecodePendingCount() const;
         virtual void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
 
         virtual void collectDrapeLayers(std::vector<std::shared_ptr<TileLayer> >& drapeLayers, const ViewState& viewState);
@@ -202,67 +192,75 @@ namespace massif {
             std::string name;
             CompositeSourceType::CompositeSourceType type;
             std::shared_ptr<TileDataSource> dataSource;
-            std::shared_ptr<Layer> childLayer; // raster/hillshade child; null for merged vector
-            // Per-source overrides. When unset the child follows the composite layer's own value.
+            std::shared_ptr<Layer> childLayer;
+            // Per-source overrides; when unset the child follows the composite layer's own value.
             bool zoomLevelBiasSet = false;
             float zoomLevelBias = 0.0f;
             bool maxOverzoomLevelSet = false;
             int maxOverzoomLevel = 0;
         };
 
-        // One ordered draw step after the layer's own group-0 render: an external raster/hillshade
-        // child, or an internal VectorTileLayer for a later style-layer group with a fixed filter.
+        // One draw step after group 0: an external child, or an internal layer for a later style-layer group.
         // The filter is applied at tile-build time, so each group needs its own layer.
         enum DrawItemKind { DRAW_ITEM_EXTERNAL, DRAW_ITEM_VT_GROUP };
         struct DrawItem {
             DrawItemKind kind;
-            std::string slot;                  // external source name (DRAW_ITEM_EXTERNAL)
-            std::shared_ptr<Layer> groupLayer; // internal group layer (DRAW_ITEM_VT_GROUP); held as
-                                               // Layer so protected virtuals are reachable via friend
+            std::string slot;                  // DRAW_ITEM_EXTERNAL
+            std::shared_ptr<Layer> groupLayer; // DRAW_ITEM_VT_GROUP; a Layer so protected virtuals are reachable via friend
         };
 
         static std::shared_ptr<ElevationDecoder> resolveElevationDecoder(const std::shared_ptr<TileDataSource>& dataSource);
-        // includeBackground: also match the empty-named per-tile background layer (only the bottom
-        // group 0 should, so the style Map background-color is drawn once at the bottom).
+        // includeBackground: also match the empty-named background layer (group 0 only).
         static std::string buildFilterString(const std::vector<std::string>& group, bool includeBackground = false);
 
         void wireChild(const std::shared_ptr<Layer>& child);
         void unwireChild(const std::shared_ptr<Layer>& child);
         std::shared_ptr<Layer> makeGroupLayer(const std::string& filter);
         void rebuildDrawItems();
+        /** A slot's resolved config, memoised per (zoom, decoder version). Caller holds _sourceMutex. */
+        mvt::ResolvedLayerConfig resolveLayerConfigCached(const std::shared_ptr<MBVectorTileDecoder>& decoder, const std::string& slot, float viewZoom);
+        /** Caller holds _sourceMutex. */
+        void snapshotChildTileLayers();
         void applyExternalChildZoomRange(const ExternalSource& source);
-        // Pushes the tile-selection properties (zoom level bias, max overzoom level, preloading)
-        // down to a child layer, honouring the source's per-source overrides. Caller holds _sourceMutex.
+        // Caller holds _sourceMutex.
         void applyChildTileProperties(const ExternalSource& source);
         const ExternalSource* findExternalSource(const std::string& name) const;
-        // Non-const variant, for the per-source property setters. Caller holds _sourceMutex.
+        // Caller holds _sourceMutex.
         ExternalSource* findExternalSource(const std::string& name);
-        // Same, but throws if the source is unknown. Caller holds _sourceMutex.
+        // Throws if the source is unknown. Caller holds _sourceMutex.
         ExternalSource& getExternalSource(const std::string& name);
         const ExternalSource& getExternalSource(const std::string& name) const;
-        // Whether the style's 'layers' gives this source a slot, i.e. whether anything would ever
-        // draw it. A source without one is not loaded and not draped.
+        // A source the style's 'layers' gives no slot is neither loaded nor draped.
         bool isDrawnSlot(const std::string& name) const;
         void applyConfig(const ExternalSource& source, const mvt::ResolvedLayerConfig& config, const ViewState& viewState);
-        // Applies '#name' config symbolizer values to merged vector sources whose generation
-        // parameters live on the data source (currently ContourTileDataSource). Called off the
-        // render thread (from loadData); only re-applies changed values to avoid reload loops.
+        // Applies '#name' values to ContourTileDataSource generation parameters, off the render thread (loadData).
+        // Only changed values are re-applied, to avoid reload loops.
         void applyVectorSourceConfigs();
         bool renderComposite(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState, bool terrain);
 
         std::vector<ExternalSource> _externalSources;
         std::vector<DrawItem> _drawItems;
-        std::map<std::string, std::map<std::string, float> > _lastVectorConfig; // per-source applied contour params
-        std::map<std::string, std::map<std::string, double> > _lastChildConfig; // per-source last-applied config values (double: holds a 32-bit ARGB exactly)
-        bool _singlePassRenderingEnabled;
+        std::map<std::string, std::map<std::string, float> > _lastVectorConfig;
+        std::map<std::string, std::map<std::string, double> > _lastChildConfig; // double: holds a 32-bit ARGB exactly
 
-        // Cached component handles for wiring child layers added after setComponents().
+        // For wiring child layers added after setComponents().
         bool _componentsSet;
         std::weak_ptr<Options> _childOptions;
         std::weak_ptr<MapRenderer> _childMapRenderer;
         std::weak_ptr<TouchHandler> _childTouchHandler;
 
         mutable std::recursive_mutex _sourceMutex;
+
+        // The children, readable without _sourceMutex. See snapshotChildTileLayers.
+        mutable std::mutex _childTileLayersMutex;
+        std::vector<std::shared_ptr<TileLayer> > _childTileLayers;
+
+        struct ResolvedConfigEntry {
+            unsigned int version;
+            float viewZoom;
+            mvt::ResolvedLayerConfig config;
+        };
+        std::map<std::string, ResolvedConfigEntry> _resolvedConfigCache; // see resolveLayerConfigCached
     };
 
 }

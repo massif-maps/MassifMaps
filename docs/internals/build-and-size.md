@@ -100,10 +100,10 @@ the 5 GB default has the four ABIs evicting each other.
 
 ## Open, roughly by value
 
-- **iOS gets no LTO for the static framework** — `-flto=full` sits inside `if(SHARED_LIBRARY)` in
-  `scripts/build/CMakeLists.txt`, so the default build misses it while Android gets `-flto=thin`.
-  Bitcode is still wired (`ENABLE_BITCODE=YES` for armv7/arm64, dead since Xcode 14) and `i386` and
-  `armv7` are still in `IOS_ARCHS`.
+- **iOS leftovers.** The static framework now gets `-flto=full` (#67; Mac Catalyst still does not —
+  [mac-catalyst.md](../maintenance/mac-catalyst.md)), but bitcode is still wired in
+  `scripts/build-ios.py` (`ENABLE_BITCODE=YES` for armv7/arm64, dead since Xcode 14) and `i386` /
+  `armv7` are still in `IOS_ARCHS`, filtered out of the default arch list only.
 - **Unwind tables on the C-only dependencies** (sqlite, libpng, libjpeg, libwebp, freetype, brotli,
   zstd, miniz) against that 1.69 MB. Risky rather than free: a C++ exception thrown from a callback
   has to unwind back through those C frames, and without tables that is a `std::terminate`, so it

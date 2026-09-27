@@ -16,26 +16,8 @@
 
 namespace massif {
     /**
-     * A full-screen post-processing effect. When attached to the map via
-     * MapRenderer::setPostProcessEffect, the map is rendered into an offscreen buffer
-     * and the effect fragment shader produces the final screen output.
-     *
-     * The fragment shader must be GLSL ES 1.00 (#version 100) source. The following
-     * uniforms are provided by the renderer:
-     * - sampler2D uColorTex: the rendered map frame (premultiplied alpha).
-     * - sampler2D uTerrainDepthTex: packed terrain depth buffer (only if terrain depth is required;
-     *   RGB = 24-bit fixed point linear depth 0..1 relative to the far plane, A = terrain coverage).
-     *   Use dot(rgb, vec3(1.0, 1.0/255.0, 1.0/65025.0)) to unpack.
-     * - vec2 uInvScreenSize: 1/width, 1/height of the screen in pixels.
-     * - float uNear, uFar: view frustum distances (internal units).
-     * - vec2 uProjInvScale: tan(fovy/2) * aspect, tan(fovy/2). With the terrain depth this
-     *   reconstructs the eye-space position of a pixel:
-     *   vec3(ndc * uProjInvScale, -1.0) * depth * uFar, ndc = uv * 2 - 1.
-     * - float uTime: seconds since the effect was attached.
-     * Additionally all float parameters set via setFloatParameter are available as float
-     * uniforms, and all colors set via setColorParameter as vec4 uniforms (rgba 0..1).
-     * Screen texture coordinates can be computed as gl_FragCoord.xy * uInvScreenSize.
-     *
+     * A full-screen post-processing effect: once attached via MapRenderer::setPostProcessEffect, the map renders
+     * offscreen and the GLSL ES 1.00 fragment shader writes the screen. Uniforms: docs/features/post-processing.md.
      * Note: this class is experimental and may change or even be removed in future SDK versions.
      */
     class PostProcessEffect {
@@ -69,6 +51,19 @@ namespace massif {
          * @param required True if the terrain depth should be rendered for the effect.
          */
         void setTerrainDepthRequired(bool required);
+
+        /**
+         * Returns true if the effect wants the terrain surface normal in the depth pre-pass.
+         * @return True if the pre-pass packs normals. The default is false.
+         */
+        bool isTerrainNormalsRequired() const;
+        /**
+         * Sets whether the depth pre-pass packs the terrain surface normal; implies setTerrainDepthRequired.
+         * On, uTerrainDepthTex is RG sqrt depth (enc = dot(rg, vec2(1, 1/255)), depth = enc * enc, sky at
+         * enc >= 1) and BA the octahedral normal, z up, instead of RGB 24-bit linear depth and A coverage.
+         * @param required True if the pre-pass should pack normals.
+         */
+        void setTerrainNormalsRequired(bool required);
 
         /**
          * Returns the value of a float parameter.
@@ -114,6 +109,7 @@ namespace massif {
         const std::string _fragmentShader;
 
         bool _terrainDepthRequired;
+        bool _terrainNormalsRequired;
         std::map<std::string, float> _floatParameters;
         std::map<std::string, Color> _colorParameters;
 

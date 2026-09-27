@@ -66,10 +66,9 @@ namespace massif {
          */
         std::string getTextFontName() const;
         /**
-         * Sets the name of the text font. Accepts a CSS-like list, the most preferred name first, entries
-         * optionally tagged with the platform they are for ("android:Roboto, ios:Helvetica Neue,
-         * sans-serif"). A name the device has no font for is skipped; generic names ("sans-serif",
-         * "serif", "monospace", "Arial", ...) map to the platform font. The default is HelveticaNeue-Light.
+         * Sets the name of the text font: a CSS-like list, most preferred first, entries optionally platform-tagged
+         * ("android:Roboto, ios:Helvetica Neue, sans-serif"). Names with no font on the device are skipped; generic
+         * names ("sans-serif", "serif", "monospace", "Arial", ...) map to the platform font. The default is HelveticaNeue-Light.
          * @param textFontName The new name for the text font.
          */
         void setTextFontName(const std::string& textFontName);

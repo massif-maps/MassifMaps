@@ -26,8 +26,10 @@
 !enum(massif::TerrainFlattenMode::TerrainFlattenMode)
 
 // 3D terrain from an elevation source. Only the source is a constructor argument: the elevation
-// decoder is picked from the source's own `encoding`, so a spec never names one.
+// decoder is picked from the source's own `dem_encoding`, so a spec never names one.
 !spec(massif::TerrainOptions, options, terrain, alias(source, dataSource))
+// The skyline from a viewpoint, per azimuth, in apparent altitude degrees (ElevationManager::calculateHorizon).
+!method(massif::TerrainOptions, calculateHorizon, arg(pos, pos), arg(eyeHeight, float), arg(azimuths, json), arg(maxDistance, float), returns(doubles))
 
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)
 // The 2D/3D switch. Flattened is the state, written by the app or by the auto-flatten rule;
@@ -48,7 +50,11 @@
 %attribute(massif::TerrainOptions, bool, SeamlessTileEdgesEnabled, isSeamlessTileEdgesEnabled, setSeamlessTileEdgesEnabled)
 %attribute(massif::TerrainOptions, bool, ElevationPrefetchEnabled, isElevationPrefetchEnabled, setElevationPrefetchEnabled)
 %attribute(massif::TerrainOptions, int, MeshResolution, getMeshResolution, setMeshResolution)
+%attribute(massif::TerrainOptions, float, SubdivideDistance, getSubdivideDistance, setSubdivideDistance)
+%attribute(massif::TerrainOptions, int, PostProcessDownscale, getPostProcessDownscale, setPostProcessDownscale)
 %attribute(massif::TerrainOptions, bool, TileEdgeStitchingEnabled, isTileEdgeStitchingEnabled, setTileEdgeStitchingEnabled)
+%attribute(massif::TerrainOptions, int, MeshCacheSize, getMeshCacheSize, setMeshCacheSize)
+%attribute(massif::TerrainOptions, bool, SharedGroundEnabled, isSharedGroundEnabled, setSharedGroundEnabled)
 %attribute(massif::TerrainOptions, bool, DrapeFillsEnabled, isDrapeFillsEnabled, setDrapeFillsEnabled)
 %attribute(massif::TerrainOptions, bool, DrapeLinesEnabled, isDrapeLinesEnabled, setDrapeLinesEnabled)
 %attribute(massif::TerrainOptions, bool, Bridges3DEnabled, isBridges3DEnabled, setBridges3DEnabled)
@@ -59,7 +65,10 @@
 %attributeval(massif::TerrainOptions, massif::Color, BackgroundColor, getBackgroundColor, setBackgroundColor)
 %attribute(massif::TerrainOptions, float, ViewDistanceFactor, getViewDistanceFactor, setViewDistanceFactor)
 %attribute(massif::TerrainOptions, float, ViewDistance, getViewDistance, setViewDistance)
+%attribute(massif::TerrainOptions, float, ViewDistanceMax, getViewDistanceMax, setViewDistanceMax)
 %attribute(massif::TerrainOptions, int, DrapeCacheSize, getDrapeCacheSize, setDrapeCacheSize)
+// Elevation grid cache, megabytes. Raise it for a wide view (panorama): its working set outgrows the default and every eviction is refetched.
+%attribute(massif::TerrainOptions, int, ElevationCacheSize, getElevationCacheSize, setElevationCacheSize)
 %attribute(massif::TerrainOptions, int, DrapeWorkingSet, getDrapeWorkingSet, setDrapeWorkingSet)
 %attribute(massif::TerrainOptions, int, MaxTileZoomCoarsening, getMaxTileZoomCoarsening, setMaxTileZoomCoarsening)
 %attribute(massif::TerrainOptions, float, DepthBias, getDepthBias, setDepthBias)
@@ -67,9 +76,14 @@
 // existed in C++ only, so no binding could get a camera close to a slope - which is exactly what
 // composing a 3D view needs.
 %attribute(massif::TerrainOptions, float, CameraClearance, getCameraClearance, setCameraClearance)
+// 0 makes CameraClearance a fixed height, as a first-person view needs.
+%attribute(massif::TerrainOptions, float, CameraClearanceFraction, getCameraClearanceFraction, setCameraClearanceFraction)
+%attribute(massif::TerrainOptions, float, FocusLift, getFocusLift, setFocusLift)
 %attribute(massif::TerrainOptions, float, CameraClampDuration, getCameraClampDuration, setCameraClampDuration)
 %attribute(massif::TerrainOptions, bool, BillboardOcclusionEnabled, isBillboardOcclusionEnabled, setBillboardOcclusionEnabled)
 %attribute(massif::TerrainOptions, float, BillboardOcclusionTolerance, getBillboardOcclusionTolerance, setBillboardOcclusionTolerance)
+%attribute(massif::TerrainOptions, float, NormalSampleDistance, getNormalSampleDistance, setNormalSampleDistance)
+%attribute(massif::TerrainOptions, int, MaxZoom, getMaxZoom, setMaxZoom)
 %attribute(massif::TerrainOptions, float, TextOcclusionOpacity, getTextOcclusionOpacity, setTextOcclusionOpacity)
 %attributestring(massif::TerrainOptions, std::string, SurfaceShaderSource, getSurfaceShaderSource, setSurfaceShaderSource)
 %std_exceptions(massif::TerrainOptions::TerrainOptions)

@@ -9,13 +9,14 @@ slug: /release-workflow
 The docs (and API reference) publish themselves. A GitHub Actions workflow rebuilds and deploys to
 GitHub Pages:
 
-- on every **push to `master`** that touches docs, the SDK API surface or the workflow itself,
+- on every **push to `master`** that touches `docs/`, `website/`, `scripts/docs/` or the workflow itself,
 - on every **published GitHub Release**,
+- **nightly** (so `/roadmap` picks up issue changes),
 - and **manually** via *Run workflow* (workflow_dispatch).
 
 ## What the workflow does
 
-1. Checks out the repo **with submodules** (`libs-massif`, `libs-external`).
+1. Checks out the repo **with submodules** (`libs-external`; `libs-massif` is in-tree).
 2. Generates the **Android Javadoc** and **iOS Jazzy** reference from the SWIG bindings into
    `website/static/api/{android,ios}`.
 3. Builds the **Docusaurus** site (`npm ci && npm run build`).

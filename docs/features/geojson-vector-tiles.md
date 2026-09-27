@@ -31,7 +31,7 @@ import com.massifmaps.layers.VectorTileLayer
 
 val source = GeoJSONVectorTileDataSource(0, 24).apply {
     simplifyTolerance = 1.0f      // tile pixels
-    defaultLayerBuffer = 4f       // FRACTION of a tile, not pixels (see below)
+    defaultLayerBuffer = 4f       // tile pixels, for layers created afterwards
 }
 
 val routes = source.createLayer("routes")          // returns the layer index
@@ -70,12 +70,7 @@ Style it by layer name, like any other vector source:
 | `setLayerFeatureCollection(index, projection, collection)` | replace it from SDK geometry |
 | `addGeoJSONFeature` / `updateGeoJSONFeature` / `removeGeoJSONFeature` | incremental edits (also `…StringFeature`) |
 | `SimplifyTolerance` | Douglas-Peucker tolerance, in **tile pixels** |
-| `DefaultLayerBuffer` | tile overflow, as a fraction of a tile (default `4`) |
-
-:::caution The layer buffer is a fraction of a tile
-`DefaultLayerBuffer` is a **fraction of a tile**, not pixels as older doc comments said. `64` wraps
-the internal `uint16` to zero.
-:::
+| `DefaultLayerBuffer` | tile overflow, in **tile pixels** of a 256-px tile (default `4`); applies to layers created afterwards |
 
 ## Why it changed
 

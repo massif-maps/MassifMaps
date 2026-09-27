@@ -18,12 +18,12 @@ You control:
 
 - the style of the cluster object — including generating it from the count;
 - the minimum distance, in pixels, before two objects merge;
-- the minimum zoom clusters form at;
+- the zoom above which clusters break up into their elements (`maximumClusterZoom`);
 - what a tap does — zoom in, or expand the cluster in place (useful up to about four objects).
 
 ## The layer
 
-`ClusteredVectorLayer` wraps a `VectorDataSource` and a **cluster element builder**. The source
+`ClusteredVectorLayer` wraps a `LocalVectorDataSource` and a **cluster element builder**. The source
 must hold *all* the elements, not just those in the current view — clustering is done over the
 whole set, not the visible one.
 
@@ -69,7 +69,7 @@ bitmap per call is what makes clustering feel slow. One style per *count* is eno
 class CountClusterBuilder extends ClusterElementBuilder {
 
     private final Map<Integer, MarkerStyle> styles = new HashMap<>();
-    private final android.graphics.Bitmap base;
+    private android.graphics.Bitmap base;   // the empty cluster marker, loaded before first use
 
     @Override
     public VectorElement buildClusterElement(MapPos pos, VectorElementVector elements) {
@@ -138,7 +138,7 @@ The builder runs on a background thread, so it must not touch UI state directly.
 with the object API and [`adopt`](/docs/api/#bringing-an-existing-app-across) it:
 
 ```java
-MassifLayer clustered = Massif.adopt("layer", "sites", layer);
+MassifLayer clustered = Massif.adopt("sites", layer);
 clustered.set("opacity", 0.9);
 ```
 :::

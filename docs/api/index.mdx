@@ -58,21 +58,21 @@ map.camera().moveTo(new Position(6.8652, 45.8326), 11);
 <TabItem value="swift" label="Swift">
 
 ```swift
-let map = MassifMap.attach(mapView)
+let map = MassifMap.attach(mapView)!
 
-map.addLayer("basemap", Spec("raster")
-    .set("source", Spec("http")
-        .set("url", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
-        .set("maxZoom", 19)))
+try map.addLayer("basemap", spec: Spec.of("raster")
+    .set("source", value: Spec.of("http")
+        .set("url", value: "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+        .set("maxZoom", value: 19)))
 
-map.camera().moveTo(Position(6.8652, 45.8326), zoom: 11)
+map.camera.move(to: MSFPosition(lng: 6.8652, lat: 45.8326), zoom: 11)
 ```
 
 </TabItem>
 <TabItem value="ts" label="TypeScript (NativeScript)">
 
 ```ts
-const map = host.map;
+const map = api.attach(mapView);   // import { api } from '@nativescript-community/ui-massifmaps'
 
 map.addLayer('basemap', {
     type: 'raster',
@@ -101,7 +101,7 @@ Positions are **longitude first**, matching GeoJSON and the wire format.
 ## Kinds and ids
 
 Every object belongs to a **kind** — the namespace its id lives in, and the set of spec types it
-can be built from. There are thirteen, one page each in the reference:
+can be built from. There are sixteen, one page each in the reference:
 
 | Kind | What it holds |
 |---|---|
@@ -113,6 +113,7 @@ can be built from. There are thirteen, one page each in the reference:
 | [`geometry`](reference/geometry.md) / [`feature`](reference/feature.md) | shapes and shapes-with-properties |
 | [`search`](reference/search.md) / [`routing`](reference/routing.md) / [`geocoding`](reference/geocoding.md) | services and their requests |
 | [`data`](reference/data.md) | raw bytes |
+| [`projection`](reference/projection.md) / [`bitmap`](reference/bitmap.md) | coordinate systems, and images |
 
 An id is the app's own name — `"basemap"`, `"routes"`, `"pin"` — and is how one object reaches
 another without holding a reference to it:
@@ -151,20 +152,20 @@ Anything readable or writable is one path, and the path traverses `OBJECT` prope
 ```java
 map.set("fog.rangeStart", 1.2);
 map.set("terrain.exaggeration", 1.4);
-map.fog().apply(Map.of("enabled", true, "rangeEnd", 4.0));   // one crossing, not three
+map.fog().apply(Spec.object().set("enabled", true).set("rangeEnd", 4.0));   // one crossing, not three
 
-double tilt = map.getDouble("camera.tilt");
+float tilt = map.camera().tilt();
 ```
 
 </TabItem>
 <TabItem value="swift" label="Swift">
 
 ```swift
-map.set("fog.rangeStart", 1.2)
-map.set("terrain.exaggeration", 1.4)
-map.fog().apply(["enabled": true, "rangeEnd": 4.0])
+map.set("fog.rangeStart", value: 1.2)
+map.set("terrain.exaggeration", value: 1.4)
+map.fog.apply(Spec.object().set("enabled", value: true).set("rangeEnd", value: 4.0))
 
-let tilt = map.getDouble("camera.tilt")
+let tilt = map.camera.currentTilt
 ```
 
 </TabItem>
@@ -175,13 +176,13 @@ map.set('fog.rangeStart', 1.2);
 map.set('terrain.exaggeration', 1.4);
 map.fog().apply({ enabled: true, rangeEnd: 4.0 });
 
-const tilt = map.getDouble('camera.tilt');
+const tilt = map.camera().tilt();
 ```
 
 </TabItem>
 </Tabs>
 
-A **group** (`map.fog()`, `layer.style()`) is only a path prefix — there are no 700 hand-written
+A **group** (`map.fog()`, `map.group("terrain")`) is only a path prefix — there are no 700 hand-written
 accessors behind it, and `apply` hands the whole object over in one call rather than looping.
 
 ## Events

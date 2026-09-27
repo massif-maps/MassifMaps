@@ -54,8 +54,7 @@ public final class DemoConfig {
     public static StyleSource STYLE_SOURCE = StyleSource.INLINE;
 
     /** Render the map on a sphere instead of the Mercator plane (Options.setRenderProjectionMode).
-     *  Terrain, shadows and the sky's up vector are still planar-only, so the globe currently
-     *  shows 2D content alone - see docs/internals/rendering/18-globe.md. */
+     *  What works on the globe: docs/internals/rendering/18-globe.md. */
     public static boolean GLOBE_MODE = false;
 
     // =============================================================================================
@@ -148,8 +147,6 @@ public final class DemoConfig {
     public static String LANDFORM_CACHE_DB = "landform.db";
     public static int LANDFORM_MIN_ZOOM = 0;
     public static int LANDFORM_MAX_ZOOM = 14;
-    /** Single-pass segmented rendering (A/B switch of the composite renderer). */
-    public static boolean COMPOSITE_SINGLE_PASS = true;
     /** Per-source zoom bias: +1 fetches the DEM one zoom deeper than the base map. */
     public static float COMPOSITE_HILLSHADE_ZOOM_BIAS = 0f;
 
@@ -1251,7 +1248,6 @@ public final class DemoConfig {
         LANDFORM_URL = DemoCfg.cfgStr("landformUrl", LANDFORM_URL);
         LANDFORM_SLOT = DemoCfg.cfgStr("landformSlot", LANDFORM_SLOT);
         LANDFORM_MAX_ZOOM = DemoCfg.cfgInt("landformMaxZoom", LANDFORM_MAX_ZOOM);
-        COMPOSITE_SINGLE_PASS = DemoCfg.cfgBool("singlePass", COMPOSITE_SINGLE_PASS);
         COMPOSITE_HILLSHADE_ZOOM_BIAS = DemoCfg.cfgFloat("hsBias", COMPOSITE_HILLSHADE_ZOOM_BIAS);
 
         // sources

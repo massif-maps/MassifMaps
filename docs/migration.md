@@ -28,7 +28,7 @@ removed entirely — see [What was removed](#what-was-removed).
 // before
 implementation 'com.carto:carto-mobile-sdk:4.4.+'
 // after — JitPack overrides the declared groupId, so the coordinate is the GitHub path
-implementation 'com.github.massif-maps:MassifMaps-android-aar:6.0.0'
+implementation 'com.github.massif-maps:MassifMaps-android-aar:6.0.2'
 ```
 
 On iOS the CocoaPod is replaced by a Swift package:
@@ -139,7 +139,7 @@ Both now default to `false`, which is their own declared default.
 | Before | After |
 |---|---|
 | logcat tag `carto-mobile-sdk` | `massif` |
-| `adb shell setprop debug.carto.*` | `debug.massif.*` |
+| `adb shell setprop debug.carto.*` | `debug.massif.*`, read only by builds with `-DMASSIF_DEBUG_PROPERTIES=1` (the demo app) — see [runtime switches](internals/rendering/10-performance.md#runtime-switches-no-rebuild) |
 | demo app `com.akylas.cartotest` | `com.massifmaps.MassifDemo` |
 | demo `--es style nuti` | `--es style project` (`--es demo nuti` still accepted) |
 | demo `--es nutiInterval` | `--es paramInterval` |
@@ -155,9 +155,6 @@ the product. There is **no renamed equivalent**; bring your own source.
 | CARTO offline map packages and their `PackageManager` endpoints | your own package server, [MBTiles](/docs/guides/offline-maps) or [PMTiles](/docs/features/pmtiles) |
 | CARTO hosted routing and geocoding endpoints | the embedded Valhalla / SGRE engines, or any HTTP service |
 | CARTO API keys and the mobile app registration flow | nothing — there is no key to set |
-
-Guides carried over from the CARTO documentation that still use these classes carry a warning
-banner at the top.
 
 ## Breaking changes after 6.0.0
 
@@ -365,7 +362,7 @@ are also tinted by `sunColor` now, which is what makes a facade go warm at dusk 
 behind it.
 
 The three `Options` properties still exist and still drive the normal-map illumination default and
-the spherical-mode 2D lighting; they simply no longer reach tile extrusions. `Polygon3DLayer`
+the spherical-mode 2D lighting; they simply no longer reach tile extrusions. `Polygon3D`
 elements are unaffected — they have their own renderer and their own lighting.
 
 Styles keep both overrides: `building-light-intensity` and `building-ambient` in the `Map` block
@@ -405,7 +402,7 @@ carry them. All default to the previous flat-capped, sharp-edged geometry.
 
 ### Java enums are int constants (Android only)
 
-The 31 generated Java `enum` classes are now **classes of `int` constants**, annotated with
+The generated Java `enum` classes are now **classes of `int` constants**, annotated with
 `@IntDef` — the shape Android's own APIs use. iOS and .NET are unchanged: Objective-C already
 emitted `typedef NS_ENUM`, and C# enums cost nothing to wrap.
 
@@ -587,15 +584,15 @@ invalidate a stored camera.
 | `Options.tileThreadPoolSize` | 1 | **2** | tangram's `numTileWorkers`. One made tiles arrive late enough to be seen arriving |
 | `Options.tileLODFactor` | 1.0 | **0.5** | half a nominal tile of screen area per level |
 | `TerrainOptions.meshResolution` | 32 | **64** | tangram's value. 32 leaves draped content visibly floating; 128 cost 8.5 fps against 15.2 |
-| `TerrainOptions.cameraClearance` | 200 m | **60 m** | 200 stops the camera short of the surface, so a close approach swings into the nearest hillside |
-| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0** | a label goes out when its anchor goes behind the relief |
+| `TerrainOptions.cameraClearance` | 200 m | **0** | 200 stopped a close approach short of the surface. It was 60 m here; it is now a floor added to mapbox's zoom-relative clearance (`cameraClearanceFraction`) |
+| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0.2** | measured at Grenoble: 0 drops POIs on slopes facing the camera, because the anchor and the surface drawn under it never agree exactly |
 | `LightOptions.ambientIntensity` | 0.35 | **1.0** | both of these only apply once terrain lighting is on |
-| `LightOptions.shadowStrength` | 0 | **0.3** | ↑ |
+| `LightOptions.shadowStrength` | 0 | **1.0** | ↑ — mapbox's `shadow-intensity`; it was 0.3 here until #208 |
 | `LightOptions.shadowBias` | 0.25 | **1.0** | 0.25 leaves acne on a lit slope at 3 cascades |
 | `HillshadeRasterTileLayer.heightScale` | 1.0 | **0.05** | at 1.0 real DEM relief saturates and the shading reads as a stencil |
 | `HillshadeRasterTileLayer.hillshadeMethod` | `STANDARD` | **`IGOR`** | keeps slopes readable under imagery |
 | `HillshadeRasterTileLayer.illuminationMapRotationEnabled` | true | **false** | turning the map should not relight the terrain |
-| `ContourTileDataSource.seamlessEdges` | off | **on** | without it a traced line stops dead at every tile border |
+| `ContourTileDataSource.seamlessEdgesEnabled` | off | **on** | without it a traced line stops dead at every tile border |
 | `ContourTileDataSource.minVisibleZoom` | 12 | **5** | the interval ladder already coarsens a regional view |
 | `ContourTileDataSource.simplifyTolerance` | 1.0 | **1.5** | |
 

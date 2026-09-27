@@ -14,10 +14,8 @@
 namespace massif {
 
     /**
-     * The light an hour implies, and what it does to flat ground. Free of Options, of Color and of
-     * the renderer on purpose - this is the arithmetic, so it is the part worth testing on the host.
-     * See resolveLighting in StyleEnvironment.cpp and
-     * docs/internals/rendering/08-lighting-sky-fog.md.
+     * The light an hour implies, and what it does to flat ground; dependency-free so it runs in host tests.
+     * See resolveLighting in StyleEnvironment.cpp and docs/internals/rendering/08-lighting-sky-fog.md.
      */
     struct DayCycleLight {
         /** One of MapBox Standard's light setups, as its `lights` block states them. sRGB 0-1. */
@@ -28,14 +26,12 @@ namespace massif {
             float directIntensity;
         };
 
-        // Standard's own values. dawn hsl(28,98%,93%)/hsl(33,98%,77%), day white/white,
-        // dusk hsl(228,27%,29%)/hsl(30,98%,76%).
+        // Standard's values: dawn hsl(28,98%,93%)/hsl(33,98%,77%), day white/white, dusk hsl(228,27%,29%)/hsl(30,98%,76%).
         static constexpr Setup DAY   = { { 1.0000f, 1.0000f, 1.0000f }, 0.80f, { 1.0000f, 1.0000f, 1.0000f }, 0.20f };
         static constexpr Setup DAWN  = { { 0.9986f, 0.9254f, 0.8614f }, 0.75f, { 0.9954f, 0.7925f, 0.5446f }, 0.50f };
         static constexpr Setup DUSK  = { { 0.2117f, 0.2430f, 0.3683f }, 0.80f, { 0.9952f, 0.7600f, 0.5248f }, 0.20f };
-        // NIGHT's ambient is deliberately NOT Standard's hsl(217,100%,11%): their night preset keeps
-        // an artistic moon 30 degrees up whatever the hour, which a real sun direction drops. The
-        // moon is folded into the ambient instead - the curve reproduces what Standard RENDERS.
+        // Not Standard's hsl(217,100%,11%): its night keeps a moon light 30 deg up that a real sun
+        // direction drops, so the moon is folded into the ambient to match what Standard renders.
         static constexpr Setup NIGHT = { { 0.2745f, 0.3010f, 0.4115f }, 0.50f, { 0.2465f, 0.2683f, 0.3335f }, 0.50f };
 
         /** One light anchored on a sun height. A list of these is the whole curve. */
@@ -44,9 +40,7 @@ namespace massif {
             Setup light;
         };
 
-        // The built-in curve as stops - MapBox Standard's own, and the shape of any replacement.
-        // The doubled twilight stop is what holds the preset flat from 3 to 12 degrees, so the sun
-        // passes THROUGH dusk instead of crossing it.
+        // MapBox Standard's curve. The doubled twilight stop holds the preset flat from 3 to 12 degrees.
         static constexpr Stop DUSK_CURVE[4] = { { -9.0f, NIGHT }, { 3.0f, DUSK }, { 12.0f, DUSK }, { 38.0f, DAY } };
         static constexpr Stop DAWN_CURVE[4] = { { -9.0f, NIGHT }, { 3.0f, DAWN }, { 12.0f, DAWN }, { 38.0f, DAY } };
 
@@ -59,13 +53,8 @@ namespace massif {
         }
 
         /**
-         * The light a given sun height implies, read off a curve of stops sorted by altitude.
-         *
-         * Below the first stop and above the last the curve holds; between two it smoothsteps, in
-         * LINEAR colour space - mixed in sRGB the midpoints go muddy. The stops are what an app
-         * replaces to change the whole map's palette at every hour: everything downstream (the 2D
-         * grade, the 3D lighting, the brightness a style ramps over) is derived from the light this
-         * returns, so one list drives all of it.
+         * The light a sun height implies, from stops sorted by altitude: clamped at the ends, smoothstep
+         * between, mixed in linear colour space (sRGB midpoints go muddy).
          */
         static Setup atSunHeight(const Stop* stops, std::size_t count, float altitudeDegrees) {
             if (count == 0) {
@@ -95,13 +84,8 @@ namespace massif {
         }
 
         /**
-         * The built-in curve: MapBox Standard's four light setups, anchored where the sun ACTUALLY
-         * IS at each of those hours - night below -9, twilight through 3 to 12, day from 38 up -
-         * not at the light directions Standard states (its `dawn` block points a light 40 degrees
-         * up, which in a real day cycle is mid-morning). An hour of 12 then lands on `day` and 19
-         * on `dusk` without a style stating either.
-         *
-         * `rising` picks dawn over dusk at the same height; nothing else distinguishes them.
+         * The built-in curve, anchored where the sun really is at each preset's hour, not at Standard's
+         * stated light directions. `rising` picks dawn over dusk at the same height.
          */
         static Setup atSunHeight(float altitudeDegrees, bool rising) {
             const Stop* curve = rising ? DAWN_CURVE : DUSK_CURVE;
@@ -109,12 +93,8 @@ namespace massif {
         }
 
         /**
-         * mapbox's `calculateLightsBrightness` (3d-style/style/style.ts), which is what their
-         * `["measure-light", "brightness"]` reads: the mean of the two lights' relative luminance,
-         * the directional one weighted by how high the sun is. `sunUp` is the sun direction's z.
-         *
-         * Their own values are day 0.478, dawn 0.396, dusk 0.027, night 0.014 - the numbers a
-         * Standard label's emissive ramp is written against, so ours has to land on them.
+         * mapbox's `calculateLightsBrightness` (3d-style/style/style.ts), read by `["measure-light", "brightness"]`.
+         * `sunUp` is the sun direction's z. Must land on their day 0.478 / dawn 0.396 / dusk 0.027 / night 0.014.
          */
         static float brightness(const Setup& light, float sunUp) {
             // W3C relative luminance, which is NOT the 2.2 gamma the radiance uses.
@@ -134,13 +114,9 @@ namespace massif {
         }
 
         /**
-         * How much of the light is DIRECT, which is all a shadow can take away: mapbox's
-         * `calculateGroundShadowFactor` (3d-style/render/shadow_utils.ts) states the complement -
-         * their fully shadowed ground keeps `ambient / (ambient + direct)`. Collapsed to one
-         * scalar, because the shadow strength is one uniform rather than a per-channel tint.
-         *
-         * `sunUp` is the sun direction's z, so this is 0 once the sun is under the horizon: no
-         * direct light, no shadow, whatever strength the application asked for.
+         * The direct share of the light, all a shadow can remove: complement of mapbox's
+         * `calculateGroundShadowFactor` (3d-style/render/shadow_utils.ts), as one scalar.
+         * `sunUp` is the sun direction's z, so this is 0 below the horizon.
          */
         static float directShare(const Setup& light, float sunUp) {
             auto luminance = [](const float channels[3], float intensity) {
@@ -156,11 +132,8 @@ namespace massif {
         }
 
         /**
-         * mapbox's `calculateGroundRadiance` (3d-style/render/lights.ts) with the ground normal:
-         * what a light does to a flat, upward-facing surface. `sunUp` is the sun direction's z.
-         *
-         * Returned in sRGB, as their linearVec3TosRGB does - the sum is LINEAR light and it
-         * multiplies an sRGB colour. Left linear it is five times too dark at dusk.
+         * mapbox's `calculateGroundRadiance` (3d-style/render/lights.ts) for an upward-facing surface.
+         * `sunUp` is the sun direction's z. Returned in sRGB: the sum is linear but multiplies an sRGB colour.
          */
         static void groundRadiance(const Setup& light, float sunUp, float radiance[3]) {
             float ambient[3], direct[3];
@@ -168,8 +141,7 @@ namespace massif {
                 ambient[i] = std::pow(light.ambient[i], 2.2f) * light.ambientIntensity;
                 direct[i] = std::pow(light.direct[i], 2.2f) * light.directIntensity;
             }
-            // The sky is brighter near the sun; a ground normal never faces away, so this is 1
-            // whenever the sun is up.
+            // Sky is brighter near the sun; for a ground normal this is 1 whenever the sun is up.
             float luminance = 0.2126f * direct[0] + 0.7152f * direct[1] + 0.0722f * direct[2];
             float minFactor = 1.0f - 0.3f * std::min(luminance, 1.0f);
             float ambientDirectional = minFactor + (1.0f - minFactor) * std::min(sunUp + 1.0f, 1.0f);

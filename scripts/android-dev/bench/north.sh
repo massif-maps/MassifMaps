@@ -5,7 +5,7 @@ ANDROID_SERIAL="${ANDROID_SERIAL:?set it to the device serial}"; export ANDROID_
 LABEL="$1"; shift
 adb shell am force-stop com.massifmaps.MassifDemo >/dev/null 2>&1
 adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
-adb shell am start -n com.massifmaps.MassifDemo/.MainActivity --es ui false \
+adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false \
   --es contour true --es hs true \
   --es anim pan --es animDelay 40000 --es animDuration 25 --es animLonDelta 0 --es animLatDelta 0.06 \
   "$@" >/dev/null 2>&1

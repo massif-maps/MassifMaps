@@ -19,11 +19,8 @@
 namespace massif { namespace api {
 
     /**
-     * Registers an event's data as a payload, emits, and drops the id again.
-     *
-     * The payload is a real registry object only for the duration of the emit, so it can be read
-     * with the property verbs. A queued handler keeps it alive through the normal retain, so
-     * dropping the id here does not free it early.
+     * Registers an event's data as a payload, emits, and drops the id again. A queued handler
+     * keeps the payload alive through the normal retain.
      */
     class PayloadEmitter {
     public:
@@ -41,15 +38,8 @@ namespace massif { namespace api {
     };
 
     /**
-     * Turns the map's listener callbacks into facade events.
-     *
-     * `BaseMapView` has a single listener slot, so this **chains**: whatever the app already
-     * installed keeps being called, before the event is emitted. Otherwise adopting the facade
-     * would silently disconnect an app's existing handlers.
-     *
-     * The payload is a real registry object for the duration of the emit - registered, emitted,
-     * then dropped. A queued handler holds it alive through the normal retain, so the id going
-     * away does not free it early.
+     * Turns the map's listener callbacks into facade events. `BaseMapView` has a single listener
+     * slot, so this chains: the app's existing listener is still called, before the emit.
      */
     class MapEventBridge : public MapEventListener {
     public:
@@ -76,10 +66,8 @@ namespace massif { namespace api {
     };
 
     /**
-     * The same for a vector tile layer's clicks, which is where a feature payload comes from.
-     *
-     * onVectorTileClicked returns whether the click was handled, so a subscription that asked to
-     * consume decides it - that is what the consume flag is for.
+     * The same for a vector tile layer's clicks; a consuming subscription decides whether
+     * onVectorTileClicked reports the click handled.
      */
     class VectorTileEventBridge : public VectorTileEventListener {
     public:

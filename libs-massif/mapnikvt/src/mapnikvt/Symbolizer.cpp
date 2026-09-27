@@ -28,6 +28,11 @@ namespace massif::mvt {
         return _propertyMap.size() > 0;
     }
 
+    bool Symbolizer::isPropertyDefined(const std::string& name) const {
+        auto it = _propertyMap.find(name);
+        return it != _propertyMap.end() && it->second->isDefined();
+    }
+
     const Property* Symbolizer::getProperty(const std::string& name) const {
         auto it = _propertyMap.find(name);
         if (it == _propertyMap.end()) {

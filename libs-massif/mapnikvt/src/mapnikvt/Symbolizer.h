@@ -31,6 +31,7 @@ namespace massif::mvt {
         Property* getProperty(const std::string& name);
         const Property* getProperty(const std::string& name) const;
         const bool hasProperties() const;
+        bool isPropertyDefined(const std::string& name) const;
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const = 0;
 

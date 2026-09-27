@@ -135,8 +135,8 @@ works in **2D and over [3D terrain](/docs/features/3d-terrain)**.
 
 ## Known limitations & follow-ups
 
-- The master style is decoded once **per style-layer group** (groups = external slots + 1). A
-  single-pass renderer (one decode) is a scoped follow-up.
+- Each style-layer group (groups = external slots + 1) builds only its own styles, but parses the
+  tile again. A single-pass renderer (one parse) is a scoped follow-up.
 - `raster-comp-op` is parsed but not yet applied.
 - New API surfaces via SWIG — regenerate proxies (`swigpp-*.py`) when building from source:
   `CompositeVectorTileLayer` and `HillshadeRasterTileLayer.Exaggeration`.

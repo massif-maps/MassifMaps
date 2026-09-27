@@ -17,6 +17,7 @@ void testViewStateProperty();
 void testFontNames();
 void testValueJSON();
 void testAnchorLabelId();
+void testSymbolizerProperty();
 
 int main() {
     testLayerConfig();
@@ -30,6 +31,7 @@ int main() {
     testFontNames();
     testValueJSON();
     testAnchorLabelId();
+    testSymbolizerProperty();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

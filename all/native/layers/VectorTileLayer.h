@@ -18,6 +18,7 @@
 #include <atomic>
 #include <memory>
 #include <map>
+#include <regex>
 
 #include <stdext/timed_lru_cache.h>
 
@@ -161,7 +162,7 @@ namespace massif {
         std::string getRendererLayerFilter() const;
         /**
          * Sets the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names.
-         * If non-empty, then only layers that pass the filter are rendered.
+         * If non-empty, then only layers that pass the filter are decoded and rendered.
          * @param filter The new renderer layer filter.
          * @throws std::runtime_error If the filter expression is not valid.
          */
@@ -310,6 +311,7 @@ namespace massif {
         std::atomic<float> _labelBlendingSpeed;
         std::atomic<float> _labelPerspectiveScaling;
         std::string _rendererLayerFilter;
+        std::shared_ptr<const std::regex> _rendererLayerFilterRe;
         std::string _clickHandlerLayerFilter;
 
         std::atomic<bool> _tileMapsMode;

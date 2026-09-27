@@ -87,10 +87,12 @@ source added with `addVectorDataSource` draws over the roads and under the label
 
 ## What could be better
 
-- **One decode per style-layer group.** The master style is decoded once per group (groups = slots
-  + 1), so a style with three external slots decodes every tile four times. A single-pass renderer
-  that filters at draw time instead of at build time is the fix; it is blocked on
-  `rendererLayerFilter` being baked into the tile build, which is why the split exists at all.
+- **One protobuf parse per style-layer group.** Each group builds only the styles its filter
+  passes (`rendererLayerFilter` reaches `TileReader::setStyleFilter`), plus every style that sets
+  `elevation-mode`: `SpanResolver` reads span records from all of a tile's layers, and a label group
+  rides the decks a road group draws. What each group still repeats is the tile parse. A single-pass
+  renderer that filters at draw time would remove it; it is blocked on `rendererLayerFilter` being
+  baked into the tile build, which is why the split exists at all.
 - **Fold the terrain-derived paint into the ground draw**, as tangram does — a hillshade slot would
   then cost no tile set and no extra pass. Round 26 of the
   [performance log](../performance-log.md) measured the opposite arrangement (contours as an extra

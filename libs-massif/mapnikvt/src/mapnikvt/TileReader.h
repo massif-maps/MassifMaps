@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include <regex>
 #include <unordered_map>
 #include <set>
 #include <vector>
@@ -39,6 +40,9 @@ namespace massif::mvt {
         // styleZoom is the zoom the RULES are matched at, which is the tile's own zoom unless the
         // tile stands in for a finer one the camera asked for (see TileStyleZoom.h).
         virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId, int styleZoom) const;
+
+        // Styles whose name the filter rejects are not built. The filter must outlive the reader.
+        void setStyleFilter(const std::regex* styleFilter) { _styleFilter = styleFilter; }
 
     protected:
         explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger);
@@ -74,6 +78,7 @@ namespace massif::mvt {
         const SymbolizerContext& _symbolizerContext;
         const std::shared_ptr<Logger> _logger;
         const std::shared_ptr<const Filter> _trueFilter;
+        const std::regex* _styleFilter = nullptr;
         // Per LAYER for the life of this reader, which is one tile: the anchor pass reads the whole
         // layer, and a layer two extruding styles draw would otherwise read it twice.
         mutable std::map<const Layer*, std::shared_ptr<const std::unordered_map<long long, std::vector<vt::ExtrusionAnchor>>>> _extrusionAnchors;

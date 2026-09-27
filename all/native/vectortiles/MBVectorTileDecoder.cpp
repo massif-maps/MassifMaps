@@ -787,7 +787,7 @@ namespace massif {
         return std::make_shared<VectorTileFeatureCollection>(tileFeatures);
     }
 
-    std::shared_ptr<MBVectorTileDecoder::TileMap> MBVectorTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData) const {
+    std::shared_ptr<MBVectorTileDecoder::TileMap> MBVectorTileDecoder::decodeTile(const vt::TileId& tile, const vt::TileId& targetTile, int styleZoom, const std::shared_ptr<vt::TileTransformer>& tileTransformer, const std::shared_ptr<BinaryData>& tileData, const std::regex* layerFilter) const {
         if (!tileData) {
             Log::Warn("MBVectorTileDecoder::decodeTile: Null tile data");
             return std::shared_ptr<TileMap>();
@@ -812,6 +812,7 @@ namespace massif {
 
             mvt::LayerTileReader reader(map, tileTransformer, *symbolizerContext, *decoder, _logger);
             reader.setLayerNameOverride(layerNameOverride);
+            reader.setStyleFilter(layerFilter);
 
             if (std::shared_ptr<vt::Tile> tile = reader.readTile(targetTile, styleZoom)) {
                 auto tileMap = std::make_shared<TileMap>();

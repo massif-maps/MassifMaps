@@ -2222,3 +2222,27 @@ The first A/B of these two appeared to show a 2x REGRESSION (`node/enc` 60.4 -> 
 nothing of the kind: `boxTexelsPerCall` was 22705 against 47790, so the two arms had encoded
 different tiles. **Normalise DEM numbers by box texels or do not report them** - the workload is
 data-driven and does not repeat between launches.
+
+## 31. A composite layer decoded its whole style once per group (2026-09-27)
+
+HLTE556N (e-ink phone), `-PprofileRender`, alpimaps cold start at Grenoble z13.8 flat: a
+`CompositeVectorTileLayer` with a `hillshade` and a `contour` slot, so three style groups over one
+merged `europe.mbtiles` source. A temporary probe timed `decodeTile` per task.
+
+The complaint: labels, POIs and routes land late. The three groups shared the data source AND the
+decoder, and each built every style of the tile - `rendererLayerFilter` only dropped the other
+groups' layers at draw time. Same bytes, same cost, three times.
+
+| | first fetch -> last vector decode | decode CPU, 9 tiles |
+|---|---|---|
+| before (3 runs; CPU 1 run) | 1.63 / 1.68 / 1.71 s | 3572 ms |
+| filter reaches the decoder (3 runs) | 0.89 / 0.93 / 0.94 s | 1586 / 1643 / 1747 ms |
+
+The settled frame differs from the old build only in label placement, less than two old-build
+launches differ from each other. What each group still repeats is the protobuf parse - see
+[09-composite-layer.md](rendering/09-composite-layer.md#what-could-be-better).
+
+Wrongly blamed first, both ruled out by probes: a surface-arrival cache wipe (`TileLayer::loadData`
+clears on a new `GLResourceManager`, but at startup it fires before the first fetch) and a
+visible/preload cancel-and-refetch (no cancel fired). Each tile id showed up 2-3 times in the loads
+only because three layers fetched it.

@@ -12,6 +12,17 @@
 
 namespace massif::mvt {
     namespace {
+        bool hasElevationMode(const Style& style) {
+            for (const std::shared_ptr<const Rule>& rule : style.getRules()) {
+                for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
+                    if (symbolizer->isPropertyDefined("elevation-mode")) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         // A value the selecting parameter cannot be equal to, to fold the comparison the other way.
         // '=' calls two values of unrelated types unequal, so a string does for everything that is
         // not one, and a longer string does for a string.
@@ -63,6 +74,12 @@ namespace massif::mvt {
 
                 const std::shared_ptr<Style>& style = _map->getStyle(styleName);
                 if (!style) {
+                    continue;
+                }
+
+                // A filtered-out style still builds if it can lift a deck: labels of every style read its span chords.
+                if (_styleFilter && !std::regex_match(styleName, *_styleFilter) && !hasElevationMode(*style)) {
+                    styleIdx++;
                     continue;
                 }
 

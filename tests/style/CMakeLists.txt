@@ -42,6 +42,7 @@ add_executable(style_tests
   FontNamesTest.cpp
   ValueJSONTest.cpp
   AnchorLabelIdTest.cpp
+  SymbolizerPropertyTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

@@ -62,6 +62,7 @@ namespace massif {
         _labelBlendingSpeed(vt::DEFAULT_LABEL_BLENDING_SPEED),
         _labelPerspectiveScaling(0.5f),
         _rendererLayerFilter(),
+        _rendererLayerFilterRe(),
         _clickHandlerLayerFilter(),
         _tileMapsMode(false),
         _tileDecoder(decoder),
@@ -208,6 +209,7 @@ namespace massif {
             Log::Errorf("VectorTileLayer::setRendererLayerFilter: Invalid filter: %s", ex.what());
             throw InvalidArgumentException("Invalid filter expression");
         }
+        _rendererLayerFilterRe = filterRe ? std::make_shared<const std::regex>(*filterRe) : std::shared_ptr<const std::regex>();
         _tileRenderer->setRendererLayerFilter(filterRe);
         updateTiles(false);
     }
@@ -847,6 +849,11 @@ namespace massif {
         // Read at decode, not at queue time: after a zoom-out a stale target would style a coarse
         // tile for the near field over 4^lift the ground.
         _styleTileZoom = calculateStyleTileZoom(_tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift());
+        std::shared_ptr<const std::regex> layerFilter;
+        {
+            std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
+            layerFilter = layer->_rendererLayerFilterRe;
+        }
 
         bool refresh = false;
         for (const MapTile& dataSourceTile : _dataSourceTiles) {
@@ -875,7 +882,7 @@ namespace massif {
             std::shared_ptr<vt::TileTransformer> tileTransformer = layer->getTileTransformer();
             std::shared_ptr<VectorTileDecoder::TileMap> tileMap;
             if (std::shared_ptr<BinaryData> data = tileData->getData()) {
-                tileMap = layer->_tileDecoder->decodeTile(vtDataSourceTile, vtTile, _styleTileZoom, tileTransformer, data);
+                tileMap = layer->_tileDecoder->decodeTile(vtDataSourceTile, vtTile, _styleTileZoom, tileTransformer, data, layerFilter.get());
                 if (!tileMap && !data->empty()) {
                     Log::Error("VectorTileLayer::FetchTask: Failed to decode tile");
                 }

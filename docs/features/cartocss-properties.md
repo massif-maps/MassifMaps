@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-243 properties across 12 symbolizers.
+244 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 61 of 243.
+Live-capable properties: 61 of 244.
 
 ## `building`
 
@@ -48,6 +48,8 @@ Live-capable properties: 61 of 243.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `contour-base-interval` | `base-interval` | float | `10.0` |  |  |
+| `contour-label-interval` | `label-interval` | float | `0.0` |  |  |
+| `contour-label-stubs` | `label-stubs` | bool | `false` |  |  |
 | `contour-min-visible-zoom` | `min-visible-zoom` | float | `12.0` |  |  |
 | `contour-resolution` | `resolution` | float | `128.0` |  |  |
 | `contour-simplify-tolerance` | `simplify-tolerance` | float | `1.0` |  |  |
@@ -270,7 +272,6 @@ Live-capable properties: 61 of 243.
 
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
-| `text-allow-overlap` | `allow-overlap` | bool | `false` |  |  |
 | `text-allow-overlap` | `allow-overlap` | bool | `false` |  |  |
 | `text-allow-overlap-same-feature-id` | `allow-overlap-same-feature-id` | bool | `false` |  |  |
 | `text-avoid-edges` | `avoid-edges` | value |  |  |  |

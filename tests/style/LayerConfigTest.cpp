@@ -1,8 +1,6 @@
 /*
- * resolveLayerConfig over a style layer that carries ORDINARY styling rules, which is what a
- * converted MapBox style produces for '#contour' / '#hillshade' (see tools/style-cli). The
- * resolver runs with no tile and no feature, so a feature filter on such a rule has nothing to
- * read - evaluating it used to dereference a null FeatureData.
+ * resolveLayerConfig over config rules and the ordinary styling rules a converted MapBox style puts
+ * beside them. Not covered: the translator's name map (css2xml --roundtrip) and the layer's setters.
  */
 
 #include "TestCheck.h"
@@ -19,6 +17,7 @@
 #include "mapnikvt/Symbolizer.h"
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -91,6 +90,41 @@ void testLayerConfig() {
         auto it = config.values.find("base-interval");
         TEST_CHECK(it != config.values.end() && ValueConverter<float>::convert(it->second) == 50.0f,
                    "the config rule's value is resolved");
+    }
+
+    // Label stubs are generation parameters like base-interval: unmapped and unbound, the translator
+    // dropped them and the layer never saw them. Unset, they must not resolve over an app's setter.
+    {
+        Map map { Map::Settings() };
+        auto configSymbolizer = std::make_shared<ContourConfigSymbolizer>(logger);
+        Property* stubs = nullptr;
+        Property* interval = nullptr;
+        try {
+            stubs = configSymbolizer->getProperty("label-stubs");
+            interval = configSymbolizer->getProperty("label-interval");
+        }
+        catch (const std::invalid_argument&) { }
+        TEST_CHECK(stubs && interval, "the contour config binds label-stubs and label-interval");
+        configSymbolizer->getProperty("base-interval")->setExpression(Expression(Value(10.0)));
+        auto configRule = std::make_shared<Rule>("config", 0, 24, std::shared_ptr<const Filter>(),
+            std::vector<std::shared_ptr<const Symbolizer>> { configSymbolizer });
+        addLayer(map, makeStyle("contour", { configRule }));
+
+        ResolvedLayerConfig unset = resolveLayerConfig(map, "contour", 12.0f, nullptr);
+        TEST_CHECK(unset.values.count("label-stubs") == 0 && unset.values.count("label-interval") == 0,
+                   "unset label stub parameters resolve to nothing, leaving the source's own values");
+
+        if (stubs && interval) {
+            stubs->setExpression(Expression(Value(static_cast<long long>(1))));
+            interval->setExpression(Expression(Value(100.0)));
+        }
+        ResolvedLayerConfig config = resolveLayerConfig(map, "contour", 12.0f, nullptr);
+        auto stubsIt = config.values.find("label-stubs");
+        auto intervalIt = config.values.find("label-interval");
+        TEST_CHECK(stubsIt != config.values.end() && ValueConverter<float>::convert(stubsIt->second) == 1.0f,
+                   "contour-label-stubs: 1 resolves to a nonzero label-stubs");
+        TEST_CHECK(intervalIt != config.values.end() && ValueConverter<float>::convert(intervalIt->second) == 100.0f,
+                   "contour-label-interval resolves to its value");
     }
 
     // The zoom range ignores styling rules the same way.

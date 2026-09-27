@@ -22,6 +22,8 @@ namespace massif::mvt {
             bindProperty("resolution",        &_resolution);
             bindProperty("min-visible-zoom",  &_minVisibleZoom);
             bindProperty("simplify-tolerance",&_simplifyTolerance);
+            bindProperty("label-stubs",       &_labelStubs);
+            bindProperty("label-interval",    &_labelInterval);
         }
 
     protected:
@@ -29,6 +31,8 @@ namespace massif::mvt {
         FloatProperty _resolution        = FloatProperty(128.0f);
         FloatProperty _minVisibleZoom    = FloatProperty(12.0f);
         FloatProperty _simplifyTolerance = FloatProperty(1.0f);
+        BoolProperty  _labelStubs        = BoolProperty(false);
+        FloatProperty _labelInterval     = FloatProperty(0.0f);
     };
 }
 

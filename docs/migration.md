@@ -59,6 +59,7 @@ grep -rl 'NT[A-Z]' Sources/ | xargs sed -i '' -E 's/\bNT([A-Z][A-Za-z0-9]*)/MSF\
 | .NET | `Carto.Ui`, `Carto.Layers`, … | `Massif.Ui`, `Massif.Layers`, … |
 | Native library | `carto_mobile_sdk` (`libcarto_mobile_sdk.so`) | `massif` (`libmassif.so`) |
 | Gradle artifact | `com.carto:carto-mobile-sdk` | `com.massifmaps:massif` |
+| Gradle artifact (routing-lib) | `com.akylas.routing:valhalla-routing` | `com.massifmaps:valhalla-routing` |
 
 On JitPack the resolvable coordinate is `com.github.massif-maps:MassifMaps-android-aar:<tag>` — JitPack
 overrides the declared `groupId`, so the package name and the coordinate differ by design.

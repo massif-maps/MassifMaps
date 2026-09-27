@@ -191,19 +191,20 @@ Feature pages reference images under `website/static/img/features/`. The terrain
 contour shots and the pan video there were captured from the `scripts/android-dev` demo:
 
 ```bash
-# Boot an emulator / connect a device, then:
-scripts/docs/capture-screenshots.sh terrain-hero      # a still
-RECORD=1 scripts/docs/capture-screenshots.sh terrain  # still + ~14s video
+# Boot an emulator / connect a device, then (the extras are BenchActivity's launch extras):
+scripts/docs/capture-screenshots.sh terrain-hero --es lon <lon> --es lat <lat> --es zoom <z> --es tilt <t>
+RECORD=1 scripts/docs/capture-screenshots.sh terrain ...   # still + ~14s video
 ```
 
 The script builds (`assembleDebug --offline`; the native code is compiled by gradle's CMake step,
-see [demo-app.md](demo-app.md)), installs, launches the app's LAUNCHER activity, grabs a screenshot
-(and optionally a screen recording), then uses `ffmpeg` to crop the Android status/nav bars and
-encode a web-friendly JPEG/MP4. The LAUNCHER activity is now the example gallery, not the bench, so
-the script needs updating before it produces a map shot again.
+see [demo-app.md](demo-app.md)), installs, launches `.BenchActivity` with `--es ui false` plus the
+extras given, waits `SETTLE` seconds (default 75), grabs a screenshot (and optionally a screen
+recording), then uses `ffmpeg` to crop the Android status/nav bars and encode a web-friendly
+JPEG/MP4. Drop the results into `website/static/img/features/`.
 
-For distinct shots (top-down hillshade, close-up contours, a low-angle 3D view), launch the bench
-with `--es lon/lat/zoom/tilt` (Massif tilt `90` = top-down, low = horizon) and `--es ui false`.
+For distinct shots (top-down hillshade, close-up contours, a low-angle 3D view), pass a different
+camera — `--es lon/lat/zoom/tilt/rotation`, Massif tilt `90` = top-down, low = horizon — and any
+knob from [the demo app page](demo-app.md). Nothing in the app needs editing.
 
 ## Deployment
 

@@ -32,7 +32,7 @@ The vector tile decoder, and the style set it reads. Created with `kind` **`styl
 | `compiledStyle` | object `std::shared_ptr<massif::CompiledStyleSet>` | read/write | Returns the current compiled style set used by the decoder. If decoder uses non-compiled style set, null is returned. |
 | `featureIdOverride` | boolean | read/write | Returns the value of feature id override flag. This is intended for cases when feature ids in tile are not globally unique. |
 | `params` | string | read/write | Returns the value of the specified style parameter. The style parameter must be declared in the current style. |
-| `styleLayerNames` | struct `std::vector<std::string>` | read-only | Returns the ordered list of style layer names as declared by the style (the project JSON "layers" array, or the Layer elements of a Mapnik XML style). This defines both the draw order and which layers exist. CompositeVectorTileLayer uses it to place external data sources in the layer order: a source whose name is not in this list has no slot in the style and is not drawn, so this is the way to check a style before wiring sources into it. |
+| `styleLayerNames` | struct `std::vector<std::string>` | read-only | Returns the ordered style layer names as declared by the style (project JSON "layers", or Mapnik XML Layers), i.e. the draw order. CompositeVectorTileLayer places external sources by it: a source whose name is not in this list is not drawn. |
 | `styleParameters` | struct `std::vector<std::string>` | read-only | Returns the list of all available style parameters. |
 | `tileFormat` | [enum](enums.md#enum-tileformat) | read/write | Returns the binary format the tiles are decoded as. |
 
@@ -45,6 +45,7 @@ Inherited from `VectorTileDecoder`:
 
 | Method | Arguments | Returns |
 |---|---|---|
+| `addFallbackFont` | font: handle | void |
 | `getStyleParameter` | name: string | string |
 | `setStyleParameter` | name: string, value: string | bool |
 | `setStyleParameters` | params: json | void |

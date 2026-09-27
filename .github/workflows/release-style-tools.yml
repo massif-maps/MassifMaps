@@ -10,7 +10,7 @@ on:
     paths:
       - 'tools/style-cli/**'
       - 'scripts/gen-cartocss-properties.py'
-      - 'libs-massif'
+      - 'libs-massif/**'
       - '.github/workflows/release-style-tools.yml'
   workflow_dispatch:
     inputs:

@@ -285,7 +285,7 @@ namespace massif {
         void reportFlattenSwitchTiming(const FlattenSwitch::State& state, const FlattenSwitch::Input& input, int tilesOwed, float deltaSeconds);
 
         // A screen FBO key bit marking the depth-texture variant; no GL buffer mask uses bit 0.
-        static constexpr unsigned int SCREEN_FBO_DEPTH_TEXTURE_BIT = 1;
+        static const unsigned int SCREEN_FBO_DEPTH_TEXTURE_BIT = 1;
         static const int BILLBOARD_PLACEMENT_TASK_DELAY;
         static const int VT_LABEL_PLACEMENT_TASK_DELAY;
         // Zoom change that triggers its own label placement pass (see viewChanged).

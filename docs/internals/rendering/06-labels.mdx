@@ -545,7 +545,7 @@ Everything below rests on that split — the icon stays on the feature, only the
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran
-  several a second while a label's fade takes a whole second at the default blending speed — the
+  several a second while a label's fade took a whole second at the old default blending speed — the
   label never reached full opacity before the next pass could drop it. Measured on the Grenoble
   preview at z16/tilt 80: 10–14 labels flipped on and off per pass, 4–13 of them mid-screen, none of
   them losing a placement (`offInvalid=0`) — they lost a collision to a label that had just arrived.
@@ -561,12 +561,12 @@ Everything below rests on that split — the icon stays on the feature, only the
   ended instead, a `schedule()` arriving while the pass ran read the previous pass's time, found the
   interval already spent, and fired again the moment it finished — 202 ms between passes, measured.
 
-  The interval and the fade are meant to be ONE duration: 300 ms, which is maplibre's `fadeDuration`
-  and `TileRenderer`'s default label blending speed (1/0.3 per second). A second of fade was long
-  enough that a name was still arriving when it had reached the middle of the screen. **Caveat:**
-  `VectorTileLayer::onDrawFrame` pushes its own `LabelBlendingSpeed` (default **1.0**) into the
-  renderer every frame, so a vector tile layer still fades over a second unless the app or the style
-  (`_labelblendingspeed`) sets 3.33.
+  The interval and the fade are ONE duration, `vt::LABEL_FADE_DURATION_MS` in `vt/LabelFade.h`:
+  300 ms, maplibre's `fadeDuration`. `VectorTileLayer`'s default label blending speed (1/0.3 per
+  second) is derived from it, and so are `TileRenderer`'s and `GLTileRenderer`'s. The layer pushes its
+  value every frame, so its default is the one that reaches the screen: until it read the shared
+  constant it stayed at 1.0 and labels faded over a full second. A second was long enough that a name
+  was still arriving when it had reached the middle of the screen.
 
 ### A label is placed BEFORE it reaches the screen
 

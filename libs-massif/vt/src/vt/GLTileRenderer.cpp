@@ -1570,8 +1570,7 @@ namespace massif::vt {
 
         _visiblePassLabels = _passLabels;
         // A forced placement replaces the whole screen: a crossfade would double every label (mapbox: fadeDuration 0).
-        float dOpacity = (_snapLabelTransition.exchange(false) ? 1.0f
-                                                              : (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f));
+        float dOpacity = labelOpacityStep(dt, _labelBlendingSpeed, _snapLabelTransition.exchange(false));
         for (int pass = 0; pass < 2; pass++) {
             for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
                 refresh = updateLabel(label, dOpacity) || refresh;

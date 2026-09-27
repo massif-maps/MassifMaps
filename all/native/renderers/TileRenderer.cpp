@@ -1,5 +1,6 @@
 #include "TileRenderer.h"
 
+#include <vt/LabelFade.h>
 #include <vt/RenderStats.h>
 #include "components/Options.h"
 #include "components/LightOptions.h"
@@ -61,8 +62,7 @@ namespace massif {
         _vtRenderer(),
         _interactionMode(false),
         _layerBlendingSpeed(1.0f),
-        // 300 ms fade: maplibre's fadeDuration, and VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL.
-        _labelBlendingSpeed(1.0f / 0.3f),
+        _labelBlendingSpeed(vt::DEFAULT_LABEL_BLENDING_SPEED),
         _labelPerspectiveScaling(0.5f),
         _labelOrder(0),
         _buildingOrder(1),

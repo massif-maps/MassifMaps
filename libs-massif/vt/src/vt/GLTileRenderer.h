@@ -11,6 +11,7 @@
 #include "Color.h"
 #include "ViewState.h"
 #include "Label.h"
+#include "LabelFade.h"
 #include "Styles.h"
 #include "Tile.h"
 #include "TileId.h"
@@ -899,7 +900,7 @@ namespace massif::vt {
         bool _pendingLabelElevationAll = false;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;
-        float _labelBlendingSpeed = 1.0f / 0.3f; // maplibre's 300 ms fadeDuration - see TileRenderer
+        float _labelBlendingSpeed = DEFAULT_LABEL_BLENDING_SPEED;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
         std::optional<std::regex> _rendererLayerFilter;
         std::optional<std::regex> _noDrapeLayerFilter;

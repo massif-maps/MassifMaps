@@ -27,6 +27,7 @@ void testSpanResolver();
 void testSphericalTerrain();
 void testRenderTileBlend();
 void testLabelSlice();
+void testLabelFade();
 void testLayerContentFlags();
 void testViewStateMatrix();
 void testLabelNormalBuild();
@@ -62,6 +63,7 @@ int main() {
     testSphericalTerrain();
     testRenderTileBlend();
     testLabelSlice();
+    testLabelFade();
     testLayerContentFlags();
     testViewStateMatrix();
     testLabelNormalBuild();

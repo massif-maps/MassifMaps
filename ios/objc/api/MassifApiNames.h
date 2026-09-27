@@ -439,7 +439,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyKineticPan;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyKineticRotation;
 /** Returns the state of kinetic zoom flag. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyKineticZoom;
-/** Returns the current relative label blending speed. */
+/** Returns the label blending speed, in full fades per second. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelBlendingSpeed;
 /** Returns the contour interval used for label stubs. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelInterval;

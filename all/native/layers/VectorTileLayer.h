@@ -131,13 +131,13 @@ namespace massif {
         void setLayerBlendingSpeed(float speed);
 
         /**
-         * Returns the current relative label blending speed.
-         * @return The current relative label blending speed. Default is 1.0.
+         * Returns the label blending speed, in full fades per second.
+         * @return The label blending speed. Default is 1/0.3, a 300 ms fade.
          */
         float getLabelBlendingSpeed() const;
         /**
-         * Sets the relative label blending speed.
-         * @param speed The new relative speed value. Default is 1.0. Use zero or negative values to disable blending.
+         * Sets the label blending speed, in full fades per second: a label fades in or out in 1/speed seconds.
+         * @param speed The new speed. Default is 1/0.3, a 300 ms fade. Use zero or negative values to disable blending.
          */
         void setLabelBlendingSpeed(float speed);
 

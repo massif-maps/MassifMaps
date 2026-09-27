@@ -1965,6 +1965,16 @@
       "baked": false
     },
     {
+      "cartocss": "text-callout-band-follow",
+      "mapnik": "callout-band-follow",
+      "symbolizer": "text",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "text-callout-line-anchor",
       "mapnik": "callout-line-anchor",
       "symbolizer": "text",

@@ -246,7 +246,7 @@ namespace massif::vt {
         void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, MAX_SHADOW_CASCADES>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
         // Light view-projection fitted to the tiles, one call per cascade; false if empty or no elevation.
         // minHeight/maxHeight bound the shadowed volume: a generous slab pixelates a low sun.
-        bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
+        bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         // Terrain shadow resolved into a half-resolution screen mask that surface draws sample.
         void setTerrainShadowMask(GLuint texture, float invScreenWidth, float invScreenHeight);
         // Draws the mask for the given tiles into the bound framebuffer. Returns the draw count.
@@ -346,7 +346,8 @@ namespace massif::vt {
         // labelOnlyTiles: off-frustum tiles whose labels are placed (so they arrive opaque), never drawn.
         // spanReferenceTiles: fetched unseen for stranded bridge chords (collectUnresolvedSpanEnds);
         // they only join the span unions, so one overlapping the view does not double geometry.
-        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles = {}, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles = {});
+        // shadowCasterTiles: off-frustum render tiles whose extrusions only cast; no surface, no labels.
+        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles = {}, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles = {}, const std::map<TileId, std::shared_ptr<const Tile>>& shadowCasterTiles = {});
         void teleportVisibleTiles(int dx, int dy);
 
         void initializeRenderer();
@@ -603,10 +604,10 @@ namespace massif::vt {
         // end3DPass resolve against the ground as extrusions do.
         Pass3DState begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline);
         void end3DPass(const Pass3DState& state);
-        // Visible POLYGON3D geometries in draw order, optionally only over coveredBy; the callback
-        // returns false to skip the rest of that layer.
+        // POLYGON3D geometries in draw order, optionally only over coveredBy and including the shadow caster
+        // tiles past the view; the callback returns false to skip the rest of that layer.
         template <typename Func>
-        void forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, Func&& func) const;
+        void forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const;
         void renderLabels(const std::vector<std::shared_ptr<Label>>& labels);
         // One batching pass in list order; CALLOUT leader lines get their own pass first, under all glyphs.
         void renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass);
@@ -710,6 +711,8 @@ namespace massif::vt {
         // id must be a string literal: its address keys _shaderProgramCache.
         const ShaderProgram& buildShaderProgram(const char* id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, unsigned int flags);
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTerrainGridSurfaces();
+        // The shadow caster and mask pass grid: both sides of the depth compare, so coarser only costs detail.
+        const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTerrainShadowGridSurfaces();
         // Two triangles per tile: the flat orthographic drape bake gains nothing from the displaced grid.
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledFlatSurfaces();
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTileSurfaces(const TileId& tileId);
@@ -764,6 +767,8 @@ namespace massif::vt {
         std::set<TileId> _terrainCoverTileIds;   // the cover the surfaces are actually drawn from (drape cover / paint cover)
         std::map<TileId, cglib::vec4<float>> _terrainEdgeCoarseningMap; // per drawn cover tile: lattice cell scale (2^k) on the west/east/south/north edge
         std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces;
+        std::vector<std::shared_ptr<TileSurface>> _terrainShadowGridSurfaces; // at most SHADOW_GRID_MAX_RESOLUTION
+        int _terrainShadowGridResolution = 0;
         std::vector<std::shared_ptr<TileSurface>> _terrainFlatSurfaces; // 1x1 grid for the flat drape bake
         float _terrainDrawLayerOffset = 0.0f;    // painter-order per-draw (proxy - layer) offset
         float _terrainLineClearance = 0.0f;      // world units a draped line clears the ground by, constant in metres at any range

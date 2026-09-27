@@ -128,7 +128,7 @@ namespace massif {
         int renderDrapedSurface(const vt::TileId& tileId, unsigned int drapeTexture, float uvOffsetX, float uvOffsetY, float uvScale);
         int renderDrapedSurfaceFill(const vt::TileId& tileId, const Color& color);
         int blitDrapeTexture(unsigned int srcTexture, float dstOffsetX, float dstOffsetY, float dstScale, float uvOffsetX, float uvOffsetY, float uvScale);
-        bool calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
+        bool calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         float shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const;
         int consumeShadowCastersMissingElevation();
         int renderShadowCasters(const std::vector<vt::TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
@@ -323,6 +323,8 @@ namespace massif {
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _tiles;
         // Offscreen tiles: their labels are placed, their geometry is never drawn. See refreshTiles.
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _labelOnlyTiles;
+        // Past the view on the sun's side: only their extrusions' shadows are drawn.
+        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _shadowCasterTiles;
         std::vector<std::shared_ptr<const vt::Tile> > _spanReferenceTiles;
         
         mutable std::mutex _mutex;

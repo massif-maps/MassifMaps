@@ -532,13 +532,13 @@ namespace massif {
         return -4;
     }
 
-    bool TileRenderer::calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
+    bool TileRenderer::calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
             // Fallback when no tile carries a DEM, or a 2D map's fit fails and draws no shadow.
             tileRenderer->setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE);
-            return tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
+            return tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, casterHeights, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
         }
         return false;
     }
@@ -1320,7 +1320,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         // Lock wait timed apart from the work: tile threads hold this mutex while storing decoded tiles.
         VT_STAT_CLOCK(refreshClock);
         std::shared_ptr<vt::GLTileRenderer> tileRenderer;
-        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles, labelOnlyTiles;
+        std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles, labelOnlyTiles, shadowCasterTiles;
         int teleportOffset = 0;
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -1328,11 +1328,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
 
             // Preloading tiles lie outside the frustum: labels placed before they scroll in, geometry not drawn.
             for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
-                auto& target = (drawData->isPreloadingTile() ? labelOnlyTiles : tiles);
+                auto& target = (drawData->isShadowCasterTile() ? shadowCasterTiles : (drawData->isPreloadingTile() ? labelOnlyTiles : tiles));
                 target[drawData->getVTTileId()] = drawData->getVTTile();
             }
 
-            bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) ||
+            bool changed = (tiles != _tiles) || (labelOnlyTiles != _labelOnlyTiles) || (shadowCasterTiles != _shadowCasterTiles) ||
                            (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
             if (!changed) {
                 return false;
@@ -1344,6 +1344,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             teleportOffset = (int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE);
             _tiles = tiles;
             _labelOnlyTiles = labelOnlyTiles;
+            _shadowCasterTiles = shadowCasterTiles;
             _spanReferenceTiles = spanReferenceTiles;
             _horizontalLayerOffset = 0;
         }
@@ -1353,7 +1354,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             if (teleportOffset != 0) {
                 tileRenderer->teleportVisibleTiles(teleportOffset, 0);
             }
-            tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles);
+            tileRenderer->setVisibleTiles(tiles, labelOnlyTiles, spanReferenceTiles, shadowCasterTiles);
         }
         // Changed path only, including setVisibleTiles.
         VT_STAT_SPLIT(refreshTilesNs, refreshClock);
@@ -1688,7 +1689,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         _vtRenderer = glResourceManager->create<VTRenderer>(_tileTransformer);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
-            tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles);
+            tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles, {}, _shadowCasterTiles);
             // These tiles' placement pass found no GL renderer; see consumeLabelPlacementOwed.
             _labelPlacementOwed = !_tiles.empty();
 

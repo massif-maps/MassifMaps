@@ -17,6 +17,7 @@
 #include "projections/Projection.h"
 #include "projections/EPSG3857.h"
 #include "terrain/ElevationManager.h"
+#include "terrain/ShadowCasterRing.h"
 #include "terrain/TerrainTileTransformer.h"
 #include "ui/UTFGridClickInfo.h"
 #include "utils/Const.h"
@@ -437,6 +438,9 @@ namespace massif {
         buildFetchTiles(_visibleTiles, false, fetchTileList);
         // Not gated on _preloading: label-band tiles let labels arrive drawn instead of fading in mid-screen.
         buildFetchTiles(_labelTiles, true, fetchTileList);
+        _collectingShadowCasters = true;
+        buildFetchTiles(_shadowCasterTiles, true, fetchTileList);
+        _collectingShadowCasters = false;
         if (_preloading) {
             buildFetchTiles(_preloadingTiles, true, fetchTileList);
         }
@@ -854,6 +858,36 @@ namespace massif {
         sortTiles(_visibleTiles, cullState->getViewState(), false);
         sortTiles(_labelTiles, cullState->getViewState(), true);
         sortTiles(_preloadingTiles, cullState->getViewState(), true);
+        calculateShadowCasterTiles();
+    }
+
+    void TileLayer::calculateShadowCasterTiles() {
+        _shadowCasterTiles.clear();
+        cglib::vec3<float> sunDir;
+        std::shared_ptr<MapRenderer> mapRenderer = getMapRenderer();
+        if (!castsExtrusionShadows() || _visibleTiles.empty() || !mapRenderer || !mapRenderer->getShadowSunDir(sunDir)) {
+            return;
+        }
+
+        // Which way +x and +y run in the world, so the sun's side reads off the tile grid.
+        std::shared_ptr<vt::TileTransformer> tileTransformer = getTileTransformer();
+        const MapTile& probe = _visibleTiles.front();
+        cglib::vec3<double> origin = tileTransformer->calculateTileBBox(vt::TileId(probe.getZoom(), probe.getX(), probe.getY())).center();
+        auto sideOf = [&](int dx, int dy) {
+            cglib::vec3<double> step = tileTransformer->calculateTileBBox(vt::TileId(probe.getZoom(), probe.getX() + dx, probe.getY() + dy)).center() - origin;
+            double along = step(0) * sunDir(0) + step(1) * sunDir(1);
+            double length = std::sqrt(step(0) * step(0) + step(1) * step(1));
+            return (std::abs(along) <= 1.0e-3 * length ? 0 : (along > 0 ? dx + dy : -(dx + dy)));
+        };
+        int sideX = sideOf(1, 0), sideY = sideOf(0, 1);
+        std::vector<ShadowCasterRing::Tile> visible;
+        visible.reserve(_visibleTiles.size());
+        for (const MapTile& tile : _visibleTiles) {
+            visible.push_back(ShadowCasterRing::Tile { tile.getZoom(), tile.getX(), tile.getY() });
+        }
+        for (const ShadowCasterRing::Tile& caster : ShadowCasterRing::sunwardTiles(visible, sideX, sideY, SHADOW_CASTER_MIN_ZOOM)) {
+            _shadowCasterTiles.emplace_back(caster.x, caster.y, caster.zoom, _frameNr);
+        }
     }
 
     void TileLayer::calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& tile, const MapBounds& dataExtent) {
@@ -1237,8 +1271,8 @@ namespace massif {
         return _tileRenderer->renderDrapedSurfaceFill(tileId, color);
     }
 
-    bool TileLayer::calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
-        return _tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
+    bool TileLayer::calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
+        return _tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, casterHeights, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
     }
 
     float TileLayer::shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const {
@@ -1527,5 +1561,7 @@ namespace massif {
     const int TileLayer::SPAN_REFERENCE_MIN_ZOOM = 14;
     const std::size_t TileLayer::MAX_SPAN_REFERENCE_TILES = 16;
     const double TileLayer::PRELOADING_TILE_SCALE = 1.5;
+    // mapbox's SHADOWS_MIN_ZOOM_EXTRA_TILES (source_cache.ts): below it the extra requests cost more than the shadows.
+    const int TileLayer::SHADOW_CASTER_MIN_ZOOM = 16;
     
 }

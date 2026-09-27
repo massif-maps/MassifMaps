@@ -128,6 +128,14 @@ public final class ExampleLive extends BroadcastReceiver {
     }
 
     private void apply(Bundle extras) {
+        // '--es styleParam buildings=1': a style PARAMETER of the example's "basemap" layer, a re-style.
+        String styleParam = extras.getString("styleParam");
+        if (styleParam != null && styleParam.contains("=")) {
+            String[] pair = styleParam.split("=", 2);
+            map.layer(extras.getString("styleLayer", "basemap"))
+               .call("tileDecoder.setStyleParameter", pair[0], pair[1]).close();
+            Log.i(TAG, "style parameter " + pair[0] + " = " + pair[1]);
+        }
         for (String key : extras.keySet()) {
             String[] knob = KNOBS.get(key);
             if (knob == null) {

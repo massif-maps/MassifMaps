@@ -13,6 +13,7 @@
 #include "RenderTileBlend.h"
 #include "LabelCuller.h"
 #include "RenderStats.h"
+#include "ShadowBox.h"
 
 #include <array>
 #include <cassert>
@@ -79,6 +80,12 @@ namespace massif::vt {
     // SHADOW_CUTOUT_DISTANCE_FACTOR (header) also sets the fade range. Cascades step by this from the
     // cutout, so two cascades split at cutout/3 - mapbox's 1.5x against a 4.5x cutout.
     static constexpr double SHADOW_CASCADE_STEP = 3.0;
+    // Light box margin over its sphere, as a fraction of the radius: the box holds still while the
+    // camera moves inside it, so the cached caster pages are reused rather than redrawn every frame.
+    static constexpr double SHADOW_BOX_PADDING = 0.2;
+    // Shadow-side terrain grid cap: the caster and mask passes cost a full terrain draw each, and at 128
+    // the mask alone doubled the frame (08-lighting-sky-fog.md).
+    static constexpr int SHADOW_GRID_MAX_RESOLUTION = 64;
     // mapbox's noShadowCutoff (draw_fill_extrusion.ts): below it a FADING extrusion stops casting.
     static constexpr float SHADOW_NO_CAST_OPACITY_CUTOFF = 0.65f;
     // Globe ground-caster surfaces tessellated per pass: each costs ms and a sun move sweeps ~100 in.
@@ -345,7 +352,7 @@ namespace massif::vt {
         resetProgramState();
     }
 
-    bool GLTileRenderer::calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
+    bool GLTileRenderer::calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (tileIds.empty()) {
@@ -498,11 +505,9 @@ namespace massif::vt {
         }
         // Metric headroom for what stands on the DEM, or roofs get clipped as casters and fall outside
         // every page as receivers; a relief-relative margin is nothing on flat ground.
-        {
-            double standingHeadroom = 200.0 * metersToInternal;
-            maxZ += standingHeadroom;
-            casterMaxZ += standingHeadroom;
-        }
+        double standingHeadroom = 200.0 * metersToInternal;
+        maxZ += standingHeadroom;
+        casterMaxZ += standingHeadroom;
 
         // World units from here: a globe's height is radial, not frame z, so convert (18-globe.md).
         double worldPerMeter = metersToInternal;
@@ -544,39 +549,25 @@ namespace massif::vt {
         // Sides from the bounding sphere: it projects to the same square from any direction, so the
         // texel size ignores pitch, bearing and sun azimuth.
         cglib::vec4<double> lightCenter = cglib::transform(cglib::vec4<double>(sphereCenter(0), sphereCenter(1), sphereCenter(2), 1.0), lightView);
-        double l = lightCenter(0) - sphereRadius, r = lightCenter(0) + sphereRadius;
-        double b = lightCenter(1) - sphereRadius, t = lightCenter(1) + sphereRadius;
-        // Depth: the same sphere plus caster headroom (mapbox lightMatrixNearZ/FarZ); the drawn
+        ShadowBox box = ShadowBox::fit(lightCenter(0), lightCenter(1), -lightCenter(2), sphereRadius, SHADOW_BOX_PADDING, mapSize);
+        double l = box.left, r = box.right, b = box.bottom, t = box.top;
+        // Depth: the same box plus caster headroom (mapbox lightMatrixNearZ/FarZ); the drawn
         // rectangle gave ranges 24-bit depth cannot separate.
         double casterHeadroom = (casterMaxZ - casterMinZ) / std::max(0.05, sunUp);
-        double centerDepth = -lightCenter(2);
-        double n = centerDepth - sphereRadius - casterHeadroom;
-        double f = centerDepth + sphereRadius + casterHeadroom;
-        // Snap to a world-anchored lattice of whole texels and quantise the size, or shadow edges crawl;
-        // a still matrix also lets the caster pass be skipped.
-        auto snapAxis = [mapSize](double& lo, double& hi, bool depthAxis) {
-            double size = hi - lo;
-            if (!(mapSize > 0) || !(size > 0)) {
-                return;
-            }
-            // Eighths of a power of two: at most 12.5% wasted, and the step rarely changes.
-            double step = std::pow(2.0, std::floor(std::log2(size)) - 3.0);
-            double quantSize = std::ceil(size / step) * step;
-            // Depth has no texels; quantising keeps the range, hence the normalised bias, constant.
-            double grid = (depthAxis ? step : quantSize / mapSize);
-            if (quantSize - size < grid) {
-                quantSize += step; // snapping moves the low edge down by up to one grid cell
-                grid = (depthAxis ? step : quantSize / mapSize);
-            }
-            lo = std::floor(lo / grid) * grid;
-            hi = lo + quantSize;
-        };
-        // Sides snap before the caster cull, so it can use the final box and a one-texel margin.
-        snapAxis(l, r, false);
-        snapAxis(b, t, false);
+        double centerDepth = box.centerDepth, halfSize = box.halfSize;
+        double n = centerDepth - halfSize - casterHeadroom;
+        double f = centerDepth + halfSize + casterHeadroom;
         double marginX = (r - l) / std::max(1, mapSize), marginY = (t - b) / std::max(1, mapSize);
-        for (const TileId& tileId : casterTileIds) {
+        for (std::size_t casterIndex = 0; casterIndex < casterTileIds.size(); casterIndex++) {
+            const TileId& tileId = casterTileIds[casterIndex];
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
+            // The tile's own column, not the whole slab: a valley tile swept up to the summits falls in
+            // every cascade. Clamped to the slab, whose headroom holds what stands on the ground.
+            double tileMinZ = casterMinZ, tileMaxZ = casterMaxZ;
+            if (casterHeights.size() == casterTileIds.size() && !spherical) {
+                tileMinZ = std::max(casterMinZ, casterHeights[casterIndex].first);
+                tileMaxZ = std::min(casterMaxZ, casterHeights[casterIndex].second + standingHeadroom);
+            }
             double tileL = 0, tileR = 0, tileB = 0, tileT = 0, tileN = 0, tileF = 0;
             bool firstPoint = true;
             auto addPoint = [&](const cglib::vec3<double>& world) {
@@ -606,9 +597,7 @@ namespace massif::vt {
                 for (int corner = 0; corner < 8; corner++) {
                     cglib::vec4<double> local(corner & 1 ? 1.0 : 0.0, corner & 2 ? 1.0 : 0.0, 0.0, 1.0);
                     cglib::vec4<double> world = cglib::transform(local, tileMatrix);
-                    // The caster slab, not the cascade's: a mountain outside still casts in, and must
-                    // not be clipped by the near plane.
-                    world(2) = (corner & 4 ? casterMaxZ : casterMinZ);
+                    world(2) = (corner & 4 ? tileMaxZ : tileMinZ);
                     addPoint(cglib::vec3<double>(world(0), world(1), world(2)));
                 }
             }
@@ -619,7 +608,17 @@ namespace massif::vt {
             }
             boxCasterTileIds.push_back(tileId);
         }
-        snapAxis(n, f, true);
+        {
+            // Eighths of a power of two, on a lattice of that step: the range, hence the normalised
+            // bias, stays constant, and a still matrix lets the caster pass be skipped.
+            double step = std::pow(2.0, std::floor(std::log2(f - n)) - 3.0);
+            double quantSize = std::ceil((f - n) / step) * step;
+            if (quantSize - (f - n) < step) {
+                quantSize += step; // snapping moves the low edge down by up to one step
+            }
+            n = std::floor(n / step) * step;
+            f = n + quantSize;
+        }
         lightViewProj = cglib::ortho4_matrix(l, r, b, t, n, f) * lightView;
         // The shader bias is a fraction of normalised depth; the caller divides its metric bias by this.
         depthRangeMeters = (f - n) / worldPerMeter;
@@ -641,18 +640,20 @@ namespace massif::vt {
     }
 
     template <typename Func>
-    void GLTileRenderer::forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, Func&& func) const {
+    void GLTileRenderer::forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, bool offscreen, Func&& func) const {
         if (!_visibleRenderTiles) {
             return;
         }
         for (const RenderTile& renderTile : *_visibleRenderTiles) {
-            if (!renderTile.visible) {
+            if (!renderTile.visible && !offscreen) {
                 continue;
             }
-            if (coveredBy) {
+            // Off-screen render tiles are the shadow caster ring, next to the view by construction.
+            if (coveredBy && renderTile.visible) {
                 bool covered = false;
                 for (const TileId& tileId : *coveredBy) {
-                    if (tileCovers(renderTile.targetTileId, tileId)) {
+                    // Either way round: a caster ring tile is often coarser than the render tile inside it.
+                    if (renderTile.targetTileId.intersects(tileId)) {
                         covered = true;
                         break;
                     }
@@ -734,7 +735,7 @@ namespace massif::vt {
             }
             checkGLError();
         } else if (castGround) {
-            for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTerrainGridSurfaces()) {
+            for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTerrainShadowGridSurfaces()) {
                 const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
                 const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
@@ -772,7 +773,7 @@ namespace massif::vt {
         // detached the shadow from its footprint. Acne is left to the slope-scaled caster offset.
         _shadowCasterViewProj = &lightViewProj;
         _shadowCasterSun = true;
-        forEachVisibleExtrusion(&tileIds, [this, &draws](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+        forEachVisibleExtrusion(&tileIds, true, [this, &draws](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
             if (!extrusionCastsShadow(renderLayer)) {
                 return true;
             }
@@ -798,7 +799,7 @@ namespace massif::vt {
         // change rather than every fade frame. Caster height no longer follows the blend.
         float signature = 0.0f;
         int count = 0;
-        forEachVisibleExtrusion(coveredBy, [this, &signature, &count](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>&) {
+        forEachVisibleExtrusion(coveredBy, true, [this, &signature, &count](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>&) {
             // Only casters, or a layer crossing the no-cast cutoff changes the set unseen.
             if (!extrusionCastsShadow(renderLayer)) {
                 return false;
@@ -1199,7 +1200,7 @@ namespace massif::vt {
         return _colorFuncCache.emplace(key, std::make_pair(func.function(), value)).first->second.second;
     }
     
-    void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles) {
+    void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, const std::map<TileId, std::shared_ptr<const Tile>>& labelOnlyTiles, const std::vector<std::shared_ptr<const Tile>>& spanReferenceTiles, const std::map<TileId, std::shared_ptr<const Tile>>& shadowCasterTiles) {
         using TilePair = std::pair<TileId, std::shared_ptr<const Tile>>;
 
         // Clear the 'visible' label list for now (used only for culling)
@@ -1276,7 +1277,15 @@ namespace massif::vt {
             }
         }
         VT_STAT_SPLIT(labelMapsNs, visibleClock);
-        buildRenderTiles(tiles);
+        if (shadowCasterTiles.empty()) {
+            buildRenderTiles(tiles);
+        } else {
+            std::map<TileId, std::shared_ptr<const Tile>> renderTileMap = shadowCasterTiles;
+            for (const TilePair& tilePair : tiles) {
+                renderTileMap[tilePair.first] = tilePair.second;
+            }
+            buildRenderTiles(renderTileMap);
+        }
         VT_STAT_SPLIT(renderTilesNs, visibleClock);
         _spanResolver.build(tiles, spanReferenceTiles, _visibleTileIds, _extrusionBaseVersion.load(std::memory_order_relaxed));
         if (_spanResolver.takeLabelsDirty()) {
@@ -4491,7 +4500,7 @@ namespace massif::vt {
         // pushes the pre-pass slightly back so content passes over it at its real depth.
         bool gridMode = terrainGridSurfaces() && _terrainMode && static_cast<bool>(_terrainTextureProvider);
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
-        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
+        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? (_terrainShadowMaskPass ? buildCompiledTerrainShadowGridSurfaces() : buildCompiledTerrainGridSurfaces()) : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
@@ -5132,7 +5141,7 @@ namespace massif::vt {
         int drawn = 0;
         cglib::mat4x4<double> cameraViewProj = _viewState.projectionMatrix * _viewState.cameraMatrix;
         _shadowCasterViewProj = &cameraViewProj;
-        forEachVisibleExtrusion(nullptr, [this, &drawn](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+        forEachVisibleExtrusion(nullptr, false, [this, &drawn](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
             // A SPAN is the surface its own symbols stand on, centimetres above its roof: its depth
             // would hide them. Buildings carry no roof symbols.
             if (!geometry->getSpanRecords().empty()) {
@@ -7078,6 +7087,35 @@ namespace massif::vt {
             }
         }
         return _terrainFlatSurfaces;
+    }
+
+    const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTerrainShadowGridSurfaces() {
+        int resolution = std::min(_terrainRegularGridResolution, SHADOW_GRID_MAX_RESOLUTION);
+        if (resolution == _terrainRegularGridResolution) {
+            return buildCompiledTerrainGridSurfaces();
+        }
+        if (_terrainShadowGridResolution != resolution) {
+            _terrainShadowGridResolution = resolution;
+            _terrainShadowGridSurfaces.clear();
+        }
+        if (_terrainShadowGridSurfaces.empty()) {
+            if (std::shared_ptr<TileSurface> surface = _tileSurfaceBuilder.buildRegularGridSurface(resolution)) {
+                _terrainShadowGridSurfaces.push_back(std::move(surface));
+            }
+        }
+        for (const std::shared_ptr<TileSurface>& tileSurface : _terrainShadowGridSurfaces) {
+            CompiledSurface& compiledSurface = _compiledTileSurfaceMap[tileSurface];
+            if (compiledSurface.indicesVBO == 0) {
+                createCompiledSurface(compiledSurface);
+
+                glBindBuffer(GL_ARRAY_BUFFER, compiledSurface.vertexGeometryVBO);
+                glBufferData(GL_ARRAY_BUFFER, tileSurface->getVertexGeometry().size() * sizeof(std::uint8_t), tileSurface->getVertexGeometry().data(), GL_STATIC_DRAW);
+
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledSurface.indicesVBO);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileSurface->getIndices().size() * sizeof(std::uint16_t), tileSurface->getIndices().data(), GL_STATIC_DRAW);
+            }
+        }
+        return _terrainShadowGridSurfaces;
     }
 
     const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTerrainGridSurfaces() {

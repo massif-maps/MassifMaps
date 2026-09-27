@@ -18,13 +18,15 @@ namespace massif {
 
     class TileDrawData {
     public:
-        TileDrawData(const vt::TileId& vtTileId, const std::shared_ptr<const vt::Tile>& vtTile, long long tileId, bool preloadingTile);
+        TileDrawData(const vt::TileId& vtTileId, const std::shared_ptr<const vt::Tile>& vtTile, long long tileId, bool preloadingTile, bool shadowCasterTile = false);
         virtual ~TileDrawData();
 
         const vt::TileId& getVTTileId() const;
         const std::shared_ptr<const vt::Tile>& getVTTile() const;
         
         bool isPreloadingTile() const;
+        // Past the view on the sun's side: its extrusions cast into the view, nothing of it is drawn.
+        bool isShadowCasterTile() const;
         long long getTileId() const;
     
     private:
@@ -33,6 +35,7 @@ namespace massif {
 
         long long _tileId;
         bool _preloadingTile;
+        bool _shadowCasterTile;
     };
     
 }

@@ -209,6 +209,7 @@ namespace massif {
         virtual void collectLabelLayers(std::vector<std::shared_ptr<VectorTileLayer> >& labelLayers);
 
         virtual void calculateDrawData(const MapTile& visTile, const MapTile& closestTile, bool preloadingTile);
+        virtual bool castsExtrusionShadows() const { return true; }
         virtual void refreshDrawData(const std::shared_ptr<CullState>& cullState, bool tilesChanged);
     
         virtual int getMinZoom() const;

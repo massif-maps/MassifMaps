@@ -91,6 +91,47 @@ namespace {
         TEST_CHECK(ShadowCasterRing::tileCount(grid, 0) == 1u, "no margin is the cover tile alone");
     }
 
+    bool contains(const std::vector<ShadowCasterRing::Tile>& tiles, int zoom, int x, int y) {
+        for (const ShadowCasterRing::Tile& tile : tiles) {
+            if (tile.zoom == zoom && tile.x == x && tile.y == y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void testSunwardTilesLieOnTheSunsSide() {
+        // A building just past the edge on the sun's side throws its shadow into the view, one on the
+        // other side throws it away: only the first kind is worth a fetch.
+        std::vector<ShadowCasterRing::Tile> view = { { 17, 100, 100 } };
+        std::vector<ShadowCasterRing::Tile> east = ShadowCasterRing::sunwardTiles(view, 1, 0, 16);
+        TEST_CHECK(east.size() == 1 && contains(east, 17, 101, 100), "a sun along +x adds the +x neighbour alone");
+        std::vector<ShadowCasterRing::Tile> diagonal = ShadowCasterRing::sunwardTiles(view, -1, 1, 16);
+        TEST_CHECK(diagonal.size() == 3, "a diagonal sun adds the two sides and the corner");
+        TEST_CHECK(contains(diagonal, 17, 99, 100) && contains(diagonal, 17, 100, 101) && contains(diagonal, 17, 99, 101), "... all on the sun's side");
+        TEST_CHECK(ShadowCasterRing::sunwardTiles(view, 0, 0, 16).empty(), "a sun overhead adds nothing");
+    }
+
+    void testSunwardTilesNeverOverlapTheView() {
+        // A neighbour already drawn, or under or over a drawn tile of another zoom, would cast its
+        // buildings twice and cost a fetch for nothing.
+        std::vector<ShadowCasterRing::Tile> view = { { 17, 100, 100 }, { 17, 101, 100 }, { 16, 51, 49 }, { 18, 204, 202 } };
+        std::vector<ShadowCasterRing::Tile> casters = ShadowCasterRing::sunwardTiles(view, 1, 1, 16);
+        TEST_CHECK(!contains(casters, 17, 101, 100), "a visible neighbour is not added again");
+        TEST_CHECK(!contains(casters, 17, 102, 99), "a tile under a visible coarser tile is not added");
+        TEST_CHECK(!contains(casters, 17, 102, 101), "a tile over a visible finer tile is not added");
+        TEST_CHECK(contains(casters, 17, 100, 101), "a free neighbour still is");
+    }
+
+    void testSunwardTilesStartAtTheMinZoom() {
+        // mapbox's SHADOWS_MIN_ZOOM_EXTRA_TILES: under it the extra requests outweigh the shadows.
+        std::vector<ShadowCasterRing::Tile> view = { { 15, 50, 50 }, { 16, 102, 100 } };
+        std::vector<ShadowCasterRing::Tile> casters = ShadowCasterRing::sunwardTiles(view, 1, 0, 16);
+        TEST_CHECK(casters.size() == 1 && contains(casters, 16, 103, 100), "only tiles from the min zoom extend the cover");
+        std::vector<ShadowCasterRing::Tile> edge = ShadowCasterRing::sunwardTiles({ { 16, 5, 0 } }, 0, -1, 16);
+        TEST_CHECK(edge.empty(), "nothing is added past the pole row");
+    }
+
 }
 
 void testShadowCasterRing() {
@@ -100,4 +141,7 @@ void testShadowCasterRing() {
     testItStopsAtZoomZero();
     testTheBoundaryIsNotOverIt();
     testASingleTileCoverCountsItsMargin();
+    testSunwardTilesLieOnTheSunsSide();
+    testSunwardTilesNeverOverlapTheView();
+    testSunwardTilesStartAtTheMinZoom();
 }

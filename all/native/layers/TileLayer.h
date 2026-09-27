@@ -413,6 +413,8 @@ class ProjectionSurface;
         virtual void invalidateTiles(bool preloadingTiles) = 0;
 
         virtual void calculateDrawData(const MapTile& visTile, const MapTile& closestTile, bool preloadingTile) = 0;
+        // True while calculateDrawData is called for a shadow caster tile (see _shadowCasterTiles).
+        bool isCollectingShadowCasters() const { return _collectingShadowCasters; }
         virtual void refreshDrawData(const std::shared_ptr<CullState>& cullState, bool tilesChanged) = 0;
         
         virtual int getMinZoom() const = 0;
@@ -448,6 +450,8 @@ class ProjectionSurface;
         // A terrain paint bakes into every tile of the shared drape and reports none: a stack of only such
         // layers needs the terrain's own cover, and every tile of it must expect this layer's content.
         virtual bool paintsEveryDrapeTile() const { return false; }
+        // Whether this layer's tiles may hold extrusions, which cast from past the view (see _shadowCasterTiles).
+        virtual bool castsExtrusionShadows() const { return false; }
         // The terrain cover a paint layer draws itself on when nothing bakes it. Ignored by
         // layers that are not paints.
         virtual void setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds);
@@ -483,7 +487,7 @@ class ProjectionSurface;
         int renderDrapedSurface(const vt::TileId& tileId, unsigned int drapeTexture, float uvOffsetX, float uvOffsetY, float uvScale);
         int renderDrapedSurfaceFill(const vt::TileId& tileId, const Color& color);
         int blitDrapeTexture(unsigned int srcTexture, float dstOffsetX, float dstOffsetY, float dstScale, float uvOffsetX, float uvOffsetY, float uvScale);
-        bool calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
+        bool calculateShadowViewProj(const std::vector<vt::TileId>& tileIds, const std::vector<vt::TileId>& casterTileIds, const std::vector<std::pair<double, double> >& casterHeights, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<vt::TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         float shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const;
         int consumeShadowCastersMissingElevation();
         int renderShadowCasters(const std::vector<vt::TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
@@ -532,6 +536,7 @@ class ProjectionSurface;
 
         void calculateVisibleTiles(const std::shared_ptr<CullState>& cullState);
         void calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& mapTile, const MapBounds& dataExtent);
+        void calculateShadowCasterTiles();
 
         void sortTiles(std::vector<MapTile>& tiles, const ViewState& viewState, bool preloadingTiles);
         void buildFetchTiles(const std::vector<MapTile>& visTiles, bool preloadingTiles, std::vector<FetchTileInfo>& fetchTileList, bool fetchOnly = false);
@@ -559,6 +564,7 @@ class ProjectionSurface;
         static const std::size_t MAX_SPAN_REFERENCE_TILES;
         void collectSpanReferenceTiles();
         static const double PRELOADING_TILE_SCALE;
+        static const int SHADOW_CASTER_MIN_ZOOM;
         
         std::atomic<bool> _calculatingTiles;
         std::atomic<bool> _refreshedTiles;
@@ -601,6 +607,10 @@ class ProjectionSurface;
         // handed to the renderer whatever isPreloading() says, purely so their labels exist in time.
         std::vector<MapTile> _labelTiles;
         std::vector<MapTile> _preloadingTiles;
+        // Next to the view on the sun's side, from SHADOW_CASTER_MIN_ZOOM: fetched so their extrusions cast into
+        // it, never drawn (mapbox's extendTileCover towards the light).
+        std::vector<MapTile> _shadowCasterTiles;
+        bool _collectingShadowCasters = false; // calculateDrawData is building _shadowCasterTiles' draw data
         // Sticky once named: rebuilt each cull, a resolved tile would drop out, un-resolve its ends and be named again, forever.
         struct SpanReference {
             MapTile tile;

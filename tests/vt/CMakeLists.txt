@@ -23,6 +23,7 @@ add_executable(vt_tests
   ExtrusionFloorTest.cpp
   LabelDistanceTest.cpp
   ShadowCasterClipTest.cpp
+  ShadowBoxTest.cpp
   ShaderFlagTest.cpp
   ExtrusionAnchorTest.cpp
   ExtrusionEmissiveTest.cpp

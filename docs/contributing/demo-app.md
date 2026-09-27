@@ -123,7 +123,9 @@ camera is left alone unless a camera key is sent. This is how an A/B gets run wi
 changing underneath it. **`am start` on an already-running bench does the same thing** — the
 activity is `singleTop` and `BenchActivity.onNewIntent` feeds its extras back through `DemoLive`.
 
-The gallery has the same channel through `ExampleLive` (same short keys). Two traps:
+The gallery has the same channel through `ExampleLive` (same short keys), plus `--es styleParam
+name=value`, a style parameter on the example's `basemap` layer (`buildings=1` turns Mapbox Standard's
+extrusions into footprints). Two traps:
 
 - `ExampleLive` applies the writes on its own worker thread: a receiver runs on the main thread with
   a deadline, and a write blocks on whatever the render thread holds, so writing inline ANRed the app.

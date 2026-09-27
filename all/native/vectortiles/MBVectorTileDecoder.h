@@ -111,7 +111,7 @@ namespace massif {
          * Returns the value of the specified style parameter.
          * The style parameter must be declared in the current style.
          * @param param The parameter to return.
-         * @return The value of the parameter. If parameter does not exists, empty string is returned.
+         * @return The value of the parameter.
          * @throws std::invalid_argument If the style parameter does not exist.
          */
         std::string getStyleParameter(const std::string& param) const;
@@ -138,22 +138,17 @@ namespace massif {
         void setJSONStyleParameters(const std::string& params);
 
         /**
-         * Returns the ordered list of style layer names as declared by the style (the project
-         * JSON "layers" array, or the Layer elements of a Mapnik XML style). This defines both
-         * the draw order and which layers exist. CompositeVectorTileLayer uses it to place
-         * external data sources in the layer order: a source whose name is not in this list has
-         * no slot in the style and is not drawn, so this is the way to check a style before
-         * wiring sources into it.
+         * Returns the ordered style layer names as declared by the style (project JSON "layers", or Mapnik XML Layers),
+         * i.e. the draw order. CompositeVectorTileLayer places external sources by it: a source whose name is not
+         * in this list is not drawn.
          * @return The ordered style layer names.
          */
         std::vector<std::string> getStyleLayerNames() const;
 
         /**
-         * Evaluates the config symbolizer(s) of the named style layer (raster / hillshade /
-         * contour) at the given fractional view zoom and the current style parameter
-         * state, without decoding a tile. Honors rule zoom ranges and filter predicates.
-         * Used by CompositeVectorTileLayer to drive external data source settings per frame.
-         * Note: for internal use, not exposed to the public API.
+         * Evaluates the config symbolizers (raster / hillshade / contour) of the named style layer at the given view zoom
+         * and current style parameters, without decoding a tile; honors rule zoom ranges and filters.
+         * Note: for internal use (CompositeVectorTileLayer), not exposed to the public API.
          * @param layerName The style layer name.
          * @param viewZoom The fractional view zoom.
          * @return The resolved configuration (visible flag + evaluated property values).
@@ -161,10 +156,8 @@ namespace massif {
         mvt::ResolvedLayerConfig resolveLayerConfig(const std::string& layerName, float viewZoom) const;
 
         /**
-         * Returns the { minZoom, maxZoom } range over which the named style layer's config
-         * symbolizer rules are active. Used by CompositeVectorTileLayer to constrain an
-         * external source child layer's visible zoom range. Returns { 0, 24 } if the layer
-         * has no config rules. Note: for internal use, not exposed to the public API.
+         * Returns the { minZoom, maxZoom } range over which the named style layer's config symbolizer rules are active,
+         * { 0, 24 } if it has none. Note: for internal use (CompositeVectorTileLayer), not exposed to the public API.
          * @param layerName The style layer name.
          * @return A two-element vector { minZoom, maxZoom }.
          */
@@ -197,22 +190,19 @@ namespace massif {
 
         /**
          * Returns the binary format the tiles are decoded as.
-         * @return The tile format. Default is MVT.
+         * @return The tile format. Default is TILE_FORMAT_AUTO.
          */
         TileFormat::TileFormat getTileFormat() const;
         /**
-         * Sets the binary format the tiles are decoded as. The two formats are not distinguishable
-         * from the tile data, so the source has to say which it serves.
+         * Sets the binary format the tiles are decoded as. TILE_FORMAT_AUTO detects it per tile.
          * @param format The tile format.
          */
         void setTileFormat(TileFormat::TileFormat format);
 
         /**
-         * Maps a container's declared format or encoding - an MBTiles or PMTiles metadata value, a
-         * TileJSON media type - onto a tile format. Matching is case-insensitive and by substring,
-         * because generators spell this differently ('mvt',
-         * 'application/vnd.maplibre-vector-tile'). 'pbf' is inconclusive rather than MVT, since
-         * MapLibre's tilesets keep format at 'pbf' and declare MLT through encoding instead.
+         * Maps a container's declared format or encoding (MBTiles/PMTiles metadata, TileJSON media type) onto a tile
+         * format, case-insensitively by substring. 'pbf' is inconclusive, not MVT: MapLibre tilesets keep format
+         * 'pbf' and declare MLT through encoding.
          * @param format The declared format or encoding string.
          * @return The tile format, or TILE_FORMAT_AUTO when the string says nothing conclusive.
          */
@@ -277,12 +267,11 @@ namespace massif {
         std::vector<std::shared_ptr<BinaryData> > _fallbackFonts;
         std::variant<std::shared_ptr<CompiledStyleSet>, std::shared_ptr<CartoCSSStyleSet> > _styleSet;
         std::string _styleAssetName; // what the current _map was loaded from, so the symbolizer
-        std::shared_ptr<AssetPackage> _styleAssetPackage; // context can be rebuilt without it
+        std::shared_ptr<AssetPackage> _styleAssetPackage; // context can be rebuilt without re-resolving the style set
         std::shared_ptr<mvt::StyleParameterStore> _parameterStore; // the values the decoded tiles read
         std::set<std::string> _liveParameters; // those of them that only a per-frame function reads
         std::string _selectionParameter; // the one that selects a feature, if the style has one
-        // Its value, hashed: the tiles read it while they are drawn, so setting the selection is a
-        // style-byte rewrite rather than a decode. Shared with every tile this decoder built.
+        // Its value, hashed and shared with every tile this decoder built: selecting is a style-byte rewrite, not a decode.
         std::shared_ptr<std::atomic<std::uint64_t> > _selectionState = std::make_shared<std::atomic<std::uint64_t> >(0);
         std::shared_ptr<const mvt::Map> _map;
         std::shared_ptr<const mvt::Map::Settings> _mapSettings;

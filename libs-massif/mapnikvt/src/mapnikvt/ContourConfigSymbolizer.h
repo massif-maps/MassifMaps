@@ -11,13 +11,9 @@
 
 namespace massif::mvt {
     /**
-     * Optional config symbolizer for a contour external source (ContourTileDataSource).
-     *
-     * A ContourTileDataSource emits MVT line/label features, so its VISUAL styling uses the
-     * ordinary line/text symbolizers on the '#contour' layer. This symbolizer only carries
-     * the datasource GENERATION parameters (base interval, tracing resolution, ...). Because
-     * changing them regenerates tiles, the owning SDK layer applies these to the
-     * ContourTileDataSource on style/parameter changes - NOT every frame.
+     * Optional config symbolizer carrying a ContourTileDataSource's generation parameters; its visual styling
+     * uses ordinary line/text symbolizers. Changing these regenerates tiles, so they are applied on
+     * style/parameter changes, not every frame.
      */
     class ContourConfigSymbolizer : public LayerConfigSymbolizer {
     public:
@@ -26,6 +22,8 @@ namespace massif::mvt {
             bindProperty("resolution",        &_resolution);
             bindProperty("min-visible-zoom",  &_minVisibleZoom);
             bindProperty("simplify-tolerance",&_simplifyTolerance);
+            bindProperty("label-stubs",       &_labelStubs);
+            bindProperty("label-interval",    &_labelInterval);
         }
 
     protected:
@@ -33,6 +31,8 @@ namespace massif::mvt {
         FloatProperty _resolution        = FloatProperty(128.0f);
         FloatProperty _minVisibleZoom    = FloatProperty(12.0f);
         FloatProperty _simplifyTolerance = FloatProperty(1.0f);
+        BoolProperty  _labelStubs        = BoolProperty(false);
+        FloatProperty _labelInterval     = FloatProperty(0.0f);
     };
 }
 

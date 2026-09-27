@@ -27,6 +27,16 @@ namespace massif {
          */
         virtual double getDisplayHeight(double internalX, double internalY) const = 0;
         /**
+         * Returns the slope of the terrain at the given internal coordinates, as the partial
+         * derivatives of the display height. Zero where no elevation data is cached.
+         */
+        virtual void getDisplayGradient(double internalX, double internalY, double& dhdx, double& dhdy) const = 0;
+        /**
+         * The maximum zoom level the elevation data itself carries, which is the finest relief
+         * anything reading this provider can resolve.
+         */
+        virtual int getMaxDataZoom() const = 0;
+        /**
          * Calculates the first intersection of the ray with the displaced terrain surface.
          * Returns true and sets t if a hit was found. The caller should fall back to
          * a ground plane intersection when false is returned.

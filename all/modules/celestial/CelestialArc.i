@@ -19,6 +19,11 @@
 %import "core/DoubleVector.i"
 
 !polymorphic_shared_ptr(massif::CelestialArc, celestial.CelestialArc)
+!spec(massif::CelestialArc, celestial, arc)
+// The azimuth/altitude pairs flat, [az0, alt0, az1, alt1, ...], as the C++ takes them.
+!method(massif::CelestialArc, setDirections, arg(directions, json), returns(void))
+!method(massif::CelestialArc, setSegments, arg(directions, json), returns(void))
+!method(massif::CelestialArc, setCircle, arg(axisAzimuth, float), arg(axisAltitude, float), arg(radius, float), returns(void))
 
 %attribute(massif::CelestialArc, float, Radius, getRadius)
 %attribute(massif::CelestialArc, float, Width, getWidth, setWidth)

@@ -148,24 +148,19 @@ namespace massif {
          */
         MapVec getIlluminationDirection() const;
         /**
-         * Sets the illumination direction.
-         * The horizontal part is read as a compass bearing (x = sin(azimuth), y = cos(azimuth), with
-         * azimuth 0 = north, increasing clockwise) pointing towards the light, and z points down
-         * towards the ground: -sin(altitude). MapLibre's default 'hillshade-illumination-direction'
-         * of 335 degrees at a 45 degree altitude is therefore (-0.4226, 0.9063, -0.7071), which is
-         * the default here too.
-         * @param The new direction vector for the illumination light. (0,0,-1) means straight down, (-0.707,0,-0.707) means
-         *        from east with a 45 degree angle. The direction vector will be normalized.
+         * Sets the illumination direction: (sin(azimuth), cos(azimuth), -sin(altitude)), azimuth 0 = north, clockwise, towards the light.
+         * The default is MapLibre's 335 degrees at a 45 degree altitude: (-0.4226, 0.9063, -0.7071).
+         * @param direction The new direction vector, normalized. (0,0,-1) means straight down.
          *        Note that the MULTIDIRECTIONAL method ignores the azimuth and uses only the altitude.
          */
         void setIlluminationDirection(MapVec direction);
         /**
-         * Returns wheter the illumination direction should change with the map rotation.
+         * Returns whether the illumination direction should change with the map rotation.
          * @return enabled
          */
         bool getIlluminationMapRotationEnabled() const;
         /**
-         * Sets wheter the illumination direction should change with the map rotation.
+         * Sets whether the illumination direction should change with the map rotation.
          * @param enabled whether to enable or not.
          */
         void setIlluminationMapRotationEnabled(bool enabled);
@@ -176,7 +171,7 @@ namespace massif {
         bool getExagerateHeightScaleEnabled() const;
 
         /**
-         * Sets wheter the normal vector tile should be exagerated based on the zoom level.
+         * Sets whether the normal vector tile should be exagerated based on the zoom level.
          * @param enabled whether to enable or not.
          */
         void setExagerateHeightScaleEnabled(bool enabled);
@@ -188,11 +183,9 @@ namespace massif {
         bool isLegacyHeightScaleEnabled() const;
 
         /**
-         * Sets whether to use the legacy (pre-MapLibre-parity) height scale formula, in which the
-         * relief is damped by the absolute zoom level and therefore flattens as the camera zooms in.
-         * The default formula instead follows MapLibre: the true slope from zoom 15 up, boosted
-         * below it. Styles tuned against the legacy formula should enable this and also call
-         * setHeightScale(0.09f), which was the old default height scale.
+         * Sets whether to use the legacy height scale formula, which damps the relief by the absolute zoom (flattening it
+         * as the camera zooms in); the default follows MapLibre: the true slope from zoom 15 up, boosted below it.
+         * Styles tuned against the legacy formula should also call setHeightScale(0.09f), the old default.
          * @param enabled Whether to use the legacy formula.
          */
         void setLegacyHeightScaleEnabled(bool enabled);
@@ -272,15 +265,9 @@ namespace massif {
          */
         bool isTerrainPaintEnabled() const;
         /**
-         * Sets whether the layer may shade the shared 3D terrain elevation texture instead of
-         * loading, decoding and uploading a DEM tile set of its own. It applies only when the map
-         * renders 3D terrain with draped fills FROM THE SAME data source, and not while the
-         * built-in contour lines are enabled: the layer then draws one quad per terrain tile, at
-         * its own place in the layer order, and fetches nothing. In any other configuration the
-         * layer keeps its normal map tile set. Disable it to compare the two paths.
-         * Note that the shading is then computed from the TERRAIN's elevation grid, so it does not
-         * follow this layer's own zoom level bias, and it resolves the relief slightly differently
-         * from a magnified normal map raster.
+         * Sets whether the layer may shade the shared 3D terrain elevation texture instead of loading a DEM tile set of its own.
+         * Applies only to 3D terrain with draped fills from the same data source and without the built-in contour lines.
+         * The shading then follows the terrain's elevation grid, not this layer's zoom level bias.
          * @param enabled True to allow terrain paint mode.
          */
         void setTerrainPaintEnabled(bool enabled);
@@ -291,11 +278,8 @@ namespace massif {
          */
         bool isTerrainPaintFullDetailEnabled() const;
         /**
-         * Sets whether the terrain paint shades from the elevation source's own maximum zoom
-         * instead of the coarser level the terrain MESH needs (one texel per half surface cell,
-         * which costs two zoom levels of relief - at high zoom, all of it). Shading is per fragment
-         * and resolves what the mesh cannot, so this is on by default; turning it off gives the
-         * terrain's own elevation textures back and is measurably faster.
+         * Sets whether the terrain paint shades from the elevation source's own maximum zoom instead of the coarser level
+         * the terrain mesh needs (two zoom levels less relief). Turning it off reuses the terrain's textures and is faster.
          * @param enabled True to shade from the DEM's own maximum zoom.
          */
         void setTerrainPaintFullDetailEnabled(bool enabled);
@@ -326,6 +310,8 @@ namespace massif {
 
         std::atomic<float> _exaggeration;
         std::string _normalMapLightingShader;
+        mutable std::atomic<bool> _normalMapsRebuilding; // cleared from the const applyRendererSettings
+        std::atomic<unsigned int> _normalMapRebuildPass;
         std::atomic<Color> _shadowColor;
         std::atomic<Color> _accentColor;
         std::atomic<Color> _highlightColor;
@@ -340,23 +326,18 @@ namespace massif {
         std::atomic<bool> _terrainPaintEnabled;
         std::atomic<bool> _terrainPaintFullDetailEnabled;
 
-        // Whether the layer shades the shared terrain elevation texture this frame instead of its
-        // own tile set: 3D terrain with draped fills, over the SAME data source (a different DEM
-        // would silently be replaced by the terrain's one).
+        // Requires the same data source as the terrain: a different DEM would silently be replaced by the terrain's.
         bool isTerrainPaintActive() const;
-        // Pushes every appearance value onto the tile renderer. Called both before the shared
-        // drape bake and from the layer's own draw, so the paint and the normal map agree.
+        // Called both before the shared drape bake and from the layer's own draw, so the paint and the normal map agree.
         void applyRendererSettings() const;
+        // updateTiles for a normal-map parameter; the built-in shader draws until the rebuild lands.
+        void rebuildNormalMaps();
         // Hash of everything the paint's appearance depends on - including what only the lighting
         // shader sees - so cached drape textures are re-baked when any of it changes.
         std::size_t calculatePaintFingerprint() const;
-        // Map rotation at the last prepared frame, quantised. The paint is BAKED, so an illumination
-        // that follows the map has to re-bake as the map turns - quantised, or a slow rotation
-        // re-bakes every frame for a light direction nobody can tell apart.
+        // Quantised map rotation: the paint is baked, so a map-following light re-bakes as the map turns, but not every frame.
         std::atomic<int> _paintRotationStep;
 
-        // Elevation is packed into the normal map when contours are on or when explicitly requested
-        // for a custom shader.
         bool isElevationEncoded() const { return _contourEnabled.load() || _elevationEncodingEnabled.load(); }
     };
     

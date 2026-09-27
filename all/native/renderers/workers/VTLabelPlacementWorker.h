@@ -10,6 +10,8 @@
 #include "components/ThreadWorker.h"
 #include "graphics/ViewState.h"
 
+#include <set>
+
 #include <vt/LabelCuller.h>
 
 #include <chrono>
@@ -46,22 +48,18 @@ namespace massif {
         void scheduleContinuation();
 
         /**
-         * A placement cycle is rationed across several passes (mapbox's PauseablePlacement), so the
-         * culler, its collision grid and the view it was opened against all outlive one pass. The
-         * view is FROZEN for the cycle: resuming against a moved camera would collide the second
-         * half of the labels against a grid built for a different screen.
+         * A cycle may span passes (mapbox's PauseablePlacement; off while PLACEMENT_BUDGET_MS is 0), so culler,
+         * grid and the frozen view outlive a pass.
          */
         std::unique_ptr<vt::LabelCuller> _culler;
         ViewState _cycleViewState;
         bool _cycleActive = false;
-        /**
-         * Wall clock the current cycle has spent, and what the last COMPLETED one cost. Slicing is
-         * not free - each slice re-sorts and re-inserts its own subset, and the pacing stretches a
-         * cycle over many passes - so a cycle that fits in one pass is run in one pass.
-         */
+        /** A cycle ends when every layer has wrapped once; under slicing they never wrap in the same pass. */
+        std::set<const void*> _cycleWrappedLayers;
+        /** Commit the next placement unfaded (TileRenderer::snapLabelTransition); only after an abandoned cycle. */
+        bool _snapNextPlacement = false;
         double _cycleMs = 0;
-        double _lastCycleMs = 0;
-        /** No pass may start before this: what holds placement to its share of wall clock. */
+        /** No pass may start before this: the CPU duty cycle. */
         std::chrono::steady_clock::time_point _nextAllowedTime;
         
         bool _stop;
@@ -69,17 +67,11 @@ namespace massif {
         
         bool _pendingWakeup;
         std::chrono::steady_clock::time_point _wakeupTime;
-        // When the last pass STARTED, so the next one can be held off until its fade has finished.
+        // Start of the last pass, to hold the next one off until its fade finished.
         std::chrono::steady_clock::time_point _lastPassTime;
         /**
-         * Shortest gap between two placement passes - maplibre's Placement.stillRecent, whose own
-         * interval IS its fadeDuration: it will not start a new placement while the previous one is
-         * still fading. Ours are asked for by every tile that arrives, so a pan at high tilt ran
-         * several a second and no label ever finished its fade; measured on the Grenoble preview,
-         * 10-14 labels flipped on and off per pass with the flips landing mid-screen.
-         *
-         * 300 ms is the fade at the default label blending speed (TileRenderer), and maplibre's
-         * own fadeDuration.
+         * Shortest gap between placement passes, ms: maplibre's Placement.stillRecent / fadeDuration, and the
+         * default label fade. Without it every arriving tile re-placed and labels never finished fading.
          */
         static const int MIN_PLACEMENT_INTERVAL;
 

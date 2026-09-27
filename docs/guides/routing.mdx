@@ -67,7 +67,7 @@ const request = create('routing', 'query', {
 });
 
 const metres = await router.callAsync('calculateRoute', [request],
-    (route) => route.getDouble('totalDistance'));
+    (route) => route.get('totalDistance'));
 ```
 
 </TabItem>
@@ -81,7 +81,8 @@ Measured against the public OSM endpoint on a phone: a 1 km walking route came b
 
 ## Offline
 
-Ship a Valhalla tile package (`.vtiles`) with the app or download it, then point the service at it.
+Ship a Valhalla tile package (a SQLite file, `.vtiles`) with the app or download it, then point the
+service at it.
 No network, no key, and the same request and result shape:
 
 ```java
@@ -99,8 +100,9 @@ router.call("add", "/sdcard/routing/france.vtiles");
 router.call("add", "/sdcard/routing/switzerland.vtiles");
 ```
 
-Building the tiles is Valhalla's own job — `valhalla_build_tiles` over an OSM extract. The result
-is a directory or a tar; the SDK reads it as it is.
+Building the tiles is Valhalla's own job — `valhalla_build_tiles` over an OSM extract. The SDK does
+not read that directory or tar, though: it reads one SQLite file in the MBTiles layout (a `tiles`
+table plus `metadata`), so the built tiles have to be packed into one.
 
 Offline routing runs on the device's CPU, so a very long route over a large package takes seconds
 rather than the hundreds of milliseconds a server takes. Keep the packages regional.
@@ -112,11 +114,13 @@ rather than the hundreds of milliseconds a server takes. Keep the packages regio
 | `totalDistance` / `totalTime` | metres and seconds |
 | `pointCount` / `instructionCount` | counts, as properties |
 | `getInstruction(i)` | one maneuver: `action`, `pointIndex`, `distance`, `streetName`, `instruction` |
+| `instructionsJSON` | every maneuver as one JSON array, in one call instead of one per field |
 | `getPoints()` | the whole path as a **flat** `x0,y0,x1,y1,…` buffer |
 
-The path is deliberately not readable as a property: a 9 km cycling route is 562 positions, which
-as JSON is a 15 KB string to build, cross and parse. The flat buffer is one crossing and no copy —
-and it applies no projection, so read `projection.name` to know what the numbers are.
+Read the path with `getPoints()` rather than the `points` property: a 9 km cycling route is 562
+positions, which as JSON is a 15 KB string to build, cross and parse. The flat buffer is one
+crossing and no copy — and it applies no projection, so read `projection.name` to know what the
+numbers are.
 
 To draw the route, feed those positions to a `line` element, or — for many routes at once — through
 the [GeoJSON tiling pyramid](/docs/features/geojson-vector-tiles). Turn arrows are a feature of
@@ -138,15 +142,16 @@ router.callAsync("matchRoute", result -> …, request);
 
 ## Indoor routing
 
-`SGRERoutingService` routes over a graph the app provides as GeoJSON — corridors, stairs, lifts,
-with your own edge costs. It is a separate engine from Valhalla and is not tied to OSM data at
-all. See the [SGRE sources](https://github.com/massif-maps/massif-maps-libs/tree/develop/sgre) and
-`all/modules/routing/` for the request shape.
+`SGREOfflineRoutingService` (experimental) routes over a graph the app provides as GeoJSON —
+corridors, stairs, lifts, with your own edge costs. It is a separate engine from Valhalla and is
+not tied to OSM data at all. See the
+[SGRE sources](https://github.com/massif-maps/MassifMaps/tree/master/libs-massif/sgre) and
+`all/modules/routing/SGREOfflineRoutingService.i` for the constructor.
 
 ## Routing without the map
 
 The repository also ships **`routing-lib`**: Valhalla and its bindings, with no renderer and no map
 view. If your app only needs routes, that is a much smaller dependency — see
-[the installation guide](/docs/getting-started/installation#building-from-source).
+[the installation guide](/docs/getting-started/installation#standalone-routing-library).
 
 Full spec keys, properties and methods: [routing reference](/docs/api/reference/routing).

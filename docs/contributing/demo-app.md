@@ -13,7 +13,7 @@ routes here rather than carrying it, because none of it is needed to answer an o
 | Activity | What it is |
 |---|---|
 | `.MainActivity` | the **example gallery** — one file per example, on the facade API. Not for debugging. See [examples.md](examples.md) |
-| `.ExampleActivity` | runs one example: `--es example <id>`, plus `--es ui false` and `--es lon/lat/zoom/tilt/rotation` |
+| `.ExampleActivity` | runs one example: `--es example <id>`, plus `--es ui false`, `--es globe true` and `--es lon/lat/zoom/tilt/rotation` |
 | `.BenchActivity` | the **composable debugging/measurement map** — every layer switch, every intent extra, `DemoLive` |
 
 A debugging run names `.BenchActivity` explicitly; `am start` with no activity opens the gallery.
@@ -46,10 +46,10 @@ taken too early shows a clean scene that looks exactly like a fix.
 
 ## The demo files
 
-| File (under `app/src/main/java/com/massif-maps/test/`) | Role |
+| File (under `app/src/main/java/com/massifmaps/MassifDemo/`) | Role |
 |---|---|
 | `demo/DemoConfig.java` | every default, one static field per knob + the intent-extra key map |
-| `demo/DemoCfg.java` | `cfgBool/cfgFloat/cfgInt/cfgStr/cfgColor` intent readers (`--es key value`) |
+| `demo/DemoCfg.java` | `cfgBool/cfgFloat/cfgInt/cfgStr/cfgColor/cfgEnum` intent readers (`--es key value`) |
 | `demo/DemoMap.java` | builds/updates the map: layer registry, shared sources, terrain/light/sky, camera |
 | `demo/DemoStyles.java` | style decoders (dir / zip / inline CartoCSS / style project) + demo shaders |
 | `demo/DemoSky.java` | day-cycle sun/sky + generated sky shader |
@@ -63,8 +63,8 @@ older commit.
 
 ## Intent extras
 
-Layers (`base`, `satellite`, `hillshade`, `hypso`, `contour`, `contourTiles`, `routes`, `elements`,
-`bugs`) toggle with `--es <name> true|false`; the base map has `--es base plain|composite` and
+Standalone layers (`map` = the base map, `satLayer`, `hillshade`, `hypso`, `contourLayer`, `contourTiles`,
+`spans`, `routes`, `elements`, `bugs`) toggle with `--es <name> true|false`; the base map has `--es base plain|composite` and
 `--es style dir|zip|inline|project`. `dir` reads the style from a FOLDER via `DirAssetPackage`
 (`/sdcard/alpimaps_mbtiles/osm`), falling back to `osm.zip` then to inline CartoCSS.
 
@@ -89,14 +89,13 @@ are a poor substitute: Millau's DEM sits 220 m above the actual deck and the via
 a z14 tile. The span keeps INTERMEDIATE vertices on purpose (`bugSpanVertices`) — a two-point line
 is already straight once it leaves the bake and would show a fix that is not there.
 
-`--es demo terrain|project|composite` picks the configuration (default `composite`). Every knob in
-`applyTerrainConfig`/`applyCameraConfig`/`applySkyAndLightConfig` is an intent extra, so most
-experiments need no rebuild:
+`--es demo terrain|project|composite` is a legacy shorthand for `base`/`style`. Every knob read in
+`DemoConfig.applyIntentOverrides` is an intent extra, so most experiments need no rebuild:
 
 - camera: `lon lat zoom tilt rotation`
 - terrain: `drape drapeLines drapeResolution meshResolution exaggeration`, `viewDistance
   viewDistanceMeters`, `autoFlatten autoFlattenTilt autoFlattenMs`, `stitch`
-- layers: `hs sat satZoom contour bld3d`
+- composite overlays: `hs sat satZoom contour`; buildings: `bld3d`
 - light/shadow: `daycycle sunHour sunAzimuth sunAltitude shadow`
 - labels: `textOcclusion`, `roadLabelOcclusion` (a re-decode)
 - `ui false` (hide the panel), `anim zoom|pan|rotate|zoomseq|approach`
@@ -126,8 +125,8 @@ activity is `singleTop` and `BenchActivity.onNewIntent` feeds its extras back th
 
 The gallery has the same channel through `ExampleLive` (same short keys). Two traps:
 
-- `ExampleLive.onReceive` writes the properties **inline on the main thread**, so a broadcast sent
-  while the render thread is busy can ANR the app. Send config early, before the tiles load.
+- `ExampleLive` applies the writes on its own worker thread: a receiver runs on the main thread with
+  a deadline, and a write blocks on whatever the render thread holds, so writing inline ANRed the app.
 - The receiver must be registered `RECEIVER_EXPORTED` — `adb shell am broadcast` runs as the shell
   uid, and a `NOT_EXPORTED` receiver drops every one silently (`result=0`, no log).
 
@@ -173,7 +172,7 @@ python3 scripts/devtap.py diff before.png after.png
 `logs android` scopes to the demo app's pid, drops the system noise tags, and collapses lines that
 differ only in numbers into one `xN` entry — the header names what it dropped, so a surprising
 count is itself a signal. `--grep REGEX` bypasses every filter for one specific probe.
-`--device` is mandatory when several emulators are attached; devtap refuses to guess.
+`--device` (or `ANDROID_SERIAL`) is mandatory when several emulators are attached; devtap refuses to guess.
 
 `shot` and `diff` print per-band mean/stddev and the changed-region bbox, **not the image**.
 `mean 0.00 max 0` means the two frames are identical — that is the answer, and it is how you catch
@@ -225,9 +224,9 @@ knowing before reading it:
   `BackgroundRenderer`, `SkyRenderer`) must go through them, or the ground and the sky end up with
   different fog.
 - `SkyRenderer` draws a full-screen ray-direction quad. Apps can replace the body with
-  `SkyOptions.setShaderSource`; the wrapper declares `u_sunDir/u_sunColor/...` and a
-  `fogAmount(rayDir)` helper — redeclaring any of them is a compile error and the renderer silently
-  falls back to the built-in sky.
+  `SkyOptions.setShaderSource`; the wrapper declares `u_sunDir/u_sunColor/...` plus the fog block of
+  `FogOptions.setShaderSource` (`fogHorizonBlend(dir)`, ...) — redeclaring any of them is a compile
+  error and the renderer silently falls back to the built-in sky.
 - `BackgroundRenderer` draws the flat z=0 plane past the terrain. It uses
   `Options.getBackgroundBitmap()` — **not** the CartoCSS `Map { background-color }`.
 - `TerrainOptions.ViewDistanceFactor` ends the ground (tangram's rule). Pair a short one with fog or
@@ -241,18 +240,17 @@ knowing before reading it:
 
 ## Comparing against older SDK code
 
-A/B-ing a regression takes three steps, not one:
+A/B-ing a regression takes two steps, not one:
 
 ```sh
-git checkout <sha> -- all/                        # 1. old sources
-(cd libs-massif && git checkout <matching-sha>)    # 2. matching submodule commit
+git checkout <sha> -- all/ libs-massif/           # 1. old sources (libs-massif is in-tree since 2026-08-23)
 cd scripts && python3 swigpp-java.py --profile "standard+valhalla+geocoding+routing+packagemanager" \
-  --swig /Volumes/dev/carto/mobile-swig/swig       # 3. regenerate wrappers, else the build fails
+  --swig /Volumes/dev/carto/mobile-swig/swig       # 2. regenerate wrappers, else the build fails
 ```
 
 `generated/` is gitignored, not tracked: there is no `git checkout` that brings it back, and a
 `swigpp-java.py` run overwrites the tree's wrappers with whatever `--profile` you passed. Restore
-the same way (`git checkout HEAD -- all/`, submodule back to its branch, regenerate).
+the same way (`git checkout HEAD -- all/ libs-massif/`, regenerate).
 
 A **temporary WIP commit** is the safe way to set work aside for a comparison — the git stash stack
 is shared with the main checkout and every other worktree.

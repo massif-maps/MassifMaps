@@ -68,6 +68,9 @@ namespace massif {
         bool _pointerDown = false;
         // Right button, or left with ctrl: maplibre's trigger for rotate-and-pitch.
         bool _dragRotating = false;
+        // Same trigger in FREE_ROAM_MODE_FIRST_PERSON: moves via a synthesised two-finger drag
+        // (second pointer at a fixed offset, so no pinch or twist).
+        bool _dragMoving = false;
         float _lastPointerX = 0.0f;
         float _lastPointerY = 0.0f;
     };

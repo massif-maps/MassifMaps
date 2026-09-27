@@ -27,12 +27,9 @@
 
 
 !spec(massif::CompositeVectorTileLayer, layer, composite-vector, alias(source, dataSource), alias(style, decoder))
-%attribute(massif::CompositeVectorTileLayer, bool, SinglePassRenderingEnabled, isSinglePassRenderingEnabled, setSinglePassRenderingEnabled)
 
-// External sources are wired AFTER construction - a spec cannot express them, because the slot is
-// a name in the style and the source is usually shared with something else (the DEM a hillshade
-// slot draws is the same one an app queries elevations from). `type` crosses as an int:
-// CompositeSourceType is a plain enum and the facade has no enum argument kind.
+// Wired after construction: a slot is a style name and its source is usually shared (e.g. the DEM).
+// `type` crosses as an int: the facade has no enum argument kind.
 !method(massif::CompositeVectorTileLayer, addExternalDataSource, arg(name, string), arg(dataSource, handle), arg(type, int), returns(void))
 !method(massif::CompositeVectorTileLayer, addVectorDataSource, arg(name, string), arg(dataSource, handle), returns(void))
 !method(massif::CompositeVectorTileLayer, removeExternalDataSource, arg(name, string), returns(bool))
@@ -41,10 +38,15 @@
 !method(massif::CompositeVectorTileLayer, getExternalDataSourceNames, returns(json))
 !method(massif::CompositeVectorTileLayer, setExternalDataSourceZoomLevelBias, arg(name, string), arg(bias, float), returns(void))
 !method(massif::CompositeVectorTileLayer, setExternalDataSourceMaxOverzoomLevel, arg(name, string), arg(level, int), returns(void))
-// The child a slot is drawn by, so an app can reach settings the config symbolizer does not carry
-// - a HillshadeRasterTileLayer's custom NormalMapLightingShader is generated code, not a style
-// property. applyConfig never writes it, so a shader set here survives the per-frame pass.
+// Reaches child settings the config symbolizer does not carry (e.g. a hillshade shader);
+// applyConfig never writes them, so they survive the per-frame pass.
 !method(massif::CompositeVectorTileLayer, getExternalChildLayer, arg(name, string), returns(object, massif::Layer))
+// Internal, read by MapRenderer for the 2D/3D switch.
+%ignore massif::CompositeVectorTileLayer::getTerrainDecodePendingCount;
+// Virtual overrides: VectorTileLayer's binding already dispatches here; wrapping them again duplicates the property.
+%ignore massif::CompositeVectorTileLayer::setVectorTileEventListener;
+%ignore massif::CompositeVectorTileLayer::setClickRadius;
+%ignore massif::CompositeVectorTileLayer::setClickHandlerLayerFilter;
 %std_exceptions(massif::CompositeVectorTileLayer::CompositeVectorTileLayer)
 %std_exceptions(massif::CompositeVectorTileLayer::addExternalDataSource)
 %std_exceptions(massif::CompositeVectorTileLayer::addVectorDataSource)

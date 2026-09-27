@@ -33,6 +33,7 @@ states its scope at the top and links out rather than repeating.
 | making it faster, or measuring anything | [Performance](10-performance.md) |
 | "why don't we just do what tangram does?" | [vs tangram-ng](11-tangram-diff.md) |
 | which graphics API we target, ES 3.0, Metal, ANGLE, new platforms | [Graphics API migration](16-graphics-api-migration.md) |
+| spherical render projection: what works on the globe and what does not | [Globe mode](18-globe.md) |
 
 The dated measurement history is a separate lab notebook:
 [Performance log](../performance-log.md). These pages are the **current design**; that one is what
@@ -72,11 +73,13 @@ ported **whole**: half of their depth model was measurably worse than none of it
 When comparing, read their **scene files** (`res/scenes/*.yaml`), not only their shaders — the
 shader defaults are overridden there.
 
-**2. The RTT drape is being deleted and is deliberately not documented.**
-The old path baked flat 2D content into per-tile render-target textures and textured the terrain
-with them. It still exists behind `TerrainOptions.DrapeFillsEnabled` and `--es drape true` in the
-demo, but the shared ground ([3D terrain](04-terrain.md)) replaced it. Do not build on it, and do
-not extend these pages to cover it.
+**2. Flat content is draped, and live geometry is the exception.**
+Fills and lines are baked per tile into a drape texture that the shared ground samples
+(`TerrainOptions.DrapeFillsEnabled` / `DrapeLinesEnabled`, both default on; `--es drape` /
+`--es drapeLines` in the demo). Draping the lines took the city pan from ~14 to ~27 fps
+([Performance](10-performance.md#what-the-city-frame-is-bound-by-and-the-five-things-that-were-not-it));
+what stays live is filtered by `NoDrapeLayerFilter`. Mechanism in
+[3D terrain](04-terrain.md#the-drape-cache-budget-seeding-and-completeness).
 
 ## Where the render code lives
 

@@ -26,6 +26,9 @@ namespace massif {
 
         const float NO_COORDINATE = -1.0f;
 
+        // Canvas pixels; only the pair's translation is used, it just must not read as coincident points.
+        const float FIRST_PERSON_POINTER_GAP = 120.0f;
+
         // maplibre-gl-js: handler/mouse.ts and scroll_zoom.ts. Degrees per CSS pixel, zoom per
         // wheel unit. The PITCH is negated - maplibre's pitch is 0 where this tilt is 90 - and the
         // rotation's sign is decided per drag by which side of the centre it is on (applyDragRotate).
@@ -258,6 +261,11 @@ namespace massif {
     /** Ends whatever drag is running, wherever the pointer got to. */
     void WebMapView::cancelDrag() {
         _dragRotating = false;
+        if (_dragMoving) {
+            _dragMoving = false;
+            onInputEvent(INPUT_EVENT_POINTER2_UP, _lastPointerX, _lastPointerY, _lastPointerX + FIRST_PERSON_POINTER_GAP, _lastPointerY);
+            onInputEvent(INPUT_EVENT_POINTER1_UP, _lastPointerX, _lastPointerY, NO_COORDINATE, NO_COORDINATE);
+        }
         if (_pointerDown) {
             _pointerDown = false;
             // The SDK still owes itself the up: without it the click handler keeps waiting for one
@@ -283,7 +291,14 @@ namespace massif {
             view->_lastPointerX = x;
             view->_lastPointerY = y;
             if (event->button == RIGHT_BUTTON || event->ctrlKey) {
-                view->_dragRotating = true;
+                // First person: right button moves, like the two-finger drag; the left already rotates.
+                if (view->getOptions()->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                    view->_dragMoving = true;
+                    view->onInputEvent(INPUT_EVENT_POINTER1_DOWN, x, y, NO_COORDINATE, NO_COORDINATE);
+                    view->onInputEvent(INPUT_EVENT_POINTER2_DOWN, x, y, x + FIRST_PERSON_POINTER_GAP, y);
+                } else {
+                    view->_dragRotating = true;
+                }
             } else {
                 view->_pointerDown = true;
                 view->onInputEvent(INPUT_EVENT_POINTER1_DOWN, x, y, NO_COORDINATE, NO_COORDINATE);
@@ -292,7 +307,11 @@ namespace massif {
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
             // Only while a drag is running: this listener is on the document, so it also sees the
             // pointer crossing the page around the map, and a hover must move nothing.
-            if (view->_dragRotating) {
+            if (view->_dragMoving) {
+                view->onInputEvent(INPUT_EVENT_MOVE, x, y, x + FIRST_PERSON_POINTER_GAP, y);
+                view->_lastPointerX = x;
+                view->_lastPointerY = y;
+            } else if (view->_dragRotating) {
                 view->applyDragRotate(x, y, pixelRatio);
             } else if (view->_pointerDown) {
                 view->onInputEvent(INPUT_EVENT_MOVE, x, y, NO_COORDINATE, NO_COORDINATE);
@@ -301,10 +320,14 @@ namespace massif {
             }
             break;
         case EMSCRIPTEN_EVENT_MOUSEUP:
-            if (!view->_dragRotating && !view->_pointerDown) {
+            if (!view->_dragRotating && !view->_dragMoving && !view->_pointerDown) {
                 return EM_FALSE; // a release that belongs to the page, not to the map
             }
-            if (view->_dragRotating) {
+            if (view->_dragMoving) {
+                view->_dragMoving = false;
+                view->onInputEvent(INPUT_EVENT_POINTER2_UP, x, y, x + FIRST_PERSON_POINTER_GAP, y);
+                view->onInputEvent(INPUT_EVENT_POINTER1_UP, x, y, NO_COORDINATE, NO_COORDINATE);
+            } else if (view->_dragRotating) {
                 view->_dragRotating = false;
             } else {
                 view->_pointerDown = false;

@@ -407,6 +407,11 @@ public final class DemoPanel {
         }
 
         header(context, "BASE MAP");
+        // Rebuilds every tile layer's transformer, so the tile caches drop and refill. Terrain is
+        // dropped while it is on: TileLayer picks the spherical transformer over the terrain one.
+        check(context, "globe", DemoConfig.GLOBE_MODE, new BoolSetting() {
+            public void set(boolean value) { DemoConfig.GLOBE_MODE = value; demo.applyGlobeMode(); }
+        });
         // Switching either of these rebuilds the base layer with a new decoder / layer class.
         choice(context, "mode", enumNames(DemoConfig.BaseMode.values()), DemoConfig.BASE_MODE.ordinal(), new IntSetting() {
             public void set(int index) {
@@ -496,14 +501,6 @@ public final class DemoPanel {
         });
         check(context, "#contour", DemoConfig.COMPOSITE_CONTOUR, new BoolSetting() {
             public void set(boolean value) { DemoConfig.COMPOSITE_CONTOUR = value; demo.syncCompositeSources(); refreshStatus(demo); }
-        });
-        check(context, "single-pass rendering", DemoConfig.COMPOSITE_SINGLE_PASS, new BoolSetting() {
-            public void set(boolean value) {
-                DemoConfig.COMPOSITE_SINGLE_PASS = value;
-                if (demo.compositeLayer != null) {
-                    demo.compositeLayer.setSinglePassRenderingEnabled(value);
-                }
-            }
         });
         // +1 = fetch the DEM one zoom level deeper than the base map.
         slider(context, "#hillshade zoom bias", -2, 2, DemoConfig.COMPOSITE_HILLSHADE_ZOOM_BIAS, true, new FloatSetting() {

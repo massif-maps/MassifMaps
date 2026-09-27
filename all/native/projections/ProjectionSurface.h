@@ -22,6 +22,18 @@ namespace massif {
     public:
         virtual ~ProjectionSurface() { }
 
+        /**
+         * World width in world units at the equator; the camera's zoom is calibrated on it.
+         * The sphere's equator is twice the planar map's width (docs/internals/rendering/18-globe.md).
+         */
+        virtual double getWorldWidth() const = 0;
+
+        /**
+         * World units per internal unit at this position: 1 on a plane, `getWorldWidth() / WORLD_SIZE * cos(lat)`
+         * on a sphere. The camera calibrates on it so one zoom frames the same ground on either surface.
+         */
+        virtual double calculateLocalScale(const cglib::vec3<double>& pos) const = 0;
+
         virtual MapPos calculateMapPos(const cglib::vec3<double>& pos) const = 0;
         virtual MapVec calculateMapVec(const cglib::vec3<double>& pos, const cglib::vec3<double>& vec) const = 0;
 

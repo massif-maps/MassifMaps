@@ -61,8 +61,8 @@ Drawn as a `RasterTileLayer`.
 > use `raster-opacity` for blending.
 
 ### Hillshade (`COMPOSITE_SOURCE_TYPE_HILLSHADE`)
-Drawn as a `HillshadeRasterTileLayer`. Decoder resolved from the DEM source `encoding`
-(`terrarium`/`mapbox`) unless passed explicitly.
+Drawn as a `HillshadeRasterTileLayer`. Decoder resolved per tile from the DEM's `dem_encoding`
+meta data (`terrarium`/`mapbox`) unless passed explicitly.
 
 | CartoCSS property | Effect | Timing |
 |---|---|---|
@@ -104,6 +104,8 @@ per frame — they regenerate tiles):
 | `contour-resolution` | `setResolution` |
 | `contour-min-visible-zoom` | `setMinVisibleZoom` |
 | `contour-simplify-tolerance` | `setSimplifyTolerance` |
+| `contour-label-stubs` | `setLabelStubsEnabled` |
+| `contour-label-interval` | `setLabelInterval` |
 
 All of them are optional: a `#contour` block that only styles the lines (no `contour-*`
 property) leaves the source on its own defaults. Ordinary styling rules in the block are

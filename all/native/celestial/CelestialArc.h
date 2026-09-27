@@ -14,18 +14,8 @@
 namespace massif {
 
     /**
-     * A curve drawn on the sky.
-     *
-     * Two ways to define one, and the first is what a daily path is:
-     *  - as a CIRCLE about an axis: every direction at a fixed angle from the axis. The daily
-     *    path of a distant body is exactly this - the axis is the rotation axis and the angle is
-     *    the complement of the declination - so an application draws it with an axis and one angle
-     *    rather than by sampling positions through the day.
-     *  - as an explicit list of directions, for a path that is not a circle: a satellite track, a
-     *    flight plan, a sampled trajectory.
-     *
-     * The curve is generated once and drawn as a line strip; its width is in pixels, so it stays
-     * legible at any field of view.
+     * A curve drawn on the sky: a circle about an axis (a body's daily path: axis = rotation axis,
+     * radius = 90 - declination), or an explicit list of directions. Width is in screen pixels.
      */
     class CelestialArc : public CelestialObject {
     public:
@@ -48,10 +38,8 @@ namespace massif {
         void setDirections(const std::vector<double>& directions);
 
         /**
-         * Defines the arc as a list of SEPARATE segments: every pair of directions is one line and
-         * consecutive pairs are not joined. A figure drawn between fixed directions is exactly
-         * this - a set of lines that is not a single path - and it stays ONE object, so it is one
-         * draw call and one clickable thing.
+         * Defines the arc as separate segments: every pair of directions is one line, consecutive pairs
+         * are not joined. Still one object: one draw call, one clickable thing.
          * @param directions The directions, as alternating azimuth and altitude values in degrees.
          */
         void setSegments(const std::vector<double>& directions);
@@ -80,7 +68,7 @@ namespace massif {
          */
         float getWidth() const;
         /**
-         * Sets the line width.
+         * Sets the line width. The default is 2.
          * @param pixels The width in pixels.
          */
         void setWidth(float pixels);
@@ -91,8 +79,7 @@ namespace massif {
          */
         bool isBelowHorizonVisible() const;
         /**
-         * Sets whether the part of the curve below the horizon is drawn. A daily path looks
-         * right with this off - the arc then rises and sets like the body on it does.
+         * Sets whether the part of the curve below the horizon is drawn. The default is false.
          * @param visible True to draw the curve below the horizon.
          */
         void setBelowHorizonVisible(bool visible);
@@ -103,9 +90,8 @@ namespace massif {
          */
         float getClickRadius() const;
         /**
-         * Sets the click radius of the curve: how far, in degrees, a touch ray may miss the curve
-         * and still hit it. A curve is a line a pixel or two wide, so without this nothing could
-         * ever be aimed at. 0 makes the curve unclickable. The default is 2 degrees.
+         * Sets the click radius: how far a touch ray may miss the curve and still hit it.
+         * 0 makes the curve unclickable. The default is 2 degrees.
          * @param degrees The click radius in degrees.
          */
         void setClickRadius(float degrees);

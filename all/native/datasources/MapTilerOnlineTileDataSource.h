@@ -16,11 +16,8 @@
 namespace massif {
     
     /**
-     * An online tile data source that connects to MapTiler Cloud tile server.
-     * This data source should be used with vector tiles,
-     * though by customizing service URL could be used with raster tiles also.
-     * Be sure to read the Terms and Conditions of your MapTiler service provider to see if the
-     * service is available for your application.
+     * An online tile data source that connects to MapTiler Cloud tile server, meant for vector tiles (raster with a custom service URL).
+     * Be sure to read the Terms and Conditions of your MapTiler service provider to see if the service is available for your application.
      * Note: this class is experimental and may change or even be removed in future SDK versions.
      */
     class MapTilerOnlineTileDataSource : public TileDataSource {

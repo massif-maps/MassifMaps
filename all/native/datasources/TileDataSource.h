@@ -78,9 +78,8 @@ namespace massif {
         bool isMaxOverzoomLevelSet() const;
 
         /**
-         * Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source.
-         * The map is attached to every tile this source loads, and consumers read their settings
-         * from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance.
+         * Returns a copy of the data source meta data map; changes to it are not reflected in the source.
+         * The map is attached to every loaded tile, e.g. "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder.
          * A wrapper source with no map of its own answers with its wrapped source's.
          * @return A copy of the data source meta data map.
          */
@@ -117,10 +116,8 @@ namespace massif {
         void setMetaDataElement(const std::string& key, const Variant& element);
 
         /**
-         * Reads one entry of the source's own metadata, when it has any - the MBTiles or PMTiles
-         * metadata table, for instance. Sources that carry none return an empty string, as do keys
-         * they do not define. Unlike the meta data map above this is read-only and is NOT attached
-         * to the loaded tiles: a container's metadata can be tens of kilobytes.
+         * Reads one entry of the source's own container metadata (e.g. the MBTiles or PMTiles metadata table).
+         * Unlike the meta data map it is read-only and not attached to loaded tiles, as it can be tens of kilobytes.
          * @param key The metadata key, as named by the container's specification.
          * @return The value, or empty string if the source does not provide it.
          */

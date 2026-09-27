@@ -21,7 +21,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    namespace "com.akylas.routing"
+    namespace "com.massifmaps.valhalla"
     compileSdkVersion 36
 
     defaultConfig {
@@ -65,5 +65,5 @@ android {
     }
 }
 
-group = 'com.akylas.routing'
+group = 'com.massifmaps'
 version = System.getProperty('build-version', '1.0.0')

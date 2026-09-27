@@ -53,6 +53,10 @@ public final class DemoConfig {
     public static BaseMode BASE_MODE = BaseMode.COMPOSITE;
     public static StyleSource STYLE_SOURCE = StyleSource.INLINE;
 
+    /** Render the map on a sphere instead of the Mercator plane (Options.setRenderProjectionMode).
+     *  What works on the globe: docs/internals/rendering/18-globe.md. */
+    public static boolean GLOBE_MODE = false;
+
     // =============================================================================================
     // FILES ON THE DEVICE
     // Data root is <external-storage>/alpimaps_mbtiles (same convention as before).
@@ -143,8 +147,6 @@ public final class DemoConfig {
     public static String LANDFORM_CACHE_DB = "landform.db";
     public static int LANDFORM_MIN_ZOOM = 0;
     public static int LANDFORM_MAX_ZOOM = 14;
-    /** Single-pass segmented rendering (A/B switch of the composite renderer). */
-    public static boolean COMPOSITE_SINGLE_PASS = true;
     /** Per-source zoom bias: +1 fetches the DEM one zoom deeper than the base map. */
     public static float COMPOSITE_HILLSHADE_ZOOM_BIAS = 0f;
 
@@ -1172,6 +1174,7 @@ public final class DemoConfig {
         // what is shown
         BASE_MODE = DemoCfg.cfgEnum("base", BASE_MODE, BaseMode.class);              // --es base plain|composite
         STYLE_SOURCE = DemoCfg.cfgEnum("style", STYLE_SOURCE, StyleSource.class);    // --es style dir|zip|inline|project
+        GLOBE_MODE = DemoCfg.cfgBool("globe", GLOBE_MODE);                           // --es globe true|false
         // legacy 'demo' names kept working: terrain = plain base + terrain, nuti = style project
         String demo = DemoCfg.cfg("demo");
         if ("terrain".equals(demo)) {
@@ -1247,7 +1250,6 @@ public final class DemoConfig {
         LANDFORM_URL = DemoCfg.cfgStr("landformUrl", LANDFORM_URL);
         LANDFORM_SLOT = DemoCfg.cfgStr("landformSlot", LANDFORM_SLOT);
         LANDFORM_MAX_ZOOM = DemoCfg.cfgInt("landformMaxZoom", LANDFORM_MAX_ZOOM);
-        COMPOSITE_SINGLE_PASS = DemoCfg.cfgBool("singlePass", COMPOSITE_SINGLE_PASS);
         COMPOSITE_HILLSHADE_ZOOM_BIAS = DemoCfg.cfgFloat("hsBias", COMPOSITE_HILLSHADE_ZOOM_BIAS);
 
         // sources

@@ -12,11 +12,18 @@
 #include "graphics/Color.h"
 #include "graphics/ViewState.h"
 
+#include <array>
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <deque>
 #include <functional>
+#include <thread>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
+#include <unordered_map>
 #include <vector>
 
 #include <cglib/vec.h>
@@ -25,6 +32,7 @@
 namespace massif {
     class Bitmap;
     class ElevationManager;
+    namespace vt { class TileTransformer; }
     class ElevationTileGrid;
     class TerrainOptions;
     class FrameBuffer;
@@ -32,19 +40,13 @@ namespace massif {
     class Texture;
     class GLResourceManager;
     class TerrainDepthWorker;
+    class ElevationTextureCache;
     struct TerrainDepthBuffer;
 
     /**
-     * Renders the displaced terrain surface as per-tile grid meshes (with skirts).
-     * Used in two ways:
-     * 1. renderDepthPrepass: renders terrain depth into the currently bound framebuffer
-     *    (color writes disabled) before the tile layers are drawn. The 2D tile geometry
-     *    then depth-tests against this single consistent depth source (with a small bias),
-     *    which gives terrain self-occlusion without z-fighting between layers.
-     * 2. renderDepthTexture: renders packed 24-bit linear depth (RGB, relative to the
-     *    far plane) plus terrain coverage (A) into a half-resolution offscreen buffer,
-     *    consumed by post-process effects.
-     * Internal class, not exposed in the public API.
+     * Renders the displaced terrain surface as per-tile grid meshes with skirts: as a depth pre-pass the
+     * tile layers test against (one depth source, no z-fighting between layers), and as the packed depth
+     * texture post-process effects read. Internal class.
      */
     class TerrainRenderer {
     public:
@@ -52,50 +54,55 @@ namespace massif {
         virtual ~TerrainRenderer();
 
         /**
-         * Renders terrain depth into the currently bound framebuffer. Color writes are
-         * disabled during the pass and GL state is restored on return. Returns true on success.
+         * The surface (plane or globe) the mesh is built on; set before any render call. A change drops
+         * the meshes, whose vertices carry the shape. See docs/internals/rendering/18-globe.md.
+         */
+        void setTileTransformer(const std::shared_ptr<vt::TileTransformer>& tileTransformer);
+
+    private:
+        static double sphericalLocalPerInternal(const MapTile& tile, double internalY);
+    public:
+
+        /**
+         * Renders terrain depth into the bound framebuffer, color writes off. Restores GL state.
          */
         bool renderDepthPrepass(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager);
 
         /**
-         * Renders the terrain surface as an opaque solid color into the currently bound
-         * framebuffer. The fill is always depth-resolved internally (near slopes win over
-         * far slopes). With keepDepth, the terrain depth stays in the depth buffer and
-         * subsumes renderDepthPrepass (used when no tile layer provides the terrain
-         * depth). Without keepDepth the depth buffer is cleared afterwards: the fill is
-         * color-only and can not depth-clip the differently-tesselated tile layer
-         * content drawn above it - the tile layer surface pre-passes provide the depth.
-         * GL state is restored on return. Returns true on success.
+         * Renders the terrain as an opaque color. keepDepth leaves its depth in place (replacing renderDepthPrepass);
+         * otherwise depth is cleared so the fill cannot clip differently-tesselated tile content above it.
+         * Restores GL state.
          */
         bool renderBackground(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const Color& color, bool keepDepth);
 
         /**
-         * Renders the terrain surface with the given repeating background bitmap draped
-         * over it (the same world-anchored tiling the flat-map BackgroundRenderer uses) -
-         * the bitmap variant of the color background, with the same keepDepth semantics.
-         * GL state is restored on return. Returns true on success.
+         * Bitmap variant of the color background, tiled as BackgroundRenderer does; same keepDepth semantics.
          */
         bool renderBackground(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Bitmap>& bitmap, bool keepDepth);
 
         /**
-         * Renders the terrain surface painted by the application's surface shader
-         * (TerrainOptions::setSurfaceShaderSource) - the shaded variant of the color/bitmap
-         * background, with the same keepDepth semantics. The surface normal, elevation and
-         * camera distance are supplied per vertex, the sun and fog per frame. Returns false
-         * when no shader is set or it does not compile, in which case the caller falls back
-         * to the bitmap/color background. GL state is restored on return.
+         * Paints the terrain with TerrainOptions::setSurfaceShaderSource; same keepDepth semantics.
+         * Returns false when no shader is set or it fails to compile: the caller falls back to bitmap/color.
          */
         bool renderSurface(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const ResolvedLighting& lighting, const ResolvedFog& fog, bool keepDepth);
 
         /**
-         * Renders the packed terrain depth texture for post-processing. Returns true on success.
-         * Leaves the previously bound framebuffer bound again on return.
-         * meshResolutionCap 0 draws the terrain at its full mesh resolution: an effect that draws
-         * LINES from this depth sees every mesh edge as a fold, so a coarser mesh than the one on
-         * screen is not an approximation there, it is the pattern it draws. The occlusion
-         * read-back, which only samples points, keeps the cheap cap.
+         * Renders the packed terrain depth texture; restores the previous framebuffer binding.
+         * meshResolutionCap 0 is full resolution: a line effect draws every coarse mesh edge as a fold.
+         * withNormals: the PostProcessEffect::setTerrainNormalsRequired layout.
          */
-        bool renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap = DEPTH_TEXTURE_MESH_RESOLUTION);
+        bool renderDepthTexture(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, int meshResolutionCap = DEPTH_TEXTURE_MESH_RESOLUTION, bool withNormals = false, bool forReadback = false);
+        // Off when the scene's depth is read back as the terrain's: the slope-scaled offset steps from
+        // triangle to triangle, and an edge operator inks every step.
+        void setSurfacePolygonOffset(bool enabled) { _surfacePolygonOffset = enabled; }
+        // renderDepthTexture's packed depth (no normals), converted from the scene's own depth texture.
+        bool renderDepthTextureFromScene(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, unsigned int sceneDepthTexId);
+
+        /**
+         * Shared with the tile renderer, set once per frame. Lets the surface and normal passes sample the DEM
+         * per fragment (as geo-three); without it they use the per-vertex mesh normal.
+         */
+        void setElevationTextureCache(const std::shared_ptr<ElevationTextureCache>& cache) { _elevationTextureCache = cache; }
 
         /**
          * Returns the GL texture id of the packed depth buffer (0 if not rendered).
@@ -103,40 +110,30 @@ namespace massif {
         unsigned int getDepthTextureId() const;
 
         /**
-         * Renders the terrain depth texture and reads it back into a CPU buffer for
-         * pixel-exact occlusion queries (getDepthW). Returns true on success.
-         *
-         * Where an offscreen GL context is available the render and the read-back happen on
-         * the TerrainDepthWorker thread and this call only collects the meshes to draw - the
-         * data then lands a frame or two later. Otherwise both happen here, and the read-back
-         * stall is kept tolerable by only refreshing at a coarse interval while the camera moves.
+         * Renders the depth texture and reads it back to the CPU for occlusion queries. With an offscreen
+         * context this runs on TerrainDepthWorker and lands a frame or two later; otherwise here, throttled
+         * while the camera moves.
          */
         bool updateDepthBuffer(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager);
 
         /**
-         * True when the occlusion depth data no longer matches the camera because the
-         * update was deferred while the camera moves. The caller must keep asking for
-         * frames while this holds, so that the refresh happens once the camera settles.
+         * True when a deferred update left the occlusion depth behind the camera; the caller must keep
+         * requesting frames so the refresh happens once the camera settles.
          */
         bool isDepthBufferStale() const { return _depthStale; }
 
         /**
-         * True when the given world position is behind the terrain, by more than the given
-         * relative depth tolerance (1 = no slack).
-         *
-         * The position is projected with the camera the depth buffer was RENDERED from, not
-         * with the current one: the buffer lags a moving camera by up to the submit interval,
-         * so a current-camera distance compared against it reads every label as occluded while
-         * zooming out. Projecting with the buffer's own matrix makes the answer merely late.
-         * Fails open (not occluded) when there is no data, or when the position falls behind
-         * that camera or outside its viewport.
+         * True when pos is behind the terrain beyond the relative tolerance (1 = no slack). Projected with the
+         * buffer's own camera, which lags a moving one: current-camera depths would occlude every label.
+         * Off-buffer positions reuse their last verdict; fails open without one (`answered` says which).
          */
-        bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance) const;
+        bool isOccludedByTerrain(const cglib::vec3<double>& pos, float tolerance, bool* answered = nullptr) const;
+
+        /** Bumped each time a new occlusion depth is published: the verdicts may have changed. */
+        unsigned int getDepthSnapshotVersion() const { return _depthSnapshotVersion.load(); }
 
         /**
-         * The terrain tile cover for this camera - the tiles the surface would be drawn from.
-         * For consumers that need ground to draw on without having a tile set of their own
-         * (a terrain paint layer with no vector layer under it).
+         * The tiles the surface would be drawn from, for consumers with no tile set of their own.
          */
         void collectVisibleTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, std::vector<MapTile>& tiles) const;
 
@@ -144,24 +141,47 @@ namespace massif {
         struct TileMesh;
         struct MeshCacheEntry;
 
-        static constexpr int BUFFER_DOWNSCALE = 2;    // packed depth texture runs at half resolution
-        // The occlusion read-back is a glReadPixels, a full pipeline stall - 55-62 ms on an Adreno
-        // 610 on top of the ~20 ms depth render. While the camera moves the data is refreshed at a
-        // coarse interval only: a lagging occlusion depth is invisible, a stalled frame is not.
+        std::shared_ptr<ElevationTextureCache> _elevationTextureCache;
+        // Own buffer: its size differs from the post-process one (setPostProcessDownscale).
+        std::shared_ptr<FrameBuffer> _readbackFrameBuffer;
+
+        static constexpr int BUFFER_DOWNSCALE = 2;    // occlusion read-back buffer, half resolution
+        // glReadPixels stalls the pipeline; a lagging occlusion depth is invisible, a stalled frame is not.
         static constexpr int DEPTH_READBACK_THROTTLE = 60;        // minimum interval (ms) between read-backs
         static constexpr int DEPTH_READBACK_MOVING_INTERVAL = 500; // ...while the camera keeps moving
-        // The asynchronous path has no stall to pay for, but its second GL context still shares the
-        // GPU with the render one, and that contention is what this interval buys back: on an Adreno
-        // 610, 100 ms costs 13.3 fps against 14.9 at 500 ms.
+        // The async worker's GL context still contends for the GPU with the render one.
         static constexpr int DEPTH_SUBMIT_MOVING_INTERVAL = 500;   // minimum interval (ms) between worker jobs while moving
+        // One log line per mesh build; never ship it on.
+        static constexpr bool TERRAIN_MESH_TRACE = false;
+
+        // Metres, not tile-local z: the crack it covers is bounded by the local relief. See buildTileMesh.
+        static constexpr double SKIRT_DEPTH_METERS = 500.0;
         static constexpr int MIN_MESH_GRID_SIZE = 4;  // grid cells per tile edge, lower bound
         static constexpr int MAX_MESH_GRID_SIZE = 96; // grid cells per tile edge, upper bound
+        // geo-three's mesh (setSubdivideDistance): full MeshResolution up to this zoom, halved per level above.
+        static constexpr int REFERENCE_MESH_FULL_ZOOM = 12;
+        static constexpr int REFERENCE_MIN_MESH_GRID_SIZE = 16;
+        // The most cells per edge a mesh indexed with 16 bits holds: (n + 1)^2 grid vertices and 8n skirt
+        // vertices must stay under 65536, or the indices wrap and triangles join the wrong vertices.
+        static constexpr int MAX_INDEXED_MESH_GRID_SIZE = 250;
         static constexpr int MAX_CACHED_MESHES = 160;
+        // Half the cache: each pass of a frame caches its own resolution, and must not evict the next pass's.
+        static constexpr int MAX_VISIBLE_MESH_TILES = MAX_CACHED_MESHES / 2;
         static constexpr int DEPTH_TEXTURE_MESH_RESOLUTION = 32; // mesh cap for the occlusion depth texture
         static constexpr int OCCLUSION_SAMPLE_OFFSET = 4; // buffer pixels sampled around a queried position
+        // Past it the whole table is dropped: a verdict is only a hint.
+        static constexpr std::size_t MAX_OCCLUSION_VERDICTS = 8192;
+        // Bounded so the worker does not lag long after the camera has moved on.
+        static constexpr std::size_t MAX_PENDING_ATTRIB_JOBS = 64;
+        // Re-bakes as better DEM arrives; the cap stops a tile with no source data retrying on every insert.
+        static constexpr int MAX_ATTRIB_REBAKES = 4;
 
         static const std::string TERRAIN_DEPTH_VERTEX_SHADER;
         static const std::string TERRAIN_DEPTH_FRAGMENT_SHADER;
+        static const std::string SCENE_DEPTH_VERTEX_SHADER;
+        static const std::string SCENE_DEPTH_FRAGMENT_SHADER;
+        static const std::string TERRAIN_NORMAL_DEPTH_VERTEX_SHADER;
+        static const std::string TERRAIN_NORMAL_DEPTH_FRAGMENT_SHADER;
         static const std::string TERRAIN_COLOR_FRAGMENT_SHADER;
         static const std::string TERRAIN_BITMAP_VERTEX_SHADER;
         static const std::string TERRAIN_BITMAP_FRAGMENT_SHADER;
@@ -169,66 +189,114 @@ namespace massif {
         static const std::string TERRAIN_SURFACE_FRAGMENT_SHADER_PREFIX;
         static const std::string TERRAIN_SURFACE_FRAGMENT_SHADER_MAIN;
 
-        // meshResolutionCap > 0 caps the per-tile mesh grid below what TerrainOptions asks for: the
-        // occlusion depth texture is a half-resolution approximation sampled at single points, and
-        // the full mesh is CPU built and drawn from client memory, the expensive part of the pass.
-        bool renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn = std::function<void(const MapTile&)>(), int meshResolutionCap = 0, bool surfaceAttribs = false);
-        // Compiles (and caches) the surface program for the current TerrainOptions shader source.
+        // meshResolutionCap > 0 caps the grid for point-sampled passes. normalAttrib binds a_normal outside a
+        // surface pass. No caller sets skipSkirts: the skirts still cover real cracks.
+        bool renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn = std::function<void(const MapTile&)>(), int meshResolutionCap = 0, bool surfaceAttribs = false, bool normalAttrib = false, bool skipSkirts = false);
         // A source that failed once is not retried until it changes.
         std::shared_ptr<Shader> updateSurfaceShader(const std::string& shaderSource, const std::string& fogShaderSource, const std::shared_ptr<GLResourceManager>& glResourceManager);
-        // Fills the mesh's per-vertex surface attributes (normal + elevation in metres) on first
-        // use. Only the surface pass needs them, so the depth passes never pay for them.
-        void ensureSurfaceAttribs(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, TileMesh& mesh) const;
-        // Visible tiles paired with their (cached, built here if missing) meshes. Both the
-        // rendering path and the offscreen depth job start from this, so they always draw the
-        // same terrain.
+        // Lazy normal + elevation (metres) per vertex, surface pass only.
+        // normalSampleDistance: 0 takes the gradient from the mesh, else from the DEM at that many metres.
+        void ensureSurfaceAttribs(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, TileMesh& mesh, float normalSampleDistance, bool allowFixedScale) const;
+        // Shared by the render path and the offscreen depth job so both draw the same terrain.
         void collectTileMeshes(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, int meshResolutionCap, std::vector<std::pair<MapTile, std::shared_ptr<TileMesh> > >& tileMeshes);
-        // Drops the oldest meshes until the cache is back under its cap, sparing everything the
-        // current pass already drew.
-        void evictLeastRecentlyUsedMeshes(unsigned int pass);
+        // Spares everything the current pass already drew.
+        void evictLeastRecentlyUsedMeshes(unsigned int pass, int maxCachedMeshes);
+
+        // DEM-sampled normals, baked off the render thread; the grids are immutable, so no lock.
+        void startAttribWorker();
+        void stopAttribWorker();
+        void queueAttribRefine(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, const std::shared_ptr<TileMesh>& mesh, float normalSampleDistance);
+        void applyRefinedAttribs();
         bool updateDepthBufferAsync(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
         bool updateDepthBufferSync(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager);
-        void calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, std::vector<MapTile>& tiles) const;
-        std::shared_ptr<TileMesh> buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize) const;
-        int calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution) const;
+        // Const::MAX_SUPPORTED_ZOOM_LEVEL as `maxZoom` means no cap.
+        void calculateVisibleTiles(const ViewState& viewState, const std::shared_ptr<ElevationManager>& elevationManager, const MapTile& tile, int maxZoom, float subdivideDistance, std::vector<MapTile>& tiles) const;
+        // edgeHeights: per side (south, north, west, east; gy = 0 south), internal units, empty keeps the tile's own.
+        std::shared_ptr<TileMesh> buildTileMesh(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, const std::shared_ptr<ElevationManager>& elevationManager, int gridSize, const std::array<std::vector<double>, 4>& edgeHeights, bool bilinearHeights) const;
+        int calculateMeshGridSize(const MapTile& tile, const std::shared_ptr<ElevationTileGrid>& grid, int meshResolution, bool fixedScaleNormals, bool referenceMesh) const;
         cglib::mat4x4<double> calculateTileMatrix(const MapTile& tile) const;
-        // Linear eye depth (view w, internal units) of the terrain at a buffer pixel. Returns a
-        // huge value for sky pixels and for pixels outside the buffer.
+        // Linear eye depth (view w, internal units); huge for sky and out-of-buffer pixels.
         static float sampleDepthW(const TerrainDepthBuffer& depthData, int x, int y);
+        // Horizontal position only: a label's elevation is re-anchored while elevation tiles stream in.
+        static long long occlusionVerdictKey(const cglib::vec3<double>& pos);
+        bool cachedOcclusionVerdict(long long key) const;
+        void rememberOcclusionVerdict(long long key, bool occluded) const;
+        void resetOcclusionVerdicts();
 
+        std::shared_ptr<vt::TileTransformer> _tileTransformer;
         std::shared_ptr<FrameBuffer> _frameBuffer;
         std::shared_ptr<Shader> _shader;
+        std::shared_ptr<Shader> _normalShader; // the normal-packing variant of the depth pass
+        std::shared_ptr<Shader> _sceneDepthShader; // the scene depth -> packed depth conversion
+        bool _surfacePolygonOffset = true;
         std::shared_ptr<Shader> _colorShader;
         std::shared_ptr<Shader> _bitmapShader;
         std::shared_ptr<Shader> _surfaceShader;
         std::string _surfaceShaderSource;    // source _surfaceShader was built from
-        std::string _fogShaderSource;        // ... and the fog block compiled into it
+        std::string _fogShaderSource;        // fog block compiled into _surfaceShader
         bool _surfaceShaderFailed = false;   // that source does not compile: do not retry every frame
         std::chrono::steady_clock::time_point _startTime = std::chrono::steady_clock::now(); // u_time origin
-        // What the packed depth texture currently holds: it is reused while the camera, the
-        // elevation and the mesh cap are unchanged (see renderDepthTexture).
+        // Cache key of the packed depth texture.
         cglib::mat4x4<double> _depthTextureMVPMatrix = cglib::mat4x4<double>::zero();
         unsigned int _depthTextureElevationVersion = 0;
         int _depthTextureMeshResolutionCap = -1;
+        bool _depthTextureWithNormals = false; // part of the key: the two layouts are not interchangeable
         std::shared_ptr<Bitmap> _backgroundBitmap; // source of _backgroundTex, for change detection
         std::shared_ptr<Texture> _backgroundTex;
-        // Keyed by (tile id, mesh grid size): the occlusion depth texture draws the same
-        // tiles at a coarser grid than the rendered terrain, and a tile-only key would make
-        // the two passes rebuild every mesh in turn.
+        // Keyed by (tile id, grid size): the occlusion pass draws the same tiles coarser.
         std::map<std::pair<long long, int>, MeshCacheEntry> _meshCache;
         unsigned int _meshCacheClock = 0; // incremented per collectTileMeshes pass; stamps MeshCacheEntry::lastUsed
 
-        // The occlusion depth is written by whichever path produced it and read by the label
-        // placement worker, so it is published as a whole immutable snapshot: a reader either
-        // sees the previous read-back or the new one, never half of each.
+        struct AttribJob {
+            MapTile tile = MapTile(0, 0, 0, 0);
+            std::shared_ptr<ElevationManager> elevationManager;
+            std::shared_ptr<TileMesh> mesh;
+            float normalSampleDistance = 0;
+        };
+        struct AttribResult {
+            std::shared_ptr<TileMesh> mesh;
+            std::vector<float> attribs;
+            float normalSampleDistance = 0;
+            int attribsDemZoom = -1;
+            // Baked on a scratch copy, so the DEM state travels back with the attribs.
+            bool attribsProvisional = false;
+            int attribsWorstZoom = -1;
+            unsigned int attribsDataVersion = 0;
+        };
+        std::thread _attribWorker;
+        std::mutex _attribMutex;
+        std::condition_variable _attribCondition;
+        std::deque<AttribJob> _attribJobs;
+        std::vector<AttribResult> _attribResults;
+        std::atomic<bool> _attribWorkerStop { false };
+        // A refine changes none of the depth texture's cache key, so it must invalidate it explicitly.
+        bool _depthTextureAttribsDirty = false;
+
+        // The budgeted terrain cut, memoised for the frame: every pass asks for it.
+        mutable std::mutex _visibleTilesMutex;
+        mutable cglib::mat4x4<double> _visibleTilesMVP = cglib::mat4x4<double>::zero();
+        mutable unsigned int _visibleTilesElevationVersion = 0;
+        mutable float _visibleTilesSubdivideDistance = 0.0f;
+        mutable std::vector<MapTile> _visibleTilesCache;
+        mutable bool _visibleTilesValid = false;
+        // The zoom the last cut settled on: the budget loop starts there.
+        mutable int _budgetMaxZoom = 24;
+
+        // Published as a whole immutable snapshot: the label placement worker never sees half a read-back.
         std::unique_ptr<TerrainDepthWorker> _depthWorker;
         std::shared_ptr<const TerrainDepthBuffer> _depthDataSnapshot;
+        std::atomic<unsigned int> _depthSnapshotVersion{0};
         mutable std::mutex _depthMutex;
         cglib::mat4x4<double> _depthMVPMatrix = cglib::mat4x4<double>::zero(); // camera state of the last read-back
         unsigned int _depthElevationVersion = 0;
         std::chrono::steady_clock::time_point _depthReadbackTime; // throttles read-backs while the camera moves
         cglib::mat4x4<double> _depthLastSeenMVPMatrix = cglib::mat4x4<double>::zero(); // camera of the previous frame
         bool _depthStale = false; // an update was deferred: the data no longer matches the camera
+
+        // The lagging depth buffer cannot see a label entering from the screen edge; it keeps its last
+        // verdict instead of blinking visible. Cleared when the elevation changes.
+        mutable std::unordered_map<long long, bool> _occlusionVerdicts;
+        mutable std::mutex _occlusionVerdictMutex;
     };
 }
 

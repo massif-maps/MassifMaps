@@ -11,6 +11,7 @@
 
 #include "terrain/ElevationNodeField.h"
 
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -120,9 +121,226 @@ namespace {
         TEST_CHECK(ElevationNodeField::sample(field, 4, 1.0, 1.0) == 0.0f, "a field too small for its node count answers 0 instead of reading past its end");
     }
 
+    // Slot order must match ElevationTileGrid's neighbour array (W E S N SW SE NW NE); a wrong slot is a seam.
+    void testNeighbourSlot() {
+        const std::array<std::pair<int, int>, 8> DIRS = { {
+            { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+        } };
+        for (int i = 0; i < 8; i++) {
+            if (ElevationNodeField::neighbourSlot(DIRS[i].first, DIRS[i].second) != i) {
+                TEST_CHECK(false, "every direction maps to the slot the neighbour array packs it in");
+                return;
+            }
+        }
+        TEST_CHECK(true, "every direction maps to the slot the neighbour array packs it in");
+        TEST_CHECK(ElevationNodeField::neighbourSlot(0, 0) == -1, "and the centre is this grid, not a neighbour");
+        TEST_CHECK(ElevationNodeField::neighbourSlot(2, 0) == -1 && ElevationNodeField::neighbourSlot(0, -3) == -1,
+                   "a direction that is not a neighbour reads this grid rather than past the array");
+    }
+
+    void testSatMatchesBruteForce() {
+        const int W = 24, H = 20;
+        std::vector<float> grid(static_cast<std::size_t>(W) * H);
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                grid[static_cast<std::size_t>(y) * W + x] = static_cast<float>(100 + x * 7 - y * 3 + (x * y) % 11);
+            }
+        }
+        // Any outside value works as long as both paths see the same one.
+        auto texel = [&grid](int x, int y) -> float {
+            if (x < 0 || y < 0 || x >= W || y >= H) {
+                return static_cast<float>(1000 + x * 2 - y);
+            }
+            return grid[static_cast<std::size_t>(y) * W + x];
+        };
+
+        ElevationNodeField::SummedAreaTable sat;
+        sat.build(W, H, texel);
+        TEST_CHECK(sat.valid(), "the table builds over the raster");
+        TEST_CHECK(std::abs(sat.rectSum(0, 0, W - 1, H - 1) - [&]{ double t = 0; for (float v : grid) { t += v; } return t; }()) < 1e-6,
+                   "and its whole-raster sum is the raster's sum");
+
+        // Wider-than-raster boxes are what an edge node hits at a large zoom gap.
+        const double centres[][2] = { { 12.0, 10.0 }, { 12.5, 10.5 }, { 0.0, 10.0 }, { 24.0, 10.0 },
+                                      { 12.0, 0.0 }, { 12.0, 20.0 }, { 0.0, 0.0 }, { 24.0, 20.0 } };
+        const int sizes[] = { 1, 2, 3, 8, 30, 64 };
+        double worst = 0;
+        for (const auto& c : centres) {
+            for (int box : sizes) {
+                float ref = ElevationNodeField::nodeHeight(c[0], c[1], box, box, texel);
+                float fast = ElevationNodeField::nodeHeightSat(c[0], c[1], box, box, sat, texel);
+                worst = std::max(worst, std::abs(static_cast<double>(ref) - fast));
+            }
+        }
+        TEST_CHECK(worst < 1.0e-3, "and every box mean matches the per-texel sum");
+
+        ElevationNodeField::SummedAreaTable empty;
+        TEST_CHECK(ElevationNodeField::nodeHeightSat(12.0, 10.0, 8, 8, empty, texel)
+                   == ElevationNodeField::nodeHeight(12.0, 10.0, 8, 8, texel),
+                   "an unbuilt table falls back to the per-texel sum");
+    }
+
+    // The part of an edge node's box inside a coarser neighbour; must be exact or two tiles disagree on their edge.
+    void testLatticeSumMatchesPerSampleBilinear() {
+        const int NW = 9, NH = 7;                       // the coarse neighbour
+        std::vector<float> nb(static_cast<std::size_t>(NW) * NH);
+        for (int y = 0; y < NH; y++) {
+            for (int x = 0; x < NW; x++) {
+                nb[static_cast<std::size_t>(y) * NW + x] = static_cast<float>(50 + x * 13 - y * 5 + (x * y) % 7);
+            }
+        }
+        auto corner = [&nb](int x, int y) { return nb[static_cast<std::size_t>(y) * NW + x]; };
+
+        for (int scale : { 2, 4, 8, 16 }) {
+            for (double f0 : { -2.5, -0.5, 0.0, 0.25, 3.75 }) {
+                const int count = 6 * scale;
+                std::vector<float> wx(count, 1.0f), wy(count, 1.0f);
+                wx.front() = 0.4f; wx.back() = 0.6f;     // the box's fractional rim
+                wy.front() = 0.7f; wy.back() = 0.3f;
+                double df = 1.0 / scale;
+
+                double brute = 0;
+                for (int j = 0; j < count; j++) {
+                    double fy = f0 + df * j;
+                    int gy0 = static_cast<int>(std::floor(fy));
+                    double dy = fy - gy0;
+                    int cy1 = std::min(std::max(gy0 + 1, 0), NH - 1);
+                    int cy0 = std::min(std::max(gy0, 0), NH - 1);
+                    for (int i = 0; i < count; i++) {
+                        double fx = f0 + df * i;
+                        int gx0 = static_cast<int>(std::floor(fx));
+                        double dx = fx - gx0;
+                        int cx1 = std::min(std::max(gx0 + 1, 0), NW - 1);
+                        int cx0 = std::min(std::max(gx0, 0), NW - 1);
+                        double h = (1 - dx) * (1 - dy) * corner(cx0, cy0) + dx * (1 - dy) * corner(cx1, cy0)
+                                 + (1 - dx) * dy * corner(cx0, cy1) + dx * dy * corner(cx1, cy1);
+                        brute += static_cast<double>(wx[i]) * wy[j] * h;
+                    }
+                }
+
+                std::vector<ElevationNodeField::LatticeRun> xRuns, yRuns;
+                ElevationNodeField::latticeRuns(f0, df, wx.data(), count, NW, xRuns);
+                ElevationNodeField::latticeRuns(f0, df, wy.data(), count, NH, yRuns);
+                double fast = ElevationNodeField::latticeSum(xRuns, yRuns, corner);
+
+                if (std::abs(brute - fast) > 1.0e-6 * std::max(1.0, std::abs(brute))) {
+                    TEST_CHECK(false, "the lattice closed form is the per-sample bilinear sum");
+                    return;
+                }
+                if (static_cast<int>(xRuns.size()) > count / scale + 3) {
+                    TEST_CHECK(false, "and groups the lattice into one run per neighbour cell");
+                    return;
+                }
+            }
+        }
+        TEST_CHECK(true, "the lattice closed form is the per-sample bilinear sum");
+        TEST_CHECK(true, "and groups the lattice into one run per neighbour cell");
+    }
+
+    void testRegionsMatchPerTexelSum() {
+        const int W = 32, H = 28;
+        std::vector<float> own(static_cast<std::size_t>(W) * H);
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                own[static_cast<std::size_t>(y) * W + x] = static_cast<float>(200 + x * 5 - y * 3 + (x * y) % 13);
+            }
+        }
+        // Mixed scales so a corner band meets two different coarseness levels at once.
+        struct Neighbour { int w, h, scale; std::vector<float> data; };
+        std::array<Neighbour, 8> nb;
+        const int scales[8] = { 2, 4, 2, 8, 4, 2, 8, 4 };
+        for (int slot = 0; slot < 8; slot++) {
+            int scale = scales[slot];
+            nb[slot].scale = scale;
+            nb[slot].w = W / scale;
+            nb[slot].h = H / scale;
+            nb[slot].data.resize(static_cast<std::size_t>(nb[slot].w) * nb[slot].h);
+            for (int y = 0; y < nb[slot].h; y++) {
+                for (int x = 0; x < nb[slot].w; x++) {
+                    nb[slot].data[static_cast<std::size_t>(y) * nb[slot].w + x] = static_cast<float>(300 + slot * 17 + x * 11 - y * 7);
+                }
+            }
+        }
+        auto corner = [&nb](int dx, int dy, int x, int y) -> float {
+            int slot = ElevationNodeField::neighbourSlot(dx, dy);
+            if (slot < 0) {
+                return 0.0f;
+            }
+            const Neighbour& n = nb[slot];
+            return n.data[static_cast<std::size_t>(std::min(std::max(y, 0), n.h - 1)) * n.w + std::min(std::max(x, 0), n.w - 1)];
+        };
+        // Same affine map as NodeTexelSampler::coarseMapping.
+        auto mapping = [&nb](int dx, int dy, ElevationNodeField::LatticeMapping& map) {
+            int slot = ElevationNodeField::neighbourSlot(dx, dy);
+            if (slot < 0) {
+                return false;
+            }
+            const Neighbour& n = nb[slot];
+            map.stepX = 1.0 / n.scale;
+            map.stepY = 1.0 / n.scale;
+            map.originX = 0.5 / n.scale - 0.5;
+            map.originY = 0.5 / n.scale - 0.5;
+            map.dimX = n.w;
+            map.dimY = n.h;
+            return true;
+        };
+        // Reference: bilinear neighbour sample at our texel centre, as ElevationTileGrid::sampleHeight does.
+        auto texel = [&own, &corner, &mapping](int gx, int gy) -> float {
+            int dx = (gx < 0 ? -1 : (gx >= W ? 1 : 0));
+            int dy = (gy < 0 ? -1 : (gy >= H ? 1 : 0));
+            if (dx == 0 && dy == 0) {
+                return own[static_cast<std::size_t>(gy) * W + gx];
+            }
+            ElevationNodeField::LatticeMapping map;
+            if (!mapping(dx, dy, map)) {
+                return 0.0f;
+            }
+            double fx = map.originX + map.stepX * gx;
+            double fy = map.originY + map.stepY * gy;
+            int gx0 = static_cast<int>(std::floor(fx)), gy0 = static_cast<int>(std::floor(fy));
+            double sx = fx - gx0, sy = fy - gy0;
+            int cx0 = std::min(std::max(gx0, 0), map.dimX - 1), cx1 = std::min(std::max(gx0 + 1, 0), map.dimX - 1);
+            int cy0 = std::min(std::max(gy0, 0), map.dimY - 1), cy1 = std::min(std::max(gy0 + 1, 0), map.dimY - 1);
+            return static_cast<float>((1 - sx) * (1 - sy) * corner(dx, dy, cx0, cy0) + sx * (1 - sy) * corner(dx, dy, cx1, cy0)
+                                      + (1 - sx) * sy * corner(dx, dy, cx0, cy1) + sx * sy * corner(dx, dy, cx1, cy1));
+        };
+
+        ElevationNodeField::SummedAreaTable sat;
+        sat.build(W, H, [&own](int x, int y) { return own[static_cast<std::size_t>(y) * W + x]; });
+
+        const double centres[][2] = { { 0.0, 0.0 }, { 32.0, 0.0 }, { 0.0, 28.0 }, { 32.0, 28.0 },
+                                      { 0.0, 14.0 }, { 32.0, 14.0 }, { 16.0, 0.0 }, { 16.0, 28.0 },
+                                      { 16.0, 14.0 }, { 4.5, 3.5 } };
+        const int sizes[] = { 1, 2, 4, 9, 16, 48 };
+        double worst = 0;
+        for (const auto& c : centres) {
+            for (int box : sizes) {
+                float ref = ElevationNodeField::nodeHeight(c[0], c[1], box, box, texel);
+                float fast = ElevationNodeField::nodeHeightRegions(c[0], c[1], box, box, W, H, sat, texel, mapping, corner);
+                worst = std::max(worst, std::abs(static_cast<double>(ref) - fast) / std::max(1.0, std::abs(static_cast<double>(ref))));
+            }
+        }
+        TEST_CHECK(worst < 1.0e-5, "a box summed per region is the box summed per texel");
+
+        auto noMapping = [](int, int, ElevationNodeField::LatticeMapping&) { return false; };
+        double worstPlain = 0;
+        for (const auto& c : centres) {
+            for (int box : sizes) {
+                float ref = ElevationNodeField::nodeHeight(c[0], c[1], box, box, texel);
+                float fast = ElevationNodeField::nodeHeightRegions(c[0], c[1], box, box, W, H, sat, texel, noMapping, corner);
+                worstPlain = std::max(worstPlain, std::abs(static_cast<double>(ref) - fast) / std::max(1.0, std::abs(static_cast<double>(ref))));
+            }
+        }
+        TEST_CHECK(worstPlain < 1.0e-5, "and with no coarse neighbour it is the plain per-texel sum");
+    }
+
 }
 
 void testElevationNodeField() {
+    testLatticeSumMatchesPerSampleBilinear();
+    testSatMatchesBruteForce();
+    testRegionsMatchPerTexelSum();
+    testNeighbourSlot();
     testBoxSize();
     testBoxWeights();
     testNodeIsCellMean();

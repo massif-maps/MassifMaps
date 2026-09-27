@@ -20,8 +20,9 @@ python3 gen-api-constants.py
 ```
 
 The schema is committed, so a pull request shows the API surface change as a diff. So are the four
-artefacts — run all three commands or they drift, and a stale one completes to a name that is no
-longer there.
+artefacts — run all three commands (`scripts/gen-api-bindings.sh` does, see
+[below](#regenerating-and-shipping-them)) or they drift, and a stale one completes to a name that is
+no longer there.
 
 ## The problem
 
@@ -53,8 +54,7 @@ already carries, for the whole SDK:
   read-only/static/position/projection flags, and for an `OBJECT` the class it points at;
 - every spec kind and type, with its constructor parameters, aliases and defaults.
 
-That is most of a type system. Two numbers, measured against the current tables (routing and
-search on):
+That is most of a type system. The numbers it was designed against (routing and search on):
 
 | | |
 |---|---|
@@ -66,6 +66,8 @@ search on):
 The closure converges at depth 3 — 670 → 1,066 → 1,169 → 1,195. **This is small.** The reflex
 worry about generating a literal union of every legal path is unfounded: a TypeScript union of
 1,200 strings is nothing, and 106 completions on `Options` is a usable list rather than a wall.
+The full-profile typing today lists 2,879 paths over 242 classes, 244 of them on `Options` —
+aliases included, and still small.
 
 ## The four schema gaps, now closed
 
@@ -73,9 +75,9 @@ None of these was language-specific, and an emitter can only expose what the sch
 
 | Was missing | Fix | Result |
 |---|---|---|
-| **Methods** — registered in C++ with no signature anywhere | `!method(massif::TileDataSource, loadTile, arg(tile, tile), returns(object, massif::TileData))` in the `.i`, beside `!spec` | **23 declared** |
-| **Events** — string literals in the bridge | `!event(massif::Options, map.clicked, payload(massif::MapClickInfo))`, on the class the event fires on | **7 declared** |
-| **Enum values** — in the headers, unread | the generator already opens headers for the base chain; the scan now also reads `namespace X { enum X { … } }` | **24 enums, 99 constants** |
+| **Methods** — registered in C++ with no signature anywhere | `!method(massif::TileDataSource, loadTile, arg(tile, tile), returns(object, massif::TileData))` in the `.i`, beside `!spec` | **78 declared** |
+| **Events** — string literals in the bridge | `!event(massif::Options, map.clicked, payload(massif::MapClickInfo))`, on the class the event fires on | **11 declared** |
+| **Enum values** — in the headers, unread | the generator already opens headers for the base chain; the scan now also reads `namespace X { enum X { … } }` | **40 enums, 151 constants** |
 | **Doc comments** — doxygen on the C++ accessors | same scan, keyed by class and getter | on every property that has one |
 
 The method and event declarations are checked against the C++ registry at startup
@@ -96,8 +98,9 @@ all/native/**/*.h   ──┘                                        ├──> 
                                                                └──> the generated reference on the site
 ```
 
-One JSON, versioned with the SDK, is also what a third-party binding needs — and the docs work
-already wanted for the website ([api-docs-generation]) falls out of the same file.
+One JSON, versioned with the SDK, is also what a third-party binding needs — and the website's
+generated reference (`docs/api/reference/`, from `scripts/gen-api-docs.py`) falls out of the same
+file.
 
 ## Per language
 
@@ -106,9 +109,9 @@ already wanted for the website ([api-docs-generation]) falls out of the same fil
 The easy one, and the only one that gets *checking* as well as completion.
 
 ```ts
-type Handle<C extends ClassName> = number & { readonly __class: C };
+type Handle<C extends ClassName> = number & { readonly __massif: C };
 
-// generated: 106 entries for Options, 1,169 across the SDK
+// generated: 244 entries for Options, 2,879 across the SDK
 type Path<C extends ClassName> = …;
 type ValueOf<C extends ClassName, P extends Path<C>> = …;
 
@@ -117,7 +120,7 @@ declare function set<C extends ClassName, P extends Path<C>>(
 ```
 
 Specs become a discriminated union on `type`, so `{type: "http"}` completes `url`, `maxZoom`,
-`encoding` and rejects `cartocss`. Enum-valued properties become string-literal unions. Events
+`subdomains` and rejects `cartocss`. Enum-valued properties become string-literal unions. Events
 become an overload set keyed on the event name, so the handler's payload is typed.
 
 Nothing is invented at runtime: the JS still calls the same six functions with the same strings.
@@ -139,7 +142,7 @@ generated, useful independently:
    ```
 
    `Key<T>` makes `set(Key<Double>, double)` the only overload that compiles, so a boolean cannot
-   be passed to a float. 414 of them, each carrying its doxygen.
+   be passed to a float. 519 of them, each carrying its doxygen.
 
 2. **Thin typed wrappers** — the full object-API feel, generated. **Not built**, on the argument
    that the keys are most of the value for a fraction of the source:
@@ -186,32 +189,31 @@ let raster: MassifSpecType = .layerRaster
 
 ### C ABI
 
-Generate an enum of property ids alongside the string table:
+An enum of property ids is generated alongside the string table (`massif_api_names.h`); the setter
+taking one is a sketch, not built:
 
 ```c
-typedef enum { MASSIF_PROP_OPACITY = 17, … } massif_property;
-int massif_set_float(massif_handle h, massif_property p, double v);
+typedef enum { MASSIF_PROP_OPACITY = 292, … } massif_property;
+int massif_set_float(massif_handle h, massif_property p, double v);   /* not built */
 ```
 
-Completion in any C editor, and it skips the per-call string lookup — so this one is a small
-performance win as well. The string form stays for callers that are themselves dynamic.
+Completion in any C editor, and once a setter takes the id it skips the per-call string lookup. The
+string form stays for callers that are themselves dynamic.
 
 ## Risks and open questions
 
-- **Two ways to say everything.** Once `Props.OPACITY` exists, `"opacity"` still works. That is
+- **Two ways to say everything.** Once `ApiNames.OPACITY` exists, `"opacity"` still works. That is
   deliberate — the string form is the escape hatch for a newer SDK — but the docs have to say
   which one an app should reach for first.
-- **Emitters drift.** Six emitters is six things that can lag the schema. They should be generated
-  in CI and the build should fail when the checked-in output differs, the way the property table
-  already regenerates on every build.
-- **Method declarations are new syntax** in the `.i` files, and the C++ registry has to be checked
-  against them or the two will disagree silently — the failure mode this API keeps producing.
-- **Wrapper source size** is unmeasured. 136 classes × a few hundred properties of Java is not
+- **Emitters drift.** Settled: CI regenerates them and fails on a diff — see
+  [below](#regenerating-and-shipping-them). The `.i` method declarations are checked against the
+  C++ registry at startup, above.
+- **Wrapper source size** is unmeasured. 242 classes × a few hundred properties of Java is not
   free in dex terms, and the answer may be to emit wrappers only for the classes an app actually
   names.
 - **Deep paths in wrappers.** `fogOptions.rangeStart` is natural as a path and awkward as a method
-  chain if `FogOptions` has no handle of its own. Reading an object property back as a handle is
-  [a known facade gap](api-facade.md) and would want fixing first.
+  chain. `MassifApi.getObject` now reads an object property back as a handle, so a wrapper could
+  hold `FogOptions` directly.
 
 ## What the compiler caught that review would not have
 
@@ -278,7 +280,6 @@ The first two go up loose as well as inside the zip, deliberately: fetching one 
 unpacking an archive to reach it.
 
 ## Known gaps
-
 
 - **Typed wrappers are not generated.** Only the typed *keys* are, on the argument that they are
   most of the value for a fraction of the source. Whether that holds is unmeasured.

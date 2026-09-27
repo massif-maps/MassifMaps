@@ -108,6 +108,7 @@ namespace massif::vt {
         VertexArray<cglib::vec2<float>> coords2D;
         VertexArray<cglib::vec3<float>> coords3D;
         VertexArray<cglib::vec2<float>> texCoords;
+        VertexArray<float> skirtDrops; // populated on a sphere only - see TileSurface::skirtOffset
         VertexArray<cglib::vec3<float>> normals;
         VertexArray<cglib::vec3<float>> binormals;
         VertexArray<std::size_t> indices;
@@ -119,13 +120,13 @@ namespace massif::vt {
         indices.reserve(RESERVED_VERTICES);
 
         if (tileId.y < 0) {
-            buildPoleGeometry(-1, vertexIds[3], coords2D, coords3D, texCoords, normals, binormals, indices);
+            buildPoleGeometry(-1, vertexIds[3], coords2D, coords3D, texCoords, normals, binormals, skirtDrops, indices);
         }
         else if (tileId.y >= (1 << tileId.zoom)) {
-            buildPoleGeometry(1, vertexIds[2], coords2D, coords3D, texCoords, normals, binormals, indices);
+            buildPoleGeometry(1, vertexIds[2], coords2D, coords3D, texCoords, normals, binormals, skirtDrops, indices);
         }
         else {
-            buildTileGeometry(tileId, vertexIds, coords2D, coords3D, texCoords, normals, binormals, indices);
+            buildTileGeometry(tileId, vertexIds, coords2D, coords3D, texCoords, normals, binormals, skirtDrops, indices);
         }
 
         // Drop normals, if not needed
@@ -140,12 +141,12 @@ namespace massif::vt {
 
         // Pack geometry and cache the result
         std::vector<std::shared_ptr<TileSurface>> tileSurfaces;
-        packGeometry(coords3D, texCoords, normals, binormals, indices, tileSurfaces);
+        packGeometry(coords3D, texCoords, normals, binormals, skirtDrops, indices, tileSurfaces);
         _tileSurfaceCache[tileId] = tileSurfaces;
         return tileSurfaces;
     }
 
-    void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const {
+    void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<float>& skirtDrops, VertexArray<std::size_t>& indices) const {
         auto appendTilePoint = [&, this](const TileId& vertexId) -> std::size_t {
             int deltaZoom = vertexId.zoom - tileId.zoom;
             float s = 1.0f / (1 << deltaZoom);
@@ -212,13 +213,23 @@ namespace massif::vt {
         // shader decodes, so skirts are only built when the renderer enables them.
         if (_terrainSkirts) {
             float drop = SKIRT_DEPTH * static_cast<float>(matrix(0, 0));
+            // On a SPHERE the vertex position is curved, so overwriting its z with a sentinel would
+            // destroy the point the shader displaces from. The drop travels in its own attribute
+            // there, and every vertex needs an entry once any of them does.
+            bool sphericalSkirts = _transformer->isSpherical();
+            if (sphericalSkirts && skirtDrops.size() < coords2D.size()) {
+                skirtDrops.fill(0.0f, coords2D.size() - skirtDrops.size());
+            }
 
             auto appendSkirtPoint = [&](std::size_t idx) -> std::size_t {
                 coords2D.append(coords2D[idx]);
                 texCoords.append(texCoords[idx]);
-                coords3D.append(cglib::vec3<float>(coords3D[idx](0), coords3D[idx](1), SKIRT_SENTINEL - drop));
+                coords3D.append(sphericalSkirts ? coords3D[idx] : cglib::vec3<float>(coords3D[idx](0), coords3D[idx](1), SKIRT_SENTINEL - drop));
                 normals.append(normals[idx]);
                 binormals.append(binormals[idx]);
+                if (sphericalSkirts) {
+                    skirtDrops.append(drop);
+                }
                 return coords2D.size() - 1;
             };
 
@@ -253,7 +264,7 @@ namespace massif::vt {
         }
     }
 
-    void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const {
+    void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<float>& skirtDrops, VertexArray<std::size_t>& indices) const {
         auto calculatePolePoint = [&](const TileId& vertexId) -> cglib::vec2<float> {
             float s = 1.0f / (1 << vertexId.zoom);
             float u = vertexId.x * s;
@@ -307,7 +318,7 @@ namespace massif::vt {
         }
     }
 
-    void TileSurfaceBuilder::packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, const VertexArray<std::size_t>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const {
+    void TileSurfaceBuilder::packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& skirtDrops, const VertexArray<std::size_t>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const {
         if (coords.size() > 65535) {
             for (std::size_t offset = 0; offset < indices.size(); ) {
                 std::size_t count = std::min(std::size_t(65535), indices.size() - offset);
@@ -317,6 +328,7 @@ namespace massif::vt {
                 VertexArray<cglib::vec2<float>> remappedTexCoords;
                 VertexArray<cglib::vec3<float>> remappedNormals;
                 VertexArray<cglib::vec3<float>> remappedBinormals;
+                VertexArray<float> remappedSkirtDrops;
                 VertexArray<std::size_t> remappedIndices;
                 for (std::size_t i = 0; i < count; i++) {
                     std::size_t index = indices[offset + i];
@@ -333,12 +345,15 @@ namespace massif::vt {
                         if (!binormals.empty()) {
                             remappedBinormals.append(binormals[index]);
                         }
+                        if (!skirtDrops.empty()) {
+                            remappedSkirtDrops.append(index < skirtDrops.size() ? skirtDrops[index] : 0.0f);
+                        }
                     }
 
                     remappedIndices.append(remappedIndex);
                 }
 
-                packGeometry(remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedIndices, tileSurfaces);
+                packGeometry(remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedSkirtDrops, remappedIndices, tileSurfaces);
 
                 offset += count;
             }
@@ -364,6 +379,12 @@ namespace massif::vt {
             vertexGeomLayoutParams.binormalOffset = vertexGeomLayoutParams.vertexSize;
             vertexGeomLayoutParams.vertexSize += 3 * sizeof(std::int16_t);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
+        }
+
+        // Spheres only, so a planar surface's vertex keeps the size and layout it always had.
+        if (!skirtDrops.empty()) {
+            vertexGeomLayoutParams.skirtOffset = vertexGeomLayoutParams.vertexSize;
+            vertexGeomLayoutParams.vertexSize += sizeof(float);
         }
 
         // Interleave, compress actual geometry data
@@ -397,6 +418,11 @@ namespace massif::vt {
                 for (int j = 0; j < 3; j++) {
                     compressedBinormalPtr[j] = static_cast<std::int16_t>(binormal(j) * 32767.0f);
                 }
+            }
+
+            if (!skirtDrops.empty()) {
+                // A float, not a normalised short: the drop is a world length, not a direction.
+                *reinterpret_cast<float*>(baseCompressedPtr + vertexGeomLayoutParams.skirtOffset) = (i < skirtDrops.size() ? skirtDrops[i] : 0.0f);
             }
         }
 
@@ -448,7 +474,8 @@ namespace massif::vt {
         }
 
         std::vector<std::shared_ptr<TileSurface>> tileSurfaces;
-        packGeometry(coords, texCoords, normals, binormals, indices, tileSurfaces);
+        VertexArray<float> noSkirtDrops; // this surface carries no skirts
+        packGeometry(coords, texCoords, normals, binormals, noSkirtDrops, indices, tileSurfaces);
         return tileSurfaces.empty() ? std::shared_ptr<TileSurface>() : tileSurfaces.front();
     }
 

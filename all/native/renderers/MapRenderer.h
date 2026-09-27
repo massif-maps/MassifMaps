@@ -20,6 +20,7 @@
 #include "components/StyleEnvironment.h"
 #include "terrain/AutoFlatten.h"
 #include "terrain/FlattenSwitch.h"
+#include "terrain/FlattenSwitchTimeline.h"
 #include "ui/MapMoveReason.h"
 
 #include <cglib/mat.h>
@@ -28,6 +29,7 @@
 
 #include <array>
 #include <atomic>
+#include <limits>
 #include <optional>
 #include <chrono>
 #include <memory>
@@ -43,6 +45,7 @@ namespace massif {
     class Bitmap;
     class BillboardDrawData;
     class ElevationManager;
+    class ElevationTextureCache;
     class Layer;
     class Layers;
     class MapRendererListener;
@@ -85,16 +88,14 @@ namespace massif {
         void deinit();
 
         /**
-         * Forgets that the camera has been moved. The view a map is constructed with is the SDK's
-         * own, not a placed camera, and the auto-flatten rule does not judge it - see AutoFlatten.
+         * Forgets that the camera has been moved, so the auto-flatten rule ignores the SDK's initial view.
+         * See AutoFlatten.
          */
         void resetCameraPlaced();
 
         /**
-         * Holds the view against the render thread, so that a sequence of camera calls lands in
-         * ONE frame. moveTo sets the zoom, rotation, tilt and focus one after the other, and a
-         * frame drawn in between showed the world zoomed in but not yet tilted or panned - and let
-         * the auto-flatten rule judge that view. Recursive: the camera calls take it again inside.
+         * Holds the view against the render thread so a sequence of camera calls (moveTo) lands in one
+         * frame, never a half-applied view. Recursive: the camera calls take it again inside.
          */
         std::unique_lock<std::recursive_mutex> holdView() const;
 
@@ -119,18 +120,22 @@ namespace massif {
         ViewState getViewState() const;
 
         /**
-         * Returns the current projectin surface object.
+         * Returns the last view state published by a frame, without waiting for the renderer mutex.
+         * For the application's thread: _mutex is held for a whole frame, and waiting on it can deadlock
+         * against an event the frame emits. Up to a frame stale.
+         * @return The last published view state.
+         */
+        ViewState getViewStateSnapshot() const;
+
+        /**
+         * Returns the current projection surface object.
          * @return The current projection surface object.
          */
         std::shared_ptr<ProjectionSurface> getProjectionSurface() const;
     
         /**
-         * Requests the renderer to refresh the view.
-         * Note that there is normally no need to do this manually,
-         * SDK automatically redraws the view when needed.
-         * The default arguments record the CALL SITE, so a view that never stops redrawing can
-         * say which of the ~30 callers is driving it (logRedrawSources below). Callers pass
-         * nothing; the compiler fills these in.
+         * Requests the renderer to refresh the view. Normally not needed, the SDK redraws when needed.
+         * The defaulted arguments record the call site for logRedrawSources; callers pass nothing.
          */
 #if defined(__clang__) || defined(__GNUC__)
         void requestRedraw(const char* callerFile = __builtin_FILE(), int callerLine = __builtin_LINE()) const;
@@ -165,14 +170,18 @@ namespace massif {
         std::shared_ptr<GLResourceManager> getGLResourceManager() const;
 
         /**
+         * The elevation texture cache: one per map, shared by every tile layer. GL thread only. Internal method.
+         */
+        std::shared_ptr<ElevationTextureCache> getElevationTextureCache(const std::shared_ptr<ElevationManager>& elevationManager);
+
+        /**
          * Returns the terrain renderer (may be null). GL thread only. Internal method.
          */
         TerrainRenderer* getTerrainRenderer() const { return _terrainRenderer.get(); }
 
         /**
-         * This frame's fog, resolved once from the options and the merged style opinion before
-         * anything draws. The vector element renderers read it from here rather than taking it
-         * through every onDrawFrame signature. GL thread only. Internal method.
+         * This frame's fog, resolved once from the options and the merged style before anything draws.
+         * GL thread only. Internal method.
          */
         const ResolvedFog& getFrameFog() const { return _frameFog; }
 
@@ -181,8 +190,7 @@ namespace massif {
         AnimationHandler& getAnimationHandler();
         KineticEventHandler& getKineticEventHandler();
 
-        // reason travels with the event so the camera listeners can say what moved the map. An
-        // animated call reports it once, here; the frames it produces report ANIMATION.
+        // An animated call reports reason once, here; the frames it produces report ANIMATION.
         void calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
         void calculateCameraEvent(CameraRotationEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
         void calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
@@ -197,18 +205,18 @@ namespace massif {
 
         void finishRendering();
 
-        void clearAndBindScreenFBO(const Color& color, bool depth, bool stencil);
+        // depthTexture: the depth as a texture, so a post-process effect can read it (see
+        // applyPostProcessEffect). Keyed apart from the renderbuffer one.
+        void clearAndBindScreenFBO(const Color& color, bool depth, bool stencil, bool depthTexture = false);
         void blendAndUnbindScreenFBO(float opacity);
-        // Draws a full-screen quad sampling the mask. Sets NO render state - the caller owns blend,
-        // depth and culling, because one caller runs inside the drape bake, which has its own.
+        // Full-screen quad sampling the mask. Sets no render state: one caller runs inside the drape bake.
         void drawMaskQuad(unsigned int texture, float invWidth, float invHeight);
-        // The same, wrapped in the state for a plain screen multiply (dst *= mask).
+        // dst *= mask, with its own render state.
         void multiplyScreenMask(unsigned int texture, float invWidth, float invHeight);
         void setZBuffering(bool enable);
     
         void calculateRayIntersectedElements(const MapPos& targetPos, ViewState& viewState, std::vector<RayIntersectedElement>& results);
-        // Same, for a ray that never meets the ground - a touch aimed at the sky. Layers whose
-        // content is anchored in the sky (CelestialLayer) are only reachable this way.
+        // For a ray that never meets the ground; sky-anchored layers (CelestialLayer) are only reachable this way.
         void calculateRayIntersectedElements(const cglib::ray3<double>& ray, ViewState& viewState, std::vector<RayIntersectedElement>& results);
     
         void billboardsChanged();
@@ -220,7 +228,7 @@ namespace massif {
         void unregisterOnChangeListener(const std::shared_ptr<OnChangeListener>& listener);
         
     private:
-        // debug.massif.background 0 drops the map background plane. Read once (Android only).
+        // debug.massif.background 0 drops the map background plane. Android demo builds only.
         static bool isBackgroundEnabled();
         class OptionsListener : public Options::OnChangeListener {
         public:
@@ -234,72 +242,60 @@ namespace massif {
 
         void initializeRenderState() const;
 
-        // Dumps and resets the per-call-site redraw request counts. Diagnostic for "the map never
-        // stops rendering": the counts say whether the frames come from an animation, from tiles
-        // arriving, or from one caller firing on every single frame.
+        // Per camera event rather than one frame later (mapbox's transform._constrainCamera). Call with _mutex held.
+        void constrainCameraToClearance();
+
+        // First person: the ground under the eye, eased when a finer elevation level replaces the one that answered.
+        double settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds);
+
+        // Dumps and resets the per-call-site redraw counts: tells which caller keeps the map rendering.
         static void logRedrawSources();
 
-        // postProcessing tells whether an effect is going to run this frame: only then are the
-        // layers that opted out of it held back for drawOverlayLayers.
-
-        // Every tile layer's Map-block opinion, merged, first definer wins. Collected ONCE per frame
-        // before the sky draws, because the sky, the background plane, the surface and the tile
-        // content must all fog the same way.
+        // Every tile layer's Map block merged, first definer wins; once per frame so everything fogs alike.
         StyleEnvironment collectStyleEnvironment(const ViewState& viewState) const;
 
+        // With postProcessing, layers that opted out of the effect are held back for drawOverlayLayers.
         void drawLayers(float deltaSeconds, const ViewState& viewState, bool postProcessing);
 
-        // The layers drawLayers held back because they opted out of post-processing, drawn once
-        // the effect has resolved into the framebuffer's secondary color texture - same depth
-        // buffer, so they are still occluded by the terrain.
+        // Drawn after the effect resolves, on the same depth buffer so the terrain still occludes them.
         void drawOverlayLayers(float deltaSeconds, const ViewState& viewState);
 
-        // Is tileId a STRICT ancestor of other, i.e. does it cover its ground at a coarser level?
+        // True if tileId is a strict ancestor of other.
         static bool coversTile(const vt::TileId& tileId, const vt::TileId& other);
 
-        // The terrain cover the whole tile layer stack shares this frame: what the layers report,
-        // normalised into ONE non-overlapping quadtree partition. Two tesselations of the same
-        // height field fight wherever they overlap, so both terrain paths build on this one.
-
-        // `extendSeedsOnly` keeps the seed to the levels the layers do NOT reach, which is what the
-        // drape wants; the shared ground takes it whole - it has no texture budget.
+        // One non-overlapping quadtree partition shared by the layer stack; overlapping tesselations z-fight.
+        // extendSeedsOnly (the drape) keeps the seed to levels the layers do not reach.
         void collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, bool extendSeedsOnly, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom);
 
-        // The terrain's own camera-driven cover, the seed both paths above are built from. It is
-        // what the camera can see rather than what the layers fetched, so it reaches
-        // floor(camera zoom) whatever zoom a data source stops at.
+        // Camera-driven seed for collectTerrainCover: reaches floor(camera zoom) whatever a data source's max zoom.
         std::vector<vt::TileId> collectTerrainCoverTileIds(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) const;
 
-        // Directional shadows for one terrain stack: resolves the light, fits a light box per
-        // cascade, re-renders the caster pass only on a real change, and hands the map and the sun
-        // to every layer. contentChanged rations the content-driven refreshes.
+        // Re-renders the caster pass only on a real change; contentChanged rations content-driven refreshes.
         void applyTerrainShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, 4>& shadowTexelMeters);
 
-        // keepBound resolves the effect into the screen framebuffer's secondary color texture and
-        // leaves it bound (for overlay layers), instead of writing straight to the screen.
+        // keepBound resolves into the screen framebuffer's secondary color texture and leaves it bound, for overlays.
         void applyPostProcessEffect(const std::shared_ptr<PostProcessEffect>& effect, const ViewState& viewState, bool keepBound = false);
 
         void handleRendererCaptureCallbacks();
 
-        // How far the highest ground in view moves on screen because it is displaced, in pixels.
+        // Screen displacement of the highest ground in view, pixels.
         double calculateTerrainParallax(const std::shared_ptr<TerrainOptions>& terrainOptions) const;
-        // Runs the auto-flatten rule and steps the 2D/3D switch. Returns true when the terrain
-        // DECODE state changed this frame, which is the only moment the visible tile set has to be
-        // recomputed.
+        // Returns true when the terrain decode state changed, the only time the visible tile set must be recomputed.
         bool updateTerrainFlatten(float deltaSeconds);
+        void reportFlattenSwitchTiming(const FlattenSwitch::State& state, const FlattenSwitch::Input& input, int tilesOwed, float deltaSeconds);
 
+        // A screen FBO key bit marking the depth-texture variant; no GL buffer mask uses bit 0.
+        static constexpr unsigned int SCREEN_FBO_DEPTH_TEXTURE_BIT = 1;
         static const int BILLBOARD_PLACEMENT_TASK_DELAY;
         static const int VT_LABEL_PLACEMENT_TASK_DELAY;
-        // Zoom change that asks for a label placement pass of its own, and how long after the last
-        // one the pass runs (see viewChanged).
+        // Zoom change that triggers its own label placement pass (see viewChanged).
         static const float LABEL_PLACEMENT_ZOOM_THRESHOLD;
-        // How far the zoom may drift before a drape tile is re-baked. The bake is otherwise
-        // content-driven, so a style's zoom-dependent widths stayed frozen at the zoom the tile was
-        // first baked at. Same quantum as the label re-placement: four bakes per zoom level.
+        // Zoom drift before a drape tile is re-baked, so zoom-dependent style widths follow the camera.
         static const float DRAPE_REBAKE_ZOOM_THRESHOLD;
         static const int LABEL_PLACEMENT_ZOOM_DELAY;
 
         static const int ELEVATION_REFRESH_DELAY; // milliseconds between vector layer refreshes caused by elevation data changes
+        static const float EYE_GROUND_SETTLE_TIME; // seconds for the first person eye to glide onto a refined ground
         static const float TERRAIN_SWITCH_WARM_TIMEOUT; // seconds the 2D/3D switch waits for the tiles 3D needs
 
         static const std::string BLEND_VERTEX_SHADER;
@@ -309,23 +305,25 @@ namespace massif {
         std::optional<std::chrono::steady_clock::time_point> _lastFrameTime;
     
         ViewState _viewState;
+        void publishViewStateSnapshot(const ViewState& viewState) const;
+        mutable std::shared_ptr<const ViewState> _viewStateSnapshot;
+        mutable std::mutex _viewStateSnapshotMutex; // pointer swap only, never held across work; not _mutex
         float _lastLabelPlacementZoom = 0.0f;
 
-        // The 2D/3D switch. The ratio and the decode state live on TerrainOptions, where everything
-        // reads them; what is kept here is the phase the switch is in.
+        // Phase of the 2D/3D switch; the ratio and decode state live on TerrainOptions.
         FlattenSwitch::State _flattenSwitchState;
         AutoFlatten::Trigger _autoFlattenTrigger;
-        // Auto-flattening reads its parallax from the elevation height range, which is only
-        // meaningful once the DEM has stopped arriving. These watch the data version and hold the
-        // rule off until it has been still for TERRAIN_SWITCH_WARM_TIMEOUT.
+        // Hold auto-flatten off until the DEM data version is still for TERRAIN_SWITCH_WARM_TIMEOUT.
         unsigned int _autoFlattenDataVersion = 0;
         float _autoFlattenDataQuiet = 0.0f;
-        // Auto-flattening turns 3D OFF once it stops earning its cost - a transition OUT of terrain,
-        // never a starting state. Until terrain has been reached once it cannot fire, or a view whose
-        // DEM has not arrived flattens itself at startup and never recovers.
+        // Auto-flatten only leaves terrain; before it is reached, a view without DEM would flatten for good.
         bool _autoFlattenSeenTerrain = false;
         std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
-        // Set by every camera event; the rule stays quiet while it is false. See AutoFlatten::Trigger.
+        FlattenSwitchTimeline _flattenSwitchTimeline;
+        // Written by the draw pass, read by the next frame's switch. Render thread.
+        bool _drapeBakesPending = false;
+        int _drapeBakesDone = 0;
+        // Set by every camera event; auto-flatten stays quiet while false.
         std::atomic<bool> _cameraPlaced { false };
 
         std::shared_ptr<GLResourceManager> _glResourceManager;
@@ -347,19 +345,16 @@ namespace massif {
         std::string _postProcessShaderName;
         std::optional<std::chrono::steady_clock::time_point> _postProcessStartTime;
         std::unique_ptr<TerrainRenderer> _terrainRenderer;
-        std::weak_ptr<ElevationManager> _redrawElevationManager; // the one whose loads ask for a frame
+        std::weak_ptr<ElevationManager> _redrawElevationManager;
+        std::shared_ptr<ElevationTextureCache> _elevationTextureCache; // see getElevationTextureCache
+        std::weak_ptr<ElevationManager> _elevationTextureCacheManager;
         std::vector<vt::TileId> _groundCoverTileIds; // last frame's shared ground cover (shadow refresh trigger)
         std::unique_ptr<TerrainDrapeCache> _terrainDrapeCache;
         std::unique_ptr<TerrainShadowMap> _terrainShadowMap; // shared cross-layer drape target
-        // What the shadow map currently holds. The light box is snapped to a world lattice, so its
-        // matrix repeats while the camera moves inside one texel step: while these match, the
-        // existing map is still the right one and the caster pass is skipped.
 
-        // Camera pose the last drape-bake pass ran against, to tell a moving frame from a still one.
+        // Camera pose of the last drape-bake pass, to tell a moving frame from a still one.
         cglib::mat4x4<double> _drapeBakeLastMVPMatrix = cglib::mat4x4<double>::identity();
-        // The zoom the drape is currently baked for, quantised. Held while the camera MOVES and
-        // updated when it settles, as mapbox does - re-baking mid-gesture spends a bake per tile per
-        // step on a picture that is about to change again.
+        // Quantised bake zoom, held while the camera moves (as mapbox) so a gesture does not re-bake every step.
         std::size_t _drapeBakeZoomTerm = 0;
         std::unique_ptr<ScreenMaskBuffer> _terrainShadowMaskBuffer;
         std::unique_ptr<ScreenMaskBuffer> _groundAOMaskBuffer;
@@ -370,26 +365,29 @@ namespace massif {
         int _shadowMapSize = 0;
         int _shadowMapCascades = 0;
         int _shadowMapAge = 0;
-        // Per cascade: what the caster content of THAT page was when it was last drawn.
+        // Per cascade: caster content signature when that page was last drawn.
         std::array<float, 4> _shadowMapFadeSignatures = { };
         std::array<cglib::mat4x4<double>, 4> _shadowMapViewProjs;
-        // Per cascade: the pages are refreshed independently, and the outer one - which holds most
-        // of the casters - keeps its box over far more camera movement than the near one.
+        // Per cascade, since pages refresh independently.
         std::array<std::vector<vt::TileId>, 4> _shadowMapCasterTiles;
 
         unsigned int _layersElevationVersion = 0;
+        // settleEyeGround's state: the level that answered last frame, and the eye's ground minus that answer.
+        int _eyeGroundZoom = -1;
+        double _eyeGroundZ = 0;
+        double _eyeGroundOffset = 0;
+        double _eyeGroundTarget = 0; // the answer the glide heads for, and where it was asked
+        double _eyeGroundX = 0;
+        double _eyeGroundY = 0;
         std::optional<std::chrono::steady_clock::time_point> _lastElevationRefreshTime;
-        // When the camera last moved, for the drape bake budget: a gesture's end keeps the
-        // moving budget for a settle window, so a chain of quick zooms stays smooth.
+        // The moving bake budget lasts a settle window past a gesture, so chained quick zooms stay smooth.
         std::chrono::steady_clock::time_point _drapeBakeLastMoveTime = std::chrono::steady_clock::time_point();
 
-        // Render thread only: the layers held back for drawOverlayLayers this frame, and whether
-        // the effect resolved into the screen framebuffer's secondary color texture.
+        // Render thread only.
         std::vector<std::shared_ptr<Layer> > _overlayLayers;
         bool _postProcessSecondaryActive = false;
 
-        // Render thread only: this frame's merged style opinion and the fog resolved from it,
-        // computed before the sky and reused by every consumer so they cannot disagree.
+        // Render thread only; computed before the sky so every consumer agrees.
         StyleEnvironment _frameStyleEnvironment;
         ResolvedFog _frameFog;
 
@@ -411,9 +409,7 @@ namespace massif {
         mutable std::atomic<bool> _surfaceChanged;
         mutable std::atomic<bool> _billboardsChanged;
         mutable std::atomic<bool> _redrawPending;
-        std::atomic<bool> _pannedSinceClearance { false }; // a pan since the last clearance check lifts a camera under the shell
-        // Frames still owed after a redraw request, so a change reaches the FRONT buffer and not
-        // only the back one (see requestRedraw).
+        // Frames still owed after a redraw request, so a change reaches the front buffer too.
         mutable std::atomic<int> _redrawExtraFrames;
 
         ThreadSafeDirectorPtr<RedrawRequestListener> _redrawRequestListener;

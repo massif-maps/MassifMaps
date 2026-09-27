@@ -131,9 +131,11 @@ deployment floor.
 Launch anything that creates a map and read the two startup lines:
 
 ```
-GLContext::LoadExtensions: OpenGL ES 3.0.0 (ANGLE 2.1.0.ec925142edeb), depth texture 1, shadow samplers 0
-MapRenderer::onSurfaceCreated: renderer 'ANGLE (Metal Renderer: Apple iOS simulator GPU)', depth bits 24, stencil bits 8
+GLContext::LoadExtensions: OpenGL ES 3.0.0 (ANGLE 2.1.0.ec925142edeb) (version 300), anisotropic filtering <0|1>
+MapRenderer::onSurfaceCreated: renderer 'ANGLE (Metal Renderer: Apple iOS simulator GPU)', depth bits 24, stencil bits 8, vertex texture units <n>
 ```
+
+The format is current (`GLContext.cpp`, `MapRenderer.cpp`); the values are from the 2026-08-18 run.
 
 The **commit suffix on the ANGLE version is how you tell slices apart** — the 2021 vendored build
 reports a bare `ANGLE 2.1.0.` with nothing after the last dot. If you swapped the `.a` and the

@@ -25,7 +25,7 @@ Rule of thumb that has held for every perf round: **anything that allocates or f
 walks a whole tile, does not belong on the render thread.** The current hot list is in
 [10-performance.md](10-performance.md).
 
-## `MapRenderer::onDrawFrame` (all/native/renderers/MapRenderer.cpp:808)
+## `MapRenderer::onDrawFrame` (all/native/renderers/MapRenderer.cpp:1301)
 
 In order:
 
@@ -45,7 +45,7 @@ In order:
 `sky` (which is mostly the swap-buffer wait, not work) `prelude` `prepare` `cover` `drape`
 `layers` `layers3D` `billboards`.
 
-## Inside `drawLayers` (MapRenderer.cpp:1755)
+## Inside `drawLayers` (MapRenderer.cpp:2837)
 
 ### a. Terrain prelude
 

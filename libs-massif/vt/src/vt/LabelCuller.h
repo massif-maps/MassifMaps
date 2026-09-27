@@ -36,6 +36,16 @@ namespace massif::vt {
          * test - a caller that does not set it gets the previous behaviour exactly.
          */
         void setMetersToInternal(double metersToInternal);
+        /**
+         * How far a label may be from the camera, in multiples of the camera-to-focus distance.
+         * Default LabelDistance::DEFAULT_VIEW_DISTANCE (5, as maplibre); 0 places every label.
+         */
+        void setLabelViewDistance(double viewDistance);
+        /**
+         * Whether a label's anchor is hidden by the terrain, applied during placement so a hidden
+         * label reserves no collision slot (as mapbox's collision_index.ts). Empty = no test.
+         */
+        void setOcclusionTest(std::function<bool(const cglib::vec3<double>&)> test);
         void reset();
         /**
          * Opens a slice of a placement cycle, giving every process() call after it a shared
@@ -115,6 +125,11 @@ namespace massif::vt {
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
         double _metersToInternal = 0;
+        double _labelViewDistance = LabelDistance::DEFAULT_VIEW_DISTANCE;
+        // This pass's highest following-band callout anchor on screen (y up, resolution units), < 0 = none.
+        float _highestCalloutAnchorY = -1.0f;
+        cglib::vec3<double> _highestCalloutAnchorPosition = cglib::vec3<double>(0, 0, 0);
+        std::function<bool(const cglib::vec3<double>&)> _occlusionTest;
         std::chrono::steady_clock::time_point _sliceDeadline;
         bool _sliceBudgeted = false;
         bool _sliceExhausted = false;

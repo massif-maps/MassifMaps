@@ -82,10 +82,8 @@ namespace massif {
         void offsetLayerHorizontally(double offset);
     
         /**
-         * Starts the vt frame (tile set, blending, compiled resources) without drawing anything.
-         * Cross-layer draping needs every participating layer's render tiles ready BEFORE any of
-         * them draws, so the shared drape can be baked first. onDrawFrame calls this itself when
-         * it has not already run for this frame.
+         * Starts the vt frame without drawing, so the shared drape can be baked before any layer draws.
+         * onDrawFrame calls it itself when it has not run this frame.
          */
         bool prepareFrame(float deltaSeconds, const ViewState& viewState);
 
@@ -100,25 +98,20 @@ namespace massif {
         void setTerrainLayerOrdinalBase(int base);
         int getStyleLayerCount() const;
         /**
-         * The per-tile drape texture resolution to bake at: the option's value when it sets one,
-         * otherwise taken from the screen (see the implementation). Static so the drape CACHE,
-         * which is owned by MapRenderer and must agree with every layer's renderer, resolves it
-         * the same way.
+         * Per-tile drape bake resolution: the option's value, else derived from the screen. Static so
+         * MapRenderer's drape cache resolves it exactly as every layer does.
          */
         static int resolveDrapeResolution(int setting, const ViewState& viewState, const std::shared_ptr<Options>& options, std::size_t budgetMegabytes = 0, int workingSet = 0);
         // Metres a draped line is drawn in front of the ground (see GLTileRenderer::setTerrainLineClearance).
         static float terrainLineClearanceMeters();
-        // Style layers kept out of the drape bake and drawn live: TerrainOptions::NoDrapeLayerFilter,
-        // overridden by debug.massif.nodrapelayers ("none" to drape everything). Compiled once per
-        // distinct pattern. See GLTileRenderer::setNoDrapeLayerFilter.
+        // Style layers drawn live instead of draped (TerrainOptions::NoDrapeLayerFilter; demo builds:
+        // debug.massif.nodrapelayers, "none" drapes all). See GLTileRenderer::setNoDrapeLayerFilter.
         static std::optional<std::regex> noDrapeLayerFilter(const std::string& optionFilter);
         static constexpr float DEFAULT_LINE_CLEARANCE_METERS = 25.0f;
         // The drape cache clamps to the same range (TerrainDrapeCache::setResolution).
         static constexpr int MIN_DRAPE_RESOLUTION = 128;
         static constexpr int MAX_DRAPE_RESOLUTION = 2048;
-        // Tiles the automatic resolution assumes are cached at once: the live cover plus what a pan
-        // needs back. A real cover is 15-34 leaves and the cache must also hold the generation a
-        // stand-in reads from, or the ground blinks in the background colour on every zoom frame.
+        // Tiles the automatic resolution assumes cached: the cover plus the stand-in generation, or zooms blink.
         static constexpr std::size_t DRAPE_WORKING_SET = 64;
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
@@ -128,9 +121,7 @@ namespace massif {
         int bakeSpanDrapeTile(const vt::TileId& tileId);
         void setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures);
         void setGroundDrapeTextures(const std::map<vt::TileId, vt::GLTileRenderer::GroundDrape>& drapes);
-        // This layer's style layers with drapeable content, in draw order, each flagged draped or
-        // live. The owner concatenates them across layers to place a live layer in the whole stack
-        // (see GLTileRenderer::collectDrapeStackOrder).
+        // Drapeable style layers in draw order, flagged draped or live (GLTileRenderer::collectDrapeStackOrder).
         void collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const;
         int bakeDrapeCoverage(const vt::TileId& tileId, int fromStyleLayerIdx);
         void setDrapeCoverageMasks(const std::vector<std::map<vt::TileId, unsigned int> >& maskTextures, const std::map<int, int>& styleLayerMasks);
@@ -146,62 +137,55 @@ namespace massif {
         int renderTerrainShadowMask(const std::vector<vt::TileId>& tileIds);
         bool isGroundAOActive() const;
         bool isGroundAOBakeable() const;
+        bool hasGroundContent() const;
         void setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize);
-        // Whether anything wants labels occluded by 3D content: the resolved TerrainOptions/Map
-        // default, or a style layer with its own text-occlusion-opacity.
+        // The resolved TerrainOptions/Map default, or any style layer's own text-occlusion-opacity.
         bool isLabelOcclusionWanted() const;
         int renderLabelOcclusionDepth();
         int renderGroundAOMask();
         int bakeGroundAOMask(const vt::TileId& tileId);
-        // Pushed by the owner BEFORE the shared terrain surface is drawn: onDrawFrame sets the same
-        // state but runs after that draw, so the surface would light itself with the PREVIOUS
-        // frame's sun.
+        // Pushed before the shared terrain surface draws; onDrawFrame runs after it, a frame late.
         void setTerrainSunLighting(const ResolvedLighting& lighting);
-        // The vt-side lighting struct for a resolved sun. One place, so the pre-surface push above
-        // and onDrawFrame cannot light the same frame differently.
+        // Shared by setTerrainSunLighting and onDrawFrame so they cannot light one frame differently.
         static vt::GLTileRenderer::TerrainLighting buildTerrainLighting(const ResolvedLighting& lighting);
-        // A light colour in LINEAR space, scaled by its intensity - the form the 3D lighting sums in.
+        // Linear-space light colour scaled by intensity, as the 3D lighting sums it.
         static cglib::vec3<float> linearColor(const Color& color, float intensity);
-        // Turns this renderer into a terrain paint baker: it shades the shared elevation texture
-        // into the drape at its own place in the layer order. The fingerprint must cover every value
-        // the paint's appearance depends on, or an already-baked drape survives a parameter change.
-
         // The terrain tiles a paint draws itself on when there is no drape to bake into.
         void setTerrainPaintTiles(const std::vector<vt::TileId>& tileIds);
+        // Makes this renderer shade the elevation texture into the drape. The fingerprint must cover every
+        // appearance parameter, or a baked drape survives a change.
         void setTerrainPaint(bool enabled, bool fullDetail, float heightScale, bool exaggerateHeightScale, bool legacyHeightScale, float contrast, float opacity, std::size_t fingerprint);
 
         bool onDrawFrame(float deltaSeconds, const ViewState& viewState);
         bool onDrawFrame3D(float deltaSeconds, const ViewState& viewState);
     
         /**
-         * Places this layer's labels. `finished` is cleared when the culler's slice ran out before
-         * this layer's labels did, so the caller knows to come back and resume the cycle.
+         * Places this layer's labels; `finished` is cleared when the culler's slice ran out first.
          */
         bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState, bool& finished);
+        // Copy of the vt label occlusion test for the culler: an occluded label must not reserve a collision slot.
+        void setLabelOcclusionTestCopy(std::function<bool(const cglib::vec3<double>&)> test);
+        std::function<bool(const cglib::vec3<double>&)> getLabelOcclusionTest() const;
+        void restartLabelPlacement();
+        void snapLabelTransition();
 
-        // `spanReferenceTiles`: fetched unseen for a stranded bridge's chord, unioned by the
-        // renderer and never drawn - see TileLayer::collectSpanReferenceTiles.
+        // spanReferenceTiles are never drawn, only read for bridge chords (TileLayer::collectSpanReferenceTiles).
         bool refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas, const std::vector<std::shared_ptr<const vt::Tile> >& spanReferenceTiles = {});
 
         void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, float radius, std::vector<vt::GLTileRenderer::GeometryIntersectionInfo>& results) const;
         void calculateRayIntersectedElements3D(const cglib::ray3<double>& ray, const ViewState& viewState, float radius, std::vector<vt::GLTileRenderer::GeometryIntersectionInfo>& results) const;
         void calculateRayIntersectedBitmaps(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<vt::GLTileRenderer::BitmapIntersectionInfo>& results) const;
     
-        // The style's own sun/shadow/fog values for this frame, pushed by the layer that owns
-        // this renderer. What the style leaves unset comes from LightOptions/TerrainOptions.
+        // This frame's style sun/shadow/fog; unset values fall back to LightOptions/TerrainOptions.
         void setStyleEnvironment(const StyleEnvironment& env);
 
-        // `brightness` is what the function reads as view::brightness, and it has to be passed in:
-        // a ViewState built here defaults to 1, so a Map setting ramped over the scene light
-        // resolved at full daylight whatever the hour.
+        // brightness is view::brightness; pass it in, a ViewState built here defaults to full daylight.
         static Color evaluateColorFunc(const vt::ColorFunction& colorFunc, const ViewState& viewState, float brightness = 1.0f);
         static float evaluateFloatFunc(const vt::FloatFunction& floatFunc, const ViewState& viewState, float brightness = 1.0f);
 
         /**
-         * True once, after the GL renderer was created with tiles already waiting. Those tiles
-         * missed their label placement pass - cullLabels does nothing without a GL renderer - and
-         * a still camera never asks for another, so a labels-only layer stays invisible until the
-         * user pans. The owning layer answers by requesting a placement pass.
+         * True once, after the GL renderer was created with tiles already waiting: they missed label
+         * placement, and a still camera never asks again. The owning layer requests a pass.
          */
         bool consumeLabelPlacementOwed();
 
@@ -209,35 +193,29 @@ namespace massif {
         struct LabelOcclusionState;
 
         bool initializeRenderer();
+        // The normal-map lighting shader and its uniforms, for initializeRenderer and an in-place swap.
+        vt::GLTileRenderer::LightingShader createNormalMapLightingShader();
         bool isPlanarProjectionMode() const;
-        // Tangram-model measurement switch, read once from debug.massif.depthshift (Android only).
+        // _mutex taken from the render thread, timed: a tile-set change holds it on the cull thread.
+        std::unique_lock<std::mutex> lockTimed() const;
+        // debug.massif.depthshift, read once. Android demo builds only.
         static float getTerrainContentDepthShift();
         // tangram res/scenes/terrain-3d.yaml: depth_shift = -0.02*u_proj[2][3], and [2][3] is -1.
         static constexpr float TERRAIN_TANGRAM_DEPTH_SHIFT = 0.02f;
-        // A per-step separation between coplanar style layers, not a budget to spread over the
-        // stack: scaling it by the ordinal span let far content over a near ridge.
-
-        // Elevation levels the shading texture resolves BEYOND ElevationManager::clampTileZoom.
-        // 0 means shading and geometry read the SAME elevation tile - tangram's arrangement, and
-        // why it costs nothing: there is no second set of grids and textures.
+        // Elevation levels shading resolves beyond ElevationManager::clampTileZoom; 0 shares geometry's (tangram).
         static constexpr int DEFAULT_PAINT_DETAIL_LEVELS = 0;
         static int terrainPaintDetailLevels();
-        // Measurement switch for tangram's arrangement: the paint drawn AS the ground rather than
-        // as its layer's own surface over it. debug.massif.groundpaint 1. Read once (Android only).
+        // debug.massif.groundpaint 1 draws the paint as the ground (tangram). Android demo builds only.
         static bool isTerrainPaintOnGroundForced();
-        // Texture fetches per terrain vertex, debug.massif.demtaps. Read once (Android only).
+        // Texture fetches per terrain vertex, debug.massif.demtaps. Android demo builds only.
         static int terrainDemTaps();
-        // debug.massif.tilebg 1 keeps the per-tile per-layer background meshes. Read once (Android).
+        // debug.massif.tilebg 1 keeps the per-tile per-layer background meshes. Android demo builds only.
         static bool isTerrainTileBackgroundsForced();
-        // debug.massif.tilemasks forces the stencil tile masks on (1) or off (0) instead of the
-        // renderer's own rule. Read once (Android only).
+        // debug.massif.tilemasks forces the stencil tile masks on (1) or off (0). Android demo builds only.
         static int tileMasksMode();
-        // debug.massif.inline3d 0 sends the 3D extrusions back through the per-layer 3D overlay
-        // instead of drawing them inline in the main framebuffer. Read once (Android only).
+        // debug.massif.inline3d 0 draws extrusions through the per-layer 3D overlay. Android demo builds only.
         static bool isInline3DEnabled();
-        // Is `pass` (0 = the layer's own, 1 = the last) where the BILLBOARD labels belong? A
-        // billboard stands out of the map and must follow the extrusions, or a layer's own buildings
-        // paint over it. Flat labels keep the label order - they lie on the ground.
+        // pass 0 = the layer's own, 1 = the last. Billboards must follow the extrusions or buildings cover them.
         bool drawsBillboardLabelsHere(int pass) const { return std::max(_labelOrder, _buildingOrder) == pass; }
         void updateLabelOcclusionTest(const std::shared_ptr<vt::GLTileRenderer>& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
 
@@ -249,9 +227,7 @@ namespace massif {
         static const std::string LIGHTING_SHADER_3D;
         static const std::string LIGHTING_SHADER_NORMALMAP;
 
-        // MapLibre's light defaults, from its own style spec (mbgl LightPosition/LightIntensity in
-        // light_impl.hpp): spherical (radial 1.15, azimuth 210, polar 30) through
-        // sphericalToCartesian, intensity 0.5, and fill-extrusion-vertical-gradient on.
+        // MapLibre's light defaults (mbgl light_impl.hpp): spherical (1.15, 210, 30), intensity 0.5, vertical gradient on.
         static const cglib::vec3<float> ML_LIGHT_POS;
         static constexpr float ML_LIGHT_INTENSITY = 0.5f;
         static constexpr float ML_VERTICAL_GRADIENT = 1.0f;
@@ -263,6 +239,7 @@ namespace massif {
 
         std::shared_ptr<VTRenderer> _vtRenderer;
         bool _labelPlacementOwed = false; // see consumeLabelPlacementOwed
+        unsigned int _labelOcclusionDepthVersion = 0; // the terrain occlusion depth the labels were last placed against
         bool _interactionMode;
         float _layerBlendingSpeed;
         float _labelBlendingSpeed;
@@ -283,32 +260,29 @@ namespace massif {
 
         double _horizontalLayerOffset;
         cglib::vec3<float> _viewDir;
-        // The sun as RESOLVED (style over LightOptions), captured each frame for the 3D lighting
-        // shader callback, which runs at draw time and cannot resolve it itself.
+        // Resolved sun (style over LightOptions), captured for the draw-time 3D lighting callback.
         cglib::vec3<float> _resolvedSunDir = cglib::vec3<float>(0, 0, 1);
-        // The same sun with its altitude floored, which is what the extrusions light with.
+        // Altitude-floored, for the extrusions.
         cglib::vec3<float> _resolvedBuildingSunDir = cglib::vec3<float>(0, 0, 1);
         Color _resolvedSunColor = Color(255, 255, 255, 255);
         Color _resolvedAmbientColor = Color(255, 255, 255, 255);
-        // The scene light on a flat, upward-facing surface, in linear space - see resolveLighting.
+        // Scene light on a flat upward surface, linear space (resolveLighting).
         cglib::vec3<float> _resolvedRadiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         float _buildingEmissive = 0.0f;
         float _backgroundEmissive = 1.0f;
         // mapbox's measure-light brightness, what a style reads as view::brightness.
         float _resolvedBrightness = 1.0f;
-        // The elevation DATA version last acted on, apart from the global one: a change to only
-        // the exaggeration moves the global version without making any surface stale.
+        // Separate from the global version, which an exaggeration-only change also bumps.
         unsigned int _elevationDataVersion = 0;
-        // What the extrusions light with, resolved from the style over the options
-        // (StyleEnvironment::resolveLighting).
+        // ...and the exaggeration itself, which every CPU height carries. -1 = never read.
+        float _elevationExaggeration = -1.0f;
+        // StyleEnvironment::resolveLighting.
         float _buildingLightIntensity = 1.0f;
         float _buildingAmbient = 0.35f;
         float _buildingVerticalGradient = 0.65f;
         float _buildingRoofShade = 1.0f;
         // Light the walls maplibre's way rather than mapbox's - set for a style that lights nothing.
         bool _buildingLightingMapLibre = false;
-        // The style's extrusion height multiplier, and whether a tile's fade-in raises its
-        // buildings with it (off: no source style asks for that animation).
         float _buildingHeightScale = 1.0f;
         float _buildingHeightViewScale = 1.0f;
         bool _buildingGrowOnAppear = false;
@@ -330,7 +304,7 @@ namespace massif {
         bool prepareFrameUnsafe(float deltaSeconds, const ViewState& viewState); // caller holds _mutex
         void pushTerrainDrapeState(); // caller holds _mutex
 
-        bool _framePrepared = false;   // startFrame already ran this frame (cross-layer drape ordering)
+        bool _framePrepared = false;   // prepareFrame already ran this frame
         bool _framePrepareResult = false;
         bool _externalDrapeTarget = false;
         bool _terrainGroundActive = false; // a shared ground cover is set: this stack draws a terrain surface without a drape
@@ -338,12 +312,14 @@ namespace massif {
         int _maxVertexTextureUnits = -1; // lazily queried GL capability (-1 = not queried yet)
         std::shared_ptr<ElevationTextureCache> _elevationTextureCache;
         unsigned int _elevationVersion = 0;
-        // The vt renderer + elevation source the extrusion provider was last pushed for: setting it
-        // invalidates every extrusion base, so it may only be pushed when one of the two changes.
+        // Pushing the extrusion provider invalidates every base: only when this pair changes.
         std::pair<const void*, const void*> _extrusionProviderKey { nullptr, nullptr };
         std::optional<std::chrono::steady_clock::time_point> _lastSurfaceResetTime;
         std::shared_ptr<LabelOcclusionState> _labelOcclusionState;
+        mutable std::mutex _labelOcclusionTestMutex;
+        std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTestCopy;
 
+        std::vector<vt::TileId> _terrainPaintTileIds; // last pushed, so an unchanged cover costs no vt lock
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _tiles;
         // Offscreen tiles: their labels are placed, their geometry is never drawn. See refreshTiles.
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _labelOnlyTiles;

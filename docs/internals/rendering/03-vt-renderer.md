@@ -31,7 +31,7 @@ renderLabels()      glyph quads, built fresh every frame, uploaded as batches
 endFrame()          sweep compiled resources whose owners expired
 ```
 
-`renderGeometry2D` (GLTileRenderer.cpp:2588) is the heart of it:
+`renderGeometry2D` (GLTileRenderer.cpp:3087) is the heart of it:
 
 1. Bucket every visible render tile's layers by **style layer index** into `renderLayerMap`.
 2. In terrain mode, sort each style layer's tiles **near to far** (content writes depth, so near
@@ -58,6 +58,15 @@ Measured on the day-cycle-light example, pinching z17–19: **sixteen pieces of 
 covered by a shell (`geom 0 extr 0 | tile layers 19 extr 2`), which is what "buildings disappearing
 all over the place while zooming" was. This cannot strand content: the moment the tile has an active
 layer of its own, the branch above erases the retained one as soon as the replacement is opaque.
+
+**It holds only while the replacement is still coming.** "Nothing active covers this ground" also
+describes a render tile built from a tile of the *current* set that decoded without that layer at
+all — the answer, not a gap. Held, the layer never dies: zooming out from z13 to z10 kept drawing
+the z12 tiles' `#contour[zoom>=12]` lines inside the rectangle those tiles covered, under a camera
+the style stops contours well below, and no further zoom cleared it (the render tile carried four
+retained `contour` layers at blend 1.0, with nothing active in it at all). `RenderTile::current`
+separates the two: set by `initializeRenderTile`, cleared by `mergeExistingRenderTile`, which is
+exactly the ground that has no new tile yet.
 
 **The culling box has to hold what stands on the tile, not just its ground.** `isTileVisible` tests
 `calculateTileBBox`, which is the tile's ground, and an extrusion stands out of it — so a building
@@ -302,8 +311,9 @@ a long stretch of its neighbours' roads and draws it — displaced with *its own
 elevation texture and lattice, which is a different DEM level than the tile that overflow actually
 lies on. The same road is then painted twice at two different heights: from straight down the copies
 coincide and it looks perfect, and the moment the camera tilts they separate. That tilt-only
-signature is the tell. The stencil tile masks were what used to clip this, but they need a stencil
-buffer and the shared-ground target has none (`GL_STENCIL_BITS` reads **0**), so they never run.
+signature is the tell. The stencil tile masks were what used to clip this, but `renderGeometry2D` turns
+them off under the shared ground (`maskStencilBits = _terrainSharedGround ? 0 : stencilBits`), so
+they never run in terrain mode.
 `lineFsh` therefore discards outside the tile, using `uTileUnitScale` / `uTileUnitOffset`
 (vertex-frame units → TARGET tile units, set in `setupTerrainUniforms`; a **0 scale means no
 elevation**, which disables the test) and a `vTileUnit` varying. No attachment, no extra draw.
@@ -369,8 +379,8 @@ nothing at all in terrain mode while it drew fine on a flat map.
 > screen-space xy for the width, `mix(centerPos, edgePos, shrink)` for the depth.
 >
 > Ruled out first, each by measurement, before the cap was suspected: line tesselation and joins,
-> the route source's simplify tolerance (real but separate — it is applied per TILE ZOOM in
-> `MBVTTileBuilder::simplifyAndCacheLayers`, so a coarse tile collapses hairpins into chords),
+> the route source's simplify tolerance (real but separate — it is applied per TILE ZOOM by
+> `MBVTTileBuilder`'s [geojson-vt index](02-tiles.md#geojson-tiles-the-on-demand-pyramid), so a coarse tile collapses hairpins into chords),
 > `TerrainOptions::MeshResolution` (32/64/128, no effect) and `Options::TileLODFactor` (no effect).
 > The two A/Bs that settled it: with the content depth test disabled the casing is complete, and
 > with the cap disabled the casing is complete but every line is visibly fatter.

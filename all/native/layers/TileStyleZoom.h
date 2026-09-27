@@ -8,21 +8,43 @@
 #define _MASSIF_TILESTYLEZOOM_H_
 
 #include <algorithm>
+#include <cmath>
 
 namespace massif {
 
     /**
-     * The zoom a tile's STYLE evaluates at: the zoom the camera asked for, not the (possibly
-     * coarser) tile the LOD handed back. CartoCSS [zoom] gates on the tile, so without a lift a
-     * single level of LOD coarsening drops every rule written for the camera's zoom.
-     * The lift is bounded (Options::TileStyleZoomLift) because a horizon tile styled at the
-     * camera's zoom emits the whole near-field content over ground tens of times wider.
+     * The tile zoom the camera asks for, held across the boundary by a margin: with terrain the zoom
+     * drifts with the ground under the focus, and every change re-decodes all visible tiles.
+     * cameraZoom already carries the LOD offset and the layer's zoom level bias.
+     */
+    inline int calculateTargetTileZoom(double cameraZoom, int currentTarget, double hysteresis) {
+        int candidate = static_cast<int>(std::floor(cameraZoom));
+        if (currentTarget < 0 || candidate == currentTarget) {
+            return candidate;
+        }
+        if (candidate > currentTarget) {
+            return cameraZoom >= currentTarget + 1 + hysteresis ? candidate : currentTarget;
+        }
+        return cameraZoom <= currentTarget - hysteresis ? candidate : currentTarget;
+    }
+
+    /**
+     * The zoom a tile's style evaluates at: the camera's target, not the coarser LOD tile, so [zoom]
+     * rules survive coarsening. Bounded by Options::TileStyleZoomLift so horizon tiles stay cheap.
      */
     inline int calculateStyleTileZoom(int tileZoom, int targetTileZoom, int maxZoomLift) {
         if (targetTileZoom <= tileZoom || targetTileZoom - tileZoom > maxZoomLift) {
-            return tileZoom; // at or past the ring: the horizon pays nothing for the lift
+            return tileZoom;
         }
         return targetTileZoom;
+    }
+
+    /**
+     * Whether a tile decoded at styleTileZoom still matches the camera: in-flight tasks survive a
+     * target-zoom change and land fresh, so validity alone cannot tell.
+     */
+    inline bool isStyleTileZoomCurrent(int tileZoom, int styleTileZoom, int targetTileZoom, int maxZoomLift) {
+        return styleTileZoom == calculateStyleTileZoom(tileZoom, targetTileZoom, maxZoomLift);
     }
 
 }

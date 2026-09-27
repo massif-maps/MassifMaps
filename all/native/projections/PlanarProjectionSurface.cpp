@@ -6,6 +6,14 @@ namespace massif {
     PlanarProjectionSurface::PlanarProjectionSurface() {
     }
 
+    double PlanarProjectionSurface::getWorldWidth() const {
+        return Const::WORLD_SIZE;
+    }
+
+    double PlanarProjectionSurface::calculateLocalScale(const cglib::vec3<double>& pos) const {
+        return 1.0; // world IS internal here, at every latitude
+    }
+
     MapPos PlanarProjectionSurface::calculateMapPos(const cglib::vec3<double>& pos) const {
         return MapPos(pos(0), pos(1), pos(2));
     }

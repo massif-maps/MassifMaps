@@ -23,11 +23,8 @@ namespace massif { namespace api {
     static const Subscription NULL_SUBSCRIPTION = 0;
 
     /**
-     * Which thread a handler runs on.
-     *
-     * A consuming subscription must be ORIGIN: the SDK asks whether the event was consumed now,
-     * and a queued handler answers later. Waiting for it would block the producer on the UI
-     * thread, which is a deadlock waiting to happen.
+     * Which thread a handler runs on. A consuming subscription must be ORIGIN: the SDK needs the
+     * answer now, and waiting on a queued handler would block the producer on the UI thread.
      */
     enum Delivery {
         DELIVERY_ORIGIN = 0,  // wherever the event was produced - the GL or a tile thread
@@ -42,10 +39,8 @@ namespace massif { namespace api {
     typedef void (*Dispatcher)(void* userData, void (*function)(void*), void* argument);
 
     /**
-     * Delivered on the thread the subscription asked for.
-     *
-     * int rather than bool because this typedef IS the C ABI's mm_handler - identical types, so
-     * a C handler is passed straight through with no trampoline to keep alive.
+     * Delivered on the thread the subscription asked for. int, not bool: this is the C ABI's
+     * mm_handler, so a C handler passes straight through with no trampoline.
      * @return Non-zero when the handler consumed the event, stopping it reaching later handlers.
      *         Only meaningful for a subscription that asked to consume.
      */
@@ -67,14 +62,9 @@ namespace massif { namespace api {
     };
 
     /**
-     * Who is listening to what.
-     *
-     * Dispatch order is registration order, so which of two consuming handlers wins is decided by
-     * the app rather than by a hash. Subscriptions are dropped when their target is, or the first
-     * destroy on an object with a handler is a use-after-free.
-     *
-     * Not thread-safe on its own; Context holds the lock, and releases it around the handlers -
-     * see collect and lookup for why that is two phases.
+     * Who is listening to what. Dispatch follows registration order; subscriptions must be dropped
+     * with their target, or its destroy is a use-after-free. Not thread-safe: Context holds the lock
+     * and releases it around the handlers (see collect).
      */
     class EventBus {
     public:
@@ -90,10 +80,8 @@ namespace massif { namespace api {
                                const std::string& projection, int throttleMs);
 
         /**
-         * Whether a throttled subscription is due, and marks it delivered when it is.
-         *
-         * Not part of Dispatch: the window has to be READ AND WRITTEN on the entry, and a copy
-         * would let every event through. Call it under the same lock as lookup.
+         * Whether a throttled subscription is due, and marks it delivered when it is. It writes the
+         * entry, so it cannot work on a Dispatch copy; call it under the same lock as lookup.
          */
         bool due(Subscription subscription, std::chrono::steady_clock::time_point now);
 
@@ -116,12 +104,9 @@ namespace massif { namespace api {
         int unsubscribeAll(std::uint32_t target);
 
         /**
-         * Collects the subscriptions matching a target and event, in registration order.
-         *
-         * Dispatch is two-phase on purpose: the handlers are app code and must not run under the
-         * context lock, but the list cannot be walked unlocked either. The caller collects handles
-         * under the lock, then resolves each one - see lookup - immediately before calling it, so
-         * a handler removed earlier in the same pass is skipped rather than called.
+         * Collects the subscriptions matching a target and event, in registration order. Handlers
+         * must not run under the context lock, so the caller collects under it and resolves each one
+         * with lookup just before calling it: a handler removed earlier in the pass is skipped.
          */
         void collect(std::uint32_t target, const std::string& event,
                      std::vector<Subscription>& out) const;
@@ -137,11 +122,8 @@ namespace massif { namespace api {
         std::size_t getSubscriptionCount() const;
 
         /**
-         * Whether a subscription is still live.
-         *
-         * For a binding that keeps something alive per subscription: the bulk removals and the
-         * death of a target do not name what they took with them, so the only way to find the
-         * orphans is to ask.
+         * Whether a subscription is still live. Lets a binding that pins something per subscription
+         * find the orphans of bulk removals and target deaths.
          */
         bool isSubscribed(Subscription subscription) const;
 
@@ -163,8 +145,7 @@ namespace massif { namespace api {
             std::string projection;
             bool live = false;
             std::uint32_t generation = 1;
-            // Registration order. Slots are reused, so index order is NOT registration order, and
-            // dispatching by index would make which handler wins depend on allocation history.
+            // Registration order: slots are reused, so index order is not.
             std::uint64_t sequence = 0;
         };
 

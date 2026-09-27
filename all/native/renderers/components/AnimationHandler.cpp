@@ -2,6 +2,7 @@
 #include "projections/ProjectionSurface.h"
 #include "renderers/MapRenderer.h"
 #include "core/MapPos.h"
+#include "components/Options.h"
 #include "graphics/ViewState.h"
 #include "utils/Const.h"
 #include "utils/UnitBezier.h"
@@ -59,6 +60,9 @@ namespace massif {
         _flightStartPos(),
         _flightTargetPos(),
         _flightClimb(0),
+        _flightLift(0),
+        _flightFirstPerson(false),
+        _firstPersonHint(false),
         _flightProgress(-1),
         _flightStartZoom(0),
         _flightTargetZoom(0),
@@ -79,8 +83,12 @@ namespace massif {
         std::optional<CameraRotationEvent> cameraRotationEvent;
         std::optional<CameraTiltEvent> cameraTiltEvent;
         std::optional<CameraZoomEvent> cameraZoomEvent;
+        // Read before _mutex: getOptions takes the renderer's lock, which is held around getFlightLift.
+        std::shared_ptr<Options> options = _mapRenderer.getOptions();
+        bool firstPerson = options && options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON;
         {
             std::lock_guard<std::mutex> lock(_mutex);
+            _firstPersonHint = firstPerson;
             if (_flightActive) {
                 // One clock for the whole move: the per-property animations are not running while
                 // a flight is (setFlightTarget stops them), so nothing fights it for the camera.
@@ -223,6 +231,12 @@ namespace massif {
     void AnimationHandler::stopFlight() {
         std::lock_guard<std::mutex> lock(_mutex);
         _flightActive = false;
+        _flightLift = 0;
+    }
+
+    double AnimationHandler::getFlightLift() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _flightActive ? _flightLift : 0;
     }
 
     bool AnimationHandler::isFlightActive() const {
@@ -252,6 +266,7 @@ namespace massif {
             _flightStartZoom = viewState.getZoom();
             _flightStartRotation = viewState.getRotation();
             _flightStartTilt = viewState.getTilt();
+            _flightFirstPerson = _firstPersonHint;
 
             // Van Wijk's w is a SCREENFUL: measuring it against a tile pulled every flight back by
             // a constant log2(screen / tile). See docs/internals/rendering/01-frame.md.
@@ -282,7 +297,12 @@ namespace massif {
 
         double ratio = 1.0;
         double zoom = _flightTargetZoom;
-        if (!done) {
+        if (!done && _flightFirstPerson) {
+            // The eye goes straight there, eased, and the climb is the arc: zooming out on the way
+            // would move a first-person eye backwards before it went forward.
+            ratio = k;
+            zoom = _flightStartZoom + (_flightTargetZoom - _flightStartZoom) * k;
+        } else if (!done) {
             double zoomDelta = 0;
             _flightPath.sample(k, ratio, zoomDelta);
             zoom = _flightStartZoom + zoomDelta;
@@ -295,11 +315,11 @@ namespace massif {
             cglib::mat4x4<double> transform = projectionSurface->calculateTranslateMatrix(pos0, pos1, ratio);
             newFocusPos = projectionSurface->calculateMapPos(cglib::transform_point(pos0, transform));
         }
+        // The climb is a parabola over both ends, kept apart (getFlightLift) because the renderer's
+        // ground rule rewrites the focus height.
         double height = _flightStartPos.getZ() + (_flightTargetPos.getZ() - _flightStartPos.getZ()) * k;
-        if (!done && _flightClimb != 0) {
-            height += _flightClimb * 4.0 * k * (1.0 - k);
-        }
         newFocusPos.setZ(height);
+        _flightLift = (done ? 0.0 : _flightClimb * 4.0 * k * (1.0 - k));
         _flightProgress = static_cast<float>(k);
 
         CameraPanEvent panCameraEvent;

@@ -69,6 +69,7 @@ namespace massif {
         // location 0 - which would silently overwrite whichever uniform really is at 0.
         GLuint _a_coord;
         GLint _u_invMVPMat;
+        GLint _u_localFrame;
         GLint _u_sunDir;
         GLint _u_sunColor;
         GLint _u_skyColor;

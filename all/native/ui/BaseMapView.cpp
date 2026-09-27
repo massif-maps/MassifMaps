@@ -20,6 +20,7 @@
 #include "utils/Log.h"
 
 #include <list>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include <sstream>
@@ -104,12 +105,12 @@ namespace massif {
     }
     
     MapPos BaseMapView::getFocusPos() const {
-        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getFocusPos());
+        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewStateSnapshot().getFocusPos());
         return _options->getBaseProjection()->fromInternal(mapPosInternal);
     }
     
     MapPos BaseMapView::getCameraPos() const {
-        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getCameraPos());
+        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewStateSnapshot().getCameraPos());
         // The GROUND under the camera. calculateMapPos carries the height through, and a focus
         // position with a height in it moves the view - setFocusPos would frame somewhere else.
         mapPosInternal.setZ(0);
@@ -117,20 +118,22 @@ namespace massif {
     }
 
     float BaseMapView::getRotation() const {
-        return _mapRenderer->getViewState().getRotation();
+        return _mapRenderer->getViewStateSnapshot().getRotation();
     }
     
     float BaseMapView::getTilt() const {
-        return _mapRenderer->getViewState().getTilt();
+        return _mapRenderer->getViewStateSnapshot().getTilt();
     }
     
     float BaseMapView::getZoom() const {
-        return _mapRenderer->getViewState().getZoom();
+        return _mapRenderer->getViewStateSnapshot().getZoom();
     }
     
     void BaseMapView::pan(const MapVec& deltaPos, float durationSeconds) {
-        MapPos focusPos0Internal = _options->getBaseProjection()->toInternal(getFocusPos());
-        MapPos focusPos1Internal = _options->getBaseProjection()->toInternal(getFocusPos() + deltaPos);
+        // Exact focus, not the snapshot: a delta from a frame-old base moves the map elsewhere.
+        MapPos focusPos = _options->getBaseProjection()->fromInternal(_options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getFocusPos()));
+        MapPos focusPos0Internal = _options->getBaseProjection()->toInternal(focusPos);
+        MapPos focusPos1Internal = _options->getBaseProjection()->toInternal(focusPos + deltaPos);
 
         _mapRenderer->getAnimationHandler().stopPan();
         _mapRenderer->getKineticEventHandler().stopPan();
@@ -157,7 +160,7 @@ namespace massif {
         // stays in bounds, and from a world view any focus is dragged back to the bounds centre.
         // Held as ONE frame, or the render thread draws the half-applied state and flattens it.
         std::unique_lock<std::recursive_mutex> hold = _mapRenderer->holdView();
-        bool zoomIn = zoom > getZoom();
+        bool zoomIn = zoom > _mapRenderer->getViewState().getZoom(); // exact: holdView is already held
         if (zoomIn) {
             setZoom(zoom, 0);
         }
@@ -179,6 +182,45 @@ namespace massif {
 
     void BaseMapView::moveTo(const MapPos& pos, float zoom, float rotation, float tilt) {
         moveTo(pos, zoom, &rotation, &tilt);
+    }
+
+    void BaseMapView::moveCameraTo(const MapPos& pos, float zoom, const float* rotation, const float* tilt) {
+        // One frame, like moveTo: the offset is read between the orientation and the pan.
+        std::unique_lock<std::recursive_mutex> hold = _mapRenderer->holdView();
+
+        // Orientation first: the camera-to-focus offset depends on it. Zoom order as in moveTo.
+        bool zoomIn = zoom > _mapRenderer->getViewState().getZoom();
+        if (zoomIn) {
+            setZoom(zoom, 0);
+        }
+        if (rotation) {
+            setRotation(*rotation, 0);
+        }
+        if (tilt) {
+            setTilt(*tilt, 0);
+        }
+
+        // CameraPanEvent carries the camera with the focus, so move the focus by camera-to-target in 3D;
+        // neither the focus's nor the target's own height would land the camera on the target.
+        const std::shared_ptr<ProjectionSurface>& projectionSurface = _options->getProjectionSurface();
+        const ViewState& viewState = _mapRenderer->getViewState(); // holdView is held
+        cglib::vec3<double> focusVec = viewState.getFocusPos();
+        cglib::vec3<double> cameraVec = viewState.getCameraPos();
+        cglib::vec3<double> targetVec = projectionSurface->calculatePosition(_options->getBaseProjection()->toInternal(pos));
+        MapPos newFocusInternal = projectionSurface->calculateMapPos(focusVec + (targetVec - cameraVec));
+        setFocusPos(_options->getBaseProjection()->fromInternal(newFocusInternal), 0);
+
+        if (!zoomIn) {
+            setZoom(zoom, 0);
+        }
+    }
+
+    void BaseMapView::moveCameraTo(const MapPos& pos, float zoom, float rotation, float tilt) {
+        moveCameraTo(pos, zoom, &rotation, &tilt);
+    }
+
+    void BaseMapView::moveCameraTo(const MapPos& pos, float zoom) {
+        moveCameraTo(pos, zoom, nullptr, nullptr);
     }
 
     void BaseMapView::flyTo(const MapPos& pos, float zoom, float durationSeconds) {

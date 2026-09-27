@@ -80,7 +80,7 @@ the **facade** alone — a path and a range is the whole description of a row �
 example without knowing what any of them built, and each row reads its value back off the map, so
 it opens on what the example set rather than on a default the example overrode.
 
-Two things it does that a row table alone would not:
+Three things it does that a row table alone would not:
 
 - **It builds the option object when the example never did.** `Options` starts with `lightOptions`,
   `skyOptions` and `fogOptions` EMPTY, and writing through an empty one is an error — so the first
@@ -88,6 +88,9 @@ Two things it does that a row table alone would not:
   terrain is not built: it needs an elevation source only the example can name.
 - **`auto 2D/3D on tilt` is one control over both halves** of the auto-flatten rule
   (`autoFlattenTilt`, `autoFlattenParallax`); off writes 0 to each, on puts back what they held.
+- **`projection` under Terrain puts the running example on the globe** and back, without a
+  relaunch — the same thing `--es globe true` does at launch ([18-globe.md](../internals/rendering/18-globe.md)).
+  Switching re-derives the camera, so the place is kept and the exact framing is not.
 
 `--es ui false` hides it with the rest of the chrome, so screenshots are unchanged. The `CONFIG`
 broadcast (`examples/ExampleLive.java`) reaches most of the same options from adb, under the
@@ -128,7 +131,7 @@ The vignette is a wide rectangle in a grid, so:
       --es lat 45.9650 --es zoom 11.5 --es tilt 28 --es rotation 180
   ```
 
-  The activity logs the camera it actually ended up at (`camera lon=… lat=…`) on every start —
+  The activity logs the camera it actually ended up at (`camera lon=… lat=…`) on every move —
   **read it**. A dark frame that looked like broken shadows turned out to be the open Atlantic.
   Once it looks right, put the numbers back in the example's own `moveTo`.
 

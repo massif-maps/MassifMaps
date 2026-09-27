@@ -76,11 +76,13 @@ map.addLayer("base", Spec.of("composite-vector")
     .set("style", "outdoor"));
 ```
 
-:::note External sources are still object-API
-`addExternalDataSource` takes a `TileDataSource` and a `CompositeSourceType`, and carries no
-generated method entry — the [layer reference](/docs/api/reference/layer) lists what is
-reachable. Use `rawLayer` / the object API for the external sources themselves, and the spec for
-everything else.
+:::note External sources are methods, not spec keys
+A spec cannot name a slot, so external sources are wired after construction with the layer's
+methods: `addExternalDataSource(name, source, type)` — `type` as the `CompositeSourceType`
+integer (`0` raster, `1` hillshade, `2` vector), the facade having no enum argument —
+`addVectorDataSource`, `removeExternalDataSource`, `getExternalDataSourceNames`,
+`setExternalDataSourceZoomLevelBias`, `setExternalDataSourceMaxOverzoomLevel` and
+`getExternalChildLayer`. The [layer reference](/docs/api/reference/layer) has the spec keys.
 :::
 
 ### Source types
@@ -88,7 +90,7 @@ everything else.
 | Type | Renders as | Notes |
 |---|---|---|
 | `COMPOSITE_SOURCE_TYPE_RASTER` | `RasterTileLayer` | Styled by `raster-*` properties. |
-| `COMPOSITE_SOURCE_TYPE_HILLSHADE` | `HillshadeRasterTileLayer` | Decoder from DEM `encoding`; `hillshade-*` properties. |
+| `COMPOSITE_SOURCE_TYPE_HILLSHADE` | `HillshadeRasterTileLayer` | Decoder from the DEM's `dem_encoding`; `hillshade-*` properties. |
 | `COMPOSITE_SOURCE_TYPE_VECTOR` | own `VectorTileLayer` | Master-styled, filtered to its layer name, overzooms independently via its `MaxOverzoomLevel`. |
 
 ## Styling from CartoCSS

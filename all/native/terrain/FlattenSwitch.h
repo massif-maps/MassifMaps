@@ -12,15 +12,9 @@
 namespace massif {
 
     /**
-     * The 2D/3D switch: how the map gets between flat and 3D terrain once something has asked for
-     * the other one. AutoFlatten decides WHETHER to switch, this decides WHEN each half of it
-     * happens. Free of the renderer and of TerrainOptions on purpose, so the host tests can reach
-     * it. See TerrainOptions::setFlattenMode and docs/internals/rendering/04-terrain.md.
-     *
-     * The one fact the whole thing rests on: terrain-decoded tiles render correctly FLAT (they only
-     * carry extra triangles), flat-decoded ones do NOT render correctly in 3D (no subdivision, so a
-     * road chords straight over a valley). So every decode swap is made while the map is flat, where
-     * both densities draw the same picture, and 3D is never entered before its tiles exist.
+     * The 2D/3D switch: when each half of a switch AutoFlatten or the app asked for happens. Terrain-decoded
+     * tiles draw fine flat but flat-decoded ones not in 3D, so every decode swap happens while flat and 3D
+     * waits for its tiles. See docs/internals/rendering/04-terrain.md.
      */
     struct FlattenSwitch {
         enum class Phase {
@@ -68,15 +62,12 @@ namespace massif {
             case Phase::FLAT:
                 next.ratio = 1.0f;
                 if (!input.flatten) {
-                    // Ask for the 3D tiles and keep rendering 2D until they are there. The LOD in
-                    // terrain mode wants tiles flat rendering never asked for (overzoom targets,
-                    // the coarsening floor), so this wait is not only about the decode density.
+                    // Not only the decode density: the terrain LOD wants tiles flat never asked for (overzoom, coarsening floor).
                     next.phase = Phase::WARMING;
                     next.warmSeconds = 0.0f;
                     next.decode3D = true;
                     break;
                 }
-                // Only once settled flat, and only in FULL mode, does the decode drop to 2D.
                 next.decode3D = !input.fullSwitch;
                 break;
 
@@ -87,8 +78,7 @@ namespace massif {
                     next.phase = Phase::FLAT; // asked back before it ever left
                     break;
                 }
-                // The timeout is what keeps a tile that never loads from pinning the map in 2D:
-                // late is better than never, and the ramp itself then shows what is missing.
+                // The timeout keeps a tile that never loads from pinning the map in 2D.
                 if (input.tilesReady || (input.warmTimeout > 0 && next.warmSeconds >= input.warmTimeout)) {
                     next.phase = Phase::RAMPING;
                 }
@@ -96,8 +86,7 @@ namespace massif {
 
             case Phase::RAMPING: {
                 float target = input.flatten ? 1.0f : 0.0f;
-                // Each direction has its own: the rise is the one an app matches to a flight, and
-                // it is also the one that had to wait for its tiles first.
+                // Separate durations: an app matches the rise to a flight.
                 float duration = input.flatten ? input.flattenDuration : input.riseDuration;
                 float step = duration > 0 ? delta / duration : 1.0f;
                 next.ratio = target > state.ratio ? std::min(target, state.ratio + step)
@@ -120,10 +109,11 @@ namespace massif {
 
             case Phase::MANUAL: {
                 float asked = std::min(1.0f, std::max(0.0f, input.manualRatio));
-                // Asking for any 3D asks for its tiles, and the ground is HELD flat until they
-                // arrive, or unsubdivided geometry is displaced over the relief.
-                // TerrainOptions::isSwitching is how an app sees the hold.
-                next.decode3D = !input.fullSwitch || asked < 1.0f;
+                // Any 3D holds the ground flat until its tiles arrive (TerrainOptions::isSwitching). decode3D is
+                // only raised here: dropping it discards every tile in flight; FLAT drops it once the app lets go.
+                if (!input.fullSwitch || asked < 1.0f) {
+                    next.decode3D = true;
+                }
                 bool held = asked < 1.0f && state.ratio >= 1.0f && !input.tilesReady;
                 next.ratio = held ? 1.0f : asked;
                 next.warmSeconds = 0.0f;
@@ -135,17 +125,15 @@ namespace massif {
         }
 
         /**
-         * Whether 3D terrain is being rendered at all - the renderers, the cullers and the drape all
-         * gate on this. WARMING is deliberately NOT active: it renders as plain 2D, so the wait
-         * costs 2D and shows no half-built terrain.
+         * Whether 3D terrain is rendered at all (renderers, cullers and drape gate on it). WARMING is not:
+         * it renders plain 2D, so the wait shows no half-built terrain.
          */
         static bool isTerrainActive(const State& state) {
             return state.ratio < 1.0f;
         }
 
         /**
-         * Whether the switch is holding the ground flat while the tiles 3D needs load. What an app
-         * driving the ratio itself waits on before it starts its own animation.
+         * Whether the ground is held flat while the tiles 3D needs load; an app driving the ratio waits on it.
          */
         static bool isWaitingForTiles(const State& state, const Input& input) {
             if (state.phase == Phase::WARMING) {

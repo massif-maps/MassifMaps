@@ -175,10 +175,8 @@ namespace massif {
             // the surface and are occluded behind a ridge. Any forward bias leaks through at distance.
             bool terrainPainterOrder = false;
             if (auto options = getOptions()) {
-                if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-                    if (auto terrainOptions = options->getTerrainOptions()) {
-                        terrainPainterOrder = terrainOptions->isActive();
-                    }
+                if (auto terrainOptions = options->getTerrainOptions()) {
+                    terrainPainterOrder = terrainOptions->isActive();
                 }
             }
             _lineRenderer->setDepthBias(0.0f, 0.0f);
@@ -369,7 +367,7 @@ namespace massif {
     
     std::shared_ptr<ProjectionSurface> VectorLayer::getElementProjectionSurface(const std::shared_ptr<ProjectionSurface>& baseProjectionSurface) const {
         std::shared_ptr<Options> options = getOptions();
-        if (!options || !baseProjectionSurface || options->getRenderProjectionMode() != RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+        if (!options || !baseProjectionSurface) {
             return baseProjectionSurface;
         }
         std::shared_ptr<TerrainOptions> terrainOptions = options->getTerrainOptions();
@@ -382,8 +380,8 @@ namespace massif {
         // then trigger a rebuild of the element draw data.
         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (!_terrainProjectionSurface || _terrainProjectionSurface->getElevationManager() != elevationManager || _terrainProjectionSurface->getElevationVersion() != elevationManager->getVersion()) {
-            _terrainProjectionSurface = std::make_shared<TerrainProjectionSurface>(elevationManager);
+        if (!_terrainProjectionSurface || _terrainProjectionSurface->getBase() != baseProjectionSurface || _terrainProjectionSurface->getElevationManager() != elevationManager || _terrainProjectionSurface->getElevationVersion() != elevationManager->getVersion()) {
+            _terrainProjectionSurface = std::make_shared<TerrainProjectionSurface>(baseProjectionSurface, elevationManager);
         }
         return _terrainProjectionSurface;
     }

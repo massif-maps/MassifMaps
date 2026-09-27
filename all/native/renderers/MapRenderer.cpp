@@ -24,6 +24,7 @@
 #include "renderers/cameraevents/CameraTiltEvent.h"
 #include "renderers/cameraevents/CameraZoomEvent.h"
 #include "renderers/drawdatas/BillboardDrawData.h"
+#include "renderers/utils/ElevationTextureCache.h"
 #include "renderers/utils/GLContext.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/FrameBuffer.h"
@@ -62,6 +63,7 @@
 #include <vt/GLTileRenderer.h> // the shadow cutout/fade constants, so the fade is not a second 4.5
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <cstdio>
 #include <cstring>
@@ -75,12 +77,18 @@ namespace massif {
 #if MASSIF_VT_RENDER_STATS
     namespace {
         // Diagnostic dump of the vt label/tile churn counters (vt/RenderStats.h,
-        // MASSIF_VT_RENDER_STATS). All but 'live' are per-interval deltas; GL thread only, so the
-        // previous values need no synchronization.
+        // MASSIF_VT_RENDER_STATS). All but 'live' are per-interval deltas. Process-wide, so a line
+        // covers every map view; the lock keeps two GL threads from tearing the previous values.
         constexpr int RENDER_STATS_INTERVAL = 1000; // ms
 
         void logRenderStats() {
             using vt::RenderStats;
+
+            static std::mutex statsMutex;
+            std::unique_lock<std::mutex> statsLock(statsMutex, std::try_to_lock);
+            if (!statsLock.owns_lock()) {
+                return; // another renderer is printing this interval
+            }
 
             static const int COUNT = 17;
             static std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
@@ -90,6 +98,7 @@ namespace massif {
             if (now - lastTime < std::chrono::milliseconds(RENDER_STATS_INTERVAL)) {
                 return;
             }
+            double intervalMs = std::chrono::duration<double, std::milli>(now - lastTime).count();
             lastTime = now;
 
             const long long values[COUNT] = {
@@ -127,31 +136,50 @@ namespace massif {
             lastFlips = flips;
             lastCullerNs = cullerNs;
 
-            static long long lastConsidered = 0, lastDistanceCut = 0;
+            static long long lastConsidered = 0, lastDistanceCut = 0, lastMaxDistanceCut = 0;
             static long long lastCullPhase[3] = { 0 };
-            static long long lastCullFate[3] = { 0 };
-            Log::Infof("RenderStats: cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld",
-                       deltas[13], deltas[14], deltas[15], deltas[0], deltas[11],
+            static long long lastCullFate[6] = { 0 };
+            static long long lastLabelMapSkips = 0;
+            long long labelMapSkips = RenderStats::labelMapSkips.load();
+            long long deltaLabelMapSkips = labelMapSkips - lastLabelMapSkips;
+            lastLabelMapSkips = labelMapSkips;
+
+            // One snapshot, printed and stored as 'last' alike: the placement worker keeps counting,
+            // and loading twice lost every increment in between.
+            const long long considered = RenderStats::cullerConsidered.load();
+            const long long distanceCut = RenderStats::cullerDistanceCut.load();
+            const long long maxDistanceCut = RenderStats::cullerMaxDistanceCut.load();
+            const long long cullPhase[3] = {
+                RenderStats::cullerCollectNs.load(), RenderStats::cullerSortNs.load(), RenderStats::cullerInsertNs.load()
+            };
+            const long long cullFate[6] = {
+                RenderStats::cullerInvalid.load(), RenderStats::cullerSorted.load(), RenderStats::cullerVisible.load(),
+                RenderStats::cullerNotFacing.load(), RenderStats::cullerCollided.load(), RenderStats::cullerOccluded.load()
+            };
+            Log::Infof("RenderStats: over %.0f ms | cullUpd=%lld tileRecalc=%lld tileSkip=%lld tileSets=%lld labelMaps=%lld labelMapSkips=%lld | surfBuilt=%lld surfInval=%lld | labelsAlloc=%lld reused=%lld live=%lld elevReanchor=%lld | placeUpd=%lld reNull=%lld reHidden=%lld reVisible=%lld search=%lld | snap=%lld snapMoved=%lld | cullPasses=%lld visFlips=%lld cullMs=%.2f | considered=%lld distCut=%lld styleMaxDistCut=%lld | collectMs=%.1f sortMs=%.1f insertMs=%.1f | invalid=%lld sorted=%lld visible=%lld notFacing=%lld collided=%lld occluded=%lld",
+                       intervalMs,
+                       deltas[13], deltas[14], deltas[15], deltas[0], deltas[11], deltaLabelMapSkips,
                        deltas[1], deltas[2],
                        deltas[3], deltas[12], RenderStats::labelsLive.load(), deltas[4],
                        deltas[5], deltas[6], deltas[7], deltas[8], deltas[16],
                        deltas[9], deltas[10], deltaPasses, deltaFlips, deltaCullerNs / 1.0e6,
-                       RenderStats::cullerConsidered.load() - lastConsidered,
-                       RenderStats::cullerDistanceCut.load() - lastDistanceCut,
-                       (RenderStats::cullerCollectNs.load() - lastCullPhase[0]) / 1.0e6,
-                       (RenderStats::cullerSortNs.load() - lastCullPhase[1]) / 1.0e6,
-                       (RenderStats::cullerInsertNs.load() - lastCullPhase[2]) / 1.0e6,
-                       RenderStats::cullerInvalid.load() - lastCullFate[0],
-                       RenderStats::cullerSorted.load() - lastCullFate[1],
-                       RenderStats::cullerVisible.load() - lastCullFate[2]);
-            lastCullFate[0] = RenderStats::cullerInvalid.load();
-            lastCullFate[1] = RenderStats::cullerSorted.load();
-            lastCullFate[2] = RenderStats::cullerVisible.load();
-            lastConsidered = RenderStats::cullerConsidered.load();
-            lastDistanceCut = RenderStats::cullerDistanceCut.load();
-            lastCullPhase[0] = RenderStats::cullerCollectNs.load();
-            lastCullPhase[1] = RenderStats::cullerSortNs.load();
-            lastCullPhase[2] = RenderStats::cullerInsertNs.load();
+                       considered - lastConsidered,
+                       distanceCut - lastDistanceCut,
+                       maxDistanceCut - lastMaxDistanceCut,
+                       (cullPhase[0] - lastCullPhase[0]) / 1.0e6,
+                       (cullPhase[1] - lastCullPhase[1]) / 1.0e6,
+                       (cullPhase[2] - lastCullPhase[2]) / 1.0e6,
+                       cullFate[0] - lastCullFate[0],
+                       cullFate[1] - lastCullFate[1],
+                       cullFate[2] - lastCullFate[2],
+                       cullFate[3] - lastCullFate[3],
+                       cullFate[4] - lastCullFate[4],
+                       cullFate[5] - lastCullFate[5]);
+            std::copy(cullFate, cullFate + 6, lastCullFate);
+            std::copy(cullPhase, cullPhase + 3, lastCullPhase);
+            lastConsidered = considered;
+            lastDistanceCut = distanceCut;
+            lastMaxDistanceCut = maxDistanceCut;
 
             // Draw submission, per interval. geomDraws is the number that matters: the frame
             // cost of a style tracks it, not the index count next to it.
@@ -169,6 +197,100 @@ namespace massif {
                        tiles - lastTiles, styleLayers - lastStyleLayers,
                        surfaceDraws - lastSurfaceDraws, surfaceIndices - lastSurfaceIndices);
             lastSurfaceDraws = surfaceDraws; lastSurfaceIndices = surfaceIndices;
+
+            // TerrainRenderer's meshes, built inline on the render thread: 'buildMs' against the frame
+            // time says whether a panorama rotating past its mesh cache builds rather than draws.
+            {
+                static long long lastMeshBuilds = 0, lastMeshBuildUs = 0, lastMeshVerts = 0, lastMeshEvictions = 0, lastMeshHits = 0;
+                long long meshBuilds = RenderStats::terrainMeshBuilds.load();
+                long long meshBuildUs = RenderStats::terrainMeshBuildUs.load();
+                long long meshVerts = RenderStats::terrainMeshVerts.load();
+                long long meshEvictions = RenderStats::terrainMeshEvictions.load();
+                long long meshHits = RenderStats::terrainMeshCacheHits.load();
+                Log::Infof("RenderStats: terrainMesh builds=%lld buildMs=%.1f verts=%lld | evictions=%lld cacheHits=%lld (per interval)",
+                           meshBuilds - lastMeshBuilds, (meshBuildUs - lastMeshBuildUs) / 1000.0,
+                           meshVerts - lastMeshVerts, meshEvictions - lastMeshEvictions, meshHits - lastMeshHits);
+                lastMeshBuilds = meshBuilds; lastMeshBuildUs = meshBuildUs; lastMeshVerts = meshVerts;
+                lastMeshEvictions = meshEvictions; lastMeshHits = meshHits;
+
+                static long long lastAttribBakes = 0, lastAttribUs = 0;
+                long long attribBakes = RenderStats::terrainAttribBakes.load();
+                long long attribUs = RenderStats::terrainAttribUs.load();
+                static long long lastRefines = 0, lastRefineUs = 0;
+                long long refines = RenderStats::terrainAttribRefines.load();
+                long long refineUs = RenderStats::terrainAttribRefineUs.load();
+                Log::Infof("RenderStats: terrainAttribs bakes=%lld ms=%.1f (render thread) | refines=%lld ms=%.1f (worker) (per interval)",
+                           attribBakes - lastAttribBakes, (attribUs - lastAttribUs) / 1000.0,
+                           refines - lastRefines, (refineUs - lastRefineUs) / 1000.0);
+                lastAttribBakes = attribBakes; lastAttribUs = attribUs;
+                lastRefines = refines; lastRefineUs = refineUs;
+
+                static long long lastFixedVerts = 0, lastTotalVerts = 0;
+                long long fixedVerts = RenderStats::terrainAttribFixedVerts.load();
+                long long totalVerts = RenderStats::terrainAttribTotalVerts.load();
+                long long fixedDelta = fixedVerts - lastFixedVerts;
+                long long totalDelta = totalVerts - lastTotalVerts;
+                Log::Infof("RenderStats: terrainAttribs fixedScale %lld/%lld verts (%.1f%% resolved a NON-ZERO DEM gradient; the rest are flat or kept the mesh one) (per interval)",
+                           fixedDelta, totalDelta, totalDelta > 0 ? 100.0 * fixedDelta / totalDelta : 0.0);
+                lastFixedVerts = fixedVerts; lastTotalVerts = totalVerts;
+
+                static long long lastZeroGrid = 0, lastZeroSkirt = 0, lastSkirtOOR = 0;
+                long long zeroGrid = RenderStats::terrainAttribZeroGrid.load();
+                long long zeroSkirt = RenderStats::terrainAttribZeroSkirt.load();
+                long long skirtOOR = RenderStats::terrainAttribSkirtOutOfRange.load();
+                Log::Infof("RenderStats: terrainAttribs ZERO normals AS UPLOADED grid=%lld skirt=%lld, skirt source out of range=%lld (per interval)",
+                           zeroGrid - lastZeroGrid, zeroSkirt - lastZeroSkirt, skirtOOR - lastSkirtOOR);
+                lastZeroGrid = zeroGrid; lastZeroSkirt = zeroSkirt; lastSkirtOOR = skirtOOR;
+
+                static long long lastCarry[4] = { 0 };
+                const long long carry[4] = {
+                    RenderStats::terrainAttribCarryHit.load(), RenderStats::terrainAttribCarryMissNew.load(),
+                    RenderStats::terrainAttribCarryMissUnrefined.load(), RenderStats::terrainAttribCarryMissGrid.load()
+                };
+                Log::Infof("RenderStats: terrainAttribs refined-normal carry hit=%lld | miss: new tile=%lld, sibling unrefined=%lld, GRID SIZE CHANGED=%lld (per interval)",
+                           carry[0] - lastCarry[0], carry[1] - lastCarry[1], carry[2] - lastCarry[2], carry[3] - lastCarry[3]);
+                for (int i = 0; i < 4; i++) { lastCarry[i] = carry[i]; }
+
+                static long long lastStretch[4] = { 0 };
+                const long long stretch[4] = {
+                    RenderStats::terrainAttribStretch1.load(), RenderStats::terrainAttribStretch2.load(),
+                    RenderStats::terrainAttribStretch4.load(), RenderStats::terrainAttribStretchBig.load()
+                };
+                Log::Infof("RenderStats: terrainAttribs DEM coarser than the asked step (tiles) 1x=%lld 2x=%lld 4x=%lld 8x+=%lld (DATA detail only - every tile now SAMPLES at normalSampleDistance) (per interval)",
+                           stretch[0] - lastStretch[0], stretch[1] - lastStretch[1], stretch[2] - lastStretch[2], stretch[3] - lastStretch[3]);
+                for (int i = 0; i < 4; i++) { lastStretch[i] = stretch[i]; }
+
+                static long long lastTexelRetry = 0;
+                Log::Infof("RenderStats: terrainAttribs provisional=%lld final=%lld rebakes=%lld (a provisional bake read a DEM coarser than the source has; cumulative)",
+                           RenderStats::terrainAttribProvisional.load(), RenderStats::terrainAttribFinal.load(),
+                           RenderStats::terrainAttribRebakes.load());
+                Log::Infof("RenderStats: terrainDemTexture hits=%lld misses=%lld (tiles measuring their normal from the GPU elevation texture; cumulative)",
+                           RenderStats::terrainDemTextureHits.load(), RenderStats::terrainDemTextureMisses.load());
+                long long texelRetry = RenderStats::terrainAttribTexelRetry.load();
+                Log::Infof("RenderStats: terrainAttribs texel retries=%lld (vertices exactly flat at the asked step) (per interval)",
+                           texelRetry - lastTexelRetry);
+                lastTexelRetry = texelRetry;
+
+                static long long lastStale[4] = { 0 };
+                const long long stale[4] = {
+                    RenderStats::terrainAttribStaleFresh.load(), RenderStats::terrainAttribStale1.load(),
+                    RenderStats::terrainAttribStale2.load(), RenderStats::terrainAttribStale3.load()
+                };
+                Log::Infof("RenderStats: terrainAttribs STALE normals (tiles) fresh=%lld, 1 level=%lld, 2 levels=%lld, 3+=%lld (baked from a coarser DEM than the tile now has) (per interval)",
+                           stale[0] - lastStale[0], stale[1] - lastStale[1], stale[2] - lastStale[2], stale[3] - lastStale[3]);
+                for (int i = 0; i < 4; i++) { lastStale[i] = stale[i]; }
+
+                static long long lastGrid[5] = { 0 };
+                const long long grid[5] = {
+                    RenderStats::terrainMeshGrid1.load(), RenderStats::terrainMeshGrid4.load(),
+                    RenderStats::terrainMeshGrid16.load(), RenderStats::terrainMeshGrid48.load(),
+                    RenderStats::terrainMeshGridFull.load()
+                };
+                Log::Infof("RenderStats: terrainMesh density (tiles/cut-walk) 1=%lld 4=%lld 16=%lld 48=%lld full=%lld (per interval)",
+                           grid[0] - lastGrid[0], grid[1] - lastGrid[1], grid[2] - lastGrid[2],
+                           grid[3] - lastGrid[3], grid[4] - lastGrid[4]);
+                for (int i = 0; i < 5; i++) { lastGrid[i] = grid[i]; }
+            }
 
             static long long lastSurfSplit[7] = { 0 };
             const long long surfSplit[7] = {
@@ -197,6 +319,15 @@ namespace massif {
             long long labelBatch = RenderStats::labelBatchNs.load();
             long long labelVerts = RenderStats::labelsDrawnVertices.load();
             long long lineLayouts = RenderStats::lineLayoutBuilds.load();
+            static long long lastLabelPass[3] = { 0 };
+            const long long labelPass[3] = {
+                RenderStats::labelPassSortNs.load(), RenderStats::labelPassPatternNs.load(),
+                RenderStats::labelPassStyleNs.load()
+            };
+            Log::Infof("RenderStats: labelPass sortMs=%.1f patternMs=%.1f styleMs=%.1f (per interval)",
+                       (labelPass[0] - lastLabelPass[0]) / 1.0e6, (labelPass[1] - lastLabelPass[1]) / 1.0e6,
+                       (labelPass[2] - lastLabelPass[2]) / 1.0e6);
+            for (int i = 0; i < 3; i++) { lastLabelPass[i] = labelPass[i]; }
             Log::Infof("RenderStats: labels built=%lld lineLayouts=%lld buildMs=%.1f batchMs=%.1f (per interval)",
                        labelVerts - lastLabelVerts, lineLayouts - lastLineLayouts,
                        (labelBuild - lastLabelBuild) / 1.0e6,
@@ -286,6 +417,36 @@ namespace massif {
             for (int i = 0; i < 4; i++) { lastPrep[i] = prep[i]; }
             for (int i = 0; i < 2; i++) { lastLabelSplit[i] = labelSplit[i]; }
 
+            static long long lastSky[3] = { 0 };
+            const long long sky[3] = {
+                RenderStats::frameClearNs.load(), RenderStats::skyDrawNs.load(),
+                RenderStats::backgroundDrawNs.load()
+            };
+            Log::Infof("RenderStats: sky clearMs=%.1f skyMs=%.1f backgroundMs=%.1f (per interval)",
+                       (sky[0] - lastSky[0]) / 1.0e6, (sky[1] - lastSky[1]) / 1.0e6,
+                       (sky[2] - lastSky[2]) / 1.0e6);
+            for (int i = 0; i < 3; i++) { lastSky[i] = sky[i]; }
+
+            static long long lastLayerHold = 0;
+            long long layerHold = RenderStats::layerRefreshHoldNs.load();
+            Log::Infof("RenderStats: layerRefreshHoldMs=%.1f (per interval)", (layerHold - lastLayerHold) / 1.0e6);
+            lastLayerHold = layerHold;
+
+            // The 'layers' section, split. state+light are per-frame setup that draws nothing.
+            static long long lastPass2D[7] = { 0 };
+            const long long pass2D[7] = {
+                RenderStats::pass2DStateNs.load(), RenderStats::pass2DLightNs.load(),
+                RenderStats::pass2DPrepareNs.load(), RenderStats::pass2DGeometryNs.load(),
+                RenderStats::pass2DLabels2DNs.load(), RenderStats::pass2DExtrusionNs.load(),
+                RenderStats::pass2DLabels3DNs.load()
+            };
+            Log::Infof("RenderStats: pass2D stateMs=%.1f lightMs=%.1f prepareMs=%.1f geometryMs=%.1f labels2DMs=%.1f extrusionMs=%.1f labels3DMs=%.1f (per interval)",
+                       (pass2D[0] - lastPass2D[0]) / 1.0e6, (pass2D[1] - lastPass2D[1]) / 1.0e6,
+                       (pass2D[2] - lastPass2D[2]) / 1.0e6, (pass2D[3] - lastPass2D[3]) / 1.0e6,
+                       (pass2D[4] - lastPass2D[4]) / 1.0e6, (pass2D[5] - lastPass2D[5]) / 1.0e6,
+                       (pass2D[6] - lastPass2D[6]) / 1.0e6);
+            for (int i = 0; i < 7; i++) { lastPass2D[i] = pass2D[i]; }
+
             static long long lastPass3D[3] = { 0 };
             const long long pass3D[3] = {
                 RenderStats::pass3DLabels2DNs.load(), RenderStats::pass3DGeometryNs.load(),
@@ -327,6 +488,46 @@ namespace massif {
                        bakes - lastBakes, queued - lastQueued, (bakeNs - lastBakeNs) / 1.0e6,
                        (bakeNs - lastBakeNs) / 1.0e6 / std::max(1LL, bakes - lastBakes));
             lastBakes = bakes; lastBakeNs = bakeNs; lastQueued = queued;
+            static long long lastDrapeClass[5] = { 0 };
+            const long long drapeClass[5] = {
+                RenderStats::drapeQueuedBlank.load(), RenderStats::drapeQueuedRestack.load(),
+                RenderStats::drapeQueuedStandIn.load(), RenderStats::drapeQueuedPartial.load(),
+                RenderStats::drapeQueuedStale.load()
+            };
+            Log::Infof("RenderStats: drape queued blank=%lld restack=%lld standIn=%lld partial=%lld stale=%lld (per interval)",
+                       drapeClass[0] - lastDrapeClass[0], drapeClass[1] - lastDrapeClass[1],
+                       drapeClass[2] - lastDrapeClass[2], drapeClass[3] - lastDrapeClass[3],
+                       drapeClass[4] - lastDrapeClass[4]);
+            for (int i = 0; i < 5; i++) { lastDrapeClass[i] = drapeClass[i]; }
+            static long long lastStaleWhy[3] = { 0 };
+            const long long staleWhy[3] = {
+                RenderStats::drapeStaleFingerprint.load(), RenderStats::drapeStaleMask.load(),
+                RenderStats::drapeGlobalTermChanges.load()
+            };
+            Log::Infof("RenderStats: drape stale fingerprint=%lld mask=%lld | globalTermChanges=%lld (per interval)",
+                       staleWhy[0] - lastStaleWhy[0], staleWhy[1] - lastStaleWhy[1],
+                       staleWhy[2] - lastStaleWhy[2]);
+            for (int i = 0; i < 3; i++) { lastStaleWhy[i] = staleWhy[i]; }
+            static long long lastDrapeEvict[3] = { 0 };
+            const long long drapeEvict[3] = {
+                RenderStats::drapeEvictColour.load(), RenderStats::drapeEvictMask.load(),
+                RenderStats::drapeMaskAcquireFail.load()
+            };
+            static long long lastBakeType[6] = { 0 };
+            const long long bakeType[6] = {
+                RenderStats::drapeBakeLineNs.load(), RenderStats::drapeBakeLineDraws.load(),
+                RenderStats::drapeBakePolygonNs.load(), RenderStats::drapeBakePolygonDraws.load(),
+                RenderStats::drapeBakeOtherNs.load(), RenderStats::drapeBakeOtherDraws.load()
+            };
+            Log::Infof("RenderStats: drape bake lines=%lldms/%lld polygons=%lldms/%lld other=%lldms/%lld (per interval)",
+                       (bakeType[0] - lastBakeType[0]) / 1000000, bakeType[1] - lastBakeType[1],
+                       (bakeType[2] - lastBakeType[2]) / 1000000, bakeType[3] - lastBakeType[3],
+                       (bakeType[4] - lastBakeType[4]) / 1000000, bakeType[5] - lastBakeType[5]);
+            for (int i = 0; i < 6; i++) { lastBakeType[i] = bakeType[i]; }
+            Log::Infof("RenderStats: drape evicted colour=%lld mask=%lld | maskAcquireFail=%lld (per interval)",
+                       drapeEvict[0] - lastDrapeEvict[0], drapeEvict[1] - lastDrapeEvict[1],
+                       drapeEvict[2] - lastDrapeEvict[2]);
+            for (int i = 0; i < 3; i++) { lastDrapeEvict[i] = drapeEvict[i]; }
             // The elevation texture pipeline, which is what extra DEM detail multiplies.
             static long long lastDem[6] = { 0 };
             const long long dem[6] = {
@@ -334,16 +535,77 @@ namespace massif {
                 RenderStats::demEncodeNs.load(), RenderStats::demUploads.load(),
                 RenderStats::demUploadNs.load(), RenderStats::demPatchNs.load()
             };
-            Log::Infof("RenderStats: dem encodes=%lld patches=%lld encodeMs=%.1f | uploads=%lld uploadMs=%.1f patchMs=%.1f | live=%lld resolved=%lld zoomGap=%lld (per interval)",
+            // encodeMs is worker time summed over the encode threads, so it can exceed the interval;
+            // live/resolved are summed over the caches AND the frames, so only zero/non-zero reads.
+            static long long lastDemClears = 0, lastDemTexels = 0;
+            static long long lastDemTex[2] = { 0 };
+            const long long demTex[2] = { RenderStats::demTexturesLive.load(), RenderStats::demTexturesResolved.load() };
+            Log::Infof("RenderStats: dem encodes=%lld patches=%lld encodeWorkerMs=%.1f | uploads=%lld uploadMs=%.1f patchMs=%.1f | liveSum=%lld resolvedSum=%lld zoomGap=%lld caches=%lld detailMask=0x%llx detailClears=%lld texelsPerEncode=%lld (per interval)",
                        dem[0] - lastDem[0], dem[1] - lastDem[1], (dem[2] - lastDem[2]) / 1.0e6,
                        dem[3] - lastDem[3], (dem[4] - lastDem[4]) / 1.0e6, (dem[5] - lastDem[5]) / 1.0e6,
-                       RenderStats::demTexturesLive.load(), RenderStats::demTexturesResolved.load(), RenderStats::demTileZoomGap.load());
-            for (int i = 0; i < 6; i++) { lastDem[i] = dem[i]; }
+                       demTex[0] - lastDemTex[0], demTex[1] - lastDemTex[1], RenderStats::demTileZoomGap.load(),
+                       RenderStats::demCachesLive.load(), RenderStats::demDetailMask.load(),
+                       RenderStats::demDetailClears.load() - lastDemClears,
+                       (dem[0] - lastDem[0]) > 0 ? (RenderStats::demEncodeTexels.load() - lastDemTexels) / (dem[0] - lastDem[0]) : 0LL);
+            lastDemClears = RenderStats::demDetailClears.load();
+            lastDemTexels = RenderStats::demEncodeTexels.load();
+            // The decoded grid cache, not the texture cache: reinserts > 0 means grids in use are evicted
+            // and reloaded, each bumping the elevation version, so labels re-anchor and the surface moves.
+            static long long lastElevGrid[2] = { 0 };
+            const long long elevGrid[2] = { RenderStats::elevGridInserts.load(), RenderStats::elevGridReinserts.load() };
+            Log::Infof("RenderStats: elevGrid inserts=%lld reinserts=%lld | bytes=%lldMB capacity=%lldMB distinctEver=%lld gridKB=%lld managers=%lld (per interval, gauges)",
+                       elevGrid[0] - lastElevGrid[0], elevGrid[1] - lastElevGrid[1],
+                       RenderStats::elevGridBytes.load() >> 20, RenderStats::elevGridCapacity.load() >> 20,
+                       RenderStats::elevGridDistinctEver.load(), RenderStats::elevGridSizeKB.load(),
+                       RenderStats::elevGridManagers.load());
+            for (int i = 0; i < 2; i++) { lastElevGrid[i] = elevGrid[i]; }
 
-            Log::Infof("RenderStats: endFrame ms=%.1f swept=%lld labelLockWaitMs=%.1f (per interval)",
+            // Where an elevation lookup lands, over the session. An alias answers with an ancestor's grid
+            // and is never asked again, so its tiles keep normals from a too-coarse DEM and shade lighter.
+            Log::Infof("RenderStats: elevResolve exact=%lld aliasHits=%lld walkHits=%lld | aliasPuts=%lld (cumulative)",
+                       RenderStats::elevExactHits.load(), RenderStats::elevAncestorAliasHits.load(),
+                       RenderStats::elevAncestorWalkHits.load(), RenderStats::elevAncestorAliasPuts.load());
+            for (int i = 0; i < 6; i++) { lastDem[i] = dem[i]; }
+            for (int i = 0; i < 2; i++) { lastDemTex[i] = demTex[i]; }
+            // One encode, split. Only meaningful divided by the encodes in the same interval.
+            static long long lastDemSplit[3] = { 0 };
+            const long long demSplit[3] = {
+                RenderStats::demEncodeTextureNs.load(), RenderStats::demEncodeBitmapNs.load(),
+                RenderStats::demEncodeNodeNs.load()
+            };
+            static long long lastNodeBox[2] = { 0 };
+            const long long nodeBox[2] = { RenderStats::demNodeEdgeCalls.load(), RenderStats::demNodeBoxTexels.load() };
+            static long long lastEncodeCpu = 0;
+            long long encodeCpu = RenderStats::demEncodeCpuNs.load();
+            Log::Infof("RenderStats: demEncode cpuMs=%.1f (against encodeWorkerMs, per interval)",
+                       (encodeCpu - lastEncodeCpu) / 1.0e6);
+            lastEncodeCpu = encodeCpu;
+            Log::Infof("RenderStats: demNode edgeCalls=%lld boxTexelsPerCall=%lld (per interval)",
+                       nodeBox[0] - lastNodeBox[0],
+                       (nodeBox[0] - lastNodeBox[0]) > 0 ? (nodeBox[1] - lastNodeBox[1]) / (nodeBox[0] - lastNodeBox[0]) : 0LL);
+            for (int i = 0; i < 2; i++) { lastNodeBox[i] = nodeBox[i]; }
+            // Which grid answered each texel: only the coarse bucket pays a bilinear sampleHeight, and
+            // only it is what latticeRuns/latticeSum would collapse.
+            static long long lastNodeSource[3] = { 0, 0, 0 };
+            const long long nodeSource[3] = { RenderStats::demNodeTexelsOwn.load(), RenderStats::demNodeTexelsSameLevel.load(), RenderStats::demNodeTexelsCoarse.load() };
+            long long nodeSourceTotal = 0;
+            for (int i = 0; i < 3; i++) { nodeSourceTotal += nodeSource[i] - lastNodeSource[i]; }
+            Log::Infof("RenderStats: demNode texels own=%lld sameLevel=%lld coarse=%lld (%.1f%% coarse, per interval)",
+                       nodeSource[0] - lastNodeSource[0], nodeSource[1] - lastNodeSource[1], nodeSource[2] - lastNodeSource[2],
+                       nodeSourceTotal > 0 ? 100.0 * (nodeSource[2] - lastNodeSource[2]) / nodeSourceTotal : 0.0);
+            for (int i = 0; i < 3; i++) { lastNodeSource[i] = nodeSource[i]; }
+            Log::Infof("RenderStats: demEncode textureMs=%.1f bitmapMs=%.1f nodeMs=%.1f (per interval)",
+                       (demSplit[0] - lastDemSplit[0]) / 1.0e6, (demSplit[1] - lastDemSplit[1]) / 1.0e6,
+                       (demSplit[2] - lastDemSplit[2]) / 1.0e6);
+            for (int i = 0; i < 3; i++) { lastDemSplit[i] = demSplit[i]; }
+
+            static long long lastTileLockWait = 0;
+            long long tileLockWait = RenderStats::tileRendererLockNs.load();
+            Log::Infof("RenderStats: endFrame ms=%.1f swept=%lld labelLockWaitMs=%.1f tileLockWaitMs=%.1f (per interval)",
                        (endFrameNs - lastEndFrame) / 1.0e6, swept - lastSwept,
-                       (mutexWait - lastMutexWait) / 1.0e6);
-            lastMutexWait = mutexWait;
+                       (mutexWait - lastMutexWait) / 1.0e6,
+                       (tileLockWait - lastTileLockWait) / 1.0e6);
+            lastMutexWait = mutexWait; lastTileLockWait = tileLockWait;
             lastEndFrame = endFrameNs; lastSwept = swept;
 
             // Where one geometry draw goes, in microseconds. 'skips' are calls that set up and
@@ -497,7 +759,24 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         ViewState viewState = _viewState;
         viewState.calculateViewState(*_options);
+        publishViewStateSnapshot(viewState);
         return viewState;
+    }
+
+    ViewState MapRenderer::getViewStateSnapshot() const {
+        {
+            std::lock_guard<std::mutex> lock(_viewStateSnapshotMutex);
+            if (_viewStateSnapshot) {
+                return *_viewStateSnapshot;
+            }
+        }
+        return getViewState(); // nothing published yet: the first reader pays for one
+    }
+
+    void MapRenderer::publishViewStateSnapshot(const ViewState& viewState) const {
+        auto snapshot = std::make_shared<const ViewState>(viewState);
+        std::lock_guard<std::mutex> lock(_viewStateSnapshotMutex);
+        _viewStateSnapshot = snapshot;
     }
 
     std::shared_ptr<ProjectionSurface> MapRenderer::getProjectionSurface() const {
@@ -509,9 +788,7 @@ namespace massif {
         return projectionSurface;
     }
         
-    // Call-site tally for requestRedraw. Requests come from every thread (tile workers, placement
-    // workers, the GL thread), so it is guarded; the cost is one short lock per request, against a
-    // whole frame of work per request.
+    // Call-site tally for requestRedraw; locked, as requests come from every thread.
     static std::mutex redrawSourceMutex;
     static std::map<std::pair<const char*, int>, int> redrawSourceCounts;
 
@@ -548,9 +825,7 @@ namespace massif {
 
         if (redrawRequestListener) {
             _redrawPending = true;
-            // ONE drawn frame is not enough: the surface is double-buffered and
-            // RENDERMODE_WHEN_DIRTY draws exactly as many frames as were requested, so a lone frame
-            // lands in the back buffer and the previous state stays on screen.
+            // Double-buffered RENDERMODE_WHEN_DIRTY: a lone frame lands in the back buffer, so one more is owed.
             _redrawExtraFrames = 1;
             redrawRequestListener->onRedrawRequested();
         }
@@ -578,6 +853,28 @@ namespace massif {
         return _options;
     }
 
+    std::shared_ptr<ElevationTextureCache> MapRenderer::getElevationTextureCache(const std::shared_ptr<ElevationManager>& elevationManager) {
+        if (!elevationManager) {
+            return std::shared_ptr<ElevationTextureCache>();
+        }
+        if (_elevationTextureCache && _elevationTextureCacheManager.lock() != elevationManager) {
+            _elevationTextureCache.reset(); // its textures and its encode thread belong to the old manager
+        }
+        if (!_elevationTextureCache) {
+            _elevationTextureCache = std::make_shared<ElevationTextureCache>(elevationManager, getGLResourceManager());
+            _elevationTextureCacheManager = elevationManager;
+            // An encoded texture is uploaded in beginFrame, so without this a still map never asks for
+            // the frame that would apply it: the ground stays flat under labels already at height.
+            std::weak_ptr<MapRenderer> mapRendererWeak = shared_from_this();
+            _elevationTextureCache->setTextureReadyListener([mapRendererWeak]() {
+                if (auto mapRenderer = mapRendererWeak.lock()) {
+                    mapRenderer->requestRedraw();
+                }
+            });
+        }
+        return _elevationTextureCache;
+    }
+
     std::shared_ptr<GLResourceManager> MapRenderer::getGLResourceManager() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         return _glResourceManager;
@@ -596,6 +893,79 @@ namespace massif {
         return _kineticEventHandler;
     }
     
+    /**
+     * Raises only; lowering is CameraClearance::focusFollow's. Cached heights only.
+     */
+    void MapRenderer::constrainCameraToClearance() {
+        std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
+        if (!terrainOptions || !terrainOptions->isEnabled()) {
+            return;
+        }
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        std::shared_ptr<ProjectionSurface> projectionSurface = _options->getProjectionSurface();
+        if (!elevationManager || !projectionSurface) {
+            return;
+        }
+        MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
+        MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
+        double cameraTerrainZ = 0;
+        if (!elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ)) {
+            // Nothing fetches the ground under the camera at low tilt; the focus ground stands in.
+            if (!elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), cameraTerrainZ)) {
+                return;
+            }
+        }
+        double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ();
+        double clearanceFloor = terrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
+        double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
+        // Plus the application's lift, as in the frame's own rule.
+        double lift = terrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY()) + _animationHandler.getFlightLift();
+        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, terrainOptions->getCameraClearanceFraction()) - orbitHeight + lift;
+        if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+            shellFocusZ += _eyeGroundOffset; // mid-glide the eye is meant to be off the newest answer
+        }
+        if (shellFocusZ > focusMapPos.getZ()) {
+            _viewState.setFocusHeight(shellFocusZ);
+        }
+    }
+
+    /**
+     * A cached read answers from a coarse ancestor until the eye's own tile loads, so standing on each answer moved the
+     * whole panorama once per level. The eye's tile is requested at once, and a change of level is a glide, not a step.
+     */
+    double MapRenderer::settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds) {
+        MapTile groundTile = elevationManager.getDataTile(elevationManager.getTileForInternalPos(cameraMapPos.getX(), cameraMapPos.getY()));
+        if (groundZoom < groundTile.getZoom()) {
+            elevationManager.requestTileGrid(groundTile, 2);
+        }
+        // A coarser answer for the same spot is whichever grid the lookup read last, not new ground.
+        double metre = elevationManager.getDisplayScale(cameraMapPos.getY());
+        bool sameSpot = _eyeGroundZoom >= 0 && std::abs(cameraMapPos.getX() - _eyeGroundX) < metre && std::abs(cameraMapPos.getY() - _eyeGroundY) < metre;
+        if (sameSpot && groundZoom < _eyeGroundZoom) {
+            groundZ = _eyeGroundTarget;
+            groundZoom = _eyeGroundZoom;
+        } else {
+            _eyeGroundX = cameraMapPos.getX();
+            _eyeGroundY = cameraMapPos.getY();
+        }
+        _eyeGroundTarget = groundZ;
+        if (_eyeGroundZoom >= 0 && groundZoom != _eyeGroundZoom) {
+            _eyeGroundOffset = _eyeGroundZ - groundZ;
+#if MASSIF_FRAME_PROFILER
+            Log::Infof("MapRenderer: eye ground z%d -> z%d, glides %.1f m", _eyeGroundZoom, groundZoom, _eyeGroundOffset / std::max(1e-12, metre));
+#endif
+        }
+        _eyeGroundZoom = groundZoom;
+        _eyeGroundOffset *= std::exp(-deltaSeconds / EYE_GROUND_SETTLE_TIME);
+        if (std::abs(_eyeGroundOffset) < 0.01 * metre) {
+            _eyeGroundOffset = 0;
+        } else {
+            requestRedraw();
+        }
+        _eyeGroundZ = groundZ + _eyeGroundOffset;
+        return _eyeGroundZ;
+    }
+
     void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
         if (durationSeconds > 0) {
             if (cameraEvent.isUseDelta()) {
@@ -604,7 +974,6 @@ namespace massif {
                 _animationHandler.setPanTarget(cameraEvent.getPos(), durationSeconds);
             }
     
-            // Animation will start on the next frame
             requestRedraw();
             return;
         }
@@ -619,20 +988,19 @@ namespace massif {
 
             oldFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
         
-            // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
-            _pannedSinceClearance = true;
-    
-            // Calculate parameters for kinetic events
+
             newFocusPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
             zoom = _viewState.getZoom();
+            // After the kinetic read: a vertical lift folded into the 3D fling delta flings the map away.
+            constrainCameraToClearance();
           
             // In case of seamless panning horizontal teleport, offset the delta focus pos
             oldFocusPos.setX(oldFocusPos.getX() + _viewState.getHorizontalLayerOffsetDir() * Const::WORLD_SIZE);
         }
     
-        // Delay updating the layers, because view state will be updated only after onDrawFrame is called
+        // Delayed: the view state is only updated in onDrawFrame.
         viewChanged(true, reason);
     
         if (updateKinetic) {
@@ -649,7 +1017,6 @@ namespace massif {
             }
             _animationHandler.setRotationTarget(cameraEvent.isUseDelta() ? oldRotation + cameraEvent.getRotationDelta() : cameraEvent.getRotation(), cameraEvent.isUseTarget() ? &cameraEvent.getTargetPos() : nullptr, durationSeconds);
     
-            // Animation will start on the next frame
             requestRedraw();
             return;
         }
@@ -661,18 +1028,17 @@ namespace massif {
 
             float oldRotation = _viewState.getRotation();
             
-            // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
-            
-            // Calculate parameters for kinetic events
+
             float rotation = _viewState.getRotation();
             deltaRotation = rotation - oldRotation;
 
             focusPos = getProjectionSurface()->calculateMapPos(_viewState.getFocusPos());
+            constrainCameraToClearance(); // after the kinetic read, as in the pan overload
         }
     
-        // Delay updating the layers, because view state will be updated only after onDrawFrame is called
+        // Delayed: the view state is only updated in onDrawFrame.
         viewChanged(true, reason);
         
         if (updateKinetic) {
@@ -689,7 +1055,6 @@ namespace massif {
             }
             _animationHandler.setTiltTarget(cameraEvent.isUseDelta() ? oldTilt + cameraEvent.getTiltDelta() : cameraEvent.getTilt(), durationSeconds);
     
-            // Animation will start on the next frame
             requestRedraw();
             return;
         }
@@ -697,12 +1062,12 @@ namespace massif {
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
             
-            // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
+            constrainCameraToClearance();
         }
     
-        // Delay updating the layers, because view state will be updated only after onDrawFrame is called
+        // Delayed: the view state is only updated in onDrawFrame.
         viewChanged(true, reason);
     }
     
@@ -715,7 +1080,6 @@ namespace massif {
             }
             _animationHandler.setZoomTarget(cameraEvent.isUseDelta() ? oldZoom + cameraEvent.getZoomDelta() : cameraEvent.getZoom(), cameraEvent.isUseTarget() ? &cameraEvent.getTargetPos() : nullptr, durationSeconds);
     
-            // Animation will start on the next frame
             requestRedraw();
             return;
         }
@@ -727,18 +1091,17 @@ namespace massif {
 
             float oldZoom = _viewState.getZoom();
             
-            // Calculate new focusPos, cameraPos and upVec
             cameraEvent.calculate(*_options, _viewState);
             _cameraPlaced = true;
-            
-            // Calculate parameters for kinetic events
+
             float zoom = _viewState.getZoom();
             deltaZoom = zoom - oldZoom;
 
             focusPos = getProjectionSurface()->calculateMapPos(_viewState.getFocusPos());
+            constrainCameraToClearance(); // after the kinetic read, as in the pan overload
         }
     
-        // Delay updating the layers, because view state will be updated only after onDrawFrame is called
+        // Delayed: the view state is only updated in onDrawFrame.
         viewChanged(true, reason);
         
         if (updateKinetic) {
@@ -756,7 +1119,6 @@ namespace massif {
 
             std::shared_ptr<ProjectionSurface> projectionSurface = getProjectionSurface();
 
-            // Find center position
             cglib::vec3<double> centerPos(0, 0, 0);
             {
                 cglib::vec3<double> minPos = projectionSurface->calculatePosition(mapBounds.getMin());
@@ -790,8 +1152,7 @@ namespace massif {
                 cameraTiltEvent.calculate(*_options, _viewState);
             }
             
-            // Use binary search to determine what the zoom level of the final state should be, so that all the points
-            // would fit in the view
+            // Binary search for the zoom that fits all the points.
             float oldZoom = _viewState.getZoom();
             MapRange zoomRange(_options->getZoomRange());
             float zoom = _options->getZoomRange().getMin();
@@ -854,8 +1215,7 @@ namespace massif {
                 zoom = (float) std::floor(zoom);
             }
             
-            // Reset the camera position, rotation tilt and zoom to the starting state of this animation
-            // And then animate them to the final state over time, if needed
+            // Reset to the starting state, then animate to the final one.
             cameraPanEvent.setPos(projectionSurface->calculateMapPos(oldFocusPos));
             cameraPanEvent.calculate(*_options, _viewState);
             cameraPanEvent.setPos(projectionSurface->calculateMapPos(focusPos));
@@ -879,7 +1239,6 @@ namespace massif {
             cameraZoomEvent.setZoom(zoom);
         }
         
-        // Animate the view
         calculateCameraEvent(cameraPanEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
         if (resetRotation) {
             calculateCameraEvent(cameraRotationEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
@@ -898,8 +1257,7 @@ namespace massif {
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-        // One-time GL context diagnostics: depth/stencil resolution and vertex texture units decide
-        // which terrain depth model is in effect and how much slack it has (emulator != device).
+        // One-time GL diagnostics: depth/stencil bits and vertex texture units decide the terrain depth model.
         {
             GLint depthBits = 0, stencilBits = 0, maxVertexTextureUnits = 0;
             glGetIntegerv(GL_DEPTH_BITS, &depthBits);
@@ -910,26 +1268,25 @@ namespace massif {
                 renderer ? reinterpret_cast<const char*>(renderer) : "?", depthBits, stencilBits, maxVertexTextureUnits);
         }
 
-        // If the surface was lost, properly signal about this
         if (_surfaceCreated) {
             onSurfaceDestroyed();
         }
         _surfaceCreated = true;
         _surfaceChanged = true; // should not be needed, do it in any case
 
-        // Reset resource manager
         if (_glResourceManager) {
             _glResourceManager->setGLThreadId(std::thread::id());
         }
         _glResourceManager = std::make_shared<GLResourceManager>();
         _glResourceManager->setGLThreadId(std::this_thread::get_id());
 
-        // Reset screen blending state
+        // The GPU timer queries belong to the context that generated them, and this is a new one.
+        FRAME_PROF_GPU_RESET();
+
         _screenBoundFBOs.clear();
         _screenFrameBuffers.clear();
         _screenBlendShader.reset();
 
-        // Notify renderers about the event
         _backgroundRenderer.onSurfaceCreated(_glResourceManager);
         _skyRenderer.onSurfaceCreated(_glResourceManager);
 
@@ -969,13 +1326,11 @@ namespace massif {
 
         DirectorPtr<MapRendererListener> mapRendererListener = _mapRendererListener;
 
-        // Re-set GL thread ids, Windows Phone needs this as onSurfaceCreate/onSurfaceChange may be called from different threads
+        // Windows Phone may call onSurfaceCreated/onSurfaceChanged from different threads.
         _glResourceManager->setGLThreadId(std::this_thread::get_id());
 
-        // Create pending resources
         _glResourceManager->processResources();
 
-        // Check if surface has changed
         if (_surfaceChanged.exchange(false)) {
             int width = 0, height = 0;
             {
@@ -991,11 +1346,9 @@ namespace massif {
         
             _lastFrameTime.reset();
 
-            // Perform culling without delay
             viewChanged(false, MapMoveReason::MAP_MOVE_REASON_API);
         }
         
-        // Calculate time from the last frame
         std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
         float deltaSeconds = 1.0f / 60.0f;
         if (_lastFrameTime) {
@@ -1003,51 +1356,69 @@ namespace massif {
         }
         _lastFrameTime = currentTime;
     
-        // Callback for synchronized rendering
         if (mapRendererListener) {
             mapRendererListener->onBeforeDrawFrame();
         }
 
-        // Calculate camera params and make a synchronized copy of the view state
+        // Off _mutex: option listeners are app code, and could deadlock against any facade getter.
+        bool terrainDecodeChanged = updateTerrainFlatten(deltaSeconds);
+
         ViewState viewState;
-        bool terrainDecodeChanged = false;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
 
-            terrainDecodeChanged = updateTerrainFlatten(deltaSeconds);
-
-            // Terrain: extend view distances by the terrain height range and keep
-            // the camera above the terrain surface.
+            // Positions go through the surface: on a sphere xyz is a 3D point, not x/y plus height.
             std::shared_ptr<ElevationManager> elevationManager;
-            if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-                if (auto terrainOptions = _options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled()) {
-                        elevationManager = terrainOptions->getElevationManager();
-                    }
+            std::shared_ptr<TerrainOptions> focusTerrainOptions;
+            std::shared_ptr<ProjectionSurface> projectionSurface = _options->getProjectionSurface();
+            if (auto terrainOptions = _options->getTerrainOptions()) {
+                if (terrainOptions->isEnabled() && projectionSurface) {
+                    elevationManager = terrainOptions->getElevationManager();
+                    focusTerrainOptions = terrainOptions;
                 }
             }
             if (elevationManager) {
-                // The focus sits ON the ground, as in mapbox (transform._centerAltitude): the zoom
-                // is the camera's distance to the terrain there. The projection surface is planar, so
-                // every camera event drops the focus to sea level - lift it back whenever they differ.
+                // The focus sits on the ground (mapbox's _centerAltitude), but only near the clearance shell
+                // (CameraClearance::focusFollow): pinned everywhere, a ridge pan bobbed the camera.
                 {
-                    const cglib::vec3<double>& focusPos = _viewState.getFocusPos();
+                    MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
+                    MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
                     double terrainZ = 0;
-                    if (elevationManager->getDisplayHeightCached(focusPos(0), focusPos(1), terrainZ)) {
-                        _viewState.liftFocus(terrainZ - focusPos(2));
+                    if (elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), terrainZ)) {
+                        // Measured with the focus pinned, so the lift cannot feed back into its input.
+                        double cameraTerrainZ = terrainZ;
+                        int cameraGroundZoom = -1;
+                        elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ, cameraGroundZoom);
+                        double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ(); // invariant under the lift
+                        double pinnedCameraZ = terrainZ + orbitHeight;
+                        double clearanceFloor = focusTerrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
+                        double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
+                        double clearanceFraction = focusTerrainOptions->getCameraClearanceFraction();
+                        double minHeight = CameraClearance::minHeight(pinnedCameraZ, maxZoomOrbit, clearanceFloor, clearanceFraction);
+                        double follow = CameraClearance::focusFollow(pinnedCameraZ - cameraTerrainZ, minHeight);
+                        // Never below the shell: raising keeps the user's tilt and zoom.
+                        double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, clearanceFraction) - orbitHeight;
+                        // App lift on top, kept out of `follow` so it cannot feed its own input.
+                        double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY()) + _animationHandler.getFlightLift();
+                        // First person stands on the ground under the camera; the far focus ground would bob the eye.
+                        if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                            double groundZ = settleEyeGround(*elevationManager, cameraMapPos, cameraTerrainZ, cameraGroundZoom, deltaSeconds);
+                            _viewState.setFocusHeight(groundZ - orbitHeight + lift);
+                        } else {
+                            _eyeGroundZoom = -1;
+                            _eyeGroundOffset = 0;
+                            _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
+                        }
                     }
                 }
-                cglib::vec3<double> cameraPos = _viewState.getCameraPos();
+                MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
                 double minZ = 0, maxZ = 0;
-                elevationManager->getDisplayHeightRange(cameraPos(1), minZ, maxZ);
+                elevationManager->getDisplayHeightRange(cameraMapPos.getY(), minZ, maxZ);
                 _viewState.setTerrainHeightRange(static_cast<float>(minZ), static_cast<float>(maxZ));
 
-                // The camera is deliberately NOT clamped above the terrain here: ViewState keeps
-                // dist(camera, focus) == zoom0Distance/2^zoom, and mutating the camera outside the
-                // camera event system corrupts the view state.
+                // Not clamped here: mutating the camera outside camera events breaks ViewState's zoom invariant.
 
-                // Refresh vector layers when the elevation data changes (debounced), so that
-                // element draw data gets rebuilt with the new heights
+                // Debounced refresh so vector element draw data picks up new heights.
                 unsigned int elevationVersion = elevationManager->getVersion();
                 if (elevationVersion != _layersElevationVersion) {
                     if (!_lastElevationRefreshTime || currentTime - *_lastElevationRefreshTime > std::chrono::milliseconds(ELEVATION_REFRESH_DELAY)) {
@@ -1056,6 +1427,9 @@ namespace massif {
                         for (const std::shared_ptr<Layer>& layer : _layers->getAll()) {
                             if (std::dynamic_pointer_cast<VectorLayer>(layer)) {
                                 layer->refresh();
+                            } else if (std::dynamic_pointer_cast<TileLayer>(layer)) {
+                                // The LOD projects at DEM height; nothing else re-culls a still camera.
+                                layerChanged(layer, true);
                             }
                         }
                     } else {
@@ -1063,64 +1437,65 @@ namespace massif {
                     }
                 }
             } else {
+                _viewState.setFocusHeight(_animationHandler.getFlightLift()); // back onto the surface, radially on a globe
                 _viewState.setTerrainHeightRange(0.0f, 0.0f);
             }
 
             _viewState.calculateViewState(*_options);
             viewState = _viewState;
             _viewState.setHorizontalLayerOffsetDir(0);
+
         }
+        publishViewStateSnapshot(viewState);
 
         if (terrainDecodeChanged) {
-            // The terrain LOD, the overzoom targets and the view distance all differ between the
-            // two decode states, so the visible tile set has to be recomputed - the camera has not
-            // moved, and nothing else would ask.
+            // LOD, overzoom and view distance differ between decode states; the camera has not moved.
             viewChanged(false, MapMoveReason::MAP_MOVE_REASON_API);
         }
 
-        // Calculate map moving animations and kinetic events
         _animationHandler.calculate(viewState, deltaSeconds);
         _kineticEventHandler.calculate(viewState, deltaSeconds);
 
-        // If a post-process effect is set, render the frame into an offscreen buffer
         std::shared_ptr<PostProcessEffect> postProcessEffect = getPostProcessEffect();
+        bool sceneDepth = false;
         if (postProcessEffect) {
-            clearAndBindScreenFBO(_options->getClearColor(), true, false);
+            // The terrain depth an effect reads comes from the scene's own depth when it can (see
+            // applyPostProcessEffect), so the scene's depth is kept as a texture for it.
+            sceneDepth = postProcessEffect->isTerrainDepthRequired() && !postProcessEffect->isTerrainNormalsRequired();
+            clearAndBindScreenFBO(_options->getClearColor(), true, false, sceneDepth);
+        }
+        if (_terrainRenderer) {
+            _terrainRenderer->setSurfacePolygonOffset(!sceneDepth);
         }
 
-        // The style's opinion for this frame, resolved ONCE before anything draws: the sky and the
-        // background plane used to resolve their own fog from an empty environment, so a styled fog
-        // reached the tile content and nothing else.
+        // Resolved once before anything draws, so the sky and background fog like the tiles.
         _frameStyleEnvironment = collectStyleEnvironment(viewState);
         _frameFog = resolveFog(_options->getFogOptions(), _frameStyleEnvironment,
                                resolveLighting(_options->getLightOptions(), _frameStyleEnvironment),
-                               viewState.calculateCameraDistance());
+                               viewState.calculateCameraDistance(), viewState.getTilt());
 
-        // Render everything
         FRAME_PROF_NOW(profFrameStart);
         FRAME_PROF_RESET();
         FRAME_PROF_GPU_BEGIN(SECTION_SKY);
+        VT_STAT_CLOCK(skyClock);
         initializeRenderState();
+        VT_STAT_SPLIT(frameClearNs, skyClock);
         // The shader sky replaces the legacy sky band when it draws.
         bool skyDrawn = _skyRenderer.onDrawFrame(viewState, _frameFog, resolveSky(_options->getSkyOptions(), _frameStyleEnvironment));
-        // Timed apart from the sky: both are full-screen-ish draws at the START of the frame, and
-        // the first section of a frame also absorbs whatever the GPU idled waiting for the CPU
-        // (see GpuFrameProfiler), so one number for the two says nothing about either.
+        VT_STAT_SPLIT(skyDrawNs, skyClock);
+        // Timed apart from the sky: the first section also absorbs GPU idle time (GpuFrameProfiler).
         FRAME_PROF_GPU_BEGIN(SECTION_BACKGROUND);
-        // Measurement switch: tangram draws no background geometry at all - their map background
-        // is the framebuffer clear colour (core/src/map.cpp) - so this is what that would save.
-        //   adb shell setprop debug.massif.background 0
+        // Measurement switch: tangram's background is only the clear colour (core/src/map.cpp).
         if (isBackgroundEnabled()) {
             _backgroundRenderer.onDrawFrame(viewState, _frameFog, !skyDrawn);
         }
+        VT_STAT_SPLIT(backgroundDrawNs, skyClock);
         FRAME_PROF_ADD(skyMs, profFrameStart);
         drawLayers(deltaSeconds, viewState, static_cast<bool>(postProcessEffect));
         FRAME_PROF_GPU_END();
         FRAME_PROF_END(profFrameStart);
         if (postProcessEffect) {
-            // Layers that opted out of the effect are drawn after it resolves, into the same
-            // framebuffer and the same depth buffer, and the result is then blitted to the
-            // screen. With none of them, the effect writes straight to the screen as before.
+            // With opted-out overlay layers, the effect resolves offscreen and is blitted after them.
             bool overlays = !_overlayLayers.empty();
             applyPostProcessEffect(postProcessEffect, viewState, overlays);
             if (overlays) {
@@ -1129,21 +1504,17 @@ namespace massif {
             }
         }
 
-        // Callback for synchronized rendering
         if (mapRendererListener) {
             mapRendererListener->onAfterDrawFrame();
         }
 
-        // Handle renderer capture callbacks as everything is rendered now
         handleRendererCaptureCallbacks();
         
-        // Update billboard placements/visibility
         if (_billboardsChanged.exchange(false)) {
             _billboardPlacementWorker->init(BILLBOARD_PLACEMENT_TASK_DELAY);
         }
         
-        // The follow-up frame for the request this one served (see requestRedraw). Taken before the
-        // idle test, so the map is not announced idle with a frame still owed.
+        // Before the idle test, so the map is not announced idle with a frame still owed.
         if (_redrawExtraFrames.load() > 0) {
             _redrawExtraFrames--;
             DirectorPtr<RedrawRequestListener> redrawRequestListener = _redrawRequestListener;
@@ -1153,7 +1524,6 @@ namespace massif {
             }
         }
 
-        // Call listener to inform we are idle now, if no redraw request is pending
         if (!_redrawPending) {
             for (const std::shared_ptr<OnChangeListener>& onChangeListener : onChangeListeners) {
                 onChangeListener->onMapIdle();
@@ -1168,7 +1538,7 @@ namespace massif {
         GLContext::CheckGLError("MapRenderer::onDrawFrame");
     }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
     bool MapRenderer::isBackgroundEnabled() {
         static const bool enabled = [] {
             char property[PROP_VALUE_MAX] = { 0 };
@@ -1186,19 +1556,17 @@ namespace massif {
         // This method may never be called (e.x Android)
         _surfaceCreated = false;
 
-        // Reset resource manager. We tell managers to ignore all resource 'release' operations by invalidating manager thread ids
+        // Invalidating the thread ids makes the managers ignore resource releases.
         if (_glResourceManager) {
             _glResourceManager->setGLThreadId(std::thread::id());
             _glResourceManager.reset();
         }
 
-        // Reset screen blending state
         _screenBoundFBOs.clear();
         _screenFrameBuffers.clear();
         _screenBlendShader.reset();
 
-        // Drop the terrain offscreen targets: their handles belong to the dying context, and a
-        // recreated context would otherwise draw into and sample from stale names.
+        // Their handles belong to the dying context.
         _terrainDrapeCache.reset();
         _terrainShadowMap.reset();
         _terrainShadowMaskBuffer.reset();
@@ -1207,7 +1575,6 @@ namespace massif {
         _labelOcclusionBuffer.reset();
         _shadowMapValid = false;
 
-        // Notify renderers about the event
         _backgroundRenderer.onSurfaceDestroyed();
         _skyRenderer.onSurfaceDestroyed();
     }
@@ -1216,15 +1583,18 @@ namespace massif {
         glFinish();
     }
     
-    void MapRenderer::clearAndBindScreenFBO(const Color& color, bool depth, bool stencil) {
+    void MapRenderer::clearAndBindScreenFBO(const Color& color, bool depth, bool stencil, bool depthTexture) {
         GLint prevBoundFBO = 0;
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevBoundFBO);
         GLuint bufferMask = GL_COLOR_BUFFER_BIT | (depth ? GL_DEPTH_BUFFER_BIT : 0) | (stencil ? GL_STENCIL_BUFFER_BIT : 0);
-        _screenBoundFBOs.emplace_back(static_cast<GLuint>(prevBoundFBO), bufferMask);
+        // The key carries the depth-texture choice in a bit no GL buffer mask uses; every user of the
+        // stored mask tests it with '&', so it passes through them.
+        GLuint bufferKey = bufferMask | (depthTexture ? SCREEN_FBO_DEPTH_TEXTURE_BIT : 0);
+        _screenBoundFBOs.emplace_back(static_cast<GLuint>(prevBoundFBO), bufferKey);
 
-        std::shared_ptr<FrameBuffer>& frameBuffer = _screenFrameBuffers[bufferMask];
+        std::shared_ptr<FrameBuffer>& frameBuffer = _screenFrameBuffers[bufferKey];
         if (!frameBuffer || !frameBuffer->isValid()) {
-            frameBuffer = _glResourceManager->create<FrameBuffer>(_viewState.getWidth(), _viewState.getHeight(), true, depth, stencil);
+            frameBuffer = _glResourceManager->create<FrameBuffer>(_viewState.getWidth(), _viewState.getHeight(), true, depth, stencil, depthTexture);
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer->getFBOId());
@@ -1258,12 +1628,13 @@ namespace massif {
     void MapRenderer::setPostProcessEffect(const std::shared_ptr<PostProcessEffect>& postProcessEffect) {
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            if (_postProcessEffect == postProcessEffect) {
-                return;
+            // The clock restarts only for a different effect, not a parameter change.
+            if (_postProcessEffect != postProcessEffect) {
+                _postProcessEffect = postProcessEffect;
+                _postProcessStartTime = std::chrono::steady_clock::now();
             }
-            _postProcessEffect = postProcessEffect;
-            _postProcessStartTime = std::chrono::steady_clock::now();
         }
+        // Unconditional: re-setting the same effect is how a parameter change asks for a frame.
         requestRedraw();
     }
 
@@ -1275,20 +1646,36 @@ namespace massif {
             return;
         }
 
-        // Optional terrain depth pre-pass (renders into its own FBO and restores the binding)
         GLuint terrainDepthTex = 0;
-        if (effect->isTerrainDepthRequired()) {
-            std::shared_ptr<TerrainOptions> terrainOptions;
-            if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-                terrainOptions = _options->getTerrainOptions();
+        // The scene's depth, when it was kept as a texture: converting it is one full-screen pass,
+        // where drawing the terrain again into the depth texture was the whole mesh a second time -
+        // 22% of the frame rate of a panorama on an Adreno 610.
+        GLuint sceneDepthTex = 0;
+        if (!_screenBoundFBOs.empty() && (_screenBoundFBOs.back().second & SCREEN_FBO_DEPTH_TEXTURE_BIT)) {
+            std::shared_ptr<FrameBuffer>& sceneFrameBuffer = _screenFrameBuffers[_screenBoundFBOs.back().second];
+            if (sceneFrameBuffer && sceneFrameBuffer->isValid()) {
+                sceneDepthTex = sceneFrameBuffer->getDepthTexId();
             }
+        }
+        if (effect->isTerrainDepthRequired()) {
+            std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
             if (terrainOptions && terrainOptions->isActive()) {
                 if (!_terrainRenderer) {
                     _terrainRenderer = std::make_unique<TerrainRenderer>();
+                    _terrainRenderer->setTileTransformer(_options->getTileTransformer());
                 }
-                // Full mesh resolution: an effect drawing lines from this depth would otherwise
-                // draw the coarse depth mesh's own triangulation.
-                if (_terrainRenderer->renderDepthTexture(viewState, terrainOptions, _glResourceManager, 0)) {
+                // Full resolution, or a line effect draws the coarse mesh's triangulation.
+                if (std::shared_ptr<ElevationManager> depthElevation = terrainOptions->getElevationManager()) {
+                    _terrainRenderer->setElevationTextureCache(getElevationTextureCache(depthElevation));
+                }
+                bool rendered = false;
+                if (sceneDepthTex != 0 && !effect->isTerrainNormalsRequired()) {
+                    rendered = _terrainRenderer->renderDepthTextureFromScene(viewState, terrainOptions, _glResourceManager, sceneDepthTex);
+                }
+                if (!rendered) {
+                    rendered = _terrainRenderer->renderDepthTexture(viewState, terrainOptions, _glResourceManager, 0, effect->isTerrainNormalsRequired());
+                }
+                if (rendered) {
                     terrainDepthTex = _terrainRenderer->getDepthTextureId();
                 }
             }
@@ -1305,9 +1692,7 @@ namespace massif {
 
         GLuint sourceTexId = frameBuffer->getColorTexId();
         if (keepBound) {
-            // Layers that opted out of post-processing still draw, and still depth-test against the
-            // terrain the effect stylized - so the effect resolves into the framebuffer's SECOND
-            // color texture: same FBO, same depth buffer, and the caller keeps drawing into it.
+            // Resolve into the second color texture, keeping the depth for opted-out layers.
             frameBuffer->attachSecondaryColorTex(true);
             _postProcessSecondaryActive = true;
         } else {
@@ -1414,14 +1799,16 @@ namespace massif {
         if (bufferMask & (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)) {
             frameBuffer->discard(false, (bufferMask & GL_DEPTH_BUFFER_BIT) != 0, (bufferMask & GL_STENCIL_BUFFER_BIT) != 0);
         }
-        // Normally the framebuffer's own color texture goes out. The exception is the outermost
-        // unwind of a post-process effect that resolved into the secondary texture: that texture is
-        // the frame, and the primary one is re-attached for the next.
+        // A post-process effect's outermost unwind sends the secondary texture, then re-attaches the primary.
         GLuint colorTexId = frameBuffer->getColorTexId();
+        // The finished frame REPLACES the screen: blended, a translucent one (AR) piled every
+        // earlier frame up under it, and nothing else clears the screen on this path.
+        bool finishedFrame = false;
         if (_postProcessSecondaryActive && _screenBoundFBOs.empty()) {
             colorTexId = frameBuffer->getAttachedColorTexId();
             frameBuffer->attachSecondaryColorTex(false);
             _postProcessSecondaryActive = false;
+            finishedFrame = true;
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, prevBoundFBO);
@@ -1432,9 +1819,7 @@ namespace massif {
         
         glUseProgram(_screenBlendShader->getProgId());
 
-        // The blit covers the screen and must not be depth-tested: it would test against the SCREEN
-        // framebuffer's depth, which nothing clears. The first blit then passes and writes its depth,
-        // and every later one fails - the window keeps the frame from before the effect.
+        // Never depth-tested: the screen framebuffer's depth is never cleared, so later blits would fail.
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_FALSE);
 
@@ -1451,7 +1836,13 @@ namespace massif {
         glUniform4f(_screenBlendShader->getUniformLoc("u_color"), opacity, opacity, opacity, opacity);
         glUniform2f(_screenBlendShader->getUniformLoc("u_invScreenSize"), 1.0f / _viewState.getWidth(), 1.0f / _viewState.getHeight());
         
+        if (finishedFrame) {
+            glDisable(GL_BLEND);
+        }
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        if (finishedFrame) {
+            glEnable(GL_BLEND);
+        }
         
         glBindTexture(GL_TEXTURE_2D, 0);
         
@@ -1492,9 +1883,7 @@ namespace massif {
     }
 
     void MapRenderer::multiplyScreenMask(unsigned int texture, float invWidth, float invHeight) {
-        // dst *= mask. No depth test: the mask holds white everywhere no footprint reaches, so the
-        // multiply is a no-op there and only the ground around a building is touched. The strip's
-        // two triangles wind opposite ways, so culling would discard exactly half of it.
+        // dst *= mask; white elsewhere, so no depth test. No culling: the strip's triangles wind opposite ways.
         glEnable(GL_BLEND);
         glBlendFunc(GL_ZERO, GL_SRC_COLOR);
         glBlendEquation(GL_FUNC_ADD);
@@ -1546,21 +1935,45 @@ namespace massif {
         // At the APP's exaggeration, not the ramped one: the ramp is what this decides.
         double minZ = 0, maxZ = 0;
         elevationManager->getDisplayHeightRange(_viewState.getCameraPos()(1), terrainOptions->getExaggeration(), minZ, maxZ);
-        // NO DATA and PARTIAL data are not FLAT: a view whose DEM is still arriving reports a small
-        // height range, flattening stops the elevation decode, and 3D never comes back. Unknown
-        // means "do not flatten yet" - the rule is re-evaluated every frame.
+        // Missing or partial DEM is not flat: flattening would stop the decode for good. Unknown = not yet.
         if (!(maxZ > minZ) || !_autoFlattenSeenTerrain || _autoFlattenDataQuiet < TERRAIN_SWITCH_WARM_TIMEOUT) {
             return std::numeric_limits<double>::infinity();
         }
         double halfWidth = _viewState.getHalfWidth(), halfHeight = _viewState.getHalfHeight();
-        return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), maxZ - minZ, _viewState.calculateCameraDistance());
+        // Height range is internal units, camera distance world units (18-globe.md).
+        return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), (maxZ - minZ) * _viewState.worldPerInternal(), _viewState.calculateCameraDistance());
+    }
+
+    void MapRenderer::reportFlattenSwitchTiming(const FlattenSwitch::State& state, const FlattenSwitch::Input& input, int tilesOwed, float deltaSeconds) {
+        FlattenSwitchTimeline::Input timing;
+        timing.phase = state.phase;
+        timing.deltaSeconds = deltaSeconds;
+        timing.tilesOwed = tilesOwed;
+        timing.warmTimedOut = input.warmTimeout > 0 && state.warmSeconds >= input.warmTimeout;
+        // Consumed: a flat frame never reaches the drape, and a stale true would hold the report open.
+        timing.bakes = _drapeBakesDone;
+        timing.bakesQueued = _drapeBakesPending;
+        _drapeBakesDone = 0;
+        _drapeBakesPending = false;
+        // Not isUpdateInProgress(): a composite takes _sourceMutex for it, and this runs on the
+        // render thread under _mutex - the deadlock snapshotChildTileLayers exists to avoid.
+        FlattenSwitchTimeline::Report report;
+        if (!_flattenSwitchTimeline.step(timing, report)) {
+            return;
+        }
+#if MASSIF_VT_RENDER_STATS
+        // One line per switch: which of the three halves the user was actually waiting on.
+        Log::Infof("MapRenderer: %s switch took %.0f ms - warm %.0f ms (%d frames, %d tiles owed%s), ramp %.0f ms (%d frames, %.1f fps), settle %.0f ms (%d frames, %d bakes)",
+            report.rising ? "2D->3D" : "3D->2D", report.totalSeconds() * 1000.0f,
+            report.warmSeconds * 1000.0f, report.warmFrames, report.tilesOwed, report.timedOut ? ", TIMED OUT" : "",
+            report.rampSeconds * 1000.0f, report.rampFrames,
+            report.rampSeconds > 0 ? report.rampFrames / report.rampSeconds : 0.0f,
+            report.settleSeconds * 1000.0f, report.settleFrames, report.bakes);
+#endif
     }
 
     bool MapRenderer::updateTerrainFlatten(float deltaSeconds) {
-        std::shared_ptr<TerrainOptions> terrainOptions;
-        if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
-            terrainOptions = _options->getTerrainOptions();
-        }
+        std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
         if (!terrainOptions || !terrainOptions->isEnabled()) {
             return false;
         }
@@ -1568,9 +1981,7 @@ namespace massif {
         // Terrain reached at least once: only then may the rule flatten. See the member.
         _autoFlattenSeenTerrain = _autoFlattenSeenTerrain || _flattenSwitchState.phase == FlattenSwitch::Phase::TERRAIN;
 
-        // How long the elevation data has been still. Every DEM tile that lands bumps the data
-        // version, so this is exactly "nothing new has arrived recently" - see
-        // calculateTerrainParallax, which will not decide before it.
+        // How long no DEM tile has landed; calculateTerrainParallax will not decide before it.
         if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
             unsigned int dataVersion = elevationManager->getDataVersion();
             if (dataVersion != _autoFlattenDataVersion) {
@@ -1587,20 +1998,28 @@ namespace massif {
         float parallaxThreshold = terrainOptions->getAutoFlattenParallax();
         float tiltThreshold = terrainOptions->getAutoFlattenTilt();
         if (!manual && (parallaxThreshold > 0 || tiltThreshold > 0)) {
-            // The parallax costs a height-range lookup, so only pay for it when it is part of the rule.
-            double parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
-            bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, terrainOptions->isFlattened());
+            // Read together under _mutex; decided without it, as setFlattened reaches application code.
+            double parallax = 0;
+            float tilt = 0;
+            bool cameraPlaced = false;
+            {
+                std::lock_guard<std::recursive_mutex> lock(_mutex);
+                // A height-range lookup, only when part of the rule.
+                parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
+                tilt = _viewState.getTilt();
+                cameraPlaced = _cameraPlaced;
+            }
+            bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, tilt, tiltThreshold, terrainOptions->isFlattened());
             // Only on a CHANGE of the rule's own answer - see AutoFlatten::Trigger.
-            if (_autoFlattenTrigger.changed(flatten, _cameraPlaced)) {
+            if (_autoFlattenTrigger.changed(flatten, cameraPlaced)) {
                 Log::Infof("MapRenderer: auto-flatten %s (parallax %.1f px vs %.1f, tilt %.1f vs %.1f, data quiet %.1f s, seen terrain %d)",
-                    flatten ? "ON" : "off", parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, _autoFlattenDataQuiet, _autoFlattenSeenTerrain ? 1 : 0);
+                    flatten ? "ON" : "off", parallax, parallaxThreshold, tilt, tiltThreshold, _autoFlattenDataQuiet, _autoFlattenSeenTerrain ? 1 : 0);
                 terrainOptions->setFlattened(flatten);
                 manual = terrainOptions->isManualFlatten(); // setFlattened hands the ratio back
             }
         } else {
-            // The rule turned off while its last answer was ON: hand the state back, or the map
-            // stays flat for good (the SDK defaults run on the first frame, before the app sets its
-            // own). Only what the rule itself set is released, never an explicit setFlattened.
+            // Rule turned off while its last answer was on: release what it set (never an explicit setFlattened),
+            // or the map stays flat for good.
             if (_autoFlattenTrigger.last == 1 && !manual && terrainOptions->isFlattened()) {
                 Log::Info("MapRenderer: auto-flatten disabled while ON - releasing the flat state it set");
                 terrainOptions->setFlattened(false);
@@ -1608,8 +2027,7 @@ namespace massif {
             _autoFlattenTrigger = AutoFlatten::Trigger(); // re-arm: the next answer is an edge again
         }
 
-        // Seed from what the app (or the rule just above, on the very first frame) asked for, so a
-        // map starting in 2D neither animates down from a 3D it never showed nor decodes for it.
+        // Seeded from what was asked, so a map starting in 2D neither animates nor decodes 3D.
         if (_flattenSwitchOptions.lock() != terrainOptions) {
             _flattenSwitchOptions = terrainOptions;
             _autoFlattenTrigger = AutoFlatten::Trigger();
@@ -1635,11 +2053,14 @@ namespace massif {
         input.riseDuration = riseDuration < 0 ? input.flattenDuration : riseDuration;
         input.warmTimeout = TERRAIN_SWITCH_WARM_TIMEOUT;
         // The tile gate, for both the automatic wait and an app-driven rise.
+        int tilesOwed = 0;
         if (FlattenSwitch::isWaitingForTiles(_flattenSwitchState, input)) {
             input.tilesReady = true;
             for (const std::shared_ptr<Layer>& layer : _layers->getAll()) {
                 if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
                     input.tilesReady = tileLayer->isTerrainDecodeSettled() && input.tilesReady;
+                    int owed = tileLayer->getTerrainDecodePendingCount();
+                    tilesOwed = owed < 0 || tilesOwed < 0 ? -1 : tilesOwed + owed;
                 }
             }
             requestRedraw(); // nothing else asks for the frame the wait ends on
@@ -1655,7 +2076,12 @@ namespace massif {
                 input.flatten ? 1 : 0, input.manual ? 1 : 0, input.tilesReady ? 1 : 0, next.warmSeconds);
         }
         _flattenSwitchState = next;
+        reportFlattenSwitchTiming(next, input, tilesOwed, deltaSeconds);
         terrainOptions->setSwitching(FlattenSwitch::isWaitingForTiles(next, input));
+        if (next.phase == FlattenSwitch::Phase::RAMPING) {
+            // The ramp's first frame has no delta yet, and nothing else asks for the next one.
+            requestRedraw();
+        }
         if (!decodeChanged && !ratioChanged) {
             return false;
         }
@@ -1666,8 +2092,6 @@ namespace massif {
             terrainOptions->setDecodeActive(next.decode3D);
         }
         requestRedraw();
-        // The tile set differs between the two decode states (the terrain LOD, the overzoom
-        // targets, the view distance), and the camera has not moved, so nothing else would ask.
         return decodeChanged;
     }
 
@@ -1676,8 +2100,7 @@ namespace massif {
     }
     
     void MapRenderer::layerChanged(const std::shared_ptr<Layer>& layer, bool delay) {
-        // If screen size has been set, load the layers, otherwise wait for the onSurfaceChanged method
-        // which will also start the cull worker
+        // Before the surface exists, onSurfaceChanged starts the cull worker instead.
         if (_surfaceCreated) {
             int delayTime = layer->getCullDelay();
             _cullWorker->init(layer, delay ? delayTime : 0);
@@ -1694,9 +2117,7 @@ namespace massif {
             }
         }
 
-        // A placement pass is otherwise only asked for when the tile set changes, but a label's
-        // envelope is screen space and zooming makes room. Postponed rather than queued, so a zoom
-        // gesture places once when it ends instead of thrashing at every step.
+        // Zooming changes screen-space envelopes without a tile set change; postponed, so a gesture places once.
         if (vectorTileLayer) {
             float zoom = getViewState().getZoom();
             if (std::abs(zoom - _lastLabelPlacementZoom) >= LABEL_PLACEMENT_ZOOM_THRESHOLD) {
@@ -1730,18 +2151,15 @@ namespace massif {
     }
 
     void MapRenderer::initializeRenderState() const {
-        // Enable backface culling
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
     
-        // Enable blending, use premultiplied alpha
+        // Premultiplied alpha.
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     
-        // Disable dithering for better performance
         glDisable(GL_DITHER);
     
-        // Enable depth testing, disable writing, set up clear color, etc
         Color clearColor = _options->getClearColor();
         glClearColor(clearColor.getR() / 255.0f, clearColor.getG() / 255.0f, clearColor.getB() / 255.0f, clearColor.getA() / 255.0f);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -1757,38 +2175,26 @@ namespace massif {
         glStencilMask(0);
     }
     
-    // A cached shadow map is refreshed at least this often: elevation can stream in without
-    // changing the light box or the caster list, and its shadow would otherwise never appear.
+    // Minimum refresh rate: streamed-in elevation changes neither light box nor caster list.
 
-    // Screen divisor for the terrain shadow mask - an edge is a penumbra, so a quarter resolution
-    // is invisible in the result: measured against a half, the mask pass 14-16 ms -> 8-9 ms.
+    // Screen divisor for the terrain shadow mask; its edges are penumbrae, so a quarter is invisible.
     static const int SHADOW_MASK_DIVISOR = 4;
-    // ... and for the extrusions' contact shadows. Half, not a quarter: this one is a few metres
-    // wide on the ground, so its own gradient is most of what a quarter-resolution texel would
-    // average away. The LINEAR fetch that reads it back is also the only blur the effect gets.
+    // Half for contact shadows: only metres wide, a quarter would average their gradient away.
     static const int GROUND_AO_MASK_DIVISOR = 2;
-    // Half resolution: the buffer answers one depth comparison per label anchor, over a square of
-    // several pixels, so its own texels are never seen. mapbox samples a 30 px square.
+    // Only sampled over a multi-pixel square per label anchor, so its texels are never seen.
     static const int LABEL_OCCLUSION_DIVISOR = 2;
     static const float LABEL_OCCLUSION_SIZE_PIXELS = 30.0f;
-    // The tile zoom the caster ring's reach is derived from: coarse enough that one tile spans the
-    // massif whose shadow reaches the view, not just the ground under it. ~28 km at latitude 45.
+    // Caster ring zoom: one tile (~28 km at 45 degrees) spans a massif shadowing the view.
     static const int SHADOW_RELIEF_ZOOM = 10;
-    // Ceiling on the caster set. The ring's quadtree subdivision is 4^(maxCoverZoom - ringZoom),
-    // so a coarse ring against a deep cover is unbounded; this is what keeps it a frame cost
-    // rather than an OOM.
+    // Ring subdivision is 4^(maxCoverZoom - ringZoom); this cap turns an OOM into a frame cost.
     static const std::size_t MAX_SHADOW_CASTER_TILES = 2048;
     static const int SHADOW_MAP_MAX_AGE = 30;
     // Frames between two refreshes driven by newly arrived tile content.
     static const int SHADOW_MAP_CONTENT_INTERVAL = 4;
-    // How far the extrusions may grow before the map is redrawn, in units of one tile's full
-    // height: about a dozen refreshes over a whole fade, whatever the frame rate, instead of one
-    // per frame.
+    // Extrusion growth, in tile heights, between refreshes: about a dozen per fade, not one per frame.
     static const float SHADOW_MAP_FADE_STEP = 0.08f;
 
-    // Caster-pass counters, cumulative since start: compared with the frame count they say how
-    // much of the shadow cost the map cache is saving. File scope because the pass itself and the
-    // periodic dump that prints them now live in different functions.
+    // Cumulative caster-pass counters, against the frame count: what the shadow map cache saves.
     static int shadowPasses = 0;
     static int shadowCasterDraws = 0;
     static int shadowExtrusionDraws = 0;
@@ -1796,24 +2202,19 @@ namespace massif {
     static double shadowMsSum = 0;
 
     void MapRenderer::applyTerrainShadows(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const std::vector<vt::TileId>& coverTileIds, const std::shared_ptr<TerrainOptions>& terrainOptions, const ViewState& viewState, int prevFBO, bool contentChanged, bool castShadows, ResolvedLighting& lighting, std::array<double, TerrainShadowMap::MAX_CASCADES>& shadowTexelMeters) {
-        // Directional shadows: the caster pass draws the terrain surfaces about to be drawn on
-        // screen, from the sun, into a packed-depth texture. Casters and receivers share one vertex
-        // shader and one elevation fetch, so the two geometries cannot disagree.
+        // Casters and receivers share one vertex shader and elevation fetch, so they cannot disagree.
         float shadowStrength = 0.0f;
         unsigned int shadowTexture = 0;
         int shadowMapSize = 0, shadowCascades = 1;
         float shadowSoftness = 1.0f;
         
-        // mapbox's u_shadow_bias (3d-style/render/shadow_renderer.ts): constant, slope scale,
-        // slope CAP, in normalised light depth and shared by every cascade. LightOptions'
-        // ShadowBias scales the triple, so 1 is theirs exactly.
+        // mapbox's u_shadow_bias (shadow_renderer.ts): constant, slope scale, slope cap, in normalised
+        // light depth; LightOptions' ShadowBias scales it, 1 = theirs.
         cglib::vec3<float> shadowBias(0.0f, 0.0f, 0.0f);
         std::array<float, TerrainShadowMap::MAX_CASCADES> shadowDepthScales = { };
         std::array<cglib::mat4x4<double>, TerrainShadowMap::MAX_CASCADES> lightViewProjs;
         lightViewProjs.fill(cglib::mat4x4<double>::identity());
-        // The styles get a say in every light and shadow property; whatever they do
-        // not mention stays with LightOptions. Collected once for the frame (see
-        // collectStyleEnvironment) and re-read every frame, so it may follow the zoom.
+        // Style over LightOptions, re-read every frame so it may follow the zoom.
         lighting = resolveLighting(_options->getLightOptions(), _frameStyleEnvironment);
         // Floor the sun altitude for the SHADOW pass alone: a lower sun stretches the light box
         // past the drawn cover and the cascades go coarse (docs/internals/rendering/08-lighting-sky-fog.md).
@@ -1824,30 +2225,23 @@ namespace massif {
                 float horizontal = std::sqrt(shadowSunDir(0) * shadowSunDir(0) + shadowSunDir(1) * shadowSunDir(1));
                 float scale = std::sqrt(std::max(0.0f, 1.0f - MIN_SHADOW_SUN_SIN * MIN_SHADOW_SUN_SIN));
                 if (horizontal > 1.0e-6f) {
-                    // Keep the azimuth: only the altitude is raised, so the shadows
-                    // still fall in the direction the sun says, just shorter.
+                    // Keep the azimuth; only the altitude is raised.
                     shadowSunDir(0) *= scale / horizontal;
                     shadowSunDir(1) *= scale / horizontal;
                 }
                 shadowSunDir(2) = MIN_SHADOW_SUN_SIN;
             }
         }
-        // mapbox's constants, verbatim. The pair they ship depends on whether the normal offset
-        // is on, because that offset already moves the sample off the surface and the constant
-        // then has far less to cover.
+        // mapbox's constants verbatim; the pair depends on the normal offset.
         {
-            // mapbox's SHAPE with our units: a constant, a term growing as the surface turns away
-            // from the light, and a cap - in METRES, since our light box normalises tens of thousands
-            // of km. The constant is halved when the normal offset is on, as theirs is.
+            // mapbox's shape in metres (our light box spans huge distances); constant halved with normal offset.
             float scale = std::max(0.0f, lighting.shadowBias);
             float constant = (lighting.shadowNormalOffset > 0.0f ? 1.0f : 2.0f);
             shadowBias = cglib::vec3<float>(constant, 0.25f, 4.0f) * scale;
         }
         bool shadowsWanted = false;
         {
-            // Not while the 2D/3D switch is ramping: neither the light box nor the caster list
-            // changes during the ramp, while the receiving ground is displaced every frame. Dropped
-            // rather than re-cast - that is a full caster pass on the frames least able to afford one.
+            // Dropped during the 2D/3D ramp rather than re-cast every frame.
             bool switching = terrainOptions->getFlattenRatio() > 0.0f;
             shadowsWanted = castShadows && !switching && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
             if (shadowsWanted) {
@@ -1855,20 +2249,14 @@ namespace massif {
                     _terrainShadowMap = std::make_unique<TerrainShadowMap>();
                 }
                 _terrainShadowMap->setSize(lighting.shadowMapSize, lighting.shadowCascades);
-                // Fit the light box to the elevation the shadowed ground spans, plus headroom. At a
-                // low sun the box stretches by that range / tan(altitude), so a generous slab is the
-                // difference between half-metre and ten-metre texels.
+                // At a low sun the box stretches by the height range / tan(altitude): keep the slab tight.
                 double minHeight = 0, maxHeight = 0;
-                // Per tile as well as overall: a cascade covering a small piece of
-                // ground can then fit its box to THAT piece's relief instead of to
-                // the whole scene's, which at a low sun is what sets the box size.
+                // Per tile too, so a cascade fits its box to its own piece's relief.
                 std::vector<std::pair<double, double> > tileHeights;
                 if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
                     bool first = true;
                     tileHeights.reserve(coverTileIds.size());
-                    // Only tiles that REALLY have elevation shape the slab: the inexact getter falls
-                    // back to the highest ground seen all session, so one unloaded tile stretched a
-                    // flat Paris slab to 121 km. tileHeights still gets an entry per cover tile.
+                    // Only tiles with real elevation: the inexact getter falls back to the session's highest ground.
                     std::vector<bool> tileKnown;
                     tileKnown.reserve(coverTileIds.size());
                     tileHeights.assign(coverTileIds.size(), std::make_pair(0.0, 0.0));
@@ -1902,15 +2290,11 @@ namespace massif {
                         maxHeight += headroom;
                     }
                 }
-                // Casters reach beyond the visible tiles: a mountain just off screen
-                // still throws its shadow into the view, and without this its shadow
-                // vanishes as you zoom in and it leaves the visible set.
+                // Casters reach beyond the visible tiles: off-screen mountains shadow the view.
                 std::vector<vt::TileId> casterTileIds = coverTileIds;
                 int casterMargin = lighting.shadowCasterMargin;
                 if (casterMargin > 0) {
-                    // The caster set must stay a PARTITION of the ground, like the cover it extends:
-                    // two casters over the same ground at different DEM levels disagree by tens of
-                    // metres, and the receiver ends up in the shadow of its own ground. Subdivide.
+                    // Must stay a partition: overlapping casters at different DEM levels self-shadow the receiver.
                     using TileKey = std::pair<int, std::pair<int, int> >;
                     auto keyOf = [](const vt::TileId& tileId) { return TileKey(tileId.zoom, { tileId.x, tileId.y }); };
                     std::set<TileKey> taken, takenAncestors;
@@ -1926,9 +2310,8 @@ namespace massif {
                         take(tileId);
                         maxCoverZoom = std::max(maxCoverZoom, tileId.zoom);
                     }
-                    // The ring is bounded by how far a shadow can be THROWN (relief / tan(altitude),
-                    // capped at the 15-degree floor) and generated at the coarsest zoom spanning that
-                    // throw in casterMargin tiles. Relief is measured AROUND the view, not the cover.
+                    // Ring reach = shadow throw (relief / tan(altitude), 15-degree floor), at the coarsest zoom spanning it
+                    // in casterMargin tiles. Relief is measured around the view, not the cover.
                     double relief = std::max(0.0, maxHeight - minHeight);
                     if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
                         const vt::TileId& sample = coverTileIds[coverTileIds.size() / 2];
@@ -1970,9 +2353,7 @@ namespace massif {
                             }
                         }
                         if (!first) {
-                            // BOUNDED: over flat ground the throw is 0 and ringZoom stays at
-                            // maxCoverZoom, where a cover reaching the horizon is thousands of tiles
-                            // a side - an out-of-memory kill (Paris z17-19 tilt 45: 2.9 GB RSS).
+                            // Bounded: flat ground keeps ringZoom at maxCoverZoom, thousands of tiles a side to the horizon.
                             grid = ShadowCasterRing::fit(grid, casterMargin, MAX_SHADOW_CASTER_TILES);
                             ringZoom = grid.zoom;
                             for (int y = grid.minY - casterMargin; y <= grid.maxY + casterMargin; y++) {
@@ -2001,9 +2382,7 @@ namespace massif {
                                 continue; // something finer or equal already casts over this ground
                             }
                             if (takenAncestors.count(keyOf(tileId)) > 0 && tileId.zoom < maxCoverZoom) {
-                                // BOUNDED: subdividing a ring tile to maxCoverZoom is 4^levels tiles,
-                                // 65536 per candidate from zoom 10 against an 18 cover. Dropping one
-                                // loses a distant shadow, which beats losing the process.
+                                // Bounded: subdividing is 4^levels tiles; dropping one only loses a distant shadow.
                                 if (casterTileIds.size() + pending.size() < MAX_SHADOW_CASTER_TILES) {
                                     for (int corner = 0; corner < 4; corner++) {
                                         pending.emplace_back(tileId.zoom + 1, tileId.x * 2 + (corner & 1), tileId.y * 2 + (corner >> 1));
@@ -2016,9 +2395,7 @@ namespace massif {
                         }
                     }
                 }
-                // The slab has to hold the CASTERS, and vt has no per-tile heights for the RING: a
-                // ridge taller than the range is clipped by the light box's near plane and its shadow
-                // arrives truncated (Grenoble z16.53: cover 5.75..17.43, ring tiles 145.13).
+                // The slab must hold the ring casters too, or the near plane truncates a taller ridge's shadow.
                 if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
                     for (const vt::TileId& tileId : casterTileIds) {
                         double casterMin = 0, casterMax = 0;
@@ -2028,12 +2405,10 @@ namespace massif {
                         }
                     }
                 }
-                // One light box per cascade, near slice first: a single box spans everything visible,
-                // so at a tilt its texels are metres of ground and every shadow edge staircases.
+                // One light box per cascade, near slice first; a single box staircases every edge at a tilt.
                 int cascades = _terrainShadowMap->getCascades();
                 bool boxesValid = true;
-                // The tiles that can cast into each cascade, which for a near cascade
-                // is a fraction of the cover: drawing the rest into it is pure cost.
+                // Per cascade: a near cascade needs only a fraction of the casters.
                 std::array<std::vector<vt::TileId>, TerrainShadowMap::MAX_CASCADES> cascadeCasterTiles;
                 for (int cascade = 0; cascade < cascades; cascade++) {
                     double depthRangeMeters = 1.0, texelMeters = 0;
@@ -2043,9 +2418,7 @@ namespace massif {
                         shadowTexelMeters[cascade] = texelMeters;
                         shadowDepthScales[cascade] = static_cast<float>(1.0 / std::max(1.0, depthRangeMeters));
                     } else if (cascade > 0) {
-                        // No ground in this cascade's slice (looking down, all of it can be nearer
-                        // than the first split). Repeating the near box keeps the atlas layout and
-                        // costs one page; a stale one would shadow with another frame's box.
+                        // No ground in this slice: repeat the near box, keeping the atlas layout (a stale box would mis-shadow).
                         lightViewProjs[cascade] = lightViewProjs[cascade - 1];
                         cascadeCasterTiles[cascade] = cascadeCasterTiles[cascade - 1];
                     } else {
@@ -2059,9 +2432,7 @@ namespace massif {
                     }
                 }
                 if (boxesValid) {
-                    // The caster pass costs as much as the on-screen draw and the snapped light
-                    // matrix repeats within a texel step, so recompute only on a real change - and
-                    // PER CASCADE, since a building in the near page says nothing about the outer.
+                    // The caster pass costs as much as the screen draw: redraw only on a real change, per cascade.
                     std::array<float, TerrainShadowMap::MAX_CASCADES> fadeSignatures = { };
                     for (int cascade = 0; cascade < cascades; cascade++) {
                         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
@@ -2073,18 +2444,14 @@ namespace massif {
                         || _shadowMapSize != _terrainShadowMap->getSize()
                         || _shadowMapCascades != cascades;
                     _shadowMapAge++;
-                    // Content-driven refreshes are RATIONED, camera-driven ones are not: a shadow
-                    // left behind by a moving camera is unmissable, one a step behind a growing
-                    // building is not.
+                    // Content-driven refreshes are rationed, camera-driven ones are not.
                     if (!refreshAll && contentChanged && _shadowMapAge >= SHADOW_MAP_CONTENT_INTERVAL) {
                         refreshAll = true;
                     }
                     if (!refreshAll && _shadowMapAge >= SHADOW_MAP_MAX_AGE) {
                         refreshAll = true;
                     }
-                    // Otherwise per PAGE: each cascade snaps to its own lattice, and the outer box
-                    // keeps its matrix over far more camera movement than the near one. Redrawing
-                    // all three because the near box stepped was most of the pass cost.
+                    // Otherwise per page: each cascade snaps to its own lattice.
                     std::array<bool, TerrainShadowMap::MAX_CASCADES> refreshCascade = { };
                     bool refreshAny = false;
                     for (int cascade = 0; cascade < cascades; cascade++) {
@@ -2102,21 +2469,15 @@ namespace massif {
                                 if (!refreshCascade[cascade]) {
                                     continue;
                                 }
-                                // The cascades are pages of one texture, so each one draws into its
-                                // own viewport, and a page redrawn on its own clears just itself.
                                 _terrainShadowMap->setCascadeViewport(cascade);
                                 if (!refreshAll) {
                                     _terrainShadowMap->clearCascade();
                                 }
-                                // EVERY drape layer casts: the terrain surface is shared, but 3D
-                                // extrusions belong to whichever layer holds them - in a composite a
-                                // later style group, so buildings would never cast at all.
+                                // Every drape layer casts: extrusions may live in any layer (a composite's later style group).
                                 for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
                                     bool castGround = (tileLayer == tileLayers.front());
                                     int draws = tileLayer->renderShadowCasters(cascadeCasterTiles[cascade], lightViewProjs[cascade], castGround);
-                                    // Ground casters are one draw per tile, anything beyond
-                                    // is an extrusion. Counted apart because "buildings cast
-                                    // no shadow" is either never drawn or clipped by the box.
+                                    // Ground casters are one draw per tile; the rest are extrusions.
                                     shadowExtrusionDraws += draws - (castGround ? static_cast<int>(cascadeCasterTiles[cascade].size()) : 0);
                                     shadowCastersNoElevation += tileLayer->consumeShadowCastersMissingElevation();
                                 }
@@ -2139,9 +2500,7 @@ namespace massif {
                         }
                     }
                     if (_shadowMapValid) {
-                        // The matrices the PAGES were drawn with, not this frame's fit: a page that
-                        // did not need refreshing holds the box it was rendered with, and sampling
-                        // it with a newer matrix would slide every shadow in it.
+                        // The matrices the pages were drawn with, not this frame's fit, or unrefreshed shadows slide.
                         lightViewProjs = _shadowMapViewProjs;
                         shadowTexture = _terrainShadowMap->getTexture();
                         shadowMapSize = _terrainShadowMap->getSize();
@@ -2150,9 +2509,7 @@ namespace massif {
                         shadowSoftness = lighting.shadowSoftness;
                     }
                 } else if (_shadowMapValid && _shadowMapAge < SHADOW_MAP_MAX_AGE) {
-                    // A frame whose light box could not be fitted used to drop the shadows entirely
-                    // - every shadow blinking out. The last good map is a better answer, but only
-                    // while RECENT: held longer it paints the shadows of buildings no longer drawn.
+                    // A failed fit reuses the last good map, only while recent: older, it shadows buildings no longer drawn.
                     lightViewProjs = _shadowMapViewProjs;
                     shadowTexture = _terrainShadowMap->getTexture();
                     shadowMapSize = _shadowMapSize;
@@ -2168,8 +2525,7 @@ namespace massif {
         if (!shadowsWanted) {
             _shadowMapValid = false; // shadows off: whatever the map holds is stale
         }
-        // Shadows going away is otherwise indistinguishable from shadows being drawn
-        // badly. Logged on CHANGE only, so it is one line per transition, not spam.
+        // Logged on change only: shadows going away looks like shadows drawn badly.
         {
             int shadowState = (!shadowsWanted ? 0 : (shadowTexture == 0 ? 1 : 2));
             static int lastShadowState = -1;
@@ -2181,9 +2537,7 @@ namespace massif {
                     lighting.terrainLightingEnabled ? 1 : 0, static_cast<int>(coverTileIds.size()));
             }
         }
-        // Where the outermost cascade fades out, as a view depth: mapbox's u_shadow_fade_range,
-        // [far * 0.75, far] against the same cutout the boxes are cut at, so the fade always ends
-        // exactly where the shadow map does. In internal units, which is what 1 / gl_FragCoord.w is.
+        // mapbox's u_shadow_fade_range, [far * 0.75, far] against the box cutout; internal units (1 / gl_FragCoord.w).
         cglib::vec2<float> shadowFadeRange(0.0f, 0.0f);
         {
             double distanceFactor = lighting.shadowDistance > 0 ? lighting.shadowDistance : vt::GLTileRenderer::SHADOW_CUTOUT_DISTANCE_FACTOR;
@@ -2193,17 +2547,12 @@ namespace massif {
             }
         }
         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
-            // The SHADOW sun, not the lighting one: the normal offset is scaled by the angle
-            // between the surface and the direction the map was actually rendered from.
+            // The shadow sun: the normal offset scales with the angle the map was rendered from.
             tileLayer->setTerrainShadowMap(shadowTexture, shadowMapSize, shadowCascades, shadowBias, shadowDepthScales, shadowStrength, shadowSoftness, _terrainShadowMap && _terrainShadowMap->isDepthTexture(), _terrainShadowMap && _terrainShadowMap->isHardwarePCF(), lighting.shadowNormalOffset, shadowFadeRange, shadowSunDir, lightViewProjs);
-            // The sun goes with it, and for the same reason: the surface is drawn a few lines below
-            // while each layer's own onDrawFrame runs later in the frame, so the surface would light
-            // itself with the previous frame's sun.
+            // The surface draws before each layer's onDrawFrame, which would light it with last frame's sun.
             tileLayer->setTerrainSunLighting(lighting);
         }
-        // Resolve the terrain's shadow ONCE per screen pixel, at a fraction of the resolution: each
-        // surface draw then costs one texture fetch instead of a cascade choice, a matrix,
-        // derivatives and four taps over the whole screen.
+        // Resolved once per (reduced) screen pixel: surface draws then fetch once instead of cascading.
         unsigned int maskTexture = 0;
         float invWidth = 0.0f, invHeight = 0.0f;
         if (shadowTexture != 0 && viewState.getWidth() > 0 && viewState.getHeight() > 0) {
@@ -2213,13 +2562,11 @@ namespace massif {
             _terrainShadowMaskBuffer->setSize(viewState.getWidth(), viewState.getHeight(), SHADOW_MASK_DIVISOR);
             FRAME_PROF_GPU_BEGIN(SECTION_SHADOWMASK);
             if (_terrainShadowMaskBuffer->beginPass()) {
-                // The mask is produced by the FIRST layer alone: the surface is shared, so every
-                // layer would draw the same geometry into it.
+                // The first layer alone: the surface is shared.
                 tileLayers.front()->renderTerrainShadowMask(coverTileIds);
                 _terrainShadowMaskBuffer->endPass(prevFBO, viewState.getWidth(), viewState.getHeight());
                 maskTexture = _terrainShadowMaskBuffer->getTexture();
-                // Screen pixels -> mask uv. The scale is the SCREEN size, not the mask's, because
-                // it maps gl_FragCoord of the full-resolution draw that samples it.
+                // Screen size, not the mask's: it maps gl_FragCoord of the full-resolution draw.
                 invWidth = 1.0f / viewState.getWidth();
                 invHeight = 1.0f / viewState.getHeight();
             }
@@ -2252,9 +2599,7 @@ namespace massif {
     }
 
     void MapRenderer::collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, bool extendSeedsOnly, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom) {
-        // Collected PER LAYER, then merged: the union builds the cover, but which layers had
-        // something to bake is what tells a texture baked from the full stack apart from one baked
-        // while only the hillshade had arrived. A layer with nothing for a tile reports 0.
+        // Per layer, then merged: which layers had content tells a full-stack bake from a partial one.
         layerTiles.assign(tileLayers.size(), std::map<vt::TileId, std::size_t>());
         for (std::size_t i = 0; i < tileLayers.size(); i++) {
             tileLayers[i]->collectDrapeTiles(layerTiles[i]);
@@ -2265,9 +2610,7 @@ namespace massif {
                 fingerprint ^= it->second + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
             }
         }
-        // Ground the cover has to cover, whatever the layers hold: their tiles follow their own
-        // fetching, so after a zoom OUT they describe the previous area ("tiles blink white").
-        // `extendSeedsOnly` is the drape's version, taking only seeds DEEPER than the layers gave.
+        // Seeds cover what the layers' fetching misses after a zoom out; extendSeedsOnly takes only deeper seeds.
         int dataMaxZoom = -1;
         for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
             dataMaxZoom = std::max(dataMaxZoom, it->first.zoom);
@@ -2280,9 +2623,7 @@ namespace massif {
                 collectedTiles.emplace(tileId, static_cast<std::size_t>(0));
             }
         }
-        // A layer that bakes something not made of tiles - a terrain paint - contributes no cover,
-        // so a hillshade-only map would have no ground to paint on. The terrain's own tile cover is
-        // what the surface would be drawn from anyway.
+        // A terrain paint has no tiles: fall back to the terrain's own cover.
         if (collectedTiles.empty()) {
             bool wantsCover = false;
             for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
@@ -2294,15 +2635,11 @@ namespace massif {
                 std::shared_ptr<ElevationManager> coverElevationManager = terrainOptions->getElevationManager();
                 for (const MapTile& terrainTile : terrainTiles) {
                     collectedTiles[vt::TileId(terrainTile.getZoom(), terrainTile.getX(), terrainTile.getY())] = 0;
-                    // Nothing else asks for elevation in this stack: the layers that drive it are the
-                    // ones with tiles, and a paint has none. Without this the terrain stays flat and
-                    // the paint has nothing to shade.
+                    // Nothing else asks for elevation in a paint-only stack.
                     if (coverElevationManager) {
                         MapTile dataTile = coverElevationManager->getDataTile(terrainTile);
                         coverElevationManager->prefetchTileGrid(dataTile, 2);
-                        // And keep the frames coming until it arrives: in a stack with
-                        // no tile layer nothing else asks for a redraw, so the map goes
-                        // idle on a flat, unpainted terrain and never comes back.
+                        // Keep frames coming until it arrives, or the map idles flat.
                         if (!coverElevationManager->getDataTileGrid(dataTile, ElevationManager::LoadMode::CACHED_ONLY)) {
                             requestRedraw();
                         }
@@ -2311,16 +2648,31 @@ namespace massif {
             }
         }
 
-        // Normalize the per-layer union to a non-overlapping quadtree partition, keeping the
-        // finest tile for any ground - overlapping surfaces of different tesselations fight.
-        // See docs/internals/rendering/04-terrain.md, "Normalizing the cover to a quadtree partition".
+        // Normalized to a quadtree partition, finest tile wins (04-terrain.md). Ancestors precomputed to
+        // avoid an O(n^2) coversTile scan.
+        std::set<vt::TileId> collectedAncestors;
+        for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
+            for (int zoom = it->first.zoom - 1; zoom >= 0; zoom--) {
+                int deltaZoom = it->first.zoom - zoom;
+                // Already present means a sibling walked this chain to the root, so the rest is in.
+                if (!collectedAncestors.insert(vt::TileId(zoom, it->first.x >> deltaZoom, it->first.y >> deltaZoom)).second) {
+                    break;
+                }
+            }
+        }
+        auto hasCoarserCollected = [&collectedTiles](const vt::TileId& tileId) {
+            for (int zoom = tileId.zoom - 1; zoom >= 0; zoom--) {
+                int deltaZoom = tileId.zoom - zoom;
+                if (collectedTiles.find(vt::TileId(zoom, tileId.x >> deltaZoom, tileId.y >> deltaZoom)) != collectedTiles.end()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         std::vector<vt::TileId> pending;
         for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
-            bool hasCoarserTile = false;
-            for (auto it2 = collectedTiles.begin(); it2 != collectedTiles.end() && !hasCoarserTile; it2++) {
-                hasCoarserTile = coversTile(it2->first, it->first);
-            }
-            if (!hasCoarserTile) {
+            if (!hasCoarserCollected(it->first)) {
                 pending.push_back(it->first); // top of a subtree; its descendants follow from the split
             }
         }
@@ -2333,13 +2685,10 @@ namespace massif {
         for (const vt::TileId& tileId : pending) {
             minTopZoom = std::min(minTopZoom, tileId.zoom);
         }
-        // The split level, capped at what the camera can show: zooming out, a render tile from
-        // before the gesture is still 'visible' while it blends away and would drag the cover
-        // several levels finer. Following the finest collected tile instead was tried and reverted.
+        // Capped at what the camera shows: blending-out tiles from before a zoom out would drag it finer.
         int viewZoomCap = static_cast<int>(std::ceil(viewState.getZoom())) + 1;
         coverZoom = std::min(maxCollectedZoom, std::max(viewZoomCap, minTopZoom));
-        // Split ONLY where a finer collected tile sits inside: splitting whole subtrees to one
-        // level made 16 tiles into 127 leaves and blew the drape cache (04-terrain.md).
+        // Split only where a finer collected tile sits inside, or leaves explode (04-terrain.md).
         std::vector<vt::TileId> tops = pending;
         auto buildLeaves = [&](int zoomLimit) {
             leaves.clear();
@@ -2347,10 +2696,7 @@ namespace massif {
             while (!stack.empty() && leaves.size() + stack.size() <= MAX_DRAPE_TILES) {
                 vt::TileId tileId = stack.back();
                 stack.pop_back();
-                bool finerInside = false;
-                for (auto it = collectedTiles.begin(); it != collectedTiles.end() && !finerInside; it++) {
-                    finerInside = coversTile(tileId, it->first);
-                }
+                bool finerInside = collectedAncestors.find(tileId) != collectedAncestors.end();
                 if (!finerInside || tileId.zoom >= zoomLimit) {
                     leaves.push_back(tileId);
                     continue;
@@ -2388,9 +2734,7 @@ namespace massif {
         FRAME_PROF_GPU_BEGIN(SECTION_PRELUDE);
         std::vector<std::shared_ptr<Layer> > layers = _layers->getAll();
 
-        // Layers that opted out of post-processing are held back and drawn by drawOverlayLayers
-        // once the effect has resolved. They are out of the whole terrain arrangement below
-        // (depth write assignment, draping, the shared ground) on purpose - they are overlays.
+        // Post-processing opt-outs are overlays, kept out of the whole terrain arrangement below.
         _overlayLayers.clear();
         if (postProcessing) {
             auto overlay = std::stable_partition(layers.begin(), layers.end(), [](const std::shared_ptr<Layer>& layer) {
@@ -2400,23 +2744,28 @@ namespace massif {
             layers.erase(overlay, layers.end());
         }
 
-        // Terrain depth source: the FIRST suitable tile layer writes the depth of its draped
-        // surfaces, so the depth is bit-exact with the rendered terrain and nothing mesh-mismatches.
-        // With no tile layer at all, an approximate depth pre-pass stands in.
+        // The first suitable tile layer writes the terrain depth, bit-exact; else an approximate pre-pass.
         bool terrainMode = false;
-        if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+        {
+            // _elevationTextureCache is not released here: a renderer may still draw from it.
             if (auto terrainOptions = _options->getTerrainOptions()) {
                 if (terrainOptions->isActive()) {
                     terrainMode = true;
-                    // Elevation arrives on a loading thread and every consumer reads it from
-                    // inside a frame, so the tiles that land after the last one are never
-                    // applied: the map sits on a half-displaced mesh until the next gesture.
+                    // Every frame: a projection switch replaces the transformer, not the renderer.
+                    if (_terrainRenderer) {
+                        _terrainRenderer->setTileTransformer(_options->getTileTransformer());
+                    }
+                    // Elevation lands off-frame; without this a still map sits on a half-displaced mesh.
                     if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
-                        // Where the prefetch queue measures "near" from, refreshed before anything
-                        // this frame queues a tile. The focus, not the ground under the camera: at a
-                        // tilt of 60 that point sits behind the bottom of the screen.
+                        // Prefetch origin: the focus, as the ground under a tilted camera is off screen.
                         const cglib::vec3<double>& focusPos = viewState.getFocusPos();
                         elevationManager->setPrefetchFocus(focusPos(0), focusPos(1));
+                        // Once a frame for all layers.
+                        if (auto elevationTextureCache = getElevationTextureCache(elevationManager)) {
+                            // Before the frame's uploads: a new reach re-pads every texture.
+                            elevationTextureCache->setBorderMetres(terrainOptions->getNormalSampleDistance());
+                            elevationTextureCache->beginFrame(viewState.getZoom());
+                        }
                         if (_redrawElevationManager.lock() != elevationManager) {
                             std::weak_ptr<MapRenderer> mapRendererWeak = shared_from_this();
                             elevationManager->setDataChangedListener([mapRendererWeak]() {
@@ -2431,33 +2780,33 @@ namespace massif {
                     int terrainRenderOrder = 0;
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
-                            bool depthWrite = !depthWriteAssigned && tileLayer->isVisible() && tileLayer->getOpacity() >= 1.0f;
+                            // A labels-only layer draws no ground, so it cannot be the depth writer.
+                            bool depthWrite = !depthWriteAssigned && tileLayer->isVisible() && tileLayer->getOpacity() >= 1.0f && tileLayer->hasGroundContent();
                             tileLayer->setTerrainDepthWriteMode(depthWrite);
-                            // stacking order for the fixed per-layer depth separation in GPU draping mode
                             tileLayer->setTerrainRenderOrder(terrainRenderOrder++);
                             depthWriteAssigned = depthWriteAssigned || depthWrite;
                         }
                     }
-                    // Terrain base fill, before all tile layers so it shows through translucent
-                    // content. COLOR-ONLY under a depth-writing tile layer (kept fill depth clips the
-                    // differently-tesselated content); without one it is the occlusion depth source.
+                    // Base fill before all layers; color-only under a depth-writing layer, else the depth source.
+                    FRAME_PROF_ADD(preHeadMs, profDrawStart);
                     bool depthSourceRendered = false;
                     {
+                        FRAME_PROF_NOW(profTerrainStart);
                         if (!_terrainRenderer) {
                             _terrainRenderer = std::make_unique<TerrainRenderer>();
+                    _terrainRenderer->setTileTransformer(_options->getTileTransformer());
                         }
                         bool keepDepth = !depthWriteAssigned;
                         bool backgroundRendered = false;
-                        // A surface shader paints the terrain itself and takes precedence over the
-                        // bitmap/color fill. It gets the RESOLVED sun and fog, so the surface, the vt
-                        // content and the sky agree on the light.
+                        // A surface shader overrides the bitmap/color fill, with the resolved sun and fog.
                         if (!terrainOptions->getSurfaceShaderSource().empty()) {
-                            // A shaded surface may be the only content, and the layers are what
-                            // normally drive the elevation loads - without this the surface has a
-                            // flat height field to shade and the map goes idle on it.
+                            // The surface may be the only content, so it drives the elevation loads itself.
                             if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                                FRAME_PROF_NOW(profCutStart);
                                 std::vector<MapTile> terrainTiles;
                                 _terrainRenderer->collectVisibleTiles(viewState, terrainOptions, terrainTiles);
+                                FRAME_PROF_ADD(preTerrainCutMs, profCutStart);
+                                FRAME_PROF_NOW(profPrefetchStart);
                                 for (const MapTile& terrainTile : terrainTiles) {
                                     MapTile dataTile = elevationManager->getDataTile(terrainTile);
                                     elevationManager->prefetchTileGrid(dataTile, 2);
@@ -2465,9 +2814,16 @@ namespace massif {
                                         requestRedraw();
                                     }
                                 }
+                                FRAME_PROF_ADD(preTerrainPrefetchMs, profPrefetchStart);
                             }
                             ResolvedLighting surfaceLighting = resolveLighting(_options->getLightOptions(), _frameStyleEnvironment);
+                            FRAME_PROF_NOW(profSurfaceStart);
+                            // Per-fragment normals from the GPU elevation textures.
+                            if (std::shared_ptr<ElevationManager> surfaceElevation = terrainOptions->getElevationManager()) {
+                                _terrainRenderer->setElevationTextureCache(getElevationTextureCache(surfaceElevation));
+                            }
                             backgroundRendered = _terrainRenderer->renderSurface(viewState, terrainOptions, _glResourceManager, surfaceLighting, _frameFog, keepDepth);
+                            FRAME_PROF_ADD(preTerrainSurfaceMs, profSurfaceStart);
                         }
                         if (!backgroundRendered && terrainOptions->isBackgroundBitmapEnabled()) {
                             if (std::shared_ptr<Bitmap> backgroundBitmap = _options->getBackgroundBitmap()) {
@@ -2484,72 +2840,40 @@ namespace massif {
                         if (!depthSourceRendered && !depthWriteAssigned) {
                             _terrainRenderer->renderDepthPrepass(viewState, terrainOptions, _glResourceManager);
                         }
+                        FRAME_PROF_ADD(preTerrainMs, profTerrainStart);
                     }
                     if (terrainOptions->isBillboardOcclusionEnabled()) {
-                        // Pixel-exact terrain depth buffer for label/billboard occlusion tests
+                        FRAME_PROF_NOW(profDepthStart);
+                        // Terrain depth for label/billboard occlusion.
                         if (!_terrainRenderer) {
                             _terrainRenderer = std::make_unique<TerrainRenderer>();
+                    _terrainRenderer->setTileTransformer(_options->getTileTransformer());
                         }
                         _terrainRenderer->updateDepthBuffer(viewState, terrainOptions, _glResourceManager);
                         if (_terrainRenderer->isDepthBufferStale()) {
-                            // The refresh was deferred to keep the read-back stall out of a
-                            // moving frame; keep asking for frames so it happens once the
-                            // camera settles rather than on the next unrelated redraw.
+                            // Deferred while moving; keep asking so it runs once the camera settles.
                             requestRedraw();
                         }
+                        FRAME_PROF_ADD(preDepthMs, profDepthStart);
                     }
 
-                    // The clearance is a BOUND on the zoom, not a corrective event - a correction
-                    // fights whatever drives the camera down and oscillates. mapbox's model
-                    // (transform._constrainCamera), see docs/internals/rendering/04-terrain.md.
+                    // A bound on the zoom, not a corrective event, which would oscillate (mapbox's _constrainCamera,
+                    // docs/internals/rendering/04-terrain.md).
                     {
+                        FRAME_PROF_NOW(profClearanceStart);
                         std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
-                        float clampDuration = terrainOptions->getCameraClampDuration();
-                        cglib::vec3<double> cameraPos = viewState.getCameraPos();
-                        double displayScale = elevationManager->getDisplayScale(cameraPos(1));
-                        double terrainZ = elevationManager->getDisplayHeight(cameraPos(0), cameraPos(1), ElevationManager::LoadMode::CACHED_ONLY);
+                        // Through the surface: on a globe an orbit is a world length, a height internal (2x apart).
+                        std::shared_ptr<ProjectionSurface> clearanceSurface = _options->getProjectionSurface();
+                        MapPos cameraMapPos = (clearanceSurface ? clearanceSurface->calculateMapPos(viewState.getCameraPos()) : MapPos());
+                        double worldPerInternalZ = viewState.worldPerInternal();
+                        double displayScale = elevationManager->getDisplayScale(cameraMapPos.getY());
+                        double terrainZ = elevationManager->getDisplayHeight(cameraMapPos.getX(), cameraMapPos.getY(), ElevationManager::LoadMode::CACHED_ONLY);
                         double clearanceFloor = terrainOptions->getCameraClearance() * displayScale;
-                        {
+                        if (clearanceSurface) {
                             std::lock_guard<std::recursive_mutex> lock(_mutex);
-                            _viewState.setTerrainCameraReference(terrainZ, clearanceFloor);
+                            _viewState.setTerrainCameraReference(terrainZ, clearanceFloor, terrainOptions->getCameraClearanceFraction());
                         }
-                        bool panned = _pannedSinceClearance.exchange(false);
-                        double focusZ = viewState.getFocusPos()(2);
-                        double orbit = viewState.getOrbitDistance(viewState.getZoom());
-                        double maxZoomOrbit = viewState.getOrbitDistance(_options->getZoomRange().getMax());
-                        double minHeight = CameraClearance::minHeight(cameraPos(2), maxZoomOrbit, clearanceFloor);
-                        double cameraHeight = cameraPos(2) - terrainZ;
-                        double deadBand = 0.005 * minHeight;
-                        if (orbit > 0 && cameraHeight < minHeight - deadBand && (panned || cameraHeight < 0)) {
-                            // The height above the focus that puts the camera on the shell, and the
-                            // tilt that gives it (tilt 90 is straight down); past the tilt range's
-                            // top the rest comes from zooming out, about the focus.
-                            MapRange tiltRange = _options->getTiltRange();
-                            double maxTiltSin = std::sin(tiltRange.getMax() * Const::DEG_TO_RAD);
-                            double targetHeight = CameraClearance::targetHeight(focusZ, terrainZ, maxZoomOrbit, clearanceFloor);
-                            float tilt = viewState.getTilt();
-                            if (targetHeight <= orbit * maxTiltSin) {
-                                tilt = static_cast<float>(std::asin(std::max(0.0, targetHeight / orbit)) * Const::RAD_TO_DEG);
-                            } else {
-                                tilt = tiltRange.getMax();
-                                float maxZoom = CameraClearance::maxZoom(viewState.getZoom(), focusZ, focusZ + orbit * maxTiltSin, terrainZ,
-                                                                         maxZoomOrbit, clearanceFloor);
-                                float zoom = std::max(maxZoom, _options->getZoomRange().getMin());
-                                if (zoom < viewState.getZoom() - 1.0e-4f) {
-                                    CameraZoomEvent zoomEvent;
-                                    zoomEvent.setZoomDelta(zoom - viewState.getZoom());
-                                    // API, not GESTURE: the SDK corrects the camera here, and it does so
-                                    // after a programmatic move just as much as after a gesture.
-                                    calculateCameraEvent(zoomEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
-                                }
-                            }
-                            if (tilt > viewState.getTilt() + 1.0e-3f) {
-                                CameraTiltEvent tiltEvent;
-                                tiltEvent.setKeepRotation(true);
-                                tiltEvent.setTilt(tilt);
-                                calculateCameraEvent(tiltEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
-                            }
-                        }
+                        FRAME_PROF_ADD(preClearanceMs, profClearanceStart);
                     }
                 }
             }
@@ -2564,29 +2888,29 @@ namespace massif {
             _viewState.clearTerrainCameraReference(); // release the terrain zoom bound
         }
 
-        // Cross-layer terrain draping: every drapeable tile layer bakes into ONE texture per terrain
-        // tile, in layer order, and one surface draw puts it on the terrain. Draped content never
-        // enters the 3D scene, which removes the content-vs-surface depth problem entirely.
+        // Cross-layer draping: one baked texture per terrain tile, so draped content never depth-fights the surface.
 
-        // Whether the RTT drape carried the ground this frame, so the contact shadow can stand down -
-        // collectDrapeLayers returns every visible tile layer, draped or not, and cannot answer it.
+        // Whether the drape carried the ground, so the contact shadow can stand down.
         bool groundAODraped = false;
         std::vector<std::shared_ptr<TileLayer> > drapeLayers;
         bool sharedGroundActive = false;
+        // Whether a terrain branch closed out preludeMs, to avoid double-counting.
+        bool preludeAccounted = false;
         if (terrainMode) {
-            // A terrain paint has no tile set: without a drape to bake into it draws itself, on
-            // the terrain's own cover. Pushed every frame, before any layer draws, and harmless
-            // for a paint that does bake (it ignores the list).
+            // Without a drape a terrain paint draws on the terrain's own cover; a baking paint ignores it.
             if (auto paintTerrainOptions = _options->getTerrainOptions()) {
+                FRAME_PROF_NOW(profPaintStart);
                 std::vector<std::shared_ptr<TileLayer> > paintLayers;
                 for (const std::shared_ptr<Layer>& layer : layers) {
                     layer->collectDrapeLayers(paintLayers, viewState);
                 }
+                FRAME_PROF_ADD(prePaintLayersMs, profPaintStart);
                 bool anyPaint = false;
                 for (const std::shared_ptr<TileLayer>& tileLayer : paintLayers) {
                     anyPaint = anyPaint || tileLayer->paintsEveryDrapeTile();
                 }
                 if (anyPaint && _terrainRenderer) {
+                    FRAME_PROF_NOW(profPaintCoverStart);
                     std::vector<MapTile> terrainTiles;
                     _terrainRenderer->collectVisibleTiles(viewState, paintTerrainOptions, terrainTiles);
                     std::vector<vt::TileId> paintTileIds;
@@ -2594,32 +2918,39 @@ namespace massif {
                     for (const MapTile& terrainTile : terrainTiles) {
                         paintTileIds.emplace_back(terrainTile.getZoom(), terrainTile.getX(), terrainTile.getY());
                     }
+                    FRAME_PROF_ADD(prePaintCoverMs, profPaintCoverStart);
+                    FRAME_PROF_NOW(profPaintPushStart);
                     for (const std::shared_ptr<TileLayer>& tileLayer : paintLayers) {
                         if (tileLayer->paintsEveryDrapeTile()) {
                             tileLayer->setTerrainPaintTiles(paintTileIds);
                         }
                     }
+                    FRAME_PROF_ADD(prePaintPushMs, profPaintPushStart);
                 }
+                FRAME_PROF_ADD(prePaintMs, profPaintStart);
             }
+            FRAME_PROF_NOW(profTailStart);
             if (auto terrainOptions = _options->getTerrainOptions()) {
+                FRAME_PROF_ADD(preTailOptionsMs, profTailStart);
+                FRAME_PROF_NOW(profTailWalkStart);
                 if (terrainOptions->isDrapeFillsEnabled()) {
-                    // Layers report their own drapeable tile layers, so a composite layer can
-                    // contribute its children (hillshade/raster slots, style-layer groups) in
-                    // draw order rather than only its own group-0 renderer.
+                    // Composite layers contribute their children, in draw order.
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         layer->collectDrapeLayers(drapeLayers, viewState);
                     }
+                    FRAME_PROF_ADD(preTailWalkMs, profTailWalkStart);
                 } else {
-                    // NO DRAPE: the tangram arrangement. The stack shares ONE cover, the ground is
-                    // drawn once for it before any layer, and layers composite straight onto it -
-                    // no bake, no per-layer depth domain, no stencil tile mask per layer.
+                    // No drape (tangram): one shared cover, ground drawn once, layers composited straight onto it.
                     std::vector<std::shared_ptr<TileLayer> > groundLayers;
                     for (const std::shared_ptr<Layer>& layer : layers) {
                         layer->collectDrapeLayers(groundLayers, viewState);
                     }
+                    FRAME_PROF_ADD(preTailWalkMs, profTailWalkStart);
                     if (!groundLayers.empty()) {
                         // Every layer's render tiles must exist before the cover is read from them.
+                        FRAME_PROF_ADD(preTailMs, profTailStart);
                         FRAME_PROF_ADD(preludeMs, profDrawStart);
+                        preludeAccounted = true;
                         FRAME_PROF_NOW(profPrepareStart);
                         FRAME_PROF_GPU_BEGIN(SECTION_PREPARE);
                         for (const std::shared_ptr<TileLayer>& tileLayer : groundLayers) {
@@ -2629,28 +2960,40 @@ namespace massif {
                         FRAME_PROF_NOW(profCoverStart);
                         FRAME_PROF_GPU_BEGIN(SECTION_COVER);
 
-                        // The terrain's own visible cover seeds the ground: it is what the camera
-                        // can see, not what the layers happen to have fetched.
+                        // Seeded by what the camera sees, not what the layers fetched.
+                        FRAME_PROF_NOW(profCoverSeedStart);
                         std::vector<vt::TileId> terrainCoverTileIds = collectTerrainCoverTileIds(viewState, terrainOptions);
+                        FRAME_PROF_ADD(coverSeedMs, profCoverSeedStart);
                         std::vector<std::map<vt::TileId, std::size_t> > groundLayerTiles;
                         std::map<vt::TileId, std::size_t> groundCollectedTiles;
                         std::vector<vt::TileId> groundTileIds;
                         std::vector<int> groundProxyDepths;
                         std::vector<bool> groundStandingIn; // parallel: this tile is drawn in place of a finer one
                         int groundZoom = 0, groundMaxCollectedZoom = 0;
+                        FRAME_PROF_NOW(profCoverCollectStart);
                         collectTerrainCover(groundLayers, viewState, terrainOptions, terrainCoverTileIds, false, groundLayerTiles, groundCollectedTiles, groundTileIds, groundZoom, groundMaxCollectedZoom);
+                        FRAME_PROF_ADD(coverCollectMs, profCoverCollectStart);
 
-                        // A leaf whose DEM has not arrived draws FLAT and the paint skips it, so it
-                        // flashes bare until elevation lands - every tile on screen during a zoom.
-                        // Without a stand-in texture, STAND ON the coarsest loaded ancestor instead.
+                        FRAME_PROF_NOW(profCoverStandInStart);
+                        // A leaf without DEM would flash flat and bare: stand on the coarsest loaded ancestor.
                         if (std::shared_ptr<ElevationManager> groundElevationManager = terrainOptions->getElevationManager()) {
-                            auto hasElevation = [&groundElevationManager](const vt::TileId& tileId) {
+                            // Neighbouring leaves share most of their ancestor chains.
+                            std::map<vt::TileId, bool> elevationMemo;
+                            auto hasElevation = [&groundElevationManager, &elevationMemo](const vt::TileId& tileId) {
+                                auto memo = elevationMemo.find(tileId);
+                                if (memo != elevationMemo.end()) {
+                                    return memo->second;
+                                }
                                 int tileMask = (1 << tileId.zoom) - 1;
                                 MapTile mapTile(tileId.x & tileMask, std::min(std::max(tileId.y, 0), tileMask), tileId.zoom, 0);
-                                return static_cast<bool>(groundElevationManager->getTileGrid(mapTile, ElevationManager::LoadMode::CACHED_ONLY));
+                                bool loaded = static_cast<bool>(groundElevationManager->getTileGrid(mapTile, ElevationManager::LoadMode::CACHED_ONLY));
+                                elevationMemo.emplace(tileId, loaded);
+                                return loaded;
                             };
                             std::vector<vt::TileId> loadedTileIds;
                             std::vector<bool> standingIn;
+                            // Each stand-in's index in loadedTileIds, so the dedup is a lookup, not a quadratic scan.
+                            std::map<vt::TileId, std::size_t> loadedIndex;
                             loadedTileIds.reserve(groundTileIds.size());
                             standingIn.reserve(groundTileIds.size());
                             for (const vt::TileId& tileId : groundTileIds) {
@@ -2660,17 +3003,19 @@ namespace massif {
                                 }
                                 // The walk can bring several leaves onto one ancestor; drawing it
                                 // once is both correct and cheaper.
-                                auto it = std::find(loadedTileIds.begin(), loadedTileIds.end(), standIn);
-                                if (it == loadedTileIds.end()) {
+                                auto it = loadedIndex.find(standIn);
+                                if (it == loadedIndex.end()) {
+                                    loadedIndex.emplace(standIn, loadedTileIds.size());
                                     loadedTileIds.push_back(standIn);
                                     standingIn.push_back(standIn != tileId);
                                 } else if (standIn != tileId) {
-                                    standingIn[it - loadedTileIds.begin()] = true;
+                                    standingIn[it->second] = true;
                                 }
                             }
                             groundTileIds = std::move(loadedTileIds);
                             groundStandingIn = std::move(standingIn);
                         }
+                        FRAME_PROF_ADD(coverStandInMs, profCoverStandInStart);
 
                         // Tangram's proxy depth (tileManager.cpp). The `m_proxyCounter > 0` guard is
                         // the point: only a stand-in gets a depth, a live coarse tile takes zero.
@@ -2686,9 +3031,7 @@ namespace massif {
                             groundProxyDepths.push_back(groundStandingIn[i] ? std::max(groundCoverZoom - groundTileIds[i].zoom, 1) : 0);
                         }
 
-                        // What the ground is painted with where no layer paints: a hole shows the
-                        // flat background plane BEHIND the terrain ("landcover holes"), so it follows
-                        // the drape's clear colour rule - terrain background, else the first layer.
+                        // Unpainted ground would show the plane behind the terrain: terrain background, else the first layer's.
                         Color groundColor = terrainOptions->getBackgroundColor();
                         if (groundColor.getA() == 0) {
                             for (const std::shared_ptr<TileLayer>& tileLayer : groundLayers) {
@@ -2700,9 +3043,7 @@ namespace massif {
                             }
                         }
 
-                        // One dense ordinal range per layer, in draw order, from 1 (0 is the ground).
-                        // Dense because the TOTAL span sets the leak threshold, which a fixed stride
-                        // would reach within a few layers. docs/internals/rendering/05-depth-model.md.
+                        // Dense ordinals per layer from 1 (0 is the ground): the total span sets the leak threshold (05-depth-model.md).
                         int ordinalBase = 1;
                         for (const std::shared_ptr<TileLayer>& tileLayer : groundLayers) {
                             tileLayer->setExternalDrapeTarget(false);
@@ -2711,26 +3052,22 @@ namespace massif {
                             tileLayer->setTerrainLayerOrdinalBase(ordinalBase);
                             ordinalBase += std::max(1, tileLayer->getStyleLayerCount());
                         }
-                        // The caster pass and the sun, over the same cover, both set BEFORE the
-                        // ground is drawn - a layer's own onDrawFrame runs later in the frame. With
-                        // no bake here, the content-driven refresh rides on the cover changing.
+                        // Before the ground draws; with no bake, content-driven refresh rides on the cover changing.
                         GLint groundPrevFBO = 0;
                         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &groundPrevFBO);
                         ResolvedLighting lighting;
                         std::array<double, TerrainShadowMap::MAX_CASCADES> shadowTexelMeters = { };
                         bool coverChanged = (_groundCoverTileIds != groundTileIds);
                         _groundCoverTileIds = groundTileIds;
-                        // Shadows OFF deliberately: they work, but the road overlay wears a fine
-                        // speckle of acne the drape path does not have. Flip to true to work on it,
-                        // with the drape path as the reference to diff against.
+                        // castShadows false: the road overlay shows acne here that the drape path does not.
+                        FRAME_PROF_NOW(profCoverShadowStart);
                         applyTerrainShadows(groundLayers, groundTileIds, terrainOptions, viewState, groundPrevFBO, coverChanged, false, lighting, shadowTexelMeters);
+                        FRAME_PROF_ADD(coverShadowMs, profCoverShadowStart);
 
                         FRAME_PROF_ADD(coverMs, profCoverStart);
                         FRAME_PROF_NOW(profGroundStart);
                         FRAME_PROF_GPU_BEGIN(SECTION_DRAPE);
-                        // The ground is drawn by the layer that PAINTS it when there is one - the
-                        // paint and its lighting shader live on that layer's renderer. Any layer can
-                        // draw a plain ground, so the first one does when nothing paints.
+                        // The painting layer draws the ground (its renderer holds the paint), else the first layer.
                         std::shared_ptr<TileLayer> groundDrawer = groundLayers.front();
                         for (const std::shared_ptr<TileLayer>& tileLayer : groundLayers) {
                             if (tileLayer->paintsEveryDrapeTile()) {
@@ -2738,14 +3075,17 @@ namespace massif {
                                 break;
                             }
                         }
-                        int groundDraws = groundDrawer->renderTerrainGround(groundColor);
+                        // Skipped when the surface shader already painted this ground (TerrainOptions::
+                        // setSharedGroundEnabled); the ground tiles and ordinals above are still published.
+                        int groundDraws = 0;
+                        if (terrainOptions->isSharedGroundEnabled()) {
+                            groundDraws = groundDrawer->renderTerrainGround(groundColor);
+                        }
                         FRAME_PROF_ADD(drapeMs, profGroundStart);
                         FRAME_PROF_GPU_END();
 
                         sharedGroundActive = true;
-                        // Periodically, and once for the first frame that actually has a cover: a
-                        // map settles and stops drawing frames, so a plain frame counter can leave
-                        // the only line in the log being the empty startup one.
+                        // Also logged on the first frame with a cover: a settled map stops drawing frames.
                         static int groundStateFrame = 0;
                         static bool groundCoverLogged = false;
                         bool firstCover = !groundCoverLogged && !groundTileIds.empty();
@@ -2757,29 +3097,28 @@ namespace massif {
                         }
                     }
                 }
-                // A single stack for now: the usual configuration (hillshade under vector tiles)
-                // is contiguous and entirely drapeable. Splitting into several stacks only
-                // matters once a non-drapeable layer sits between drapeable ones.
+                // A single stack for now; several only matter with a non-drapeable layer between drapeable ones.
                 if (!drapeLayers.empty()) {
+                    FRAME_PROF_NOW(profTailCacheStart);
                     if (!_terrainDrapeCache) {
                         _terrainDrapeCache = std::make_unique<TerrainDrapeCache>();
                     }
                     _terrainDrapeCache->setMaxBytes(static_cast<std::size_t>(std::max(0, terrainOptions->getDrapeCacheSize())) * 1024 * 1024);
                     _terrainDrapeCache->setResolution(TileRenderer::resolveDrapeResolution(terrainOptions->getDrapeResolution(), viewState, _options,
                         static_cast<std::size_t>(terrainOptions->getDrapeCacheSize()), terrainOptions->getDrapeWorkingSet()));
-                    // WHICH layers bake, not what is in them: switching a style builds a new layer
-                    // object, and the cached textures are pictures of the previous one. A layer whose
-                    // content is not made of tiles folds its own appearance in here instead.
+                    // Which layers bake: a style switch builds new layers. Non-tile content folds in its appearance.
                     std::size_t stackSignature = 0;
                     for (const std::shared_ptr<TileLayer>& tileLayer : drapeLayers) {
                         std::size_t layerHash = tileLayer->drapeStackSignature();
                         stackSignature ^= layerHash + 0x9e3779b9 + (stackSignature << 6) + (stackSignature >> 2);
                     }
                     _terrainDrapeCache->setStackSignature(stackSignature);
+                    FRAME_PROF_ADD(preTailCacheMs, profTailCacheStart);
 
-                    // Every participating layer's render tiles must exist before any of them
-                    // bakes, so start their frames first.
+                    // Every layer's render tiles must exist before any bakes.
+                    FRAME_PROF_ADD(preTailMs, profTailStart);
                     FRAME_PROF_ADD(preludeMs, profDrawStart);
+                    preludeAccounted = true;
                     FRAME_PROF_NOW(profPrepareStart);
                     FRAME_PROF_GPU_BEGIN(SECTION_PREPARE);
                     for (const std::shared_ptr<TileLayer>& tileLayer : drapeLayers) {
@@ -2793,18 +3132,12 @@ namespace massif {
                     std::map<vt::TileId, std::size_t> collectedTiles;
                     std::vector<vt::TileId> leaves;
                     int drapeZoom = 0, maxCollectedZoom = 0;
-                    // Seeded from the CAMERA where it reaches deeper than the layers do: built from
-                    // collected tiles alone the cover cannot split past a source's maxzoom, and the
-                    // ground goes soft and stays soft. mapbox drapes onto its own proxy source.
+                    // Camera seeds split past a source's maxzoom, or the ground stays soft (mapbox's proxy source).
                     collectTerrainCover(drapeLayers, viewState, terrainOptions, collectTerrainCoverTileIds(viewState, terrainOptions), true, layerTiles, collectedTiles, leaves, drapeZoom, maxCollectedZoom);
                     std::map<vt::TileId, std::size_t> drapeTiles;
-                    // Which drape layers have content to bake into each leaf right now. Compared
-                    // against what the cached texture was actually baked from, this separates
-                    // "the picture moved on a little" from "a whole layer is missing here".
+                    // Against bakedLayerMask: separates a moved-on picture from a missing layer.
                     std::map<vt::TileId, std::size_t> drapeTileLayerMasks;
-                    // Whether the DEM for a tile is decoded YET: a terrain paint can only paint a
-                    // tile that has elevation, so this decides whether the tile is expected to carry
-                    // the paint, and (through the fingerprint) that it re-bakes once it arrives.
+                    // A paint needs decoded DEM; via the fingerprint the tile re-bakes once it arrives.
                     std::shared_ptr<ElevationManager> drapeElevationManager = terrainOptions->getElevationManager();
                     auto hasElevationData = [&drapeElevationManager](const vt::TileId& tileId) {
                         if (!drapeElevationManager) {
@@ -2824,9 +3157,7 @@ namespace massif {
                         leafElevation[tileId] = paintable;
                         std::size_t layerMask = 0;
                         for (std::size_t i = 0; i < layerTiles.size() && i < sizeof(std::size_t) * 8; i++) {
-                            // A layer whose content is not made of tiles reports no tiles, so it
-                            // cannot join this mask: an incomplete tile is NOT DRAWN, and gating on
-                            // the paint blanked the map during a zoom. It gets a re-bake instead.
+                            // Non-tile content cannot join the mask (incomplete tiles are not drawn); it gets a re-bake instead.
                             if (drapeLayers[i]->paintsEveryDrapeTile()) {
                                 continue;
                             }
@@ -2834,9 +3165,7 @@ namespace massif {
                                 if (it->second == 0) {
                                     continue; // reported for the cover, but nothing drapeable in it
                                 }
-                                // Only what bakeDrapeTile actually draws - its own tile or a COARSER
-                                // one. Counting the finer tiles it skips left the leaf permanently
-                                // incomplete, so stand-ins kept stale map alive across a zoom out.
+                                // Only what bakeDrapeTile draws: its own tile or a coarser one.
                                 if (it->first == tileId || coversTile(it->first, tileId)) {
                                     layerMask |= static_cast<std::size_t>(1) << i;
                                     break;
@@ -2844,9 +3173,7 @@ namespace massif {
                             }
                         }
                         drapeTileLayerMasks[tileId] = layerMask;
-                        // Fold in every collected tile that bakes here - the leaf, every coarser tile
-                        // covering it, and the finer ones inside it when the split hit the cap. A
-                        // contributor left out is content that stays stale for as long as it is cached.
+                        // Every contributor, including coarser and (at the split cap) finer tiles, or content stays stale.
                         std::size_t fingerprint = 0;
                         auto exactIt = collectedTiles.find(tileId);
                         if (exactIt != collectedTiles.end()) {
@@ -2858,22 +3185,16 @@ namespace massif {
                             }
                         }
                         if (anyPaintLayer) {
-                            // The paint has no per-tile content to fingerprint, but whether it can
-                            // paint this tile at all is per-tile: fold it in, so the tile is baked
-                            // again the moment its elevation arrives.
+                            // Paintability is per tile: the tile re-bakes the moment its elevation arrives.
                             std::size_t elevationTerm = (paintable ? 0x9e3779b9u : 0x85ebca6bu);
                             fingerprint ^= elevationTerm + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
                         }
-                        // Style functions are evaluated at the VIEW zoom, so a texture baked at one
-                        // zoom is wrong at another. Fold the zoom in, quantised; _drapeBakeZoomTerm
-                        // only follows the camera once it SETTLES, so a pinch does not re-bake.
+                        // Style functions use the view zoom; the quantised term only follows a settled camera.
                         fingerprint ^= _drapeBakeZoomTerm + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
                         drapeTiles[tileId] = fingerprint;
                     }
 
-                    // Only take the surface away from the per-layer path once this frame really has
-                    // tiles to drape: enabling external targets suppresses each layer's own surface,
-                    // so a frame that then draws no shared surface has no surface at all.
+                    // External targets suppress each layer's surface: only with tiles to drape.
                     bool drapeActive = !drapeTiles.empty();
                     std::vector<vt::TileId> drapeTileIds;
                     drapeTileIds.reserve(drapeTiles.size());
@@ -2882,14 +3203,10 @@ namespace massif {
                     }
                     for (const std::shared_ptr<TileLayer>& tileLayer : drapeLayers) {
                         tileLayer->setExternalDrapeTarget(drapeActive);
-                        // Tell every participating layer which ground is draped BEFORE it draws.
-                        // An explicit hand-off, because the layer's own startFrame runs between the
-                        // surface draw and the layer draw and resets frame state.
+                        // Explicit hand-off: startFrame runs between the surface and layer draws and resets frame state.
                         tileLayer->setExternalDrapeTiles(drapeActive ? drapeTileIds : std::vector<vt::TileId>());
                     }
-                    // WHERE THE LIVE LAYERS SIT IN THE STACK (#175). The drape composite is drawn
-                    // before any live geometry, so a live unit with a draped unit after it is masked.
-                    // Capped; the rule is in terrain/DrapeStackCuts.h, where the host tests reach it.
+                    // Live units with draped units after them are masked (#175); rule in terrain/DrapeStackCuts.h.
                     static const std::size_t MAX_DRAPE_COVERAGE_MASKS = 2;
                     std::vector<DrapeStackCuts::Cut> drapeCuts;
                     std::vector<std::map<int, int> > drapeLayerMasks(drapeLayers.size());
@@ -2920,9 +3237,7 @@ namespace massif {
                         }
                     }
 
-                    // What the bake starts from. A texel no layer paints is a hole, showing the
-                    // background plane BEHIND the terrain ("landcover holes"), so the ground between
-                    // features has to come from the background colour, baked in.
+                    // Baked-in background colour, or unpainted texels show the plane behind the terrain.
                     Color drapeClearColor = terrainOptions->getBackgroundColor();
                     if (drapeClearColor.getA() == 0) {
                         for (const std::shared_ptr<TileLayer>& tileLayer : drapeLayers) {
@@ -2946,8 +3261,6 @@ namespace massif {
                     drapedTiles.reserve(drapeTiles.size());
                     int resolution = _terrainDrapeCache->getResolution();
                     bool bakeStarted = false;
-                    // Offscreen state is entered once per frame and only when something actually
-                    // has to be drawn into a drape texture.
                     auto beginOffscreen = [&]() {
                         if (bakeStarted) {
                             return;
@@ -2959,8 +3272,6 @@ namespace massif {
                         glDisable(GL_STENCIL_TEST);
                         bakeStarted = true;
                     };
-                    // Cumulative since start: bakes are cached, so a per-frame count is 0 on most
-                    // frames and says nothing about whether baking ever produced anything.
                     // Resolved once, not per tile: it locks two mutexes per layer.
                     bool groundAOWanted = false;
                     for (const std::shared_ptr<TileLayer>& tileLayer : drapeLayers) {
@@ -2968,38 +3279,25 @@ namespace massif {
                     }
                     static int bakedTiles = 0, bakedPrimitives = 0;
                     int surfaceDraws = 0, filledSurfaces = 0, skippedSurfaces = 0;
-                    // Per-frame, unlike the cumulative counter above: the shadow cache below needs
-                    // to know whether THIS frame produced new tile content, not whether any frame
-                    // ever did.
+                    // Per frame, for the shadow cache.
                     int bakedThisFrame = 0;
-                    // Per-frame bake budget, three urgency classes (hole / stand-in / stale). A bake
-                    // is ~16 ms at 1024, so the budget IS the frame time - clearing a renamed cover in
-                    // one frame measured 128 -> 300 ms. docs/internals/rendering/04-terrain.md.
+                    // Per-frame bake budget by urgency class (docs/internals/rendering/04-terrain.md).
                     static const int DRAPE_BAKE_BUDGET_BLANK = 8;
                     static const int DRAPE_BAKE_BUDGET_STANDIN = 3;
-                    // A tile MISSING A WHOLE LAYER is a fourth case: rasters decode before vector
-                    // tiles finish their style pass, so a tile baked mid-load holds the hillshade and
-                    // nothing else, and at one re-bake per frame that reads as a hillshade flash.
+                    // Missing a whole layer (rasters decode first): too slow reads as a hillshade flash.
                     static const int DRAPE_BAKE_BUDGET_PARTIAL = 6;
                     static const int DRAPE_BAKE_BUDGET_STALE = 1;
-                    // A tile baked from a layer stack that no longer exists shows the PREVIOUS MAP,
-                    // and the cache keeps a generation alive off screen, so panning walked back over
-                    // them tile by tile. Cleared at the blank-tile rate instead.
+                    // Baked from a replaced layer stack: shows the previous map, so cleared at the blank-tile rate.
                     static const int DRAPE_BAKE_BUDGET_RESTACK = 8;
-                    // Span bakes let through per frame BEFORE the time budget is consulted: every deck
-                    // gets a new target id at an integer zoom, and on a GPU where one ground bake fills
-                    // the budget the decks would dress one per frame. A span bake is deck-sized.
+                    // Deck-sized span bakes let through before the time budget, or decks dress one per frame.
                     static const int DRAPE_BAKE_BUDGET_SPAN = 3;
-                    // Wall-clock ceiling for all of the classes above together, per frame. The budget,
-                    // not the work, is what makes content crawl into view in 3D (Adreno 610: bakes cost
-                    // 12-31 ms a SECOND), so a still camera gets much more room than a moving one.
+                    // Wall-clock ceiling for all classes; a still camera gets far more room than a moving one.
                     static const double DRAPE_BAKE_TIME_BUDGET = 16.0;       // ms, camera moving
                     static const double DRAPE_BAKE_TIME_BUDGET_STILL = 60.0; // ms, camera at rest
-                    // The moving budget outlives the move by this. debug.massif.drapesettle <ms>
-                    // overrides it for an A/B (0 = the at-rest budget the frame the camera stops).
+                    // The moving budget outlives the move by this; debug.massif.drapesettle <ms> overrides it (demo builds).
                     static const double DRAPE_BAKE_SETTLE_MS = [] {
                         double settle = 300.0;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && MASSIF_DEBUG_PROPERTIES
                         char property[PROP_VALUE_MAX] = { 0 };
                         if (__system_property_get("debug.massif.drapesettle", property) > 0) {
                             settle = std::atof(property);
@@ -3010,18 +3308,15 @@ namespace massif {
                     struct BakeRequest { vt::TileId tileId; std::size_t fingerprint; std::size_t drapedIndex; };
                     std::vector<BakeRequest> blankTiles, standInTiles, partialTiles, staleTiles, restackTiles;
 
-                    // No elevation for this tile: stand on the previous generation rather than draw it
-                    // flat, and draw nothing without a stand-in - a false ground writes depth. Flat
-                    // stays only when NOTHING has elevation. docs/internals/rendering/04-terrain.md.
+                    // Without elevation, stand on the previous generation or draw nothing: a false ground writes depth.
+                    // Flat only when nothing has elevation (04-terrain.md).
                     int displacedLeaves = 0;
                     for (auto it = drapeTiles.begin(); it != drapeTiles.end(); it++) {
                         displacedLeaves += leafElevation[it->first] ? 1 : 0;
                     }
                     bool sceneDisplaced = displacedLeaves > 0;
 
-                    // SEEDING: copy the cached tiles covering this ground into the new texture (a
-                    // few quads, not a bake) so it shows the map from the frame it appears. Seeds
-                    // are never sources, so nothing degrades through repeated copying.
+                    // Seeding copies cached tiles into a new texture (a few quads, not a bake); seeds are never sources.
                     static const int DRAPE_SEED_BUDGET = 16;
                     int seedBudget = DRAPE_SEED_BUDGET;
                     int seededTiles = 0;
@@ -3031,8 +3326,7 @@ namespace massif {
                             return false;
                         }
                         std::vector<SeedSource> sources;
-                        // Finer tiles first: they are the ones just replaced, at full detail, and
-                        // together they tile this one exactly.
+                        // Finer tiles first: just replaced, full detail, tiling this one exactly.
                         for (const std::pair<vt::TileId, unsigned int>& descendant : _terrainDrapeCache->findBakedDescendants(tileId, 0)) {
                             int levels = descendant.first.zoom - tileId.zoom;
                             int span = 1 << levels;
@@ -3078,30 +3372,25 @@ namespace massif {
                         bool needsBake = false;
                         bool hasContent = false;
                         unsigned int texture = _terrainDrapeCache->acquire(it->first, 0, it->second, needsBake, hasContent);
+                        bool fingerprintStale = needsBake;
                         if (!hasContent && seedTile(it->first, texture)) {
                             _terrainDrapeCache->markSeeded(it->first, 0);
                             hasContent = true;
                         }
                         bool baked = _terrainDrapeCache->isBaked(it->first, 0);
-                        // "Has a texture" is not "shows the map": the first bake after a zoom out
-                        // holds only the raster layers, and replacing the previous generation with
-                        // that is THE flash. Usable = every layer that has something is in it.
+                        // Usable = every layer with content is baked in; the first bake after a zoom out may hold rasters only.
                         std::size_t wantedMask = drapeTileLayerMasks[it->first];
                         std::size_t bakedMask = _terrainDrapeCache->bakedLayerMask(it->first, 0);
                         bool complete = DrapeStandIn::isComplete(baked, wantedMask, bakedMask);
-                        // A seed already IS the finer generation, composited into this tile's own
-                        // texture, so nothing has to be drawn over it.
+                        // A seed already is the finer generation.
                         bool showsStandIn = hasContent && !baked;
-                        // A tile with no content yet must not be sampled: its texture came from the
-                        // recycle pool and still holds another tile's picture. Stand in on the nearest
-                        // baked ancestor - a flat fill is a white block that flashes during a zoom.
+                        // No content: the recycled texture holds another tile. Stand in on the nearest baked ancestor.
                         DrapedTile draped { it->first, hasContent ? texture : 0u, 0.0f, 0.0f, 1.0f };
                         if (!hasContent) {
                             vt::TileId ancestor = it->first;
                             float offsetX = 0.0f, offsetY = 0.0f, scale = 1.0f;
                             for (int level = 0; level < 6 && ancestor.zoom > 0; level++) {
-                                // Mirror the y index: tile-local y runs northward while the XYZ
-                                // tile y runs southward (same convention as the bake sub-rect).
+                                // Mirrored y: tile-local y runs north, XYZ tile y south.
                                 int childX = ancestor.x & 1;
                                 int childY = 1 - (ancestor.y & 1);
                                 ancestor = vt::TileId(ancestor.zoom - 1, ancestor.x >> 1, ancestor.y >> 1);
@@ -3118,9 +3407,7 @@ namespace massif {
                                 }
                             }
                         }
-                        // No DEM for this tile while the rest of the scene is displaced: its own
-                        // surface would be the false flat ground, so it is not drawn at all. Its
-                        // descendants still are - they are the generation that HAS elevation.
+                        // No DEM in a displaced scene: skip its false flat surface; its descendants still draw.
                         bool skipSurface = sceneDisplaced && !leafElevation[it->first];
                         std::size_t drapedIndex = std::numeric_limits<std::size_t>::max(); // never indexes the list
                         if (!skipSurface) {
@@ -3129,24 +3416,16 @@ namespace massif {
                         } else {
                             skippedSurfaces++;
                         }
-                        // An ancestor sub-rect is the better stand-in: descendant surfaces are finer
-                        // meshes that read as tiles sitting off the terrain, while the ancestor is the
-                        // SAME mesh with a blurrier texture. A skipped surface still needs them.
+                        // Ancestor sub-rects beat descendants: same mesh, blurrier texture; finer meshes sit off the terrain.
                         bool showsAncestor = !hasContent && draped.texture != 0 && !skipSurface;
-                        // Same rule for a leaf drawing its OWN bake: it covers this ground already
-                        // and is merely missing a layer. Stacking the finer generation over it is the
-                        // second tesselation above - a two-frame mesh pop at every integer zoom out.
+                        // Same for a leaf's own incomplete bake: stacking finer tiles over it pops the mesh.
                         bool showsOwnBake = hasContent && baked && !skipSurface;
                         if (((!complete && !showsStandIn) || skipSurface) && !showsAncestor && !showsOwnBake) {
-                            // Zooming out, the cached tiles are the FINER ones underneath. They must
-                            // come AFTER this tile's own entry: the surfaces coincide and the later
-                            // draw wins, so pushed first they are buried under the fill they replace.
+                            // After this tile's own entry: coinciding surfaces, the later draw wins.
                             std::vector<std::pair<vt::TileId, unsigned int>> descendants = _terrainDrapeCache->findBakedDescendants(it->first, 0);
                             for (std::size_t i = 0; i < descendants.size(); i++) {
                                 const vt::TileId& descendantTileId = descendants[i].first;
-                                // A descendant that cannot be drawn does not take its own
-                                // descendants down with it: they are the finer generation, and one
-                                // of them may well be usable where this one is not.
+                                // An unusable descendant does not rule out its own descendants.
                                 bool usable = !(sceneDisplaced && !hasElevationData(descendantTileId)) // no ground to put the picture on
                                     && (wantedMask & ~_terrainDrapeCache->bakedLayerMask(descendantTileId, 0)) == 0; // as incomplete as the tile it stands in for
                                 if (!usable) {
@@ -3157,14 +3436,17 @@ namespace massif {
                                 drapedTiles.push_back(DrapedTile { descendantTileId, descendants[i].second, 0.0f, 0.0f, 1.0f });
                             }
                         }
-                        // A mask evicted on its own - it is a separate cache entry - would leave the
-                        // tile's live layers unmasked for as long as the colour drape stays current,
-                        // which is for ever. Re-bake the tile so its masks come back with it.
+                        // A separately evicted mask would stay missing for good: re-bake the tile.
                         for (std::size_t k = 0; k < drapeCuts.size() && !needsBake; k++) {
                             needsBake = !_terrainDrapeCache->isBaked(it->first, static_cast<int>(k) + 1);
                         }
                         if (!needsBake) {
                             continue;
+                        }
+                        if (fingerprintStale) {
+                            VT_STAT_INC(drapeStaleFingerprint);
+                        } else {
+                            VT_STAT_INC(drapeStaleMask);
                         }
                         BakeRequest request { it->first, it->second, drapedIndex };
                         if (baked && _terrainDrapeCache->isStale(it->first, 0)) {
@@ -3179,9 +3461,7 @@ namespace massif {
                             blankTiles.push_back(request);       // shows a flat fill: a hole
                         }
                     }
-                    // Nearest the focus first, within each class: only a few bakes get through per
-                    // frame, and in cover order a screen corner could fill before the focus. Measured
-                    // in tile lengths of the tile's own zoom, so a coarse tile cannot outrank a fine one.
+                    // Nearest the focus first within each class, in tile lengths of each tile's own zoom.
                     cglib::vec3<double> bakeFocus = viewState.getFocusPos();
                     auto focusDistance = [focusX = bakeFocus(0) / Const::WORLD_SIZE, focusY = bakeFocus(1) / Const::WORLD_SIZE](const vt::TileId& tileId) {
                         double extent = static_cast<double>(1 << tileId.zoom);
@@ -3201,9 +3481,7 @@ namespace massif {
                         nearestFirst(partialTiles);
                         nearestFirst(staleTiles);
                     }
-                    // The tiles that carry a bridge or a tunnel, and nothing else. Negative because
-                    // the cache reads stack > 0 as a one-channel mask and 0 as the ground's colour
-                    // drape, so a negative index is another COLOUR drape without touching either.
+                    // Bridge/tunnel-only tiles. Negative: stack 0 is the ground drape, > 0 are R8 masks.
                     const int SPAN_DRAPE_STACK = -1;
                     std::map<vt::TileId, std::size_t> spanDrapeTiles;
                     for (std::size_t i = 0; i < drapeLayers.size(); i++) {
@@ -3216,8 +3494,7 @@ namespace massif {
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
                         glClearColor(drapeClearColor.getR() / 255.0f, drapeClearColor.getG() / 255.0f, drapeClearColor.getB() / 255.0f, drapeClearColor.getA() / 255.0f);
                         glClear(GL_COLOR_BUFFER_BIT);
-                        // Layer order matters: later layers composite over earlier ones, which is
-                        // why the owner clears and the bakers do not.
+                        // Later layers composite over earlier ones: the owner clears, the bakers do not.
                         std::size_t bakedMask = 0;
                         for (std::size_t i = 0; i < drapeLayers.size(); i++) {
                             int primitives = drapeLayers[i]->bakeDrapeTile(request.tileId);
@@ -3226,15 +3503,11 @@ namespace massif {
                                 bakedMask |= static_cast<std::size_t>(1) << i;
                             }
                         }
-                        // What went in, not what was asked for: a layer that had nothing stays missing
-                        // from the mask and the tile re-bakes when it does. A terrain paint is not in
-                        // that mask, so a tile it could not paint gets a fingerprint that cannot match.
+                        // What went in, not what was asked. An unpainted tile's fingerprint cannot match, so it re-bakes.
                         std::size_t bakedFingerprint = request.fingerprint;
                         for (std::size_t i = 0; i < drapeLayers.size() && i < sizeof(std::size_t) * 8; i++) {
                             if (drapeLayers[i]->paintsEveryDrapeTile() && (bakedMask & (static_cast<std::size_t>(1) << i)) == 0) {
-                                // ONLY when the paint could have painted this tile and the texture
-                                // merely was not uploaded yet. A tile that can NEVER be painted would
-                                // otherwise stay stale for ever, re-baked one per frame.
+                                // Only when the texture is merely not uploaded yet, or an unpaintable tile re-bakes forever.
                                 auto leafElevationIt = leafElevation.find(request.tileId);
                                 if (leafElevationIt != leafElevation.end() && leafElevationIt->second) {
                                     bakedFingerprint = ~request.fingerprint;
@@ -3242,9 +3515,7 @@ namespace massif {
                                 break;
                             }
                         }
-                        // The extrusions' contact shadows, resolved per tile under MIN into this tile's
-                        // drape, so the shadow follows the terrain exactly. Every GL state this touches
-                        // is restored - culling above all: the bake matrix has no y flip.
+                        // Contact shadows resolved under MIN into the drape; restores all GL state (the bake matrix has no y flip).
                         if (groundAOWanted) {
                             if (!_groundAODrapeBuffer) {
                                 _groundAODrapeBuffer = std::make_unique<ScreenMaskBuffer>(false);
@@ -3263,13 +3534,11 @@ namespace massif {
                                 glBlendEquation(GL_FUNC_ADD);
                                 _groundAODrapeBuffer->endPassRaw(drapeFBO, resolution, resolution);
                                 if (aoBaked > 0) {
-                                    // The drape colour is PREMULTIPLIED, so scaling rgb alone is
-                                    // valid; the mask's own alpha is 1, so dst alpha is untouched.
+                                    // Premultiplied drape; the mask's alpha is 1, so dst alpha is untouched.
                                     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
                                     drawMaskQuad(_groundAODrapeBuffer->getTexture(), 1.0f / resolution, 1.0f / resolution);
                                 }
-                                // Back to exactly what bakeDrapeTile establishes and the next tile
-                                // relies on (beginOffscreen only runs once per frame).
+                                // Back to bakeDrapeTile's state; beginOffscreen runs once per frame.
                                 glDisable(GL_CULL_FACE);
                                 glDisable(GL_DEPTH_TEST);
                                 glDepthMask(GL_FALSE);
@@ -3280,22 +3549,20 @@ namespace massif {
                         }
                         _terrainDrapeCache->markBaked(request.tileId, 0, bakedFingerprint, bakedMask);
                         TerrainDrapeCache::generateMipmaps(texture);
-                        // The occlusion masks of this tile (#175), in the same pass and off the same
-                        // fingerprint, so a mask can never describe a different generation of the
-                        // map than the drape it is read beside. Stack 1+k, R8.
+                        // Occlusion masks (#175), same pass and fingerprint as the drape; stack 1+k, R8.
                         for (std::size_t k = 0; k < drapeCuts.size(); k++) {
                             std::size_t maskFingerprint = bakedFingerprint ^ (drapeCutSignature + k * 0x9e3779b9);
                             bool maskNeedsBake = false, maskHasContent = false;
                             unsigned int maskTexture = _terrainDrapeCache->acquire(request.tileId, static_cast<int>(k) + 1, maskFingerprint, maskNeedsBake, maskHasContent);
                             if (maskTexture == 0) {
+                                VT_STAT_INC(drapeMaskAcquireFail); // never markBaked: this tile re-bakes next frame too
                                 continue;
                             }
                             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, maskTexture, 0);
                             glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
                             glClear(GL_COLOR_BUFFER_BIT);
                             for (std::size_t i = drapeCuts[k].layerIndex; i < drapeLayers.size(); i++) {
-                                // The cut's own layer starts at the cut; every later layer is wholly
-                                // above it.
+                                // The cut's own layer starts at the cut; later layers are wholly above it.
                                 int fromStyleLayerIdx = (i == drapeCuts[k].layerIndex ? drapeCuts[k].styleLayerIdx : std::numeric_limits<int>::min());
                                 drapeLayers[i]->bakeDrapeCoverage(request.tileId, fromStyleLayerIdx);
                             }
@@ -3309,17 +3576,13 @@ namespace massif {
                             drapedTiles[request.drapedIndex] = DrapedTile { request.tileId, texture, 0.0f, 0.0f, 1.0f }; // baked now, safe to sample
                         }
                     };
-                    // The counts above say how URGENT a class is; how many a frame affords is a time
-                    // question, and device-dependent (~2 ms a bake on the emulator, 25+ on an Adreno
-                    // 610). Bake in priority order until the time is spent, but always let one through.
+                    // Counts set urgency; time sets how many. Priority order until spent, but always one.
                     const cglib::mat4x4<double>& bakeMVPMatrix = viewState.getModelviewProjectionMat();
                     std::chrono::steady_clock::time_point bakeNow = std::chrono::steady_clock::now();
                     if (!(_drapeBakeLastMVPMatrix == bakeMVPMatrix)) {
                         _drapeBakeLastMoveTime = bakeNow;
                     }
-                    // ...and for a settle window past the last move: a fast zoom is a chain of gestures
-                    // with rests of a few frames, and opening the at-rest budget in each rest made every
-                    // one a 60 ms frame - the map hung between the user's fingers.
+                    // Plus a settle window: a fast zoom is a chain of gestures, and each rest must not get the at-rest budget.
                     bool bakeCameraMoving = std::chrono::duration<double, std::milli>(bakeNow - _drapeBakeLastMoveTime).count() < DRAPE_BAKE_SETTLE_MS;
                     _drapeBakeLastMVPMatrix = bakeMVPMatrix;
                     // Settled: adopt this zoom for the drape. The fingerprint above reads this, so
@@ -3334,15 +3597,18 @@ namespace massif {
                     double bakeTimeBudget = (bakeCameraMoving ? DRAPE_BAKE_TIME_BUDGET : DRAPE_BAKE_TIME_BUDGET_STILL);
                     std::chrono::steady_clock::time_point bakeStart = std::chrono::steady_clock::now();
                     VT_STAT_ADD(drapeBakeQueued, static_cast<long long>(blankTiles.size() + restackTiles.size() + standInTiles.size() + partialTiles.size() + staleTiles.size()));
+                    VT_STAT_ADD(drapeQueuedBlank, static_cast<long long>(blankTiles.size()));
+                    VT_STAT_ADD(drapeQueuedRestack, static_cast<long long>(restackTiles.size()));
+                    VT_STAT_ADD(drapeQueuedStandIn, static_cast<long long>(standInTiles.size()));
+                    VT_STAT_ADD(drapeQueuedPartial, static_cast<long long>(partialTiles.size()));
+                    VT_STAT_ADD(drapeQueuedStale, static_cast<long long>(staleTiles.size()));
                     auto bakeTimeLeft = [&bakeStart, &bakedThisFrame, bakeTimeBudget]() {
                         if (bakedThisFrame == 0) {
                             return true; // always make progress
                         }
                         return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - bakeStart).count() < bakeTimeBudget;
                     };
-                    // Whether a class ran out of budget with tiles still queued. It is the ONLY
-                    // reason to ask for another frame: asking on the queue SIZE instead compares it
-                    // with the wrong budget and spins the render loop forever on a still map.
+                    // The only reason to ask for another frame; asking on queue size spins a still map forever.
                     bool drapeBakesLeft = false;
                     auto bakeSome = [&](std::vector<BakeRequest>& tiles, int budget) {
                         auto it = tiles.begin();
@@ -3353,15 +3619,11 @@ namespace massif {
                     };
                     bakeSome(blankTiles, DRAPE_BAKE_BUDGET_BLANK);
                     bakeSome(restackTiles, DRAPE_BAKE_BUDGET_RESTACK);
-                    // The DECK's own drape, baked per RENDER tile rather than per drape leaf: the deck
-                    // is drawn with its render tile and one draw cannot sample several textures. Placed
-                    // right after the blank ground - a deck with no drape is a hole like a flat fill.
+                    // Deck drape per render tile (one draw, one texture), right after the blank ground.
                     if (!spanDrapeTiles.empty()) {
                         std::map<vt::TileId, unsigned int> spanDrapeTextures;
                         beginOffscreen();
-                        // Under the frame's bake budget like every other class, nearest the focus first.
-                        // Unbudgeted, an integer zoom renamed every bridge tile in view and baked them
-                        // in one 150-210 ms frame. A deck without its drape draws its plain roof.
+                        // Budgeted, nearest the focus first; an undraped deck draws its plain roof.
                         std::vector<std::pair<vt::TileId, std::size_t>> spanBakeOrder(spanDrapeTiles.begin(), spanDrapeTiles.end());
                         std::stable_sort(spanBakeOrder.begin(), spanBakeOrder.end(), [&focusDistance](const std::pair<vt::TileId, std::size_t>& a, const std::pair<vt::TileId, std::size_t>& b) {
                             return focusDistance(a.first) < focusDistance(b.first);
@@ -3376,9 +3638,7 @@ namespace massif {
                             }
                             if (spanNeedsBake && spanBakedThisFrame >= DRAPE_BAKE_BUDGET_SPAN && !bakeTimeLeft()) {
                                 spanBakesLeft = true;
-                                // Baked before from a stack that has since changed: handed over as it
-                                // is, an older road on the deck rather than a bare one - a deck drawn
-                                // bare for those frames is the dark flash on bridges.
+                                // An older road beats a bare deck, which flashes dark.
                                 if (_terrainDrapeCache->isBaked(it->first, SPAN_DRAPE_STACK)) {
                                     spanDrapeTextures[it->first] = spanTexture;
                                 }
@@ -3408,30 +3668,25 @@ namespace massif {
                     }
                     bakeSome(standInTiles, DRAPE_BAKE_BUDGET_STANDIN);
                     bakeSome(partialTiles, DRAPE_BAKE_BUDGET_PARTIAL);
-                    // One stale tile per frame is the right ration while the camera moves. On a map at
-                    // REST it is a livelock: only the bakes themselves ask for frames, so a backlog
-                    // drains over half a minute. At rest the wall-clock budget rations it instead.
-                    bakeSome(staleTiles, bakeCameraMoving ? DRAPE_BAKE_BUDGET_STALE : DRAPE_BAKE_BUDGET_BLANK);
+                    // Count-rationed while moving; at rest only the time budget, as the whole cover can go stale at once.
+                    bakeSome(staleTiles, bakeCameraMoving ? DRAPE_BAKE_BUDGET_STALE : static_cast<int>(staleTiles.size()));
 
-                    // Baking is rationed over several frames, so it only finishes if those frames
-                    // happen - and nothing else asks for them once the map goes idle. Keep asking
-                    // while there is baking left to do.
+                    // Nothing else asks for the frames rationed baking needs.
                     if (drapeBakesLeft) {
                         requestRedraw();
                     }
+                    // What the 2D/3D switch's settle report reads, one frame later.
+                    _drapeBakesPending = drapeBakesLeft;
+                    _drapeBakesDone += bakedThisFrame;
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());
                     if (bakeStarted) {
-                        // Detach before sampling: a texture left attached to a framebuffer counts
-                        // as a render target, and sampling it in the same frame is undefined - on
-                        // the emulator every drape texture then reads back black.
+                        // Detach before sampling: sampling a still-attached texture is undefined (black on the emulator).
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
                         glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
                         glViewport(0, 0, viewState.getWidth(), viewState.getHeight());
                     }
 
-                    // Hand the masks to the layers BEFORE they draw, the same explicit per-frame
-                    // hand-off setExternalDrapeTiles is. A tile whose mask is not baked yet is absent
-                    // from the map, and its live layers draw unmasked for those frames.
+                    // Handed over before the layers draw; an unbaked mask leaves its live layers unmasked meanwhile.
                     std::vector<std::map<vt::TileId, unsigned int> > drapeCoverageMasks(drapeCuts.size());
                     for (std::size_t k = 0; k < drapeCuts.size(); k++) {
                         for (const vt::TileId& tileId : drapeTileIds) {
@@ -3450,18 +3705,14 @@ namespace massif {
                     std::array<double, TerrainShadowMap::MAX_CASCADES> shadowTexelMeters = { };
                     applyTerrainShadows(drapeLayers, drapeTileIds, terrainOptions, viewState, prevFBO, bakedThisFrame > 0, true, lighting, shadowTexelMeters);
 
-                    // The shared surface is the only depth-writing terrain geometry. GL_LEQUAL, not
-                    // the default GL_LESS: the background above uses the SAME meshes and has written
-                    // their depth, so a GL_LESS surface draw is rejected everywhere.
+                    // GL_LEQUAL: the background already wrote the same meshes' depth.
                     glEnable(GL_DEPTH_TEST);
                     glDepthFunc(GL_LEQUAL);
                     glDepthMask(GL_TRUE);
                     glDisable(GL_CULL_FACE); // displaced surfaces can face away near ridge crests
                     groundAODraped = groundAODraped || !drapedTiles.empty();
                     for (auto it = drapedTiles.begin(); it != drapedTiles.end(); it++) {
-                        // Every drape tile gets a surface, always: it is the terrain's only depth
-                        // writer, so a tile skipped for a missing bake leaves a depth hole and lets
-                        // elements behind the terrain pop into view.
+                        // Always drawn: the only depth writer, a skipped tile leaves a depth hole.
                         if (it->texture != 0) {
                             surfaceDraws += drapeLayers.front()->renderDrapedSurface(it->tileId, it->texture, it->uvOffsetX, it->uvOffsetY, it->uvScale);
                         } else {
@@ -3469,8 +3720,7 @@ namespace massif {
                             filledSurfaces++;
                         }
                     }
-                    // The same textures, for a bridge deck's roof past its road's portals: that
-                    // part of the deck is ground and wears the ground's drape (polygon3DFsh).
+                    // A bridge deck's roof past its portals wears the ground's drape (polygon3DFsh).
                     {
                         std::map<vt::TileId, TileLayer::GroundDrapeRef> groundDrapes;
                         for (auto it = drapedTiles.begin(); it != drapedTiles.end(); it++) {
@@ -3488,9 +3738,7 @@ namespace massif {
                     _terrainDrapeCache->endFrame();
 
 
-                    // Ground with nothing on it has two different causes - drawn in the flat clear
-                    // colour, or not drawn at all for want of elevation. Logged in the frame it
-                    // happens, since a half-second flash never coincides with the periodic dump.
+                    // Logged in the frame: a brief flash never coincides with the periodic dump.
                     if (filledSurfaces > 0 || skippedSurfaces > 0) {
                         static int emptyGroundFrame = 0, lastEmptyGroundLog = -1000;
                         emptyGroundFrame++;
@@ -3504,8 +3752,6 @@ namespace massif {
                         }
                     }
 
-                    // One-time state dump: confirms whether the RTT path is actually live, and
-                    // with how many layers/tiles, rather than being inferred from symptoms.
                     static double drapeMsSum = 0;
                     static double drapeMsMax = 0;
                     static int drapeMsCount = 0;
@@ -3530,9 +3776,7 @@ namespace massif {
                             maxZoom = std::max(maxZoom, it2->tileId.zoom);
                         }
                         Log::Infof("MapRenderer: RTT drape tiles zoom %d..%d, count %d", minZoom, maxZoom, static_cast<int>(drapedTiles.size()));
-                        // Queue sizes say which of the four states the cover is actually in - a
-                        // standing 'partial' backlog means the bake never catches up with the
-                        // layers, which looks like the whole map stuck on bare hillshade.
+                        // A standing 'partial' backlog means the bake never catches up with the layers.
                         Log::Infof("MapRenderer: RTT drape cover - split level %d (collected up to %d, camera zoom %.2f), leaves %d",
                             drapeZoom, maxCollectedZoom, viewState.getZoom(), static_cast<int>(drapeTiles.size()));
                         Log::Infof("MapRenderer: RTT drape seeded %d tiles from cache this frame", seededTiles);
@@ -3547,8 +3791,7 @@ namespace massif {
                     }
                     }
                     catch (const std::exception& ex) {
-                        // A shader that fails to compile or link throws from the render thread.
-                        // Losing the drape is bad; taking the process down with it is worse.
+                        // Shader compile/link failures throw from the render thread.
                         Log::Errorf("MapRenderer: RTT drape failed: %s", ex.what());
                         glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
                         glViewport(0, 0, viewState.getWidth(), viewState.getHeight());
@@ -3563,9 +3806,7 @@ namespace massif {
             }
             for (const std::shared_ptr<TileLayer>& tileLayer : allTileLayers) {
                 tileLayer->setExternalDrapeTarget(false);
-                // No shared ground either (terrain off, or a stack with no drapeable layer):
-                // release the cover so a layer left holding one from a terrain frame does not
-                // keep suppressing its own depth pre-pass and drawing on tiles nobody covers.
+                // Release a stale cover, or a layer keeps suppressing its own depth pre-pass.
                 tileLayer->setTerrainGroundTiles(std::vector<vt::TileId>(), std::vector<int>());
             }
             if (terrainMode) {
@@ -3577,7 +3818,6 @@ namespace massif {
             }
         }
 
-        // Create new billboard sorter instance
         std::vector<std::shared_ptr<BillboardDrawData> > billboardDrawDatas;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
@@ -3585,7 +3825,11 @@ namespace massif {
         }
         BillboardSorter billboardSorter(billboardDrawDatas);
 
-        // Do base drawing pass
+        // A terrain map with no ground layer closes the prelude here.
+        if (!preludeAccounted) {
+            FRAME_PROF_ADD(preludeMs, profDrawStart);
+        }
+
         bool needRedraw = false;
         FRAME_PROF_NOW(profLayerStart);
         FRAME_PROF_GPU_BEGIN(SECTION_LAYERS);
@@ -3604,9 +3848,7 @@ namespace massif {
 
         FRAME_PROF_ADD(layerMs, profLayerStart);
 
-        // Resolve the extrusions' contact shadows into one screen-space mask under MIN blending,
-        // only when nothing is draped (a drape bakes it into the ground instead). MIN because the
-        // capsule quads overlap, and multiplying each one in compounds towards black.
+        // Undraped contact shadows: one screen mask under MIN, as overlapping quads would compound to black.
         {
             std::vector<std::shared_ptr<TileLayer> > aoTileLayers;
             for (const std::shared_ptr<Layer>& layer : layers) {
@@ -3628,9 +3870,7 @@ namespace massif {
                     }
                     _groundAOMaskBuffer->endPass(aoPrevFBO, viewState.getWidth(), viewState.getHeight());
                 }
-                // ONE multiply over the whole frame, before the extrusions are drawn so they cover
-                // their own footprints. Compositing the quads again would multiply at every overlap
-                // and undo the MIN the mask was for.
+                // One multiply, before the extrusions draw over their own footprints.
                 if (aoDraws > 0) {
                     multiplyScreenMask(_groundAOMaskBuffer->getTexture(), 1.0f / viewState.getWidth(), 1.0f / viewState.getHeight());
                 }
@@ -3638,9 +3878,7 @@ namespace massif {
             }
         }
 
-        // Label occlusion against the 3D content, on mapbox's model (see labelVsh): the anchor is
-        // tested and the label fades as a whole. The scene's depth is a renderbuffer and cannot be
-        // sampled, so the extrusions are drawn again into a half-resolution depth texture.
+        // mapbox's model (labelVsh): anchors test a re-drawn extrusion depth, as the scene's renderbuffer cannot be sampled.
         {
             std::vector<std::shared_ptr<TileLayer> > occlusionLayers;
             for (const std::shared_ptr<Layer>& layer : layers) {
@@ -3650,9 +3888,7 @@ namespace massif {
             auto occlusionWanted = [](const std::shared_ptr<TileLayer>& tileLayer) { return tileLayer->isLabelOcclusionWanted(); };
             if (std::any_of(occlusionLayers.begin(), occlusionLayers.end(), occlusionWanted) && viewState.getWidth() > 0 && viewState.getHeight() > 0) {
                 if (!_labelOcclusionBuffer) {
-                    // Colour, not a depth texture: the occluders pack their window depth into rgb
-                    // (the shadow caster's encoding), because sampling a depth texture from a
-                    // VERTEX shader is not something every driver here does.
+                    // Packed rgb depth: not every driver samples a depth texture in a vertex shader.
                     _labelOcclusionBuffer = std::make_unique<ScreenMaskBuffer>(true);
                 }
                 _labelOcclusionBuffer->setSize(viewState.getWidth(), viewState.getHeight(), LABEL_OCCLUSION_DIVISOR);
@@ -3667,8 +3903,7 @@ namespace massif {
                     _labelOcclusionBuffer->endPass(occlusionPrevFBO, viewState.getWidth(), viewState.getHeight());
                 }
                 FRAME_PROF_GPU_END();
-                // An empty buffer would read as "nothing occludes anything", which is the same
-                // answer as not sampling at all - and not sampling is a cheaper way to say it.
+                // An empty buffer means no occlusion; not sampling says so cheaper.
                 if (occluderDraws > 0) {
                     occlusionTexture = _labelOcclusionBuffer->getTexture();
                 }
@@ -3678,7 +3913,6 @@ namespace massif {
             }
         }
 
-        // Do 3D drawing pass
         FRAME_PROF_NOW(profLayer3DStart);
         FRAME_PROF_GPU_BEGIN(SECTION_LAYERS3D);
         for (std::size_t i = 0; i < layers.size(); i++) {
@@ -3690,12 +3924,10 @@ namespace massif {
 
         FRAME_PROF_ADD(layer3DMs, profLayer3DStart);
 
-        // Sort billboards, calculate rotation state
         FRAME_PROF_NOW(profBillboardStart);
         FRAME_PROF_GPU_BEGIN(SECTION_BILLBOARDS);
         billboardSorter.sort(viewState);
         
-        // Draw billboards, grouped by layer renderer
         if (!billboardDrawDatas.empty()) {
             glDisable(GL_DEPTH_TEST);
 
@@ -3722,19 +3954,15 @@ namespace massif {
         FRAME_PROF_ADD(billboardMs, profBillboardStart);
         FRAME_PROF_GPU_END();
 
-        // Store the active billboard draw data list
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
             _billboardDrawDatas = std::move(billboardDrawDatas);
         }
     
-        // Redraw, if needed
         if (needRedraw) {
             requestRedraw();
         }
-        // A still map should stop asking for frames; when it does not, say who is asking. Low half
-        // of the mask = base pass, high half = 3D pass, one bit per layer. Frames with no layer bit
-        // set come from an external requestRedraw, which is a different bug.
+        // Mask: low half base pass, high half 3D pass, a bit per layer; no bit = an external requestRedraw.
         {
             static int frames = 0;
             static int layerRedrawFrames = 0;
@@ -3797,8 +4025,7 @@ namespace massif {
             glEnable(GL_DEPTH_TEST);
         }
 
-        // The placement worker looks at one list, so these join the ones drawLayers collected
-        // rather than replacing them.
+        // Joined to drawLayers' list: the placement worker reads one.
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
             _billboardDrawDatas.insert(_billboardDrawDatas.end(), billboardDrawDatas.begin(), billboardDrawDatas.end());
@@ -3883,17 +4110,21 @@ namespace massif {
                 updateView = true;
             }
 
+            if (optionName.substr(0, 27) == "TerrainOptions.ViewDistance") {
+                // The near and far planes are only recomputed when the camera changes, so a new view
+                // distance (or its ceiling, or its factor) waited for the next look around to apply.
+                std::lock_guard<std::recursive_mutex> lock(mapRenderer->_mutex);
+                mapRenderer->_viewState.cameraChanged();
+                mapRenderer->_viewState.calculateViewState(*mapRenderer->_options);
+            }
+
             if (optionName.substr(0, 14) == "TerrainOptions") {
-                // Terrain changes (enabled state, exaggeration, mesh resolution, min zoom)
-                // require a new cull pass so that tile layers detect the configuration change
-                // and rebuild their tiles with/without terrain displacement
+                // Tile layers rebuild with/without terrain displacement on a cull pass.
                 updateView = true;
             }
 
             if (optionName.substr(0, 10) == "FogOptions") {
-                // Fog reaches passes that a bare redraw does not refresh - the drape bake and the
-                // terrain shadow mask are both kept until the content changes - so turning it on
-                // or off left the map half updated. A cull pass refreshes all of them.
+                // A redraw keeps the drape bake and shadow mask; a cull pass refreshes them.
                 updateView = true;
             }
 
@@ -3908,17 +4139,16 @@ namespace massif {
     const int MapRenderer::BILLBOARD_PLACEMENT_TASK_DELAY = 200;
 
     const int MapRenderer::VT_LABEL_PLACEMENT_TASK_DELAY = 200;
-    // A quarter of a zoom level is ~20% more room under the labels - enough to fit a name that did
-    // not fit before. The delay is what makes a zoom gesture place once, when it settles.
+    // A quarter zoom level is ~20% more room under the labels; the delay places once per gesture.
     const float MapRenderer::LABEL_PLACEMENT_ZOOM_THRESHOLD = 0.25f;
     const int MapRenderer::LABEL_PLACEMENT_ZOOM_DELAY = 250;
 
     const float MapRenderer::DRAPE_REBAKE_ZOOM_THRESHOLD = 0.25f;
 
     const int MapRenderer::ELEVATION_REFRESH_DELAY = 500;
+    const float MapRenderer::EYE_GROUND_SETTLE_TIME = 0.3f;
 
-    // 2.5 s, the value the android-dev demo settled on while it did this wait itself
-    // (DemoMap.TERRAIN_ANIM_TILE_TIMEOUT_MS). Late 3D beats a map pinned flat by one tile that never loads.
+    // Late 3D beats a map pinned flat by one tile that never loads.
     const float MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT = 2.5f;
 
     const std::string MapRenderer::BLEND_VERTEX_SHADER = R"GLSL(

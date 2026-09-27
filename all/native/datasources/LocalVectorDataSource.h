@@ -38,11 +38,8 @@ namespace massif {
     class Style;
 
     /**
-     * A modifiable vector data source that keeps all the elements in the local memory.
-     * Optionally vector elements can be kept in a spatial index and only the visible elements get rendered.
-     * There can be a small delay before previously invisible elements become visible after view changes.
-     * This makes it suitable for cases where there are a large number of static vector elements.
-     *
+     * A modifiable vector data source that keeps all the elements in the local memory, optionally in a spatial index so only
+     * visible elements get rendered (with a small delay after view changes; suits many static elements).
      * The draw order of vector elements within the data source is undefined.
      */
     class LocalVectorDataSource : public VectorDataSource {

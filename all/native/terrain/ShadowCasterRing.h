@@ -13,9 +13,8 @@
 namespace massif {
 
     /**
-     * The zoom the shadow caster RING is generated at, and the tile grid that follows from it.
-     * Free of the renderer on purpose, so the bound is testable on the host. See
-     * MapRenderer::applyTerrainShadows and docs/internals/rendering/09-shadows.md.
+     * The zoom the shadow caster ring is generated at, and its tile grid.
+     * See MapRenderer::applyTerrainShadows and docs/internals/rendering/09-shadows.md.
      */
     struct ShadowCasterRing {
         /** The cover's footprint at one zoom, before the margin is added. */
@@ -32,12 +31,9 @@ namespace massif {
         }
 
         /**
-         * Coarsens the ring until its grid fits maxTiles. The ring's zoom is otherwise set by the
-         * THROW (relief / tan(sun altitude)), and over flat ground the throw is 0, so it stays at
-         * the cover's finest zoom - while a tilted cover reaches the horizon and mixes zooms, so
-         * its footprint expressed at that zoom is thousands of tiles a side. Coarsening holds the
-         * same ground and drops the resolution, which is what the throw rule does already; the
-         * caller's subdivision brings the resolution back where the cover is finer.
+         * Coarsens the ring until its grid fits maxTiles: over flat ground the throw is 0, so a tilted cover
+         * reaching the horizon would be thousands of tiles a side at its finest zoom. The caller's
+         * subdivision brings the resolution back where the cover is finer.
          */
         static Grid fit(const Grid& grid, int margin, std::size_t maxTiles) {
             Grid fitted = grid;

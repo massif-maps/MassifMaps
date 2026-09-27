@@ -35,22 +35,26 @@ namespace massif {
         // whole frame threw away every frame in which one section landed on a flush.
         const double MAX_PLAUSIBLE_MS = 500.0;
 
+        // Process-wide: an entry point is the driver's, not a context's.
         PFNGLGENQUERIESEXTPROC GenQueriesEXT = NULL;
         PFNGLBEGINQUERYEXTPROC BeginQueryEXT = NULL;
         PFNGLENDQUERYEXTPROC EndQueryEXT = NULL;
         PFNGLGETQUERYOBJECTUIVEXTPROC GetQueryObjectuivEXT = NULL;
 
-        QuerySlot Slots[SLOT_COUNT];
-        int CurrentSlot = -1;
-        int ActiveSection = -1;
-        bool Initialized = false;
-        bool Supported = false;
+        // Per GL thread: a query object belongs to the context that generated it, and each map view has
+        // its own; shared names were a GL_INVALID_OPERATION every frame. ActiveSection per thread keeps
+        // one renderer's endSection from closing another's query.
+        thread_local QuerySlot Slots[SLOT_COUNT];
+        thread_local int CurrentSlot = -1;
+        thread_local int ActiveSection = -1;
+        thread_local bool Initialized = false;
+        thread_local bool Supported = false;
 
-        double SumMs[GpuFrameProfiler::SECTION_COUNT];
-        int SectionFrames[GpuFrameProfiler::SECTION_COUNT];
-        int SectionDrops[GpuFrameProfiler::SECTION_COUNT];
-        int MeasuredFrames = 0;
-        int DisjointFrames = 0;
+        thread_local double SumMs[GpuFrameProfiler::SECTION_COUNT];
+        thread_local int SectionFrames[GpuFrameProfiler::SECTION_COUNT];
+        thread_local int SectionDrops[GpuFrameProfiler::SECTION_COUNT];
+        thread_local int MeasuredFrames = 0;
+        thread_local int DisjointFrames = 0;
 
         void Initialize() {
             Initialized = true;
@@ -128,6 +132,19 @@ namespace massif {
             }
             MeasuredFrames++;
             slot.pending = false;
+        }
+    }
+
+    void GpuFrameProfiler::resetContext() {
+        // Old names are not deleted: their context is gone or another thread's, so deleting them here
+        // is the very error this avoids. A few leaked names per context, profiling builds only.
+        Initialized = false;
+        Supported = false;
+        CurrentSlot = -1;
+        ActiveSection = -1;
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            Slots[i].pending = false;
+            std::fill(Slots[i].used, Slots[i].used + GpuFrameProfiler::SECTION_COUNT, false);
         }
     }
 
@@ -235,6 +252,9 @@ namespace massif {
             warned = true;
             Log::Info("GpuFrameProfiler: built without GL_EXT_disjoint_timer_query headers, GPU timings disabled");
         }
+    }
+
+    void GpuFrameProfiler::resetContext() {
     }
 
     void GpuFrameProfiler::beginSection(int section) {

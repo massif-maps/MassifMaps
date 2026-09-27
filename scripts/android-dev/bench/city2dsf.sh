@@ -7,7 +7,7 @@ APK="$1"; LABEL="$2"; shift 2
 adb install -r -t "$APK" >/dev/null 2>&1
 adb shell am force-stop com.massifmaps.MassifDemo >/dev/null 2>&1
 adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
-adb shell am start -n com.massifmaps.MassifDemo/.MainActivity --es ui false \
+adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false \
   --es terrain false --es base composite --es style assets \
   --es lat 45.188 --es lon 5.724 --es zoom 16.22 --es tilt 26 \
   --es anim pan --es animDelay 40000 --es animDuration 25 --es animLatDelta 0.06 \

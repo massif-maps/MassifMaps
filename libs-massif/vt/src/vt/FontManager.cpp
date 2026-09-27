@@ -62,9 +62,8 @@ namespace massif::vt {
 
     std::recursive_mutex FontManagerLibrary::_mutex;
 
-    // The weight and slant a font NAME asks for. Android ships one Roboto-Regular.ttf and reaches its
-    // bold and italic through variable-font axes, so a face matched by family alone still has to be told
-    // which instance of itself to be.
+    // The weight and slant a font name asks for: a variable face (Android's one Roboto-Regular.ttf)
+    // matched by family alone still has to be told which instance to be.
     struct FontStyle {
         int weight = 0;   // 0 = the face's own default
         int width = 0;
@@ -91,8 +90,7 @@ namespace massif::vt {
         FontStyle style;
         for (const auto& weight : WEIGHTS) {
             if (normalized.find(weight.first) != std::string::npos) {
-                // 'extrabold' also contains 'bold'; the longest match wins, and the table is
-                // ordered so that the more specific spellings are seen first.
+                // 'extrabold' also contains 'bold': the table lists the more specific spellings first.
                 style.weight = weight.second;
                 break;
             }
@@ -107,9 +105,8 @@ namespace massif::vt {
     }
 
     /**
-     * Sets the variable-font axes a style name asks for. Returns what could NOT be set, so the
-     * caller can synthesise the rest: a static face has no axes to move, and emboldening its
-     * outlines is the only bold there is.
+     * Sets the variable-font axes a style name asks for. Returns what could not be set, so the
+     * caller can synthesise the rest (a static face has no axes to move).
      */
     FontStyle applyVariationAxes(FT_Library library, FT_Face face, const FontStyle& style) {
         FontStyle remaining = style;
@@ -150,11 +147,8 @@ namespace massif::vt {
     }
 
     /**
-     * What the loaded FACE already is, taken off what the NAME asked for, so only the shortfall is
-     * synthesised. A family shipping a real DINPro-Bold.woff2 was emboldened on top of it: the name
-     * "DIN Pro Bold" parses to weight 700, a static face has no axis to satisfy that, and every
-     * glyph then went through FT_Outline_Embolden anyway - double bold, and a real italic file
-     * sheared a second time on top of its own slant.
+     * What the loaded face already is, taken off what the name asked for, so only the shortfall is
+     * synthesised - a real bold or italic file is not emboldened or sheared a second time.
      */
     FontStyle subtractFaceStyle(FT_Face face, const FontStyle& style) {
         FontStyle remaining = style;
@@ -178,7 +172,6 @@ namespace massif::vt {
         explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::string& name, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont, int glyphRenderSize) : _library(library), _name(name), _baseFont(baseFont), _glyphMap(glyphMap), _glyphRenderSize(glyphRenderSize), _face(nullptr), _font(nullptr) {
             std::lock_guard<std::recursive_mutex> lock(_library->getMutex());
 
-            // Load FreeType font
             if (data) {
                 int error = FT_New_Memory_Face(_library->getLibrary(), data->data(), static_cast<FT_Long>(data->size()), 0, &_face);
                 if (error == 0) {
@@ -189,7 +182,6 @@ namespace massif::vt {
                 }
             }
 
-            // Create HarfBuzz font
             if (_face) {
                 _font = hb_ft_font_create(_face, nullptr);
                 if (_font) {
@@ -197,7 +189,6 @@ namespace massif::vt {
                 }
             }
             
-            // Initialize HarfBuzz buffer for glyph shaping
             _buffer = hb_buffer_create();
             if (_buffer) {
                 hb_buffer_set_unicode_funcs(_buffer, hb_unicode_funcs_get_default());
@@ -260,13 +251,11 @@ namespace massif::vt {
                 return std::vector<Glyph>();
             }
 
-            // Get glyph list and glyph positions
             unsigned int infoCount = 0;
             const hb_glyph_info_t* info = hb_buffer_get_glyph_infos(_buffer, &infoCount);
             unsigned int posCount = 0;
             const hb_glyph_position_t* pos = hb_buffer_get_glyph_positions(_buffer, &posCount);
 
-            // Copy glyphs, render/cache bitmaps
             std::vector<Glyph> glyphs;
             glyphs.reserve(infoCount);
             for (unsigned int i = 0; i < infoCount; i++) {
@@ -283,9 +272,7 @@ namespace massif::vt {
                     if (const GlyphMap::Glyph* baseGlyph = _glyphMap->getGlyph(it->second)) {
                         std::size_t cluster = info[i].cluster;
                         std::uint32_t utf32Char = (cluster < len ? utf32Text[cluster] : 0);
-                        // The glyph was rasterized and shaped by 'font', which is this font or one
-                        // of its fallbacks - and a fallback can carry a different render size, so
-                        // the metrics have to be scaled by the size they actually came out at.
+                        // 'font' may be a fallback with a different render size: scale by the size it was rasterized at.
                         int renderSize = font->_glyphRenderSize - GLYPH_RENDER_SPREAD;
                         float glyphScale = size / renderSize;
                         cglib::vec2<float> glyphSize(static_cast<float>(baseGlyph->width), static_cast<float>(baseGlyph->height));
@@ -325,16 +312,14 @@ namespace massif::vt {
             if (error != 0) {
                 return 0;
             }
-            // A static face has no axis to move, so the style is drawn onto the outline instead:
-            // FreeType's own fallback for a family that ships no bold or italic file.
+            // A static face has no axis to move, so the style is drawn onto the outline, as FreeType's own fallback does.
             if (!_synthesized.isDefault() && face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
                 if (_synthesized.italic) {
                     FT_Matrix slant = { 1 << 16, static_cast<FT_Fixed>(0.25 * (1 << 16)), 0, 1 << 16 };
                     FT_Outline_Transform(&face->glyph->outline, &slant);
                 }
                 if (_synthesized.weight > 400) {
-                    // Roughly what FreeType's own emboldener uses: a fraction of the em per
-                    // 100 units of weight over regular.
+                    // Roughly FreeType's own emboldener: a fraction of the em per 100 units of weight over regular.
                     FT_Pos strength = face->size->metrics.y_ppem * 64 * (_synthesized.weight - 400) / 100 / 24;
                     FT_Outline_Embolden(&face->glyph->outline, strength);
                 }
@@ -355,9 +340,8 @@ namespace massif::vt {
             int height = face->glyph->bitmap.rows;
             float xOffset = std::ceil(-face->glyph->metrics.horiBearingX / 64.0f);
             float yOffset = std::ceil((face->glyph->metrics.height - face->glyph->metrics.horiBearingY) / 64.0f);
-            // FreeType writes +-GLYPH_RENDER_SPREAD texels over +-127, while the renderer's convention is
-            // 128 / BITMAP_SDF_SCALE per texel. It has to be exactly this ratio, or the field stops short
-            // of 0 at the edge of the bitmap and every halo turns into a box.
+            // FreeType writes +-GLYPH_RENDER_SPREAD texels over +-127, the renderer expects 128 / BITMAP_SDF_SCALE
+            // per texel. Any other ratio stops the field short of 0 at the bitmap edge and every halo turns into a box.
             float distScale = (128.0f / BITMAP_SDF_SCALE) * (GLYPH_RENDER_SPREAD / 127.0f);
             const unsigned char* distBuffer = face->glyph->bitmap.buffer;
             if (!distBuffer) {
@@ -507,13 +491,11 @@ namespace massif::vt {
 
         // Note: _mutex is expected to be locked by the caller
         std::shared_ptr<const Font> getFontUnlocked(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
-            // Try to use already cached font
             auto fontIt = _fontMap.find(std::make_pair(name, baseFont));
             if (fontIt != _fontMap.end()) {
                 return fontIt->second;
             }
 
-            // Parse font name and query parameters
             std::string fontName = name;
             int glyphRenderSize = GLYPH_RENDER_SIZE;
             
@@ -535,7 +517,6 @@ namespace massif::vt {
                     if (key == "glyph_size") {
                         try {
                             int parsedSize = std::stoi(value);
-                            // Validate: must be between 8 and 512 pixels
                             if (parsedSize >= 8 && parsedSize <= 512) {
                                 glyphRenderSize = parsedSize;
                             }
@@ -548,9 +529,8 @@ namespace massif::vt {
                 }
             }
 
-            // Already decoded, then a pending font whose hint says it is this one, then the external
-            // loader, and only as a last resort every pending font. That sweep is the expensive part -
-            // resolving the fallback font would trigger it on every context build.
+            // The sweep over every pending font is the expensive last resort; resolving the fallback font
+            // would otherwise trigger it on every context build.
             auto fontDataIt = _fontDataMap.find(fontName);
             if (fontDataIt == _fontDataMap.end()) {
                 fontDataIt = loadHintedFontData(fontName);
@@ -565,13 +545,12 @@ namespace massif::vt {
                 }
             }
 
-            // Get existing glyph map or create new one (use full name with query params for caching)
+            // Keyed by the full name, query params included
             auto glyphMapIt = _glyphMapMap.find(name);
             if (glyphMapIt == _glyphMapMap.end()) {
                 glyphMapIt = _glyphMapMap.emplace(name, std::make_shared<GlyphMap>(_maxGlyphMapWidth, _maxGlyphMapHeight)).first;
             }
 
-            // Create new font
             auto font = std::make_shared<FontManagerFont>(_library, name, glyphMapIt->second, &fontDataIt->second, baseFont, glyphRenderSize);
 
             // Preload often-used characters
@@ -581,16 +560,13 @@ namespace massif::vt {
                 font->shapeGlyphs(&glyphPreloadTable[i], 1, 1.0f, false);
             }
 
-            // Cache the font
             _fontMap[std::make_pair(name, baseFont)] = font;
             return font;
         }
 
         // Note: _mutex is expected to be locked by the caller
         std::map<std::string, std::vector<unsigned char>>::iterator loadHintedFontData(const std::string& fontName) const {
-            // One font answers the request, in the common case: the hint is what it is expected to
-            // be called. It is only a hint - a font whose file says one thing and whose name table
-            // says another is found by the sweep instead.
+            // Only a hint: a font whose file name and name table disagree is found by the sweep instead.
             std::string normalizedName = normalizeFontName(fontName);
             for (auto it = _pendingFonts.begin(); it != _pendingFonts.end(); it++) {
                 if (it->hintName != normalizedName) {
@@ -606,9 +582,8 @@ namespace massif::vt {
 
         // Note: _mutex is expected to be locked by the caller
         std::map<std::string, std::vector<unsigned char>>::iterator loadRemainingFontData(const std::string& fontName) const {
-            // What eager loading did: decode everything left and register the names those fonts
-            // actually carry. Only a package whose file names do not match its font names gets
-            // here, and only once.
+            // Decodes everything left under the names the fonts actually carry; only reached, once, by a package
+            // whose file names do not match its font names.
             if (_pendingFonts.empty()) {
                 return _fontDataMap.end();
             }

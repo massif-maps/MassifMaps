@@ -21,6 +21,8 @@
 #include "vectortiles/VectorTileDecoder.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 
+#include <vt/LabelFade.h>
+#include <vt/RenderStats.h>
 #include <vt/TileId.h>
 #include <vt/Tile.h>
 #include <vt/TileBackground.h>
@@ -57,7 +59,7 @@ namespace massif {
         _buildingRenderOrder(VectorTileRenderOrder::VECTOR_TILE_RENDER_ORDER_LAST),
         _clickRadius(4.0f),
         _layerBlendingSpeed(0.0f),
-        _labelBlendingSpeed(1.0f),
+        _labelBlendingSpeed(vt::DEFAULT_LABEL_BLENDING_SPEED),
         _labelPerspectiveScaling(0.5f),
         _rendererLayerFilter(),
         _clickHandlerLayerFilter(),
@@ -81,13 +83,11 @@ namespace massif {
 
         setCullDelay(DEFAULT_CULL_DELAY);
 
-        // A source that declares its format is authoritative, so it beats the per-tile detection.
-        // 'encoding' is read first: MapLibre's own tilesets keep format at 'pbf' and put the
-        // MLT-ness there. Only on AUTO - an explicit setTileFormat is the app's decision.
+        // A declared source format beats per-tile detection, on AUTO only. 'encoding' first: MapLibre's
+        // own tilesets keep format at 'pbf' and put the MLT-ness there.
         if (auto mbDecoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(decoder)) {
             if (mbDecoder->getTileFormat() == TileFormat::TILE_FORMAT_AUTO && dataSource) {
-                // getMetaDataElement, not getContainerMetaData: an app can declare the format on
-                // the source itself for a container that does not carry one.
+                // Not getContainerMetaData: an app can declare the format on the source itself.
                 auto readDeclaration = [&dataSource](const std::string& key) {
                     Variant value = dataSource->getMetaDataElement(key);
                     return value.getType() == VariantType::VARIANT_TYPE_STRING ? value.getString() : std::string();
@@ -209,7 +209,7 @@ namespace massif {
             throw InvalidArgumentException("Invalid filter expression");
         }
         _tileRenderer->setRendererLayerFilter(filterRe);
-        updateTiles(false); // need to reload tiles to display the changes
+        updateTiles(false);
     }
 
     std::string VectorTileLayer::getClickHandlerLayerFilter() const {
@@ -242,7 +242,7 @@ namespace massif {
         _vectorTileEventListener.set(eventListener);
         _tileRenderer->setInteractionMode(eventListener.get() ? true : false);
         if (eventListener && !oldEventListener) {
-            updateTiles(false); // we must reload the tiles, we do not keep full element information if this is not required
+            updateTiles(false); // tile data is only kept while a listener needs it
         }
     }
     
@@ -268,19 +268,32 @@ namespace massif {
     
     bool VectorTileLayer::tileValid(long long tileId, bool preloadingCache) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (_spanReferenceCache.count(tileId) > 0) {
-            return true;
+        auto it = _spanReferenceCache.find(tileId);
+        if (it != _spanReferenceCache.end()) {
+            return styleTileZoomCurrent(it->second);
         }
+        TileInfo tileInfo;
         if (preloadingCache) {
-            return _preloadingCache.exists(tileId) && _preloadingCache.valid(tileId);
+            if (!_preloadingCache.exists(tileId) || !_preloadingCache.valid(tileId)) {
+                return false;
+            }
+            _preloadingCache.peek(tileId, tileInfo);
         } else {
-            return _visibleCache.exists(tileId) && _visibleCache.valid(tileId);
+            if (!_visibleCache.exists(tileId) || !_visibleCache.valid(tileId)) {
+                return false;
+            }
+            _visibleCache.peek(tileId, tileInfo);
         }
+        return styleTileZoomCurrent(tileInfo);
+    }
+
+    bool VectorTileLayer::styleTileZoomCurrent(const TileInfo& tileInfo) const {
+        return isStyleTileZoomCurrent(tileInfo.getTileZoom(), tileInfo.getStyleTileZoom(), getTargetTileZoom(), getTileStyleZoomLift());
     }
 
     bool VectorTileLayer::prefetchTile(long long tileId, bool preloadingTile) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (_preloadingCache.exists(tileId) && _preloadingCache.valid(tileId)) {
+        if (_preloadingCache.exists(tileId) && tileValid(tileId, true)) {
             if (!preloadingTile) {
                 _preloadingCache.move(tileId, _visibleCache); // move to visible cache, just in case the element gets trashed
             } else {
@@ -288,7 +301,7 @@ namespace massif {
             }
             return true;
         }
-        if (_visibleCache.exists(tileId) && _visibleCache.valid(tileId)) {
+        if (_visibleCache.exists(tileId) && tileValid(tileId, false)) {
             _visibleCache.get(tileId); // do not move to preloading, it will be moved at later stage
             return true;
         }
@@ -326,14 +339,6 @@ namespace massif {
         } else {
             _visibleCache.invalidate_all(std::chrono::steady_clock::now());
         }
-    }
-
-    void VectorTileLayer::onTargetTileZoomChanged() {
-        // Every decoded tile matched its rules at the previous target zoom. Invalidate rather than
-        // clear the visible ones: they stay on screen, correct for the zoom they came from, while
-        // they decode again.
-        invalidateTiles(false);
-        clearTiles(true);
     }
 
     std::shared_ptr<VectorTileDecoder::TileMap> VectorTileLayer::getTileMap(long long tileId) const {
@@ -402,11 +407,10 @@ namespace massif {
     
     void VectorTileLayer::refreshDrawData(const std::shared_ptr<CullState>& cullState, bool tilesChanged) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
+        VT_STAT_CLOCK(holdClock);
 
-        // Get all tiles currently in the visible cache
         std::unordered_set<long long> lastVisibleCacheTiles = _visibleCache.keys();
         
-        // Remember unused tiles from the visible cache
         for (const std::shared_ptr<TileDrawData>& drawData : _tempDrawDatas) {
             if (!drawData->isPreloadingTile()) {
                 long long tileId = drawData->getTileId();
@@ -418,16 +422,13 @@ namespace massif {
             }
         }
         
-        // Move all unused tiles from visible cache to preloading cache
         for (long long tileId : lastVisibleCacheTiles) {
             _visibleCache.move(tileId, _preloadingCache);
         }
         
-        // Update renderer if needed, run culler
         if (!(isSynchronizedRefresh() && _fetchingTileTasks.getVisibleCount() > 0)) {
             std::vector<std::shared_ptr<TileDrawData>> drawDatas = _tempDrawDatas;
 
-            // Add poles
             if (auto options = getOptions()) {
                 if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_SPHERICAL) {
                     const cglib::frustum3<double>& frustum = cullState->getViewState().getFrustum();
@@ -441,8 +442,7 @@ namespace massif {
                 }
             }
             
-            // The span reference tiles are fetched, never drawn (buildFetchTiles fetchOnly makes
-            // no draw data for them): handed over on their own, for the span unions alone.
+            // Span reference tiles have no draw data: handed over on their own, for the span unions alone.
             std::vector<std::shared_ptr<const vt::Tile> > spanReferenceTiles;
             std::set<long long> referenceTileIds;
             for (const MapTile& referenceTile : _spanReferenceTiles) {
@@ -479,12 +479,12 @@ namespace massif {
             }
         }
 
-        // Update visible tile ids, clear temporary draw data list
         _visibleTileIds.clear();
         for (const std::shared_ptr<TileDrawData>& drawData : _tempDrawDatas) {
             _visibleTileIds.push_back(drawData->getTileId());
         }
         _tempDrawDatas.clear();
+        VT_STAT_SPLIT(layerRefreshHoldNs, holdClock);
     }
     
     int VectorTileLayer::getMinZoom() const {
@@ -567,13 +567,10 @@ namespace massif {
     {
         TileLayer::setComponents(envelopeThreadPool, tileThreadPool, options, mapRenderer, touchHandler);
 
-        // The decoder rasterizes the glyphs of a label, and it can only pick a raster size that
-        // suits the label if it knows what a style pixel is worth on this display.
+        // The decoder picks glyph raster sizes from what a style pixel is worth on this display.
         if (std::shared_ptr<Options> opts = options.lock()) {
             _tileDecoder->setPixelScale(static_cast<float>(opts->getDPI() / Const::UNSCALED_DPI));
-            // A style's sizes are fractions of the tile it is decoded against, so the decoder has
-            // to measure against the same tile the renderer draws - or a bigger TileDrawSize
-            // magnifies every label and line instead of only picking coarser tiles.
+            // Style sizes are fractions of the decode tile, which must be the one the renderer draws.
             _tileDecoder->setTileSize(static_cast<float>(opts->getTileDrawSize()));
         }
     }
@@ -584,8 +581,7 @@ namespace massif {
     
     bool VectorTileLayer::onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
         {
-            // The style's own sun/shadow/fog values for this frame. Read here rather than inside
-            // the renderer because only the layer can evaluate its style's expressions.
+            // Only the layer can evaluate its style's expressions.
             StyleEnvironment env;
             getStyleEnvironment(viewState, env);
             _tileRenderer->setStyleEnvironment(env);
@@ -610,8 +606,7 @@ namespace massif {
                 mapRenderer->blendAndUnbindScreenFBO(opacity);
             }
 
-            // The renderer was created with tiles already waiting, so those tiles never got a
-            // placement pass. Nothing else asks for one while the camera is still.
+            // Tiles waiting when the renderer was created never got a placement pass, and a still camera asks for none.
             if (_tileRenderer->consumeLabelPlacementOwed()) {
                 mapRenderer->vtLabelsChanged(shared_from_this(), false);
             }
@@ -647,18 +642,14 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
-        // Resolved FIRST: the emissive below is a ramp over view::brightness in every converted
-        // Mapbox style, and reading it without the scene light pins it to the daylight end - the
-        // ground stayed light grey through the night while the symbolizers around it went dark.
+        // Resolved first: in converted Mapbox styles the emissive is a ramp over view::brightness.
         std::shared_ptr<Options> options = getOptions();
         StyleEnvironment env;
         getStyleEnvironment(viewState, env);
         ResolvedLighting lighting = resolveLighting(options ? options->getLightOptions() : std::shared_ptr<LightOptions>(), env);
 
         Color color = TileRenderer::evaluateColorFunc(mapSettings->backgroundColor.getFunction(getExpressionContext()), viewState, lighting.brightness);
-        // The background is a Map setting, so it misses the grade every symbolizer colour gets at
-        // draw time - and it is the largest surface on the map. Lit here by the same rule; at
-        // emissive 1, the default, this is a no-op.
+        // A Map setting misses the draw-time grade every symbolizer colour gets, so it is lit here by the same rule.
         float emissive = TileRenderer::evaluateFloatFunc(mapSettings->backgroundEmissive.getFunction(getExpressionContext()), viewState, lighting.brightness);
         if (emissive < 1.0f && options) {
             auto lit = [&](unsigned char c, int i) {
@@ -670,17 +661,8 @@ namespace massif {
         return color;
     }
 
-    /**
-     * Read TWICE, because a Map property may ramp over view::brightness and the brightness itself
-     * is derived from the lights this very pass reads. The first read settles the lights (at the
-     * default brightness, which is the daylight end of every such ramp), the second re-reads
-     * everything at the brightness they imply.
-     *
-     * background-emissive-strength is the one that shows: Mapbox Standard writes it as
-     * `linear([view::brightness], (0.25, 0), (0.3, 0.25))`, and one read left the map's largest
-     * surface a quarter emissive at every hour - a light grey ground under a midnight sky, with
-     * every symbolizer over it correctly dark.
-     */
+    // Read twice: Map properties may ramp over view::brightness, which derives from the lights this pass reads.
+    // The first read settles the lights at daylight brightness, the second re-reads at the brightness they imply.
     bool VectorTileLayer::getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const {
         StyleEnvironment lights;
         if (!readStyleEnvironment(viewState, 1.0f, lights)) {
@@ -692,15 +674,13 @@ namespace massif {
     }
 
     bool VectorTileLayer::readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
-
+        // No layer mutex: _tileDecoder is const and locks itself, and refreshDrawData holds _mutex for a whole tile-set change.
         std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
         if (!mapSettings) {
             return false;
         }
         mvt::ExpressionContext context = getExpressionContext();
-        // Only what the style actually declares: isDefined() is false for a property the style
-        // never mentions, and that one keeps coming from the application's own options.
+        // An undeclared property keeps coming from the application's own options.
         auto readFloat = [&](const mvt::FloatFunctionProperty& property, std::optional<float>& value) {
             if (property.isDefined()) {
                 value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState, brightness);
@@ -824,7 +804,7 @@ namespace massif {
         if (auto symbolizerContextSettings = _tileDecoder->getSymbolizerContextSettings()) {
             exprContext.setStyleParameterStore(symbolizerContextSettings->getStyleParameterStore());
         }
-        // Same source as the tiles use, so Map-block properties read the same render::3d
+        // Same source as the tiles use, so Map-block properties read the same render::3d.
         if (std::shared_ptr<vt::TileTransformer> tileTransformer = getTileTransformer()) {
             exprContext.setRender3D(tileTransformer->isElevationBased());
         }
@@ -845,9 +825,7 @@ namespace massif {
     }
 
     void VectorTileLayer::TileDecoderListener::onDecoderRefreshed() {
-        // The decoded tiles already read the new value through the parameter store, and the colours
-        // and widths that read it are evaluated per frame - so the next frame is the only thing that
-        // has to change. No tile is fetched, decoded or re-culled.
+        // Decoded tiles read the parameter store per frame: a redraw suffices, no re-decode.
         if (std::shared_ptr<VectorTileLayer> layer = _layer.lock()) {
             if (std::shared_ptr<MapRenderer> mapRenderer = layer->getMapRenderer()) {
                 mapRenderer->requestRedraw();
@@ -859,13 +837,17 @@ namespace massif {
     
     VectorTileLayer::FetchTask::FetchTask(const std::shared_ptr<VectorTileLayer>& layer, long long tileId, const MapTile& tile, bool preloadingTile) :
         FetchTaskBase(layer, tileId, tile, preloadingTile),
-        _styleTileZoom(calculateStyleTileZoom(tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift()))
+        _styleTileZoom(tile.getZoom())
     {
     }
-    
+
     bool VectorTileLayer::FetchTask::loadTile(const std::shared_ptr<TileLayer>& tileLayer) {
         auto layer = std::static_pointer_cast<VectorTileLayer>(tileLayer);
-        
+
+        // Read at decode, not at queue time: after a zoom-out a stale target would style a coarse
+        // tile for the near field over 4^lift the ground.
+        _styleTileZoom = calculateStyleTileZoom(_tile.getZoom(), layer->getTargetTileZoom(), layer->getTileStyleZoomLift());
+
         bool refresh = false;
         for (const MapTile& dataSourceTile : _dataSourceTiles) {
             if (isCanceled()) {
@@ -879,7 +861,7 @@ namespace massif {
                 continue;
             }
             if(tileData->isOverZoom()) {
-                // we need to invalidate cache tiles to make sure we dont draw over
+                // Drop cached tiles so they are not drawn over it.
                 layer->_preloadingCache.remove(_tileId);
                 layer->_visibleCache.remove(_tileId);
             }
@@ -888,7 +870,6 @@ namespace massif {
                 break;
             }
 
-            // Decode vector tile.
             vt::TileId vtTile(_tile.getZoom(), _tile.getX(), _tile.getY());
             vt::TileId vtDataSourceTile(dataSourceTile.getZoom(), dataSourceTile.getX(), dataSourceTile.getY());
             std::shared_ptr<vt::TileTransformer> tileTransformer = layer->getTileTransformer();
@@ -900,14 +881,13 @@ namespace massif {
                 }
             }
 
-            // Construct tile info - keep original data if interactivity is required
-            VectorTileLayer::TileInfo tileInfo(layer->calculateMapTileBounds(dataSourceTile.getFlipped()), layer->_vectorTileEventListener.get() ? tileData->getData() : std::shared_ptr<BinaryData>(), tileMap);
+            // Keep the original data only if interactivity is required.
+            VectorTileLayer::TileInfo tileInfo(layer->calculateMapTileBounds(dataSourceTile.getFlipped()), layer->_vectorTileEventListener.get() ? tileData->getData() : std::shared_ptr<BinaryData>(), tileMap, _tile.getZoom(), _styleTileZoom);
             {
                 std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
 
-                // Store the decoded tile in cache, unless invalidated.
                 if (!isInvalidated()) {
-                    if (layer->getTileTransformer() == tileTransformer) { // extra check that the tile is created with correct transformer. Otherwise simply drop it.
+                    if (layer->getTileTransformer() == tileTransformer) { // drop a tile built with a stale transformer
                         bool spanReference = false;
                         if (isPreloadingTile()) {
                             for (const MapTile& referenceTile : layer->_spanReferenceTiles) {
@@ -934,7 +914,6 @@ namespace massif {
                 }
             }
             
-            // Debug tile performance issues
             if (Log::IsShowDebug()) {
                 if (tileInfo.getMaxDrawCallCount() >= 20) {
                     Log::Debugf("VectorTileLayer::FetchTask: Tile requires %d draw calls", tileInfo.getMaxDrawCallCount());

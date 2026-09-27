@@ -1,6 +1,6 @@
 ---
 title: 3D terrain
-description: Elevation data, tile surfaces, and the shared ground pass that replaced the RTT drape.
+description: Elevation data, tile surfaces, the drape and the shared ground pass.
 sidebar_position: 4
 ---
 
@@ -8,7 +8,9 @@ sidebar_position: 4
 
 Scope: how the ground is built and drawn. Depth relationships are in
 [05-depth-model.md](05-depth-model.md); shading of the ground is in
-[07-hillshade-contours.md](07-hillshade-contours.md).
+[07-hillshade-contours.md](07-hillshade-contours.md). Every `debug.massif.*` switch named here exists
+only in demo builds (`-DMASSIF_DEBUG_PROPERTIES=1`), see
+[runtime switches](10-performance.md#runtime-switches-no-rebuild).
 
 ## Elevation data
 
@@ -57,8 +59,8 @@ one) costs another level per hop, which is why the elevation-tile entry points c
 ### The prefetch queue loads the nearest tile first
 
 DEM tiles are fetched off the render thread by `prefetchTileGrid` / `runPrefetchWorker`
-(`PREFETCH_THREADS` = 3, queue capped at `MAX_PREFETCH_QUEUE_SIZE` = 64 per level, deduplicated by
-tile id). Requests carry a priority: **2** is a tile's own elevation level, **1** an edge neighbour
+(`PREFETCH_THREADS` = 3, each queue capped at `MAX_PREFETCH_QUEUE_SIZE` = 384 — a panorama's whole
+cut — deduplicated by tile id). Requests carry a priority: **2** is a tile's own elevation level, **1** an edge neighbour
 (a texel of border), **0** a diagonal one (a single corner texel). 2 has a queue of its own; a tile
 displaced by a coarser ancestor tears against neighbours that have their own level, and no amount of
 nearness makes up for it.
@@ -74,7 +76,7 @@ Three things about that metric, all of which have a host test in `tests/api/Pref
 
 - **The focus is read when a tile is DEQUEUED, not when it is queued.** That is the whole reason it
   is one piece of state on the manager rather than a rank passed per call: a fast pan re-orders the
-  64 entries already waiting, instead of draining them against the camera of some earlier frame.
+  entries already waiting, instead of draining them against the camera of some earlier frame.
 - **Distance is in tile widths at the tile's own zoom** (`prefetchTileDistance`, split into
   `all/native/terrain/PrefetchOrder.h` so it can be tested without linking the manager). The queue
   mixes levels, and in raw mercator units a coarse ancestor *covering* the focus loses to a fine tile
@@ -86,8 +88,9 @@ Three things about that metric, all of which have a host test in `tests/api/Pref
 The focus, not the ground point under the camera: at a tilt of 60° that point sits behind the bottom
 of the screen, and the horizon tiles this is meant to hold back are far from either.
 
-The queue cap sheds the **lowest priority** entry, oldest first among equals, rather than simply the
-oldest — the corner texels are what a saturated queue should give up. Before, priority rode on the
+The queue cap sheds the **lowest priority** entry, the furthest from the focus among equals, rather
+than simply the oldest — the corner texels are what a saturated queue should give up, and loading
+then converges outwards repeatably. Before, priority rode on the
 entry's position in the deque (`push_front` for 0, `push_back` otherwise, drained from the back); a
 nearest-first scan would have erased that distinction silently, so the priority now travels with the
 entry.
@@ -210,6 +213,38 @@ that off-by-default mode its node texture is twice as dense as its mesh and filt
 mapbox never meets this: GRID_DIM 128 over a maxzoom-14 512-texel DEM is one texel per node at
 z16 by construction of the data, not by a rule.
 
+#### An edge node's box is summed per REGION, not per texel
+
+Encoding the node texture was, for a while, the whole DEM pipeline: `nodeMs` 907 of a 1002 ms
+interval on a Galaxy S22, with the single encode worker pinned at 100% while the camera rotated and
+the terrain visibly trailing it. `textureMs` in the same interval was 3.9.
+
+All of it is the edge ring. An interior node reads `_nodeHeights`, already built at decode time; an
+edge node's box reaches half its width into the neighbours, and where that neighbour is COARSER every
+one of those texels was a bilinear `sampleHeight` into it. Measured with
+`demNodeTexels{Own,SameLevel,Coarse}`: **98% of the texels an edge node reads come from a coarse
+neighbour**, 14.9 million of them a second. The box is widened to the coarse neighbour's cell
+(`edgeBoxScales`), so the worse the zoom gap the bigger the box *and* the larger the coarse share -
+`boxTexelsPerCall` 96 / 1141 / 2070 gave `nodeMs` 8.7 / 151.5 / 907.
+
+`ElevationNodeField::nodeHeightRegions` splits the box into at most nine bands - three column bands
+(west of our raster, our own, east of it) by three row bands - so each band has **one** owner and the
+dispatch leaves the texel loop. A band in a coarse neighbour is then summed by the closed form
+(`latticeRuns` / `latticeSum`): `scale` consecutive samples of ours land in one of its cells, where
+the height is bilinear in two corners, so the band costs `(box/scale)^2` terms instead of `box^2`.
+Our own band takes the summed-area table for the texels the box covers whole. Anything else - a
+same-level neighbour, a missing one - stays one read per texel, which is all it ever cost.
+
+**7.7x on the node encode** normalised per box texel, 11.9x raw, and `coarse=0` afterwards. The
+closed form was written and host-tested long before this and had no caller but its own test; see
+[performance-log.md](../performance-log.md) entry 30 for the numbers, for the seam check, and for the
+two changes that aimed at the other 2% and measured as nothing.
+
+It is the same sum reassociated, exact to a relative 1e-6 rather than to the bit. That is visible in
+exactly one place - the **horizon silhouette**, where a sub-metre height difference is a pixel of
+ridge against sky - and nowhere along a tile border, which is what a seam would be. Anything changed
+here wants that screen diff, not only `tests/api/ElevationNodeFieldTest.cpp`.
+
 ### The decoder is per tile, not per source
 
 `ElevationManager::loadTileGrid` resolves the decoder from the TILE's `dem_encoding` meta data
@@ -266,8 +301,8 @@ Draped **content** takes the same coarsening, not just the surface: a road or a 
 seam has to land on the same stitched edge as the ground it lies on, or its two halves meet at
 different heights — invisible from straight down, a step as soon as the camera tilts. The edge test
 is `pos.x < 0.00001`, which is only meaningful for surface vertices (they *are* the unit square), so
-content converts first with `uTileUnitScale`. Only the outermost cell is affected. Note the feature
-is off by default (`TerrainOptions::TileEdgeStitching`), and on its own it does not fix content
+content converts first with `uTileUnitScale`. Only the outermost cell is affected. The feature is on
+by default (`TerrainOptions::TileEdgeStitchingEnabled`), and on its own it does not fix content
 mismatches at junctions — see the tile clipping in
 [03-vt-renderer.md](03-vt-renderer.md#lines-over-terrain), which is the dominant cause.
 
@@ -278,12 +313,19 @@ same offset applies here by the same argument, but adding it moves settled conto
 changing the elevation interpolation (2.8 % of the frame at the camera above), so it is left for a
 deliberate on-device comparison rather than folded into the clipping fix.
 
-### Skirts: deliberately absent
+### Skirts: absent from the shared ground only
 
-Tile border skirts (walls dropped at tile edges to hide cracks) are **disabled**. Their walls,
-textured with stretched edge pixels, rasterize over neighbouring content wherever a displaced tile
-edge leans off-nadir — solid fill-coloured patches that grow with the tile size. Tangram has none
-either. Cross-LOD cracks are handled by stitching instead.
+The ground the map is drawn on — vt's shared regular grid — has **no** skirts (walls dropped at tile
+edges to hide cracks). Textured with stretched edge pixels, they rasterized over neighbouring content
+wherever a displaced tile edge leans off-nadir — solid fill-coloured patches that grow with the tile
+size. Tangram has none either. Cross-LOD cracks there are handled by stitching instead.
+
+`TerrainRenderer`'s own meshes keep them: `buildTileMesh` appends walls `SKIRT_DEPTH_METERS` (500 m)
+below the tile's lowest point, in metres so coarse horizon tiles do not get kilometre-deep walls.
+Those meshes feed the occlusion depth buffer (`renderDepthTexture`), the depth pre-pass, and the
+background and surface-shader passes (`renderBackground`, `renderSurface`). The walls are drawn
+back-face culled (unculled, a near tile's far wall drew a pale band over the far tile) and
+shaded from the grid vertex they hang from (`skirtSources`). No caller sets `skipSkirts`.
 
 ## The shared ground
 
@@ -377,8 +419,11 @@ still fits in the drape cache's 96 MB (`DrapeTuning::resolution`). With `DRAPE_W
 that cap was 512 on **every** device — 64 × 1024² × 4 B is 256 MB — so the screen's 1024 was asked
 for and never granted, and the comparison above was wrong in our favour: we were baking at half
 mapbox's linear resolution, a quarter of the texels, which is the blurry stretched drape at a
-grazing angle. A real cover measures 15–34 leaves, so 64 was headroom nothing used. At **24** the
-arithmetic lands on the budget exactly (24 × 4 MB = 96 MB) and 1024 gets through.
+grazing angle. A real cover measures 15–34 leaves, so 64 looked like headroom nothing used. At
+**24** the arithmetic lands on the budget exactly (24 × 4 MB = 96 MB) and 1024 gets through — but 24
+holds one cover and not the generation stand-ins read from, so it went back to **64**
+([two generations](#the-cache-has-to-hold-two-generations-not-one)): the default bake is 512 again,
+and 1024 is the app's to buy with `DrapeCacheSize`.
 
 **Still open: the oblique near ground.** At a low tilt the ground at the bottom of the screen is
 magnified several times past what a cover at `floor(camera zoom)` resolves, and neither model splits
@@ -425,7 +470,7 @@ Three things then keep the bakes off the critical path:
   rather than a bare one. Only a texture that has never been baked stays out of the hand-over. Bare
   deck draws over that step: 27 → 11-16, and their span 2.7 s → 0.35-1.5 s. Then, 2026-09-05,
   `DRAPE_BAKE_BUDGET_SPAN = 3` span bakes go through before the time budget is consulted (was one):
-  emulator A/B, same build, `debug.massif.spanbudget` 1 vs 3 over two 0.1-step 20→19 zooms — decks
+  emulator A/B, same build, a since-removed `debug.massif.spanbudget` 1 vs 3 over two 0.1-step 20→19 zooms — decks
   waiting for a drape 30 vs 25 deck-frames, both over 3 frames (~0.18 s), and zero on the second zoom
   of each pair since the textures stay cached. Small on the emulator, where the reorder already
   drains the queue in 3 frames; the case it is for is a GPU where one ground bake fills the 16 ms
@@ -451,9 +496,21 @@ that interpolates — is baked in at whatever zoom the tile was first baked at, 
 a new tile level happened to bring new textures. A road stepped once per integer level instead of
 growing with the zoom.
 
-The zoom now goes into the fingerprint quantised (`DrapeTuning::bakeZoomTerm`), at the same quarter
-of a level the label re-placement uses: four bakes per zoom level, spread over frames by the bake
-budget above. The term follows the camera **only once it settles** — mapbox does the same, their
+**The scene LIGHT is content too**, for the same reason: it is baked in with the colours, so moving
+the sun has to make the cover stale or the buildings follow the hour and the ground does not. It is
+quantised to `DRAPE_LIGHT_STEPS` per channel — **16**, not the 64 it started at. Every step the sun
+crosses re-bakes the whole cover, and at 64 a day-cycle drag crossed one every few frames: the
+ground repainted continuously, always a few frames behind the buildings. Sixteen steps is still
+finer than a drape tile's own colour resolution and re-bakes a quarter as often.
+
+The count ration on that class is gone **at rest**. One stale tile per frame is right while the
+camera moves, but a light step marks the whole cover at once with the camera still, and a count
+repaints it tile by tile in front of the user — the ground visibly trailing the sky. At rest the
+60 ms wall-clock ceiling rations it instead, which is what it was written for.
+
+The zoom goes into the fingerprint quantised the same way (`DrapeTuning::bakeZoomTerm`), at the same
+quarter of a level the label re-placement uses: four bakes per zoom level, spread over frames by the
+bake budget above. The term follows the camera **only once it settles** — mapbox does the same, their
 drape does not re-render during a pinch — because re-baking mid-gesture spends a bake per tile per
 step on a picture that is about to change again. The frame the term moves in has to be asked for
 explicitly (`requestRedraw`); nothing else was going to draw it.
@@ -911,6 +968,63 @@ shows no half-built terrain. It ends on `TileLayer::isTerrainDecodeSettled()` fo
 or on `MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT` (2.5 s — late 3D beats a map pinned flat by one
 tile that never loads). Going the other way there is nothing to wait for, so it ramps at once.
 
+#### The gate is the swap's own tiles, not the tile traffic
+
+`isTerrainDecodeSettled()` used to mean "no cull is running and no visible tile is fetching", and a
+**moving camera always has a visible tile fetching**. So a switch made during a flight never
+satisfied the gate on its merits: what released it was the 2.5 s timeout, which is about as long as
+a flight, and the ramp started as the flight was landing. Measured at Zermatt over a warm cache with
+a 2.5 s flight: `FLAT→WARMING` at t+0.00, `WARMING→RAMPING` at t+1.48, flight down at t+2.50, terrain
+down at t+4.51 — two seconds of the map still rising after the camera had stopped.
+
+So the gate names what it waits for. The swap invalidates the visible tiles and marks the layer
+unsettled; the first cull after it records the visible tiles it had to refetch, and the gate waits on
+**exactly those**. `all/native/layers/TerrainDecodeWait.h` is that bookkeeping alone, free of the
+layer, with `tests/api/TerrainDecodeWaitTest.cpp` on the host. Tiles fetched because the camera moved
+onto new ground are ordinary traffic and are substituted from their parents like any other, so they
+no longer hold the ground flat.
+
+This does not make the two animations one clock — it makes the wait short enough that two timers of
+the same length read as simultaneous. An app that needs them exact still writes `FlattenRatio` off
+the flight's own progress (below), and that is deliberate: the terrain ramp and the flight are
+allowed to have different durations.
+
+A `CompositeVectorTileLayer`'s external sources are separate tile layers that re-decode on the same
+swap, and only the composite is in `Layers`. It overrides `isTerrainDecodeSettled()` to AND over its
+children, or the switch rises into terrain with the hillshade still decoding.
+
+#### Which half of the switch was slow
+
+"The switch is slow" covers three separate waits with three separate fixes, so the switch times each
+and logs one line when it stops costing anything. `all/native/terrain/FlattenSwitchTimeline.h` is that
+accounting alone, free of the renderer, with `tests/api/FlattenSwitchTimelineTest.cpp` on the host.
+It is logged in `MASSIF_VT_RENDER_STATS` builds only — one line per switch, not per frame.
+
+```
+MapRenderer: 2D->3D switch took 4820 ms - warm 3120 ms (186 frames, 12 tiles owed), ramp 2500 ms
+  (30 frames, 12.0 fps), settle 1200 ms (14 frames, 96 bakes)
+```
+
+| Phase | What it is | What moves it |
+|---|---|---|
+| **warm** | the tile re-decode the rise waits on, rendering 2D. **This is where the labels leave** | `FlattenMode` (`RENDER` skips it), the DEM cache, the warm timeout |
+| **ramp** | the exaggeration ramp itself. The fps here is the animation the user sees | the frame cost, not the switch — see [10-performance.md](10-performance.md) |
+| **settle** | 3D reached, the camera landed, the drape still baking | the per-frame bake budget and `DRAPE_BAKE_SETTLE_MS` |
+
+`settle` is the **drape's bake queue only**, deliberately. Asking the layers whether tiles are still
+in flight means `TileLayer::isUpdateInProgress()`, and a composite takes `_sourceMutex` for it — from
+the render thread, which holds `MapRenderer::_mutex`. That is the inversion
+`snapshotChildTileLayers` exists to avoid, and doing it here **hung the app outright on the first
+switch**. Tile arrival is already in the `warm` number and in the `PROF` lines; the drape is what the
+complaint is about anyway.
+
+`tiles owed` is `-1` while the cull that names the tiles has not run yet, which is a third answer and
+not zero. `TIMED OUT` in the warm field means the tiles never came and the 2.5 s timeout released the
+switch — the ramp then shows what is missing. `settle` is capped at 30 s so a camera that never stops
+fetching still produces a report.
+
+A sink is ramp-only: it has nothing to wait for, and 3D-decoded tiles draw correctly flat.
+
 ### Who drives the ratio
 
 Three ways, in increasing order of control:
@@ -933,6 +1047,17 @@ deliberately not auto-released at a settled ratio: a rise starts by writing exac
 on the endpoints would hand control back on the animation's first frame. `MANUAL` keeps the tile gate: a ratio below 1 asks for
 3D's tiles and the ground is **held** flat until they arrive, with `isSwitching()` as the observable
 so an app can start its flight when the hold ends rather than watch its animation jump.
+
+`isSwitching()` is set when 3D is **asked for**, not when the renderer's next frame notices. An app
+polls it within a frame of writing `Flattened`, and reading `false` there meant it flew against a
+ground the switch then held flat — the terrain ramped after the flight had landed.
+
+**In `MANUAL` the decode only ever goes up.** That same first frame at exactly 1.0 used to read as
+"flat", which in `FULL` took the tiles back to the 2D density; that resets the tile transformer, so
+every tile already in flight is dropped on arrival. Measured with the demo's *Match flight*: the
+decode went 2D→3D→2D→3D inside 1.5 s, 11 re-decodes instead of 4, and the map came out of the
+animation showing its roads and nothing else. `FLAT` drops the decode, once the app has written
+`Flattened` back.
 
 A tilt threshold is asymmetric by construction, and it shows: the rule fires *at* 88°, so a flight
 from a landscape view to top-down flattens at the very END of it, while the reverse fires almost
@@ -984,7 +1109,7 @@ ground is), and at Aiguille du Midi (3842 m) the clearance below zoomed out unti
 the peaks: z12.73 for a z16.27 request. mapbox defines zoom as the distance to the terrain at the
 centre (`transform._centerAltitude`, `_updateCameraOnTerrain`) and lifts the camera with it.
 `MapRenderer` now does the same every frame in terrain mode: when a decoded grid answers under the
-focus, `ViewState::liftFocus` moves focus and camera together onto it (zoom, tilt and rotation kept).
+focus, `ViewState::setFocusHeight` moves focus and camera together onto it (zoom, tilt and rotation kept).
 Cached-only and only when a grid answers — an evicted grid is not a valley. A pan or zoom event still
 places its focus at sea level; the next frame lifts it, and the camera-to-focus vector the event
 built is preserved, so the camera follows the ground's height difference as mapbox's does. Both
@@ -1037,6 +1162,32 @@ terrainZ + floor) - focusZ`) and not `terrainZ + minHeight`: rising raises the c
 clear, and a lift that ignores that under-shoots every frame. Both the lift and the zoom bound read
 the same shell, so they cannot disagree.
 
+**The camera is held on the shell by the FOCUS, not by a tilt.** The per-frame correction used to
+raise the camera by tilting it up (and by zooming out past the tilt range), which the user reads as
+the view jumping - "the tilt suddenly changed to 54". `CameraClearance::shellCameraZ` is the camera
+height the shell asks for over the ground under the camera, and it does not depend on the focus,
+which is exactly what lets the focus be raised to satisfy it: the camera keeps the tilt and the
+zoom it was given and rises vertically. The zoom BOUND (`getTerrainMaxZoom`) stays - it stops a
+zoom from driving the camera into the ground in the first place.
+`TerrainOptions::CameraClampDuration` animated that correction and no longer has anything to
+animate.
+
+**The focus follows the ground only NEAR the shell**, which is a second divergence.
+mapbox pins the centre to the terrain at every altitude (`_centerAltitude`), and because the lift
+carries the camera with it, a pan across a ridge lifted the whole view - the map visibly bobbing
+from far above the ground, which is what the previous paragraph's tilt fix only halved.
+`CameraClearance::focusFollow` ramps it instead: the full ground height at the shell, none of it
+`FOLLOW_BAND` (4) shells above, linear between. Everything feeding the ramp is measured with the
+focus PINNED - the lift moves the camera, so a ramp fed the CURRENT height would drive its own
+input and oscillate.
+
+**Both work on the globe too.** They read a camera or focus position through
+`ProjectionSurface::calculateMapPos`, so a sphere's 3D point becomes the internal x/y an elevation
+lookup wants and the height above the surface; `ViewState::setFocusHeight` puts the focus back
+through `calculatePosition`, which is radial there and a z move on the plane. The one trap is that
+an ORBIT is a world distance while a height is an internal one, and those differ by 2 on a sphere
+([18-globe.md](18-globe.md)) - `ViewState::worldPerInternal` is the conversion.
+
 It is a
 **bound on the zoom** (`ViewState::getTerrainMaxZoom`, clamped in `CameraZoomEvent::calculate`),
 solved on the camera-to-focus vector so it lands exactly on the shell, plus a per-frame
@@ -1047,13 +1198,13 @@ map somewhere else:
 - **The bound stops a zoom in; it never drives a zoom out.** A zoom event scales the map about its
   pivot, and with the pivot under the fingers, clamping a zoom-*in* request to below the current
   zoom scales the map the other way about that point — the map jumps sideways, once per pinch tick.
-  `ViewState::clampZoom` honours the same rule. Getting back onto the shell is the renderer's
-  correction, and it is mapbox's: the camera is **lifted at a constant distance to the focus**, so
-  the zoom is kept and the tilt gives (`_constrainCamera` keeps `cameraToCenter`'s length). Only
-  past the tilt range's top does the rest come from a zoom out about the focus. And it lifts only
-  a camera under the ground, or after a pan (their `adaptCameraAltitude` = dragging): after a
-  zoom the ground under the moved camera differs by a little, and lifting for that turned every
-  pinch tick on a slope into a tilt.
+  `ViewState::clampZoom` honours the same rule. Getting back onto the shell is the focus rule
+  above: `MapRenderer::constrainCameraToClearance` raises the focus (the camera with it) onto the
+  shell inside every camera event, raising only, and the per-frame rule covers what moves the ground
+  without an event — a DEM tile landing, the 2D/3D ramp. Neither is armed. The earlier correction
+  tilted the camera up and had to be (after a pan or a loss of height, `CameraClearance::needsLift`),
+  because tilting on every pinch tick on a slope read as the view jumping; raising the focus changes
+  neither tilt nor zoom, so there is nothing to arm.
 - **A zoom is never cancelled for want of a ground hit.** `TouchHandler::calculatePivotPos` falls
   back to the focus when the ray under the fingers misses the anchor plane or lands past the far
   plane. Close to the terrain the far plane is short and half the screen is sky, so requiring a hit
@@ -1071,6 +1222,60 @@ map somewhere else:
 `isValidScreenPosition` tests the plane the gesture is actually anchored to (the terrain height
 under the touch, `_gestureAnchorHeight`), not sea level: in the mountains the two are hundreds of
 metres, and at a low tilt kilometres of ray, apart.
+
+### The 2D/3D switch left the camera under the shell and the tiles at sea level (fixed 2026-09-15)
+
+**Symptom.** After a cold start and a full 2D→3D switch at a low tilt, in mountains:
+`TerrainOptions::CameraClearance` never fires, the ground right under the camera is at a zoom that
+does not match what is on screen, the first tile past it is several levels coarser than the LOD
+should give it, and a tap lands far from the finger. Zooming in far enough produces a jump back —
+and from then on the clearance, the tile detail and the tap are all correct.
+
+**Three causes, one shared shape: nothing re-reads the ground once the camera has stopped.**
+
+- *The ground under the camera was never fetched.* The clearance measures `terrainZ` at the camera
+  position with `CACHED_ONLY`, and at a low tilt that point sits **behind the near plane** — no
+  visible tile covers it, so no DEM tile is ever loaded for it and `getDisplayHeight` answered 0
+  (sea level) for good. The camera then looked clear of a shell built on sea level while it was
+  inside the mountain. The fix asked for that one tile from the clearance block
+  (`ElevationManager::getTileForInternalPos` + `requestTileGrid`, not `prefetchTileGrid`, which is
+  gated on `ElevationPrefetchEnabled`) — **that request is not in the code**: the commit that
+  carried it never reached the branch history, and nothing in `MapRenderer` calls
+  `requestTileGrid`. What is left is the stand-in
+  below: with no grid under the camera, the focus rule and `constrainCameraToClearance` take the
+  ground at the focus. The zoom bound (`setTerrainCameraReference`) still reads `getDisplayHeight`,
+  which is 0 on a miss.
+- *A tilt is not a pan.* The lift was armed only by a pan event, and a 2D/3D switch tilts the
+  camera down and raises the ground under it without ever panning. Moot now: the focus rule runs
+  every frame, unarmed (above).
+- *The tile set was picked for a flat map.* `FlattenSwitch` turns the 3D decode on at the START of
+  the switch (`Phase::WARMING`), where the flatten ratio is still 1 and the exaggeration 0, and the
+  one cull that `terrainDecodeChanged` triggers runs there. The ramp that raises the ground
+  afterwards only asks for redraws, so every tile stayed at the zoom the LOD gives a map at sea
+  level until the camera moved. The debounced elevation-version block in `MapRenderer::onDrawFrame`
+  now re-culls the tile layers as well as refreshing the vector ones; it covers the ramp (the
+  exaggeration bumps the version) and a cold start in 3D (the first DEM tiles do).
+
+**Unknown ground is NOT sea level.** Measured in the Alps at tilt 20, one second apart, with the
+since-removed `debug.massif.clearance` probe:
+`ground UNKNOWN, assumed 0 m, camera 866 m over it, shell 54 m, holding` then `ground at 889 m,
+camera -23 m over it (was 866), LIFTING`. The camera was 23 m inside a ridge while the rule
+called it 866 m clear, and the lift only fired once the tile landed — the "I went into the ground,
+then it jumped out" report. The stand-in is now the ground at the FOCUS, which is on screen and
+loaded. It also removes a spurious lift per tile crossed while panning: with sea level as the
+stand-in, every new tile arriving dropped the measured height by the whole ground elevation, which
+arms the lift; against the focus ground that step is metres.
+
+**A failed DEM load was permanent.** The failure is cached as a null grid with a 30 s expiry
+(`FAILED_TILE_TTL_MILLISECONDS`), but `timed_lru_cache::read` does not look at an expiry — only
+`valid()` does, and nothing called it. So the marker never expired: the tile was never retried, and
+every height query over it answered "no data" until the LRU evicted the entry. `readCachedGrid`
+checks both, so a marker past its expiry reads as absent and the load is tried again.
+
+A camera under the terrain also explains the tap: `ElevationManager::intersectRay` starts its march
+below the ground and returns `t = 0`, which the caller rejects, and
+`TouchHandler::calculateTerrainHeight` fell back to sea level — kilometres of ray away from the
+finger at tilt 20. It falls back to the height at the focus instead.
 
 ### The zoom pivot sank the focus, and everything was drawn at the wrong scale (fixed 2026-08-13)
 
@@ -1141,6 +1346,46 @@ from the terrain depth at the screen centre (`m_zoom` from `m_elevationManager->
 clamped to `[m_baseZoom, m_maxZoom]`, `core/src/view/view.cpp:403-415`). Porting that redefines what
 `getZoom()` means for tiles, styles and labels alike, so it is its own change — see
 [11-tangram-diff.md](11-tangram-diff.md#the-zoom-is-calibrated-on-the-focus-not-on-the-terrain).
+
+### Switching terrain OFF stranded the focus at its last terrain height (fixed 2026-09-12)
+
+**Symptom.** Enable 3D terrain, move around, then disable it. The map stays drawable but everything
+is wrong at once: labels and line widths several levels too small, tiles far coarser than the zoom
+asks for, zooming in gains no detail, the ground runs out into the background colour below the
+horizon and that band grows as you zoom, and a pan crawls. Switching terrain back on repairs it
+instantly, which is what makes it look like a terrain bug rather than a camera one.
+
+**Cause.** The focus is lifted onto the surface every frame while terrain is on — the same
+`transform._centerAltitude` model as the [zoom pivot](#the-zoom-pivot-sank-the-focus-and-everything-was-drawn-at-the-wrong-scale-fixed-2026-08-13)
+section above. The `else` arm, with no elevation manager, zeroed the height *range* and never
+brought the focus back down, so it kept whatever height it was last lifted to while the ground
+returned to z=0.
+
+The zoom is calibrated on `dist(camera, focus)`, so the whole scale then describes a camera that is
+not where the camera is. The probe that section documents reads it straight off:
+
+```
+FOCUSPROBE zoom=17.16 tilt=20.0 dist=18.3 orbit=18.3 ratio=1.0000
+           focusZ=107.0 camZ=113.3 terrainZ=75.9 flat=0.00 active=0
+```
+
+`active=0` is terrain off; `focusZ=107.0` is the stranding. The camera sits 113 m over a ground the
+zoom believes is 18 m away — six times too near — so the tile walk asks for a zoom several levels
+coarse and every zoom-dependent width and label size is evaluated there. `ratio` staying at 1.0000
+is the same tell as last time: the invariant the SDK maintains was intact throughout, and the one it
+does not maintain — that the focus is on the ground being drawn — is what broke.
+
+**The fix**: both arms go through `ViewState::setFocusHeight` — terrain on lands the focus on the
+terrain, terrain off calls `setFocusHeight(0)`, which is the surface (radial on a globe), and an
+undecoded height holds rather than dropping the focus to sea level every time the DEM lags a pan.
+(It was first a `focusLiftDelta` in z, `FocusLift.h`; the globe focus model replaced it, since a z
+move is the ground only on a plane.)
+
+**Two dead ends this cost**, both worth not repeating. The render scale and panning were measured
+correct the whole time — a 300 px drag shifts the content 288 px, and a 500 px drag moves the ground
+199 m, matching the zoom — so "the picture is too wide" was wrong and the *focus height*, not the
+scale, was the thing to probe. And the mixed tile-zoom histogram (z14 next to z16 at a z18 camera)
+is normal: a good run at z16 fetches the same spread, because it covers several sources.
 
 ## The surface shader
 
@@ -1270,6 +1515,44 @@ the mountains standing in the far half of a tilted city view. They are cut as fi
 under the camera, because subdivision cost is per tile and **independent of the tile's size on
 screen**.
 
+### A draped fill is not subdivided any more
+
+The table above is a **3D** camera, where fills are draped and baked once. Flat is the opposite case:
+`TerrainOptions::isActive()` is false at ratio 1, so nothing is draped, and every fill is drawn as
+ordinary 2D geometry — at its terrain density, on every frame. Crosscall, Grenoble z16.2 t26, assets
+style, 8 swipes, `-PprofileRender`, interleaved two reps:
+
+| | fps | `layers` | geometry indices / frame |
+|---|---|---|---|
+| terrain off (true 2D) | 12.0 | 21.4 ms | 2.09M |
+| flattened, `RENDER` (3D-flat) | 11.9 | 27.0 ms | 4.02M |
+| 3D-flat, `debug.massif.linesourcedensity 1` | 11.3 | 27.5 ms | 4.29M |
+| 3D-flat, `debug.massif.areasourcedensity 1` | **13.3** | **21.4 ms** | **1.95M** |
+
+**All the extra index data is fills.** The line prop changes nothing because `isDrapeLinesEnabled()`
+defaults to true, which already puts lines at source density; area subdivision is the whole of it,
+and switching it off lands on or past 2D's frame rate. So `TileLayer` now gates fill subdivision on
+`isDrapeFillsEnabled()` exactly the way it gates line subdivision on `isDrapeLinesEnabled()` — a
+draped fill is baked into a texture, where its subdivision is never drawn, and flat it is drawn and
+buys nothing. A style that turns draping off (tangram content mode) still gets the subdivision, and
+`debug.massif.areasourcedensity 1` still forces it off there for measurement.
+
+**The dead end this replaced: a flat index set.** Keeping the source triangulation beside the refined
+one and drawing it while `_terrainMode` is false halves the indices and does **not** move the frame
+rate — same source, two reps, 3D-flat **4.02M → 2.04M indices, 11.9 → 11.5 fps**, `layers` 27.0 →
+25.5 ms, against 2D's 12.5 fps / 22.5 ms. About 1.5 ms of `layers`, inside the fps noise of a pan,
+for ~50% more index memory per fill geometry and a batch cut that has to land on a source-triangle
+boundary (a uint16 batch renumbers its vertices, so a flat triangle whose refinement straddled a cut
+has its corners in neither batch). The screenshot A/B sat at the same-build run-to-run baseline (mean
+3.28 against 2.68, same band profile), so the two triangulations do draw alike — they just do not
+draw at different speeds. **The index count is not what terrain subdivision costs**; the vertices in
+the buffer and the decode that made them are, which is why only a decode-side gate moves anything.
+
+What this owes a device check: draping is decided **per tile at render time** and this density
+globally at decode time, so a fill drawn live where the drape does not reach — a no-drape layer
+filter, a stand-in tile, content past the drape ring — now has no subdivision and can float over
+relief. 3D over a valley is the camera that shows it.
+
 ### Where this should go: pay in depth, not in vertices
 
 Tangram does not subdivide at all. `res/scenes/terrain-3d.yaml` displaces every vertex in the vertex
@@ -1326,7 +1609,7 @@ z11 in BOTH arms — that is the open route-following issue, not this.
 
 Cutting a line better does not change what a line *costs to shade*. With the sag split in place the
 city is still fragment-bound, and the whole of it is the lines: draping them
-(`TerrainOptions::DrapeLines`, `--es drapeLines true`) bakes them into the per-tile drape texture
+(`TerrainOptions::DrapeLinesEnabled`, `--es drapeLines true`) bakes them into the per-tile drape texture
 once instead of drawing them as terrain geometry every frame, and the frame collapses.
 
 Crosscall, packaged style, 25 s pan at the city camera (5.724/45.188 z15 t45):
@@ -1346,7 +1629,8 @@ at the drape texture's size and a slope then magnifies it. Fills and road casing
 Hence `GLTileRenderer::setNoDrapeLayerFilter`: style layers matching it stay OUT of the bake and are
 drawn live in the 3D pass at screen resolution, exactly once (the same predicate gates the bake loop,
 `hasDrapeableContent` and the 3D-pass skip). The application sets it through
-**`TerrainOptions::NoDrapeLayerFilter`**, a regex over vt layer names, defaulting to `^contour.*`;
+**`TerrainOptions::NoDrapeLayerFilter`**, a regex over vt layer names, defaulting to
+`^contour|maneuver.*` (contours, and [maneuver arrows](15-maneuver-arrows.md));
 an empty string drapes everything the geometry type allows, and `adb shell setprop
 debug.massif.nodrapelayers <regex>` (or `none`) overrides it for an A/B without rebuilding.
 
@@ -1407,7 +1691,7 @@ order, so a style that puts its contours above the roads still renders that way,
 
 Costs and known limits:
 
-- **K × 1 MB per drape tile** at resolution 1024 (R8 — [ES3 is a hard requirement](https://github.com/massif-maps/MassifMaps/blob/master/CLAUDE.md#opengl-es-3-is-a-hard-requirement)
+- **K × 1 MB per drape tile** at resolution 1024 (R8 — [ES3 is a hard requirement](../../contributing/demo-app.md#opengl-es-3-is-a-hard-requirement)
   on both platforms), against the 4 MB of the colour drape. `TerrainDrapeCache` budgets in **bytes**
   rather than entries for this reason: a count would let the masks eat a quarter of the cache's
   tiles for nothing.

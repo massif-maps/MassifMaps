@@ -53,8 +53,8 @@ It surfaced in August 2026 only because the toolchain moved: the last green CI b
 
 ## What the build does about it
 
-For Catalyst only (`SDK_MACCATALYST`), in `scripts/build/CMakeLists.txt` and
-`scripts/routing/CMakeLists.txt`:
+For Catalyst only (`SDK_MACCATALYST` in `scripts/build/CMakeLists.txt`; `scripts/routing/CMakeLists.txt`
+tests `APPLE AND (NOT IOS)` and only drops the prelink):
 
 - **no `GENERATE_MASTER_OBJECT_FILE`** — no `ld -r` prelink, so nothing platform-checks the objects
 - **no `-flto=full`** — the prelink was what ran the LTO codegen; without it the shipped `.a` would

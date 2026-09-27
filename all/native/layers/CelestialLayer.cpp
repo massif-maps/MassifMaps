@@ -114,6 +114,11 @@ namespace massif {
     }
 
     bool CelestialLayer::onDrawFrame(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
+        return false;
+    }
+
+    // Drawn in the 3D pass, alongside labels, so layer order decides whether labels cover sky objects.
+    bool CelestialLayer::onDrawFrame3D(float deltaSeconds, BillboardSorter& billboardSorter, const ViewState& viewState) {
         if (!isVisible() || !getVisibleZoomRange().inRange(viewState.getZoom()) || getOpacity() <= 0) {
             return false;
         }

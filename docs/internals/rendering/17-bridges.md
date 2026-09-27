@@ -52,14 +52,13 @@ patched on the CPU like a building's, and the roof's drape is the same bake the 
 
 ## The mechanism
 
-
 A road on 3D terrain is **draped** — painted into the terrain texture — so it follows every bump
 the DEM has. That is right for a road on the ground and wrong for one on a bridge: the deck sags
 into the valley it crosses, and a tunnel climbs over the hill it goes through. A DSM makes it
 worse, since it catches the deck itself as terrain and spikes the middle upward.
 
 **Opt-in: `TerrainOptions::setBridges3DEnabled`, default false.** Off, the vt renderer's
-`_spansEnabled` gate makes every span feature drape like the ground and skips every span deck:
+span gate (`GLTileRenderer::setSpansEnabled` → `SpanResolver::isEnabled`) makes every span feature drape like the ground and skips every span deck:
 `buildSpanUnions` returns before touching a piece, `resolveSpanBases` answers "unresolved" without
 a read, `collectSpanDrapeTiles` names no tile (so the owner bakes no span drape and hands none
 over), `collectUnresolvedSpanEnds` is empty (no reference tile fetches), and the line, polygon

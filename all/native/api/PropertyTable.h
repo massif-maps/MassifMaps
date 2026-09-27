@@ -33,11 +33,9 @@ namespace massif { namespace api {
     enum PropertyFlags {
         PF_READONLY = 1,
         PF_STATIC = 2,
-        // A MapPos or MapBounds, so a read can convert it to another projection. Nothing else is
-        // a coordinate, and converting a MapRange or a ScreenPos would be nonsense.
+        // A MapPos or MapBounds, so a read can convert it to another projection.
         PF_POSITION = 4,
-        // An OBJECT property pointing at a Projection - whatever the class calls it. This is how
-        // a read learns the coordinate system of the PF_POSITION properties beside it.
+        // An OBJECT property pointing at a Projection: the coordinate system of the PF_POSITION properties beside it.
         PF_PROJECTION = 8
     };
 
@@ -50,8 +48,7 @@ namespace massif { namespace api {
         long long intValue = 0;   // also carries COLOR as ARGB and ENUM as its constant
         double floatValue = 0;
         std::string stringValue;
-        // Which field a getter filled. Without it a caller reading a bool as a float gets 0 and
-        // cannot tell that from a real 0.
+        // Which field a getter filled, so a mistyped read is distinguishable from a real 0.
         PropertyType type = PT_STRING;
 
         /** The value as a number, whatever field carries it. */
@@ -80,15 +77,8 @@ namespace massif { namespace api {
     };
 
     /**
-     * A property whose value is a BAG of named entries - a style's CartoCSS parameters, an HTTP
-     * header set, a layer's metadata.
-     *
-     * The rest of the path after the property is the KEY: `params.water_color`. Without this a
-     * name-keyed setter is only reachable as a method (`call("setStyleParameter", …)`), which is
-     * the one place the facade stopped looking like a property surface.
-     *
-     * Both thunks answer whether the key EXISTS: a style parameter the sheet does not declare
-     * cannot be written, and a bag read that quietly returned an empty string would hide it.
+     * A property whose value is a bag of named entries (style parameters, HTTP headers, metadata);
+     * the rest of the path is the key: `params.water_color`. Both thunks return whether the key exists.
      */
     struct IndexedAccess {
         bool (*getter)(void* obj, const std::string& key, PropertyValue& value);
@@ -99,14 +89,12 @@ namespace massif { namespace api {
         const char* path;
         PropertyType type;
         std::uint8_t flags;
-        // Null for a type the accessors cannot carry yet (STRUCT), for a static, and - for
-        // setter - for a read-only property.
+        // Null for a type the accessors cannot carry yet (STRUCT), for a static, and (setter) when read-only.
         void (*getter)(void* obj, PropertyValue& value);
         void (*setter)(void* obj, const PropertyValue& value);
         // Set only for OBJECT. Reading is enough to traverse a dotted path.
         void (*objectGetter)(void* obj, ObjectRef& out);
-        // Set for a writable OBJECT. The thunk casts from shared_ptr<void>, so the caller MUST
-        // have checked the value's registered class against objectClass first.
+        // Set for a writable OBJECT. Casts from shared_ptr<void>: the caller must check the class against objectClass.
         void (*objectSetter)(void* obj, const ObjectRef& value);
         // The class an OBJECT property points at, e.g. "massif::Projection". Null otherwise.
         const char* objectClass;
@@ -114,12 +102,7 @@ namespace massif { namespace api {
         const IndexedAccess* indexed;
     };
 
-    /**
-     * A second, readable spelling of one property - `fog` for `fogOptions`.
-     *
-     * One segment to one segment, so a prefix alias falls out of the walk: `fog.rangeStart`
-     * resolves `fog`, then carries on inside FogOptions as usual.
-     */
+    /** A second spelling of one path segment - `fog` for `fogOptions`, so `fog.rangeStart` also resolves. */
     struct AliasEntry {
         const char* alias;
         const char* path;
@@ -129,8 +112,7 @@ namespace massif { namespace api {
         const char* cppClass;
         const PropertyEntry* props;   // null for a class that declares none of its own
         std::uint16_t count;
-        // A property declared on a base is reachable from every class below it, so lookups walk
-        // this chain rather than the table being flattened.
+        // Lookups walk this chain rather than the table being flattened.
         const char* base;
         const AliasEntry* aliases;    // null for a class that declares none
         std::uint16_t aliasCount;
@@ -144,11 +126,7 @@ namespace massif { namespace api {
 
     /**
      * An enum constant's value, by name. False when nothing goes by that name.
-     *
-     * A spec is JSON, so an enum written as its constant name arrives as a STRING. `asLong` then
-     * ran it through `strtoll` and got 0 - a valid value for most of these, so the wrong setting
-     * applied silently. Bindings resolve names themselves for `set`; this is the same table for
-     * the paths that only ever see the raw spec.
+     * For raw-spec paths, where an enum arrives as a string that `strtoll` would silently turn into 0.
      */
     bool enumValueOf(const char* name, long long& value);
 
@@ -161,11 +139,8 @@ namespace massif { namespace api {
     };
 
     /**
-     * The class of an object as it really is, rather than as the property that reached it declares.
-     *
-     * A `tileDecoder` declared as a `VectorTileDecoder` is nearly always an `MBVectorTileDecoder`,
-     * and everything the subclass adds is unreachable by name without this. Falls back to the
-     * declared name for a class the profile does not build, so the walk never loses its footing.
+     * The object's concrete class rather than the declared one (a `tileDecoder` is an `MBVectorTileDecoder`).
+     * Falls back to the declared name for a class the profile does not build.
      */
     const char* concreteClass(const std::type_info& type, const char* declared);
 
@@ -191,20 +166,14 @@ namespace massif { namespace api {
     const char* findAlias(const ClassEntry* classEntry, const char* alias);
 
     /**
-     * Finds the class' PF_PROJECTION property, walking up its base chain.
-     *
-     * Scanned rather than looked up by name: a class is free to call it "projection" or
-     * "baseProjection", and the facade should not have to know which.
+     * Finds the class' PF_PROJECTION property, walking up its base chain; scanned, since its name varies.
      * @return The property, or null when nothing in the chain declares one.
      */
     const PropertyEntry* findProjectionProperty(const ClassEntry* classEntry);
 
     /**
      * Whether one class is the other, or derives from it, per the table's base chain.
-     *
-     * This is what makes writing an object property safe: the thunk casts from a type-erased
-     * pointer, so the value's registered class has to be checked first. An unknown class is not a
-     * subclass of anything, so the check fails closed.
+     * Guards object-property writes (type-erased cast); an unknown class fails closed.
      */
     bool isSubclassOf(const char* cppClass, const char* base);
 

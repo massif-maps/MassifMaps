@@ -786,7 +786,7 @@ jobs:
               maven { url 'https://jitpack.io' }
           }
           dependencies {
-              implementation 'com.github.massif-maps:MassifMaps-android-aar:v${VERSION}'
+              implementation 'com.github.massif-maps:MassifMaps-android-aar:${VERSION}'
           }
           \`\`\`
 
@@ -802,7 +802,7 @@ jobs:
 
           1. In Xcode: **File → Add Packages…**
           2. Paste the package URL: \`https://github.com/massif-maps/MassifMaps-ios-swift\`
-          3. Select version \`v${VERSION}\` and add it to your target.
+          3. Select version \`${VERSION}\` and add it to your target.
 
           Or download the prebuilt framework attached to this release.
           EOF

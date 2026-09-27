@@ -19,6 +19,10 @@ namespace massif {
         return _fboId;
     }
 
+    GLuint FrameBuffer::getDepthTexId() const {
+        return _depthTexId;
+    }
+
     GLuint FrameBuffer::getColorTexId() const {
         return _colorTexId;
     }
@@ -77,14 +81,16 @@ namespace massif {
         GLContext::InvalidateFramebuffer(GL_FRAMEBUFFER, static_cast<int>(attachments.size()), attachments.data());
     }
         
-    FrameBuffer::FrameBuffer(const std::weak_ptr<GLResourceManager>& manager, int width, int height, bool color, bool depth, bool stencil) :
+    FrameBuffer::FrameBuffer(const std::weak_ptr<GLResourceManager>& manager, int width, int height, bool color, bool depth, bool stencil, bool depthTexture) :
         GLResource(manager),
         _width(width),
         _height(height),
         _color(color),
         _depth(depth),
         _stencil(stencil),
+        _depthTexture(depthTexture && depth && !stencil),
         _fboId(0),
+        _depthTexId(0),
         _colorTexId(0),
         _secondaryColorTexId(0),
         _secondaryAttached(false),
@@ -113,7 +119,28 @@ namespace massif {
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilRBId);
                 _depthStencilRBIds.push_back(depthStencilRBId);
             } else {
-                if (_depth) {
+                if (_depth && _depthTexture) {
+                    // A TEXTURE, 24 bits, so a post-process effect can read the scene's own depth
+                    // instead of the terrain being drawn a second time for it. ES 3.0 core; an
+                    // incomplete framebuffer below drops back to the renderbuffer.
+                    GLint oldTexId = 0;
+                    glGetIntegerv(GL_TEXTURE_BINDING_2D, &oldTexId);
+                    glGenTextures(1, &_depthTexId);
+                    glBindTexture(GL_TEXTURE_2D, _depthTexId);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, _width, _height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                    glBindTexture(GL_TEXTURE_2D, oldTexId);
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depthTexId, 0);
+                    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, 0, 0);
+                        glDeleteTextures(1, &_depthTexId);
+                        _depthTexId = 0;
+                    }
+                }
+                if (_depth && _depthTexId == 0) {
                     GLuint depthRBId = 0;
                     glGenRenderbuffers(1, &depthRBId);
                     glBindRenderbuffer(GL_RENDERBUFFER, depthRBId);
@@ -171,6 +198,10 @@ namespace massif {
             if (_colorTexId != 0) {
                 glDeleteTextures(1, &_colorTexId);
                 _colorTexId = 0;
+            }
+            if (_depthTexId != 0) {
+                glDeleteTextures(1, &_depthTexId);
+                _depthTexId = 0;
             }
 
             if (_secondaryColorTexId != 0) {

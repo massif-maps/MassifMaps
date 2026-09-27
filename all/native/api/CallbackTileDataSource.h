@@ -13,16 +13,9 @@
 namespace massif { namespace api {
 
     /**
-     * A tile source whose tiles come from a C function pointer.
-     *
-     * What mm_source_create_custom builds. The point is that an EXTENSION - another shared
-     * library, in any language with a C FFI - can supply tiles without the SDK knowing the format
-     * or linking the library that reads it. The binding path (a SWIG director subclassed in Java)
-     * does the same job for a managed language; this is the one for native code, which cannot
-     * subclass massif::TileDataSource because the SDK exports no C++ symbols.
-     *
-     * The callback runs on the SDK's tile threads, several at once, so it must be thread-safe -
-     * nothing here serialises it.
+     * A tile source whose tiles come from a C function pointer (mm_source_create_custom), for native
+     * extensions: the SDK exports no C++ symbols to subclass TileDataSource with.
+     * The callback runs on several tile threads at once and must be thread-safe.
      */
     class CallbackTileDataSource : public TileDataSource {
     public:

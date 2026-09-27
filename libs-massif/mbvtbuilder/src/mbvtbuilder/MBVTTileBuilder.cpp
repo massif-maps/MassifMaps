@@ -12,12 +12,9 @@
 
 namespace massif::mbvtbuilder
 {
-    // geojson-vt's tile pyramid, driven by our own drill instead of its GeoJSONVT glue. Four
-    // differences, each measured against upstream's class on a device:
-    //  - the root is the deepest tile containing the layer, not z0;
-    //  - only the REQUESTED tile is turned into int16 tile coordinates;
-    //  - nothing caches the built tile - the SDK caches the encoded MVT above us;
-    //  - splitting STOPS once nothing in the node is bigger than the TARGET tile.
+    // geojson-vt's tile pyramid with our own drill: rooted at the deepest tile containing the layer, only the
+    // requested tile converted to int16, no built-tile cache (the SDK caches the encoded MVT), and no split
+    // once nothing in the node is bigger than the target tile.
     struct MBVTTileIndex
     {
         using VTFeatures = mapbox::geojsonvt::detail::vt_features;
@@ -34,9 +31,7 @@ namespace massif::mbvtbuilder
         struct Node
         {
             VTFeatures features;
-            // Widest feature in the node, in unit space. Splitting only helps features bigger than the
-            // tile being asked for; anything smaller is thrown out by the clipper's bbox test anyway.
-            // Kept per node, so the test is O(1) rather than a pass over every feature.
+            // Widest feature, unit space: splitting only helps features bigger than the requested tile.
             double maxSpan = 0;
         };
 
@@ -53,9 +48,8 @@ namespace massif::mbvtbuilder
             picojson::value properties;
         };
 
-        // Feature ids here are SLOT indices into infos, not the MVT feature ids: geojson-vt copies
-        // the id into every clipped piece, and properties are kept out of the index entirely (a
-        // shared empty map), so slicing never touches a picojson value.
+        // Feature ids are slot indices into infos, not MVT ids, and properties stay out of the index,
+        // so slicing never touches a picojson value.
         mapbox::feature::feature_collection<double> features;
         std::vector<FeatureInfo> infos;
 
@@ -131,8 +125,7 @@ namespace massif::mbvtbuilder
                     {
                         ring.push_back(convertPoint(pos));
                     }
-                    // The clipper and the ring area both walk closed rings; the old builder treated
-                    // an open ring as implicitly closed, so close it here to keep the same shape.
+                    // The clipper and the ring area walk closed rings; an open ring is implicitly closed.
                     if (!(ring.front() == ring.back()))
                     {
                         ring.push_back(ring.front());
@@ -149,8 +142,7 @@ namespace massif::mbvtbuilder
             return MBVTLayerEncoder::Point(static_cast<float>(pos.x) / TILE_EXTENT, static_cast<float>(pos.y) / TILE_EXTENT);
         }
 
-        // Encodes one geojson-vt tile feature. Points/lines/polygons each collapse to the single
-        // MVT geometry type the encoder takes, as the old per-feature visitor did.
+        // Encodes one geojson-vt tile feature; multi and single geometries share one MVT geometry type.
         struct TileFeatureEncoder
         {
             TileFeatureEncoder(std::uint64_t id, const picojson::value &properties, MBVTLayerEncoder &layerEncoder) : _id(id), _properties(properties), _layerEncoder(layerEncoder) {}
@@ -304,8 +296,7 @@ namespace massif::mbvtbuilder
         {
             mapbox::geojsonvt::TileOptions tileOptions;
             tileOptions.extent = TILE_EXTENT;
-            // Same tolerance as before: a fraction of a tile PIXEL, so it holds constant on screen
-            // across zooms - only the units change, geojson-vt measures it in tile extent units.
+            // A fraction of a tile pixel, constant on screen across zooms, in geojson-vt's tile extent units.
             tileOptions.tolerance = static_cast<double>(simplifyTolerance) * TILE_EXTENT / (tilePixels * subpixelDivider);
             tileOptions.buffer = static_cast<std::uint16_t>(std::max(0.0f, std::round(layerBuffer * TILE_EXTENT)));
             tileOptions.lineMetrics = false;
@@ -681,8 +672,7 @@ namespace massif::mbvtbuilder
             {
                 return;
             }
-            // NOTE: as before, the layer bounds are not shrunk back - they would have to be
-            // recomputed from every remaining feature.
+            // NOTE: the layer bounds are not shrunk back; that needs every remaining feature.
             std::size_t slot = static_cast<std::size_t>(it - data.infos.begin());
             data.infos.erase(it);
             data.features.erase(data.features.begin() + slot);
@@ -825,7 +815,7 @@ namespace massif::mbvtbuilder
         {
             restampFeatureSlots(data);
             invalidateCache();
-            // NOTE: as before, the layer bounds are not shrunk back.
+            // NOTE: the layer bounds are not shrunk back.
         }
     }
 

@@ -50,6 +50,8 @@ Map {
 #contour {
   contour-base-interval: 20;
   contour-min-visible-zoom: 12;
+  contour-label-stubs: true;
+  contour-label-interval: 100;
   line-color: #804000;
   line-width: 1;
 }

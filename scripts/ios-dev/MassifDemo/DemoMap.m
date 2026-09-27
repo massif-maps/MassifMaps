@@ -280,7 +280,6 @@ static const DemoFeature LAYER_ORDER[] = {
     MSFCompositeVectorTileLayer *layer =
         [[MSFCompositeVectorTileLayer alloc] initWithDataSource:[self vectorSource] decoder:_baseDecoder];
     [layer setLabelRenderOrder:MSF_VECTOR_TILE_RENDER_ORDER_LAST];
-    [layer setSinglePassRenderingEnabled:[DemoConfig boolFor:@"singlePass"]];
     [layer setTileCacheCapacity:cacheBytes];
     _compositeLayer = layer;
     _baseLayer = layer;

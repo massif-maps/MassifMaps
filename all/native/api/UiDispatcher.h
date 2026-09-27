@@ -10,15 +10,8 @@
 namespace massif { namespace api {
 
     /**
-     * How the facade reaches an app's UI thread.
-     *
-     * A subscription that asked for UI delivery is queued rather than run where the event was
-     * produced, and this is what wakes the queue: post() is called from the producing thread and
-     * must arrange for MassifApi::drain to run on the UI thread.
-     *
-     * Without one, UI subscriptions run INLINE on whatever thread produced the event and the
-     * facade says so once - delivering on the wrong thread beats dropping the event, but it is not
-     * what the subscription asked for.
+     * How the facade reaches an app's UI thread: UI-delivery subscriptions are queued and post() wakes
+     * the queue. Without one, they run inline on the producing thread (logged once).
      */
     class UiDispatcher {
     public:

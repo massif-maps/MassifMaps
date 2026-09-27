@@ -21,15 +21,8 @@ namespace massif { namespace api {
 
     namespace {
 
-        /*
-         * A collection, one element at a time.
-         *
-         * The facade has no array channel: a path walks OBJECT properties and stops at a Variant.
-         * getFeature(i) is that channel for a FeatureCollection - featureCount is already a
-         * property, so a caller loops it and reads each feature by path. A whole-collection GeoJSON
-         * would be one crossing instead of N, but it drops what only VectorTileFeature carries
-         * (layerName, distance), so it is not a substitute - see the design doc's gaps.
-         */
+        // The facade has no array channel, so getFeature(i) walks a collection by index. A GeoJSON
+        // dump would drop what only VectorTileFeature carries (layerName, distance).
         bool inRange(const CallArgs& args, int count, int& index) {
             long long argument = 0;
             if (!args.getLong(0, argument) || argument < 0 || argument >= count) {

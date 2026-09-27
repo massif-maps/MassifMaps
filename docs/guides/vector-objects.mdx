@@ -61,7 +61,7 @@ id — that is what matters as soon as there are more than a few dozen:
 <TabItem value="java" label="Java">
 
 ```java
-map.elements().style("pin", Spec.of("marker")
+MassifObject pin = map.elements().style("pin", Spec.of("marker")
     .set("size", 26)
     .set("color", 0xffe5484d)
     .set("clickSize", 40));
@@ -69,7 +69,7 @@ map.elements().style("pin", Spec.of("marker")
 for (Summit summit : summits) {
     map.addMarker(Spec.of("marker")
         .set("position", new double[] {summit.lon, summit.lat})
-        .set("style", "pin"));
+        .set("style", pin.id()));
 }
 ```
 
@@ -87,7 +87,8 @@ for (const summit of summits) {
 </TabItem>
 </Tabs>
 
-A `style` key that is a **string** is looked up by id; an object there is built inline. Colours are
+A `style` key that is a **string** is looked up by id; an object there is built inline. `style()`
+registers under a name prefixed by the elements layer, so pass the returned object's id. Colours are
 `0xAARRGGBB`.
 
 ## The elements
@@ -101,7 +102,7 @@ GeoJSON.
 | `marker` | `position` / `geometry` / `baseBillboard` | `size`, `color`, `bitmap`, `anchorPointX/Y`, `clickSize` |
 | `point` | `position` / `geometry` | `size`, `color`, `clickSize` |
 | `line` | `poses` or a `line` / GeoJSON geometry | `width`, `color`, `clickWidth`, `stretchFactor` |
-| `polygon` | `poses` + optional `holes`, or `rings` | `color`, plus `lineStyle` for the border |
+| `polygon` | `poses` + optional `holes`, or a polygon `geometry` (`rings`) | `color`, plus `lineStyle` for the border |
 | `text` | `position` / `geometry` | `fontName`, `fontSize`, `color`, `strokeWidth`, `breakLines` |
 | `balloon` | `position`, plus `title` and `description` | `cornerRadius`, `leftColor`, `titleFontSize`, `triangleWidth` |
 
@@ -139,7 +140,7 @@ map.onClick(e -> dismiss());
 
 ```java
 popup = map.addPopup(Spec.of("balloon")
-    .set("position", at)
+    .set("position", new double[] {at.lng, at.lat})
     .set("title", summit.name)
     .set("description", summit.metres + " m")
     .set("style", Spec.of("balloon")
@@ -166,11 +167,12 @@ collide.
 ## 3D models
 
 `NMLModel` draws a model in NML format at a position, with a scale and a rotation. Converting from
-COLLADA or glTF is done ahead of time; the SDK reads NML only.
+COLLADA or glTF is done ahead of time; the SDK reads NML only. The model data travels in the style:
 
 ```java
-BinaryData data = AssetUtils.loadAsset("fcd_auto.nml");
-NMLModel model = new NMLModel(pos, data);
+NMLModelStyleBuilder builder = new NMLModelStyleBuilder();
+builder.setModelAsset(AssetUtils.loadAsset("fcd_auto.nml"));
+NMLModel model = new NMLModel(pos, builder.buildStyle());
 model.setScale(20);
 source.add(model);
 ```

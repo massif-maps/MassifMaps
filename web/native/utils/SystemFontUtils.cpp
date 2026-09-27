@@ -40,6 +40,13 @@ namespace massif {
                 break;
             }
         }
+        // The browser draws text itself (BitmapCanvas), so the first name is passed on as a CSS family.
+        if (match.familyName.empty()) {
+            std::vector<std::string> parsed = vt::parseFontNames(names);
+            if (!parsed.empty()) {
+                match.familyName = parsed.front();
+            }
+        }
         return match;
     }
 

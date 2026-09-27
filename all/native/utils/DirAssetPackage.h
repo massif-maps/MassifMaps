@@ -14,10 +14,8 @@
 namespace massif {
 
     /**
-     * An asset package based on a file system directory.
-     * Assets are read directly from the directory, thus the assets can be modified
-     * on the fly without repackaging them into a ZIP archive. This is mostly useful
-     * for style development.
+     * An asset package based on a file system directory. Assets can be modified on the fly
+     * without repackaging them into a ZIP archive, which is mostly useful for style development.
      * Note: assets and directories with names starting with '.' are ignored.
      */
     class DirAssetPackage : public AssetPackage {

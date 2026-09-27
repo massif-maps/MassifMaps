@@ -34,19 +34,25 @@ The child layers take their settings **from the resolved style**, not from the s
 class. A `HillshadeRasterTileLayer` created by the app and configured with `setContourEnabled(…)` is
 a *stand-alone* layer; the child inside a composite is not that object, and never sees those calls.
 
-Properties applied from the style (`CompositeVectorTileLayer.cpp`, per frame for cheap ones, on
-change for the rest):
+Properties applied from the style (`CompositeVectorTileLayer::applyConfig`, resolved every frame
+and pushed to the child only when the value changed):
 
 - hillshade: `hillshade-opacity`, `-exaggeration`, `-height-scale`, `-contrast`, `-method`,
   `-illumination-direction`, `-shadow-color`, `-highlight-color`, `-accent-color`,
-  **`-contour-interval`, `-contour-color`, `-contour-width`** (interval > 0 turns contours on);
-- raster: `raster-opacity`, `raster-comp-op`, …;
+  **`-contour-interval`, `-contour-color`, `-contour-width`** (interval > 0 turns contours on).
+  `-height-scale`, `-contrast` and `-contour-interval` re-decode the normal map, so they apply only
+  at an integer zoom change, or a zoom-interpolated value would never settle;
+- raster: `raster-opacity`, `raster-filter-mode` (`raster-comp-op` is parsed and ignored, below);
 - merged/child vector sources that are a `ContourTileDataSource`: `contour-base-interval`,
-  `contour-resolution`, `contour-min-visible-zoom`, `contour-simplify-tolerance`,
-  `contour-label-stubs`, `contour-label-interval`.
+  `contour-resolution`, `contour-min-visible-zoom`, `contour-simplify-tolerance`.
 
 Generation parameters (the last group) regenerate tiles when they change, so they are evaluated at a
 neutral zoom and applied only on an actual change (`_lastVectorConfig`).
+
+`applyConfig` also reads `contour-label-stubs` and `contour-label-interval`, but the CartoCSS
+translator does not map them (`CartoCSSMapnikTranslator::_symbolizerPropertyMap`,
+`ContourConfigSymbolizer`): a style setting them gets an "Unsupported symbolizer property" warning
+and no effect. Set them on the source (`setLabelStubsEnabled`, `setLabelInterval`) until it does.
 
 ## Rendering
 

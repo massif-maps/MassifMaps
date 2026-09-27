@@ -8,14 +8,8 @@
 #define _MASSIF_VT_RENDERSTATS_H_
 
 /**
- * Diagnostic counters for label and tile churn, and the single switch that turns them on.
- *
- * They live in hot paths - every label placement update, every label built, every culled
- * label - so they must cost nothing when unused: with MASSIF_VT_RENDER_STATS at 0 the
- * counters do not exist, the VT_STAT_* macros expand to nothing, their arguments are never
- * evaluated, and the SDK's per-second printout in MapRenderer is not compiled either.
- *
- * Set it to 1 here, or define it as a build flag, to get the printout back.
+ * Diagnostic render counters. They sit in hot paths, so at 0 (default) the counters, the VT_STAT_*
+ * arguments and MapRenderer's per-second printout all compile away. Set to 1 or pass as a build flag.
  */
 #ifndef MASSIF_VT_RENDER_STATS
 #define MASSIF_VT_RENDER_STATS 0
@@ -32,20 +26,20 @@ namespace massif::vt {
         static inline std::atomic<long long> cullWorkerUpdates{0};     // CullWorker passes that pushed a cull state to the layers
         static inline std::atomic<long long> tileRecalculations{0};    // TileLayer::update passes that recalculated the visible tile list
         static inline std::atomic<long long> tileLayersSkipped{0};     // TileLayer::update passes that bailed out (hidden / out of zoom range / transparent)
-        static inline std::atomic<long long> visibleTileSetChanges{0}; // setVisibleTiles calls that reached buildLabelMaps
+        static inline std::atomic<long long> visibleTileSetChanges{0}; // setVisibleTiles calls that reached prepareLabelMaps
         static inline std::atomic<long long> tileSurfacesBuilt{0};     // CPU tile surface tesselations (cache misses)
         static inline std::atomic<long long> tileSurfacesInvalidated{0}; // cached surfaces dropped by elevation changes
 
         // Label churn
-        static inline std::atomic<long long> labelMapRebuilds{0};      // buildLabelMaps calls (only the label-carrying layers reach it)
-        static inline std::atomic<long long> labelsAllocated{0};       // new vt::Label objects built in buildLabelMaps
+        static inline std::atomic<long long> labelMapRebuilds{0};      // prepareLabelMaps calls (only the label-carrying layers reach it)
+        static inline std::atomic<long long> labelMapSkips{0};         // ... and the ones an unchanged label tile set skipped
+        static inline std::atomic<long long> labelsAllocated{0};       // new vt::Label objects built in prepareLabelMaps
         static inline std::atomic<long long> labelsReused{0};          // labels kept because every contributing tile geometry was unchanged
-        static inline std::atomic<long long> labelsLive{0};            // labels alive after the last buildLabelMaps (gauge, not a delta)
+        static inline std::atomic<long long> labelsLive{0};            // labels alive after the last prepareLabelMaps (gauge, not a delta)
         static inline std::atomic<long long> labelElevationReanchors{0}; // updateElevation calls that actually moved a label
 
-        // buildLabelMaps, by phase and by why a label could not be reused. Declared here for the
-        // SDK's printout; the emit sites inside buildLabelMaps are still to be written, so these
-        // read zero until they are.
+        // prepareLabelMaps, by phase and by why a label could not be reused. Only the phase timers
+        // (labelSignatureNs..labelListNs) have emit sites yet; the rest read zero.
         static inline std::atomic<long long> labelSignatureNs{0};    // pass 1, the geometry signatures
         static inline std::atomic<long long> labelMergeNs{0};        // building the list and merging geometries
         static inline std::atomic<long long> labelStampNs{0};        // stamping signatures on the fresh labels
@@ -57,32 +51,26 @@ namespace massif::vt {
         static inline std::atomic<long long> labelMissNew{0};        // no previous label with that global id
         static inline std::atomic<long long> labelMissCount{0};      // a different number of contributions
         static inline std::atomic<long long> labelMissHash{0};       // same count, different geometry
-        // A label fed by more than one tile - an unclipped label is one, and its signature covers
-        // every contributing tile, so any of them changing costs the reuse.
+        // Labels fed by more than one tile: any contributing tile changing costs the reuse.
         static inline std::atomic<long long> labelMissSpanning{0};
         static inline std::atomic<long long> labelHitSpanning{0};
         // Old labels dropped by the release pass, split by whether they were ever shown.
         static inline std::atomic<long long> labelRetiredSeen{0};
         static inline std::atomic<long long> labelRetiredUnseen{0};
 
-        // Placement churn. Split by what the label was before the re-anchor: only the
-        // 'visible' ones can be seen moving, the rest is wasted work on labels the user
-        // can not see.
+        // Placement churn, split by what the label was before the re-anchor: only 'visible' ones can be seen moving.
         static inline std::atomic<long long> placementUpdates{0};
         static inline std::atomic<long long> placementReanchorsNull{0};    // had no placement (off-screen / unplaceable)
         static inline std::atomic<long long> placementReanchorsHidden{0};  // had a placement, was not visible
         static inline std::atomic<long long> placementReanchorsVisible{0}; // had a placement AND was visible
         static inline std::atomic<long long> placementSearches{0};         // re-anchors that ran a clipped search rather than being rejected on bounds
 
-        // Re-snapping on tile-set change (buildLabelMaps -> snapPlacement). 'moved' is the
-        // one that matters: a re-snap that lands the anchor somewhere else is a label
-        // sliding along its line with the camera standing still.
+        // Re-snapping on tile-set change (prepareLabelMaps -> snapPlacement); 'moved' is a label sliding
+        // along its line under a still camera.
         static inline std::atomic<long long> snapPlacements{0};
         static inline std::atomic<long long> snapPlacementsMoved{0};
 
-        // Draw calls. The per-frame cost of an ordinary style tracks the DRAW COUNT, not the
-        // triangle count: measured on an Adreno 610, a 6-layer style and a 21-layer style
-        // submit the same ~300k indices, but 59 draws against 500, and cost 3 ms against 20.
+        // Draw calls; frame cost tracks the draw count, not the index count.
         static inline std::atomic<long long> geometryDraws{0};
         static inline std::atomic<long long> geometryIndices{0};
         static inline std::atomic<long long> labelDraws{0};
@@ -90,8 +78,58 @@ namespace massif::vt {
         static inline std::atomic<long long> styleLayersDrawn{0};
         static inline std::atomic<long long> surfaceDraws{0};     // terrain tile surface draws (depth pre-pass, drape, fill, main) - NOT in geometryDraws
         static inline std::atomic<long long> surfaceIndices{0};
-        // ... split by the pass that issued it, to see how many times a frame the same
-        // terrain mesh is pushed through the vertex stage.
+        // TerrainRenderer's own meshes, built inline on the render thread in collectTileMeshes.
+        static inline std::atomic<long long> terrainMeshBuilds{0};
+        static inline std::atomic<long long> terrainMeshBuildUs{0};
+        static inline std::atomic<long long> terrainMeshVerts{0};
+        static inline std::atomic<long long> terrainMeshEvictions{0};
+        static inline std::atomic<long long> terrainMeshCacheHits{0};
+        // Surface attribute bake (ensureSurfaceAttribs), the other half of a mesh rebuild.
+        static inline std::atomic<long long> terrainAttribBakes{0};
+        static inline std::atomic<long long> terrainAttribUs{0};
+        // DEM-sampled refinement, on the attribute worker: read against the wall clock, not the frame.
+        static inline std::atomic<long long> terrainAttribRefines{0};
+        static inline std::atomic<long long> terrainAttribRefineUs{0};
+        // Fixed-scale vertices resolved vs tried; an unresolved one keeps the mesh gradient (DEM read CACHED_ONLY).
+        static inline std::atomic<long long> terrainAttribFixedVerts{0};
+        static inline std::atomic<long long> terrainAttribTotalVerts{0};
+        // Zero baked normals, counted at the upload (they decode as straight up in the post-process), grid vs skirt.
+        static inline std::atomic<long long> terrainAttribZeroGrid{0};
+        static inline std::atomic<long long> terrainAttribZeroSkirt{0};
+        // Skirt vertices whose source index does not fit the attribs, left zero.
+        static inline std::atomic<long long> terrainAttribSkirtOutOfRange{0};
+        // Rebuilds that found a refined sibling to carry fixed-scale normals from.
+        static inline std::atomic<long long> terrainAttribCarryHit{0};
+        // Carry misses: no cached variant, not refined yet, refined at a different grid size.
+        static inline std::atomic<long long> terrainAttribCarryMissNew{0};
+        static inline std::atomic<long long> terrainAttribCarryMissUnrefined{0};
+        static inline std::atomic<long long> terrainAttribCarryMissGrid{0};
+        // How much coarser than normalSampleDistance a tile's normals resolved, by DEM grid stretch.
+        static inline std::atomic<long long> terrainAttribStretch1{0};
+        static inline std::atomic<long long> terrainAttribStretch2{0};
+        static inline std::atomic<long long> terrainAttribStretch4{0};
+        static inline std::atomic<long long> terrainAttribStretchBig{0};
+        // Vertices exactly flat at normalSampleDistance, retried at the DEM texel.
+        static inline std::atomic<long long> terrainAttribTexelRetry{0};
+        // Bakes on a coarser DEM than asked (provisional) vs not (final), and redone bakes.
+        static inline std::atomic<long long> terrainAttribProvisional{0};
+        static inline std::atomic<long long> terrainAttribFinal{0};
+        static inline std::atomic<long long> terrainAttribRebakes{0};
+        // Tiles with a GPU elevation texture for per-fragment normals vs the mesh-normal fallback.
+        static inline std::atomic<long long> terrainDemTextureHits{0};
+        static inline std::atomic<long long> terrainDemTextureMisses{0};
+        // Tiles whose stored normals came from a coarser DEM than they now resolve, by zoom levels.
+        static inline std::atomic<long long> terrainAttribStaleFresh{0};
+        static inline std::atomic<long long> terrainAttribStale1{0};
+        static inline std::atomic<long long> terrainAttribStale2{0};
+        static inline std::atomic<long long> terrainAttribStale3{0};
+        // Mesh density by gridSize: <=1, <=4, <=16, <=48, rest; a tile on a cached ancestor gets a coarser grid.
+        static inline std::atomic<long long> terrainMeshGrid1{0};
+        static inline std::atomic<long long> terrainMeshGrid4{0};
+        static inline std::atomic<long long> terrainMeshGrid16{0};
+        static inline std::atomic<long long> terrainMeshGrid48{0};
+        static inline std::atomic<long long> terrainMeshGridFull{0};
+        // surfaceDraws split by the pass that issued them: how often a frame one terrain mesh hits the vertex stage.
         static inline std::atomic<long long> surfShadowDraws{0};
         static inline std::atomic<long long> surfMaskDraws{0};
         static inline std::atomic<long long> surfFillDraws{0};
@@ -115,26 +153,39 @@ namespace massif::vt {
         static inline std::atomic<long long> lineLayoutBuilds{0};
         static inline std::atomic<long long> labelTransformNs{0}; // world transform of the glyph quads (what a GPU billboard would remove)
         static inline std::atomic<long long> labelAttribNs{0};    // normals / uvs / attribs / indices plumbing into the batch arrays
+        // The profiler's 'sky' section; the clear is the first GL call, so frameClearNs is waiting on present.
+        static inline std::atomic<long long> frameClearNs{0};
+        static inline std::atomic<long long> skyDrawNs{0};
+        static inline std::atomic<long long> backgroundDrawNs{0};
+        // The profiler's 'layers' section, split at the calls, in order.
+        static inline std::atomic<long long> pass2DStateNs{0};     // view state, terrain versions and the drape/grid settings pushed into the renderer
+        static inline std::atomic<long long> pass2DLightNs{0};     // lighting, fog and the label occlusion test resolved from the style
+        static inline std::atomic<long long> pass2DPrepareNs{0};   // prepareFrameUnsafe, when MapRenderer's prepare phase did not already run it
+        static inline std::atomic<long long> pass2DGeometryNs{0};
+        static inline std::atomic<long long> pass2DLabels2DNs{0};
+        static inline std::atomic<long long> pass2DExtrusionNs{0}; // buildingOrder 0, i.e. extrusions in the base pass
+        static inline std::atomic<long long> pass2DLabels3DNs{0};
         // The three calls the 3D pass makes, in order.
         static inline std::atomic<long long> pass3DLabels2DNs{0};
         static inline std::atomic<long long> pass3DGeometryNs{0};
         static inline std::atomic<long long> pass3DLabels3DNs{0};
-        // Label pass: the glyph quads are rebuilt from scratch for every visible label
-        // every frame, then uploaded as one batch.
+        // renderLabelPass, split; glyph quads are rebuilt for every visible label every frame.
+        static inline std::atomic<long long> labelPassSortNs{0};    // the per-pass grouped copy and its sort
+        static inline std::atomic<long long> labelPassPatternNs{0}; // getBitmapPattern, per label, on the glyph map's mutex
+        static inline std::atomic<long long> labelPassStyleNs{0};   // per-style colour/width evaluation and its table scans
         static inline std::atomic<long long> labelVertexBuildNs{0};
         static inline std::atomic<long long> labelBatchNs{0};
         static inline std::atomic<long long> labelsDrawnVertices{0};
-        // endFrame sweeps every compiled-resource map looking for expired owners, once per
-        // frame, over everything the tile cache still holds.
+        // endFrame's per-frame sweep of every compiled-resource map for expired owners.
         static inline std::atomic<long long> endFrameNs{0};
         static inline std::atomic<long long> endFrameSwept{0}; // entries visited by those sweeps
-        // GL thread blocked on the renderer mutex - the label placement worker holds it for
-        // the whole of buildLabelMaps.
+        // GL thread blocked on the renderer mutex, which the placement worker holds for all of prepareLabelMaps.
         static inline std::atomic<long long> mutexWaitNs{0};
-        // The tile-set change path, which runs inside the layer draw pass. The first two are the
-        // SDK's TileRenderer::refreshTiles, the rest are the phases of setVisibleTiles it calls -
-        // so refreshTilesNs contains all of them.
+        // The tile-set change path: TileRenderer::refreshTiles, then the setVisibleTiles phases it contains.
+        // layerRefreshHoldNs: the cull thread's hold on the layer mutex, the ceiling on a render-thread stall.
+        static inline std::atomic<long long> layerRefreshHoldNs{0};
         static inline std::atomic<long long> refreshTilesLockNs{0};    // waiting for the tile mutex the tile threads hold
+        static inline std::atomic<long long> tileRendererLockNs{0};    // the other side: render thread waiting for that same mutex
         static inline std::atomic<long long> refreshTilesNs{0};        // the changed path only
         static inline std::atomic<long long> setVisibleTilesLockNs{0}; // waiting for the renderer mutex
         static inline std::atomic<long long> terrainCoarseningNs{0};
@@ -143,16 +194,35 @@ namespace massif::vt {
         static inline std::atomic<long long> renderTilesNs{0};
         static inline std::atomic<long long> spanUnionsNs{0};          // bridge chords, reference tiles included
         static inline std::atomic<long long> labelAnchorNs{0};         // new labels onto the terrain, off the render thread
-        // Terrain drape bakes: how many a frame gets through, how many were waiting, and what
-        // one costs. This is what decides how fast 3D content appears.
+        // Terrain drape bakes per frame, the queue behind them, and their cost: how fast 3D content appears.
         static inline std::atomic<long long> drapeBakes{0};
         static inline std::atomic<long long> drapeBakeQueued{0};
+        // Why a tile is queued: stale or restack every frame on a static scene is a fault.
+        static inline std::atomic<long long> drapeQueuedBlank{0};   // no picture at all: a hole
+        static inline std::atomic<long long> drapeQueuedRestack{0}; // the layer stack changed under it
+        static inline std::atomic<long long> drapeQueuedStandIn{0}; // an ancestor's picture is showing
+        static inline std::atomic<long long> drapeQueuedPartial{0}; // a layer is absent from it
+        static inline std::atomic<long long> drapeQueuedStale{0};   // its own picture, older fingerprint
+        // Why a baked tile re-baked: its fingerprint moved, or its masks were evicted.
+        static inline std::atomic<long long> drapeStaleFingerprint{0};
+        static inline std::atomic<long long> drapeStaleMask{0};
+        // Changes of the fingerprint terms shared by every tile; each one stales every cached drape.
+        static inline std::atomic<long long> drapeGlobalTermChanges{0};
+        // Bake time and draws by geometry type, then drape cache evictions and mask texture failures.
+        static inline std::atomic<long long> drapeBakeLineNs{0};
+        static inline std::atomic<long long> drapeBakeLineDraws{0};
+        static inline std::atomic<long long> drapeBakePolygonNs{0};
+        static inline std::atomic<long long> drapeBakePolygonDraws{0};
+        static inline std::atomic<long long> drapeBakeOtherNs{0};
+        static inline std::atomic<long long> drapeBakeOtherDraws{0};
+        static inline std::atomic<long long> drapeEvictColour{0};
+        static inline std::atomic<long long> drapeEvictMask{0};
+        static inline std::atomic<long long> drapeMaskAcquireFail{0};
         static inline std::atomic<long long> drapeBakeNs{0};
         static inline std::atomic<long long> geometrySkips{0};   // renderTileGeometry calls that set up and then bailed out (invisible)
 
-        // resolveExtrusionBases: a miss re-walks every vertex of the geometry, so what matters is
-        // how often the cached answer is NOT taken, and how much of that is a resolve abandoned
-        // part-way because a DEM had not decoded (which repeats every frame until it does).
+        // resolveExtrusionBases: a miss re-walks every vertex, and an unresolved one (DEM not decoded)
+        // repeats every frame until it is.
         static inline std::atomic<long long> extrusionResolveCalls{0};
         static inline std::atomic<long long> extrusionResolveHits{0};     // cached, same base version
         static inline std::atomic<long long> extrusionResolveUnresolved{0}; // walked, then gave up
@@ -163,9 +233,25 @@ namespace massif::vt {
         static inline std::atomic<long long> extrusionPendingTiles{0};   // elevation tiles queued for a targeted re-resolve
         static inline std::atomic<long long> extrusionBasesCleared{0};   // geometries marked stale by those tiles
 
-        // Elevation texture pipeline (the SDK's ElevationTextureCache). Extra DEM detail multiplies the
-        // tiles by four a level, and these say which end pays for it: the encode worker, the per-frame
-        // upload budget, or simply more distinct textures to bind.
+        // Elevation texture pipeline (ElevationTextureCache): encode worker, upload budget or texture count.
+        // demCachesLive: live instances, one encode thread each.
+        static inline std::atomic<long long> demCachesLive{0};
+        // Detail levels in use across the caches, as a bitmask of 1<<level.
+        static inline std::atomic<long long> demDetailMask{0};
+        static inline std::atomic<long long> demDetailClears{0}; // caches emptied by a detail-level change
+        static inline std::atomic<long long> demEncodeTexels{0};
+        // One encode, split three ways.
+        static inline std::atomic<long long> demEncodeTextureNs{0}; // encodeTextureWithBorders
+        static inline std::atomic<long long> demEncodeBitmapNs{0};  // the Bitmap copy mapbox does not make
+        static inline std::atomic<long long> demEncodeNodeNs{0};    // the node texture and its own Bitmap
+        // Edge nodes box-average boxX*boxY texels; the box grows quadratically with the neighbour's coarseness.
+        static inline std::atomic<long long> demNodeEdgeCalls{0};
+        static inline std::atomic<long long> demNodeBoxTexels{0};
+        // Where edge-node box texels come from; only the coarse bucket pays a bilinear sampleHeight each.
+        static inline std::atomic<long long> demNodeTexelsOwn{0};
+        static inline std::atomic<long long> demNodeTexelsSameLevel{0};
+        static inline std::atomic<long long> demNodeTexelsCoarse{0};
+        static inline std::atomic<long long> demEncodeCpuNs{0}; // encode thread CPU time: cpu ~ wall computes, cpu << wall waits
         static inline std::atomic<long long> demEncodes{0};      // full padded-texture encodes on the worker
         static inline std::atomic<long long> demBorderPatches{0}; // border-ring-only encodes
         static inline std::atomic<long long> demEncodeNs{0};     // worker time in both
@@ -176,6 +262,22 @@ namespace massif::vt {
         static inline std::atomic<long long> demTexturesLive{0}; // textures in the cache (gauge)
         static inline std::atomic<long long> demTexturesResolved{0}; // distinct textures a frame resolves (gauge)
         static inline std::atomic<long long> demTileZoomGap{0};      // render tile zoom - elevation tile zoom (gauge)
+
+        // ElevationManager's decoded grid cache: inserts with bytes pinned at capacity are thrash, not streaming.
+        static inline std::atomic<long long> elevGridInserts{0};   // grids stored (each one bumps the version)
+        static inline std::atomic<long long> elevGridReinserts{0}; // of those, tiles this manager had already loaded once
+        static inline std::atomic<long long> elevGridBytes{0};     // cache bytes in use (gauge)
+        static inline std::atomic<long long> elevGridCapacity{0};  // cache capacity in bytes (gauge)
+        // Distinct tiles ever loaded (gauge), against the cache's grid count (MIN_CACHED_GRIDS).
+        static inline std::atomic<long long> elevGridDistinctEver{0};
+        // Global counters: each ElevationManager (one per TerrainOptions) sums in here.
+        static inline std::atomic<long long> elevGridManagers{0};  // live ElevationManager instances (gauge)
+        static inline std::atomic<long long> elevGridSizeKB{0};    // last inserted grid's size (gauge)
+        // Ancestor resolution: an alias pins a tile to its coarse ancestor for the session.
+        static inline std::atomic<long long> elevAncestorAliasPuts{0}; // tile ids pointed at an ancestor
+        static inline std::atomic<long long> elevAncestorAliasHits{0}; // lookups answered by that alias
+        static inline std::atomic<long long> elevAncestorWalkHits{0};  // answered by climbing, no alias
+        static inline std::atomic<long long> elevExactHits{0};         // answered by the tile's own grid
 
         // Where a single renderTileGeometry call goes, in nanoseconds, split at the
         // boundaries a fix would actually move. Only meaningful divided by geometryDraws.
@@ -203,30 +305,34 @@ namespace massif::vt {
         // Culling
         static inline std::atomic<long long> cullerPasses{0};
         static inline std::atomic<long long> cullerVisibilityFlips{0}; // labels that appeared or disappeared
-        // Wall time inside LabelCuller::process, summed over the layers of a pass - where retrying a
-        // label's several sides costs anything. It runs on the placement worker, never on the GL thread,
-        // so no frame section shows it.
+        // Wall time in LabelCuller::process over a pass's layers; on the placement worker, so no frame section shows it.
         static inline std::atomic<long long> cullerNs{0};
         // Labels the perspective cut dropped before they cost a placement - the horizon band.
         static inline std::atomic<long long> cullerDistanceCut{0};
+        // Labels hidden by the style's own max-distance, not the perspective cut above.
+        static inline std::atomic<long long> cullerMaxDistanceCut{0};
         static inline std::atomic<long long> cullerConsidered{0};
         // LabelCuller::process by phase - which one a time budget would have to slice.
         static inline std::atomic<long long> cullerCollectNs{0}; // updatePlacement + variant envelopes, per label
         static inline std::atomic<long long> cullerSortNs{0};
         static inline std::atomic<long long> cullerInsertNs{0};  // greedy grid insertion, per label
-        // What becomes of a considered label: cut by distance, thrown out by updatePlacement as
-        // off-screen/unplaceable, or carried into the sort - and of those, how many end up drawn.
+        // Considered labels: invalid after updatePlacement, sorted, and of those drawn.
         static inline std::atomic<long long> cullerInvalid{0};
         static inline std::atomic<long long> cullerSorted{0};
         static inline std::atomic<long long> cullerVisible{0};
+        // Why a sorted label was not drawn: envelope refused (off-screen, edge-on), or collided.
+        static inline std::atomic<long long> cullerNotFacing{0};
+        static inline std::atomic<long long> cullerCollided{0};
+        // Hidden by 3D content during placement, so it reserved no grid slot.
+        static inline std::atomic<long long> cullerOccluded{0};
     };
 }
 
 #define VT_STAT_INC(name) (massif::vt::RenderStats::name++)
 #define VT_STAT_ADD(name, value) (massif::vt::RenderStats::name += (value))
+#define VT_STAT_OR(name, value) (massif::vt::RenderStats::name |= (value))
 #define VT_STAT_SET(name, value) (massif::vt::RenderStats::name = (value))
-// A clock read is ~30 ns here, so a handful per draw is affordable; 'var' is reset to the
-// current time so the same variable can walk through consecutive sections of one draw.
+// 'var' is reset to now, so one variable can walk consecutive sections of a draw.
 #define VT_STAT_CLOCK(var) std::chrono::steady_clock::time_point var = std::chrono::steady_clock::now()
 #define VT_STAT_SPLIT(name, var) do { \
         std::chrono::steady_clock::time_point vtStatNow = std::chrono::steady_clock::now(); \
@@ -238,6 +344,7 @@ namespace massif::vt {
 
 #define VT_STAT_INC(name) ((void)0)
 #define VT_STAT_ADD(name, value) ((void)0)
+#define VT_STAT_OR(name, value) ((void)0)
 #define VT_STAT_SET(name, value) ((void)0)
 #define VT_STAT_CLOCK(var) ((void)0)
 #define VT_STAT_SPLIT(name, var) ((void)0)

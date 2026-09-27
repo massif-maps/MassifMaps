@@ -14,12 +14,8 @@
 namespace massif {
 
     /**
-     * An online geocoding service that uses Mapzen Pelias geocoder.
-     * As the class connects to an external (non-Massif) service, this class is provided "as-is",
-     * future changes from the service provider may not be compatible with the implementation.
-     * Geocoding and reverse geocoding perform network requests and must be executed in non-UI background thread.
-     * Be sure to read the Terms and Conditions of your Pelias service provider to see if the
-     * service is available for your application.
+     * An online geocoding service that uses Mapzen Pelias geocoder, provided "as-is" as an external service may change incompatibly.
+     * Requests go over the network and must run on a non-UI thread. Be sure to read the Terms and Conditions of your Pelias service provider.
      * Note: this class is experimental and may change or even be removed in future SDK versions.
      */
     class PeliasOnlineGeocodingService : public GeocodingService {

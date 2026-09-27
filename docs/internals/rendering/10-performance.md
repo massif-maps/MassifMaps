@@ -38,7 +38,7 @@ adb install -r -t app/build/outputs/apk/debug/app-debug.apk
 | instrument | what it gives | gotchas |
 |---|---|---|
 | `PROF` | CPU ms per frame section: `sky prelude prepare cover drape layers layers3D billboards` | `sky` is mostly the swap wait, not work. Not comparable across apps. |
-| `PROF GPU` | the same sections on the GPU (`GL_EXT_disjoint_timer_query`) | Android only; off with `setprop debug.massif.gputimer 0` |
+| `PROF GPU` | the same sections on the GPU, plus `background shadowCast shadowMask groundAO labelOcc` (`GL_EXT_disjoint_timer_query`) | Android only; off with `setprop debug.massif.gputimer 0` |
 | `RenderStats` | draws, indices, render tiles, style layers, surfaces, label and prep timings, tile-surface builds | per one-second interval, deltas — **divide by the `PROF` frame count** of that interval, a faster build prints bigger counters |
 | `simpleperf` | an actual CPU profile of the render thread | see below — this is what finds things the timers cannot |
 
@@ -94,9 +94,11 @@ set from the session that introduced them, along with `paintdetail 0` and `skycl
 one of them before a baseline:
 
 ```sh
-for p in areasourcedensity areathreshold asyncdepth asyncdepthms background demtaps depthshift \
-         drapebudget drapemip groundpaint linesourcedensity paintdetail skyclip terrainpaint \
-         tilebg tilemasks; do adb shell setprop debug.massif.$p '""'; done
+for p in areasourcedensity areathreshold asyncdepth asyncdepthms background demborderpatch demtaps \
+         depthshift drapebudget drapemask drapemip drapesettle gputimer groundpaint inline3d \
+         labelanchor latticerelief lineclearance linesag linesourcedensity linethreshold nodebox \
+         nodrapelayers paintdetail skyclip terrainpaint tilebg tilemasks; do
+  adb shell setprop debug.massif.$p '""'; done
 ```
 
 ## Where the frame goes today
@@ -179,7 +181,7 @@ have ever moved this camera.
 
 The relationship is sub-linear, which bounds what geometry work can buy. Douglas-Peucker over the
 source vertices before tesselation (the `simplify` mapnik property is parsed and never applied —
-`TileReader.cpp:170`) measures:
+`TileReader.cpp:242`) measures:
 
 | line simplification | indices / frame | fps |
 |---|---|---|
@@ -493,7 +495,7 @@ The model's other half is the declaration scan — walk the layer's declarations
 specificity, take the first writer of each field, hash the winners to intern a symbolizer set.
 Prototyped in the probe as the real scan (one masked test per declaration that all its filters hold,
 a field-shadowing test, an FNV hash of the winners), over an array sized from the style's own
-numbers: `CartoCSSCompiler::measureDeclarations` on the bundled `osm` project gives declarations,
+numbers: a temporary `CartoCSSCompiler::measureDeclarations` probe (not in the tree) on the bundled `osm` project gives declarations,
 distinct fields and filter refs per style, so scan length, mask density and field cardinality are the
 style's. Only which bits are set is synthetic, and the scan cost does not depend on that.
 
@@ -645,7 +647,7 @@ dropped. `TileReader::hasLayer` (a `_layerMap` lookup in `MBVTFeatureDecoder`, v
 `TorqueTileReader` keeps answering yes) is now asked once per layer, before anything is built.
 
 The one case that must still be built is a style with a **comp-op**: `GLTileRenderer` renders an
-empty layer when `isEmptyBlendRequired(compOp)` ([GLTileRenderer.cpp:2587](https://github.com/massif-maps/massif-maps-libs/blob/develop/vt/src/vt/GLTileRenderer.cpp)),
+empty layer when `isEmptyBlendRequired(compOp)` ([GLTileRenderer.cpp:2228](https://github.com/massif-maps/MassifMaps/blob/master/libs-massif/vt/src/vt/GLTileRenderer.cpp)),
 so dropping it would change the frame. The skip is therefore `!layerPresent && !style->getCompOp()`.
 
 **Reverted: one feature-data cache per field set, for the current layer.** `createLayerFeatureIterator`
@@ -654,7 +656,7 @@ plus every field name for feature data. A key that does not match throws the cac
 
 The geometry one was **already fine, and the first read of it was wrong**: `readTile` iterates
 `for layer { for style }` and `CartoCSSMapLoader` builds exactly one `mvt::Layer` per layer name
-with the attachments as its consecutive styles ([CartoCSSMapLoader.cpp:365](https://github.com/massif-maps/massif-maps-libs/blob/develop/cartocss/src/cartocss/CartoCSSMapLoader.cpp)),
+with the attachments as its consecutive styles ([CartoCSSMapLoader.cpp:476](https://github.com/massif-maps/MassifMaps/blob/master/libs-massif/cartocss/src/cartocss/CartoCSSMapLoader.cpp)),
 so a layer's styles never interleave with another layer's and the single slot is discarded exactly
 when the loop leaves the layer. Nothing to win there.
 
@@ -850,3 +852,7 @@ is the culler doing the same work in a denser burst, not the mutex being held lo
 `paintdetail`, `asyncdepthms`, `gputimer`, `labelanchor` (0 = anchor labels in the frame, the
 pre-2026-09 path). They are read **once per process**, so restart the app
 after setting one, and **reset them when you are done** — they survive until reboot.
+
+They exist only in builds compiled with `-DMASSIF_DEBUG_PROPERTIES=1`, which `scripts/android-dev`
+always passes. An SDK build never reads them and runs each switch's default. `gputimer` is the
+exception: it lives in `FrameProfiler`, so it needs `-PprofileRender` instead.

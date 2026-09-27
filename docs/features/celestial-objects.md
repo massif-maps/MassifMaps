@@ -52,10 +52,17 @@ mapView.layers.insert(0, layer)    // FIRST: the map and the terrain then draw o
 ```
 
 :::note Surface API
-`CelestialLayer`, `CelestialSprite` and `CelestialArc` have no spec types, so this is object-API
-today. `Massif.adopt("sky-objects", layer)` gives the layer an id, and its properties — including
-`postProcessed` and `visible` — are then reachable by path. What is readable per class is in
-[value types](/docs/api/reference/types#celestiallayer).
+The same through the [surface API](/docs/api/): a `celestial` layer, `sprite` and `arc` objects of
+the `celestial` kind, `add` / `remove` / `clear` on the layer, `setDirection` on an object and
+`setDirections` / `setSegments` / `setCircle` on an arc (directions flat: `[az0, alt0, az1, alt1, …]`).
+
+```js
+const sky = massif.create('layer', 'sky', { type: 'celestial' });
+const sun = massif.create('celestial', 'sun', { type: 'sprite', angularSize: 0.53, color: '#ffb300' });
+massif.call(sun, 'setDirection', [168, 42, 0]);
+massif.call(sky, 'add', [sun]);
+massif.call(massif.find('layers', 'map'), 'insert', [0, sky]);
+```
 :::
 
 - **Distance 0 means infinitely far** — the object keeps its direction whatever the camera does, so
@@ -89,6 +96,51 @@ val sunPath = CelestialArc().apply {
 `setDirections(...)` takes an explicit azimuth/altitude list for anything else, and
 `setSegments(...)` reads that list as **disjoint pairs** instead of a path — so a whole constellation
 figure is ONE object: one draw call, one clickable thing, one name.
+
+`width` is in device pixels and honoured everywhere, WebGL included: the curve is a strip of quads
+widened on screen, with mitred joins and an anti-aliased edge, not a `GL_LINES` strip.
+
+## Labels
+
+`CelestialLabel` is text in the sky: a time on a path, the name of a figure, a rise over a ridge.
+The SDK draws it with the platform's text API (the same `BitmapCanvas` the `Text` vector element
+uses; the browser's 2D canvas on the web), so the app gives a string and a style instead of painting
+a bitmap:
+
+```js
+const rise = massif.create('celestial', 'sky.rise', {
+  type: 'label', text: '↑ 07:29', fontName: 'sans-serif Bold', fontSize: 15,
+  textColor: '#92400e', backgroundColor: '#ffffffe6', backgroundRadius: 7, paddingX: 7, paddingY: 3
+});
+massif.call(rise, 'setDirection', [azimuth, altitude, 0]);
+massif.call(rise, 'setOffset', [0, 14]);   // dp, up: clear of the ridge it names
+massif.set(rise, 'occludedByMap', false);  // over the terrain, not behind it
+```
+
+It faces the camera and keeps its pixel size. `setAnchorPoint(x, y)` (-1..1) picks the point of the
+label that sits on its direction; the default (0, -1) is the middle of its bottom edge. A halo is
+`haloColor` + `haloWidth`. Sizes are density-independent pixels; the bitmap is rebuilt only when the
+text, the style or the screen density changes.
+
+## Draw order
+
+A celestial layer draws in the same pass as the vector layers' labels, so the **layer order** is
+the z order: a celestial layer below a labelled vector layer goes under its labels, one above it
+goes over them. Two layers split one sky into a path under the place names and a sun and its
+times over them. Within a layer, curves draw first and sprites on top. The map in front still
+hides both, whatever the order: the depth test against the terrain does not depend on it.
+
+`occludedByMap = false` takes an object out of that depth test: it draws over the map. A label
+naming a point of the skyline wants it - it sits on the ridge and would otherwise be half covered.
+
+## Where the terrain meets the sky
+
+`calculateHorizon(pos, eyeHeight, azimuths, maxDistance)` on the terrain options answers the skyline
+from a viewpoint (surface API only; the object API has no equivalent): for each azimuth, the apparent altitude of the highest terrain out to `maxDistance`
+metres, with the earth's curvature and standard refraction. That is what a sunrise behind a range is
+timed against - the web peak finder writes the rise and set times where the sun's path meets it.
+It reads the elevation already loaded and never blocks; what is missing is requested, so a second
+call a moment later answers with it.
 
 ## Clicking
 

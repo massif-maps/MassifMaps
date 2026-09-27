@@ -16,6 +16,7 @@ namespace massif {
         _positionAltitude(0.0),
         _color(0xFFFFFFFF),
         _visible(true),
+        _occludedByMap(true),
         _metaData(),
         _layer()
     {
@@ -97,6 +98,19 @@ namespace massif {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             _visible = visible;
+        }
+        notifyChanged();
+    }
+
+    bool CelestialObject::isOccludedByMap() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _occludedByMap;
+    }
+
+    void CelestialObject::setOccludedByMap(bool occluded) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _occludedByMap = occluded;
         }
         notifyChanged();
     }

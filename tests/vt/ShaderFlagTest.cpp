@@ -47,7 +47,8 @@ void testShaderFlags() {
         { GAPWIDTH_FLAG, "GAPWIDTH" },
         { BLUR_FLAG, "BLUR" },
         { SPAN_DRAPE_FLAG, "SPAN_DRAPE" },
-        { SHADOW_RECEIVER_3D_FLAG, "SHADOW_RECEIVER_3D" }
+        { SHADOW_RECEIVER_3D_FLAG, "SHADOW_RECEIVER_3D" },
+        { TERRAIN_SPHERICAL_FLAG, "TERRAIN_SPHERICAL" }
     };
 
     TEST_CHECK(flags.size() == flagDefineMap.size(),

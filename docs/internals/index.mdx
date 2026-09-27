@@ -29,8 +29,9 @@ read without the rest**.
 
 ## Repository map
 
-Three git repositories: the SDK and two submodules. A change under `libs-massif/` or
-`libs-external/` is a commit **in that submodule**, then a pointer bump here.
+One SDK repository with `libs-massif/` in-tree, and one submodule, `libs-external/`. A change under
+`libs-external/` is a commit **in that submodule**, then a pointer bump here
+([flatten-submodules](/docs/maintenance/flatten-submodules)).
 
 ```mermaid
 flowchart TD
@@ -45,7 +46,7 @@ flowchart TD
     glue["android/ · ios/ · dotnet/<br/>platform glue"]
   end
 
-  subgraph libs["libs-massif — submodule"]
+  subgraph libs["libs-massif — in-tree"]
     vt["vt<br/>GL vector-tile renderer"]
     mapnikvt["mapnikvt<br/>tile decoding"]
     cartocss["cartocss<br/>style compiler"]
@@ -73,7 +74,7 @@ flowchart TD
 | `all/native/` | the C++ core — layers, renderers, data sources, projections, terrain, UI |
 | `all/modules/*.i` | SWIG interface files; the **public API surface**, mirroring `all/native` |
 | `android/`, `ios/`, `dotnet/`, `winphone/` | platform glue (hand-written `MapView` wrappers live here, not in SWIG) |
-| `libs-massif/` | submodule: `vt` (GL renderer), `mapnikvt`, `cartocss`, `sgre`/`osrm`, `geocoding`, `nml` |
+| `libs-massif/` | in-tree: `vt` (GL renderer), `mapnikvt`, `cartocss`, `sgre`/`osrm`, `geocoding`, `nml`, `mbvtbuilder` |
 | `libs-external/` | submodule: third-party dependencies |
 | `scripts/` | build scripts, SWIG generators, the Android and iOS dev benches |
 | `routing-lib/` | the standalone Valhalla routing library, no renderer |
@@ -155,8 +156,8 @@ Stated so silence is not mistaken for "there is nothing there":
 
 - **Startup / first frame** — ~3.8 s to first content with a warm cache, ~1.3 s of it before the
   first tile is requested. Measured, not yet attributed.
-- **Spherical projection** (`RenderProjectionMode::SPHERICAL`) — none of the 3D terrain work applies
-  to it.
+- **Spherical projection** (`RENDER_PROJECTION_MODE_SPHERICAL`) — terrain and buildings now draw on
+  it, but what is left is listed in [Globe mode](/docs/internals/rendering/globe#what-could-be-better).
 - **Platform specifics** — iOS/UWP GL context setup and the `angle-metal` backend.
 - **The RTT drape** — the old per-tile render-target path, deliberately undocumented because it is
   being removed. Do not build on it.

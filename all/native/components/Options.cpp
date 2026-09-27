@@ -8,6 +8,9 @@
 #include "projections/ProjectionSurface.h"
 #include "projections/PlanarProjectionSurface.h"
 #include "projections/SphericalProjectionSurface.h"
+
+#include <vt/LabelDistance.h>
+#include <vt/TileTransformer.h>
 #include "utils/Const.h"
 #include "utils/Log.h"
 #include "utils/GeneralUtils.h"
@@ -38,6 +41,8 @@ namespace massif {
         _tileStyleZoomLift(2),
         _dpi(160.0f),
         _drawDistance(16),
+        _labelViewDistance(static_cast<float>(vt::LabelDistance::DEFAULT_VIEW_DISTANCE)),
+        _labelPadding(-1.0f),
         _fovY(70),
         _panningMode(PanningMode::PANNING_MODE_FREE),
         _pivotMode(PivotMode::PIVOT_MODE_TOUCHPOINT),
@@ -57,8 +62,8 @@ namespace massif {
         _userInput(true),
         _panningSpeedMode(PanningSpeedMode::PANNING_SPEED_MODE_ANCHORED),
         _freeRoamMode(FreeRoamMode::FREE_ROAM_MODE_OFF),
-        _freeRoamLookSensitivity(90.0f),
-        _freeRoamMoveSpeed(0.5f),
+        _freeRoamLookSensitivity(360.0f),
+        _freeRoamMoveSpeed(1.0f),
         _kineticPan(true),
         _kineticRotation(true),
         _kineticZoom(true),
@@ -69,6 +74,7 @@ namespace massif {
         _focusPointOffset(0, 0),
         _baseProjection(std::make_shared<EPSG3857>()),
         _projectionSurface(std::make_shared<PlanarProjectionSurface>()),
+        _tileTransformer(std::make_shared<vt::DefaultTileTransformer>(static_cast<float>(Const::WORLD_SIZE))),
         _envelopeThreadPool(envelopeThreadPool),
         _tileThreadPool(tileThreadPool),
         _layersLabelsProcessedInReverseOrder(true),
@@ -160,10 +166,12 @@ namespace massif {
             switch (renderProjectionMode) {
             case RenderProjectionMode::RENDER_PROJECTION_MODE_SPHERICAL:
                 _projectionSurface = std::make_shared<SphericalProjectionSurface>();
+                _tileTransformer = std::make_shared<vt::SphericalTileTransformer>(static_cast<float>(Const::WORLD_SIZE / Const::PI));
                 break;
             case RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR:
             default:
                 _projectionSurface = std::make_shared<PlanarProjectionSurface>();
+                _tileTransformer = std::make_shared<vt::DefaultTileTransformer>(static_cast<float>(Const::WORLD_SIZE));
                 break;
             }
         }
@@ -418,13 +426,46 @@ namespace massif {
         }
         notifyOptionChanged("DrawDistance");
     }
-    
-    int Options::getFieldOfViewY() const {
+
+    float Options::getLabelViewDistance() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _labelViewDistance;
+    }
+
+    void Options::setLabelViewDistance(float viewDistance) {
+        float clamped = std::max(0.0f, viewDistance);
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_labelViewDistance == clamped) {
+                return;
+            }
+            _labelViewDistance = clamped;
+        }
+        notifyOptionChanged("LabelViewDistance");
+    }
+
+    float Options::getLabelPadding() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _labelPadding;
+    }
+
+    void Options::setLabelPadding(float padding) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (_labelPadding == padding) {
+                return;
+            }
+            _labelPadding = padding;
+        }
+        notifyOptionChanged("LabelPadding");
+    }
+
+    float Options::getFieldOfViewY() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _fovY;
     }
     
-    void Options::setFieldOfViewY(int fovY) {
+    void Options::setFieldOfViewY(float fovY) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             if (_fovY == fovY) {
@@ -929,6 +970,11 @@ namespace massif {
     std::shared_ptr<ProjectionSurface> Options::getProjectionSurface() const {
         std::lock_guard<std::mutex> lock(_mutex);
         return _projectionSurface;
+    }
+
+    std::shared_ptr<vt::TileTransformer> Options::getTileTransformer() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _tileTransformer;
     }
 
     std::shared_ptr<TerrainOptions> Options::getTerrainOptions() const {

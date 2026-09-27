@@ -10,16 +10,9 @@
 namespace massif {
 
     /**
-     * Offscreen target for the directional shadow caster pass.
-     *
-     * Holds one colour texture with the light-space depth packed into RGB (plus a depth
-     * renderbuffer for the pass itself), so no depth-texture extension is required. The caster
-     * geometry is the terrain surface itself, drawn with the same vertex shader and the same
-     * elevation fetch as the on-screen draw - the shadow geometry is therefore bit-identical to
-     * the rendered geometry, which is what keeps self-shadowing free of acne from a mismatched
-     * proxy mesh.
-     *
-     * GL thread only.
+     * Offscreen target for the directional shadow caster pass: a depth texture, or light-space depth packed
+     * into RGB as a fallback. Casters use the on-screen vertex shader, so self-shadowing has no
+     * acne from a mismatched mesh. GL thread only.
      */
     class TerrainShadowMap {
     public:
@@ -32,16 +25,13 @@ namespace massif {
         int getSize() const;
         int getCascades() const;
         /**
-         * Sets the shadow map resolution and the number of cascades. The cascades are pages of
-         * one texture, laid out side by side with the nearest first, so a fragment shader needs
-         * one sampler and one scale to reach any of them. Existing resources are dropped on a
-         * change.
+         * Sets the resolution and cascade count. Cascades are side-by-side pages of one texture, nearest
+         * first, so one sampler reaches them all. A change drops the resources.
          */
         void setSize(int size, int cascades);
 
         /**
-         * Returns the packed-depth texture, creating the resources on first use. Returns 0 when
-         * the framebuffer could not be completed.
+         * Returns the shadow texture, created on first use, or 0 when the framebuffer is incomplete.
          */
         unsigned int getTexture();
         /**
@@ -63,14 +53,13 @@ namespace massif {
         void endPass(unsigned int previousFrameBuffer, int viewportWidth, int viewportHeight);
 
         /**
-         * True when the map IS the depth buffer (a sampled depth texture) rather than a packed-RGB
-         * copy of it. Decides which lookup the receiver shaders are compiled for.
+         * True for a sampled depth texture rather than packed RGB; selects the receiver shaders' lookup.
          */
         bool isDepthTexture() const;
 
         /**
-         * True when the map is bound as a comparison sampler, so one fetch is four hardware depth
-         * compares and their bilinear average. Decides the receiver shaders' lookup and version.
+         * True when bound as a comparison sampler (one fetch = 4 bilinear-averaged compares); selects the
+         * receiver shaders' lookup and version.
          */
         bool isHardwarePCF() const;
 

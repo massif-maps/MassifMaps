@@ -38,12 +38,23 @@ Table parameters and the repaint paths were added in PRs
 | Form | Meaning |
 |---|---|
 | `{ "default": <scalar> }` | a bool / integer / float / string parameter |
-| `[a, b, c]` | an **enum**: the allowed values, the last one is the default |
+| `[a, b, c]` | an **enum**: the allowed values, the first one is the default |
 | `{ "default": <object \| array> }` | a **table** the style indexes into |
+
+A plain CartoCSS string has no `project.json`, so it declares its scalar parameters in its `Map`
+block instead - one `param-<name>` each, its value the default:
+
+```css
+Map { param-selected_peak: ''; }
+#mountain_peak { text-fill: [name] = [param::selected_peak] ? #2f4f9e : #222; }
+```
 
 ```java
 decoder.setStyleParameter("show_relief", "true");
-decoder.setStyleParameters(Map.of("lang", "fr", "buildings", "1"));
+StringMap params = new StringMap();   // com.massifmaps.core.StringMap, not java.util.Map
+params.set("lang", "fr");
+params.set("buildings", "1");
+decoder.setStyleParameters(params);
 decoder.setJSONStyleParameters("{\"lang\":\"fr\"}");
 ```
 
@@ -160,7 +171,7 @@ style carry both looks:
 ```css
 #road_label {
   text-name: [name];
-  text-orientation-mode: [render::3d] ? billboard-line : line;
+  text-placement: [render::3d] ? billboard-line : line;
   text-size: [render::3d] ? 12 : 11;
 }
 
@@ -172,7 +183,7 @@ In an expression it is written `[render::3d]`; in a **selector** it must be quot
 field name).
 
 It is resolved **at decode time**, like a feature field or the zoom — so it works everywhere,
-including on properties no repaint can change (`text-orientation-mode`, `text-name`, marker choice,
+including on properties no repaint can change (`text-placement`, `text-name`, marker choice,
 filters), and it costs nothing per frame. Toggling terrain therefore re-decodes the tiles, but that
 already happened: the terrain switch drops every tile cache anyway, so reading `render::3d` is free.
 

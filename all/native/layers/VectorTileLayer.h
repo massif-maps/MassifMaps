@@ -51,7 +51,7 @@ namespace massif {
     }
     
     /**
-     * A tile layer where each tile is a bitmap. Should be used together with corresponding data source.
+     * A tile layer where each tile is a vector tile, decoded and styled by a VectorTileDecoder.
      */
     class VectorTileLayer : public TileLayer {
     public:
@@ -75,12 +75,8 @@ namespace massif {
          */
         std::size_t getTileCacheCapacity() const;
         /**
-         * Sets the vector tile cache capacity. Tile cache is the primary storage for vector data,
-         * all tiles contained within the cache are stored as uncompressed vertex buffers and can immediately be
-         * drawn to the screen. Setting the cache size too small may cause artifacts, such as disappearing tiles.
-         * The more tiles are visible on the screen, the larger this cache should be. 
-         * The default is 10MB, which should be enough for most use cases with preloading enabled. If preloading is
-         * disabled, the cache size should be reduced by the user to conserve memory.
+         * Sets the vector tile cache capacity (uncompressed vertex buffers); too small a cache causes disappearing tiles.
+         * The default is 10MB, enough for most uses with preloading; reduce it when preloading is disabled.
          * @param capacityInBytes The new tile bitmap cache capacity in bytes.
          */
         void setTileCacheCapacity(std::size_t capacityInBytes);
@@ -97,16 +93,14 @@ namespace massif {
         void setLabelRenderOrder(VectorTileRenderOrder::VectorTileRenderOrder renderOrder);
     
         /**
-         * Returns the current display order of the buildings.
+         * Returns the current display order of the buildings. LAST draws over flat labels too:
+         * a label that must clear a building is a billboard one, whose pass runs after the buildings.
          * @return The display order of the buildings. Default is VECTOR_TILE_RENDER_ORDER_LAST.
-         *
-         * LAST draws over the flat labels too, so a label that must clear a building is a BILLBOARD
-         * one - that pass runs after the buildings, and moving this order is not the mechanism.
          */
         VectorTileRenderOrder::VectorTileRenderOrder getBuildingRenderOrder() const;
         /**
          * Sets the current display order of the buildings.
-         * @param renderOrder The new display order of the labels.
+         * @param renderOrder The new display order of the buildings.
          */
         void setBuildingRenderOrder(VectorTileRenderOrder::VectorTileRenderOrder renderOrder);
 
@@ -122,7 +116,7 @@ namespace massif {
          * Units are screen density independent pixels (DP or DIP).
          * @param radius The new click radius of vector tile features. The default value is 4.
          */
-        void setClickRadius(float radius);
+        virtual void setClickRadius(float radius);
 
         /**
          * Returns the current relative layer blending speed.
@@ -130,24 +124,20 @@ namespace massif {
          */
         float getLayerBlendingSpeed() const;
         /**
-         * Sets the relative layer blending speed.
-         *
-         * The default is 0 - a tile's geometry appears, as maplibre and mapbox-gl do it; they fade
-         * rasters only. A cased road cross-fades badly, because its fill is usually near the
-         * background colour: for the length of the fade only the casing reads and the road looks
-         * like an outline waiting to be filled. Set 1 for the fade this SDK used to do.
+         * Sets the relative layer blending speed. The default is 0 (no fade), as in maplibre and mapbox-gl:
+         * a fading cased road reads as an empty outline. Set 1 for the fade this SDK used to do.
          * @param speed The new relative speed value. Use zero or negative values to disable blending.
          */
         void setLayerBlendingSpeed(float speed);
 
         /**
-         * Returns the current relative label blending speed.
-         * @return The current relative label blending speed. Default is 1.0.
+         * Returns the label blending speed, in full fades per second.
+         * @return The label blending speed. Default is 1/0.3, a 300 ms fade.
          */
         float getLabelBlendingSpeed() const;
         /**
-         * Sets the relative label blending speed.
-         * @param speed The new relative speed value. Default is 1.0. Use zero or negative values to disable blending.
+         * Sets the label blending speed, in full fades per second: a label fades in or out in 1/speed seconds.
+         * @param speed The new speed. Default is 1/0.3, a 300 ms fade. Use zero or negative values to disable blending.
          */
         void setLabelBlendingSpeed(float speed);
 
@@ -157,10 +147,9 @@ namespace massif {
          */
         float getLabelPerspectiveScaling() const;
         /**
-         * Sets how much of the perspective divide a label keeps as it recedes from the camera.
-         * At 0 a label holds a constant on-screen size at any distance. At 0.5, mapbox's and
-         * maplibre's own value, a distant label shrinks at half the rate the projection would
-         * shrink it. At 1 it shrinks with the map. Callout labels always hold their size.
+         * Sets how much of the perspective divide a label keeps as it recedes from the camera: 0 holds a constant
+         * on-screen size, 0.5 (mapbox's and maplibre's value) shrinks at half the projection's rate, 1 shrinks with the map.
+         * Callout labels always hold their size.
          * @param scaling The new scaling, clamped to 0 to 1. Default is 0.5.
          */
         void setLabelPerspectiveScaling(float scaling);
@@ -189,7 +178,7 @@ namespace massif {
          * @param filter The new click handler layer filter.
          * @throws std::runtime_error If the filter expression is not valid.
          */
-        void setClickHandlerLayerFilter(const std::string& filter);
+        virtual void setClickHandlerLayerFilter(const std::string& filter);
     
         /**
          * Returns the vector tile event listener.
@@ -200,7 +189,7 @@ namespace massif {
          * Sets the vector tile event listener.
          * @param eventListener The vector tile event listener.
          */
-        void setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener);
+        virtual void setVectorTileEventListener(const std::shared_ptr<VectorTileEventListener>& eventListener);
     
     protected:
         friend class VTLabelPlacementWorker;
@@ -212,8 +201,6 @@ namespace massif {
         virtual void fetchTile(long long tileId, const MapTile& mapTile, bool preloadingTile, int priorityDelta);
         virtual void clearTiles(bool preloadingTiles);
         virtual void invalidateTiles(bool preloadingTiles);
-
-        virtual void onTargetTileZoomChanged();
 
         virtual std::shared_ptr<VectorTileDecoder::TileMap> getTileMap(long long tileId) const;
         virtual std::shared_ptr<vt::Tile> getPoleTile(int y) const;
@@ -245,8 +232,7 @@ namespace massif {
         virtual Color getBackgroundColor(const ViewState& viewState) const;
 
         virtual bool getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const;
-        // Every Map setting read at ONE brightness, which is what a property ramped over
-        // view::brightness reads. See getStyleEnvironment for why it is called twice.
+        // Every Map setting read at one brightness. See getStyleEnvironment for why it is called twice.
         bool readStyleEnvironment(const ViewState& viewState, float brightness, StyleEnvironment& env) const;
         virtual std::shared_ptr<Bitmap> getSkyBitmap(const ViewState& viewState) const;
 
@@ -278,17 +264,19 @@ namespace massif {
             virtual bool loadTile(const std::shared_ptr<TileLayer>& tileLayer);
 
         private:
-            int _styleTileZoom; // snapshot: the cull that queued the task decides what the style sees
+            int _styleTileZoom; // decided in loadTile, from the target at decode time
         };
         
         class TileInfo {
         public:
-            TileInfo() : _tileBounds(), _tileData(), _tileMap() { }
-            TileInfo(const MapBounds& tileBounds, const std::shared_ptr<BinaryData>& tileData, const std::shared_ptr<VectorTileDecoder::TileMap>& tileMap) : _tileBounds(tileBounds), _tileData(tileData), _tileMap(tileMap) { }
+            TileInfo() : _tileBounds(), _tileData(), _tileMap(), _tileZoom(0), _styleTileZoom(0) { }
+            TileInfo(const MapBounds& tileBounds, const std::shared_ptr<BinaryData>& tileData, const std::shared_ptr<VectorTileDecoder::TileMap>& tileMap, int tileZoom, int styleTileZoom) : _tileBounds(tileBounds), _tileData(tileData), _tileMap(tileMap), _tileZoom(tileZoom), _styleTileZoom(styleTileZoom) { }
 
             const MapBounds& getTileBounds() const { return _tileBounds; }
             const std::shared_ptr<BinaryData>& getTileData() const { return _tileData; }
             const std::shared_ptr<VectorTileDecoder::TileMap>& getTileMap() const { return _tileMap; }
+            int getTileZoom() const { return _tileZoom; }
+            int getStyleTileZoom() const { return _styleTileZoom; }
 
             int getMaxDrawCallCount() const;
             std::size_t getSize() const;
@@ -297,7 +285,11 @@ namespace massif {
             MapBounds _tileBounds;
             std::shared_ptr<BinaryData> _tileData;
             std::shared_ptr<VectorTileDecoder::TileMap> _tileMap;
+            int _tileZoom;
+            int _styleTileZoom;
         };
+
+        bool styleTileZoomCurrent(const TileInfo& tileInfo) const;
 
         static const int BACKGROUND_BLOCK_SIZE;
         static const int BACKGROUND_BLOCK_COUNT;
@@ -337,9 +329,7 @@ namespace massif {
 
         cache::timed_lru_cache<long long, TileInfo> _visibleCache;
         cache::timed_lru_cache<long long, TileInfo> _preloadingCache;
-        // The span reference tiles, apart from the LRU caches: coarse city tiles of a few MB each,
-        // they evicted one another from the preloading cache and every refetch re-culled. Pruned to
-        // the tiles currently named, never aged out.
+        // Apart from the LRU caches, where these multi-MB tiles evicted one another; pruned to the tiles currently named.
         std::map<long long, TileInfo> _spanReferenceCache;
     };
     

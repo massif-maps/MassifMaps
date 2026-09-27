@@ -36,7 +36,7 @@ If the links above 404, the docs build has not published API output yet — see
 | Concept | Android | iOS |
 |---|---|---|
 | Class | `com.massifmaps.ui.MapView` | `MSFMapView` |
-| Enum value | `CartoBaseMapStyle.MASSIF_BASEMAP_STYLE_VOYAGER` | `.MASSIF_BASEMAP_STYLE_VOYAGER` |
+| Enum value | `RenderProjectionMode.RENDER_PROJECTION_MODE_SPHERICAL` | `.RENDER_PROJECTION_MODE_SPHERICAL` (ObjC `MSF_RENDER_PROJECTION_MODE_SPHERICAL`) |
 | Getter | `getZoom()` / property `zoom` | `getZoom()` |
 | Vector container | `MapPosVector` | `MSFMapPosVector` |
 

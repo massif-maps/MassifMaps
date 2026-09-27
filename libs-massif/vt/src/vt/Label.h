@@ -60,11 +60,8 @@ namespace massif::vt {
         float getOpacity() const { return _opacity; }
         void setOpacity(float opacity) { _opacity = opacity; }
 
-        // The TEXT's own opacity, animated apart from the label's - maplibre's JointOpacityState,
-        // which carries one OpacityState for the text and one for the icon. A shield whose name no
-        // longer fits falls back to the icon-only variant, and with a single opacity the name
-        // vanished between two frames while its icon sat still; this fades it out instead.
-        // For a label with no icon the two track each other exactly, so nothing else changes.
+        // The text's own opacity (maplibre's JointOpacityState): a shield falling back to its icon-only
+        // variant fades the name out instead of dropping it. Tracks getOpacity when there is no icon.
         float getTextOpacity() const { return _textOpacity; }
         void setTextOpacity(float opacity) { _textOpacity = opacity; }
 
@@ -86,13 +83,22 @@ namespace massif::vt {
         // camera up axis. Owned by LabelCuller; the envelope and the vertex data both read it, so the
         // leader line always ends where the glyphs actually are.
         float getCalloutOffset() const { return _calloutOffset; }
-        void setCalloutOffset(float offset) { _calloutOffset = offset; }
+        // Resets the anchoring: the label keeps this lift from its own anchor until the next pass.
+        void setCalloutOffset(float offset) { _calloutOffset = offset; _calloutAnchored = false; _calloutLinePosition.reset(); }
 
-        // The screen line the culler put this callout on, and where its anchor was when it did. The
-        // anchor MOVES between passes - elevation streams in, a tilt slides it - and a lift measured
-        // against the old one takes the label off the row, which the draw path corrects for.
-        void setCalloutPlacement(float offset, float anchorScreenY) { _calloutOffset = offset; _calloutAnchorScreenY = anchorScreenY; _calloutAnchored = true; }
+        // The screen row the culler put this callout on, and its anchor's screen y at the time: the anchor
+        // moves between passes (elevation, tilt) and the draw path corrects the lift for it.
+        // With a line position the row follows that point on screen instead of holding still.
+        void setCalloutPlacement(float offset, float anchorScreenY, const std::optional<cglib::vec3<double>>& linePosition = std::optional<cglib::vec3<double>>(), float lineScreenY = 0.0f) {
+            _calloutOffset = offset;
+            _calloutAnchorScreenY = anchorScreenY;
+            _calloutAnchored = true;
+            _calloutLinePosition = linePosition;
+            _calloutLineScreenY = lineScreenY;
+        }
         float calculateAnchorScreenY(const ViewState& viewState) const;
+        // Where a world position lands on screen, y up in normalized pixels; 0 behind the camera.
+        static float calculateScreenY(const cglib::vec3<double>& position, const ViewState& viewState);
 
         // Placement passes this callout has failed in a row while it was on screen. The style may allow
         // a few: a panning map rebuilds its label set constantly, and a name that loses its row for one
@@ -110,18 +116,24 @@ namespace massif::vt {
         // under one of its tiles changes - it costs one sample per line vertex. An already-anchored
         // label that is neither placed nor on screen DEFERS; one never anchored does not.
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
+        // False while the label still carries its flat decode height, which the terrain occlusion test must not judge.
+        bool isElevationAnchored() const { return _elevationAnchored; }
+        // The anchor stands on a deck: its span-chord height is CPU-only, so the GPU must not replace it with the terrain's.
+        bool hasAbsoluteHeight() const { return _absoluteHeight; }
+        void setAbsoluteHeight(bool absolute) { _absoluteHeight = absolute; }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
         bool hasGeometryOverTile(const TileId& tileId) const;
 
         void mergeGeometries(Label& label);
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
-        void updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc);
-        // updateElevation in two halves, so the sampling - one elevation lookup per vertex, the
-        // whole cost - can run off the renderer's lock: sample reads the x,y of the geometry
-        // alone, apply writes the heights back under the lock and rebuilds the placement.
-        std::vector<double> sampleElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) const;
-        void applyElevation(const std::vector<double>& heights);
+        // False when part of the geometry had no elevation; still mark the label clean, since only new
+        // data changes the answer and that re-dirties it (markPendingLabelsDirty).
+        bool updateElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc);
+        // updateElevation split so the per-vertex sampling runs off the renderer's lock; apply writes
+        // back under the lock. A non-finite sample means "no data here" (the origin would bury the label).
+        std::vector<cglib::vec3<double>> sampleElevation(const std::function<cglib::vec3<double>(const cglib::vec3<double>&)>& anchorFunc) const;
+        bool applyElevation(const std::vector<cglib::vec3<double>>& positions);
 
         // Which part of a label a draw pass wants. CALLOUT leader lines are drawn in a pass of
         // their own, BEFORE all text, so that no label's line crosses another label's glyphs.
@@ -130,12 +142,10 @@ namespace massif::vt {
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
         bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
-        // The envelope of EVERY side the text may be laid out on, in one call: the placement, the scale
-        // and the screen axes are the same for all of them, so the culler pays for one placement rather
-        // than one per side. Falls back to the single envelope for a label with no variants.
+        // Envelopes of every variant in one call, sharing one placement; the single envelope when there are none.
         bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes) const;
-        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex, iconHaloStyleIndex); }
-        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1) const;
+        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex, iconHaloStyleIndex, buildNormals); }
+        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const;
 
         // The glyph run follows the LINE the label is placed on, rather than sitting in a box on
         // its anchor. Both line orientations lay the same run out; they differ in the plane it is
@@ -146,9 +156,15 @@ namespace massif::vt {
         bool isScreenLineRun() const { return _style->orientation == LabelOrientation::LINE_BILLBOARD_3D; }
 
     private:
-        // How labelVsh must read a glyph offset (attribs[3]); see calculateVertexData.
+        // attribs[3] bit 0: how labelVsh reads a glyph offset; see calculateVertexData.
         static constexpr std::int8_t WORLD_OFFSET = 0;       // already spanned, add it as is
         static constexpr std::int8_t CAMERA_AXIS_OFFSET = 1; // x/y on the camera axes
+        // Bit 1: the anchor height is absolute (a deck) and labelVsh keeps it; mapbox's u_elevation_from_sea, per label.
+        static constexpr std::int8_t ABSOLUTE_HEIGHT = 2;
+
+        std::int8_t offsetMode(bool cameraAxes) const {
+            return (cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET) | (_absoluteHeight ? ABSOLUTE_HEIGHT : 0);
+        }
 
         static constexpr unsigned int MAX_LABEL_VERTICES = 16384;
         static constexpr unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
@@ -171,7 +187,7 @@ namespace massif::vt {
         static constexpr double PLACEMENT_ROOM_FACTOR = 1.25; // room the glyph run is given on the line, relative to its own length
         static constexpr double PLACEMENT_SMOOTH_TEXT_FRACTION = 1.0 / 3.0; // line detail below this fraction of the text length is smoothed away before laying out glyphs
         static constexpr double SNAP_MOVE_EPSILON = 1.0e-9; // internal world units (1 unit ~ 38m); a 1px anchor drift is ~1e-4 at z15
-        static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.1f; // the minimum allowed dot product between view vector and surface normal (cos ~78.5deg -> labels valid down to ~tilt 11.5; was 0.49 = calibrated to the old 30deg tilt clamp)
+        static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.1f; // min dot of view vector and surface normal (cos ~84deg: labels valid down to tilt ~6)
 
         struct TilePoint {
             TileId tileId;
@@ -283,10 +299,10 @@ namespace massif::vt {
         // How far the label is moved so that the style's line anchor lands on its feature's
         // vertical; zero unless the style names one.
         cglib::vec2<float> calculateCalloutShift(float scale, float glyphScale) const;
-        // World units one SCREEN PIXEL is worth at the label's own depth, read off the projection
-        // instead of the label's scale: the scale comes from the zoom, so converting with it makes
-        // a callout's lift drift up and down the screen whenever the camera moves.
-        float calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback) const;
+        // World units per screen pixel at the label's depth, off the projection: the zoom-derived scale
+        // makes a callout's lift drift as the camera moves. `resolution` 0 = normalized screen (the
+        // culler's units); a label's own size passes the device height.
+        float calculatePixelToWorld(const ViewState& viewState, const Placement& placement, float fallback, float resolution = 0.0f) const;
         // World units one glyph unit is worth. Zoom-derived for an ordinary label (that is what
         // keeps it the same size as the rest of the map); taken off the projection for a CALLOUT,
         // which is a screen object and has to keep its pixel size whatever the camera does.
@@ -302,12 +318,12 @@ namespace massif::vt {
         // Appends the plates behind the text and behind the icon - three quads each, so the corners keep
         // their radius at any text width, each with its own style index. A border is one more plate
         // behind the fill, grown by the border width.
-        void appendLabelPlates(float size, float scale, const std::shared_ptr<const Placement>& placement, const LabelPlateIndices& plates, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        void appendLabelPlates(float size, float scale, const std::shared_ptr<const Placement>& placement, const LabelPlateIndices& plates, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool buildNormals) const;
         // One plate: the 3-sliced rounded rectangle filling 'plateBox'. 'textPlate' picks which of the
         // two opacities it follows, so a name can fade while its icon stays.
-        void appendPlate(const cglib::bbox2<float>& plateBox, const GlyphMap::Glyph& glyph, float radius, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        void appendPlate(const cglib::bbox2<float>& plateBox, const GlyphMap::Glyph& glyph, float radius, int styleIndex, std::int8_t glyphMode, bool cameraAxes, bool textPlate, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool buildNormals) const;
         // Appends the leader line to a draw batch (nothing for a label that has none).
-        void appendCalloutLine(float size, float scale, const ViewState& viewState, const std::shared_ptr<const Placement>& placement, int styleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        void appendCalloutLine(float size, float scale, const ViewState& viewState, const std::shared_ptr<const Placement>& placement, int styleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, bool buildNormals) const;
         // The leader line quad, in the same units as the drawn glyph offsets. Built per frame
         // rather than cached with the text: its length is the culler's offset, which changes with
         // everything else on screen.
@@ -412,6 +428,8 @@ namespace massif::vt {
         float _calloutOffset = 0.0f; // screen pixels along the camera up axis, CALLOUT only (see setCalloutOffset)
         float _calloutAnchorScreenY = 0.0f;
         bool _calloutAnchored = false;
+        std::optional<cglib::vec3<double>> _calloutLinePosition;
+        float _calloutLineScreenY = 0.0f;
         int _calloutFailures = 0;
         float _opacity = 0.0f;
         float _textOpacity = 0.0f;
@@ -419,6 +437,7 @@ namespace massif::vt {
         bool _active = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame
         bool _elevationAnchored = false; // has been anchored at least once, so a re-anchor may wait
+        bool _absoluteHeight = false;    // anchored on a deck chord, not on the terrain
         long long _geometryHash = 0;
         int _geometryCount = 0;
 

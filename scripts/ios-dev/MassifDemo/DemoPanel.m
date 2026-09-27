@@ -158,7 +158,6 @@ typedef NS_ENUM(NSInteger, DemoEntryKind) {
         [self section:@"BASE MAP" entries:@[
             [DemoEntry choice:@"base" label:@"mode" choices:@[@"composite", @"plain"] apply:base],
             [DemoEntry choice:@"style" label:@"style" choices:@[@"inline", @"zip", @"project"] apply:base],
-            [DemoEntry toggle:@"singlePass" label:@"single-pass rendering" apply:base],
             [DemoEntry toggle:@"labels" label:@"labels (inline style)" apply:base],
             [DemoEntry toggle:@"bld3d" label:@"3D buildings (inline style)" apply:base],
             [DemoEntry toggle:@"minimal" label:@"minimal style (slots only)" apply:base],

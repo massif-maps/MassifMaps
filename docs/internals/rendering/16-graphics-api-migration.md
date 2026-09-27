@@ -18,8 +18,9 @@ device**; an iOS device is still owed. The Apple source was decided against upst
 nothing shipped; what ES 3.0 is still worth taking, re-derived from measured costs rather than from
 the feature list, is in [Second harvest pass](#second-harvest-pass-2026-08-26).
 
-## Where we are
+## Where we started
 
+The state on 2026-08-18, before Phases 2 and 3 — kept because the plan below is priced against it.
 Everything renders through **one** API surface: `GLES2/gl2.h` + `gl2ext.h`. Roughly 1730 GL call
 sites over 114 distinct entry points.
 
@@ -243,7 +244,7 @@ cd scripts/ios-dev && PROFILE_RENDER=1 ./bootstrap.sh device
 |---|---|---|
 | 1 | `scripts/ios-dev` runs at all on `arm64` | The device slice has only ever been built, never linked or launched |
 | 2 | Startup reports `OpenGL ES 3.0.0 (ANGLE 2.1.0.ec925142edeb)` | Gate 0.1 is simulator-only; confirms the version string on the real backend |
-| 3 | The ESSL 3.00 shadow program compiles — `hasShaderVersionFallback()` false, no `_essl3Failed` | It is the only current `ESSL3_FLAG` user, so it is the one existing proof that ANGLE takes a `300 es` program at all. Ignore the `shadow samplers` log field, see below |
+| 3 | Every program compiles at `300 es` — `hasShaderVersionFallback()` false | Phase 3 ORs `ESSL3_FLAG` into every program; it is proven on the simulator and the Adreno, not on Apple's driver |
 | 4 | **Gate 0.3**, the real one — EAGL vs MetalANGLE `8ef9aba` vs master | EAGL does not exist on an Apple Silicon simulator at all |
 | 5 | A screenshot at a fixed camera matches the EAGL build | Phase 1's "done when" |
 | 6 | Catalyst still builds and runs | The Catalyst slices were rebuilt at master and are otherwise untested |
@@ -259,16 +260,15 @@ LTO; a number from the wrong configuration is not the shipped one.
 
 #### `shadow samplers 0` is a red herring
 
-The startup line reports it and it means nothing here. `GLContext` probes
+The Phase 0 startup line reported it and it meant nothing (the field is gone since Phase 2). `GLContext` probes
 `HasGLExtension("GL_EXT_shadow_samplers")`, which is an **ES 2.0** extension: in ES 3.0
 `sampler2DShadow` and depth comparison are core, so a driver has no reason to export the old string
 on an ES 3.0 context, and most do not.
 
 `GLContext::SHADOW_SAMPLERS` is then **never read** — it is logged and nothing else. Hardware PCF is
 gated on `_depthTextureMode && GLContext::ES3` in `TerrainShadowMap::create`, both true on the
-simulator run. The probe is dead code and a deletion candidate for Phase 2, which already collapses
-the `GLContext` extension probes; the log field should go with it or be re-pointed at
-`GLContext::ES3`.
+simulator run. The probe was dead code; Phase 2 deleted it with the other `GLContext` extension
+probes.
 
 ## What ES 3.0 actually buys
 
@@ -537,7 +537,7 @@ what makes occlusion lag a gesture.
 A pixel-pack buffer plus a fence turns the read-back into "poll last frame's buffer, take it when
 the fence signals". Both are ES 3.0 core, neither needs the second context to go away.
 
-**What is needed**: a PBO ring in `TerrainDepthWorker::readPixels` (`TerrainDepthWorker.cpp`, the
+**What is needed**: a PBO ring in `TerrainDepthWorker::renderJob` (`TerrainDepthWorker.cpp`, the
 `glReadPixels` at the end of the job) and in `MapRenderer::captureRendering`; a `glFenceSync` +
 `glClientWaitSync(0)` poll instead of the blocking read; and the throttle constants in
 `TerrainRenderer.h` (`DEPTH_READBACK_THROTTLE`, `DEPTH_READBACK_MOVING_INTERVAL`,
@@ -549,8 +549,8 @@ one read-back per frame, at the same mesh resolution the 13.3/14.3/14.9 fps tabl
 ### 2. Uniform buffer objects for the per-draw style storm
 
 Phase 4 listed UBOs and priced them against `styleUpload ≈ 0.46 ms/frame`. That is the wrong
-bucket. The cost is in `GLTileRenderer::useProgram`'s own note: per-draw setup — everything before
-`glDrawElements` — is **24-31 µs against 10-12 µs for the draw itself, at 250-560 draws a frame**.
+bucket. The cost is per-draw setup, as a note at `GLTileRenderer::useProgram` once recorded:
+everything before `glDrawElements` is **24-31 µs against 10-12 µs for the draw itself, at 250-560 draws a frame**.
 
 What that setup is, for a 2D geometry draw: `U_COLORTABLE`, `U_WIDTHTABLE`, `U_OFFSETTABLE`,
 `U_STROKESCALETABLE` and `U_PATTERNTABLE`, each `TileGeometry::StyleParameters::MAX_PARAMETERS`
@@ -661,15 +661,13 @@ bench has not been run, so this is deferred, not decided.
   Apple-Silicon simulator has no OpenGL ES to compare against, and its 60 Hz vsync cap hides any
   delta the scene does not already exceed. Use `MASSIF_FRAME_PROFILER=1` per-section timings, not
   frame rate.
-- Every number in "Where we are" is from static analysis of the tree, unchanged since.
+- Every number in "Where we started" is from static analysis of the 2026-08-18 tree.
 - ES 3.0 on the Metal backend is confirmed **on the simulator only** (gate 0.1). No device run yet,
   and the fork's own README grades its ES 3.0 at 90%.
-- `GLContext::SHADOW_SAMPLERS` is dead — probed from an ES 2.0 extension string, logged, never read.
-  Phase 2 should delete it along with the other extension probes.
 - The linked (as opposed to static-slice) binary-size delta is still unmeasured. The stripped
   arm64-simulator slice is 14.2 MB at master, 15.2 MB at the vendored 2021 build.
 - Xamarin is assumed droppable. If it is not, it blocks an ANGLE-only iOS on its own.
 - Whether MetalANGLE's two unimplemented ES 3.0 features (primitive restart, last-provoking-vertex
   flat shading) matter to this renderer has not been checked against the draw calls it makes.
-- No decision on whether Windows should use ANGLE-on-D3D11 or ANGLE-on-Vulkan; D3D11 is assumed on
-  maturity grounds only.
+- The Windows backend (D3D11 over Vulkan) is argued from ANGLE's feature-level table
+  ([above](#what-the-es-30-baseline-costs-on-desktop)), not from a run on Windows.

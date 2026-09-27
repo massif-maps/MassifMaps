@@ -73,4 +73,15 @@ namespace massif::mvt {
     long long Symbolizer::combineId(long long id, std::size_t hash) {
         return std::abs(id ^ static_cast<long long>(hash));
     }
+
+    long long Symbolizer::combineAnchorId(long long id, const vt::TileId& tileId, const cglib::vec2<float>& vertex) {
+        // 2^-28 of the world, ~0.15 m at the equator: below any two POIs worth telling apart, and
+        // far above the tile grid's own rounding, so overzoom levels of one point agree on a cell.
+        constexpr double ANCHOR_RESOLUTION = 268435456.0;
+
+        double scale = ANCHOR_RESOLUTION / (1 << tileId.zoom);
+        long long x = std::llround((tileId.x + static_cast<double>(vertex(0))) * scale);
+        long long y = std::llround((tileId.y + static_cast<double>(vertex(1))) * scale);
+        return combineId(id, std::hash<long long>()(x) * 63 + std::hash<long long>()(y));
+    }
 }

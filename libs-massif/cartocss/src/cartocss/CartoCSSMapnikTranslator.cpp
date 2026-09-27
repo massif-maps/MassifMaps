@@ -736,7 +736,6 @@ namespace massif::css {
         { "text-halo-radius", "halo-radius" },
         { "text-halo-rasterizer", "halo-rasterizer" },
         { "text-allow-overlap", "allow-overlap" },
-        { "text-allow-overlap", "allow-overlap" },
         { "text-allow-overlap-same-feature-id", "allow-overlap-same-feature-id" },
         { "text-same-feature-id-dependent", "same-feature-id-dependent" },
         { "text-min-distance", "minimum-distance" },
@@ -744,6 +743,7 @@ namespace massif::css {
         { "text-max-distance", "max-distance" },
         { "text-occlusion-opacity", "occlusion-opacity" },
         { "text-callout-screen-anchor", "callout-screen-anchor" },
+        { "text-callout-band-follow", "callout-band-follow" },
         { "text-callout-offset", "callout-offset" },
         { "text-callout-step", "callout-step" },
         { "text-callout-max-rows", "callout-max-rows" },
@@ -925,6 +925,8 @@ namespace massif::css {
         { "contour-base-interval",      "base-interval" },
         { "contour-resolution",         "resolution" },
         { "contour-min-visible-zoom",   "min-visible-zoom" },
-        { "contour-simplify-tolerance", "simplify-tolerance" }
+        { "contour-simplify-tolerance", "simplify-tolerance" },
+        { "contour-label-stubs",        "label-stubs" },
+        { "contour-label-interval",     "label-interval" }
     };
 }

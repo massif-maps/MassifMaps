@@ -59,10 +59,7 @@ namespace massif {
 
         /**
          * Returns the result as a GeoJSON FeatureCollection, in WGS84.
-         *
-         * Every feature carries the result's "address" and "rank" alongside its own properties, so
-         * one string is the whole answer - a binding that walked the features instead paid a
-         * crossing per feature and rebuilt this shape by hand.
+         * Every feature carries the result's "address" and "rank" alongside its own properties.
          * @return The result as GeoJSON.
          */
         std::string getGeoJSON() const;

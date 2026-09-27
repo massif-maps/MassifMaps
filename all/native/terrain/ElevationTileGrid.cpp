@@ -1,14 +1,24 @@
 #include "ElevationTileGrid.h"
 #include "ElevationNodeField.h"
 #include "graphics/Bitmap.h"
+#include "utils/Const.h"
 #include "utils/Log.h"
 
+#include <vt/RenderStats.h>
+
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 namespace massif {
 
+    namespace {
+        // Never reused, so an old grid is distinguishable from its replacement. See getSerial.
+        std::atomic<unsigned long long> gridSerialCounter(0);
+    }
+
     ElevationTileGrid::ElevationTileGrid(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs, int nodesPerEdge, int boxCells) :
+        _serial(++gridSerialCounter),
         _tile(tile),
         _internalBounds(internalBounds),
         _bitmap(bitmap),
@@ -197,7 +207,7 @@ namespace massif {
         std::vector<float> southEdge = edgeFilter(neighbours[2], false, 0);
         std::vector<float> northEdge = edgeFilter(neighbours[3], false, _height - 1);
 
-        // Texel at padded (gx, gy) in [-1, width/height]; border texels come from the neighbour
+        // Texel at padded (gx, gy), up to a border's width outside; border texels come from the neighbour
         // that covers them, falling back to edge clamping. Captured BY VALUE - the sampler outlives
         // this call, and the edge filters are the expensive part of it.
         return [this, neighbours, texelX, texelY, westEdge, eastEdge, southEdge, northEdge](int gx, int gy, std::uint8_t* dst) {
@@ -262,39 +272,84 @@ namespace massif {
         };
     }
 
-    std::function<float(int, int)> ElevationTileGrid::makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
+    ElevationTileGrid::NodeTexelSampler ElevationTileGrid::makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
         // The same three cases as makeTexelSampler, in metres and for any distance past the
-        // edge: a node box reaches half a cell out, not one texel.
-        double texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
-        double texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
-        return [this, neighbours, texelX, texelY](int gx, int gy) -> float {
-            static const std::array<std::pair<int, int>, 8> DIRS = { {
-                { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
-            } };
-            int dx = (gx < 0 ? -1 : (gx >= _width ? 1 : 0));
-            int dy = (gy < 0 ? -1 : (gy >= _height ? 1 : 0));
-            if (dx != 0 || dy != 0) {
-                for (std::size_t i = 0; i < DIRS.size(); i++) {
-                    if (DIRS[i].first != dx || DIRS[i].second != dy) {
-                        continue;
-                    }
-                    const std::shared_ptr<ElevationTileGrid>& neighbour = neighbours[i];
-                    if (!neighbour) {
-                        break;
-                    }
-                    bool sameLevel = neighbour->_width == _width && neighbour->_height == _height && neighbour->_tile.getZoom() == _tile.getZoom() && !(neighbour->_tile == _tile);
-                    if (sameLevel) {
-                        int nx = std::min(std::max(gx - dx * _width, 0), _width - 1);
-                        int ny = std::min(std::max(gy - dy * _height, 0), _height - 1);
-                        return neighbour->getHeight(nx, ny);
-                    }
-                    double px = _internalBounds.getMin().getX() + (gx + 0.5) * texelX;
-                    double py = _internalBounds.getMin().getY() + (gy + 0.5) * texelY;
-                    return neighbour->sampleHeight(px, py);
+        // edge: a node box reaches half a cell out, not one texel. Per-grid lookups are resolved once here.
+        NodeTexelSampler sampler;
+        sampler.grid = this;
+        sampler.keep = neighbours;
+        sampler.texelX = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width;
+        sampler.texelY = (_internalBounds.getMax().getY() - _internalBounds.getMin().getY()) / _height;
+        for (std::size_t i = 0; i < neighbours.size(); i++) {
+            const ElevationTileGrid* neighbour = neighbours[i].get();
+            sampler.neighbours[i] = neighbour;
+            sampler.sameLevel[i] = neighbour && neighbour->_width == _width && neighbour->_height == _height
+                                && neighbour->_tile.getZoom() == _tile.getZoom() && !(neighbour->_tile == _tile);
+        }
+        return sampler;
+    }
+
+    float ElevationTileGrid::NodeTexelSampler::operator()(int gx, int gy) const {
+        int width = grid->_width, height = grid->_height;
+        int dx = (gx < 0 ? -1 : (gx >= width ? 1 : 0));
+        int dy = (gy < 0 ? -1 : (gy >= height ? 1 : 0));
+        if (dx != 0 || dy != 0) {
+            int slot = ElevationNodeField::neighbourSlot(dx, dy);
+            const ElevationTileGrid* neighbour = (slot >= 0 ? neighbours[slot] : nullptr);
+            if (neighbour) {
+                if (sameLevel[slot]) {
+                    VT_STAT_INC(demNodeTexelsSameLevel);
+                    int nx = std::min(std::max(gx - dx * width, 0), width - 1);
+                    int ny = std::min(std::max(gy - dy * height, 0), height - 1);
+                    return neighbour->getHeight(nx, ny);
                 }
+                VT_STAT_INC(demNodeTexelsCoarse);
+                double px = grid->_internalBounds.getMin().getX() + (gx + 0.5) * texelX;
+                double py = grid->_internalBounds.getMin().getY() + (gy + 0.5) * texelY;
+                return neighbour->sampleHeight(px, py);
             }
-            return getHeight(std::min(std::max(gx, 0), _width - 1), std::min(std::max(gy, 0), _height - 1));
-        };
+        }
+        VT_STAT_INC(demNodeTexelsOwn);
+        return grid->getHeight(std::min(std::max(gx, 0), width - 1), std::min(std::max(gy, 0), height - 1));
+    }
+
+    bool ElevationTileGrid::NodeTexelSampler::coarseMapping(int dx, int dy, ElevationNodeField::LatticeMapping& mapping) const {
+        int slot = ElevationNodeField::neighbourSlot(dx, dy);
+        if (slot < 0) {
+            return false;
+        }
+        const ElevationTileGrid* neighbour = neighbours[slot];
+        if (!neighbour || sameLevel[slot] || neighbour->_width < 1 || neighbour->_height < 1) {
+            return false; // our own read, a texel-exact copy, or nothing to map onto
+        }
+        double neighbourWidth = neighbour->_internalBounds.getMax().getX() - neighbour->_internalBounds.getMin().getX();
+        double neighbourHeight = neighbour->_internalBounds.getMax().getY() - neighbour->_internalBounds.getMin().getY();
+        if (!(neighbourWidth > 0) || !(neighbourHeight > 0)) {
+            return false;
+        }
+        // The composition of operator()'s texel centre and sampleHeight's texel mapping, both affine in gx.
+        double neighbourTexelX = neighbourWidth / neighbour->_width;
+        double neighbourTexelY = neighbourHeight / neighbour->_height;
+        mapping.stepX = texelX / neighbourTexelX;
+        mapping.stepY = texelY / neighbourTexelY;
+        mapping.originX = (grid->_internalBounds.getMin().getX() + 0.5 * texelX - neighbour->_internalBounds.getMin().getX()) / neighbourTexelX - 0.5;
+        mapping.originY = (grid->_internalBounds.getMin().getY() + 0.5 * texelY - neighbour->_internalBounds.getMin().getY()) / neighbourTexelY - 0.5;
+        mapping.dimX = neighbour->_width;
+        mapping.dimY = neighbour->_height;
+        return true;
+    }
+
+    float ElevationTileGrid::NodeTexelSampler::neighbourHeight(int dx, int dy, int x, int y) const {
+        int slot = ElevationNodeField::neighbourSlot(dx, dy);
+        const ElevationTileGrid* neighbour = (slot >= 0 ? neighbours[slot] : nullptr);
+        return neighbour ? neighbour->getHeight(x, y) : 0.0f;
+    }
+
+    void ElevationTileGrid::buildHeightSat(ElevationNodeField::SummedAreaTable& sat) const {
+        if (_width < 1 || _height < 1 || !_pixelData) {
+            return; // nodeHeightSat falls back to the per-texel sum on an unbuilt table
+        }
+        sat.build(_width, _height, [this](int x, int y) { return getHeight(x, y); });
     }
 
     std::array<int, 4> ElevationTileGrid::edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const {
@@ -323,8 +378,8 @@ namespace massif {
         return scales;
     }
 
-    template <typename TexelFn>
-    float ElevationTileGrid::nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel) const {
+    float ElevationTileGrid::nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const NodeTexelSampler& texel,
+                                             const ElevationNodeField::SummedAreaTable& sat) const {
         int n = _nodesPerEdge;
         int boxX = ElevationNodeField::boxTexels(_width, n, _boxCells);
         int boxY = ElevationNodeField::boxTexels(_height, n, _boxCells);
@@ -341,9 +396,15 @@ namespace massif {
         if (j == n) scale = std::max(scale, edgeScales[3]);
         boxX *= scale;
         boxY *= scale;
+        VT_STAT_INC(demNodeEdgeCalls);
+        VT_STAT_ADD(demNodeBoxTexels, static_cast<long long>(boxX) * boxY);
         double cx = static_cast<double>(i) * _width / n;
         double cy = static_cast<double>(j) * _height / n;
-        return ElevationNodeField::nodeHeight(cx, cy, boxX, boxY, texel);
+        // Per region: own full-weight texels from the prefix sums, a coarser neighbour's band in
+        // closed form, the rest per texel.
+        return ElevationNodeField::nodeHeightRegions(cx, cy, boxX, boxY, _width, _height, sat, texel,
+            [&texel](int dx, int dy, ElevationNodeField::LatticeMapping& mapping) { return texel.coarseMapping(dx, dy, mapping); },
+            [&texel](int dx, int dy, int x, int y) { return texel.neighbourHeight(dx, dy, x, y); });
     }
 
     void ElevationTileGrid::encodeNodeTexture(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const {
@@ -354,12 +415,14 @@ namespace massif {
         }
         int stride = n + 1;
         textureData.resize(static_cast<std::size_t>(stride) * stride * _bytesPerTexel);
-        std::function<float(int, int)> texel = makeNodeTexelSampler(neighbours);
+        NodeTexelSampler texel = makeNodeTexelSampler(neighbours);
         std::array<int, 4> scales = edgeBoxScales(neighbours);
+        ElevationNodeField::SummedAreaTable sat;
+        buildHeightSat(sat);
         std::size_t s = 0;
         for (int j = 0; j <= n; j++) {
             for (int i = 0; i <= n; i++, s += _bytesPerTexel) {
-                encodeHeight(nodeTexelHeight(i, j, scales, texel), &textureData[s]);
+                encodeHeight(nodeTexelHeight(i, j, scales, texel, sat), &textureData[s]);
             }
         }
     }
@@ -369,8 +432,10 @@ namespace massif {
         if (n < 1) {
             return;
         }
-        std::function<float(int, int)> texel = makeNodeTexelSampler(neighbours);
+        NodeTexelSampler texel = makeNodeTexelSampler(neighbours);
         std::array<int, 4> scales = edgeBoxScales(neighbours);
+        ElevationNodeField::SummedAreaTable sat;
+        buildHeightSat(sat);
         std::size_t bytes = static_cast<std::size_t>(n + 1) * _bytesPerTexel;
         strips.south.resize(bytes);
         strips.north.resize(bytes);
@@ -378,16 +443,30 @@ namespace massif {
         strips.east.resize(bytes);
         for (int k = 0; k <= n; k++) {
             std::size_t s = static_cast<std::size_t>(k) * _bytesPerTexel;
-            encodeHeight(nodeTexelHeight(k, 0, scales, texel), &strips.south[s]);
-            encodeHeight(nodeTexelHeight(k, n, scales, texel), &strips.north[s]);
-            encodeHeight(nodeTexelHeight(0, k, scales, texel), &strips.west[s]);
-            encodeHeight(nodeTexelHeight(n, k, scales, texel), &strips.east[s]);
+            encodeHeight(nodeTexelHeight(k, 0, scales, texel, sat), &strips.south[s]);
+            encodeHeight(nodeTexelHeight(k, n, scales, texel, sat), &strips.north[s]);
+            encodeHeight(nodeTexelHeight(0, k, scales, texel, sat), &strips.west[s]);
+            encodeHeight(nodeTexelHeight(n, k, scales, texel, sat), &strips.east[s]);
         }
     }
 
-    void ElevationTileGrid::encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const {
-        int paddedWidth = _width + 2;
-        int paddedHeight = _height + 2;
+    int ElevationTileGrid::getTextureBorderTexels(double reachMetres) const {
+        if (!(reachMetres > 0) || _width < 1) {
+            return 1;
+        }
+        double texelMetres = (_internalBounds.getMax().getX() - _internalBounds.getMin().getX()) / _width * Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE;
+        if (!(texelMetres > 0)) {
+            return 1;
+        }
+        // The tap is a bilinear read, so the texel PAST its reach is sampled too.
+        int border = static_cast<int>(std::ceil(reachMetres / texelMetres)) + 1;
+        return std::max(1, std::min(border, std::min(MAX_TEXTURE_BORDER_TEXELS, std::min(_width, _height))));
+    }
+
+    void ElevationTileGrid::encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, std::vector<std::uint8_t>& textureData) const {
+        border = std::max(1, border);
+        int paddedWidth = _width + 2 * border;
+        int paddedHeight = _height + 2 * border;
         textureData.resize(static_cast<std::size_t>(paddedWidth) * paddedHeight * _bytesPerTexel);
 
         std::function<void(int, int, std::uint8_t*)> texelValue = makeTexelSampler(neighbours);
@@ -396,9 +475,9 @@ namespace massif {
         // coarser neighbour box-filters them); the rest is this grid's own texel at its own index,
         // so a whole row is one memcpy - it replaced a per-texel re-encode worth 4.3 ms a tile.
         std::size_t i = 0;
-        for (int gy = -1; gy <= _height; gy++) {
+        for (int gy = -border; gy < _height + border; gy++) {
             bool ownRow = (gy > 0 && gy < _height - 1);
-            for (int gx = -1; gx <= _width; gx++) {
+            for (int gx = -border; gx < _width + border; gx++) {
                 if (ownRow && gx == 1) {
                     // The row's own span, straight out of the source raster.
                     std::size_t span = static_cast<std::size_t>(_width - 2) * _bytesPerTexel;
@@ -412,29 +491,31 @@ namespace massif {
         }
     }
 
-    void ElevationTileGrid::encodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, BorderStrips& strips) const {
-        int paddedWidth = _width + 2;
-        int paddedHeight = _height + 2;
+    void ElevationTileGrid::encodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, BorderStrips& strips) const {
+        border = std::max(1, border);
+        int paddedWidth = _width + 2 * border;
+        int paddedHeight = _height + 2 * border;
+        int thickness = border + 1; // the ring, and the own outermost row/column a coarser neighbour filters
 
         std::function<void(int, int, std::uint8_t*)> texelValue = makeTexelSampler(neighbours);
 
-        // South and north: two full-width rows each (gy = -1, 0 and height-1, height).
-        strips.south.resize(static_cast<std::size_t>(paddedWidth) * 2 * _bytesPerTexel);
-        strips.north.resize(static_cast<std::size_t>(paddedWidth) * 2 * _bytesPerTexel);
-        for (int row = 0; row < 2; row++) {
+        // South and north: full-width rows (gy = -border .. 0 and height - 1 .. height + border - 1).
+        strips.south.resize(static_cast<std::size_t>(paddedWidth) * thickness * _bytesPerTexel);
+        strips.north.resize(static_cast<std::size_t>(paddedWidth) * thickness * _bytesPerTexel);
+        for (int row = 0; row < thickness; row++) {
             std::size_t s = static_cast<std::size_t>(row) * paddedWidth * _bytesPerTexel;
-            for (int gx = -1; gx <= _width; gx++, s += _bytesPerTexel) {
-                texelValue(gx, -1 + row, &strips.south[s]);
+            for (int gx = -border; gx < _width + border; gx++, s += _bytesPerTexel) {
+                texelValue(gx, -border + row, &strips.south[s]);
                 texelValue(gx, _height - 1 + row, &strips.north[s]);
             }
         }
-        // West and east: two full-height columns each (gx = -1, 0 and width-1, width).
-        strips.west.resize(static_cast<std::size_t>(paddedHeight) * 2 * _bytesPerTexel);
-        strips.east.resize(static_cast<std::size_t>(paddedHeight) * 2 * _bytesPerTexel);
-        for (int gy = -1; gy <= _height; gy++) {
-            std::size_t s = static_cast<std::size_t>(gy + 1) * 2 * _bytesPerTexel;
-            for (int col = 0; col < 2; col++) {
-                texelValue(-1 + col, gy, &strips.west[s + col * _bytesPerTexel]);
+        // West and east: full-height columns (gx = -border .. 0 and width - 1 .. width + border - 1).
+        strips.west.resize(static_cast<std::size_t>(paddedHeight) * thickness * _bytesPerTexel);
+        strips.east.resize(static_cast<std::size_t>(paddedHeight) * thickness * _bytesPerTexel);
+        for (int gy = -border; gy < _height + border; gy++) {
+            std::size_t s = static_cast<std::size_t>(gy + border) * thickness * _bytesPerTexel;
+            for (int col = 0; col < thickness; col++) {
+                texelValue(-border + col, gy, &strips.west[s + col * _bytesPerTexel]);
                 texelValue(_width - 1 + col, gy, &strips.east[s + col * _bytesPerTexel]);
             }
         }

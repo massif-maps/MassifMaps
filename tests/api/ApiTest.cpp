@@ -75,14 +75,26 @@ void testElevationNodeField();
 void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
+void testDrapeEviction();
+void testStyleConfigZoom();
 void testDrapeTuning();
 void testZoomConvention();
 void testShadowCasterRing();
 void testTerrainTesselation();
 void testFlattenSwitch();
+void testTerrainDecodeWait();
 void testPrefetchOrder();
 void testTileStyleZoom();
+void testKineticStep();
 void testTileLODRule();
+void testSphericalSurface();
+void testGlobeElevationScale();
+void testSkyFrame();
+void testTerrainSurface();
+void testFlattenSwitchTimeline();
+void testViewDistance();
+void testFogPitchFade();
+void testTerrainOcclusion();
 
 namespace {
 
@@ -448,14 +460,26 @@ int main() {
     testDayCycleLight();
     testDrapeStackCuts();
     testDrapeStandIn();
+    testDrapeEviction();
+    testStyleConfigZoom();
     testDrapeTuning();
     testZoomConvention();
     testShadowCasterRing();
     testTerrainTesselation();
     testFlattenSwitch();
+    testTerrainDecodeWait();
     testPrefetchOrder();
     testTileStyleZoom();
+    testKineticStep();
     testTileLODRule();
+    testSphericalSurface();
+    testGlobeElevationScale();
+    testSkyFrame();
+    testTerrainSurface();
+    testFlattenSwitchTimeline();
+    testViewDistance();
+    testFogPitchFade();
+    testTerrainOcclusion();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

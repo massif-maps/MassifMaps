@@ -15,21 +15,9 @@
 namespace massif {
 
     /**
-     * A raster tile layer that renders each tile through a custom GLSL fragment shader ("filter").
-     * The data source can be any raster TileDataSource - most commonly an RGB-encoded elevation
-     * (terrarium/mapbox) source, but any raster works. This is the general form of
-     * HillshadeRasterTileLayer, which specializes it for DEM data (normal map + hillshade + contours).
-     *
-     * The shader must define:
-     *   vec4 applyLighting(lowp vec4 color, mediump vec3 normal, mediump vec3 surfaceNormal, mediump float intensity)
-     * and it can use these helpers (injected before it):
-     *   getRawColor()  - the untouched RGBA texel of the source tile at this fragment
-     *   getMapZoom()   - the current fractional map zoom (for per-zoom logic)
-     * plus the shared uniforms/varyings vUV (tile uv), uUVScale (texture size) and uBitmap.
-     * It must return a PREMULTIPLIED color (rgb already multiplied by alpha); return alpha 0 where the
-     * output should be transparent so layers below show through.
-     *
-     * Note: this class is experimental and may change or even be removed in future SDK versions.
+     * A raster tile layer (the general form of HillshadeRasterTileLayer) rendering each tile through a GLSL shader defining
+     * `vec4 applyLighting(lowp vec4 color, mediump vec3 normal, mediump vec3 surfaceNormal, mediump float intensity)`; it may use
+     * getRawColor(), getMapZoom(), vUV, uUVScale and uBitmap, and returns a premultiplied color. Note: experimental, may change.
      */
     class CustomRasterTileLayer : public RasterTileLayer {
     public:
@@ -57,7 +45,7 @@ namespace massif {
 
         virtual std::shared_ptr<vt::Tile> createVectorTile(const MapTile& subTile, const MapTile& tile, const std::shared_ptr<TileData>& tileData, const std::shared_ptr<Bitmap>& bitmap, const std::shared_ptr<vt::TileTransformer>& tileTransformer) const;
 
-        // The shader source actually handed to the renderer. Falls back to PASSTHROUGH_SHADER.
+        // Falls back to PASSTHROUGH_SHADER.
         virtual std::string getEffectiveShaderSource() const;
 
         static const std::string PASSTHROUGH_SHADER;

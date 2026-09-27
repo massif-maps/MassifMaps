@@ -25,6 +25,7 @@
 #include <vector>
 
 #include <stdext/timed_lru_cache.h>
+#include <vt/RenderStats.h> // MASSIF_VT_RENDER_STATS gates the diagnostic member below
 
 namespace massif {
     class TileDataSource;
@@ -33,18 +34,14 @@ namespace massif {
     class Projection;
 
     /**
-     * Manages decoded DEM elevation grids on top of a raster elevation tile data source
-     * (the same data source that can be simultaneously used by HillshadeRasterTileLayer).
-     * Provides thread-safe elevation lookups in meters and in display units
-     * (internal z units, including exaggeration and Mercator latitude scale),
-     * ray intersection against the displaced terrain surface, and per-tile elevation bounds.
+     * Decoded DEM grids over a raster elevation data source: thread-safe heights in meters and display units
+     * (internal z, exaggeration and Mercator latitude scale included), ray intersection and per-tile bounds.
      * Internal class, not exposed in the public API.
      */
     class ElevationManager : public ElevationProvider {
     public:
-        // Texels of elevation data per unit of tile size, i.e. the density tangram's zoom bias
-        // normalises every raster source to: 256 texels over a 256-point tile is one texel per
-        // point, so a 512-texel source is used one zoom level coarser.
+        // Texels per 256-point tile that tangram's zoom bias normalises every raster source to:
+        // a 512-texel source is used one zoom level coarser.
         static constexpr int DEM_TEXELS_PER_TILE_UNIT = 256;
 
         enum class LoadMode {
@@ -57,9 +54,8 @@ namespace massif {
              */
             ALLOW_LOAD,
             /**
-             * Like ALLOW_LOAD, but a cached ancestor is not accepted as a stand-in: the tile itself
-             * is loaded unless the data source has already answered that this level does not exist.
-             * May block on IO/network.
+             * Like ALLOW_LOAD, but no cached ancestor stands in: the tile itself is loaded unless the
+             * data source has already answered that this level does not exist. May block on IO/network.
              */
             LOAD_EXACT
         };
@@ -81,11 +77,24 @@ namespace massif {
         void setNeighbourPrefetchEnabled(bool enabled);
 
         /**
-         * Sets the terrain surface resolution (mesh cells per tile edge). Every decoded grid
-         * carries a node field built for it - the DEM box-filtered to one mesh cell
-         * (ElevationNodeField) - which is what the surface is displaced from and what every
-         * display-height query here answers with, so the drawn ground, label anchors, extrusion
-         * bases and the raycast agree on one height field. Changing it drops the decoded grids.
+         * Caps the zoom of the elevation tiles resolved; 0 (default) = the source maximum. A working-set
+         * control: keeps a far-reaching view within the grid cache so it stops thrashing.
+         * Driven by TerrainOptions::setMaxZoom. Changing it drops the decoded grids.
+         */
+        int getMaxDataZoomCap() const;
+        void setMaxDataZoomCap(int maxZoom);
+
+        /**
+         * Whether display heights read the DEM bilinearly rather than its node field, to match a
+         * bilinear mesh (TerrainOptions::setSubdivideDistance). Changing it bumps the version.
+         */
+        bool isBilinearSurface() const;
+        void setBilinearSurface(bool bilinear);
+
+        /**
+         * Sets the terrain surface resolution (mesh cells per tile edge). Each grid's node field is built for it,
+         * and both the surface and every display-height query here read that field, so they agree.
+         * Changing it drops the decoded grids.
          */
         void setSurfaceResolution(int resolution);
 
@@ -103,42 +112,50 @@ namespace massif {
         std::vector<double> getElevations(const std::vector<MapPos>& poses) const;
 
         /**
+         * The skyline from a viewpoint: per azimuth (degrees clockwise from north), the apparent altitude
+         * in degrees of the highest terrain, with curvature and refraction. Non-blocking: missing grids are requested.
+         * @param pos The viewpoint, WGS84.
+         * @param eyeHeight Metres above the ground at the viewpoint.
+         * @param maxDistance How far out, in metres.
+         * @return One altitude per azimuth, in degrees; -90 where no terrain is known.
+         */
+        std::vector<double> calculateHorizon(const MapPos& pos, double eyeHeight, const std::vector<double>& azimuths, double maxDistance) const;
+
+        /**
          * Returns the elevation in meters at the given internal coordinates, from the DEM itself.
          * Returns 0 if no data is available.
          */
         double getElevationMeters(double internalX, double internalY, LoadMode mode) const;
         /**
-         * Returns the display height (internal z units, including exaggeration and Mercator scale)
-         * at the given internal coordinates - the height of the drawn SURFACE, i.e. the node field,
-         * not the DEM (see ElevationTileGrid::sampleNodeHeight). Returns 0 if no data is available.
+         * Returns the display height (internal z, exaggeration and Mercator scale included) of the drawn
+         * surface, i.e. the node field, not the DEM. Returns 0 if no data is available.
          */
         double getDisplayHeight(double internalX, double internalY, LoadMode mode) const;
         /**
-         * The same, but says whether there was any data. Returns false and leaves height untouched
-         * when no decoded grid covers the point - which getDisplayHeight cannot express, since it
-         * returns 0 both for "sea level" and for "nothing loaded". A caller that BAKES the answer
-         * into geometry needs that difference.
+         * The same, but tells "no data" apart from sea level (getDisplayHeight returns 0 for both),
+         * for a caller that bakes the answer into geometry. Leaves height untouched when no grid covers the point.
          * @return True if a cached grid answered.
          */
         bool getDisplayHeightCached(double internalX, double internalY, double& height) const;
+        /**
+         * The same, also reporting the zoom of the grid that answered, which may be a coarser cached ancestor.
+         * @return True if a cached grid answered.
+         */
+        bool getDisplayHeightCached(double internalX, double internalY, double& height, int& resolvedZoom) const;
         /**
          * Returns the display height gradient (dz/dx, dz/dy, unitless) at the given internal coordinates.
          */
         void getDisplayGradient(double internalX, double internalY, LoadMode mode, double& dhdx, double& dhdy) const;
 
         /**
-         * Returns the decoded elevation grid covering the given RENDER tile (the tile zoom is
-         * mapped to the elevation level by getDataTile and cached ancestors act as fallbacks).
-         * May return null.
-         * The tile must be in XYZ convention (y=0 north, same as vt::TileId and TileDataSource::loadTile).
+         * Returns the decoded grid covering the given render tile (mapped by getDataTile, cached ancestors
+         * as fallbacks), or null. The tile must be in XYZ convention (y=0 north, as vt::TileId).
          */
         std::shared_ptr<ElevationTileGrid> getTileGrid(const MapTile& mapTile, LoadMode mode) const;
 
         /**
-         * Like getTileGrid, but the tile is an ELEVATION tile (a getDataTile result or one of its
-         * neighbours), not a render tile: only the data source zoom range is applied to it. Passing
-         * an already-resolved elevation tile to getTileGrid would map it down a second time, which
-         * costs one elevation level per hop.
+         * Like getTileGrid, but for an elevation tile (a getDataTile result or a neighbour): only the source
+         * zoom range is applied. getTileGrid would map it down again, one elevation level per hop.
          */
         std::shared_ptr<ElevationTileGrid> getDataTileGrid(const MapTile& dataTile, LoadMode mode) const;
 
@@ -150,38 +167,41 @@ namespace massif {
         MapTile getDataTile(const MapTile& mapTile) const;
 
         /**
-         * Returns the tile carrying the elevation data for the given render tile at FULL detail:
-         * capped by the data source maximum zoom level only, not by what the terrain mesh can
-         * express. For consumers that resolve more than the mesh does - shading is per fragment,
-         * so it shows relief the surface geometry could never carry.
+         * The render tile covering an internal position at the source maximum zoom. With getDataTile
+         * and prefetchTileGrid, loads a point no visible tile covers (e.g. the ground under a low camera).
+         */
+        MapTile getTileForInternalPos(double internalX, double internalY) const;
+
+        /**
+         * The render tile zoom past which this DEM adds no relief: the source maximum plus the levels
+         * clampTileZoom drops for an oversized grid. Where the terrain LOD floor stops following the camera.
+         */
+        int getDetailZoomLimit() const;
+
+        /**
+         * The elevation tile for the given render tile at full detail, capped by the source maximum zoom only,
+         * for consumers that resolve more than the mesh (per-fragment shading).
          */
         MapTile getFullDetailDataTile(const MapTile& mapTile) const;
         /**
-         * The elevation tile for a consumer that resolves 'extraLevels' more detail than the
-         * terrain MESH can express. The mesh cap (one texel per half surface cell) is right for
-         * geometry and wrong for per-fragment shading, which resolves far more - see
-         * getFullDetailDataTile for the extreme. extraLevels 0 is the mesh cap itself.
+         * The elevation tile for a consumer that resolves 'extraLevels' more than the mesh cap (one texel per
+         * half surface cell). extraLevels 0 is the mesh cap itself.
          */
         MapTile getDetailDataTile(const MapTile& mapTile, int extraLevels) const;
 
         /**
-         * Requests an asynchronous load of the given ELEVATION tile (as returned by getDataTile,
-         * or one of its neighbours - it is not mapped down again). Never blocks and never
-         * performs IO on the calling thread. A no-op if the grid is already cached, already
-         * queued or currently being loaded, or if neighbour prefetching is disabled.
-         * Priority 2 (the tile's own elevation level) is served before 1 (edge neighbours),
-         * which is served before 0 (diagonal neighbours, which only fill a corner texel).
-         * The tile must be in XYZ convention (y=0 north, same as getTileGrid).
+         * Queues an async load of the given elevation tile (XYZ, not mapped down again); never blocks. No-op if
+         * cached, queued, loading, or neighbour prefetching is off. Priority 2 (the tile's own level) is served
+         * before 1 (edge neighbours), then 0 (diagonals, which only fill a corner texel).
          */
         void prefetchTileGrid(const MapTile& dataTile, int priority) const;
 
+        /** The same queueing for a tile a consumer needs; ignores TerrainOptions::ElevationPrefetchEnabled. */
+        void requestTileGrid(const MapTile& dataTile, int priority) const;
+
         /**
-         * Sets the point the prefetch queue is ordered against - the camera focus, in internal
-         * coordinates. Within a priority level the queued tile NEAREST to it is loaded first, so
-         * the ground under the viewer appears before the ground at the horizon.
-         * Read when a tile is DEQUEUED rather than when it is queued, so that a pan re-orders what
-         * is already waiting instead of draining it against the camera of some earlier frame.
-         * Until it is called the queue drains newest first, as it always did.
+         * Sets the camera focus (internal coordinates) the prefetch queue drains nearest-first from, within a
+         * priority. Read at dequeue, so a pan re-orders what is already waiting. Until set, newest first.
          */
         void setPrefetchFocus(double internalX, double internalY) const;
 
@@ -203,7 +223,14 @@ namespace massif {
         void getDisplayHeightRange(double internalY, float exaggeration, double& minZ, double& maxZ) const;
 
         virtual double getDisplayHeight(double internalX, double internalY) const override;
+        virtual void getDisplayGradient(double internalX, double internalY, double& dhdx, double& dhdy) const override;
+        virtual int getMaxDataZoom() const override;
         virtual bool intersectRay(const cglib::ray3<double>& ray, double& t) const override;
+        /**
+         * Whether loaded terrain blocks the first maxFraction of the segment between two display-space
+         * points. Unlike intersectRay, the segment may climb.
+         */
+        bool isSegmentBlocked(const cglib::vec3<double>& from, const cglib::vec3<double>& to, double maxFraction) const;
         /**
          * The tile must be in XYZ convention (y=0 north, same as vt::TileId).
          */
@@ -215,26 +242,21 @@ namespace massif {
          */
         void getMinMaxDisplayHeightExact(const MapTile& tile, double& minZ, double& maxZ) const;
         /**
-         * getMinMaxDisplayHeightExact, plus whether the range came from decoded data: false when
-         * the tile has no cached grid, for a caller that would rather keep its own estimate than
-         * use the conservative global one. Never loads.
+         * getMinMaxDisplayHeightExact, plus whether the range came from decoded data (false without a cached
+         * grid), for a caller that would rather keep its own estimate. Never loads.
          */
         bool getMinMaxDisplayHeightCached(const MapTile& tile, double& minZ, double& maxZ) const;
         virtual unsigned int getVersion() const override;
 
         /**
-         * Appends the elevation tiles whose data changed between 'sinceVersion' (exclusive) and
-         * the current version to 'tiles', in XYZ convention. Returns false if the change log no
-         * longer reaches back to 'sinceVersion' (log overflow, or the whole cache was dropped):
-         * the caller must then treat every tile as changed.
+         * Appends the elevation tiles (XYZ) changed since 'sinceVersion' (exclusive). Returns false if the log
+         * no longer reaches back that far (overflow, or the cache was dropped): treat every tile as changed.
          */
         bool getChangedTiles(unsigned int sinceVersion, std::vector<MapTile>& tiles) const;
 
         /**
-         * Called on a tile-loading thread whenever decoded elevation data changed. Nothing polls
-         * for it: the consumers all read the version from inside a frame, so without a redraw
-         * request the map goes idle on whatever mesh the last frame happened to have and only
-         * catches up on the next gesture.
+         * Called on a tile-loading thread whenever decoded elevation data changed. Consumers only read the
+         * version inside a frame, so without this redraw request the map idles on a stale mesh.
          */
         void setDataChangedListener(const std::function<void()>& listener);
 
@@ -244,22 +266,25 @@ namespace massif {
         static unsigned long long NextInstanceId();
 
         /**
-         * The version of the elevation DATA alone - every change except a scale-only one. The
-         * exaggeration scales heights on the GPU and does not touch the tile surfaces, which are
-         * built flat, so a consumer that only rebuilds geometry watches this instead of the global
-         * version and is not woken by an exaggeration ramp.
+         * The version of the elevation data alone, not bumped by an exaggeration change (scaled on the GPU,
+         * surfaces built flat), so a geometry-only consumer is not woken by an exaggeration ramp.
          */
     public:
         unsigned int getDataVersion() const;
     private:
 
         void tilesChanged();
+        float sampleSurfaceHeight(const ElevationTileGrid& grid, double internalX, double internalY) const;
         void bumpGlobalVersion();
         void notifyDataChanged() const;
         double wrapInternalX(double internalX) const;
         MapTile clampTileZoom(const MapTile& mapTile) const;
         MapTile clampDataTileZoom(const MapTile& dataTile) const;
+        /** The source maximum, or the MaxDataZoom cap where one is set and is lower. */
+        int dataMaxZoom() const;
         static int nodeBoxCells();
+        /** Cache read that honours the failure marker's expiry, which read() alone does not. */
+        bool readCachedGrid(long long tileId, std::shared_ptr<ElevationTileGrid>& grid) const;
         std::shared_ptr<ElevationTileGrid> lookupTileGrid(const MapTile& dataTile, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> getGridForInternalPos(double internalX, double internalY, LoadMode mode) const;
         std::shared_ptr<ElevationTileGrid> loadTileGrid(const MapTile& mapTile) const;
@@ -271,9 +296,7 @@ namespace massif {
         const std::shared_ptr<Projection> _projection;
         std::shared_ptr<DataSourceListener> _dataSourceListener;
 
-        // Process-unique, so that the per-thread grid memo in lookupTileGrid can tell two
-        // managers apart without comparing addresses (a destroyed manager's address can be
-        // handed straight back to the next one).
+        // Process-unique, so the per-thread grid memo tells managers apart; an address can be reused.
         const unsigned long long _instanceId;
 
         mutable std::atomic<unsigned int> _dataVersion; // moves with _version whenever tile data changes
@@ -282,26 +305,27 @@ namespace massif {
         std::atomic<bool> _seamlessTileEdges;
         std::atomic<int> _surfaceResolution;      // terrain mesh cells per tile edge
         mutable std::atomic<int> _gridSizeHint;   // texels per elevation tile edge, from the last decoded grid
+        std::atomic<int> _maxDataZoom;            // setMaxDataZoomCap; 0 = the source maximum
+        std::atomic<bool> _bilinearSurface;       // setBilinearSurface
         std::atomic<bool> _neighbourPrefetch;
         mutable std::atomic<unsigned int> _version;
         mutable std::atomic<float> _maxSeenElevation;
 
-        // Which tiles changed at which version, so that consumers holding per-tile derived
-        // data (tile surfaces) can invalidate only what actually changed instead of
-        // everything on every decoded elevation tile.
+        // Which tiles changed at which version, so per-tile consumers invalidate only what changed.
         static constexpr std::size_t MAX_CHANGE_LOG_ENTRIES = 256;
         mutable std::deque<std::pair<unsigned int, MapTile> > _changeLog;
         mutable unsigned int _changeLogFirstVersion = 1; // earliest version still covered by the log
 
         mutable cache::timed_lru_cache<long long, std::shared_ptr<ElevationTileGrid> > _gridCache;
         bool _gridCacheCapacityFixed = false; // set through setCacheCapacity: the app's number wins over the grid-count rule
+#if MASSIF_VT_RENDER_STATS
+        mutable std::set<long long> _everLoadedTiles; // diagnostics only: tells an eviction reload from a first load
+#endif
         mutable std::map<long long, std::shared_future<std::shared_ptr<ElevationTileGrid> > > _pendingLoads; // single-flight de-duplication of concurrent loads
         std::function<void()> _dataChangedListener; // called outside _mutex, see setDataChangedListener
         mutable std::mutex _mutex;
 
-        // Background prefetch worker: loads the tiles the render thread asks for without blocking
-        // it, started on the first request and joined in the destructor. The request's priority
-        // travels with it - the drain orders by priority first, distance second.
+        // Prefetch workers: started on the first request, joined in the destructor. Drained by priority, then distance.
         struct PrefetchEntry {
             MapTile tile;
             int priority;
@@ -309,9 +333,7 @@ namespace massif {
 
         mutable std::deque<PrefetchEntry> _prefetchQueue;      // low priority (neighbour borders)
         mutable std::deque<PrefetchEntry> _prefetchQueueHigh;  // high priority (the tile's own level)
-        // Where "near" is, in normalised mercator - see setPrefetchFocus. Two plain atomics: a pair
-        // torn across a frame boundary only mis-ranks one tile, which is not worth a lock on the
-        // render thread every frame.
+        // Normalised mercator (see setPrefetchFocus). Plain atomics: a torn pair only mis-ranks one tile.
         mutable std::atomic<double> _prefetchFocusU;
         mutable std::atomic<double> _prefetchFocusV;
         mutable std::atomic<bool> _prefetchFocusValid;

@@ -12,10 +12,8 @@
 
 namespace massif::vt {
     /**
-     * Splits a CSS-like font list ("Roboto, Helvetica Neue, sans-serif") into its names, the most
-     * preferred first. An entry may name the platform it is meant for ("android:Roboto",
-     * "ios:Helvetica Neue"); an entry tagged for another platform is dropped. Surrounding quotes
-     * and whitespace are removed. A single name without a comma simply comes back as one entry.
+     * Splits a CSS-like font list ("Roboto, Helvetica Neue, sans-serif") into its names, most preferred first,
+     * unquoted and trimmed. Entries tagged for another platform ("android:Roboto", "ios:...") are dropped.
      */
     std::vector<std::string> parseFontNames(const std::string& names);
 }

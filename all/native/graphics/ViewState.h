@@ -60,12 +60,21 @@ namespace massif {
          */
         void setFocusPos(const cglib::vec3<double>& focusPos);
         /**
-         * Moves the focus AND the camera by deltaZ, keeping zoom, tilt and rotation: the
-         * camera-to-focus vector is untouched. MapRenderer uses it to keep the focus ON the
-         * terrain under it, which is what makes the zoom the camera's distance to the ground at
-         * the focus, as in mapbox, rather than to sea level.
+         * Moves the focus and the camera by deltaZ, keeping zoom, tilt and rotation. MapRenderer keeps the focus on
+         * the terrain with it, so zoom is the camera's distance to the ground at the focus (as in mapbox), not to sea level.
          */
         void liftFocus(double deltaZ);
+        /**
+         * Put the focus at `internalZ` above the surface, carrying the camera with it. Through the
+         * projection surface, so it is a radial move on a globe and a z move on a plane.
+         */
+        void setFocusHeight(double internalZ);
+        /**
+         * World units per internal unit at the focus: 1 on the plane, and on the globe
+         * `2 * cos(latitude)` ramping back to 2 as the planet fills the view. The camera calibrates
+         * on it, so the same zoom frames the same ground on either surface.
+         */
+        double worldPerInternal() const;
 
         /**
          * Returns the up direction vector.
@@ -80,7 +89,7 @@ namespace massif {
         void setUpVec(const cglib::vec3<double>& upVec);
     
         /**
-         * Returns the camera tilt angle. A NEGATIVE tilt means the view looks above the horizon.
+         * Returns the camera tilt angle. A negative tilt means the view looks above the horizon.
          * @return The camera tilt angle in degrees.
          */
         float getTilt() const;
@@ -92,7 +101,7 @@ namespace massif {
         void setTilt(float tilt);
 
         /**
-         * Sets the tilt of the VIEW only, leaving the camera where it is. The difference between
+         * Sets the tilt of the view only, leaving the camera where it is. The difference between
          * the camera tilt and this one is applied as a rotation of the view about the camera, so
          * the camera does not move at all - which is what a first person look is.
          * @param tilt The new view tilt angle in degrees.
@@ -100,7 +109,7 @@ namespace massif {
         void setViewTilt(float tilt);
 
         /**
-         * Returns the tilt the CAMERA POSITION is built at: the camera-to-focus vector is at this
+         * Returns the tilt the camera position is built at: the camera-to-focus vector is at this
          * angle, never below the horizon, and the difference to the view tilt is a rotation of the
          * view about the camera (see calculateLookatMat).
          * @return The camera tilt angle in degrees, never negative.
@@ -144,7 +153,7 @@ namespace massif {
         float getRotation() const;
 
         /**
-         * The zoom the RENDERER works in: the reported zoom plus Options::ZoomOffset. vt sizes by
+         * The zoom the renderer works in: the reported zoom plus Options::ZoomOffset. vt sizes by
          * `2^(zoom - tileZoom)`, so it needs the zoom the tiles were chosen for.
          * @return The renderer's zoom level.
          */
@@ -211,7 +220,7 @@ namespace massif {
 
         /**
          * Returns the near plane distance.
-         * @return The new plane distance.
+         * @return The near plane distance.
          */
         float getNear() const;
         /**
@@ -229,28 +238,21 @@ namespace massif {
         void setTerrainHeightRange(float minZ, float maxZ);
 
         /**
-         * Sets the terrain reference under the camera (in internal units), published once
-         * per frame by the renderer, and turns the terrain zoom bound on. The ground height
-         * bounds the near plane (the ground cannot be further than that below the camera);
-         * the clearance is CameraClearance::minHeight over it, with the app's floor.
+         * Sets the terrain height under the camera (internal units), published once per frame by the renderer,
+         * and turns the terrain zoom bound on. It bounds the near plane; the clearance is CameraClearance::minHeight over it.
          * @param terrainZ The terrain height under the camera.
          * @param clearanceFloor The app's minimum camera clearance, 0 for none.
+         * @param clearanceFraction The app's share of the camera altitude, negative for the default.
          */
-        void setTerrainCameraReference(double terrainZ, double clearanceFloor);
+        void setTerrainCameraReference(double terrainZ, double clearanceFloor, double clearanceFraction = -1);
         /**
          * Turns the terrain zoom bound off (no terrain, or a non-planar projection).
          */
         void clearTerrainCameraReference();
         /**
-         * Returns the maximum zoom allowed by the terrain clearance, or infinity when
-         * no terrain bound is active. Evaluated against the CURRENT camera state, so it
-         * carries no frame lag: zooming in by this delta lands the camera exactly on the
-         * clearance shell. Every zoom path (gesture, animation, kinetic fling, API) is
-         * clamped by it, which is what keeps the camera from being pushed into the
-         * terrain and then corrected back out - the correction/gesture fight that makes
-         * zooming jump back and forth. Below the current zoom when the camera is already
-         * under the shell: the bound then stops a zoom in, and MapRenderer's correction
-         * lifts the camera.
+         * Returns the maximum zoom allowed by the terrain clearance, or infinity when no terrain bound is active.
+         * Evaluated on the current camera state (no frame lag) and clamping every zoom path, so a zoom never pushes the
+         * camera into the terrain for the correction to push it back out. Below the current zoom when already under the shell.
          * @return The terrain-imposed maximum zoom.
          */
         float getTerrainMaxZoom() const;
@@ -265,7 +267,7 @@ namespace massif {
          * Returns the vertical field of view angle.
          * @return The vertical field of view angle in degrees.
          */
-        int getFOVY() const;
+        float getFOVY() const;
         /**
          * Returns the vertical field of view angle, divided by 2.
          * @return The vertical field of view angle in degrees, divided by 2.
@@ -464,10 +466,8 @@ namespace massif {
         void setHorizontalLayerOffsetDir(int horizontalLayerOffsetDir);
 
         /**
-         * How far from the camera the map is drawn, in internal units - tangram's rule, scaled by
-         * TerrainOptions::ViewDistanceFactor. Both the far plane and the tile walk stop here, so
-         * the tiles fetched are exactly the tiles the frustum can show. 0 means "as far as the
-         * visible ground goes" (factor 0).
+         * How far from the camera the map is drawn - tangram's rule, scaled by TerrainOptions::ViewDistanceFactor.
+         * Both the far plane and the tile walk stop here, so the tiles fetched are exactly the tiles the frustum can show.
          * @param options The options object.
          * @return The view distance in internal units, or 0 if it is unbounded.
          */
@@ -484,14 +484,12 @@ namespace massif {
     private:
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible) const;
         void calculateViewDistances(const Options& options, float& near, float& far, bool& skyVisible, float& skyHorizonNDC) const;
+        void logViewDistances(const Options& options, float near, float far, double rayFar, double maxDist, double viewDistance, double cameraHeight) const;
         float calculateMinZoom(const Options& options) const;
 
-        /**
-         * The camera-to-focus distance at zoom 0, which is what the whole zoom scale hangs off.
-         * One function because it is computed in two places, and a zoom convention that holds in
-         * only one of them is worse than none.
-         */
-        double calculateZoom0Distance(double tanHalfFOVY) const;
+        double localWorldPerInternal(const std::shared_ptr<ProjectionSurface>& projectionSurface) const;
+        // One function for both call sites: a zoom convention holding in only one of them is worse than none.
+        double calculateZoom0Distance(double tanHalfFOVY, const std::shared_ptr<ProjectionSurface>& projectionSurface) const;
         MapPos calculateMapBoundsCenter(const Options& options, const MapBounds& mapBounds) const;
    
         cglib::mat4x4<double> calculatePerspMat(float halfFOVY, float near, float far, const Options& options) const;
@@ -531,9 +529,10 @@ namespace massif {
         float _terrainHeightMax = 0.0f;
         bool _terrainCameraBound = false;
         double _terrainClearanceFloor = 0.0; // the app's CameraClearance, internal units
+        double _terrainClearanceFraction = -1.0; // the app's share of the altitude, <0 for the default
         double _terrainCameraZ = 0.0; // terrain height under the camera, 0 = unknown
     
-        int _fovY;
+        float _fovY;
         float _halfFOVY;
         double _tanHalfFOVY;
         double _cosHalfFOVY;

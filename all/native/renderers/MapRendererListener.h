@@ -17,18 +17,15 @@ namespace massif {
         virtual ~MapRendererListener() { }
         
         /**
-         * Listener method that gets called when the rendering surface initialized and its size is updated.
-         * The method can be used to check when it is safe to call methods that depend on view size,
-         * like moveToFitBounds, screenToMap, mapToScreen.
-         * This method is called from GL renderer thread, not from main thread.
+         * Called when the rendering surface is initialized or resized; from then on view-size dependent
+         * methods (moveToFitBounds, screenToMap, mapToScreen) are safe to call.
+         * Called from the GL renderer thread, not the main thread.
          */
         virtual void onSurfaceChanged(int width, int height) { }
         
         /**
-         * Listener method that gets called at the start of the rendering frame.
-         * The method can be used to synchronize vector elements with renderer state, for example
-         * to force marker to be always at the center of the screen (focus point).
-         * This method is called from GL renderer thread, not from main thread.
+         * Called at the start of the rendering frame, e.g. to keep a marker at the focus point.
+         * Called from the GL renderer thread, not the main thread.
          */
         virtual void onBeforeDrawFrame() { }
         

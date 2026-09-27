@@ -56,7 +56,7 @@
 !alias(massif::Options, light, lightOptions)
 !alias(massif::Options, projection, baseProjection)
 !alias(massif::Options, background, backgroundBitmap)
-%attribute(massif::Options, int, FieldOfViewY, getFieldOfViewY, setFieldOfViewY)
+%attribute(massif::Options, float, FieldOfViewY, getFieldOfViewY, setFieldOfViewY)
 %attribute(massif::Options, bool, KineticZoom, isKineticZoom, setKineticZoom)
 %attribute(massif::Options, bool, Rotatable, isRotatable, setRotatable)
 %attribute(massif::Options, bool, UserInput, isUserInput, setUserInput)
@@ -102,12 +102,15 @@
 %attribute(massif::Options, int, TileStyleZoomLift, getTileStyleZoomLift, setTileStyleZoomLift)
 %attribute(massif::Options, float, DPI, getDPI, setDPI)
 %attribute(massif::Options, float, DrawDistance, getDrawDistance, setDrawDistance)
+%attribute(massif::Options, float, LabelViewDistance, getLabelViewDistance, setLabelViewDistance)
+%attribute(massif::Options, float, LabelPadding, getLabelPadding, setLabelPadding)
 %std_exceptions(massif::Options::setBaseProjection)
 %std_exceptions(massif::Options::setTiltRange)
 %std_exceptions(massif::Options::setZoomRange)
 %std_exceptions(massif::Options::setPanBounds)
 %ignore massif::Options::Options;
 %ignore massif::Options::getProjectionSurface;
+%ignore massif::Options::getTileTransformer;
 %ignore massif::Options::getSkyBitmap;
 %ignore massif::Options::getAdjustedInternalPanBounds;
 %ignore massif::Options::OnChangeListener;

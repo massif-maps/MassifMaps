@@ -63,6 +63,24 @@ tiles. Labels with the same `globalId` from different tiles are merged (`mergeGe
 geometry copy per tile, identified by `(tileId, localId)`), and visibility, opacity and placement
 are carried over from the previous object via `snapPlacement`.
 
+**Where `globalId` comes from.** The symbolizer builds it from the feature's id in the tile, xored
+with a hash of the symbolizer itself (`Symbolizer::combineId`), so one feature cut across several
+tiles yields one label. A tile whose features carry **no id** breaks that: `MBVTFeatureDecoder`
+returns `0` for all of them (it also accepts an `id`, `osm_id` or `cartodb_id` attribute), every
+point label in the layer lands on the same `globalId`, and the merge above collapses them into a
+single label — two POIs a few metres apart draw as one, with whichever the tile decoded first
+supplying the icon and text, and the winner flipping as tiles rebuild.
+
+For a **point** label with no feature id the anchor is folded in instead
+(`Symbolizer::combineAnchorId`, used by the markers, text and shield symbolizers): the anchor is
+quantised to 2^-28 of the world, ~0.15 m at the equator. That is bit-identical across overzoom
+levels of one source tile and across a tile-border duplicate, so a point still merges with itself,
+while two distinct POIs stay distinct. It does **not** survive a change of source zoom — a z13 and
+a z14 tile snap the same POI to different cells — so during the streaming overlap of a zoom step
+such a point can exist twice; both copies draw the same icon at the same place. Line and polygon
+labels are untouched: their cross-tile merge is what stitches a road name, and an anchor cannot key
+it. Tiles that do carry feature ids take none of this path.
+
 **Placement stability invariant.** `snapPlacement` / `findSnappedPointPlacement` /
 `findSnappedLinePlacement` prefer the geometry copy with the same `(tileId, localId)` as the previous
 placement. Without that, re-snapping picks a winner by merged-list order — which changes with the
@@ -346,11 +364,13 @@ What changes, and only for this orientation:
   the lift against a constant `SCREEN_EDGE_MARGIN` short of the top edge. The margin is a constant
   on purpose: it also caps a label the band placed correctly, and a margin proportional to the
   label's own height then pushes long names further down than short ones — the row stops being a
-  row. A summit already so high in the frame that its name does not fit above it **loses the name**;
-  the rows never descend below `text-callout-offset` either.
-  Pulling the lift back down to the cap instead (what this did before) put the label BELOW its own
-  summit: off the band the style asks for, and at a negative lift with no leader line at all — which
-  is what a panorama looked like whenever the ridges sat high in the frame.
+  row. A summit already so high in the frame that its name does not fit above it **at all**
+  (`minLift > maxLift`) **loses the name**; the rows never descend below `text-callout-offset` either.
+  Pulling the lift back down BELOW the summit (what this did first) put the label off the band and at
+  a negative lift with no leader line — what a panorama looked like whenever the ridges sat high.
+  A **band** asking for more room than the screen has is the other case, and the name is kept: the
+  lift is clamped to `maxLift`. Dropping it too emptied the whole row in landscape, where a name is
+  ~2.2× taller as a fraction of the screen while the band's anchor stays the same fraction.
 - Rotation (`text-orientation`) stays with the CALLOUT placement instead of downgrading to POINT —
   angled names over a horizon is the whole look.
 - **The grazing-view gate does not apply** (`Label::isSurfaceFacingView`). Every other orientation
@@ -525,7 +545,7 @@ Everything below rests on that split — the icon stays on the feature, only the
 - **…and never while the last pass is still fading** (`VTLabelPlacementWorker::MIN_PLACEMENT_INTERVAL`),
   which is maplibre's `Placement.stillRecent`: it will not begin a placement before
   `commitTime + fadeDuration`. Every tile that arrives asks for a pass, so a pan at tilt 80 ran
-  several a second while a label's fade takes a whole second at the default blending speed — the
+  several a second while a label's fade took a whole second at the old default blending speed — the
   label never reached full opacity before the next pass could drop it. Measured on the Grenoble
   preview at z16/tilt 80: 10–14 labels flipped on and off per pass, 4–13 of them mid-screen, none of
   them losing a placement (`offInvalid=0`) — they lost a collision to a label that had just arrived.
@@ -541,9 +561,12 @@ Everything below rests on that split — the icon stays on the feature, only the
   ended instead, a `schedule()` arriving while the pass ran read the previous pass's time, found the
   interval already spent, and fired again the moment it finished — 202 ms between passes, measured.
 
-  The interval and the fade are ONE duration: 300 ms, which is maplibre's `fadeDuration` and now
-  `TileRenderer`'s default label blending speed (1/0.3 per second). A second of fade was long enough
-  that a name was still arriving when it had reached the middle of the screen.
+  The interval and the fade are ONE duration, `vt::LABEL_FADE_DURATION_MS` in `vt/LabelFade.h`:
+  300 ms, maplibre's `fadeDuration`. `VectorTileLayer`'s default label blending speed (1/0.3 per
+  second) is derived from it, and so are `TileRenderer`'s and `GLTileRenderer`'s. The layer pushes its
+  value every frame, so its default is the one that reaches the screen: until it read the shared
+  constant it stayed at 1.0 and labels faded over a full second. A second was long enough that a name
+  was still arriving when it had reached the middle of the screen.
 
 ### A label is placed BEFORE it reaches the screen
 
@@ -568,6 +591,19 @@ therefore `100 × sin(tilt)`, floored at 20 — tilt 90 is straight down here, s
 foreshortening of the ground plane, and the band stays roughly constant in WORLD terms. Measured
 live: `padding=100.0` top-down, `padding=50.0` at pitch 60, and 1–4 labels per pass taking the
 skip-fade path.
+
+**And a view that turns rather than pans is the case that rule gets wrong.** It reasons about the
+ground, so it is right for a map being dragged; a panorama sits at tilt ~0, takes the floor of 20,
+and packs only what it can see. A summit name therefore reaches the screen edge with the row already
+full, evicts a neighbour to claim it, and that eviction — several times a second while the view is
+turned — is what reads as names blinking in and out. The ground it wants was already loaded: the
+band it needs is a horizontal one, over the same horizon.
+
+`Options::setLabelPadding` overrides the formula outright (negative keeps it), and
+`calculateLabelPadding(tilt, override)` is the single place both `graphics::ViewState` and
+`TileRenderer::cullLabels` take it from, so the tile bucket below and the culler's grid never
+disagree about where the band is. Half a screen width is the useful setting for a panorama — every
+name in it is then a placement and a collision test per pass, which is the price.
 
 **The band is worth nothing without the tiles that fill it.** A label cannot be placed early if it
 does not exist, and it does not exist until its tile reaches the renderer. `TileLayer` sorted every
@@ -687,7 +723,8 @@ pass against 16.3 ms with the property unset**, and the frame time moves by unde
 the extra labels `text-optional` lets through, not the placement. Building one envelope per side
 instead cost 27.8 ms per pass, so the shared setup is worth keeping. A style that does not use
 `shield-anchors` measures identical to before. The pass runs on the placement worker; no frame
-section shows it, which is why `RenderStats::cullerNs` (`cullMs=` in the `RenderStats:` line) exists.
+section shows it, which is why `RenderStats::cullerNs` (`cullMs=` in the `RenderStats:` line of a
+`-PprofileRender` build) exists.
 
 ### Font icons
 
@@ -816,7 +853,9 @@ instead, and not in metres:
 | maplibre `perspectiveRatioCutoff` | 0.6 | 5 × camera-to-centre |
 
 `vt::LabelDistance` ports maplibre's, the tighter of the two, as
-`ratio = 0.5 + 0.5 · (cameraToCentre / distance)`. **The unit is the point.** Camera-to-centre
+`ratio = 0.5 + 0.5 · (cameraToCentre / distance)`. `Options::setLabelViewDistance` sets it in
+multiples of the camera-to-centre distance: default 5 (ratio 0.6), **0 = no cut**, which a panorama
+or first-person view wants. **The unit is the point.** Camera-to-centre
 shrinks with zoom and grows with pitch, so one constant holds everywhere; a metre cap cuts a city
 block at z18 and nothing at all at z10. Measured: at tilt 80 it cuts **nothing** (the view never
 reaches 5× the centre distance looking down, so it costs nothing and removes nothing), at tilt 30 it
@@ -831,6 +870,12 @@ itself on the tile worker at style-zoom + 2 and marking the losers `State::dead`
 
 ### The pass itself is rationed
 
+**Current state: slicing is OFF** (`PLACEMENT_BUDGET_MS = 0` in `VTLabelPlacementWorker.cpp`), so
+every pass is a whole cycle; only the duty-cycle gate below still rations placement. A slice sorts
+and inserts only the labels it collected, so the grid went to whatever came first rather than to
+priority, and the selection churned on a still map. The machinery below still works — a non-zero
+budget restores it — and the self-tuning `FULL_PLACEMENT_MS` bypass described at the end is gone.
+
 The cut bounds what each label costs; the budget bounds what a pass costs. Splitting
 `LabelCuller::process` shows where to cut: **collect** (`updatePlacement` + the variant envelopes)
 is ~90% of it at ~14.6 us a label, the sort ~2%, the grid insertion the rest. Collect runs *before*
@@ -843,6 +888,65 @@ have to hold across a cycle, and both bit in the writing:
 
 - **the collision grid persists**, or the second half of the labels reuse slots the first half took;
 - **the view is frozen**, or the second half is collided against a grid built for another screen.
+
+**A pass must make progress.** The budget is one deadline shared by every layer, so a layer whose
+turn comes after it is spent enters with the deadline already gone — and the `(index & 0x1f)` mask
+that keeps the clock read off most iterations is true on its *first* iteration whenever the cursor
+sits on a multiple of 32. The pass then stopped with `index == cursor`, and a cursor that does not
+move is a layer that never places a label again: measured on the Crosscall at Grenoble z16.22 tilt
+26, two layers of three sat at `2048` of 4075 and `96` of 172 for as long as the map was panned,
+while the far field kept a mass of labels overlapping each other and the panned-to ground had none.
+`labelSliceMayStop` (`vt/LabelSlice.h`) puts a floor of `MIN_SLICE_LABELS` under every call.
+
+**A cycle ends when every layer has wrapped, not when they all wrap together.** Layers hold
+different numbers of labels and so wrap on different passes; requiring them to coincide meant
+`finished` was true in **0 of 230 passes**, `_cycleActive` never cleared, and the grid — cleared only
+between cycles — held 1241 stale records indefinitely. The worker remembers which layers have
+wrapped (`_cycleWrappedLayers`).
+
+**A cycle whose camera has moved is abandoned, not finished.** The frozen view is right *within* a
+cycle, but a rationed one lasts longer than a pan, so every label it has left to place is for a
+screen that is gone. Draining it first is what the user waits through. When the view no longer
+matches, the cycle is dropped outright — cursors back to zero (`restartLabelPlacement`), grid
+cleared, new view — which keeps the invariant that matters (a cycle is never *resumed* against a
+different view) and removes the wait.
+
+**And the cycle that replaces it runs WHOLE.** Rationed, placement is paced to `TARGET` ms of every
+second, so a cycle costing a second of work reaches the screen tens of seconds later. A redo owed to
+a moved camera is precisely mapbox's `isFullPlacementRequested`, so `_forceFullPlacement` runs it
+unrationed. Measured in the near field after a four-swipe pan, as dark pixels in a fixed crop:
+
+| | rationed redo | + run whole | + abandon stale |
+|---|---|---|---|
+| t = 1 s | — | 20 | **772** |
+| t = 10 s | 377 | 2589 | 2623 |
+| t = 20 s | 2555 | 2589 | 2623 |
+
+Labels start appearing at 1 s instead of 20, and the settled picture carries slightly more of them.
+Steady-state placement is still rationed exactly as before. The frame cost of that one unrationed
+pass is not yet measured.
+
+**A forced placement commits without a fade** — only the one replacing an abandoned cycle, which with
+slicing off never happens; a redo for a moved camera now cross-fades. It replaces the whole screen in one pass, so blending
+it in drew every outgoing label on top of its replacement for the length of the fade — a pan came
+out of it with road names printed twice and half-faded POIs. mapbox commits a forced placement with
+`fadeDuration == 0`; `snapLabelTransition` is that, consumed once by the next `startFrame`. The
+overlap spike in the near field (7838 dark pixels at 5 s, against 2389 settled) disappears, and the
+labels are on screen from 1 s.
+
+**The cull order has to be global, not per slice.** A rationed pass collects a slice, sorts *that
+slice*, and greedily inserts it — so a low-priority label in the first slice takes a slot from a
+high-priority one in the fifth, and a sliced cycle answers differently from a whole one for the very
+same scene. That is why the placement visibly changed between the forced first pass and the rationed
+ones that followed. `_labels` is therefore ordered by priority when it is built, and the slices walk
+that order; mapbox orders its symbols once and pauses over that order for the same reason.
+
+Respecting the order costs density, measured on startup as dark pixels in a fixed crop: it settles
+at **12601 against 14981**, about 19% fewer labels, because a high-priority label claiming its slot
+first is usually the bigger one and blocks more small road names. It also converges about 2 s sooner
+(stable from 6 s rather than 8 s), and two cold runs now land within 0.1% of each other. Note what
+this does NOT fix: both orders settle and stay, so the per-slice sort was never the cause of a label
+appearing and then vanishing — only of the two placements disagreeing.
 
 The pacing is the other half of the guarantee, and it is a **duty-cycle gate** rather than a fixed
 delay: after a pass costing `C` ms, no pass may start for `C · (1000/TARGET − 1)` ms. That holds
@@ -857,20 +961,22 @@ HIDE a label, and it reads the label's placement - which an unplaced label does 
 ~9000 unplaced labels a second bypassed it. In `Label::updatePlacement`, next to the existing
 frustum reject and measured off the geometry bbox, it stops the placement SEARCH instead: 12 295
 searches a second became ~250 ([performance log 29](../performance-log.md)). A frustum does not
-bound distance; pitched at the horizon it reaches kilometres.
+bound distance; pitched at the horizon it reaches kilometres. Both places read the app's
+`labelViewDistance` (`LabelDistance::isTooFar`); `updatePlacement` used to hard-code the 0.6 ratio,
+so a larger view distance let the culler accept labels that were never given a placement.
 
 **Rationing is only worth it when there is something to ration.** Slicing a cheap cycle costs more
 than it saves — each slice re-sorts and re-inserts its own subset, and the pacing stretches it over
 many passes; applied unconditionally it took the culler from 59 to 75 ms/s at high tilt. Both
 references have a bypass (mapbox `isFullPlacementRequested` / `fadeDuration == 0`, maplibre
-`_forceFullPlacement`); ours is self-tuning rather than tilt-aware — a cycle is timed, and the next
-one is rationed only if the last exceeded `FULL_PLACEMENT_MS`. Looking down, a cycle is ~10 ms and
-runs whole; pitched, it is 60-100 ms and gets sliced.
+`_forceFullPlacement`); ours was self-tuning (`FULL_PLACEMENT_MS`, removed with the slicing) — a
+cycle was timed, and the next one rationed only if the last exceeded it. Looking down, a cycle is
+~10 ms; pitched, 60-100 ms.
 
-What it costs while rationed: a cycle takes several hundred ms, so labels settle behind a fast
-camera rather than with it (they keep their previous visibility meanwhile, so nothing flickers), and
-the placement SELECTION shifts, since an early slice claims grid slots before a later,
-higher-priority one. mapbox has the same property.
+What it cost while rationed: a cycle took several hundred ms, so labels settled behind a fast
+camera rather than with it (they kept their previous visibility meanwhile, so nothing flickered), and
+the placement SELECTION shifted, since an early slice claims grid slots before a later,
+higher-priority one — mapbox has the same property, and it is why slicing is off now.
 
 **Geometry gets no such cut, in any of the three.** The cutoff lives only in `symbol/collision_index.ts`
 and the only thing that reads a collision index is symbol placement; fills, lines and extrusions
@@ -880,7 +986,7 @@ a building shrinks with perspective and a glyph does not.
 ## Font names (fork-specific)
 
 A face name is a **CSS-like list**, most preferred first, and an entry may say which platform it is
-for. `vt::parseFontNames` ([FontNames.cpp](https://github.com/massif-maps/massif-maps-libs/blob/develop/vt/src/vt/FontNames.cpp)) is the one
+for. `vt::parseFontNames` ([FontNames.cpp](https://github.com/massif-maps/MassifMaps/blob/master/libs-massif/vt/src/vt/FontNames.cpp)) is the one
 parser; `TextSymbolizer::getFont` runs it over `text-face-name` and over every name of a font set,
 so a mapnik font set and a single comma-separated name end up as the same chain:
 
@@ -893,7 +999,7 @@ so a mapnik font set and a single comma-separated name end up as the same chain:
 
 Names are tried back to front, so the first one that resolves becomes the main font and the rest its
 glyph fallbacks; a list where nothing resolves keeps the style's fallback font. `android:`, `ios:`,
-`macos:` and `windows:` are the tags — an entry tagged for another platform is dropped at parse
+`macos:`, `windows:` and `web:` are the tags — an entry tagged for another platform is dropped at parse
 time, an untagged entry is kept everywhere.
 
 **The system loader has to be strict for this to mean anything.** `SystemFontUtils::LoadFont` takes
@@ -963,6 +1069,94 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   screen of labels goes dirty at once while elevation streams in. It still has to run to completion:
   a label left dirty is drawn and culled at its old height, which reads as labels popping in at the
   wrong place and settling.
+
+  **"No elevation here" is not a height of zero.** `ElevationManager::getDisplayHeight` returns 0
+  both for sea level and for "the grid holding this point is not cached", and a grid is routinely
+  evicted while its texture keeps rendering. Anchoring a label on that 0 buries it under the terrain,
+  the occlusion test then hides it *correctly*, and the caller marks it clean so nothing ever asks
+  again. Measured in AlpiMaps on the Crosscall: no labels at all with 3D terrain on, and with
+  `BillboardOcclusionEnabled` off the same labels were visibly under the ground. `RenderStats` named
+  it in one line — `elevUpdMs` 1–180 ms with **`elevReanchor=0`**: the sampler ran every frame and
+  never moved a single label, because the 0 it wrote already matched the 0 that was there.
+
+  So the provider asks `ElevationTextureCache::getDisplayHeight` with **`smooth = false`** first, and
+  the flag is the whole point: that path reads the grid the *texture entry retains* — the one the
+  manager's LRU has already dropped out from under a tile that is still being drawn — walks to a
+  bounded ancestor, and prefetches what is missing — and **how far that bound reaches was the actual
+  root cause**. `BASE_MAX_ANCESTOR_LEVELS` is 1, while `RenderStats`' `zoomGap` measured **3**: the
+  elevation sits three levels coarser than the render tiles, so a one-level walk refused the only data
+  there was and returned false for every label at every position. The cap is right for its original
+  caller — an extrusion bakes its base into its vertices, so a far ancestor is a wrong answer rather
+  than a coarse one — so the bound is now the caller's, and a label passes
+  `LABEL_MAX_ANCESTOR_LEVELS`, the measured gap of 3 plus the frame the texture lags the grid by.
+  Confirmed on the Crosscall: **19 misses in 746 584 queries**, and `elevReanchor` non-zero for the
+  first time. It was briefly unbounded, and that is the other half of the floating-POI bug below: an
+  entry further up than the gap is one a *previous* camera left in the cache, and after a 2D/3D
+  switch — nothing loads the DEM while the map is flat — one such texel answered for the whole
+  screen. Bounding it is only safe because a label that gets no answer is **not** worse off: with
+  GPU draping `labelVsh` elevates it from the same texture the ground is drawn from, so refusing is
+  better than answering wrong. Without a texture cache there is no GPU height either, so that device
+  takes the manager LRU's own unbounded walk instead — coarse beats nothing when nothing else comes.
+  `smooth = true` is the building-BASE variant and resolves through the manager's LRU alone, so it
+  fails in exactly the case this is for. The provider returns **NaN** when neither source has data.
+  `Label::applyElevation` leaves a non-finite vertex at the height it had and
+  returns false, which leaves it **un-anchored**. Zero stays a legal height.
+  Extrusions hit this first and were fixed the same way — see
+  [04-terrain.md](04-terrain.md#cpu-height-queries).
+
+  The label is still marked **clean**, though. Only new elevation can change the answer, and
+  `markPendingLabelsDirty` re-dirties the label when it arrives — so retrying every frame bought
+  nothing, never converged, and was most of what `elevUpdMs` spends. What carries "height unknown" is
+  `isElevationAnchored()`, not dirtiness. That is mapbox's split exactly: an approximate CPU height for
+  collision (`getAtPointOrZero`, defaulting to 0, `src/terrain/elevation.ts`), the true height on the
+  GPU, and no symbol ever hidden for missing elevation.
+
+  **A generous ancestor bound is a debt, and the payment is three invalidations, not one.** The
+  ancestor answer above is knowingly wrong by metres — it is only safe because the label is
+  re-anchored when something better arrives, and `TileRenderer` used to watch a single source for
+  that, `ElevationManager`'s version. Two others move the same answer. The elevation **texture**
+  lands a few frames after the grid, and the provider reads the texture entry *first*, so a label
+  anchored on an ancestor while the grid was still in flight was never told; the extrusion bases
+  already invalidated off `getFrameContentChanges()` and the labels now do too. And the
+  **exaggeration** is inside every CPU height: a scale change alone was handled, but a frame that
+  brought a DEM tile *as well* took the tile-scoped branch and left every label elsewhere on the
+  previous ramp step. Both cases are a 2D/3D switch exactly: the ramp moves the exaggeration every
+  frame while the DEM for the view streams in over the same frames, and a label that misses its
+  re-anchor is a POI left hanging in the air over the ground — the whole screen at one height at
+  first (one stale coarse texel answers all of them), most of them coming down as tiles land, a few
+  never. `TileRenderer` now tracks the exaggeration itself and invalidates every label anchor when
+  it moves, ahead of the branch chain that only ever names changed tiles.
+
+  A label whose height was never resolved is **not** `isElevationAnchored()`, and the terrain
+  occlusion test skips it: it still carries its flat decode height, and judging that against the
+  terrain hides it under ground it is not behind. Anchoring is sticky — a later miss does not
+  un-anchor a label that already has a real height.
+
+  **The anchor's RENDER height now comes from the GPU**, so none of the above can misplace a label on
+  screen — it only decides what the culler sees. `labelVsh` calls the surface's own `applyTerrain` on
+  the anchor and uses the result for both `gl_Position` and the occlusion tap. Three things make that
+  possible: `renderLabelPass` groups labels by anchor tile when terrain is on (a batch elevates
+  against one tile's uniforms, so interleaved labels would end the batch every time), the batch binds
+  them with `setupTerrainUniforms(prog, batch.tileId, translate4(origin), false)` — which derives the
+  elevation uv from the vertex frame it is handed, so no conversion is needed — and the label
+  occlusion texture moves to unit **2**, because elevation owns 1 and the node texture 5.
+
+  A label on a bridge **deck** keeps its CPU height instead: a span chord is CPU-only data and is not
+  the terrain's. `attribs[3]` carries that as bit 1 (`ABSOLUTE_HEIGHT`) next to the offset mode in
+  bit 0, set by one `chordHeightAt` test per label at each anchoring site — the height function
+  answers per vertex and cannot report which of its two sources it used. This is mapbox's
+  `u_elevation_from_sea`, per label rather than per layer, and it is the same mechanism a label
+  sitting on top of a 3D building will need (there with a non-zero z-offset rather than an absolute
+  height).
+
+  **What is still CPU-side, and why the cost has not gone yet.** `symbol.vertex.glsl` elevates a symbol in the
+  **vertex shader** — `z_offset + elevation(tile_anchor)`, where `elevation()` is a DEM *texture*
+  fetch (`_prelude_terrain.vertex.glsl`) from the same texture the ground is drawn from. So a symbol
+  is at the ground's height by construction, in the same frame, at no CPU cost, and "elevation not
+  loaded" cannot bury it because the ground is not drawn there either. Their CPU `getAtPointOrZero`
+  exists only for the collision index and defaults to 0 without ever hiding a symbol. Everything
+  above — the sampling cost, the dirty/anchored bookkeeping, the unknown-height window — is the price
+  of anchoring on the CPU instead.
   **This is the most expensive thing on the render thread over 3D terrain** — measured at ~750 000
   elevation samples per frame on the north pan with a full style, 82% of the render thread. Two
   faults made it that: `TileRenderer` classified every arriving DEM tile as a *scale-only* change
@@ -977,7 +1171,8 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   renderer's lock released (`Label::sampleElevation`) and writes them back under it
   (`applyElevation`); the frame keeps only the DEM-tile re-anchors. `debug.massif.labelanchor 0`
   restores the in-frame path for an A/B — on the emulator it was 19–31 `prepare` spikes of
-  130–190 ms per pan against none.
+  130–190 ms per pan against none. Like `debug.massif.linesourcedensity` below, it is read only by a
+  `MASSIF_DEBUG_PROPERTIES` build ([runtime switches](10-performance.md#runtime-switches-no-rebuild)).
   A label that has already been anchored and is neither placed nor on screen then **defers** its
   re-anchor (`Label::isElevationDirty`): it keeps the heights it has, at worst one LOD step out,
   and reports itself dirty again the moment the culler gives it a placement. A label that has never
@@ -1128,40 +1323,39 @@ dependency the plan above missed.** `Label::setupCoordinateSystem` snaps the anc
 grid (that is what keeps glyphs at a stable subpixel phase), and it did so by projecting the anchor
 with the view-projection and inverting it back. So the anchor moved on every camera translation
 whatever the scale did — and it cost a **4x4 double inverse per label per frame**, on the culler
-thread too. Both are fixed: `ViewState` now carries `viewProjMatrix`/`invViewProjMatrix`, and for
-the shader-cancel modes `labelVsh` does the snap itself on `anchorClip.xy` against
-`uLabelScreenSize`. The CPU anchor is then `placement->position − viewState.labelOrigin`, where
-`labelOrigin` is latched and only re-based once the camera has moved `LABEL_ORIGIN_LATCH_DISTANCE`
-(256 internal units, ~10 km); the residual rides in the label matrix, which already carried a
-translate. The culler keeps `viewState.origin` — its envelopes are camera-relative by construction.
+thread too. The inverse is what survived the revert: `vt::ViewState` carries
+`viewProjMatrix`/`invViewProjMatrix`, so the snap no longer inverts per label. The rest went with it —
+`labelVsh` snapping the shader-cancel modes itself (`uLabelScreenSize`), and a CPU anchor taken
+against a latched `viewState.labelOrigin` re-based every `LABEL_ORIGIN_LATCH_DISTANCE` (256 internal
+units, ~10 km), with the residual in the label matrix. The culler kept `viewState.origin`.
 
-What survives a frame, then, is the whole 3D pass: `GLTileRenderer::LabelBatchCache` holds one
+What survived a frame, then, was the whole 3D pass: `GLTileRenderer::LabelBatchCache` held one
 `PersistentLabelBatch` per batch (its VBOs, its parameter tables, and the label matrix without the
-camera), and a hit re-issues the draws with new uniforms only. Validity is two counters, not a
-per-label scan:
+camera), and a hit re-issued the draws with new uniforms only. None of these names exist in the code
+now. Validity was two counters, not a per-label scan:
 
 - `Label::getDrawGeneration()` — bumped by placement, layout and elevation changes, and by a label
-  appearing or disappearing. Only 3D-orientation labels bump it, and only while they are actually
+  appearing or disappearing. Only 3D-orientation labels bumped it, and only while they were actually
   drawn: measured over one city pan, **4184 re-anchors of unplaced labels against 24 of visible
   ones**, so an unguarded counter is stale every frame for work no batch ever held.
-- `Label::getOpacityGeneration()` — a fade in progress. It does not invalidate: the batch keeps a
-  CPU copy of its attribs plus each label's vertex range, and `patchLabelBatchOpacities` rewrites
-  one byte per glyph of the labels that moved and `glBufferSubData`s the dirty span.
+- `Label::getOpacityGeneration()` — a fade in progress. It did not invalidate: the batch kept a
+  CPU copy of its attribs plus each label's vertex range, and `patchLabelBatchOpacities` rewrote
+  one byte per glyph of the labels that moved and `glBufferSubData`d the dirty span.
 
-Plus the view: `zoom`, `rotation`, `tilt` and `planarProjection` are baked into the buffers (the
+Plus the view: `zoom`, `rotation`, `tilt` and `planarProjection` were baked into the buffers (the
 glyph scale, and the style functions that read `view::`). Everything else the camera does —
-position, **focus distance**, screen size — only reaches uniforms. That last one mattered: over
+position, **focus distance**, screen size — only reached uniforms. That last one mattered: over
 terrain `focusDistance` changes on every frame, and while it was in the test the cache never once
 hit.
 
 **Measured** (Crosscall, assets style, 5.724/45.188 z15 t45, scripted pan, `debug.massif.labelcache`
-A/B): `pass3D labels3DMs` **67–76 → 25–33 ms/interval**, labels rebuilt 3900 → 1900 per interval,
+A/B — a switch removed with the revert): `pass3D labels3DMs` **67–76 → 25–33 ms/interval**, labels rebuilt 3900 → 1900 per interval,
 ~200 batches a second replayed and ~80 patched. **Frame rate: unchanged** — three interleaved
 rounds gave medians 26.4/26.0/25.6 fps with the cache against 26.4/25.8/25.8 without. The pass is
 ~1.5 ms of a ~38 ms frame, and this bench's run-to-run spread is larger than that. Screenshot diff
 against the cache off is 1.38% where two runs with it ON differ by 1.06% — no systematic shift.
 
-So it removes the work it was designed to remove and buys no frames at this camera. The label cost
+So it removed the work it was designed to remove and bought no frames at this camera. The label cost
 that is left is **2D**: `labels2DMs` is 48–94 ms/interval, dominated by `LINE` layout
 (`lineMs` 28 of `buildMs` 44), which follows the projected line and cannot be kept — see
 `updateLineVertexData`. Note also that only a style using `text-placement: billboard` puts

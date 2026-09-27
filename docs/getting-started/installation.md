@@ -7,7 +7,7 @@ sidebar_position: 1
 
 :::tip Version
 Always use the latest version from the
-[Releases page](https://github.com/massif-maps/MassifMaps/releases). The `5.x` line below is an example.
+[Releases page](https://github.com/massif-maps/MassifMaps/releases). The version below is an example.
 :::
 
 ## Android
@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.massif-maps:MassifMaps-android-aar:5.0.0'
+    implementation 'com.github.massif-maps:MassifMaps-android-aar:6.0.2'
 }
 ```
 
@@ -56,7 +56,7 @@ npm install @nativescript-community/ui-massifmaps
 ```
 
 ```ts
-import { MassifMap } from '@nativescript-community/ui-massifmaps/api';
+import { api } from '@nativescript-community/ui-massifmaps';
 ```
 
 NativeScript is the one that ships today — Vue, Svelte, Angular and plain TypeScript, on Android

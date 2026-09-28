@@ -17,7 +17,7 @@ namespace massif::mvt {
      * The Map-block settings that are plain style properties, under their CartoCSS Map block names.
      * The XML parser and generator both walk these tables, so a new setting is added here once.
      */
-    inline constexpr std::array<std::pair<const char*, FloatFunctionProperty Map::Settings::*>, 37> MAP_SETTINGS_FLOAT_PROPERTIES = {{
+    inline constexpr std::array<std::pair<const char*, FloatFunctionProperty Map::Settings::*>, 38> MAP_SETTINGS_FLOAT_PROPERTIES = {{
         { "sun-azimuth", &Map::Settings::sunAzimuth },
         { "sun-altitude", &Map::Settings::sunAltitude },
         { "sun-intensity", &Map::Settings::sunIntensity },
@@ -34,6 +34,7 @@ namespace massif::mvt {
         { "building-edge-radius", &Map::Settings::buildingEdgeRadius },
         { "building-roof-shade", &Map::Settings::buildingRoofShade },
         { "building-rounded-roof", &Map::Settings::buildingRoundedRoof },
+        { "building-edge-corners", &Map::Settings::buildingEdgeCorners },
         { "building-height-scale", &Map::Settings::buildingHeightScale },
         { "building-height-view-scale", &Map::Settings::buildingHeightViewScale },
         { "building-grow-on-appear", &Map::Settings::buildingGrowOnAppear },

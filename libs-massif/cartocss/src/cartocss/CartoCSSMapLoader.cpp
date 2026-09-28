@@ -312,6 +312,7 @@ namespace massif::css {
             { "building-grow-on-appear", &mvt::Map::Settings::buildingGrowOnAppear },
             { "building-fade-on-appear", &mvt::Map::Settings::buildingFadeOnAppear },
             { "building-rounded-roof", &mvt::Map::Settings::buildingRoundedRoof },
+            { "building-edge-corners", &mvt::Map::Settings::buildingEdgeCorners },
             { "terrain-lighting", &mvt::Map::Settings::terrainLighting },
             { "colors-prelit", &mvt::Map::Settings::colorsPrelit },
             { "building-emissive-strength", &mvt::Map::Settings::buildingEmissive },

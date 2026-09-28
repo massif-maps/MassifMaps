@@ -1645,8 +1645,10 @@ namespace massif::vt {
         // A wall only backs off from a corner this tile can also FILL: with one of the two edges
         // clipped away the wedge is never emitted, and a lone cut-back wall leaves a gap straight
         // through the building at the tile border.
+        // A corner nothing is cut back from gets no wedge: the two chamfers then meet at the roof vertex.
         std::vector<float> cut(n, 0.0f);
-        if (chamfer) {
+        bool corners = _polygon3DEdgeCorners && insetLocal * _tileSize * 2.0f >= EDGE_CORNER_MIN_PIXELS;
+        if (chamfer && corners) {
             for (std::size_t i = 0; i < n; i++) {
                 if (inBox[i] && inBox[(i + 1) % n]) {
                     cut[i] = extrusionCornerCutback(points[(i + n - 1) % n], points[i], points[(i + 1) % n], insetLocal);

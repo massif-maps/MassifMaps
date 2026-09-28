@@ -36,8 +36,8 @@ const POI_GLYPH_FILL = 'fill="#333333"';
  *
  * The SDK colours it per feature through `["image", …, {params}]` and never needs this; MapLibre
  * has no such expression, so without it the reference pane draws a neutral disc under everything
- * and a disc under a park bench. The palette is written by a style's own poi-palette.py, which is
- * also what states those params - one table, so the two rows cannot drift.
+ * and a disc under a park bench. The palette is written by styles/massif/build.py from the same
+ * table that states those params - one table, so the two rows cannot drift.
  *
  * It is a SECOND sprite, `<class>-poi`, and the neutral drawing stays. mapbox2css splits the
  * neutral one into a glyph field and the plate the SDK recolours, and that split needs a flat

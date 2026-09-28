@@ -1,15 +1,12 @@
-"""Write the POI palette into style.json - run from this directory, `python3 poi-palette.py`.
-
-The tables below are the source of truth for every POI colour: the disc, the label (two
-measure-light stops, read off mapbox/standard) and which classes get no disc at all. style.json
-carries the result twenty times over, once per POI layer, because the converter needs a match it
-can key on per layer - see the README. Edit here, never there.
+"""POIs: the palette tables below are the source of truth for every POI colour - the disc, the
+label (two measure-light stops, read off mapbox/standard) and which classes get no disc at all.
+Each POI layer carries the same flat match on `class`, because the converter needs a match it can
+key on per layer to fold it into one project.json table - see the style's README.
 """
 import json
 from collections import OrderedDict
 
-STYLE = 'style.json'
-SPRITE_PALETTE = 'sprite-src/poi-palette.json'
+from lib import by_hour, get, layer
 
 # Standard's poi-label text-color, read off mapbox/standard: night (brightness 0.25) and day (0.3).
 CATEGORY = OrderedDict([
@@ -155,66 +152,92 @@ def flat_match(value_of, default, furniture=None, keep_furniture=False):
     return out
 
 
-def main():
-    style = json.load(open(STYLE))
-    touched = 0
-    for lay in style['layers']:
-        if not lay['id'].startswith('poi-'):
-            continue
-        layout = lay.setdefault('layout', {})
-        paint = lay.setdefault('paint', {})
+# Least important first, so a station still wins a collision. Gated by CATEGORY the way Standard
+# draws them early; the rank layers are the `poiRanking: rank` switch, Liberty's own ladder.
+RANK_LAYERS = [
+    ('poi-rank-r20', 17, ['all', ['>=', get('rank'), 20]]),
+    ('poi-rank-r7', 16, ['all', ['>=', get('rank'), 7], ['<', get('rank'), 20]]),
+    ('poi-rank-r1', 15, ['all', ['>=', get('rank'), 1], ['<', get('rank'), 7]]),
+]
+CATEGORY_LAYERS = [
+    ('poi-waste', 18, ['drinking_water', 'toilets', 'waste_basket']),
+    ('poi-shop', 17, ['alcohol_shop', 'bakery', 'beer', 'butcher', 'clothing_store', 'florist', 'furniture',
+                      'gift', 'grocery', 'hairdresser', 'ice_cream', 'laundry', 'nightclub', 'shop', 'sushi',
+                      'telephone']),
+    ('poi-amenity', 17, ['bicycle', 'bicycle_rental', 'car', 'fuel', 'parking', 'parking_garage']),
+    ('poi-bus', 16, ['bus']),
+    ('poi-attraction', 16, ['amusement_park', 'aquarium', 'attraction']),
+    ('poi-cultural', 16, ['art_gallery', 'castle', 'monument', 'museum', 'ruins']),
+    ('poi-sport', 16, ['american_football', 'baseball', 'basketball', 'cricket', 'golf', 'pitch', 'skiing',
+                       'soccer', 'stadium', 'swimming', 'tennis']),
+    ('poi-outdoor', 16, ['beach', 'dog_park', 'garden', 'mountain', 'park', 'playground', 'ranger_station',
+                         'viewpoint', 'volcano', 'water', 'waterfall', 'wetland', 'zoo']),
+    ('poi-food', 16, ['bar', 'cafe', 'fast_food', 'restaurant']),
+    ('poi-cemetery', 15, ['cemetery']),
+    ('poi-lodging', 15, ['alpine_hut', 'campsite', 'lodging', 'picnic_site', 'shelter']),
+    ('poi-public', 15, ['atm', 'bank', 'cinema', 'embassy', 'fire_station', 'information', 'library', 'music',
+                        'police', 'post', 'prison', 'theatre', 'town_hall']),
+    ('poi-worship', 15, ['place_of_worship']),
+    ('poi-education', 15, ['college', 'school']),
+    ('poi-health', 14, ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary']),
+    ('poi-transit', 13, ['aerialway', 'ferry', 'harbor', 'lighthouse', 'railway', 'railway_light', 'railway_metro']),
+    ('poi-airport', 12, ['airfield', 'airport', 'heliport']),
+]
 
-        # 1. No italic - Standard's poi-label takes the map's own face. NAMED, not dropped:
-        # without text-font maplibre falls back to its own default stack, which the style's glyph
-        # server does not carry, and the 404 stalls every symbol layer on the reference pane.
-        layout['text-font'] = ['Noto Sans Regular']
-
-        # 2. The label follows the icon's category, and the hour. maplibre rejects
-        # ["measure-light", …] outright - it is GL v3, like ["image", …, {params}] - so the ramp
-        # rides in metadata and the DAY colour stays behind as what the reference pane draws.
-        paint['text-color'] = day_color()
-        extra = lay.setdefault('metadata', {}).setdefault('massif:paint', {})
-        extra['text-color'] = text_color()
-
-        # The halo follows the hour too, or a white ring survives into the night around a label that
-        # has gone pale. Standard's own two colours; its WIDTH is 1 and this is the one number here
-        # deliberately off it - a hair more separation over a busy roof.
-        paint['text-halo-color'] = HALO_DAY
-        paint['text-halo-width'] = HALO_WIDTH
-        extra['text-halo-color'] = ['interpolate', ['linear'], ['measure-light', 'brightness'],
-                                    0.25, HALO_NIGHT, 0.3, HALO_DAY]
-
-        # 3. The disc colour, and the classes that get none.
-        img = lay.get('metadata', {}).get('massif:layout', {}).get('icon-image')
-        if isinstance(img, list) and len(img) > 2 and isinstance(img[2], dict):
-            params = img[2].setdefault('params', {})
-            # `transparent`, not `none`: the decoder's parseColor knows the CSS names and that one,
-            # and throws on anything else - a bad colour kills the whole feature processor.
-            params['background'] = disc_match(furniture='transparent')
-            params['background-stroke'] = ['match', ['get', 'class'], sorted(NO_BACKGROUND),
-                                           'transparent', 'hsl(0, 0%, 100%)']
-            # A glyph with no disc under it is drawn in the category colour, not white on it.
-            params['icon'] = flat_match(lambda cat: 'hsl(0, 0%, 100%)', 'hsl(0, 0%, 100%)',
-                                        furniture=disc_match(keep_furniture=True))
-            params['radius'] = shape_match('radius')
-            params['background-stroke-width'] = shape_match('border')
-
-            # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
-            # recolours. Same drawing twice in the sheet, and only this way round: a sprite with the
-            # colour already in it has no plate mapbox2css can measure.
-            plain = layout.get('icon-image')
-            if plain is not None and not (isinstance(plain, list) and plain[0] == 'concat'):
-                layout['icon-image'] = ['concat', plain, '-poi']
-        touched += 1
-
-    out = json.dumps(style, indent=2, ensure_ascii=False)
-    open(STYLE, 'w').write(out)  # the file carries no trailing newline
-    write_sprite_palette()
-    print('rewrote', touched, 'poi layers')
-    print('classes mapped:', len(CLASS_TO_CATEGORY), '| no background:', len(NO_BACKGROUND))
+ICON = ['match', get('subclass'), ['florist', 'furniture'], get('subclass'), get('class')]
 
 
-def write_sprite_palette():
+def icon_params():
+    # `transparent`, not `none`: the decoder's parseColor knows the CSS names and that one, and
+    # throws on anything else - a bad colour kills the whole feature processor.
+    return {'background': disc_match(furniture='transparent'),
+            'background-stroke': ['match', get('class'), sorted(NO_BACKGROUND), 'transparent', 'hsl(0, 0%, 100%)'],
+            # a glyph with no disc under it is drawn in the category colour, not white on it
+            'icon': flat_match(lambda cat: 'hsl(0, 0%, 100%)', 'hsl(0, 0%, 100%)',
+                               furniture=disc_match(keep_furniture=True)),
+            'radius': shape_match('radius'),
+            'background-stroke-width': shape_match('border')}
+
+
+def poi_layer(id, minzoom, filter, ranking):
+    layout = {
+        # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
+        # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
+        'icon-image': ['concat', ICON, '-poi'],
+        'icon-size': 0.4,
+        'text-field': ['coalesce', get('name'), get('name_int')],
+        # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
+        'text-font': ['Noto Sans Regular'],
+        'text-size': 12,
+        'text-max-width': 9,
+        'text-padding': 2,
+        'text-variable-anchor': ['top', 'left', 'right'],
+        'text-radial-offset': 1.0,
+        'text-justify': 'auto',
+        'text-optional': True,
+    }
+    massif_layout = {'icon-image': ['image', ICON, {'params': icon_params()}]}
+    if ranking == 'rank':
+        # maplibre draws the default mode; the SDK turns these back on through massif:layout
+        layout['visibility'] = 'none'
+        massif_layout['visibility'] = 'visible'
+    return layer(id, 'symbol', 'poi', minzoom=minzoom, filter=filter, layout=layout,
+                 paint={'text-color': day_color(), 'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH},
+                 metadata={'massif:params': ['icon-image'],
+                           'massif:layout': massif_layout,
+                           # maplibre rejects ["config", ...] in a filter, so the switch rides here
+                           'massif:filter': ['==', ['config', 'poiRanking'], ranking],
+                           'massif:paint': {'text-color': text_color(),
+                                            'text-halo-color': by_hour(HALO_NIGHT, HALO_DAY)}})
+
+
+def layers(v):
+    return ([poi_layer(id, minzoom, filter, 'rank') for id, minzoom, filter in RANK_LAYERS] +
+            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], 'category')
+             for id, minzoom, classes in CATEGORY_LAYERS])
+
+
+def write_sprite_palette(path):
     """The same table, for the sprite build to bake with.
 
     MapLibre cannot read the image params that colour the disc on the SDK, so the sprite carries it
@@ -235,10 +258,7 @@ def write_sprite_palette():
         }
     default = {'disc': CATEGORY['default']['disc'], 'glyph': 'hsl(0, 0%, 100%)',
                'radius': DEFAULT_SHAPE['radius'], 'border': DEFAULT_SHAPE['border']}
-    payload = {'comment': 'Generated by poi-palette.py - edit that, never this.',
+    payload = {'comment': 'Generated by styles/massif/build.py from layers/pois.py - edit that, never this.',
                'ring': 'hsl(0, 0%, 100%)', 'default': default, 'classes': per_class}
-    open(SPRITE_PALETTE, 'w').write(json.dumps(payload, indent=2) + '\n')
+    open(path, 'w').write(json.dumps(payload, indent=2) + '\n')
 
-
-if __name__ == '__main__':
-    main()

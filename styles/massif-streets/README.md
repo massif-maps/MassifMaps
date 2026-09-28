@@ -1,6 +1,8 @@
 # Massif Streets
 
-The MapLibre style JSON is the **source of truth**. The CartoCSS the SDK reads is generated from it
+`style.json` is **generated** by [`../massif/build.py`](../massif/build.py) from layer modules
+shared with every variant — edit `../massif/layers/`, never the JSON. That MapLibre JSON is what the
+reference pane draws and what the converter reads. The CartoCSS the SDK reads is generated from it
 with `massif-style mapbox2css --fold-casings --tile-draw-size 512 --fonts fonts`, and is never hand-edited; anything CartoCSS can
 express and MapLibre cannot goes in a hand-owned overlay beside the generated file.
 
@@ -8,6 +10,7 @@ express and MapLibre cannot goes in a hand-owned overlay beside the generated fi
 landcover and buildings are context for them, not the final design.
 
 ```sh
+python3 ../massif/build.py streets                                 # after touching ../massif/
 node ../../tools/style-sprite/build.mjs sprite-src sprite sprite   # after touching sprite-src/
 python3 ../../tools/style-preview/serve.py --mbtiles <name>=<path>.mbtiles
 open 'http://127.0.0.1:8787/?style=http://127.0.0.1:8787/styles/massif-streets/style.json'

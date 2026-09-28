@@ -1,0 +1,17 @@
+from lib import get, layer, zoom_ramp
+
+
+def layers(v):
+    return [
+        layer('building', 'fill', 'building', minzoom=14, maxzoom=15,
+              paint={'fill-color': 'hsl(40, 43%, 93%)', 'fill-outline-color': 'hsl(40, 25%, 85%)'}),
+        layer('building-3d', 'fill-extrusion', 'building', minzoom=15,
+              paint={'fill-extrusion-color': 'hsl(30, 43%, 93%)',
+                     'fill-extrusion-height': get('render_height'),
+                     'fill-extrusion-base': get('render_min_height')},
+              metadata={'massif:paint': {
+                  'fill-extrusion-vertical-scale': zoom_ramp(15, 0, 15.3, 1),
+                  'fill-extrusion-ambient-occlusion-intensity': 0.15,
+                  'fill-extrusion-ambient-occlusion-ground-radius': zoom_ramp(17, 0, 17.8, 8)},
+                  'massif:layout': {'fill-extrusion-edge-radius': 0.4}}),
+    ]

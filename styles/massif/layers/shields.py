@@ -21,7 +21,11 @@ def by_class(*pairs):
 
 # The plate colour per country. iso_a2 is read through a coalesce, so a tileset without it takes
 # no country branch and every ref lands on the neutral plate.
-PLATE = ['case', ['==', get('network'), 'e-road'], 'shield-plate-green',
+# OpenMapTiles names the UK and Irish networks itself, so those two need no iso_a2.
+PLATE = ['match', ['coalesce', get('network'), ''],
+         'e-road', 'shield-plate-green',
+         ['gb-motorway', 'ie-motorway'], 'shield-plate-blue',
+         ['gb-trunk', 'gb-primary', 'ie-national'], 'shield-plate-green',
          ['match', ['coalesce', get('iso_a2'), ''],
           'FR', first_letter(('A', 'red'), ('N', 'red'), ('D', 'yellow'), ('M', 'yellow')),
           'DE', first_letter(('A', 'blue'), ('B', 'yellow')),

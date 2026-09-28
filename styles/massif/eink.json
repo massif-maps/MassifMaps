@@ -8013,14 +8013,26 @@
         "symbol-spacing": 350,
         "symbol-avoid-edges": true,
         "icon-image": [
-          "case",
+          "match",
           [
-            "==",
+            "coalesce",
             [
               "get",
               "network"
             ],
-            "e-road"
+            ""
+          ],
+          "e-road",
+          "shield-plate-green",
+          [
+            "gb-motorway",
+            "ie-motorway"
+          ],
+          "shield-plate-blue",
+          [
+            "gb-trunk",
+            "gb-primary",
+            "ie-national"
           ],
           "shield-plate-green",
           [
@@ -8212,14 +8224,26 @@
         "text-color": [
           "match",
           [
-            "case",
+            "match",
             [
-              "==",
+              "coalesce",
               [
                 "get",
                 "network"
               ],
-              "e-road"
+              ""
+            ],
+            "e-road",
+            "shield-plate-green",
+            [
+              "gb-motorway",
+              "ie-motorway"
+            ],
+            "shield-plate-blue",
+            [
+              "gb-trunk",
+              "gb-primary",
+              "ie-national"
             ],
             "shield-plate-green",
             [
@@ -8456,14 +8480,26 @@
         "symbol-spacing": 350,
         "symbol-avoid-edges": true,
         "icon-image": [
-          "case",
+          "match",
           [
-            "==",
+            "coalesce",
             [
               "get",
               "network"
             ],
-            "e-road"
+            ""
+          ],
+          "e-road",
+          "shield-plate-green",
+          [
+            "gb-motorway",
+            "ie-motorway"
+          ],
+          "shield-plate-blue",
+          [
+            "gb-trunk",
+            "gb-primary",
+            "ie-national"
           ],
           "shield-plate-green",
           [
@@ -8655,14 +8691,26 @@
         "text-color": [
           "match",
           [
-            "case",
+            "match",
             [
-              "==",
+              "coalesce",
               [
                 "get",
                 "network"
               ],
-              "e-road"
+              ""
+            ],
+            "e-road",
+            "shield-plate-green",
+            [
+              "gb-motorway",
+              "ie-motorway"
+            ],
+            "shield-plate-blue",
+            [
+              "gb-trunk",
+              "gb-primary",
+              "ie-national"
             ],
             "shield-plate-green",
             [
@@ -8909,14 +8957,26 @@
         "symbol-spacing": 350,
         "symbol-avoid-edges": true,
         "icon-image": [
-          "case",
+          "match",
           [
-            "==",
+            "coalesce",
             [
               "get",
               "network"
             ],
-            "e-road"
+            ""
+          ],
+          "e-road",
+          "shield-plate-green",
+          [
+            "gb-motorway",
+            "ie-motorway"
+          ],
+          "shield-plate-blue",
+          [
+            "gb-trunk",
+            "gb-primary",
+            "ie-national"
           ],
           "shield-plate-green",
           [
@@ -9108,14 +9168,26 @@
         "text-color": [
           "match",
           [
-            "case",
+            "match",
             [
-              "==",
+              "coalesce",
               [
                 "get",
                 "network"
               ],
-              "e-road"
+              ""
+            ],
+            "e-road",
+            "shield-plate-green",
+            [
+              "gb-motorway",
+              "ie-motorway"
+            ],
+            "shield-plate-blue",
+            [
+              "gb-trunk",
+              "gb-primary",
+              "ie-national"
             ],
             "shield-plate-green",
             [

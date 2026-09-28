@@ -389,7 +389,8 @@ MapTiler or Mapbox **style** is copied.
 - **A transit POI is not coloured or set beside its icon.** Liberty gives `airport`/`bus`/`rail`
   their own layer, in blue with the label to the right; here they take the ordinary POI treatment.
 - The country's colour needs `iso_a2` on `transportation_name`, and neither tileset carries it, so
-  every plate is still drawn neutral in the preview — see
+  every plate is still drawn neutral in the preview - except the UK's and Ireland's, whose networks
+  OpenMapTiles names itself (`gb-motorway`, `ie-national`, ...) — see
   [what the style needs from the tileset](../../docs/contributing/tileset-asks.md). The branches
   themselves convert.
 

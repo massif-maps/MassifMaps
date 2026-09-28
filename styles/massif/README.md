@@ -116,10 +116,11 @@ The streets layers on a page of black, white and a few greys (`EINK`), with no n
 is read under a lamp, so every night value equals the day one. What colour says elsewhere is said
 here by texture and weight:
 
-- **Patterns** from `sprite-src/pattern/`: trees for wood, tufts for wetland, dots for rock, sand,
-  grass and parks, crosses for cemeteries, hatching for military ground, ruled lines plus a
-  shoreline for water. A patterned fill is its own layer id (`landcover-wood-pattern`): a paint
-  property only some variants state cannot be merged into one rule.
+- **Patterns** from `sprite-src/pattern/`, the ones Alpimaps' e-ink style uses: openstreetmap-carto's
+  trees, scrub, wetland, rock, beach, ice sheet, graves and hatching, baked to one grey at 45 %
+  alpha on a clear ground so a road still reads through them; sparse dots for grass and parks, ruled
+  lines plus a shoreline for water. A patterned fill is its own layer id (`landcover-wood-pattern`):
+  a paint property only some variants state cannot be merged into one rule.
 - **Roads** are white with black casings, their hierarchy carried by the casing's weight
   (`casing-scale` 1.8); tracks and paths keep their dashes, in black.
 - **Buildings** are flat grey footprints with an outline at every zoom - no extrusion.
@@ -374,7 +375,9 @@ the whole filter regardless, since each attachment is then one bracketed test an
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
 domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki), **CC0** — a public-domain
 dedication, so it carries no attribution requirement and no share-alike; it is credited here because
-it is worth crediting, not because it must be. Everything else is drawn for this project. No
+it is worth crediting, not because it must be. Most of `sprite-src/pattern/` is
+[openstreetmap-carto](https://github.com/gravitystorm/openstreetmap-carto)'s, also **CC0**, recoloured.
+Everything else is drawn for this project. No
 MapTiler or Mapbox **style** is copied.
 
 ## Owed

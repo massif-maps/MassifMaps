@@ -16,6 +16,7 @@ def text(c, color='label', halo='halo', halo_width=1, night_color='label-night')
 def low(v):
     """labels that give way to everything: house numbers, water, parks, peaks"""
     c = v.palette
+    outdoor = v.flags.get('trails', False)
     water = text(c, 'water-label', night_color='water')
     return [
         layer('housenumber', 'symbol', 'housenumber', minzoom=17,
@@ -54,14 +55,25 @@ def low(v):
               layout={'text-field': NAME, 'text-font': ITALIC, 'text-size': 11, 'text-max-width': 8,
                       'text-padding': 4},
               **text(c, 'label-park')),
-        layer('peak', 'symbol', 'mountain_peak', minzoom=11,
-              filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name']],
+        # outdoor brings the summits in from 9, the most prominent first (OMT ranks 1 highest)
+        layer('peak-outdoor' if outdoor else 'peak', 'symbol', 'mountain_peak', minzoom=9 if outdoor else 11,
+              filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name']] if not outdoor else
+              ['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['<=', get('rank'), 3]],
               layout={'icon-image': 'peak', 'icon-size': zoom_ramp(11, 0.7, 15, 1),
                       'text-field': ['concat', NAME, '\n', ['to-string', get('ele')], ' m'],
                       'text-font': REGULAR, 'text-size': zoom_ramp(11, 10, 16, 12),
                       'text-anchor': 'top', 'text-offset': [0, 0.5], 'text-max-width': 8,
                       'text-optional': True},
               **text(c, 'label-natural')),
+    ] + ([
+        layer('peak-outdoor-minor', 'symbol', 'mountain_peak', minzoom=13,
+              filter=['all', ['!=', get('class'), 'cliff'], ['has', 'name'], ['>', get('rank'), 3]],
+              layout={'icon-image': 'peak', 'icon-size': 0.8,
+                      'text-field': ['concat', NAME, '\n', ['to-string', get('ele')], ' m'],
+                      'text-font': REGULAR, 'text-size': 11, 'text-anchor': 'top', 'text-offset': [0, 0.5],
+                      'text-max-width': 8, 'text-optional': True},
+              **text(c, 'label-natural')),
+    ] if outdoor else []) + [
         layer('airport-label', 'symbol', 'aerodrome_label', minzoom=10,
               layout={'icon-image': 'airport', 'icon-size': 0.4,
                       'text-field': ['coalesce', get('iata'), NAME], 'text-font': BOLD, 'text-size': 12,

@@ -1,4 +1,5 @@
 from lib import get, in_class, layer, zoom_ramp
+from layers import outdoor
 
 CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']
 
@@ -67,19 +68,24 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     ]
 
 
-def paths(c, brunnel_test, prefix='', minzoom=12):
-    """footways, cycleways, bridleways and steps, Standard's white ribbon with a hairline case"""
+def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
+    """footways, cycleways, bridleways and steps, Standard's white ribbon with a hairline case. With
+    `trails` the paths and bridleways are left to outdoor.trails, which draws them by difficulty."""
     walk = ['all', ['==', get('class'), 'path'], ['!=', get('subclass'), 'steps'], brunnel_test]
+    if trails:
+        walk = ['all', ['==', get('class'), 'path'], ['!', in_class(['steps'] + outdoor.TRAILS, 'subclass')],
+                brunnel_test]
+    walk_prefix = prefix + ('urban-' if trails else '')
     steps = ['all', ['==', get('class'), 'path'], ['==', get('subclass'), 'steps'], brunnel_test]
     # the zoom ramp outside: maplibre only takes a zoom expression at the top of a property
     color = zoom_ramp(*[x for z, key in ((15, 'path'), (16, 'path-z16')) for x in (
         z, ['match', get('subclass'), 'cycleway', c['cycleway'], 'bridleway', c['bridleway'], c[key]])])
     return [
-        layer(prefix + 'path-casing', 'line', 'transportation', minzoom=15, filter=walk,
+        layer(walk_prefix + 'path-casing', 'line', 'transportation', minzoom=15, filter=walk,
               layout={'line-join': 'round'},
               paint={'line-color': c['path-case'], 'line-gap-width': PATH_WIDTH,
                      'line-width': zoom_ramp(14, 0.5, 18, 1, 22, 2, base=1.5)}, emissive=0.15),
-        layer(prefix + 'path', 'line', 'transportation', minzoom=minzoom, filter=walk,
+        layer(walk_prefix + 'path', 'line', 'transportation', minzoom=minzoom, filter=walk,
               layout={'line-cap': 'round', 'line-join': 'round'},
               paint={'line-color': color, 'line-width': PATH_WIDTH}, emissive=0.25),
         layer(prefix + 'steps', 'line', 'transportation', minzoom=14, filter=steps,
@@ -115,7 +121,8 @@ def ground(v):
     c = v.palette
     surface = ['!', ['in', get('brunnel'), ['literal', ['tunnel', 'bridge']]]]
     no_ramp = ['!=', get('ramp'), 1]
-    return (paths(c, surface) + tracks(c, surface) + [
+    trails = v.flags.get('trails', False)
+    return (paths(c, surface, trails=trails) + (outdoor.trails(c, surface) if trails else []) + tracks(c, surface) + [
         layer('via-ferrata', 'line', 'transportation', minzoom=13,
               filter=['all', ['==', get('class'), 'via_ferrata'], ['!=', get('brunnel'), 'tunnel']],
               paint={'line-color': c['via-ferrata'], 'line-width': zoom_ramp(13, 1, 18, 2.5),

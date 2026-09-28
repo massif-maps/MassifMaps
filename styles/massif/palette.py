@@ -84,4 +84,28 @@ STREETS = {
     'oneway': 'hsl(224, 20%, 45%)',
 }
 
-VARIANTS = {'streets': STREETS}
+# Outdoor: MapTiler outdoor's warmer ground and deeper woods, so relief and trails read on top
+OUTDOOR = {
+    **STREETS,
+    'land': 'hsl(40, 25%, 94%)',
+    'residential': 'hsl(35, 15%, 91%)',
+    'wood': 'hsla(105, 42%, 64%, 0.75)',
+    'wood-low': 'hsl(105, 42%, 78%)',
+    'grass': 'hsla(90, 45%, 80%, 0.6)',
+    'scrub': 'hsla(95, 40%, 74%, 0.6)',
+    'rock': 'hsl(30, 8%, 84%)',
+    'glacier': 'hsl(200, 60%, 96%)',
+    'hillshade-shadow': 'hsl(30, 10%, 30%)',
+    'hillshade-highlight': 'hsl(40, 30%, 97%)',
+    'hillshade-accent': 'hsl(30, 15%, 45%)',
+    'contour': 'hsl(35, 35%, 52%)',
+    'contour-index': 'hsl(35, 38%, 42%)',
+    'contour-label': 'hsl(35, 38%, 30%)',
+    'cliff': 'hsl(15, 10%, 45%)',
+    'trail': 'hsl(5, 72%, 45%)',
+    'trail-alpine': 'hsl(215, 70%, 42%)',
+    'route-hiking': 'hsl(330, 70%, 55%)',
+    'route-bicycle': 'hsl(215, 80%, 55%)',
+}
+
+VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR}

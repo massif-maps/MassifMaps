@@ -16,7 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from layers import boundaries, buildings, labels, land, lowzoom, pois, rail, road_labels, roads, shields, water  # noqa: E402
+from layers import boundaries, buildings, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -25,15 +25,27 @@ CONVERT = ['--fold-casings', '--tile-draw-size', '512', '--fonts', 'fonts', '--l
 
 
 class Variant:
-    def __init__(self, name, title, parts):
+    def __init__(self, name, title, parts, sources=(), **flags):
         self.name = name
         self.title = title
         self.parts = parts
         self.palette = PALETTES[name]
+        self.sources = {k: SOURCES[k] for k in ('openmaptiles', 'bathymap', *sources)}
+        self.flags = flags
 
     def layers(self):
         return [lay for part in self.parts for lay in part(self)]
 
+
+SOURCES = {
+    'openmaptiles': {'type': 'vector', 'url': 'https://tiles.openfreemap.org/planet'},
+    # optional, no public host: the app supplies the archive, the preview serves it by name
+    'bathymap': {'type': 'vector', 'url': 'bathymap.json', 'maxzoom': 6},
+    'contours': {'type': 'vector', 'url': 'contours.json', 'minzoom': 11, 'maxzoom': 14},
+    'routes': {'type': 'vector', 'url': 'routes.json', 'maxzoom': 14},
+    'dem': {'type': 'raster-dem', 'tiles': ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
+            'encoding': 'terrarium', 'tileSize': 512, 'maxzoom': 16},
+}
 
 STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, rail.tunnels,
            roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges, rail.overhead,
@@ -42,24 +54,25 @@ STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
 
 # bottom to top; among the labels, the later a layer the higher its placement priority. The first
 # variant is the SDK project's default.
+OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
+           outdoor.contours, rail.tunnels, roads.tunnels, outdoor.routes, roads.ground, rail.ground, roads.bridges,
+           rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels,
+           labels.low, shields.layers, pois.layers, road_labels.layers, labels.places]
+
 VARIANTS = {v.name: v for v in [
     Variant('streets', 'Massif Streets', STREETS),
+    Variant('outdoor', 'Massif Outdoor', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
 ]}
 
-SOURCES = {
-    'openmaptiles': {'type': 'vector', 'url': 'https://tiles.openfreemap.org/planet'},
-    # optional, no public host: the app supplies the archive, the preview serves it by name
-    'bathymap': {'type': 'vector', 'url': 'bathymap.json', 'maxzoom': 6},
-}
 POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}
 
 
-def document(name, layers, metadata, schema):
+def document(name, layers, metadata, schema, sources):
     return {
         'version': 8,
         'name': name,
         'metadata': {'massif:schema': 'openmaptiles', **metadata},
-        'sources': SOURCES,
+        'sources': sources,
         'sprite': 'sprite/sprite',
         'glyphs': 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
         'layers': layers,
@@ -69,7 +82,7 @@ def document(name, layers, metadata, schema):
 
 def maplibre_style(v):
     return document(v.title, v.layers(), {'massif:variant': v.name, 'massif:live-config': ['poiRanking']},
-                    {'poiRanking': POI_RANKING})
+                    {'poiRanking': POI_RANKING}, v.sources)
 
 
 FIXED = ('id', 'type', 'source', 'source-layer', 'minzoom', 'maxzoom', 'filter')
@@ -138,7 +151,8 @@ def family_style():
             meta['massif:filter'] = ['all', meta['massif:filter'], only] if 'massif:filter' in meta else only
         layers.append(merged)
     return document('Massif', layers, {'massif:live-config': ['poiRanking', 'variant']},
-                    {'poiRanking': POI_RANKING, 'variant': {'default': names[0], 'values': names}})
+                    {'poiRanking': POI_RANKING, 'variant': {'default': names[0], 'values': names}},
+                    {k: s for v in VARIANTS.values() for k, s in v.sources.items()})
 
 
 def write(name, doc):

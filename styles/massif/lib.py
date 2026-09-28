@@ -27,7 +27,7 @@ EMISSIVE = {'background': 'background', 'fill': 'fill', 'line': 'line', 'fill-ex
 
 
 def layer(id, type, source_layer=None, minzoom=None, maxzoom=None, filter=None, layout=None,
-          paint=None, metadata=None, emissive=None):
+          paint=None, metadata=None, emissive=None, source=SOURCE):
     """A layer dict in the key order every module writes, so the JSON diffs stay readable.
 
     `emissive` is how much of the colour survives the night: Mapbox's *-emissive-strength, which
@@ -35,7 +35,7 @@ def layer(id, type, source_layer=None, minzoom=None, maxzoom=None, filter=None, 
     """
     out = {'id': id, 'type': type}
     if source_layer is not None:
-        out['source'] = SOURCE
+        out['source'] = source
         out['source-layer'] = source_layer
     if minzoom is not None:
         out['minzoom'] = minzoom

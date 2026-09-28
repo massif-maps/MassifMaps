@@ -103,6 +103,9 @@ def places(v):
         place('place-city-dot', ['city'], 3, 8, zoom_ramp(3, 11, 6, 14, 8, 16), c, extra=dot),
         place('place-state', ['state', 'province'], 4, 9, zoom_ramp(4, 9, 9, 16), c, font=BOLD,
               color='label-soft', extra={**soft, 'text-letter-spacing': 0.15, 'text-max-width': 6}),
+        # Standard sizes a country by its rank; OMT ranks 1-6, and Liechtenstein is not France
+        place('place-country-minor', ['country'], 3, 10, zoom_ramp(3, 9, 6, 12, 9, 16), c,
+              extra={'text-max-width': 6}, filter=['all', in_class(['country']), ['>', get('rank'), 3]]),
         place('place-country', ['country'], 1, 10, zoom_ramp(1, 11, 5, 16, 9, 22), c,
-              extra={'text-max-width': 6}),
+              extra={'text-max-width': 6}, filter=['all', in_class(['country']), ['<=', get('rank'), 3]]),
     ]

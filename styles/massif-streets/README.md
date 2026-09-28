@@ -42,6 +42,15 @@ palette plus the modules it adds.
 - **Place names are the last layers**, so they are placed first: a town's name outranks anything in
   it. Hamlets and neighbourhoods are soft grey, cities and towns carry a dot below z8.
 
+**Low zoom comes from a second, optional archive.** The alpimaps bathymap (`global_landcover`:
+ESA WorldCover classes, `depth`: Natural Earth isobaths, z0-6) is the `bathymap` source, drawn the
+way Standard draws its own landcover and water-depth: generalised greens, white glaciers and a
+darker veil per isobath, handing over to OMT's landcover by crossfade over z7-9. The style names
+the source with no public URL - an app that ships the archive merges it into its main tiles
+(`MergedMBVTTileDataSource`), where the rules find the two layers by name; one that does not simply
+has no landcover below z7. `min_depth 0` is the whole ocean, which also paints the sea a regional
+tileset stops short of.
+
 `landcover_name`, `landuse_name` and the richer landuse classes exist only in our fork; the layers
 reading them draw nothing over OpenFreeMap, and MapLibre's complaint about them is hidden in the
 preview.

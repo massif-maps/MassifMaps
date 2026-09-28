@@ -24,19 +24,24 @@ LANDUSE = [
 RESIDENTIAL = ['residential', 'suburb', 'quarter', 'neighbourhood']
 
 
+def background(v):
+    return [layer('background', 'background', paint={'background-color': v.palette['land']},
+                  emissive=zoom_ramp(13, 0.1, 14, 0.25))]
+
+
 def layers(v):
     c = v.palette
     fill = lambda key: {'fill-color': c[key], 'fill-antialias': False}
     out = [
-        layer('background', 'background', paint={'background-color': c['land']},
-              emissive=zoom_ramp(13, 0.1, 14, 0.25)),
         layer('landuse-residential', 'fill', 'landuse', minzoom=6, filter=in_class(RESIDENTIAL),
               paint={'fill-color': c['residential'], 'fill-opacity': zoom_ramp(6, 0, 9, 1)}, emissive=0.25),
     ]
-    # Standard's low-zoom woods are a paler green that deepens as the forests resolve into stands
+    # below z7 the bathymap archive's generalised landcover draws instead (lowzoom.py), and the two
+    # crossfade; Standard's woods are a paler green that deepens as the forests resolve into stands
+    fade = {'fill-opacity': zoom_ramp(7, 0, 9, 1)}
     wood = {'fill-color': zoom_ramp(8, c['wood-low'], 11, c['wood']), 'fill-antialias': False}
-    out += [layer('landcover-' + key, 'fill', 'landcover', filter=in_class(classes),
-                  paint=wood if key == 'wood' else fill(key), emissive=0.2)
+    out += [layer('landcover-' + key, 'fill', 'landcover', minzoom=7, filter=in_class(classes),
+                  paint={**(wood if key == 'wood' else fill(key)), **fade}, emissive=0.2)
             for key, classes in LANDCOVER]
     out += [layer('landcover-' + key + '-sub', 'fill', 'landcover', minzoom=10,
                   filter=in_class(subclasses, 'subclass'), paint=fill(key), emissive=0.2)

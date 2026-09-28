@@ -12,6 +12,11 @@
     "openmaptiles": {
       "type": "vector",
       "url": "https://tiles.openfreemap.org/planet"
+    },
+    "bathymap": {
+      "type": "vector",
+      "url": "bathymap.json",
+      "maxzoom": 6
     }
   },
   "sprite": "sprite/sprite",
@@ -38,6 +43,376 @@
             14,
             0.25
           ]
+        }
+      }
+    },
+    {
+      "id": "lowzoom-built",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "built"
+      ],
+      "paint": {
+        "fill-color": "hsl(20, 12%, 91%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-glacier",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "glacier"
+      ],
+      "paint": {
+        "fill-color": "hsl(0, 0%, 100%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-swamp",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "swamp"
+      ],
+      "paint": {
+        "fill-color": "hsl(115, 60%, 86%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-marsh",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "marsh"
+      ],
+      "paint": {
+        "fill-color": "hsl(115, 60%, 86%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-tree",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "tree"
+      ],
+      "paint": {
+        "fill-color": "hsl(115, 60%, 84%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-crop",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "crop"
+      ],
+      "paint": {
+        "fill-color": "hsl(102, 60%, 86%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-scrub",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "scrub"
+      ],
+      "paint": {
+        "fill-color": "hsl(115, 60%, 92%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-heath",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "heath"
+      ],
+      "paint": {
+        "fill-color": "hsl(90, 50%, 90%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-grass",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "grass"
+      ],
+      "paint": {
+        "fill-color": "hsl(90, 60%, 89%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
+        }
+      }
+    },
+    {
+      "id": "lowzoom-sand",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "global_landcover",
+      "maxzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "sand"
+      ],
+      "paint": {
+        "fill-color": "hsl(45, 55%, 91%)",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1,
+          9,
+          0
+        ],
+        "fill-antialias": false
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-emissive-strength": 0.2
         }
       }
     },
@@ -90,6 +465,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "minzoom": 7,
       "filter": [
         "in",
         [
@@ -105,7 +481,20 @@
       ],
       "paint": {
         "fill-color": "hsla(102, 60%, 86%, 0.6)",
-        "fill-antialias": false
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0,
+          9,
+          1
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -118,6 +507,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "minzoom": 7,
       "filter": [
         "in",
         [
@@ -133,7 +523,20 @@
       ],
       "paint": {
         "fill-color": "hsla(115, 60%, 87%, 0.6)",
-        "fill-antialias": false
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0,
+          9,
+          1
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -146,6 +549,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "minzoom": 7,
       "filter": [
         "in",
         [
@@ -173,7 +577,20 @@
           11,
           "hsla(115, 60%, 74%, 0.8)"
         ],
-        "fill-antialias": false
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0,
+          9,
+          1
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -186,6 +603,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "minzoom": 7,
       "filter": [
         "in",
         [
@@ -201,7 +619,20 @@
       ],
       "paint": {
         "fill-color": "hsl(115, 60%, 86%)",
-        "fill-antialias": false
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0,
+          9,
+          1
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -214,6 +645,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "minzoom": 7,
       "filter": [
         "in",
         [
@@ -229,7 +661,20 @@
       ],
       "paint": {
         "fill-color": "hsl(52, 65%, 86%)",
-        "fill-antialias": false
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0,
+          9,
+          1
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -242,6 +687,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "minzoom": 7,
       "filter": [
         "in",
         [
@@ -257,7 +703,20 @@
       ],
       "paint": {
         "fill-color": "hsl(30, 10%, 88%)",
-        "fill-antialias": false
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0,
+          9,
+          1
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -270,6 +729,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "minzoom": 7,
       "filter": [
         "in",
         [
@@ -285,7 +745,20 @@
       ],
       "paint": {
         "fill-color": "hsl(200, 70%, 95%)",
-        "fill-antialias": false
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0,
+          9,
+          1
+        ]
       },
       "metadata": {
         "massif:paint": {
@@ -1272,6 +1745,113 @@
       }
     },
     {
+      "id": "water-depth-ocean",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "depth",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "min_depth"
+        ],
+        0
+      ],
+      "paint": {
+        "fill-color": "hsl(200, 100%, 80%)",
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1,
+          8,
+          0
+        ]
+      }
+    },
+    {
+      "id": "water-depth",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "depth",
+      "maxzoom": 8,
+      "filter": [
+        "all",
+        [
+          ">",
+          [
+            "get",
+            "min_depth"
+          ],
+          0
+        ],
+        [
+          "<",
+          [
+            "get",
+            "min_depth"
+          ],
+          7000
+        ]
+      ],
+      "paint": {
+        "fill-color": "hsl(200, 100%, 72%)",
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.35,
+          8,
+          0
+        ]
+      }
+    },
+    {
+      "id": "water-depth-deep",
+      "type": "fill",
+      "source": "bathymap",
+      "source-layer": "depth",
+      "maxzoom": 8,
+      "filter": [
+        ">=",
+        [
+          "get",
+          "min_depth"
+        ],
+        7000
+      ],
+      "paint": {
+        "fill-color": "hsl(200, 100%, 64%)",
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.35,
+          8,
+          0
+        ]
+      }
+    },
+    {
       "id": "rail-tunnel",
       "type": "line",
       "source": "openmaptiles",
@@ -1682,10 +2262,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
             0
           ],
           8,
@@ -1810,10 +2405,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.25,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            0.25,
+            "primary",
+            0.15,
             0
           ],
           8,
@@ -1989,10 +2599,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
             0
           ],
           8,
@@ -3479,10 +4104,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
             0
           ],
           8,
@@ -3607,10 +4247,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.25,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            0.25,
+            "primary",
+            0.15,
             0
           ],
           8,
@@ -3799,10 +4454,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
             0
           ],
           8,
@@ -4897,10 +5567,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
             0
           ],
           8,
@@ -5123,10 +5808,25 @@
             ],
             [
               "motorway",
-              "trunk",
-              "primary"
+              "trunk"
             ],
             0.8,
+            0
+          ],
+          6,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
+            ],
+            1,
+            "primary",
+            0.4,
             0
           ],
           8,
@@ -29793,6 +30493,109 @@
       }
     },
     {
+      "id": "place-country-minor",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 3,
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "country"
+            ]
+          ]
+        ],
+        [
+          ">",
+          [
+            "get",
+            "rank"
+          ],
+          3
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          9,
+          6,
+          12,
+          9,
+          16
+        ],
+        "text-max-width": 6
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 15%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 1.25
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 92%)",
+            0.3,
+            "hsl(0, 0%, 15%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 5%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-emissive-strength": 1,
+          "icon-emissive-strength": 1
+        }
+      }
+    },
+    {
       "id": "place-country",
       "type": "symbol",
       "source": "openmaptiles",
@@ -29800,16 +30603,27 @@
       "minzoom": 1,
       "maxzoom": 10,
       "filter": [
-        "in",
+        "all",
         [
-          "get",
-          "class"
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "country"
+            ]
+          ]
         ],
         [
-          "literal",
+          "<=",
           [
-            "country"
-          ]
+            "get",
+            "rank"
+          ],
+          3
         ]
       ],
       "layout": {

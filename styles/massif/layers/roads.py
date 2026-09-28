@@ -6,9 +6,10 @@ SORT_KEY = ['match', get('class'), 'motorway', 7, 'trunk', 6, 'primary', 5, 'sec
             'tertiary', 3, 'minor', 2, 1]
 
 # Mapbox Standard's `roads` widths on OMT classes: its street is our minor, its fallback our service.
-# a class stays at 0 until Standard's own filter lets it in: secondary at 8, tertiary at 9
+# a class stays at 0 until Standard's own filter lets it in: primary at 6, secondary 8, tertiary 9
 WIDTH = zoom_ramp(
-    3, ['match', get('class'), ['motorway', 'trunk', 'primary'], 0.8, 0],
+    3, ['match', get('class'), ['motorway', 'trunk'], 0.8, 0],
+    6, ['match', get('class'), ['motorway', 'trunk'], 1, 'primary', 0.4, 0],
     8, ['match', get('class'), ['motorway', 'trunk'], 1.3, 'primary', 1.1, 0],
     9, ['match', get('class'), ['motorway', 'trunk'], 1.6, 'primary', 1.4, 'secondary', 0.6, 0],
     12, ['match', get('class'), ['motorway', 'trunk'], 3.2, 'primary', 3, ['secondary', 'tertiary'], 2.2, 'minor', 0.5, 0],
@@ -18,7 +19,8 @@ WIDTH = zoom_ramp(
 
 # kept zoomed out, as Liberty does, but a hair: at 1 px of fill a full casing is all you see
 CASING_WIDTH = zoom_ramp(
-    3, ['match', get('class'), ['motorway', 'trunk', 'primary'], 0.25, 0],
+    3, ['match', get('class'), ['motorway', 'trunk'], 0.25, 0],
+    6, ['match', get('class'), ['motorway', 'trunk'], 0.25, 'primary', 0.15, 0],
     8, ['match', get('class'), ['motorway', 'trunk', 'primary'], 0.3, 0],
     9, ['match', get('class'), ['motorway', 'trunk', 'primary'], 0.45, 'secondary', 0.3, 0],
     12, ['match', get('class'), ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'], 0.8, 'minor', 0.5, 0],

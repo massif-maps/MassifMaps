@@ -14,7 +14,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from layers import boundaries, buildings, labels, land, pois, rail, road_labels, roads, shields, water  # noqa: E402
+from layers import boundaries, buildings, labels, land, lowzoom, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +36,7 @@ class Variant:
 VARIANTS = {
     # bottom to top; among the labels, the later a layer the higher its placement priority
     'streets': Variant('streets', 'Massif Streets', [
-        land.layers, water.layers, rail.tunnels, roads.tunnels, roads.ground, rail.ground,
+        land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, rail.tunnels, roads.tunnels, roads.ground, rail.ground,
         roads.bridges, rail.bridges, rail.overhead, boundaries.layers, buildings.layers,
         labels.low, shields.layers, pois.layers, road_labels.layers, labels.places]),
 }
@@ -51,7 +51,11 @@ def style(v):
             'massif:stage': 'base map: land, water, roads, rail, boundaries, buildings and labels',
             'massif:live-config': ['poiRanking'],
         },
-        'sources': {'openmaptiles': {'type': 'vector', 'url': 'https://tiles.openfreemap.org/planet'}},
+        'sources': {
+            'openmaptiles': {'type': 'vector', 'url': 'https://tiles.openfreemap.org/planet'},
+            # optional, no public host: the app supplies the archive, the preview serves it by name
+            'bathymap': {'type': 'vector', 'url': 'bathymap.json', 'maxzoom': 6},
+        },
         'sprite': 'sprite/sprite',
         'glyphs': 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
         'layers': [lay for part in v.parts for lay in part(v)],

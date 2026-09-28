@@ -29,6 +29,13 @@ function render(svg, ratio) {
 // sprite with two discs on it.
 const POI_DISC = /<circle cx="24" cy="24" r="22\.5" fill="#ffffff" stroke="#9a9a9a" stroke-width="3"\/>\n\s*/;
 const POI_GLYPH_FILL = 'fill="#333333"';
+// Maki's strokes are ~1 unit wide and read thin at a POI's size; a stroke in the glyph's own colour
+// thickens every one alike, in the neutral sprite the SDK splits and the baked one MapLibre draws.
+const POI_GLYPH_BOLD = 0.6;
+
+function boldGlyph(svg, colour) {
+    return svg.replace(POI_GLYPH_FILL, `fill="${colour}" stroke="${colour}" stroke-width="${POI_GLYPH_BOLD}" stroke-linejoin="round"`);
+}
 
 /**
  * Draw the disc a POI class stands on into its sprite, in the colour and shape the style would
@@ -51,7 +58,7 @@ function bakePoi(id, svg, palette) {
     const rx = ((p.radius / 21) * 22.5).toFixed(2).replace(/\.?0+$/, '');
     const disc = p.disc === null ? '' : `<rect x="1.5" y="1.5" width="45" height="45" rx="${rx}" `
         + `fill="${p.disc}" stroke="${palette.ring}" stroke-width="${p.border}"/>\n  `;
-    return svg.replace(POI_DISC, disc).replace(POI_GLYPH_FILL, `fill="${p.glyph}"`);
+    return boldGlyph(svg.replace(POI_DISC, disc), p.glyph);
 }
 
 /** One drawing, one sprite per colour: `<id>-<variant>`, with `__TOKEN__` replaced in the SVG. */
@@ -124,7 +131,7 @@ function build(srcDir, outDir, name) {
             const source = basename(f, '.svg');
             const svg = readFileSync(join(srcDir, f), 'utf8');
             const drawings = palette && f.startsWith('poi/')
-                ? [{ id: source, svg }, { id: `${source}-poi`, svg: bakePoi(source, svg, palette), from: source }]
+                ? [{ id: source, svg: boldGlyph(svg, '#333333') }, { id: `${source}-poi`, svg: bakePoi(source, svg, palette), from: source }]
                 : expand(source, svg, manifest);
             return drawings.map((v) => ({
                 id: v.id,

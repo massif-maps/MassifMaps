@@ -1,4 +1,4 @@
-from lib import get, layer, zoom_ramp
+from lib import by_hour, get, layer, zoom_ramp
 
 # Standard's road-label, one layer per class instead of its zoom step inside the filter. Least
 # important first, so the motorway's name is placed first and wins the collision.
@@ -9,6 +9,10 @@ CLASSES = [
     ('road-label-primary', 12, ['primary', 'secondary'], (9, 16)),
     ('road-label-major', 10, ['motorway', 'trunk'], (9, 16)),
 ]
+
+
+DAY_TEXT, DAY_HALO = 'hsl(0, 0%, 25%)', 'hsl(0, 0%, 95%)'
+NIGHT_TEXT, NIGHT_HALO = 'hsl(0, 0%, 90%)', 'hsl(0, 0%, 30%)'
 
 
 def layers(v):
@@ -24,8 +28,9 @@ def layers(v):
                       'text-max-angle': 30,
                       'text-padding': 1,
                       'text-pitch-alignment': 'viewport'},
-              paint={'text-color': 'hsl(0, 0%, 25%)',
-                     'text-halo-color': 'hsl(0, 0%, 95%)',
-                     'text-halo-width': 1})
+              paint={'text-color': DAY_TEXT, 'text-halo-color': DAY_HALO, 'text-halo-width': 1},
+              # Standard's night pair: light ink on a dark halo, not the day's grey glowing
+              metadata={'massif:paint': {'text-color': by_hour(NIGHT_TEXT, DAY_TEXT),
+                                         'text-halo-color': by_hour(NIGHT_HALO, DAY_HALO)}})
         for id, minzoom, classes, size in CLASSES
     ]

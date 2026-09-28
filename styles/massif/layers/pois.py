@@ -187,14 +187,37 @@ CATEGORY_LAYERS = [
 ICON = ['match', get('subclass'), ['florist', 'furniture'], get('subclass'), get('class')]
 
 
+# Standard's night POI: the disc takes the category's night colour, and the ring and the glyph go
+# dark instead of staying white - a white ring glares on a dark map
+NIGHT_INK = 'hsl(0, 0%, 12%)'
+
+
+def per_class(value_of, default):
+    """ONE flat match on class, grouping the classes that share a value: every branch a constant,
+    which is the shape mapbox2css folds into a project.json table."""
+    groups = {}
+    for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND)):
+        value = value_of(cls, CLASS_TO_CATEGORY.get(cls, 'default'))
+        if value != default:
+            groups.setdefault(value, []).append(cls)
+    out = ['match', get('class')]
+    for value, classes in groups.items():
+        out += [classes if len(classes) > 1 else classes[0], value]
+    return out + [default]
+
+
 def icon_params():
     # `transparent`, not `none`: the decoder's parseColor knows the CSS names and that one, and
     # throws on anything else - a bad colour kills the whole feature processor.
-    return {'background': disc_match(furniture='transparent'),
-            'background-stroke': ['match', get('class'), sorted(NO_BACKGROUND), 'transparent', 'hsl(0, 0%, 100%)'],
-            # a glyph with no disc under it is drawn in the category colour, not white on it
-            'icon': flat_match(lambda cat: 'hsl(0, 0%, 100%)', 'hsl(0, 0%, 100%)',
-                               furniture=disc_match(keep_furniture=True)),
+    bare = lambda cls: cls in NO_BACKGROUND
+    disc = lambda key: per_class(lambda cls, cat: 'transparent' if bare(cls) else CATEGORY[cat][key],
+                                 CATEGORY['default'][key])
+    ring = lambda ink: per_class(lambda cls, cat: 'transparent' if bare(cls) else ink, ink)
+    # a glyph with no disc under it is drawn in the category colour, not white on it
+    glyph = lambda ink, key: per_class(lambda cls, cat: CATEGORY[cat][key] if bare(cls) else ink, ink)
+    return {'background': by_hour(disc('night'), disc('disc')),
+            'background-stroke': by_hour(ring(NIGHT_INK), ring('hsl(0, 0%, 100%)')),
+            'icon': by_hour(glyph(NIGHT_INK, 'night'), glyph('hsl(0, 0%, 100%)', 'disc')),
             'radius': shape_match('radius'),
             'background-stroke-width': shape_match('border')}
 
@@ -223,7 +246,7 @@ def poi_layer(id, minzoom, filter, ranking):
         massif_layout['visibility'] = 'visible'
     return layer(id, 'symbol', 'poi', minzoom=minzoom, filter=filter, layout=layout,
                  paint={'text-color': day_color(), 'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH},
-                 metadata={'massif:params': ['icon-image'],
+                 metadata={'massif:params': ['icon-image', 'text-color'],
                            'massif:layout': massif_layout,
                            # maplibre rejects ["config", ...] in a filter, so the switch rides here
                            'massif:filter': ['==', ['config', 'poiRanking'], ranking],

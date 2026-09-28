@@ -33,7 +33,7 @@ such as the bathymap. A style source whose URL is a bare file name (`"url": "bat
 pointed at the registered archive of that name.
 
 `--styles` mounts a folder of style projects at `/styles`, defaulting to the repo's own, so
-`styles/massif-streets` is served without being copied anywhere. `?style=<url>` opens straight on
+`styles/massif` is served without being copied anywhere. `?style=<url>` opens straight on
 one.
 
 The `style` box takes any MapLibre style URL. The left pane loads it as written; the right pane gets

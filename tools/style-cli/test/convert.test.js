@@ -342,6 +342,28 @@ test('a parameter colour goes in as hex, because that is what the decoder can pa
     assert.equal(styleParams.get('poi-fill-park'), '#3b9144');
 });
 
+test('a palette that follows the hour is one table per brightness stop', () => {
+    // measure-light over two class matches: a lookup per stop, not the ternary chain per feature
+    // the ramp would otherwise become.
+    const styleParams = new Map();
+    const { mss } = convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['interpolate', ['linear'], ['measure-light', 'brightness'],
+                    0.25, ['match', ['get', 'class'], 'bus', '#aabbcc', '#eeeeee'],
+                    0.3, ['match', ['get', 'class'], 'bus', '#2e5a80', '#666666']],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.match(mss, /text-fill: linear\(\[view::brightness\], \(0\.25, \(\(\[param::poi-fill-b25-\[class\]\]\) \?\? #eeeeee\)\), \(0\.3, \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\)\)\);/);
+    assert.equal(styleParams.get('poi-fill-b25-bus'), '#aabbcc');
+    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+});
+
 test('a property the style does not ask for keeps its ternary', () => {
     const styleParams = new Map();
     const { mss } = convert({

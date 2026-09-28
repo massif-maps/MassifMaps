@@ -3409,14 +3409,29 @@ function emitTranslated(
  * tune and not for the two-branch colour ramp on a road, and only the author knows which is which.
  */
 function fieldParamTable(value: Json, layer: MapboxLayer, property: string, target: string,
-                         coverage: Coverage, options: ConvertOptions): string | null {
-    if (!options.styleParams || !Array.isArray(value) || value[0] !== 'match') return null;
+                         coverage: Coverage, options: ConvertOptions, suffix = ''): string | null {
+    if (!options.styleParams || !Array.isArray(value)) return null;
     const asked = (layer.metadata as Record<string, Json> | undefined)?.['massif:params'];
     if (!Array.isArray(asked) || !asked.includes(property)) return null;
+    // A day/night pair of tables: `measure-light` over one table per stop, so a palette that follows
+    // the hour is still a lookup per feature rather than the ternary chain it would otherwise become.
+    const input = value[2];
+    if (value[0] === 'interpolate' && Array.isArray(input) && input[0] === 'measure-light' && input[1] === 'brightness') {
+        const stops: string[] = [];
+        for (let i = 3; i + 1 < value.length; i += 2) {
+            const last = i + 2 >= value.length;
+            const table = fieldParamTable(value[i + 1] as Json, layer, property, target, coverage, options,
+                last ? '' : `-b${Math.round(Number(value[i]) * 100)}`);
+            if (table === null) return null;
+            stops.push(`(${round(Number(value[i]))}, ${table})`);
+        }
+        return `linear([view::brightness], ${stops.join(', ')})`;
+    }
+    if (value[0] !== 'match') return null;
     if (value.length < 5 || value.length % 2 === 0) return null;
-    const input = value[1] as Json;
-    if (!Array.isArray(input) || input[0] !== 'get' || typeof input[1] !== 'string') return null;
-    const field = input[1];
+    const key = value[1] as Json;
+    if (!Array.isArray(key) || key[0] !== 'get' || typeof key[1] !== 'string') return null;
+    const field = key[1];
 
     const entries: Array<[string, Json]> = [];
     for (let i = 2; i + 1 < value.length; i += 2) {
@@ -3434,7 +3449,7 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
     const fallback = tryTranslate(rest, property, layer.id, coverage);
     if (fallback === null) return null;
 
-    const slug = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}`;
+    const slug = `${layer['source-layer'] ?? safeParamName(layer.id)}-${target.replace(/^(text|shield|marker)-/, '')}${suffix}`;
     for (const [label, branch] of entries) options.styleParams.set(`${slug}-${label}`, paramValue(branch));
     coverage.note(`"${layer.id}": ${property} is a ${entries.length}-entry table in project.json ` +
         `(${slug}-*), read per feature by [${field}]`);

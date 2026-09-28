@@ -1399,6 +1399,12 @@ every renderer, so a layer asking for it stays a valid MapLibre style, and every
 style is byte-identical. `["icon-image"]` covers a recolourable icon's own params — the disc, its
 ring and the glyph — so an icon palette lands in the same place as the label's.
 
+A palette that follows the hour folds too: `["interpolate", …, ["measure-light", "brightness"], …]`
+whose every stop is such a `match` becomes one table per stop, read inside
+`linear([view::brightness], …)` — `poi-fill-b25-*` for the stop at 0.25, the last stop keeping the
+plain name. Keep the ramp OUTSIDE and the match inside; a match whose branches are ramps has no
+constant to tabulate and stays a ternary chain.
+
 ### A set test's labels are constants, and a geometry name is a NUMBER
 
 `mapnik::geometry_type` is a `long long` (`mapnikvt/ExpressionContext.cpp`), so comparing it against

@@ -2101,6 +2101,60 @@ namespace massif::vt {
         return _viewState.frustum.inside(bbox);
     }
 
+    GLsizei GLTileRenderer::drawSurfaceElements(const TileId& tileId, const TileSurface& surface, bool gridSurface) const {
+        GLsizei drawn = 0;
+        for (const std::pair<GLsizei, GLsizei>& run : visibleGridIndexRuns(tileId, surface, gridSurface)) {
+            glDrawElements(GL_TRIANGLES, run.second, GL_UNSIGNED_SHORT, bufferGLOffset(static_cast<int>(run.first * sizeof(std::uint16_t))));
+            drawn += run.second;
+        }
+        return drawn;
+    }
+
+    std::vector<std::pair<GLsizei, GLsizei>> GLTileRenderer::visibleGridIndexRuns(const TileId& tileId, const TileSurface& gridSurface, bool culled) const {
+        std::vector<std::pair<GLsizei, GLsizei>> runs;
+        if (!culled) {
+            runs.emplace_back(0, static_cast<GLsizei>(gridSurface.getIndicesCount()));
+            return runs;
+        }
+        const std::pair<bool, TerrainTexture>& resolved = resolveTerrainTexture(tileId);
+        const TerrainTexture& terrainTexture = resolved.second;
+        int res = static_cast<int>(std::lround(std::sqrt(gridSurface.getIndicesCount() / 6.0)));
+        if (_transformer->isSpherical() || !resolved.first || !(terrainTexture.minHeight <= terrainTexture.maxHeight) || gridSurface.getIndicesCount() != static_cast<unsigned int>(res * res * 6)) {
+            runs.emplace_back(0, static_cast<GLsizei>(gridSurface.getIndicesCount()));
+            return runs;
+        }
+        cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(tileId);
+        cglib::vec3<double> tileSize = tileBBox.size();
+        // World z is meters * metersToInternal * cosh(mercator y), steepest at the tile's poleward edge; the
+        // margin covers the neighbour texels the border samples and the node filter.
+        double coshY = std::max(std::cosh(tileBBox.min(1) * terrainTexture.mercatorYScale), std::cosh(tileBBox.max(1) * terrainTexture.mercatorYScale));
+        double margin = 0.1 * (terrainTexture.maxHeight - terrainTexture.minHeight) + 10.0;
+        double lowZ = (terrainTexture.minHeight - margin) * terrainTexture.metersToInternal;
+        double highZ = (terrainTexture.maxHeight + margin) * terrainTexture.metersToInternal;
+        double minZ = std::min(lowZ, lowZ * coshY), maxZ = std::max(highZ, highZ * coshY);
+        GLsizei first = 0;
+        for (int blockY = 0; blockY < TileSurfaceBuilder::GRID_CULL_BLOCKS; blockY++) {
+            int y0 = TileSurfaceBuilder::gridBlockStart(res, blockY), y1 = TileSurfaceBuilder::gridBlockStart(res, blockY + 1);
+            for (int blockX = 0; blockX < TileSurfaceBuilder::GRID_CULL_BLOCKS; blockX++) {
+                int x0 = TileSurfaceBuilder::gridBlockStart(res, blockX), x1 = TileSurfaceBuilder::gridBlockStart(res, blockX + 1);
+                GLsizei count = static_cast<GLsizei>((x1 - x0) * (y1 - y0) * 6);
+                // Grid row 0 is the tile's north edge.
+                cglib::bbox3<double> blockBBox(
+                    cglib::vec3<double>(tileBBox.min(0) + tileSize(0) * x0 / res, tileBBox.min(1) + tileSize(1) * (res - y1) / res, minZ),
+                    cglib::vec3<double>(tileBBox.min(0) + tileSize(0) * x1 / res, tileBBox.min(1) + tileSize(1) * (res - y0) / res, maxZ));
+                if (count > 0 && _viewState.frustum.inside(blockBBox)) {
+                    if (!runs.empty() && runs.back().first + runs.back().second == first) {
+                        runs.back().second += count;
+                    } else {
+                        runs.emplace_back(first, count);
+                    }
+                }
+                first += count;
+            }
+        }
+        return runs;
+    }
+
     double GLTileRenderer::tileCullingHeadroom() const {
         // maplibre's rule: none while looking down, growing to the assumed max feature height as the
         // frustum's bottom edge nears the horizon.
@@ -4546,10 +4600,10 @@ namespace massif::vt {
             glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
             glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
 
-            glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+            GLsizei drawnIndices = drawSurfaceElements(tileId, *tileSurface, gridMode);
             VT_STAT_INC(surfaceDraws);
             VT_STAT_INC(surfFillDraws);
-            VT_STAT_ADD(surfaceIndices, tileSurface->getIndicesCount());
+            VT_STAT_ADD(surfaceIndices, drawnIndices);
 
             disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
 
@@ -5842,10 +5896,10 @@ namespace massif::vt {
             glUniform4f(shaderProgram.uniforms[U_COLOR], 0.0f, 0.0f, 0.0f, 0.0f);
             glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
 
-            glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+            GLsizei drawnIndices = drawSurfaceElements(tileId, *tileSurface, gridMode);
             VT_STAT_INC(surfaceDraws);
             VT_STAT_INC(surfDrapeDraws);
-            VT_STAT_ADD(surfaceIndices, tileSurface->getIndicesCount());
+            VT_STAT_ADD(surfaceIndices, drawnIndices);
             surfaces++;
 
             glBindTexture(GL_TEXTURE_2D, 0);

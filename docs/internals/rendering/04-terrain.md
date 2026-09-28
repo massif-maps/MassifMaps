@@ -273,7 +273,14 @@ adaptive path is only reached on a GPU without vertex texture fetch (no elevatio
   `TerrainOptions::MeshResolution` cells, built once, drawn for every tile with the tile's own
   matrix and uniforms. `surfIndices / surfDraws` comes out at exactly `24576 = 64·64·2·3` — one grid
   per draw. This is tangram's `RasterStyle` arrangement (`core/src/style/rasterStyle.cpp`), and it is
-  already implemented: there is nothing left to port here.
+  already implemented: there is nothing left to port here. Since culling (below) that ratio is lower:
+  `surfIndices` counts the indices actually drawn.
+- **Its indices come in 4×4 blocks** (`GRID_CULL_BLOCKS`), each contiguous and banded
+  (`GRID_INDEX_BAND`, for the vertex cache). The drape and fill draws (`drawSurfaceElements`) test
+  each block against the view frustum - tile box in xy, the DEM raster's min/max height (plus 10% and
+  10 m for the border and node filter) in z - and draw the visible runs only. At the mesh-128
+  Grenoble camera that skips 58% of the terrain indices: tiles overhang the screen edges. Off on a
+  globe, and off in the shadow caster pass, which draws for the light, not the camera.
 - **Per-tile adaptive surfaces** (`buildTileSurface`, red-green edge-local refinement over corner
   fans) — used only by the non-grid draw path and by ray-cast picking
   (`findTileBitmapIntersections`). In grid mode `_tileSurfaceMap` stays **empty**, and both

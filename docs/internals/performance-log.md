@@ -2272,6 +2272,11 @@ drags per measurement, fps from the `PROF` windows. Mesh resolution was kept at 
 - **The shared grid in index bands: +5%.** Row order re-shades every vertex twice (a 129-vertex row
   never survives in the post-transform cache). Bands of 6 cells: 12.2-12.6 -> 12.8-13.2 fps over
   four paired runs; 12-cell bands gain less. `TileSurfaceBuilder::GRID_INDEX_BAND`.
+- **Skipping the grid blocks off screen: +5-9%.** The grid's indices in 4×4 blocks, each tested
+  against the frustum with the DEM's height range: 3.2M -> 1.34M terrain indices a frame, 18.7-18.8
+  -> 19.8 fps shadows off, 12.9-13.1 -> 14.1-14.2 on (the shadow mask pass is culled too). Screenshots
+  at Grenoble (shadows on) and Gavet (`--es shadow 5`) are identical outside the status bar. That 58%
+  fewer indices buy only 5-9% says the terrain's vertices are no longer the frame's main cost.
 - **The terrain normal from a gradient texture: +10-13%.** 16.3-16.8 -> 17.5-18.6 fps shadows off,
   11.1-11.2 -> 12.3-12.9 shadows on (these rounds ran after the phone reconnected, when every build
   measured higher than before). See

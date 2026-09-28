@@ -511,6 +511,8 @@ namespace massif {
         int border = entry.border;
         terrainTexture.textureId = entry.texture->getTexId();
         terrainTexture.gradientTextureId = (entry.gradientTexture ? entry.gradientTexture->getTexId() : 0);
+        terrainTexture.minHeight = entry.grid->getMinHeight();
+        terrainTexture.maxHeight = entry.grid->getMaxHeight();
         terrainTexture.textureSize = cglib::vec2<int>(entry.grid->getWidth() + 2 * border, entry.grid->getHeight() + 2 * border);
         terrainTexture.borderTexels = border;
         terrainTexture.internalOrigin = cglib::vec2<double>(bounds.getMin().getX() - border * texelX, bounds.getMin().getY() - border * texelY);

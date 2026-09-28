@@ -399,6 +399,29 @@ test('a palette per variant is one set of tables per variant, picked by the para
     assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
 });
 
+test('a day/night palette under a config branch keeps that branch its own tables', () => {
+    // Folded without the branch's suffix, both branches wrote poi-fill-bus and the last one won.
+    const styleParams = new Map();
+    const ramp = (night, day) => ['interpolate', ['linear'], ['measure-light', 'brightness'],
+        0.25, ['match', ['get', 'class'], 'bus', night, '#666666'], 0.3, ['match', ['get', 'class'], 'bus', day, '#666666']];
+    const { mss } = convert({
+        metadata: { 'massif:live-config': ['poiStyle'] },
+        schema: { poiStyle: { default: 'badge', values: ['badge', 'plain'] } },
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: { 'text-color': ['match', ['config', 'poiStyle'], 'plain', ramp('#111111', '#222222'), ramp('#333333', '#444444')] },
+        }],
+    }, table, { ...NO_PALETTE, styleParams, liveLight: true });
+
+    assert.equal(styleParams.get('poi-fill-plain-bus'), '#222222');
+    assert.equal(styleParams.get('poi-fill-plain-b25-bus'), '#111111');
+    assert.equal(styleParams.get('poi-fill-bus'), '#444444');
+    assert.equal(styleParams.get('poi-fill-b25-bus'), '#333333');
+    assert.match(mss, /\[param::poi-fill-plain-\[class\]\]/);
+});
+
 test('a property the style does not ask for keeps its ternary', () => {
     const styleParams = new Map();
     const { mss } = convert({

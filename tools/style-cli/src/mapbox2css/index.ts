@@ -3426,7 +3426,7 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
         for (let i = 3; i + 1 < value.length; i += 2) {
             const last = i + 2 >= value.length;
             const table = foldOrConstant(value[i + 1] as Json, layer, property, target, coverage, options,
-                last ? '' : `-b${Math.round(Number(value[i]) * 100)}`);
+                last ? suffix : `${suffix}-b${Math.round(Number(value[i]) * 100)}`);
             if (table === null) return null;
             stops.push(`(${round(Number(value[i]))}, ${table})`);
         }

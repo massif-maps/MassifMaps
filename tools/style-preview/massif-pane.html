@@ -61,7 +61,12 @@
     };
     if (params.get('hour')) setHour(Number(params.get('hour')));
     // A style's relief is an app layer on the SDK, not CartoCSS: a DEM source gets a hillshade above the base.
-    if (params.get('dem')) {
+    if (params.get('imagery')) {
+      const imagery = pane.massif.create('layer', 'preview.imagery', { type: 'raster',
+        source: { type: 'http', url: params.get('imagery'), maxZoom: 19 } });
+      pane.massif.call(pane.massif.find('layers', 'map'), 'insert', [0, imagery]);
+    }
+        if (params.get('dem')) {
       const hillshade = pane.massif.create('layer', 'preview.hillshade', {
         ...JSON.parse(params.get('hillshade') || '{"type": "hillshade"}'),
         source: { type: 'http', url: params.get('dem'), maxZoom: 12 } });

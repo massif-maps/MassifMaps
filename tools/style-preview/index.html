@@ -293,7 +293,12 @@ function firstVectorURL(style) {
  * the device make of it" for whatever the row above is showing.
  */
 let massifStarted = false;
-function startMassif() {
+let imageryURL = null;
+async function startMassif() {
+  // a hybrid's imagery is an app layer on the SDK too: the pane gets the raster's tile URL
+  const raster = (styleJSON.layers || []).find((l) => l.type === 'raster' && l.metadata?.['massif:sdk-layer']);
+  const src = raster && styleJSON.sources?.[raster.source];
+  imageryURL = src ? (src.tiles?.[0] ?? (await (await fetch(src.url)).json()).tiles?.[0]) : null;
   // ?carto= names another conversion of the same style - one built without --fold-casings, say -
   // so two runs of the converter can be compared over the same tiles without editing anything.
   const asked = ASKED.get('carto');
@@ -306,6 +311,7 @@ function startMassif() {
     // `carto`, not `project`: the web demo reads `project` off the query string itself, and would
     // take this URL for a folder name in its own filesystem. maxzoom is not optional - without it
     // the SDK asks for a tile deeper than the tileset goes instead of overzooming the last one.
+    const imagery = imageryURL;
     const query = new URLSearchParams({
       pane: id, carto: base, source,
       minzoom: tilesets[i].minzoom ?? 0, maxzoom: tilesets[i].maxzoom ?? 14,
@@ -331,6 +337,7 @@ function startMassif() {
       ...(styleJSON.metadata?.['massif:variant'] ? { variant: styleJSON.metadata['massif:variant'] } : {}),
       // the relief is an app layer on the SDK; the style says how to set one up
       ...hillshadeOf(styleJSON),
+      ...(imagery ? { imagery } : {}),
     });
     $(id).src = `./massif-pane.html?${query}`;
   }

@@ -72,6 +72,7 @@ class Handler(SimpleHTTPRequestHandler):
     massif_dir = None
     isolate = False
     tokens = {}
+    remotes = {}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
@@ -106,7 +107,11 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/tokens.json":
             return self._json(self.tokens)
         if path == "/tilesets.json":
-            return self._json({n: t.meta.get("name", n) for n, t in self.tilesets.items()})
+            names = {n: t.meta.get("name", n) for n, t in self.tilesets.items()}
+            return self._json({**names, **{n: "remote" for n in self.remotes}})
+        parts = path.strip("/").split("/")
+        if len(parts) == 2 and parts[0] == "tiles" and parts[1][:-5] in self.remotes:
+            return self._remote(self.remotes[parts[1][:-5]])
         parts = path.strip("/").split("/")
         if len(parts) == 2 and parts[0] == "tiles" and parts[1].endswith(".json"):
             name = parts[1][:-5]
@@ -116,6 +121,12 @@ class Handler(SimpleHTTPRequestHandler):
         if len(parts) == 5 and parts[0] == "tiles" and parts[4].endswith(".pbf"):
             return self._tile(parts[1], parts[2], parts[3], parts[4][:-4])
         return super().do_GET()
+
+    def _remote(self, url):
+        # a hosted TileJSON the style names by a bare file, fetched here so its key stays server-side
+        from urllib.request import urlopen
+        with urlopen(url.format(**self.tokens), timeout=20) as response:
+            return self._json(json.loads(response.read()))
 
     def _json(self, obj):
         body = json.dumps(obj).encode()
@@ -161,6 +172,8 @@ def main():
                     help="token for the mapbox-* reference panes")
     ap.add_argument("--maptiler-token", metavar="FILE", default="~/.maptiler_token",
                     help="token for the maptiler-* reference panes")
+    ap.add_argument("--remote", action="append", default=[], metavar="NAME=URL",
+                    help="serve a hosted TileJSON at /tiles/NAME.json; {maptiler} and {mapbox} take the tokens")
     ap.add_argument("--no-isolate", dest="isolate", action="store_false",
                     help="drop COOP/COEP, which the Massif panes need but a strict CDN dislikes")
     args = ap.parse_args()
@@ -173,6 +186,9 @@ def main():
         if os.path.exists(path):
             Handler.tokens[name] = open(path).read().strip()
 
+    for spec in args.remote:
+        name, _, url = spec.partition("=")
+        Handler.remotes[name] = url
     for spec in args.mbtiles:
         name, _, path = spec.partition("=")
         if not path:

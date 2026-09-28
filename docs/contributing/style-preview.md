@@ -108,6 +108,12 @@ A family project (see `styles/massif/README.md`) is drawn as the variant the sty
 carrying `massif:sdk-layer` gets a `HillshadeRasterTileLayer` built from those settings above the
 Massif pane's base layer, since the SDK draws relief as a layer of its own and not from CartoCSS.
 
+`--remote NAME=URL` serves a hosted TileJSON at `/tiles/NAME.json`, fetched by the server so a key
+never reaches the style: `--remote satellite=https://api.maptiler.com/tiles/satellite-v2/tiles.json?key={maptiler}`
+is how the hybrid's optional `satellite` source is drawn, `{maptiler}` and `{mapbox}` taking the
+tokens. A raster layer carrying `massif:sdk-layer` becomes a `RasterTileLayer` below the Massif
+pane's base layer.
+
 ## The gaps panel
 
 `gaps` answers the only two questions worth asking:

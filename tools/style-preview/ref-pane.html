@@ -65,6 +65,8 @@ map.on('move', () => {
     `rot ${map.getBearing().toFixed(1)}  tilt ${map.getPitch().toFixed(1)}`;
 });
 addEventListener('message', (event) => {
+  const preset = event.data && event.data.refPreset;
+  if (preset && map.setConfigProperty) map.setConfigProperty('basemap', 'lightPreset', preset);
   const to = event.data && event.data.massifCamera;
   if (to) map.jumpTo({ center: to.center, zoom: to.zoom, bearing: to.bearing, pitch: to.pitch });
 });

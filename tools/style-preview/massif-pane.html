@@ -44,8 +44,25 @@
     const pane = await createMassifPane(document.getElementById('map'),
       params.get('carto'), params.get('source'), camera, report);
     // the grid drives every pane from the MapLibre map above it
+    // The hour drives the SDK's day-cycle light, which is what lights the style's emissive layers.
+    const setHour = (hour) => {
+      const m = pane.massif;
+      let light = m.find('options', 'preview.light');
+      if (!light) {
+        light = m.create('options', 'preview.light', { type: 'light' });
+        m.setObject(m.find('options', 'map'), 'lightOptions', light);
+        m.set(light, 'dayCycleLightsEnabled', true);
+        m.set(light, 'sunOverridingStyle', true);
+      }
+      // the equinox, in local solar time at the camera
+      const [lon, lat] = pane.camera.focusPos;
+      const utc = hour - lon / 15;
+      m.call(light, 'setSunPositionFromTime', [2026, 3, 20, Math.floor(utc), Math.round((utc % 1) * 60), lat, lon]);
+    };
+    if (params.get('hour')) setHour(Number(params.get('hour')));
     addEventListener('message', (event) => {
       if (event.data && event.data.massifCamera) pane.moveTo(event.data.massifCamera);
+      if (event.data && event.data.massifHour !== undefined) setHour(event.data.massifHour);
     });
     // The SDK starts north-up and flat whatever MASSIF_DEFAULTS said, so the opening camera is
     // pushed once the pane is up rather than left to the first sync, which only fires on a move.

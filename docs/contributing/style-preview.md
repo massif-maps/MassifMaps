@@ -91,6 +91,10 @@ config — `?preset=night` sets `lightPreset`) or one of MapTiler's `streets-v4`
 `topo-v4`, `hybrid-v4` and `openstreetmap`. `?ref=mapbox-standard&massif=1` opens straight on the
 comparison: ours over OpenFreeMap, the reference, and the SDK row under both.
 
+The `hour` slider (`?hour=21.5`) sets the Massif panes' day-cycle light — the sun at that local solar
+time on the equinox, at the camera — which is what lights a style's emissive layers, and moves the
+Standard reference to the matching preset: night before 6 and from 20:30, dawn to 8, dusk from 18.
+
 The tokens are read by `serve.py` from `~/.mapbox_token` and `~/.maptiler_token`
 (`--mapbox-token`, `--maptiler-token` to point elsewhere) and served to the page at `/tokens.json`,
 so nothing is committed. The pane is an iframe: mapbox-gl and maplibre in one document fight over

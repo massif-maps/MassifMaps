@@ -47,6 +47,8 @@
     <button id="fit">fit local</button>
     <button id="gaps-toggle">gaps</button>
     <button id="massif-toggle">massif row</button>
+    <label title="the SDK panes' day-cycle light; the Standard reference takes the matching preset">hour
+      <input id="hour" type="range" min="0" max="24" step="0.25" value="12"></label><span id="hour-v">12:00</span>
     <select id="ref" title="reference style drawn in place of the local pane">
       <option value="">no reference</option>
       <option>mapbox-standard</option><option>mapbox-standard-satellite</option>
@@ -238,6 +240,7 @@ async function boot() {
   if (!localName) { $('err-r').style.display = 'block'; $('err-r').textContent = 'serve.py has no --mbtiles registered'; }
   sel.onchange = () => { localName = sel.value; load(); };
   await load();
+  if (ASKED.get('hour')) { $('hour').value = ASKED.get('hour'); postHour(); }
   if (ASKED.get('ref')) { $('ref').value = ASKED.get('ref'); showRef(); }
   if (ASKED.get('massif') === '1') $('massif-toggle').onclick();
 }
@@ -323,6 +326,7 @@ function startMassif() {
       // The pane starts at the camera the URL asked for, not at north-up nadir: sync only fires
       // on a MOVE, so ?tilt= would otherwise not reach the massif row until something dragged.
       tilt: maps[0].getPitch(), rot: maps[0].getBearing(),
+      hour: $('hour').value,
     });
     $(id).src = `./massif-pane.html?${query}`;
   }
@@ -340,7 +344,23 @@ function showRef() {
   $('tag-ref').textContent = 'reference — ' + ref;
   $('ref-frame').src = './ref-pane.html?' + new URLSearchParams({
     ref, lon: c.lng, lat: c.lat, zoom: maps[0].getZoom(), pitch: maps[0].getPitch(),
-    bearing: maps[0].getBearing(), preset: ASKED.get('preset') ?? '' });
+    bearing: maps[0].getBearing(), preset: ASKED.get('preset') ?? presetOf(Number($('hour').value)) });
+}
+
+/** Mapbox Standard's four presets over the hour, for the reference pane. */
+function presetOf(hour) {
+  return hour < 6 || hour >= 20.5 ? 'night' : hour < 8 ? 'dawn' : hour >= 18 ? 'dusk' : 'day';
+}
+
+function postHour() {
+  const hour = Number($('hour').value);
+  $('hour-v').textContent = `${Math.floor(hour)}:${String(Math.round((hour % 1) * 60)).padStart(2, '0')}`;
+  for (const id of ['massif-l', 'massif-r']) {
+    const frame = $(id).contentWindow;
+    if (frame) frame.postMessage({ massifHour: hour }, '*');
+  }
+  const ref = $('ref-frame').contentWindow;
+  if (ref) ref.postMessage({ refPreset: presetOf(hour) }, '*');
 }
 
 function postCamera() {
@@ -375,6 +395,7 @@ $('massif-toggle').onclick = () => {
 
 $('reload').onclick = load;
 $('ref').onchange = showRef;
+$('hour').oninput = postHour;
 $('fit').onclick = () => {
   if (!localTileJSON || !localTileJSON.bounds) return;
   maps.forEach((m) => m.fitBounds(localTileJSON.bounds, { duration: 0 }));

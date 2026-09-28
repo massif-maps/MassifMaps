@@ -101,6 +101,7 @@ namespace massif::vt {
             float metersToInternal = 0.0f; // meters -> world z units at the equator (exaggeration included)
             float mercatorYScale = 0.0f;   // world y -> mercator angle (for the per-vertex 1/cos(latitude) factor)
             float metersPerTexel = 0.0f;   // ground meters per texel at the equator (the 1/cos(latitude) stretch is per fragment)
+            GLuint gradientTextureId = 0;  // RG16F forward differences in meters, same texels (ElevationGradient); 0 = flat light
             // The DEM box-filtered to one texel per mesh node, which the vertex stage displaces from.
             // 0 = none: the vertex stage samples the full texture and aliases sub-cell relief.
             GLuint nodeTextureId = 0;

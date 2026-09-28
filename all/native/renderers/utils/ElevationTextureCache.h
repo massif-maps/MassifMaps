@@ -30,6 +30,7 @@ namespace massif {
     class ElevationManager;
     class ElevationTileGrid;
     class GLResourceManager;
+    class HalfFloatTexture;
     class Texture;
 
     /**
@@ -120,6 +121,7 @@ namespace massif {
             // ElevationTileGrid::encodeNodeTexture, which the vertex stage displaces from.
             std::shared_ptr<BorderBitmap> nodeBitmap;
             std::shared_ptr<Texture> nodeTexture;
+            std::shared_ptr<HalfFloatTexture> gradientTexture; // ElevationGradient, the lit surfaces' normals
             std::uint64_t lastUsed = 0; // LRU stamp
         };
 
@@ -140,6 +142,7 @@ namespace massif {
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             std::shared_ptr<BorderBitmap> bitmap;
             std::shared_ptr<BorderBitmap> nodeBitmap;
+            std::vector<std::uint16_t> gradient;
             int border = 1;
         };
 

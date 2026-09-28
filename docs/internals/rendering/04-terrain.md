@@ -146,6 +146,10 @@ a texture. `ElevationTextureCache` (all/native/renderers/utils/) turns a grid in
   which is what survives a context loss). Measured over a cold load: full re-encodes 353 → 24. It
   changes no frame rate — the encode was never on the render thread — so treat it as work removed,
   not speed gained. In a warm pan the whole pipeline is **idle**: zero encodes, zero patches;
+- the lit surfaces take their normal from a **gradient texture** per DEM tile: RG16F forward
+  differences in metres (`ElevationGradient`), built on the same worker from the same encode and
+  re-patched one texel wider than the ring. See
+  [the terrain normal](08-lighting-sky-fog.md#the-terrain-normal-is-two-fetches);
 - `_frameResolved` memoises the per-frame tile → grid resolution, because the provider is called
   once per tile **per render pass** and each miss costs 9 locked cache lookups.
 

@@ -4143,6 +4143,10 @@ namespace massif::vt {
             slopeY = static_cast<float>(terrainTexture.metersToInternal / terrainTexture.internalSize(1));
         }
         glUniform2f(shaderProgram.uniforms[U_TERRAINSLOPESCALE], slopeX, slopeY);
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D, valid ? terrainTexture.gradientTextureId : 0);
+        glUniform1i(shaderProgram.uniforms[U_ELEVATIONGRADIENT], 7);
+        glActiveTexture(GL_TEXTURE0);
         glUniform3f(shaderProgram.uniforms[U_SUNDIR], _terrainLighting.sunDir(0), _terrainLighting.sunDir(1), _terrainLighting.sunDir(2));
         glUniform4f(shaderProgram.uniforms[U_SUNCOLOR], _terrainLighting.sunColor(0), _terrainLighting.sunColor(1), _terrainLighting.sunColor(2), 1.0f);
         glUniform4f(shaderProgram.uniforms[U_AMBIENTCOLOR], _terrainLighting.ambientColor(0), _terrainLighting.ambientColor(1), _terrainLighting.ambientColor(2), 1.0f);

@@ -73,6 +73,7 @@ void testAutoFlatten();
 void testCameraClearance();
 void testFlightPath();
 void testElevationNodeField();
+void testElevationGradient();
 void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
@@ -459,6 +460,7 @@ int main() {
     testCameraClearance();
     testFlightPath();
     testElevationNodeField();
+    testElevationGradient();
     testDayCycleLight();
     testDrapeStackCuts();
     testDrapeStandIn();

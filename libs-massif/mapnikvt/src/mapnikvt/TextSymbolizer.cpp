@@ -59,6 +59,7 @@ namespace massif::mvt {
         float placementPriority = _placementPriority.getValue(exprContext);
         float calloutScreenAnchor = _calloutScreenAnchor.getValue(exprContext);
         bool calloutBandFollow = _calloutBandFollow.getValue(exprContext);
+        bool calloutAnchorVisible = _calloutAnchorVisible.getValue(exprContext);
         float calloutOffset = _calloutOffset.getValue(exprContext) * fontScale;
         float calloutStep = _calloutStep.getValue(exprContext) * fontScale;
         int calloutMaxRows = static_cast<int>(_calloutMaxRows.getValue(exprContext));
@@ -201,10 +202,11 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutAnchorVisible, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
             style.collisionPadding = collisionPadding;
             style.calloutBandFollow = calloutBandFollow;
+            style.calloutAnchorVisible = calloutAnchorVisible;
             style.emissiveFunc = emissiveFunc;
             style.haloEmissiveFunc = haloEmissiveFunc;
             if (occlusionOpacity >= 0.0f) {

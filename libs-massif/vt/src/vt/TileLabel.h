@@ -74,6 +74,7 @@ namespace massif::vt {
             // anchor). lineGlyph is the atlas cell the leader line quad is textured from.
             float calloutScreenAnchor;
             bool calloutBandFollow = false; // see TextLabelStyle::calloutBandFollow
+            bool calloutAnchorVisible = false; // see TextLabelStyle::calloutAnchorVisible
             float calloutOffset;
             float calloutStep;
             int calloutMaxRows;

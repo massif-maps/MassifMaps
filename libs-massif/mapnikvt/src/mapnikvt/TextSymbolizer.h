@@ -46,6 +46,7 @@ namespace massif::mvt {
             bindProperty("occlusion-opacity", &_occlusionOpacity);
             bindProperty("callout-screen-anchor", &_calloutScreenAnchor);
             bindProperty("callout-band-follow", &_calloutBandFollow);
+            bindProperty("callout-anchor-visible", &_calloutAnchorVisible);
             bindProperty("callout-offset", &_calloutOffset);
             bindProperty("callout-step", &_calloutStep);
             bindProperty("callout-max-rows", &_calloutMaxRows);
@@ -142,6 +143,7 @@ namespace massif::mvt {
         FloatProperty _calloutScreenAnchor = FloatProperty(-1.0f);
         // Band drops to just above the highest on-screen anchor, the screen anchor being its ceiling.
         BoolProperty _calloutBandFollow = BoolProperty(false);
+        BoolProperty _calloutAnchorVisible = BoolProperty(false);
         FloatProperty _calloutOffset = FloatProperty(0.0f);
         FloatProperty _calloutStep = FloatProperty(0.0f); // negative stacks the rows DOWNWARDS
         FloatProperty _calloutMaxRows = FloatProperty(8.0f);

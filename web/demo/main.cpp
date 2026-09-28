@@ -187,11 +187,13 @@ int main() {
     std::string terrain = queryParam("terrain", "");
     if (!terrain.empty()) {
         std::shared_ptr<massif::TileDataSource> elevationSource = std::make_shared<massif::HTTPTileDataSource>(0, static_cast<int>(queryNumber("terrainMaxZoom", 12)), terrain);
+#ifdef _MASSIF_OFFLINE_SUPPORT
         // ?demCache=<path>: DEM database on a directory the page mounted on IndexedDB.
         std::string demCache = queryParam("demCache", "");
         if (!demCache.empty()) {
             elevationSource = std::make_shared<massif::PersistentCacheTileDataSource>(elevationSource, demCache);
         }
+#endif
         // ?demEncoding=mapbox for Terrain-RGB, the default is Terrarium.
         std::shared_ptr<massif::ElevationDecoder> elevationDecoder;
         if (queryParam("demEncoding", "terrarium") == "mapbox") {

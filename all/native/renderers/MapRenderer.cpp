@@ -1572,7 +1572,6 @@ namespace massif {
         _terrainShadowMaskBuffer.reset();
         _groundAOMaskBuffer.reset();
         _groundAODrapeBuffer.reset();
-        _labelOcclusionBuffer.reset();
         _shadowMapValid = false;
 
         _backgroundRenderer.onSurfaceDestroyed();
@@ -2181,9 +2180,6 @@ namespace massif {
     static const int SHADOW_MASK_DIVISOR = 4;
     // Half for contact shadows: only metres wide, a quarter would average their gradient away.
     static const int GROUND_AO_MASK_DIVISOR = 2;
-    // Only sampled over a multi-pixel square per label anchor, so its texels are never seen.
-    static const int LABEL_OCCLUSION_DIVISOR = 2;
-    static const float LABEL_OCCLUSION_SIZE_PIXELS = 30.0f;
     // Caster ring zoom: one tile (~28 km at 45 degrees) spans a massif shadowing the view.
     static const int SHADOW_RELIEF_ZOOM = 10;
     // Ring subdivision is 4^(maxCoverZoom - ringZoom); this cap turns an OOM into a frame cost.
@@ -3899,41 +3895,6 @@ namespace massif {
                     multiplyScreenMask(_groundAOMaskBuffer->getTexture(), 1.0f / viewState.getWidth(), 1.0f / viewState.getHeight());
                 }
                 FRAME_PROF_GPU_END();
-            }
-        }
-
-        // mapbox's model (labelVsh): anchors test a re-drawn extrusion depth, as the scene's renderbuffer cannot be sampled.
-        {
-            std::vector<std::shared_ptr<TileLayer> > occlusionLayers;
-            for (const std::shared_ptr<Layer>& layer : layers) {
-                layer->collectDrapeLayers(occlusionLayers, viewState);
-            }
-            unsigned int occlusionTexture = 0;
-            auto occlusionWanted = [](const std::shared_ptr<TileLayer>& tileLayer) { return tileLayer->isLabelOcclusionWanted(); };
-            if (std::any_of(occlusionLayers.begin(), occlusionLayers.end(), occlusionWanted) && viewState.getWidth() > 0 && viewState.getHeight() > 0) {
-                if (!_labelOcclusionBuffer) {
-                    // Packed rgb depth: not every driver samples a depth texture in a vertex shader.
-                    _labelOcclusionBuffer = std::make_unique<ScreenMaskBuffer>(true);
-                }
-                _labelOcclusionBuffer->setSize(viewState.getWidth(), viewState.getHeight(), LABEL_OCCLUSION_DIVISOR);
-                GLint occlusionPrevFBO = 0;
-                glGetIntegerv(GL_FRAMEBUFFER_BINDING, &occlusionPrevFBO);
-                int occluderDraws = 0;
-                FRAME_PROF_GPU_BEGIN(SECTION_LABELOCC);
-                if (_labelOcclusionBuffer->beginPass()) {
-                    for (const std::shared_ptr<TileLayer>& tileLayer : occlusionLayers) {
-                        occluderDraws += tileLayer->renderLabelOcclusionDepth();
-                    }
-                    _labelOcclusionBuffer->endPass(occlusionPrevFBO, viewState.getWidth(), viewState.getHeight());
-                }
-                FRAME_PROF_GPU_END();
-                // An empty buffer means no occlusion; not sampling says so cheaper.
-                if (occluderDraws > 0) {
-                    occlusionTexture = _labelOcclusionBuffer->getTexture();
-                }
-            }
-            for (const std::shared_ptr<TileLayer>& tileLayer : occlusionLayers) {
-                tileLayer->setLabelOcclusionDepth(occlusionTexture, LABEL_OCCLUSION_SIZE_PIXELS);
             }
         }
 

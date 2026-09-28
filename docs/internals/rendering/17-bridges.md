@@ -319,8 +319,8 @@ not only the draped ones. mapbox cuts its extrusions at the tile for the same re
 trade-off is the one mapbox has: a tile whose deck geometry has not resolved (`resolveSpanBases`
 is all-or-nothing per geometry) is a gap in the deck now, where an uncut neighbour used to cover
 it. A span extrusion also gets no ground-AO skirt (it hangs from a chord, the skirt was a halo
-sliding over ground it never touches) and is skipped by the label occlusion depth pass (it hid
-its own road's arrows and name).
+sliding over ground it never touches) and is skipped by the label occlusion rays (it hid its own
+road's arrows and name).
 
 **What lights it.** The drape is composited AFTER `applyLighting3D`, not before, and the draped
 part takes `uSpanDrapeLight` — the GROUND's light — rather than the extrusion's. A draped pixel is

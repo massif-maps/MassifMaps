@@ -65,6 +65,11 @@ namespace massif::vt {
         float getTextOpacity() const { return _textOpacity; }
         void setTextOpacity(float opacity) { _textOpacity = opacity; }
 
+        // What 3D occluders leave of the label this frame, multiplied into both opacities (1 = unoccluded).
+        void setOcclusion(float occlusion) { _occlusion = occlusion; }
+        // The anchor the occlusion rays aim at, world coordinates; null before placement.
+        const cglib::vec3<double>* getAnchorPosition() const { return _placement ? &_placement->position : nullptr; }
+
         bool isVisible() const { return _visible; }
         void setVisible(bool visible) { _visible = visible; }
 
@@ -433,6 +438,7 @@ namespace massif::vt {
         int _calloutFailures = 0;
         float _opacity = 0.0f;
         float _textOpacity = 0.0f;
+        float _occlusion = 1.0f;
         bool _visible = false;
         bool _active = false;
         bool _elevationDirty = true;     // built flat: anchor it onto the terrain on the next frame

@@ -26,6 +26,8 @@
 #include <cglib/mat.h>
 
 namespace massif::vt {
+    class ExtrusionOccluder;
+
     // Hash of a style parameter's current value, so a selection change is a byte rewrite, not a tile
     // decode. Written by the app thread, read by the render thread.
     using StyleStateRef = std::shared_ptr<const std::atomic<std::uint64_t>>;
@@ -185,6 +187,10 @@ namespace massif::vt {
             return patchVertexFloat(_vertexGeometryLayoutParameters.chordOffset, vertexIndex, chordParam);
         }
 
+        /** The CPU copy labels are ray-tested against; built before the upload releases the indices. */
+        const std::shared_ptr<const ExtrusionOccluder>& getOccluder() const { return _occluder; }
+        void setOccluder(std::shared_ptr<const ExtrusionOccluder> occluder) { _occluder = std::move(occluder); }
+
         /** Whether the bases have been resolved at least once - an extrusion is not drawn before. */
         bool isBaseResolved() const { return _baseResolved; }
         void setBaseResolved(bool resolved) { _baseResolved = resolved; }
@@ -298,6 +304,7 @@ namespace massif::vt {
         StyleStateRef _styleState;
         std::uint64_t _appliedStateKey = 0;
         std::optional<std::pair<std::size_t, std::size_t>> _dirtyVertexBytes; // byte range to re-upload
+        std::shared_ptr<const ExtrusionOccluder> _occluder;
         bool _baseResolved = false;          // extrusions: the CPU ground pass has run at least once
         unsigned int _baseElevationVersion = 0; // ...against this elevation data version
         unsigned int _baseSpanVersion = 0;   // ...and this cross-tile span union version

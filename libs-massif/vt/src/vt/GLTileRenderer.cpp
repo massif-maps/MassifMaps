@@ -1528,6 +1528,7 @@ namespace massif::vt {
         }
 
         _visibleRenderTiles = _renderTiles;
+        _frameOccludersValid = false;
         refreshGroundAOBakeable(); // the tiles it answers from are the ones just published
         VT_STAT_CLOCK(prepClock);
         float dBlend = (_layerBlendingSpeed > 0.0f ? dt * _layerBlendingSpeed : 1.0f);
@@ -2740,7 +2741,6 @@ namespace massif::vt {
         std::vector<std::shared_ptr<Label>> labels;
         labels.reserve(_labels.size() + 64);
         std::array<std::shared_ptr<PassLabels>, 2> passLabels;
-        bool styledOcclusion = false;
         for (int pass = 0; pass < 2; pass++) {
             passLabels[pass] = std::make_shared<PassLabels>();
             passLabels[pass]->reserve(_passLabels[pass] ? _passLabels[pass]->size() + 64 : 64);
@@ -2750,8 +2750,6 @@ namespace massif::vt {
             for (auto labelIt = labelMap.begin(); labelIt != labelMap.end(); labelIt++) {
                 const std::shared_ptr<Label>& label = labelIt->second;
                 int pass = ((label->getStyle()->orientation == LabelOrientation::BILLBOARD_3D || label->getStyle()->orientation == LabelOrientation::LINE_BILLBOARD_3D) ? 1 : 0);
-                // The owner needs this before the layer passes, to decide on the occluder buffer.
-                styledOcclusion = styledOcclusion || label->getStyle()->occlusionOpacity.value_or(1.0f) < 1.0f;
                 passLabels[pass]->push_back(label);
                 labels.push_back(label);
             }
@@ -2784,7 +2782,6 @@ namespace massif::vt {
 
         _labels = std::move(labels);
         _passLabels = std::move(passLabels);
-        _labelOcclusionStyled = styledOcclusion;
         VT_STAT_SPLIT(labelListNs, labelMapClock);
         VT_STAT_SET(labelsLive, static_cast<long long>(_labels.size()));
     }
@@ -3661,11 +3658,9 @@ namespace massif::vt {
                 }
                 // A slot of its own whenever that ramp would differ, not only for a coloured icon.
                 bool hasIconRun = hasIconColor || iconSize != size;
-                // The style layer's occluded opacity, else this layer's default; one per batch.
-                float labelOcclusionOpacity = labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity);
                 // The anchor tile ends a batch only for a label that needs the GPU's height.
                 TileId labelTileId = labelBatchTileId(label);
-                if (bitmap != labelBitmap || labelBatchParams.tileId != labelTileId || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                if (bitmap != labelBitmap || labelBatchParams.tileId != labelTileId || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     // The flush is an upload and a draw: bank the style time so far, not count the flush as style.
                     VT_STAT_SPLIT(labelPassStyleNs, styleClock);
                     renderLabelBatch(labelBatchParams, bitmap);
@@ -3675,7 +3670,6 @@ namespace massif::vt {
                     labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
                     labelBatchParams.glyphRenderSize = labelStyle->glyphRenderSize;
-                    labelBatchParams.occlusionOpacity = labelOcclusionOpacity;
                     labelBatchParams.tileId = labelTileId;
                     labelBatchParams.labelMatrix = _viewState.cameraMatrix * cglib::translate4_matrix(_viewState.origin);
 
@@ -3793,6 +3787,10 @@ namespace massif::vt {
                 lastLabelStyle = labelStyle;
             }
             VT_STAT_SPLIT(labelPassStyleNs, styleClock);
+
+            // The style layer's occluded opacity, else this layer's default.
+            float occludedOpacity = labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity);
+            label->setOcclusion(occludedOpacity < 1.0f ? occludedOpacity + (1.0f - occludedOpacity) * calculateLabelVisibility(*label) : 1.0f);
 
             VT_STAT_CLOCK(statClock);
             std::size_t labelVertexOffset = _labelVertices.size();
@@ -5083,17 +5081,72 @@ namespace massif::vt {
         return false;
     }
 
-    void GLTileRenderer::setLabelOcclusionDepth(GLuint depthTexture, float occluderSize) {
-        std::lock_guard<std::mutex> lock(_mutex);
+    float GLTileRenderer::calculateLabelVisibility(const Label& label) {
+        const cglib::vec3<double>* anchor = label.getAnchorPosition();
+        if (!anchor || _transformer->isSpherical()) {
+            return 1.0f;
+        }
+        if (!_frameOccludersValid) {
+            _frameOccludersValid = true;
+            _frameOccluders.clear();
+            forEachVisibleExtrusion(nullptr, false, [this](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+                // A SPAN is the surface its own symbols stand on; a translated layer is not where its mesh says.
+                const ExtrusionOccluder* occluder = geometry->getOccluder().get();
+                if (!occluder || !geometry->getSpanRecords().empty() || geometry->getStyleParameters().translate) {
+                    return true;
+                }
+                // The tile's own blend: an extrusion grows in, and a full-height occluder would hide
+                // labels behind a building that is not there yet.
+                cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId, 1.0f);
+                FrameOccluder frameOccluder;
+                frameOccluder.occluder = occluder;
+                frameOccluder.geometry = geometry.get();
+                frameOccluder.origin = cglib::vec3<double>(tileMatrix(0, 3), tileMatrix(1, 3), tileMatrix(2, 3));
+                frameOccluder.scale = tileMatrix(0, 0);
+                frameOccluder.heightScale = buildingHeightScale(renderLayer.blend) / geometry->getVertexGeometryLayoutParameters().heightScale * tileMatrix(2, 2);
+                frameOccluder.bounds = _transformer->calculateTileBBox(renderLayer.sourceTileId);
+                if (frameOccluder.heightScale > 0) {
+                    _frameOccluders.push_back(frameOccluder);
+                }
+                return true;
+            });
+        }
+        if (_frameOccluders.empty()) {
+            return 1.0f;
+        }
 
-        _labelOcclusionTexture = depthTexture;
-        _labelOcclusionSize = occluderSize;
-    }
-
-    bool GLTileRenderer::hasStyledLabelOcclusion() const {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        return _labelOcclusionStyled;
+        // Four rays, mapbox's square of taps: from the eye to the corners of the occluder square around
+        // the anchor, at the anchor's distance.
+        const cglib::vec3<double>& eye = _viewState.origin;
+        double distance = cglib::length(*anchor - eye);
+        double pixel = 2.0 * distance / (_viewState.projectionMatrix(1, 1) * std::max(1, _screenHeight));
+        double half = 0.5 * LABEL_OCCLUSION_SIZE_PIXELS * pixel;
+        cglib::vec3<double> right = cglib::vec3<double>::convert(_viewState.orientation[0]) * half;
+        cglib::vec3<double> up = cglib::vec3<double>::convert(_viewState.orientation[1]) * half;
+        double margin = LABEL_OCCLUSION_MARGIN_METERS * _metersToInternal;
+        int visible = 0;
+        for (int tap = 0; tap < 4; tap++) {
+            cglib::vec3<double> target = *anchor + right * (tap & 1 ? 1.0 : -1.0) + up * (tap & 2 ? 1.0 : -1.0);
+            cglib::vec3<double> dir = target - eye;
+            double length = cglib::length(dir);
+            double t1 = (length > margin ? 1.0 - margin / length : 0.0);
+            double x0 = std::min(eye(0), target(0)), x1 = std::max(eye(0), target(0));
+            double y0 = std::min(eye(1), target(1)), y1 = std::max(eye(1), target(1));
+            bool blocked = false;
+            for (const FrameOccluder& frameOccluder : _frameOccluders) {
+                if (x1 < frameOccluder.bounds.min(0) || x0 > frameOccluder.bounds.max(0) || y1 < frameOccluder.bounds.min(1) || y0 > frameOccluder.bounds.max(1)) {
+                    continue;
+                }
+                cglib::vec3<double> localOrigin((eye(0) - frameOccluder.origin(0)) / frameOccluder.scale, (eye(1) - frameOccluder.origin(1)) / frameOccluder.scale, eye(2));
+                cglib::vec3<double> localDir(dir(0) / frameOccluder.scale, dir(1) / frameOccluder.scale, dir(2));
+                if (frameOccluder.occluder->intersects(localOrigin, localDir, 0.0, t1, *frameOccluder.geometry, frameOccluder.heightScale, frameOccluder.origin(2))) {
+                    blocked = true;
+                    break;
+                }
+            }
+            visible += (blocked ? 0 : 1);
+        }
+        return visible * 0.25f;
     }
 
     bool GLTileRenderer::hasGroundContent() const {
@@ -5126,36 +5179,6 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _labelOcclusionOpacity = occludedOpacity;
-    }
-
-    int GLTileRenderer::renderLabelOcclusionDepth() {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        resetProgramState(); // another renderer may have bound its own program since the last draw
-
-        if (!_visibleRenderTiles) {
-            return 0;
-        }
-        // The shadow caster path from the camera: extrusions as drawn, window depth packed into colour,
-        // as sampling a depth texture from a vertex shader is not portable here.
-        int drawn = 0;
-        cglib::mat4x4<double> cameraViewProj = _viewState.projectionMatrix * _viewState.cameraMatrix;
-        _shadowCasterViewProj = &cameraViewProj;
-        forEachVisibleExtrusion(nullptr, false, [this, &drawn](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
-            // A SPAN is the surface its own symbols stand on, centimetres above its roof: its depth
-            // would hide them. Buildings carry no roof symbols.
-            if (!geometry->getSpanRecords().empty()) {
-                return true;
-            }
-            // The tile's own blend, as the shadow caster uses: an extrusion fades in by GROWING,
-            // so a full-height occluder hides labels behind a building that is not there yet.
-            renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
-            drawn++;
-            return true;
-        });
-        _shadowCasterViewProj = nullptr;
-        checkGLError();
-        return drawn;
     }
 
     int GLTileRenderer::bakeGroundAOMask(const TileId& targetTileId) {
@@ -6737,28 +6760,15 @@ namespace massif::vt {
         bool useDerivatives = true;
 
         const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
-        unsigned int occlusionFlag = (_labelOcclusionTexture != 0 && labelBatchParams.occlusionOpacity < 1.0f ? LABEL_OCCLUSION_FLAG : 0);
         // Anchors elevated on the GPU by the surface's applyTerrain (mapbox symbol.vertex.glsl); without
         // a texture provider the CPU height is used.
         unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider && labelBatchParams.tileId.zoom >= 0 ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0);
-        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (useDerivatives ? DERIVATIVES_FLAG : 0) | occlusionFlag | terrainFlag | fogFlag());
+        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (useDerivatives ? DERIVATIVES_FLAG : 0) | terrainFlag | fogFlag());
         useProgram(shaderProgram);
         setupFogUniforms(shaderProgram);
         if (terrainFlag) {
             // The anchors' own frame, so applyTerrain(aVertexPosition) needs no conversion.
             setupTerrainUniforms(shaderProgram, labelBatchParams.tileId, cglib::translate4_matrix(_viewState.origin), false);
-        }
-        if (occlusionFlag) {
-            // Unit 2: 0 is the glyph atlas, and setupTerrainUniforms owns 1 (elevation) and 5 (nodes).
-            glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, _labelOcclusionTexture);
-            glActiveTexture(GL_TEXTURE0);
-            glUniform1i(shaderProgram.uniforms[U_LABELOCCLUSIONTEX], 2);
-            // Occluder square in uv, the depth offset keeping a grounded label in front of its ground,
-            // the occluded opacity, and the comparison sharpness.
-            float halfSizeU = 0.5f * _labelOcclusionSize / std::max(1.0f, static_cast<float>(_screenWidth));
-            float halfSizeV = 0.5f * _labelOcclusionSize / std::max(1.0f, static_cast<float>(_screenHeight));
-            glUniform4f(shaderProgram.uniforms[U_LABELOCCLUSIONPARAMS], 0.5f * (halfSizeU + halfSizeV), LABEL_OCCLUSION_DEPTH_OFFSET, labelBatchParams.occlusionOpacity, 1.0f / LABEL_OCCLUSION_DEPTH_RAMP);
         }
 
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);

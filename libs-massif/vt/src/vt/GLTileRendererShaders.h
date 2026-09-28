@@ -113,8 +113,6 @@ namespace massif::vt {
         U_PAINTSLOPESCALE,
         U_PAINTPARAMS,
         U_GROUNDCOLOR,
-        U_LABELOCCLUSIONTEX,
-        U_LABELOCCLUSIONPARAMS,
         U_DRAPEMASKTEXTURE,
         U_DRAPEMASKUVTRANSFORM
     };
@@ -155,8 +153,6 @@ namespace massif::vt {
         // Terrain sun on undraped 2D geometry. Not TERRAIN_LIGHT: the surface shaders declare the
         // same uniforms themselves, and one name twice in a stage is a link error.
         GEOMETRY_LIGHT_FLAG = 4194304,
-        // Fade a label whose anchor is behind a 3D occluder in the screen depth texture (mapbox's model).
-        LABEL_OCCLUSION_FLAG = 8388608,
         // Write coverage (alpha, replicated) instead of colour, to build a no-drape layer's
         // occlusion mask (docs/internals/rendering/04-terrain.md).
         COVERAGE_FLAG = 16777216,
@@ -285,8 +281,6 @@ namespace massif::vt {
         { "uPaintSlopeScale",   U_PAINTSLOPESCALE },
         { "uPaintParams",       U_PAINTPARAMS },
         { "uGroundColor",       U_GROUNDCOLOR },
-        { "uLabelOcclusionTex",    U_LABELOCCLUSIONTEX },
-        { "uLabelOcclusionParams", U_LABELOCCLUSIONPARAMS },
         { "uDrapeMask",            U_DRAPEMASKTEXTURE },
         { "uDrapeMaskUVTransform", U_DRAPEMASKUVTRANSFORM }
     };
@@ -311,7 +305,6 @@ namespace massif::vt {
         { SHADOW_CASCADES2_FLAG, "SHADOW_CASCADES_2" },
         { SHADOW_CASCADES3_FLAG, "SHADOW_CASCADES_3" },
         { SHADOW_CASCADES4_FLAG, "SHADOW_CASCADES_4" },
-        { LABEL_OCCLUSION_FLAG, "LABEL_OCCLUSION" },
         { SHADOW_MASK_OUT_FLAG, "SHADOW_MASK_OUT" },
         { SHADOW_MASK_IN_FLAG, "SHADOW_MASK_IN" },
         { SHADOW_SINGLE_TAP_FLAG, "SHADOW_SINGLE_TAP" },
@@ -1635,11 +1628,6 @@ namespace massif::vt {
         uniform vec3 uLabelAxisX;
         uniform vec3 uLabelAxisY;
         uniform mat4 uMVPMatrix;
-        #ifdef LABEL_OCCLUSION
-        uniform sampler2D uLabelOcclusionTex;
-        // x = half tap square (uv), y = depth offset (NDC), z = occluded opacity, w = 1 / soft ramp
-        uniform vec4 uLabelOcclusionParams;
-        #endif
         uniform vec2 uUVScale;
         uniform float uSDFRamp;
         uniform vec4 uColorTable[16];
@@ -1687,27 +1675,6 @@ namespace massif::vt {
             if (aVertexAttribs[3] < 1.5) {
                 // Whole position: on a globe the lift is radial.
                 anchorPos = applyTerrain(aVertexPosition);
-            }
-        #endif
-        #ifdef LABEL_OCCLUSION
-            // Per anchor, so a wall never cuts a glyph run in half; four soft taps so no single
-            // half-res texel decides.
-            highp vec4 anchorClip = uMVPMatrix * vec4(anchorPos, 1.0);
-            if (anchorClip.w > 0.0) {
-                highp vec2 anchorUV = anchorClip.xy / anchorClip.w * 0.5 + 0.5;
-                highp float anchorDepth = anchorClip.z / anchorClip.w * 0.5 + 0.5 + uLabelOcclusionParams.y;
-                highp vec2 d = vec2(uLabelOcclusionParams.x);
-                // Depth packed as the shadow caster does; an empty white texel decodes past 1.
-                highp vec3 unpack = vec3(1.0, 1.0 / 255.0, 1.0 / 65025.0);
-                highp vec4 taps = vec4(
-                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2( d.x,  d.y)).rgb, unpack),
-                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2(-d.x,  d.y)).rgb, unpack),
-                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2( d.x, -d.y)).rgb, unpack),
-                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2(-d.x, -d.y)).rgb, unpack));
-                lowp float visible = dot(vec4(0.25), clamp((taps - vec4(anchorDepth)) * uLabelOcclusionParams.w, 0.0, 1.0));
-                lowp float occlusion = mix(uLabelOcclusionParams.z, 1.0, visible);
-                vColor *= occlusion;
-                vBorderColor *= occlusion;
             }
         #endif
             gl_Position = uMVPMatrix * vec4(anchorPos + offset, 1.0);

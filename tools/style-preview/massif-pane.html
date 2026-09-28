@@ -69,7 +69,7 @@
         if (params.get('dem')) {
       const hillshade = pane.massif.create('layer', 'preview.hillshade', {
         ...JSON.parse(params.get('hillshade') || '{"type": "hillshade"}'),
-        source: { type: 'http', url: params.get('dem'), maxZoom: 12 } });
+        source: { type: 'http', url: params.get('dem'), maxZoom: Number(params.get('demMaxZoom') || 22) } });
       pane.massif.call(pane.massif.find('layers', 'map'), 'insert', [1, hillshade]);
     }
     addEventListener('message', (event) => {

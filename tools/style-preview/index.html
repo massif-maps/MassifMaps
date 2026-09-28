@@ -387,8 +387,9 @@ function postCamera() {
 /** A style's hillshade as the SDK pane builds it: its DEM, and the layer settings it states. */
 function hillshadeOf(style) {
   const layer = (style.layers || []).find((l) => l.type === 'hillshade' && l.metadata?.['massif:sdk-layer']);
-  const dem = layer && style.sources?.[layer.source]?.tiles?.[0];
-  return dem ? { dem, hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
+  const source = layer && style.sources?.[layer.source];
+  const dem = source?.tiles?.[0];
+  return dem ? { dem, demMaxZoom: source.maxzoom ?? 22, hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
 }
 
 function firstVectorTileURL(tilejson) {

@@ -219,9 +219,13 @@ def icon_params():
     ring = lambda ink: per_class(lambda cls, cat: 'transparent' if bare(cls) else ink, ink)
     # a glyph with no disc under it is drawn in the category colour, not white on it
     glyph = lambda ink, key: per_class(lambda cls, cat: CATEGORY[cat][key] if bare(cls) else ink, ink)
-    return {'background': by_hour(disc('night'), disc('disc')),
-            'background-stroke': by_hour(ring(NIGHT_INK), ring('hsl(0, 0%, 100%)')),
-            'icon': by_hour(glyph(NIGHT_INK, 'night'), glyph('hsl(0, 0%, 100%)', 'disc')),
+    # poiStyle `plain`: OSM's look, every glyph bare in its category colour like the furniture
+    plain = lambda badge, bare_value: ['match', ['config', 'poiStyle'], 'plain', bare_value, badge]
+    tinted = lambda key: per_class(lambda cls, cat: CATEGORY[cat][key], CATEGORY['default'][key])
+    return {'background': plain(by_hour(disc('night'), disc('disc')), 'transparent'),
+            'background-stroke': plain(by_hour(ring(NIGHT_INK), ring('hsl(0, 0%, 100%)')), 'transparent'),
+            'icon': plain(by_hour(glyph(NIGHT_INK, 'night'), glyph('hsl(0, 0%, 100%)', 'disc')),
+                          by_hour(tinted('night'), tinted('disc'))),
             'radius': shape_match('radius'),
             'background-stroke-width': shape_match('border')}
 
@@ -261,6 +265,8 @@ def poi_layer(id, minzoom, filter, ranking, v):
     dark = v.flags.get('dark_ground', False)
     mono = v.flags.get('mono', False)
     massif_layout = {'icon-image': ['image', ICON, {'params': mono_params() if mono else icon_params()}]}
+    # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
+    massif_layout['icon-size'] = 0.4 if mono else ['match', ['config', 'poiStyle'], 'plain', 0.6, 0.4]
     if ranking == 'rank':
         # maplibre draws the default mode; the SDK turns these back on through massif:layout
         layout['visibility'] = 'none'

@@ -137,6 +137,8 @@ parameter test.
 - `building_tilt_drop` (90), `building_ao` (1), `buildings` (2 = 3D, 1 = flat, 0 = off) — the
   converter's own, the same in every converted style
   ([style-tools](../../docs/contributing/style-tools.md)).
+- `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
+  category colour and drawn larger. It reads the class tables, so switching is a re-decode.
 - `poiRanking` — `category` or `rank`, see below.
 
 ## Shields: a sprite per colour, picked per feature

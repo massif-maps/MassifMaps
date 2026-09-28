@@ -6,6 +6,7 @@
     "massif:variant": "eink",
     "massif:live-config": [
       "poiRanking",
+      "poiStyle",
       "building_opacity"
     ]
   },
@@ -9520,6 +9521,7 @@
               }
             }
           ],
+          "icon-size": 0.4,
           "visibility": "visible"
         },
         "massif:filter": [
@@ -9736,6 +9738,7 @@
               }
             }
           ],
+          "icon-size": 0.4,
           "visibility": "visible"
         },
         "massif:filter": [
@@ -9952,6 +9955,7 @@
               }
             }
           ],
+          "icon-size": 0.4,
           "visibility": "visible"
         },
         "massif:filter": [
@@ -10162,7 +10166,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -10385,7 +10390,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -10598,7 +10604,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -10806,7 +10813,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -11016,7 +11024,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -11228,7 +11237,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -11446,7 +11456,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -11666,7 +11677,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -11877,7 +11889,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -12085,7 +12098,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -12297,7 +12311,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -12517,7 +12532,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -12725,7 +12741,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -12934,7 +12951,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -13146,7 +13164,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -13360,7 +13379,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -13570,7 +13590,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "icon-size": 0.4
         },
         "massif:filter": [
           "==",
@@ -15229,6 +15250,13 @@
       "values": [
         "category",
         "rank"
+      ]
+    },
+    "poiStyle": {
+      "default": "badge",
+      "values": [
+        "badge",
+        "plain"
       ]
     },
     "building_opacity": {

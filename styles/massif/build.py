@@ -74,6 +74,7 @@ VARIANTS = {v.name: v for v in [
 
 POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}
 BUILDING_OPACITY = {'default': 0.6}
+POI_STYLE = {'default': 'badge', 'values': ['badge', 'plain']}
 
 
 def document(name, layers, metadata, schema, sources):
@@ -90,8 +91,8 @@ def document(name, layers, metadata, schema, sources):
 
 
 def maplibre_style(v):
-    return document(v.title, v.layers(), {'massif:variant': v.name, 'massif:live-config': ['poiRanking', 'building_opacity']},
-                    {'poiRanking': POI_RANKING, 'building_opacity': BUILDING_OPACITY}, v.sources)
+    return document(v.title, v.layers(), {'massif:variant': v.name, 'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity']},
+                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY}, v.sources)
 
 
 FIXED = ('id', 'type', 'source', 'source-layer', 'minzoom', 'maxzoom', 'filter')
@@ -170,8 +171,8 @@ def family_style():
             meta = merged.setdefault('metadata', {})
             meta['massif:filter'] = ['all', meta['massif:filter'], only] if 'massif:filter' in meta else only
         layers.append(merged)
-    return document('Massif', layers, {'massif:live-config': ['poiRanking', 'building_opacity', 'variant']},
-                    {'poiRanking': POI_RANKING, 'building_opacity': BUILDING_OPACITY,
+    return document('Massif', layers, {'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', 'variant']},
+                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY,
                      'variant': {'default': names[0], 'values': names}},
                     {k: s for v in VARIANTS.values() for k, s in v.sources.items()})
 

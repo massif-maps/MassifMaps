@@ -184,18 +184,18 @@ void testViewStateProperty() {
         TEST_CHECK(!(live == other), "two plates differing only in a live colour are two styles");
     }
 
-    // Massif's building fade: opaque looking down, the app's building_opacity once the camera leans.
+    // Massif's building fade: building_opacity looking straight down, so tunnels show; opaque leaning in.
     {
         auto store = std::make_shared<mvt::StyleParameterStore>(std::map<std::string, mvt::Value> { { "building_opacity", mvt::Value(0.6) } });
         mvt::ExpressionContext context;
         context.setStyleParameterStore(store);
         mvt::FloatFunctionProperty opacity(1.0f);
-        opacity.setExpression(mvt::parseExpression("linear([view::tilt], 40, [param::building_opacity], 70, 1)", false));
+        opacity.setExpression(mvt::parseExpression("linear([view::tilt], 70, 1, 85, [param::building_opacity])", false));
         vt::FloatFunction func = opacity.getFunction(context);
-        TEST_CHECK(near(func(view(17.0f, 90.0f)), 1.0f), "a top-down camera draws the buildings opaque");
-        TEST_CHECK(near(func(view(17.0f, 55.0f)), 0.8f), "half way down the ramp it is half way to the parameter");
-        TEST_CHECK(near(func(view(17.0f, 30.0f)), 0.6f), "a leaning camera draws them at building_opacity");
+        TEST_CHECK(near(func(view(17.0f, 90.0f)), 0.6f), "a top-down camera draws the buildings at building_opacity");
+        TEST_CHECK(near(func(view(17.0f, 77.5f)), 0.8f), "half way down the ramp it is half way to opaque");
+        TEST_CHECK(near(func(view(17.0f, 30.0f)), 1.0f), "a leaning camera draws them opaque");
         store->setValues({ { "building_opacity", mvt::Value(0.3) } });
-        TEST_CHECK(near(func(view(17.0f, 30.0f)), 0.3f), "and a new parameter value reaches the same function: no re-decode");
+        TEST_CHECK(near(func(view(17.0f, 90.0f)), 0.3f), "and a new parameter value reaches the same function: no re-decode");
     }
 }

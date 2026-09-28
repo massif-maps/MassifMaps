@@ -73,7 +73,7 @@ VARIANTS = {v.name: v for v in [
 ]}
 
 POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}
-BUILDING_OPACITY = {'default': 0.7}
+BUILDING_OPACITY = {'default': 0.6}
 
 
 def document(name, layers, metadata, schema, sources):

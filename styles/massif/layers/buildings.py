@@ -15,8 +15,9 @@ def layers(v):
                      'fill-extrusion-height': get('render_height'),
                      'fill-extrusion-base': get('render_min_height')},
               metadata={'massif:paint': {
-                  # the SDK only: opaque looking down, building_opacity once the camera leans in
-                  'fill-extrusion-opacity': ['interpolate', ['linear'], ['pitch'], 30, 1, 60, ['config', 'building_opacity']],
+                  # the SDK only: building_opacity looking straight down, so the tunnels show through;
+                  # opaque once the camera leans in
+                  'fill-extrusion-opacity': ['interpolate', ['linear'], ['pitch'], 5, ['config', 'building_opacity'], 20, 1],
                   'fill-extrusion-vertical-scale': zoom_ramp(15, 0, 15.3, 1),
                   'fill-extrusion-ambient-occlusion-intensity': 0.15,
                   'fill-extrusion-ambient-occlusion-ground-radius': zoom_ramp(17, 0, 17.8, 8)},

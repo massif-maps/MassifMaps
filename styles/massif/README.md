@@ -130,10 +130,10 @@ parameter test.
 ## Style parameters an app sets
 
 - `variant` — `streets`, `outdoor`, `topo`, `hybrid`, `eink`; `carto/<variant>.json` picks one.
-- `building_opacity` (0.7) — the 3D buildings' alpha once the camera leans in. They are opaque
-  looking down and fade to it between tilt 60 and 30, so the streets behind a tall block stay
-  readable in a 3D view. 1 keeps them opaque at every angle. The MapLibre file draws them opaque:
-  the ramp is over the camera angle, which only the SDK can read in paint.
+- `building_opacity` (0.6) — the 3D buildings' alpha looking straight down, so the tunnels under
+  them show through. They turn opaque as the camera leans in, between tilt 85 and 70. 1 keeps them
+  opaque at every angle. The MapLibre file draws them opaque: the ramp is over the camera angle,
+  which only the SDK can read in paint.
 - `building_tilt_drop` (90), `building_ao` (1), `buildings` (2 = 3D, 1 = flat, 0 = off) — the
   converter's own, the same in every converted style
   ([style-tools](../../docs/contributing/style-tools.md)).

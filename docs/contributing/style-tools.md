@@ -509,9 +509,10 @@ One parameter covers every extrusion in the style. A style asking for two differ
 first and the coverage report says so; no source style does this.
 
 An opacity ramped over `["pitch"]` is not flattened: it is the style's own live fade (see above).
-Massif writes `30, 1, 60, ["config", "building_opacity"]`, which becomes
-`linear([view::tilt], (30, [param::building_opacity]), (60, 1))` — opaque looking down, the
-parameter once the camera leans in, and a drawn frame's translucency takes the depth pre-pass path.
+Massif writes `5, ["config", "building_opacity"], 20, 1`, which becomes
+`linear([view::tilt], (70, 1), (85, [param::building_opacity]))` — the parameter looking straight
+down, so the tunnels show through, opaque once the camera leans in. A translucent frame takes the
+depth pre-pass path.
 
 ## A recolourable icon: the glyph is a field, the disc is a plate
 

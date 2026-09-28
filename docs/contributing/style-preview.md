@@ -26,6 +26,12 @@ Python's standard library only — `serve.py` reads tiles straight out of the SQ
 serves a TileJSON beside them, so there is no conversion step and no 250 MB copy. `--mbtiles`
 repeats; the picker in the toolbar chooses which archive the right pane reads.
 
+An archive may be several joined with `+` — `--mbtiles rhone-alpes=a.mbtiles+b.mbtiles` — and each
+tile is then the two MVTs concatenated, which is a valid tile carrying both sets of layers: the
+same merge `MergedMBVTTileDataSource` does on a device, so the Massif pane sees an optional archive
+such as the bathymap. A style source whose URL is a bare file name (`"url": "bathymap.json"`) is
+pointed at the registered archive of that name.
+
 `--styles` mounts a folder of style projects at `/styles`, defaulting to the repo's own, so
 `styles/massif-streets` is served without being copied anywhere. `?style=<url>` opens straight on
 one.

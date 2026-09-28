@@ -13,28 +13,41 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class Tileset:
+    """One archive, or several joined with `+`: an MVT is a list of layers, so the tiles of two
+    archives concatenated are one tile carrying both - what MergedMBVTTileDataSource does on a device."""
+
     def __init__(self, name, path):
         self.name = name
-        self.path = path
+        self.paths = path.split("+")
         self.local = threading.local()
-        meta = dict(self._db().execute("select name, value from metadata").fetchall())
+        meta = dict(self._db(0).execute("select name, value from metadata").fetchall())
+        layers = []
+        for i in range(len(self.paths)):
+            other = dict(self._db(i).execute("select name, value from metadata").fetchall())
+            layers += json.loads(other.get("json", "{}")).get("vector_layers", [])
+        meta["json"] = json.dumps({**json.loads(meta.get("json", "{}")), "vector_layers": layers})
         self.meta = meta
-        self.gzipped = meta.get("compression", "gzip") == "gzip"
 
-    def _db(self):
-        conn = getattr(self.local, "conn", None)
-        if conn is None:
-            conn = sqlite3.connect("file:%s?mode=ro" % self.path, uri=True, check_same_thread=False)
-            self.local.conn = conn
-        return conn
+    def _db(self, i):
+        conns = getattr(self.local, "conns", None)
+        if conns is None:
+            conns = self.local.conns = {}
+        if i not in conns:
+            conns[i] = sqlite3.connect("file:%s?mode=ro" % self.paths[i], uri=True, check_same_thread=False)
+        return conns[i]
 
     def tile(self, z, x, y):
         row = (1 << z) - 1 - y
-        got = self._db().execute(
-            "select tile_data from tiles where zoom_level=? and tile_column=? and tile_row=?",
-            (z, x, row),
-        ).fetchone()
-        return got[0] if got else None
+        parts = []
+        for i in range(len(self.paths)):
+            got = self._db(i).execute(
+                "select tile_data from tiles where zoom_level=? and tile_column=? and tile_row=?",
+                (z, x, row),
+            ).fetchone()
+            if got:
+                data = got[0]
+                parts.append(gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data)
+        return b"".join(parts) if parts else None
 
     def tilejson(self, base):
         meta = self.meta
@@ -138,8 +151,8 @@ class Handler(SimpleHTTPRequestHandler):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--port", type=int, default=8787)
-    ap.add_argument("--mbtiles", action="append", default=[], metavar="NAME=PATH",
-                    help="register an archive at /tiles/NAME (repeatable)")
+    ap.add_argument("--mbtiles", action="append", default=[], metavar="NAME=PATH[+PATH]",
+                    help="register an archive at /tiles/NAME (repeatable); PATH+PATH merges them")
     ap.add_argument("--styles", metavar="DIR", default=os.path.join(ROOT, "..", "..", "styles"),
                     help="folder served at /styles, holding the style projects")
     ap.add_argument("--massif", metavar="DIR", default=os.path.join(ROOT, "..", "..", "web"),
@@ -164,9 +177,10 @@ def main():
         name, _, path = spec.partition("=")
         if not path:
             ap.error("--mbtiles takes NAME=PATH, got %r" % spec)
-        path = os.path.abspath(os.path.expanduser(path))
-        if not os.path.exists(path):
-            ap.error("no such archive: %s" % path)
+        path = "+".join(os.path.abspath(os.path.expanduser(p)) for p in path.split("+"))
+        for one in path.split("+"):
+            if not os.path.exists(one):
+                ap.error("no such archive: %s" % one)
         Handler.tilesets[name] = Tileset(name, path)
         print("  /tiles/%s  <-  %s" % (name, path))
 

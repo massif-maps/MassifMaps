@@ -85,7 +85,7 @@ const START = {
 };
 
 const $ = (id) => document.getElementById(id);
-let localName = null, localTileJSON = null, remoteTileJSON = null, styleJSON = null;
+let localName = null, localTileJSON = null, remoteTileJSON = null, styleJSON = null, tilesets = {};
 
 /** every vector source in the style points at one tileset; swap them all to `url`. */
 function retarget(style, url) {
@@ -231,7 +231,7 @@ function sync(a, b) {
 async function boot() {
   const asked = ASKED.get('style');
   if (asked) $('style-url').value = asked;
-  const sets = await (await fetch(ORIGIN + '/tilesets.json')).json();
+  const sets = tilesets = await (await fetch(ORIGIN + '/tilesets.json')).json();
   const sel = $('local-set');
   sel.innerHTML = Object.keys(sets).map((n) => `<option value="${n}">${n}</option>`).join('');
   localName = Object.keys(sets)[0];
@@ -251,6 +251,10 @@ async function load() {
     if (typeof v === 'string' && !/^([a-z]+:)?\/\//i.test(v)) {
       styleJSON[key] = new URL(v, url).href;
     }
+  }
+  // a source named by a bare file (`bathymap.json`) has no public host: it is one of ours, served here
+  for (const [name, src] of Object.entries(styleJSON.sources || {})) {
+    if (src.url && !/^([a-z]+:)?\/\//i.test(src.url) && tilesets[name]) src.url = ORIGIN + '/tiles/' + name + '.json';
   }
   const localURL = ORIGIN + '/tiles/' + localName + '.json';
   const remoteURL = firstVectorURL(styleJSON);

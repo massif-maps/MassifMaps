@@ -14,6 +14,7 @@
 #include <mapnikvt/Expression.h>
 #include <mapnikvt/ExpressionContext.h>
 #include <mapnikvt/Properties.h>
+#include <vt/Styles.h>
 
 #include <cmath>
 #include <memory>
@@ -153,5 +154,30 @@ void testViewStateProperty() {
 
         TEST_CHECK(near(evaluate(backgroundEmissive, view(17.0f, 0.0f)), 0.25f),
             "a ViewState with no brightness set reads 1 - the DAYLIGHT end, which is why it has to be passed in");
+    }
+
+    // 6. A POI plate that follows the hour: Mapbox's night disc is pastel with a dark ring. The plate
+    //    colour used to be read ONCE at decode, where view::brightness is unset - so every disc took
+    //    the ramp's first (night) stop at noon. It must stay a function the renderer calls per frame,
+    //    and the decode-time value the plate's enabled() test reads must be the daylight one.
+    {
+        std::vector<mvt::Expression> stops = { mvt::Value(0.25), mvt::Value(std::string("#202020")),
+                                               mvt::Value(0.3), mvt::Value(std::string("#ffffff")) };
+        mvt::ColorFunctionProperty ring("#000000");
+        ring.setExpression(std::make_shared<mvt::InterpolateExpression>(Method::LINEAR, variable("view::brightness"), stops));
+        vt::ColorFunction func = ring.getFunction(mvt::ExpressionContext());
+
+        TEST_CHECK(func.function() != nullptr, "a ring ramped over the brightness stays a per-frame function");
+        auto grey = [](const vt::Color& color, float level) {
+            return near(color.rgba()[0], level) && near(color.rgba()[1], level) && near(color.rgba()[2], level);
+        };
+        TEST_CHECK(grey(func(lit(0.0136f)), 32.0f / 255.0f), "night brightness draws the dark ring");
+        TEST_CHECK(grey(func(lit(0.478f)), 1.0f), "day brightness draws the white one");
+        TEST_CHECK(grey(ring.getStaticValue(mvt::ExpressionContext()), 1.0f),
+            "and the decode-time value is the daylight colour, not the night stop");
+
+        vt::LabelPlateStyle live, other;
+        live.colorFunc = func;
+        TEST_CHECK(!(live == other), "two plates differing only in a live colour are two styles");
     }
 }

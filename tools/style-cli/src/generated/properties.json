@@ -1399,9 +1399,9 @@
       "mapnik": "icon-background-border-fill",
       "symbolizer": "shield",
       "kind": "color",
-      "type": "ColorProperty",
+      "type": "ColorFunctionProperty",
       "default": "#000000",
-      "live": false,
+      "live": true,
       "baked": false
     },
     {
@@ -1429,9 +1429,9 @@
       "mapnik": "icon-background-fill",
       "symbolizer": "shield",
       "kind": "color",
-      "type": "ColorProperty",
+      "type": "ColorFunctionProperty",
       "default": "transparent",
-      "live": false,
+      "live": true,
       "baked": false
     },
     {
@@ -1971,6 +1971,16 @@
       "kind": "string",
       "type": "StringProperty",
       "default": "",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-callout-anchor-visible",
+      "mapnik": "callout-anchor-visible",
+      "symbolizer": "text",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
       "live": false,
       "baked": false
     },

@@ -773,6 +773,12 @@ rectangle with its own colour, corner radius, padding and border:
 }
 ```
 
+- The icon plate's **fill and border colours may follow the view**: a `shield-icon-background-fill`
+  or `-border-fill` reading `[view::brightness]` (a POI disc that goes pastel with a dark ring at
+  night, as Mapbox's does) is kept as a `ColorFunction` on `LabelPlateStyle` and evaluated per frame
+  where the plate's batch slot is written. Read at decode instead, where the brightness is unset,
+  every disc took the ramp's first stop — the night one — at noon. The decode-time colour stays, at
+  daylight, for `enabled()`.
 - A plate is **nine-sliced from one atlas cell** (`LabelPlateBitmap.h`, cached by radius and border
   width, the glyph map dedupes by pointer): four corner cells keep the radius, the edges stretch
   along one axis and the centre fills — which is what keeps the corners round at any name width.

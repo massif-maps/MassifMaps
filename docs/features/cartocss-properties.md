@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-244 properties across 12 symbolizers.
+245 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 61 of 244.
+Live-capable properties: 63 of 245.
 
 ## `building`
 
@@ -223,10 +223,10 @@ Live-capable properties: 61 of 244.
 | `shield-halo-radius` | `halo-radius` | float | `0.0` | yes |  |
 | `shield-halo-rasterizer` | `halo-rasterizer` | value |  |  |  |
 | `shield-horizontal-alignment` | `horizontal-alignment` | value | `auto` |  |  |
-| `shield-icon-background-border-fill` | `icon-background-border-fill` | color | `#000000` |  |  |
+| `shield-icon-background-border-fill` | `icon-background-border-fill` | color | `#000000` | yes |  |
 | `shield-icon-background-border-opacity` | `icon-background-border-opacity` | float | `1.0` |  |  |
 | `shield-icon-background-border-width` | `icon-background-border-width` | float | `0.0` |  |  |
-| `shield-icon-background-fill` | `icon-background-fill` | color | `transparent` |  |  |
+| `shield-icon-background-fill` | `icon-background-fill` | color | `transparent` | yes |  |
 | `shield-icon-background-height` | `icon-background-height` | float | `0.0` |  |  |
 | `shield-icon-background-opacity` | `icon-background-opacity` | float | `1.0` |  |  |
 | `shield-icon-background-padding-x` | `icon-background-padding-x` | float | `3.0` |  |  |
@@ -286,6 +286,7 @@ Live-capable properties: 61 of 244.
 | `text-background-radius` | `background-radius` | float | `0.0` |  |  |
 | `text-background-width` | `background-width` | float | `0.0` |  |  |
 | `text-callout-align` | `callout-align` | string |  |  |  |
+| `text-callout-anchor-visible` | `callout-anchor-visible` | bool | `false` |  |  |
 | `text-callout-band-follow` | `callout-band-follow` | bool | `false` |  |  |
 | `text-callout-line-anchor` | `callout-line-anchor` | string |  |  |  |
 | `text-callout-line-width` | `callout-line-width` | float | `1.0` |  |  |

@@ -1118,6 +1118,7 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _noDrapeLayerFilter = filter;
+        _noDrapeLayerCache.clear();
     }
 
     void GLTileRenderer::setClickHandlerLayerFilter(const std::optional<std::regex>& filter) {
@@ -2339,7 +2340,11 @@ namespace massif::vt {
         if (!_noDrapeLayerFilter || !layer) {
             return true;
         }
-        return !std::regex_match(layer->getLayerName(), *_noDrapeLayerFilter);
+        auto it = _noDrapeLayerCache.find(layer->getLayerName());
+        if (it == _noDrapeLayerCache.end()) {
+            it = _noDrapeLayerCache.emplace(layer->getLayerName(), !std::regex_match(layer->getLayerName(), *_noDrapeLayerFilter)).first;
+        }
+        return it->second;
     }
 
     bool GLTileRenderer::testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const {

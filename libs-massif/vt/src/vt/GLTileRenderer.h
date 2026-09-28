@@ -910,6 +910,7 @@ namespace massif::vt {
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
         std::optional<std::regex> _rendererLayerFilter;
         std::optional<std::regex> _noDrapeLayerFilter;
+        mutable std::unordered_map<std::string, bool> _noDrapeLayerCache; // regex_match per call was a frame cost (performance-log.md, 32)
         std::optional<std::pair<int, int>> _rendererLayerIndexRange;
         std::optional<std::regex> _clickHandlerLayerFilter;
 

@@ -418,6 +418,14 @@ Design points, each measured:
   *worse*), cascade count (1 cascade → 36.5%). None of them is the mechanism.
 - A tile with **no elevation yet casts nothing**: drawn flat it is a sea-level plane, which is not the
   terrain it stands for, and a receiver without elevation takes no shadow either.
+- **Casters read this frame's style.** The caster pass runs before the layers' `onDrawFrame`, which
+  is where a layer re-read its Map settings, so the extrusions cast at the previous frame's
+  `building-height-scale`. Standard ramps it 0 → 1 over z16 → z16.3; zooming out fast at ~4 fps
+  (tiles loading), one frame at z15.6 drew 56 buildings into the map at full height while the
+  screen drew none — the ground showed every building's shadow, dark footprints included, for a
+  frame (Crosscall, Grenoble, stepped 17.2 → 15.0). `TileLayer::prepareTerrainDrapeFrame` now pushes
+  the style environment first; three sweeps since, the caster and screen heights matched on every
+  frame.
 - The map is **snapped and cached** so a stationary camera does not re-render it. The cache is **per
   page**: each cascade's box is snapped to its own lattice, and the outer page — which holds most of
   the casters — keeps its matrix over far more camera movement than the near one. A page that is not

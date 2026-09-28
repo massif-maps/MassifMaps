@@ -6,6 +6,7 @@
 #include "core/MapTile.h"
 #include "projections/Projection.h"
 
+#include <cstdint>
 #include <map>
 #include <mutex>
 #include <string>
@@ -84,10 +85,11 @@ namespace massif { namespace api {
 
     bool CallArgs::getHandle(int index, Handle& value) const {
         long long number = 0;
-        if (!getLong(index, number) || number < 0 || number > 0xffffffffLL) {
+        // A handle crosses Java and ObjC as a signed int: past generation 2047 it arrives negative.
+        if (!getLong(index, number) || number < INT32_MIN || number > 0xffffffffLL) {
             return false;
         }
-        value = static_cast<Handle>(number);
+        value = number < 0 ? static_cast<Handle>(static_cast<std::int32_t>(number)) : static_cast<Handle>(number);
         return true;
     }
 

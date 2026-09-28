@@ -103,6 +103,11 @@ their globals, and its script is loaded in CORS mode, which the page's COEP requ
 A MapLibre error that a source-layer "does not exist on source" is not shown on the pane: a style
 written for both tilesets reads layers only our fork carries, and the gaps panel lists those.
 
+A family project (see `styles/massif/README.md`) is drawn as the variant the style names in
+`metadata["massif:variant"]` - the pane loads `carto/<variant>.json`. A style with a hillshade layer
+carrying `massif:sdk-layer` gets a `HillshadeRasterTileLayer` built from those settings above the
+Massif pane's base layer, since the SDK draws relief as a layer of its own and not from CartoCSS.
+
 ## The gaps panel
 
 `gaps` answers the only two questions worth asking:

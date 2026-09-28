@@ -16,7 +16,7 @@ const IMAGE_PATH = /[\w./-]+\.(?:png|jpg|jpeg|svg)/g;
  * parameter, `url('...')`, and a bare quoted string inside a ternary - so the stylesheets are read
  * as text and every image-shaped path in them is taken, rather than each form parsed separately.
  */
-async function projectFiles(base) {
+async function projectFiles(base, variant) {
     const project = await (await fetch(`${base}/project.json`)).json();
     const styles = project.styles ?? [];
     const texts = await Promise.all(styles.map((name) => fetch(`${base}/${name}`).then((r) => r.text())));
@@ -28,7 +28,8 @@ async function projectFiles(base) {
     // The fonts the project carries. The decoder finds them by scanning the package for
     // <style>/fonts/, but a project served over HTTP cannot be listed, so project.json names them.
     const fonts = (project.fonts ?? []).map((name) => `fonts/${name}`);
-    return ['project.json', ...styles, ...images, ...fonts];
+    // a variant project only extends project.json, so it is fetched beside it
+    return ['project.json', ...(variant ? [`${variant}.json`] : []), ...styles, ...images, ...fonts];
 }
 
 /**
@@ -38,16 +39,17 @@ async function projectFiles(base) {
  * @param camera   {center: [lon, lat], zoom}
  * @param onError  called with each line the SDK writes to stderr - a style that names a font or an
  *                 icon the project does not carry says so there and nowhere else
+ * @param variant  a project that extends project.json (carto/<variant>.json), or the plain project
  */
-export async function createMassifPane(canvas, base, source, camera, onError = () => {}) {
-    const names = await projectFiles(base);
+export async function createMassifPane(canvas, base, source, camera, onError = () => {}, variant = null) {
+    const names = await projectFiles(base, variant);
     const files = await Promise.all(names.map(async (name) => [name,
         new Uint8Array(await (await fetch(`${base}/${name}`)).arrayBuffer())]));
 
     globalThis.MASSIF_DEFAULTS = {
         source,
         project: PROJECT,
-        style: 'project',
+        style: variant ?? 'project',
         zoom: camera.zoom,
         lon: camera.center[0],
         lat: camera.center[1],

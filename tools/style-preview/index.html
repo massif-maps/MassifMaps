@@ -327,6 +327,10 @@ function startMassif() {
       // on a MOVE, so ?tilt= would otherwise not reach the massif row until something dragged.
       tilt: maps[0].getPitch(), rot: maps[0].getBearing(),
       hour: $('hour').value,
+      // a family project holds every variant; the style says which one it is
+      ...(styleJSON.metadata?.['massif:variant'] ? { variant: styleJSON.metadata['massif:variant'] } : {}),
+      // the relief is an app layer on the SDK; the style says how to set one up
+      ...hillshadeOf(styleJSON),
     });
     $(id).src = `./massif-pane.html?${query}`;
   }
@@ -371,6 +375,13 @@ function postCamera() {
     const frame = $(id).contentWindow;
     if (frame) frame.postMessage({ massifCamera: to }, '*');
   }
+}
+
+/** A style's hillshade as the SDK pane builds it: its DEM, and the layer settings it states. */
+function hillshadeOf(style) {
+  const layer = (style.layers || []).find((l) => l.type === 'hillshade' && l.metadata?.['massif:sdk-layer']);
+  const dem = layer && style.sources?.[layer.source]?.tiles?.[0];
+  return dem ? { dem, hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
 }
 
 function firstVectorTileURL(tilejson) {

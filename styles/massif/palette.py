@@ -164,4 +164,36 @@ HYBRID = {
     'oneway': 'hsl(0, 0%, 90%)',
 }
 
-VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR, 'topo': TOPO, 'hybrid': HYBRID}
+# E-ink: black, white and a few greys, the classes told apart by pattern (sprite-src/pattern/) and
+# the roads by the weight of their outline. No night: a still page is read under a lamp.
+_K, _W = 'hsl(0, 0%, 0%)', 'hsl(0, 0%, 100%)'
+EINK = {k: v for k, v in STREETS.items()}
+EINK.update({
+    'land': _W, 'residential': 'hsl(0, 0%, 96%)', 'commercial': 'hsl(0, 0%, 93%)',
+    'industrial': 'hsl(0, 0%, 90%)', 'education': 'hsl(0, 0%, 95%)', 'hospital': 'hsl(0, 0%, 95%)',
+    'airport': 'hsl(0, 0%, 92%)', 'parking': 'hsl(0, 0%, 92%)', 'pitch': 'hsl(0, 0%, 94%)',
+    'pitch-line': 'hsl(0, 0%, 50%)', 'military-line': 'hsl(0, 0%, 30%)', 'farmland': _W,
+    'national-park': 'hsl(0, 0%, 97%)', 'national-park-line': 'hsl(0, 0%, 35%)',
+    'wood-low': 'hsl(0, 0%, 93%)', 'barrier': 'hsl(0, 0%, 40%)',
+    'water': 'hsl(0, 0%, 35%)', 'water-night': 'hsl(0, 0%, 35%)', 'water-label': _K,
+    'aeroway': 'hsl(0, 0%, 80%)',
+    'lowzoom-built': 'hsl(0, 0%, 93%)', 'glacier-low': _W, 'wetland-low': 'hsl(0, 0%, 94%)',
+    'crop-low': _W, 'scrub-low': 'hsl(0, 0%, 96%)', 'heath-low': 'hsl(0, 0%, 96%)',
+    'grass-low': 'hsl(0, 0%, 97%)', 'sand-low': 'hsl(0, 0%, 97%)', 'depth-200': 'hsl(0, 0%, 88%)',
+    'depth-7000': 'hsl(0, 0%, 80%)',
+    'motorway': _W, 'motorway-case': _K, 'motorway-bridge-case': _K,
+    'trunk': _W, 'trunk-case': _K, 'trunk-bridge-case': _K,
+    'primary': _W, 'road': _W, 'road-case': 'hsl(0, 0%, 30%)', 'road-bridge-case': _K, 'casing-scale': 1.8,
+    'path': _W, 'path-z16': _W, 'path-case': 'hsl(0, 0%, 25%)', 'cycleway': 'hsl(0, 0%, 25%)',
+    'bridleway': 'hsl(0, 0%, 35%)', 'track': 'hsl(0, 0%, 20%)', 'via-ferrata': _K,
+    'no-access': 'hsla(0, 0%, 0%, 0.6)', 'construction': 'hsl(0, 0%, 60%)', 'ferry': 'hsl(0, 0%, 30%)',
+    'aerialway': _K, 'rail': 'hsl(0, 0%, 15%)', 'rail-night': 'hsl(0, 0%, 15%)',
+    'boundary-country': _K, 'boundary-state': 'hsl(0, 0%, 25%)', 'boundary-minor': 'hsl(0, 0%, 45%)',
+    'boundary-halo': 'hsl(0, 0%, 85%)', 'building': 'hsl(0, 0%, 82%)', 'building-outline': 'hsl(0, 0%, 40%)',
+    'road-label': _K, 'road-label-halo': _W, 'road-label-night': _K, 'road-label-halo-night': _W,
+    'label': _K, 'label-night': _K, 'halo': _W, 'halo-night': _W, 'label-soft': 'hsl(0, 0%, 25%)',
+    'label-natural': 'hsl(0, 0%, 15%)', 'label-park': 'hsl(0, 0%, 15%)', 'label-airport': _K,
+    'housenumber': 'hsl(0, 0%, 35%)', 'oneway': _K,
+})
+
+VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR, 'topo': TOPO, 'hybrid': HYBRID, 'eink': EINK}

@@ -69,6 +69,7 @@ VARIANTS = {v.name: v for v in [
     Variant('outdoor', 'Massif Outdoor', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
     Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
     Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite',), dark_ground=True),
+    Variant('eink', 'Massif E-ink', STREETS, mono=True),
 ]}
 
 POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}
@@ -108,6 +109,14 @@ def by_variant(values):
         if missing:
             raise ValueError('a key only some variants state: %s' % missing)
         return {k: by_variant({n: values[n][k] for n in names}) for k in keys}
+    lists = [values[n] for n in names]
+    if all(isinstance(v, list) and len(v) == len(lists[0]) and v[:1] == lists[0][:1] for v in lists):
+        # the same expression with an object inside (["image", name, {params}]): merge the object,
+        # so the variant match lands on each param and not on the image the converter unwraps
+        column = lambda i: {n: values[n][i] for n in names}
+        if all(all(isinstance(v, dict) for v in column(i).values()) or len({json.dumps(v) for v in column(i).values()}) == 1
+               for i in range(len(lists[0]))):
+            return [by_variant(column(i)) for i in range(len(lists[0]))]
     default = values[names[0]]
     out = ['match', ['config', 'variant']]
     groups = []

@@ -1,4 +1,4 @@
-from lib import get, in_class, layer, zoom_ramp
+from lib import get, in_class, layer, scaled, zoom_ramp
 from layers import outdoor
 
 CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']
@@ -54,6 +54,8 @@ def case_color(c, key='case'):
 
 def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None, layout=None, fill_opacity=None):
     layout = layout or {'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY}
+    # e-ink orders the roads by the weight of their outline, having no colour to do it with
+    casing = scaled(casing, c.get('casing-scale', 1))
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:
         case_paint['line-dasharray'] = dash

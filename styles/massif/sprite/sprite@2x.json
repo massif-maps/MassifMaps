@@ -1,6 +1,6 @@
 {
   "dot-capital": {
-    "x": 150,
+    "x": 244,
     "y": 1960,
     "width": 24,
     "height": 24,
@@ -8,7 +8,7 @@
     "visible": true
   },
   "dot": {
-    "x": 202,
+    "x": 416,
     "y": 1960,
     "width": 16,
     "height": 16,
@@ -16,7 +16,7 @@
     "visible": true
   },
   "oneway-reverse": {
-    "x": 220,
+    "x": 434,
     "y": 1960,
     "width": 32,
     "height": 16,
@@ -24,7 +24,7 @@
     "visible": true
   },
   "oneway": {
-    "x": 254,
+    "x": 468,
     "y": 1960,
     "width": 32,
     "height": 16,
@@ -32,10 +32,98 @@
     "visible": true
   },
   "peak": {
-    "x": 176,
+    "x": 334,
     "y": 1960,
     "width": 24,
     "height": 20,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-cemetery": {
+    "x": 184,
+    "y": 1960,
+    "width": 28,
+    "height": 28,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-glacier": {
+    "x": 360,
+    "y": 1960,
+    "width": 32,
+    "height": 20,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-grass": {
+    "x": 270,
+    "y": 1960,
+    "width": 24,
+    "height": 24,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-military": {
+    "x": 502,
+    "y": 1960,
+    "width": 16,
+    "height": 16,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-park": {
+    "x": 394,
+    "y": 1960,
+    "width": 20,
+    "height": 20,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-rock": {
+    "x": 520,
+    "y": 1960,
+    "width": 16,
+    "height": 16,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-sand": {
+    "x": 538,
+    "y": 1960,
+    "width": 12,
+    "height": 12,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-scrub": {
+    "x": 214,
+    "y": 1960,
+    "width": 28,
+    "height": 28,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-water": {
+    "x": 552,
+    "y": 1960,
+    "width": 32,
+    "height": 12,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-wetland": {
+    "x": 296,
+    "y": 1960,
+    "width": 36,
+    "height": 24,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "pattern-wood": {
+    "x": 150,
+    "y": 1960,
+    "width": 32,
+    "height": 32,
     "pixelRatio": 2,
     "visible": true
   },

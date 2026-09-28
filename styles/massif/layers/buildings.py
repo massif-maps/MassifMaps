@@ -2,6 +2,11 @@ from lib import get, layer, zoom_ramp
 
 
 def layers(v):
+    if v.flags.get('mono'):
+        # e-ink draws a still page: footprints with an outline at every zoom, no extrusion
+        c = v.palette
+        return [layer('building-flat', 'fill', 'building', minzoom=14,
+                      paint={'fill-color': c['building'], 'fill-outline-color': c['building-outline']})]
     return [
         layer('building', 'fill', 'building', minzoom=14, maxzoom=15,
               paint={'fill-color': 'hsl(40, 43%, 93%)', 'fill-outline-color': 'hsl(40, 25%, 85%)'}),

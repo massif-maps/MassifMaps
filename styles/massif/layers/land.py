@@ -1,5 +1,8 @@
 from lib import get, in_class, layer, zoom_ramp
 
+# e-ink tells these apart by texture, not colour: one sprite per class under sprite-src/pattern/
+PATTERNS = {'wood', 'scrub', 'grass', 'park', 'wetland', 'rock', 'sand', 'glacier', 'cemetery', 'military'}
+
 # (palette key, OMT landcover classes); drawn in this order, so a later group paints over an earlier one
 LANDCOVER = [
     ('farmland', ['farmland']), ('grass', ['grass']), ('wood', ['wood']), ('wetland', ['wetland']),
@@ -31,7 +34,12 @@ def background(v):
 
 def layers(v):
     c = v.palette
+    mono = v.flags.get('mono', False)
     fill = lambda key: {'fill-color': c[key], 'fill-antialias': False}
+    # a patterned fill is its own layer id: a paint property only some variants state cannot merge
+    patterned = lambda key: mono and key in PATTERNS
+    name = lambda id, key: id + ('-pattern' if patterned(key) else '')
+    paint = lambda key, base: {'fill-pattern': 'pattern-' + key} if patterned(key) else base
     out = [
         layer('landuse-residential', 'fill', 'landuse', minzoom=6, filter=in_class(RESIDENTIAL),
               paint={'fill-color': c['residential'], 'fill-opacity': zoom_ramp(6, 0, 9, 1)}, emissive=0.25),
@@ -40,11 +48,11 @@ def layers(v):
     # crossfade; Standard's woods are a paler green that deepens as the forests resolve into stands
     fade = {'fill-opacity': zoom_ramp(7, 0, 9, 1)}
     wood = {'fill-color': zoom_ramp(8, c['wood-low'], 11, c['wood']), 'fill-antialias': False}
-    out += [layer('landcover-' + key, 'fill', 'landcover', minzoom=7, filter=in_class(classes),
-                  paint={**(wood if key == 'wood' else fill(key)), **fade}, emissive=0.2)
+    out += [layer(name('landcover-' + key, key), 'fill', 'landcover', minzoom=7, filter=in_class(classes),
+                  paint={**paint(key, wood if key == 'wood' else fill(key)), **fade}, emissive=0.2)
             for key, classes in LANDCOVER]
-    out += [layer('landcover-' + key + '-sub', 'fill', 'landcover', minzoom=10,
-                  filter=in_class(subclasses, 'subclass'), paint=fill(key), emissive=0.2)
+    out += [layer(name('landcover-' + key + '-sub', key), 'fill', 'landcover', minzoom=10,
+                  filter=in_class(subclasses, 'subclass'), paint=paint(key, fill(key)), emissive=0.2)
             for key, subclasses in LANDCOVER_SUBCLASS]
     out += [
         layer('park', 'fill', 'park', minzoom=5,
@@ -55,8 +63,8 @@ def layers(v):
                      'line-dasharray': [3, 2], 'line-opacity': 0.6},
               emissive=0.2),
     ]
-    out += [layer('landuse-' + key, 'fill', 'landuse', minzoom=9, filter=in_class(classes),
-                  paint={**fill(key), 'fill-opacity': zoom_ramp(9, 0, 10, 1)}, emissive=0.25)
+    out += [layer(name('landuse-' + key, key), 'fill', 'landuse', minzoom=9, filter=in_class(classes),
+                  paint={**paint(key, fill(key)), 'fill-opacity': zoom_ramp(9, 0, 10, 1)}, emissive=0.25)
             for key, classes in LANDUSE]
     out += [
         layer('landuse-military-line', 'line', 'landuse', minzoom=12, filter=['==', get('class'), 'military'],

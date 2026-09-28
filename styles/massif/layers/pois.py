@@ -226,11 +226,25 @@ def icon_params():
             'background-stroke-width': shape_match('border')}
 
 
+MONO_INK = 'hsl(0, 0%, 0%)'
+
+
+def mono_params():
+    """e-ink: a black glyph on a white disc with a black ring, the same for every category"""
+    bare = lambda cls: cls in NO_BACKGROUND
+    return {'background': per_class(lambda cls, cat: 'transparent' if bare(cls) else 'hsl(0, 0%, 100%)',
+                                    'hsl(0, 0%, 100%)'),
+            'background-stroke': per_class(lambda cls, cat: 'transparent' if bare(cls) else MONO_INK, MONO_INK),
+            'icon': MONO_INK,
+            'radius': shape_match('radius'),
+            'background-stroke-width': shape_match('border')}
+
+
 def poi_layer(id, minzoom, filter, ranking, v):
     layout = {
         # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
         # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
-        'icon-image': ['concat', ICON, '-poi'],
+        'icon-image': ICON if v.flags.get('mono') else ['concat', ICON, '-poi'],
         'icon-size': 0.4,
         'text-field': ['coalesce', get('name'), get('name_int')],
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
@@ -245,19 +259,20 @@ def poi_layer(id, minzoom, filter, ranking, v):
     }
     # on imagery the ground is dark by day as well, so the label keeps its night pair
     dark = v.flags.get('dark_ground', False)
-    massif_layout = {'icon-image': ['image', ICON, {'params': icon_params()}]}
+    mono = v.flags.get('mono', False)
+    massif_layout = {'icon-image': ['image', ICON, {'params': mono_params() if mono else icon_params()}]}
     if ranking == 'rank':
         # maplibre draws the default mode; the SDK turns these back on through massif:layout
         layout['visibility'] = 'none'
         massif_layout['visibility'] = 'visible'
     return layer(id, 'symbol', 'poi', minzoom=minzoom, filter=filter, layout=layout,
-                 paint={'text-color': night_color() if dark else day_color(),
+                 paint={'text-color': MONO_INK if mono else night_color() if dark else day_color(),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
                  metadata={'massif:params': ['icon-image', 'text-color'],
                            'massif:layout': massif_layout,
                            # maplibre rejects ["config", ...] in a filter, so the switch rides here
                            'massif:filter': ['==', ['config', 'poiRanking'], ranking],
-                           'massif:paint': {'text-color': night_color() if dark else text_color(),
+                           'massif:paint': {'text-color': MONO_INK if mono else night_color() if dark else text_color(),
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY)}})
 
 

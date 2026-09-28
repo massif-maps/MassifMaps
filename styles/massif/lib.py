@@ -54,3 +54,15 @@ def layer(id, type, source_layer=None, minzoom=None, maxzoom=None, filter=None, 
     if metadata:
         out['metadata'] = metadata
     return out
+
+
+def scaled(expr, k):
+    """A width ramp with every output multiplied by k - the stops and match labels left alone."""
+    if k == 1 or not isinstance(expr, list):
+        return expr * k if isinstance(expr, (int, float)) and not isinstance(expr, bool) else expr
+    if expr[0] == 'interpolate':
+        return expr[:3] + [x if i % 2 == 0 else scaled(x, k) for i, x in enumerate(expr[3:])]
+    if expr[0] == 'match':
+        body = expr[2:-1]
+        return expr[:2] + [x if i % 2 == 0 else scaled(x, k) for i, x in enumerate(body)] + [scaled(expr[-1], k)]
+    return expr

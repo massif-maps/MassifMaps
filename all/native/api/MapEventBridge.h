@@ -9,6 +9,7 @@
 
 #include "api/Context.h"
 #include "components/DirectorPtr.h"
+#include "layers/CelestialEventListener.h"
 #include "layers/VectorElementEventListener.h"
 #include "layers/VectorTileEventListener.h"
 #include "ui/MapEventListener.h"
@@ -96,6 +97,22 @@ namespace massif { namespace api {
     private:
         PayloadEmitter _emitter;
         DirectorPtr<VectorElementEventListener> _chained;
+    };
+
+    /**
+     * The same for a celestial layer's object clicks.
+     */
+    class CelestialEventBridge : public CelestialEventListener {
+    public:
+        CelestialEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                             const std::shared_ptr<CelestialEventListener>& chained);
+        virtual ~CelestialEventBridge();
+
+        virtual bool onCelestialObjectClicked(const ClickInfo& clickInfo, const std::shared_ptr<CelestialObject>& celestialObject);
+
+    private:
+        PayloadEmitter _emitter;
+        DirectorPtr<CelestialEventListener> _chained;
     };
 
 } }

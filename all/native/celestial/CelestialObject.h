@@ -112,6 +112,17 @@ namespace massif {
         void setOccludedByMap(bool occluded);
 
         /**
+         * Returns a copy of the meta data map. Changes to the copy are not reflected in the object.
+         * @return A copy of the meta data map.
+         */
+        std::map<std::string, Variant> getMetaData() const;
+        /**
+         * Sets a new meta data map, replacing all previous values; carried through to the click listener.
+         * @param metaData The new meta data map.
+         */
+        void setMetaData(const std::map<std::string, Variant>& metaData);
+
+        /**
          * Returns a meta data value.
          * @param key The key of the value.
          * @return The value, or an empty variant if the key does not exist.

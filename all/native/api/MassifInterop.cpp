@@ -166,4 +166,10 @@ namespace massif { namespace api {
                                                           static_cast<Handle>(handle), chained);
     }
 
+    std::shared_ptr<CelestialEventListener> MassifInterop::createCelestialEventBridge(
+            int handle, const std::shared_ptr<CelestialEventListener>& chained) {
+        return std::make_shared<CelestialEventBridge>(Context::GetDefault(),
+                                                      static_cast<Handle>(handle), chained);
+    }
+
 } }

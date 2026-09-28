@@ -8,6 +8,7 @@
 #include "api/MassifInterop.h"
 #include "components/Layers.h"
 #include "components/Options.h"
+#include "layers/CelestialLayer.h"
 #include "layers/VectorLayer.h"
 #include "layers/VectorTileLayer.h"
 #include "utils/Log.h"
@@ -86,9 +87,9 @@ EMSCRIPTEN_KEEPALIVE void massifAttachMapEvents(int handle) {
 }
 
 /**
- * Makes a layer's feature or element clicks facade events on its handle, as the Android and iOS
- * sugar does when a click is first subscribed.
- * @return 1, or 0 if the handle is not a vector or vector tile layer.
+ * Makes a layer's feature, element or celestial object clicks facade events on its handle, as the
+ * Android and iOS sugar does when a click is first subscribed.
+ * @return 1, or 0 if the handle is not a vector, vector tile or celestial layer.
  */
 EMSCRIPTEN_KEEPALIVE int massifBridgeLayerClicks(int handle) {
     std::shared_ptr<massif::Layer> layer = massif::api::MassifInterop::getLayerByHandle(handle);
@@ -98,6 +99,10 @@ EMSCRIPTEN_KEEPALIVE int massifBridgeLayerClicks(int handle) {
     }
     if (auto vectorLayer = std::dynamic_pointer_cast<massif::VectorLayer>(layer)) {
         vectorLayer->setVectorElementEventListener(massif::api::MassifInterop::createVectorElementEventBridge(handle, vectorLayer->getVectorElementEventListener()));
+        return 1;
+    }
+    if (auto celestialLayer = std::dynamic_pointer_cast<massif::CelestialLayer>(layer)) {
+        celestialLayer->setCelestialEventListener(massif::api::MassifInterop::createCelestialEventBridge(handle, celestialLayer->getCelestialEventListener()));
         return 1;
     }
     return 0;

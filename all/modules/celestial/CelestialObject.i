@@ -5,7 +5,7 @@
 
 %module CelestialObject
 
-!proxy_imports(massif::CelestialObject, core.MapPos, core.Variant, graphics.Color)
+!proxy_imports(massif::CelestialObject, core.MapPos, core.Variant, core.StringVariantMap, graphics.Color)
 
 %{
 #include "celestial/CelestialObject.h"
@@ -35,6 +35,7 @@
 %attributeval(massif::CelestialObject, massif::Color, Color, getColor, setColor)
 %attribute(massif::CelestialObject, bool, Visible, isVisible, setVisible)
 %attribute(massif::CelestialObject, bool, OccludedByMap, isOccludedByMap, setOccludedByMap)
+%attributeval(massif::CelestialObject, %arg(std::map<std::string, massif::Variant>), MetaData, getMetaData, setMetaData)
 %ignore massif::CelestialObject::calculateDirectionVector;
 %ignore massif::CelestialObject::setComponents;
 %ignore massif::CelestialObject::getLayer;

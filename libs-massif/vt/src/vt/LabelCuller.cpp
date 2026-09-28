@@ -489,6 +489,11 @@ namespace massif::vt {
         if (!envelopeAt(0)) {
             return false;
         }
+        // Looking up: a name whose feature is under the bottom edge has nothing on screen to point at.
+        if (style->calloutAnchorVisible && labelInfo.cullRecord.bounds.min(1) < 0) {
+            label->setCalloutFailures(0);
+            return false;
+        }
         float anchorY = bandAnchorY();
         float top = labelInfo.cullRecord.bounds.max(1);
 

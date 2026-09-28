@@ -187,6 +187,7 @@ export function createBridge(module) {
     attachMapEvents: (mapView, handle) => c.attachMapEvents(handle),
     attachVectorTileEvents: (layer, handle) => void c.bridgeLayerClicks(handle),
     attachVectorElementEvents: (layer, handle) => void c.bridgeLayerClicks(handle),
+    attachCelestialEvents: (layer, handle) => void c.bridgeLayerClicks(handle),
 
     nativeShortClassName: () => null,
 

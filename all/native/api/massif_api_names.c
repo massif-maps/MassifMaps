@@ -84,6 +84,7 @@ static const char* const kNames[] = {
     "categories",
     "causesOverlap",
     "celestialEventListener",
+    "celestialObject",
     "center",
     "centerPos",
     "clearColor",

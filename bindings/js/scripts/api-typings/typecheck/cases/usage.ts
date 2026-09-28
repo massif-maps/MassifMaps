@@ -389,3 +389,17 @@ bare.onElementClick((e) => {
     const meta = e.get('vectorElement.metaData');
     void meta;
 });
+
+bare.onCelestialClick((e) => {
+    const meta: Record<string, unknown> = e.get('celestialObject.metaData');
+    const starId = e.get('celestialObject.metaData.id');
+    const direction: [number, number] = [e.azimuth, e.altitude];
+    const single: boolean = e.clickType === 'CLICK_TYPE_SINGLE';
+    e.consumed = true;
+    void meta;
+    void starId;
+    void direction;
+    void single;
+});
+
+map.object('celestial', 'sirius', { type: 'sprite', metaData: { id: 'star:Sirius' } });

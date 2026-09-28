@@ -38,7 +38,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAccuracy;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAction;
 /** Returns the address of the result. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAddress;
-/** Returns the altitude of a direction-anchored object. */
+/** Returns the altitude of the clicked object at the time of the click. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAltitude;
 /** Returns the ambient light color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAmbientColor;
@@ -88,7 +88,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenRiseDuration;
 /** Returns the tilt at or above which the terrain renders flat. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenTilt;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutocomplete;
-/** Returns the azimuth of a direction-anchored object. */
+/** Returns the azimuth of the clicked object at the time of the click. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAzimuth;
 /** Returns the blue component of this map color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyB;
@@ -168,6 +168,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyCategories;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCausesOverlap;
 /** Returns the object event listener. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCelestialEventListener;
+/** Returns the clicked object. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyCelestialObject;
 /** Calculates the center map position of this map envelope object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCenter;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCenterPos;
@@ -548,7 +550,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMaximumClusterZoom;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMeshCacheSize;
 /** Returns the terrain mesh resolution. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMeshResolution;
-/** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+/** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMetaData;
 /** Returns package meta info. If package contains no meta info, null is returned. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMetaInfo;
@@ -1102,6 +1104,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodUpdateFeature;
 /** An event name. */
 typedef NSString *MassifEvent NS_TYPED_ENUM;
 
+FOUNDATION_EXPORT MassifEvent const MassifEventCelestialClicked;
 FOUNDATION_EXPORT MassifEvent const MassifEventDownloadCompleted;
 FOUNDATION_EXPORT MassifEvent const MassifEventDownloadFailed;
 FOUNDATION_EXPORT MassifEvent const MassifEventDownloadProgress;

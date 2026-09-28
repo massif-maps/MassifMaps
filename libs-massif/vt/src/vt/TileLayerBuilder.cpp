@@ -625,6 +625,7 @@ namespace massif::vt {
             || _labelStyle->calloutBandAnchor != style.calloutBandAnchor
             || _labelStyle->calloutScreenAnchor != style.calloutScreenAnchor
             || _labelStyle->calloutBandFollow != style.calloutBandFollow
+            || _labelStyle->calloutAnchorVisible != style.calloutAnchorVisible
             || _labelStyle->calloutOffset != style.calloutOffset
             || _labelStyle->calloutStep != style.calloutStep
             || _labelStyle->calloutMaxRows != style.calloutMaxRows
@@ -672,6 +673,7 @@ namespace massif::vt {
             labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
             labelStyle->collisionPadding = style.collisionPadding;
             labelStyle->calloutBandFollow = style.calloutBandFollow;
+            labelStyle->calloutAnchorVisible = style.calloutAnchorVisible;
             labelStyle->iconHaloColorFunc = style.iconHaloColorFunc;
             labelStyle->iconHaloRadiusFunc = style.iconHaloRadiusFunc;
             labelStyle->iconRefSize = formatter.getFontSize();

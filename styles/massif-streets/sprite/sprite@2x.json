@@ -1,4 +1,44 @@
 {
+  "dot-capital": {
+    "x": 150,
+    "y": 1960,
+    "width": 24,
+    "height": 24,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "dot": {
+    "x": 202,
+    "y": 1960,
+    "width": 16,
+    "height": 16,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "oneway-reverse": {
+    "x": 220,
+    "y": 1960,
+    "width": 32,
+    "height": 16,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "oneway": {
+    "x": 254,
+    "y": 1960,
+    "width": 32,
+    "height": 16,
+    "pixelRatio": 2,
+    "visible": true
+  },
+  "peak": {
+    "x": 176,
+    "y": 1960,
+    "width": 24,
+    "height": 20,
+    "pixelRatio": 2,
+    "visible": true
+  },
   "aerialway": {
     "x": 0,
     "y": 0,

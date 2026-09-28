@@ -6,8 +6,8 @@ reference pane draws and what the converter reads. The CartoCSS the SDK reads is
 with `massif-style mapbox2css --fold-casings --tile-draw-size 512 --fonts fonts`, and is never hand-edited; anything CartoCSS can
 express and MapLibre cannot goes in a hand-owned overlay beside the generated file.
 
-**Stage: labels.** Road shields, road names and POI names are the drawn part; roads, water,
-landcover and buildings are context for them, not the final design.
+**Stage: base map.** Land, water, roads, rail, boundaries, buildings and every label class are
+drawn; the other variants (outdoor, topo, hybrid, e-ink) are built on the same modules next.
 
 ```sh
 python3 ../massif/build.py streets                                 # after touching ../massif/
@@ -15,6 +15,36 @@ node ../../tools/style-sprite/build.mjs sprite-src sprite sprite   # after touch
 python3 ../../tools/style-preview/serve.py --mbtiles <name>=<path>.mbtiles
 open 'http://127.0.0.1:8787/?style=http://127.0.0.1:8787/styles/massif-streets/style.json'
 ```
+
+## The base map
+
+One module per layer family under [`../massif/layers/`](../massif/layers/), stacked bottom to top in
+`build.py`: land, water, rail and road tunnels, the roads on the ground, rail, bridges, lifts and
+ferries, boundaries, buildings, then the labels. Colours are **named** in
+[`../massif/palette.py`](../massif/palette.py) and the rules only name them, so a variant is a
+palette plus the modules it adds.
+
+- **One layer per colour group, not a `match` of ten.** The converter splits a layer per value of a
+  field-driven colour, and past 8 values it keeps only the fallback. Landuse is ten groups, and
+  landcover's grass subclasses (scrub, park, golf) sit under one class, so each group is its own
+  layer with a bracketed class test and a constant colour.
+- **Tracks by `tracktype`**, OSM Carto's ladder: grade1 solid, grade5 dotted, one layer per grade.
+  `access` in `no`/`private` lays red dashes over the road, as MapTiler does. Our fork's
+  `construction` flag and stock OMT's `*_construction` classes both draw.
+- **Tunnels and bridges are their own passes**: a tunnel is the road at half opacity with a dashed
+  casing, drawn under everything; a bridge is drawn after the rail it crosses, with a darker casing.
+- **Links** (OMT `ramp=1`) take Standard's `*_link` widths.
+- **Classes come in by zoom the way Standard's filter admits them** — secondary at 8, tertiary at
+  9 — by width, so there is no zoom test in a filter.
+- **The night is the scene light.** Every layer states Standard's `*-emissive-strength` in
+  `massif:paint`, and the converter runs with `--live-light`, so the SDK darkens a fill by the hour
+  and keeps a label bright. Labels, water and rail also recolour through `measure-light`.
+- **Place names are the last layers**, so they are placed first: a town's name outranks anything in
+  it. Hamlets and neighbourhoods are soft grey, cities and towns carry a dot below z8.
+
+`landcover_name`, `landuse_name` and the richer landuse classes exist only in our fork; the layers
+reading them draw nothing over OpenFreeMap, and MapLibre's complaint about them is hidden in the
+preview.
 
 ## Shields: a sprite per colour, picked per feature
 
@@ -211,7 +241,7 @@ same answer by the opposite arithmetic: the converter numbers `text-placement-pr
 layer index and `LabelCuller` sorts it down, so the later layer still wins.
 
 The label layers are therefore ordered **least important first**: shields, then POIs, then road
-names. Generated priorities run 1.1M–1.6M for the shields, 1.7M–1.9M for the POIs, 2.0M–2.4M for the
+names, and place names last of all — there we follow both references. Generated priorities run 1.1M–1.6M for the shields, 1.7M–1.9M for the POIs, 2.0M–2.4M for the
 names.
 
 Both references order it the other way — Liberty's shields (layers 98–100) beat its POIs (91–94),
@@ -242,6 +272,7 @@ the whole filter regardless, since each attachment is then one bracketed test an
 
 ## Licensing
 
+`sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
 domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki), **CC0** — a public-domain
 dedication, so it carries no attribution requirement and no share-alike; it is credited here because
@@ -249,6 +280,10 @@ it is worth crediting, not because it must be. Everything else is drawn for this
 MapTiler or Mapbox **style** is copied.
 
 ## Owed
+
+- **No relief.** Standard's calm at z7–z11 in the Alps is mostly its hillshade. On the SDK that is
+  an app layer (`HillshadeRasterTileLayer`), not CartoCSS, so it comes with the outdoor and topo
+  variants rather than as a style layer here.
 
 - `glyphs` points at OpenFreeMap's font server, which is what MapLibre reads. The SDK side no
   longer needs it: `fonts/NotoSans-Bold.ttf` ships with the style and `--fonts fonts` wires it

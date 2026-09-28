@@ -23,9 +23,16 @@ def by_hour(night, day):
     return ['interpolate', ['linear'], ['measure-light', 'brightness'], 0.25, night, 0.3, day]
 
 
+EMISSIVE = {'background': 'background', 'fill': 'fill', 'line': 'line', 'fill-extrusion': 'fill-extrusion'}
+
+
 def layer(id, type, source_layer=None, minzoom=None, maxzoom=None, filter=None, layout=None,
-          paint=None, metadata=None):
-    """A layer dict in the key order every module writes, so the JSON diffs stay readable."""
+          paint=None, metadata=None, emissive=None):
+    """A layer dict in the key order every module writes, so the JSON diffs stay readable.
+
+    `emissive` is how much of the colour survives the night: Mapbox's *-emissive-strength, which
+    maplibre does not know, so it rides in `massif:paint` (a dict for a symbol's text and icon).
+    """
     out = {'id': id, 'type': type}
     if source_layer is not None:
         out['source'] = SOURCE
@@ -40,6 +47,10 @@ def layer(id, type, source_layer=None, minzoom=None, maxzoom=None, filter=None, 
         out['layout'] = layout
     if paint is not None:
         out['paint'] = paint
+    if emissive is not None:
+        extra = dict(emissive) if isinstance(emissive, dict) else {EMISSIVE[type] + '-emissive-strength': emissive}
+        metadata = dict(metadata or {})
+        metadata['massif:paint'] = {**metadata.get('massif:paint', {}), **extra}
     if metadata:
         out['metadata'] = metadata
     return out

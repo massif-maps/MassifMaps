@@ -47,6 +47,13 @@
     <button id="fit">fit local</button>
     <button id="gaps-toggle">gaps</button>
     <button id="massif-toggle">massif row</button>
+    <select id="ref" title="reference style drawn in place of the local pane">
+      <option value="">no reference</option>
+      <option>mapbox-standard</option><option>mapbox-standard-satellite</option>
+      <option>maptiler-streets-v4</option><option>maptiler-outdoor-v4</option>
+      <option>maptiler-topo-v4</option><option>maptiler-hybrid-v4</option>
+      <option>maptiler-openstreetmap</option>
+    </select>
   </div>
   <div id="maps">
     <div class="pane"><div class="tag" id="tag-l">maplibre — openfreemap</div>
@@ -55,6 +62,8 @@
     <div class="pane"><div class="tag" id="tag-r">maplibre — local</div>
       <div class="map" id="map-r"></div><div class="readout" id="ro-r"></div>
       <div class="err" id="err-r"></div></div>
+    <div class="pane hidden" id="pane-ref"><div class="tag" id="tag-ref"></div>
+      <iframe class="map" id="ref-frame"></iframe></div>
     <div class="pane hidden" id="pane-ml"><div class="tag">massif — openfreemap</div>
       <iframe class="map" id="massif-l"></iframe><div class="err" id="err-ml"></div></div>
     <div class="pane hidden" id="pane-mr"><div class="tag">massif — local</div>
@@ -196,7 +205,8 @@ function makeMap(container, style, errEl, readout) {
   const seen = new Set();
   map.on('error', (e) => {
     const msg = (e && e.error && e.error.message) || String(e);
-    if (seen.has(msg)) return;
+    // a style written for two tilesets reads layers only one carries; the gaps panel lists those
+    if (seen.has(msg) || /does not exist on source/.test(msg)) return;
     seen.add(msg);
     errEl.style.display = 'block';
     errEl.textContent = [...seen].slice(-8).join('\n');
@@ -228,6 +238,8 @@ async function boot() {
   if (!localName) { $('err-r').style.display = 'block'; $('err-r').textContent = 'serve.py has no --mbtiles registered'; }
   sel.onchange = () => { localName = sel.value; load(); };
   await load();
+  if (ASKED.get('ref')) { $('ref').value = ASKED.get('ref'); showRef(); }
+  if (ASKED.get('massif') === '1') $('massif-toggle').onclick();
 }
 
 async function load() {
@@ -250,6 +262,7 @@ async function load() {
           makeMap('map-r', retarget(styleJSON, localURL), $('err-r'), $('ro-r'))];
   if (camera) maps.forEach((m) => m.jumpTo(camera));
   sync(maps[0], maps[1]);
+  maps[0].on('move', postCamera);
   $('tag-l').textContent = 'openfreemap — ' + (remoteURL || 'style default');
   $('tag-r').textContent = 'local — ' + localName;
 
@@ -310,15 +323,30 @@ function startMassif() {
     $(id).src = `./massif-pane.html?${query}`;
   }
   massifStarted = true;
-  maps[0].on('move', () => {
-    if (!$('sync').checked) return;
-    const to = { center: maps[0].getCenter().toArray(), zoom: maps[0].getZoom(),
-                 bearing: maps[0].getBearing(), pitch: maps[0].getPitch() };
-    for (const id of ['massif-l', 'massif-r']) {
-      const frame = $(id).contentWindow;
-      if (frame) frame.postMessage({ massifCamera: to }, '*');
-    }
-  });
+}
+
+/** A reference style in the local pane's slot, fed the same camera as the massif row. */
+function showRef() {
+  const ref = $('ref').value;
+  $('map-r').parentElement.classList.toggle('hidden', !!ref);
+  $('pane-ref').classList.toggle('hidden', !ref);
+  for (const m of maps) m.resize();
+  if (!ref) { $('ref-frame').src = 'about:blank'; return; }
+  const c = maps[0].getCenter();
+  $('tag-ref').textContent = 'reference — ' + ref;
+  $('ref-frame').src = './ref-pane.html?' + new URLSearchParams({
+    ref, lon: c.lng, lat: c.lat, zoom: maps[0].getZoom(), pitch: maps[0].getPitch(),
+    bearing: maps[0].getBearing(), preset: ASKED.get('preset') ?? '' });
+}
+
+function postCamera() {
+  if (!$('sync').checked) return;
+  const to = { center: maps[0].getCenter().toArray(), zoom: maps[0].getZoom(),
+               bearing: maps[0].getBearing(), pitch: maps[0].getPitch() };
+  for (const id of ['massif-l', 'massif-r', 'ref-frame']) {
+    const frame = $(id).contentWindow;
+    if (frame) frame.postMessage({ massifCamera: to }, '*');
+  }
 }
 
 function firstVectorTileURL(tilejson) {
@@ -342,6 +370,7 @@ $('massif-toggle').onclick = () => {
 };
 
 $('reload').onclick = load;
+$('ref').onchange = showRef;
 $('fit').onclick = () => {
   if (!localTileJSON || !localTileJSON.bounds) return;
   maps.forEach((m) => m.fitBounds(localTileJSON.bounds, { duration: 0 }));

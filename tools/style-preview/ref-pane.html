@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reference pane</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  #map { position: absolute; inset: 0; }
+  #readout { position: fixed; z-index: 2; bottom: 6px; left: 6px; padding: 2px 6px; border-radius: 3px;
+             background: rgba(28,31,36,.8); color: #d7dde6; pointer-events: none;
+             font: 11px/1.5 ui-monospace, Menlo, monospace; white-space: pre; }
+  #err { position: fixed; inset: auto 8px 8px 8px; padding: 6px 8px; border-radius: 3px; display: none;
+         background: rgba(120,20,20,.9); color: #fff; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="readout"></div>
+<div id="err"></div>
+<script type="module">
+const params = new URLSearchParams(location.search);
+const ref = params.get('ref');
+const camera = {
+  center: [Number(params.get('lon')), Number(params.get('lat'))],
+  zoom: Number(params.get('zoom')), pitch: Number(params.get('pitch') || 0),
+  bearing: Number(params.get('bearing') || 0),
+};
+const fail = (msg) => { const e = document.getElementById('err'); e.style.display = 'block'; e.textContent = msg; };
+
+function load(src, css) {
+  const link = document.createElement('link');
+  link.rel = 'stylesheet'; link.href = css; document.head.appendChild(link);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    // CORS mode, or the page's COEP (the Massif panes need it) blocks a cross-origin script
+    s.crossOrigin = 'anonymous'; s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+const tokens = await (await fetch('/tokens.json')).json();
+let map;
+if (ref.startsWith('mapbox-')) {
+  if (!tokens.mapbox) fail('no ~/.mapbox_token');
+  await load('https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js',
+             'https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css');
+  mapboxgl.accessToken = tokens.mapbox;
+  map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/' + ref.slice(7),
+                           ...camera, attributionControl: false, preserveDrawingBuffer: true });
+  const preset = params.get('preset');
+  if (preset) map.on('style.load', () => map.setConfigProperty('basemap', 'lightPreset', preset));
+} else {
+  if (!tokens.maptiler) fail('no ~/.maptiler_token');
+  await load('https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js',
+             'https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css');
+  map = new maplibregl.Map({ container: 'map', ...camera, attributionControl: false,
+    style: `https://api.maptiler.com/maps/${ref.slice(9)}/style.json?key=${tokens.maptiler}` });
+}
+map.on('error', (e) => fail(String((e && e.error && e.error.message) || e)));
+
+const readout = document.getElementById('readout');
+map.on('move', () => {
+  const c = map.getCenter();
+  readout.textContent = `z ${map.getZoom().toFixed(2)}  ${c.lng.toFixed(5)}, ${c.lat.toFixed(5)}  ` +
+    `rot ${map.getBearing().toFixed(1)}  tilt ${map.getPitch().toFixed(1)}`;
+});
+addEventListener('message', (event) => {
+  const to = event.data && event.data.massifCamera;
+  if (to) map.jumpTo({ center: to.center, zoom: to.zoom, bearing: to.bearing, pitch: to.pitch });
+});
+</script>
+</body>
+</html>

@@ -58,6 +58,7 @@ class Handler(SimpleHTTPRequestHandler):
     styles_dir = None
     massif_dir = None
     isolate = False
+    tokens = {}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
@@ -89,6 +90,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
+        if path == "/tokens.json":
+            return self._json(self.tokens)
         if path == "/tilesets.json":
             return self._json({n: t.meta.get("name", n) for n, t in self.tilesets.items()})
         parts = path.strip("/").split("/")
@@ -141,6 +144,10 @@ def main():
                     help="folder served at /styles, holding the style projects")
     ap.add_argument("--massif", metavar="DIR", default=os.path.join(ROOT, "..", "..", "web"),
                     help="the web build, served at /massif; needs massif-demo.wasm in its demo/")
+    ap.add_argument("--mapbox-token", metavar="FILE", default="~/.mapbox_token",
+                    help="token for the mapbox-* reference panes")
+    ap.add_argument("--maptiler-token", metavar="FILE", default="~/.maptiler_token",
+                    help="token for the maptiler-* reference panes")
     ap.add_argument("--no-isolate", dest="isolate", action="store_false",
                     help="drop COOP/COEP, which the Massif panes need but a strict CDN dislikes")
     args = ap.parse_args()
@@ -148,6 +155,10 @@ def main():
     Handler.styles_dir = os.path.abspath(args.styles)
     Handler.massif_dir = os.path.abspath(args.massif)
     Handler.isolate = args.isolate
+    for name, path in (("mapbox", args.mapbox_token), ("maptiler", args.maptiler_token)):
+        path = os.path.expanduser(path)
+        if os.path.exists(path):
+            Handler.tokens[name] = open(path).read().strip()
 
     for spec in args.mbtiles:
         name, _, path = spec.partition("=")

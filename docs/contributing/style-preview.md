@@ -77,6 +77,22 @@ Three things about the web build shape this:
 `serve.py` sends COOP/COEP so the module gets SharedArrayBuffer. OpenFreeMap keeps working through
 that: MapLibre fetches with CORS, which satisfies `require-corp`, so nothing has to be proxied.
 
+## The reference pane
+
+The `reference` picker swaps the local MapLibre pane for a style we are measuring ourselves against,
+fed the same camera as the rest of the grid: `mapbox-standard` (drawn by mapbox-gl-js v3, its real
+config — `?preset=night` sets `lightPreset`) or one of MapTiler's `streets-v4`, `outdoor-v4`,
+`topo-v4`, `hybrid-v4` and `openstreetmap`. `?ref=mapbox-standard&massif=1` opens straight on the
+comparison: ours over OpenFreeMap, the reference, and the SDK row under both.
+
+The tokens are read by `serve.py` from `~/.mapbox_token` and `~/.maptiler_token`
+(`--mapbox-token`, `--maptiler-token` to point elsewhere) and served to the page at `/tokens.json`,
+so nothing is committed. The pane is an iframe: mapbox-gl and maplibre in one document fight over
+their globals, and its script is loaded in CORS mode, which the page's COEP requires.
+
+A MapLibre error that a source-layer "does not exist on source" is not shown on the pane: a style
+written for both tilesets reads layers only our fork carries, and the gaps panel lists those.
+
 ## The gaps panel
 
 `gaps` answers the only two questions worth asking:

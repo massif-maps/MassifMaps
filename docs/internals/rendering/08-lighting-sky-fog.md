@@ -934,9 +934,9 @@ interpolated from the vertices.
 
 ### Rounded edges
 
-`building-edge-radius` (metres, **0 = off**, mapbox's default too) rounds an extrusion's edges in
-**both** directions — the horizontal one where a wall meets its roof, and the vertical one where two
-walls meet. `TileLayerBuilder::appendPolygon3DRing` is a port of mapbox's `fill_extrusion_bucket`
+`building-edge-radius` (metres, **0 = off**, mapbox's default too) rounds the horizontal edge where a
+wall meets its roof. `building-edge-corners: 1` also rounds the vertical one where two walls meet
+(off by default, see below). `TileLayerBuilder::appendPolygon3DRing` is a port of mapbox's `fill_extrusion_bucket`
 and the two roundings come from one construction:
 
 | | offset | direction |
@@ -968,7 +968,7 @@ the hole.
 **0.8 m matches mapbox** on Grenoble data; 2 m already reads as too soft.
 
 `building-rounded-roof: 0` holds the ROOF band at a side value of 64 — a flat rim facet — and does
-not touch the vertical corner, which always rolls. mapbox has no equivalent (their flag just zeroes
+not touch the vertical corner. mapbox has no equivalent (their flag just zeroes
 the roof drop in the vertex shader, `u_edge_radius`), so this is ours and the property name is taken
 literally.
 
@@ -981,7 +981,25 @@ eaves sit on the original footprint — so a pitched-roof building keeps sharp v
 chamfer rows, 1 shared roof-ring vertex) and 11 triangles, against 16 vertices and 6 triangles for
 the old unshared-triangle walls plus mitred bevel. Vertices nearly halve **while** the feature is
 added, which is the number that matters here — this vertex stage does 5 `applyTerrain` calls per
-vertex. Extra fill is the chamfer surface itself. Not yet measured on device.
+vertex. Extra fill is the chamfer surface itself.
+
+**Measured** on the Crosscall, Grenoble z17.2 tilt 45, Standard at 0.4 m: 2.7× the extrusion indices
+of radius 0 (19.5k against 7.2k per render tile), and +5% fps shadows off / +8–16% shadows on when
+the radius goes to 0. Skipping the buildings' shadow cast or shadow receive (debug probes) did not
+shrink that gain, so it is the geometry, not the shadow map. The gradient knee row is not it either:
+at the default 20 m it adds 3.4% of the indices.
+
+**Vertical corners are opt-in, and skipped under a pixel.** Without `building-edge-corners` no wall is
+cut back: the walls meet at the corner and the two chamfers close at the shared roof vertex, so the
+roof rim stays. With it, a ring still skips its wedges (and corner triangles) when the rounding is
+under a pixel at twice the tile's size (`EDGE_CORNER_MIN_PIXELS`) — 0.4 m at 45° latitude is 0.95 px
+at twice a z17 tile, so z17 tiles never draw them and z18 tiles do. mapbox has no such gate:
+`fill_extrusion_bucket` fills every wedge at every zoom, so a converted style that wants its look
+sets `building-edge-corners: 1`.
+
+Same camera, a probe build dropping the wedges: indices 19.5k → 12.1k per render tile, 12.5 → 13.1
+fps shadows on, 16.55 → 17.2 off, and 0.05% of the pixels differ. At z19 the corner reads as a
+crease instead of a roll, which is what the setting buys back.
 
 Insetting is where this goes wrong, twice over, and both are worth knowing:
 

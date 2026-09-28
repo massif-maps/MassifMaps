@@ -115,6 +115,16 @@ namespace massif {
         notifyChanged();
     }
 
+    std::map<std::string, Variant> CelestialObject::getMetaData() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _metaData;
+    }
+
+    void CelestialObject::setMetaData(const std::map<std::string, Variant>& metaData) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _metaData = metaData;
+    }
+
     Variant CelestialObject::getMetaDataElement(const std::string& key) const {
         std::lock_guard<std::mutex> lock(_mutex);
         auto it = _metaData.find(key);

@@ -137,6 +137,7 @@
 #import "MSFRasterTileClickInfo.h"
 #import "MSFVectorTileClickInfo.h"
 #import "MSFVectorElementClickInfo.h"
+#import "MSFCelestialClickInfo.h"
 
 #import "MSFAssetUtils.h"
 #import "MSFBitmapUtils.h"

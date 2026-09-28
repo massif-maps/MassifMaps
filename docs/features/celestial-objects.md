@@ -147,7 +147,19 @@ call a moment later answers with it.
 Objects are hit-tested against the touch ray through the normal layer path, so they sort against
 every other layer's content: a click on terrain in front of the sun reports the terrain. The test is
 **angular** (`ClickRadius`, in degrees) because a sprite half a pixel wide would be unhittable
-otherwise. Register a `CelestialEventListener` on the layer.
+otherwise. Register a `CelestialEventListener` on the layer, or through the surface API subscribe to
+`celestial.clicked` - consumable, its payload carrying `celestialObject`, `azimuth`, `altitude` and
+`clickType`. An object's `metaData` rides along, so it names what was hit:
+
+```js
+const sky = map.addLayer('sky', { type: 'celestial' });
+const sirius = map.object('celestial', 'sirius', { type: 'sprite', metaData: { id: 'star:Sirius' } });
+sky.call('add', sirius.handle);
+sky.onCelestialClick((e) => {
+    const { id } = e.get('celestialObject.metaData');   // 'star:Sirius'
+    e.consumed = true;
+});
+```
 
 A tap aimed at the sky has no map position at all; the SDK now asks the layers with the ray alone in
 that case, instead of dropping the touch as it used to.

@@ -132,6 +132,16 @@ Inherited from `StyleBuilder`:
 | `screenToMap` | x: float, y: float | json |
 | `stopFlight` | — | void |
 
+## `CelestialClickInfo`
+
+| Property | Type | Access | Description |
+|---|---|---|---|
+| `altitude` | number | read-only | Returns the altitude of the clicked object at the time of the click. |
+| `azimuth` | number | read-only | Returns the azimuth of the clicked object at the time of the click. |
+| `celestialObject` | object `celestial.CelestialObject` | read-only | Returns the clicked object. |
+| `clickInfo` | struct `massif::ClickInfo` | read-only | Returns the click info. |
+| `clickType` | [enum](enums.md#enum-clicktype) | read-only | Returns the click type. |
+
 ## `ClickInfo`
 
 | Property | Type | Access | Description |

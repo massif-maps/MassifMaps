@@ -3,7 +3,7 @@
 
 %module MassifInterop
 
-!proxy_imports(massif::api::MassifInterop, components.Options, datasources.TileDataSource, datasources.VectorDataSource, layers.Layer, components.Layers, ui.BaseMapView, ui.MapEventListener, layers.VectorTileEventListener, layers.VectorElementEventListener, utils.AssetPackage)
+!proxy_imports(massif::api::MassifInterop, components.Options, datasources.TileDataSource, datasources.VectorDataSource, layers.Layer, components.Layers, ui.BaseMapView, ui.MapEventListener, layers.VectorTileEventListener, layers.VectorElementEventListener, layers.CelestialEventListener, utils.AssetPackage)
 
 %{
 #include "api/MassifInterop.h"
@@ -23,6 +23,7 @@
 %import "ui/MapEventListener.i"
 %import "layers/VectorTileEventListener.i"
 %import "layers/VectorElementEventListener.i"
+%import "layers/CelestialEventListener.i"
 %import "utils/AssetPackage.i"
 
 %include "api/MassifInterop.h"

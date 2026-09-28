@@ -116,6 +116,7 @@ export interface NativeBridge {
     attachMapEvents(mapView: any, handle: number): void;
     attachVectorTileEvents(layer: any, handle: number): void;
     attachVectorElementEvents(layer: any, handle: number): void;
+    attachCelestialEvents(layer: any, handle: number): void;
 
     /**
      * The leaf class name of a native object, e.g. `VectorTileLayer`.

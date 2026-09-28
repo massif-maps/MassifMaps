@@ -42,6 +42,7 @@ Inherited from `CelestialObject`:
 | `color` | color | read/write | Returns the color of the object. |
 | `directionAnchored` | boolean | read-only | Returns true if the object is anchored by direction, false if by geographic position. |
 | `distance` | number | read-only | Returns the distance of a direction-anchored object. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the meta data map. Changes to the copy are not reflected in the object. |
 | `occludedByMap` | boolean | read/write | Returns whether the map in front hides the object. |
 | `position` | struct `massif::MapPos` | read-only | Returns the geographic position of a position-anchored object. |
 | `positionAltitude` | number | read-only | Returns the altitude of a position-anchored object. |
@@ -90,6 +91,7 @@ Inherited from `CelestialObject`:
 | `color` | color | read/write | Returns the color of the object. |
 | `directionAnchored` | boolean | read-only | Returns true if the object is anchored by direction, false if by geographic position. |
 | `distance` | number | read-only | Returns the distance of a direction-anchored object. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the meta data map. Changes to the copy are not reflected in the object. |
 | `occludedByMap` | boolean | read/write | Returns whether the map in front hides the object. |
 | `position` | struct `massif::MapPos` | read-only | Returns the geographic position of a position-anchored object. |
 | `positionAltitude` | number | read-only | Returns the altitude of a position-anchored object. |
@@ -127,6 +129,7 @@ Inherited from `CelestialObject`:
 | `color` | color | read/write | Returns the color of the object. |
 | `directionAnchored` | boolean | read-only | Returns true if the object is anchored by direction, false if by geographic position. |
 | `distance` | number | read-only | Returns the distance of a direction-anchored object. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the meta data map. Changes to the copy are not reflected in the object. |
 | `occludedByMap` | boolean | read/write | Returns whether the map in front hides the object. |
 | `position` | struct `massif::MapPos` | read-only | Returns the geographic position of a position-anchored object. |
 | `positionAltitude` | number | read-only | Returns the altitude of a position-anchored object. |
@@ -149,6 +152,7 @@ Not constructed directly. Their properties are reachable on every object above t
 | `color` | color | read/write | Returns the color of the object. |
 | `directionAnchored` | boolean | read-only | Returns true if the object is anchored by direction, false if by geographic position. |
 | `distance` | number | read-only | Returns the distance of a direction-anchored object. |
+| `metaData` | struct `std::map<std::string, massif::Variant>` | read/write | Returns a copy of the meta data map. Changes to the copy are not reflected in the object. |
 | `occludedByMap` | boolean | read/write | Returns whether the map in front hides the object. |
 | `position` | struct `massif::MapPos` | read-only | Returns the geographic position of a position-anchored object. |
 | `positionAltitude` | number | read-only | Returns the altitude of a position-anchored object. |

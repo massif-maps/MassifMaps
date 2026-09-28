@@ -1430,7 +1430,7 @@ the geometry serialised. `pos` is in EPSG:3857 metres — the map's own projecti
 or the subscription asks otherwise; see [Projections](#projections).
 
 Wired so far: `map.clicked`, `map.moved`, `map.idle`, `map.stable`, `map.interaction`,
-`vectortile.clicked`, `vectorelement.clicked`.
+`vectortile.clicked`, `vectorelement.clicked`, `celestial.clicked`.
 
 `map.moved` and `map.stable` carry a `MapMoveInfo` payload whose only property is `reason` -
 `gesture`, `animation` or `api`. It is an ordinary enum property read through the same verbs as

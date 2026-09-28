@@ -38,7 +38,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> ACTION = MassifObject.key("action");
     /** Returns the address of the result. */
     public static final MassifObject.Key<String> ADDRESS = MassifObject.key("address");
-    /** Returns the altitude of a direction-anchored object. */
+    /** Returns the altitude of the clicked object at the time of the click. */
     public static final MassifObject.Key<Double> ALTITUDE = MassifObject.key("altitude");
     /** Returns the ambient light color. */
     public static final MassifObject.Key<Integer> AMBIENT_COLOR = MassifObject.key("ambientColor");
@@ -88,7 +88,7 @@ public final class ApiNames {
     /** Returns the tilt at or above which the terrain renders flat. */
     public static final MassifObject.Key<Double> AUTO_FLATTEN_TILT = MassifObject.key("autoFlattenTilt");
     public static final MassifObject.Key<Boolean> AUTOCOMPLETE = MassifObject.key("autocomplete");
-    /** Returns the azimuth of a direction-anchored object. */
+    /** Returns the azimuth of the clicked object at the time of the click. */
     public static final MassifObject.Key<Double> AZIMUTH = MassifObject.key("azimuth");
     /** Returns the blue component of this map color. */
     public static final MassifObject.Key<Long> B = MassifObject.key("b");
@@ -168,6 +168,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> CAUSES_OVERLAP = MassifObject.key("causesOverlap");
     /** Returns the object event listener. */
     public static final MassifObject.Key<MassifObject> CELESTIAL_EVENT_LISTENER = MassifObject.key("celestialEventListener");
+    /** Returns the clicked object. */
+    public static final MassifObject.Key<MassifObject> CELESTIAL_OBJECT = MassifObject.key("celestialObject");
     /** Calculates the center map position of this map envelope object. */
     public static final MassifObject.Key<String> CENTER = MassifObject.key("center");
     public static final MassifObject.Key<String> CENTER_POS = MassifObject.key("centerPos");
@@ -548,7 +550,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> MESH_CACHE_SIZE = MassifObject.key("meshCacheSize");
     /** Returns the terrain mesh resolution. */
     public static final MassifObject.Key<Long> MESH_RESOLUTION = MassifObject.key("meshResolution");
-    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
     public static final MassifObject.Key<String> META_DATA = MassifObject.key("metaData");
     /** Returns package meta info. If package contains no meta info, null is returned. */
     public static final MassifObject.Key<MassifObject> META_INFO = MassifObject.key("metaInfo");
@@ -1100,6 +1102,7 @@ public final class ApiNames {
 
     // --- events ----------------------------------------------------------
 
+    public static final String EVENT_CELESTIAL_CLICKED = "celestial.clicked";
     public static final String EVENT_DOWNLOAD_COMPLETED = "download.completed";
     public static final String EVENT_DOWNLOAD_FAILED = "download.failed";
     public static final String EVENT_DOWNLOAD_PROGRESS = "download.progress";

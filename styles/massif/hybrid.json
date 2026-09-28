@@ -7700,7 +7700,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -7727,6 +7728,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -7867,7 +7869,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -7918,6 +7921,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -8005,7 +8009,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -8056,6 +8061,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -8222,7 +8228,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -8274,6 +8281,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -8349,7 +8357,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -8401,6 +8410,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -8601,7 +8611,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -8628,6 +8639,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -8810,7 +8822,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -8837,6 +8850,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -8977,7 +8991,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -9028,6 +9043,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -9115,7 +9131,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -9166,6 +9183,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -9332,7 +9350,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -9384,6 +9403,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -9459,7 +9479,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -9511,6 +9532,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -9711,7 +9733,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -9738,6 +9761,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -9920,7 +9944,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -9947,6 +9972,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -10087,7 +10113,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -10138,6 +10165,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -10225,7 +10253,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -10276,6 +10305,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -10442,7 +10472,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -10494,6 +10525,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -10569,7 +10601,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -10621,6 +10654,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -10821,7 +10855,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -10848,6 +10883,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -11025,7 +11061,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -11052,6 +11089,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -11192,7 +11230,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -11243,6 +11282,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -11330,7 +11370,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -11381,6 +11422,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -11547,7 +11589,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -11599,6 +11642,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -11674,7 +11718,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -11726,6 +11771,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -11925,7 +11971,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -11952,6 +11999,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -12142,7 +12190,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -12169,6 +12218,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -12309,7 +12359,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -12360,6 +12411,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -12447,7 +12499,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -12498,6 +12551,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -12664,7 +12718,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -12716,6 +12771,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -12791,7 +12847,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -12843,6 +12900,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -13042,7 +13100,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -13069,6 +13128,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -13249,7 +13309,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -13276,6 +13337,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -13416,7 +13478,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -13467,6 +13530,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -13554,7 +13618,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -13605,6 +13670,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -13771,7 +13837,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -13823,6 +13890,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -13898,7 +13966,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -13950,6 +14019,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -14149,7 +14219,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -14176,6 +14247,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -14351,7 +14423,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -14378,6 +14451,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -14518,7 +14592,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -14569,6 +14644,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -14656,7 +14732,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -14707,6 +14784,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -14873,7 +14951,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -14925,6 +15004,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -15000,7 +15080,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -15052,6 +15133,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -15251,7 +15333,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -15278,6 +15361,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -15455,7 +15539,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -15482,6 +15567,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -15622,7 +15708,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -15673,6 +15760,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -15760,7 +15848,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -15811,6 +15900,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -15977,7 +16067,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -16029,6 +16120,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -16104,7 +16196,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -16156,6 +16249,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -16355,7 +16449,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -16382,6 +16477,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -16561,7 +16657,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -16588,6 +16685,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -16728,7 +16826,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -16779,6 +16878,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -16866,7 +16966,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -16917,6 +17018,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -17083,7 +17185,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -17135,6 +17238,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -17210,7 +17314,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -17262,6 +17367,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -17461,7 +17567,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -17488,6 +17595,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -17673,7 +17781,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -17700,6 +17809,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -17840,7 +17950,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -17891,6 +18002,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -17978,7 +18090,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -18029,6 +18142,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -18195,7 +18309,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -18247,6 +18362,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -18322,7 +18438,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -18374,6 +18491,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -18573,7 +18691,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -18600,6 +18719,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -18787,7 +18907,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -18814,6 +18935,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -18954,7 +19076,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -19005,6 +19128,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -19092,7 +19216,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -19143,6 +19268,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -19309,7 +19435,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -19361,6 +19488,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -19436,7 +19564,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -19488,6 +19617,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -19687,7 +19817,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -19714,6 +19845,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -19892,7 +20024,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -19919,6 +20052,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -20059,7 +20193,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -20110,6 +20245,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -20197,7 +20333,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -20248,6 +20385,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -20414,7 +20552,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -20466,6 +20605,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -20541,7 +20681,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -20593,6 +20734,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -20792,7 +20934,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -20819,6 +20962,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -20994,7 +21138,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -21021,6 +21166,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -21161,7 +21307,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -21212,6 +21359,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -21299,7 +21447,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -21350,6 +21499,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -21516,7 +21666,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -21568,6 +21719,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -21643,7 +21795,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -21695,6 +21848,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -21894,7 +22048,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -21921,6 +22076,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -22100,7 +22256,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -22127,6 +22284,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -22267,7 +22425,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -22318,6 +22477,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -22405,7 +22565,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -22456,6 +22617,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -22622,7 +22784,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -22674,6 +22837,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -22749,7 +22913,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -22801,6 +22966,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -23000,7 +23166,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -23027,6 +23194,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -23214,7 +23382,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -23241,6 +23410,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -23381,7 +23551,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -23432,6 +23603,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -23519,7 +23691,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -23570,6 +23743,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -23736,7 +23910,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -23788,6 +23963,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -23863,7 +24039,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -23915,6 +24092,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -24114,7 +24292,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -24141,6 +24320,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -24316,7 +24496,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -24343,6 +24524,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -24483,7 +24665,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -24534,6 +24717,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -24621,7 +24805,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -24672,6 +24857,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -24838,7 +25024,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -24890,6 +25077,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -24965,7 +25153,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -25017,6 +25206,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -25216,7 +25406,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -25243,6 +25434,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -25419,7 +25611,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -25446,6 +25639,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -25586,7 +25780,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -25637,6 +25832,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -25724,7 +25920,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -25775,6 +25972,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -25941,7 +26139,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -25993,6 +26192,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -26068,7 +26268,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -26120,6 +26321,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -26319,7 +26521,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -26346,6 +26549,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -26525,7 +26729,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -26552,6 +26757,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -26692,7 +26898,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -26743,6 +26950,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -26830,7 +27038,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -26881,6 +27090,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -27047,7 +27257,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -27099,6 +27310,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -27174,7 +27386,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -27226,6 +27439,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -27425,7 +27639,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -27452,6 +27667,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -27633,7 +27849,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -27660,6 +27877,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -27800,7 +28018,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -27851,6 +28070,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -27938,7 +28158,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -27989,6 +28210,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -28155,7 +28377,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -28207,6 +28430,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -28282,7 +28506,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -28334,6 +28559,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -28533,7 +28759,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -28560,6 +28787,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",
@@ -28737,7 +28965,8 @@
             "police",
             "post",
             "prison",
-            "town_hall"
+            "town_hall",
+            "wilderness_hut"
           ],
           "hsl(260, 70%, 75%)",
           [
@@ -28764,6 +28993,7 @@
             "park",
             "playground",
             "ranger_station",
+            "spring",
             "viewpoint",
             "volcano",
             "water",
@@ -28904,7 +29134,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -28955,6 +29186,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -29042,7 +29274,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -29093,6 +29326,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -29259,7 +29493,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(260, 70%, 75%)",
                       [
@@ -29311,6 +29546,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -29386,7 +29622,8 @@
                         "police",
                         "post",
                         "prison",
-                        "town_hall"
+                        "town_hall",
+                        "wilderness_hut"
                       ],
                       "hsl(250, 75%, 60%)",
                       [
@@ -29438,6 +29675,7 @@
                         "park",
                         "playground",
                         "ranger_station",
+                        "spring",
                         "viewpoint",
                         "volcano",
                         "water",
@@ -29637,7 +29875,8 @@
               "police",
               "post",
               "prison",
-              "town_hall"
+              "town_hall",
+              "wilderness_hut"
             ],
             "hsl(260, 70%, 75%)",
             [
@@ -29664,6 +29903,7 @@
               "park",
               "playground",
               "ranger_station",
+              "spring",
               "viewpoint",
               "volcano",
               "water",

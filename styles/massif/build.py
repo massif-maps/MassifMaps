@@ -58,7 +58,7 @@ STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
 OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, outdoor.routes, roads.ground, rail.ground, roads.bridges,
            rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels,
-           labels.low, shields.layers, pois.layers, road_labels.layers, labels.places]
+           labels.low, shields.layers, pois.mountain, pois.layers, road_labels.layers, labels.places]
 
 HYBRID = [land.background, imagery.layers, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges,
           rail.bridges, rail.overhead, boundaries.layers, labels.low, shields.layers, pois.layers, road_labels.layers,

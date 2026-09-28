@@ -506,6 +506,12 @@
       "radius": 21,
       "border": 3
     },
+    "spring": {
+      "disc": "hsl(110, 70%, 28%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
     "stadium": {
       "disc": "hsl(190, 75%, 38%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -598,6 +604,12 @@
     },
     "wetland": {
       "disc": "hsl(110, 70%, 28%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "wilderness_hut": {
+      "disc": "hsl(250, 75%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3

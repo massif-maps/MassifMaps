@@ -31,11 +31,11 @@ CLASSES = {
                                'cinema', 'monument', 'museum', 'music', 'ruins', 'theatre', 'zoo'],
     'commercial_services': ['alpine_hut', 'atm', 'bank', 'bicycle', 'bicycle_rental', 'car',
                             'embassy', 'fire_station', 'fuel', 'lodging', 'parking',
-                            'parking_garage', 'police', 'post', 'prison', 'town_hall'],
+                            'parking_garage', 'police', 'post', 'prison', 'town_hall', 'wilderness_hut'],
     'sport_and_leisure': ['american_football', 'baseball', 'basketball', 'cricket', 'golf',
                           'nightclub', 'pitch', 'skiing', 'soccer', 'stadium', 'swimming', 'tennis'],
     'park_like': ['beach', 'campsite', 'cemetery', 'dog_park', 'garden', 'mountain', 'park',
-                  'playground', 'ranger_station', 'viewpoint', 'volcano', 'water', 'waterfall',
+                  'playground', 'ranger_station', 'spring', 'viewpoint', 'volcano', 'water', 'waterfall',
                   'wetland'],
     'medical': ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary'],
     'education': ['college', 'library', 'school'],
@@ -244,11 +244,11 @@ def mono_params():
             'background-stroke-width': shape_match('border')}
 
 
-def poi_layer(id, minzoom, filter, ranking, v):
+def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None):
     layout = {
         # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
         # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
-        'icon-image': ICON if v.flags.get('mono') else ['concat', ICON, '-poi'],
+        'icon-image': icon if v.flags.get('mono') else ['concat', icon, '-poi'],
         'icon-size': 0.4,
         'text-field': ['coalesce', get('name'), get('name_int')],
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
@@ -264,22 +264,40 @@ def poi_layer(id, minzoom, filter, ranking, v):
     # on imagery the ground is dark by day as well, so the label keeps its night pair
     dark = v.flags.get('dark_ground', False)
     mono = v.flags.get('mono', False)
-    massif_layout = {'icon-image': ['image', ICON, {'params': mono_params() if mono else icon_params()}]}
+    massif_layout = {'icon-image': ['image', icon, {'params': mono_params() if mono else icon_params()}]}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
     massif_layout['icon-size'] = 0.4 if mono else ['match', ['config', 'poiStyle'], 'plain', 0.6, 0.4]
     if ranking == 'rank':
         # maplibre draws the default mode; the SDK turns these back on through massif:layout
         layout['visibility'] = 'none'
         massif_layout['visibility'] = 'visible'
-    return layer(id, 'symbol', 'poi', minzoom=minzoom, filter=filter, layout=layout,
+    return layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
                  paint={'text-color': MONO_INK if mono else night_color() if dark else day_color(),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
                  metadata={'massif:params': ['icon-image', 'text-color'],
                            'massif:layout': massif_layout,
                            # maplibre rejects ["config", ...] in a filter, so the switch rides here
-                           'massif:filter': ['==', ['config', 'poiRanking'], ranking],
+                           **({'massif:filter': ['==', ['config', 'poiRanking'], ranking]} if ranking else {}),
                            'massif:paint': {'text-color': MONO_INK if mono else night_color() if dark else text_color(),
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY)}})
+
+
+# A walker's POIs, from the zoom a hike is planned at. Each stops where its category layer takes
+# over; a bivouac and a spring have none, so they carry on.
+# data-driven even for the hut layer: a constant icon-image is not one mapbox2css recolours
+MOUNTAIN_ICON = ['match', get('class'), ['lodging', 'wilderness_hut'], 'alpine_hut', 'spring', 'water', get('class')]
+MOUNTAIN_LAYERS = [
+    ('poi-mountain-water', 14, 18, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON),
+    ('poi-mountain-shelter', 13, 15, ['==', get('class'), 'shelter'], MOUNTAIN_ICON),
+    ('poi-mountain', 12, None, ['in', get('class'), ['literal', ['spring', 'wilderness_hut']]], MOUNTAIN_ICON),
+    # OpenMapTiles files a hut under lodging, whose glyph is a bed
+    ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON),
+]
+
+
+def mountain(v):
+    return [poi_layer(id, minzoom, filter, None, v, icon=icon, maxzoom=maxzoom)
+            for id, minzoom, maxzoom, filter, icon in MOUNTAIN_LAYERS]
 
 
 def layers(v):

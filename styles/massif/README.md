@@ -79,7 +79,7 @@ deeper woods (`OUTDOOR` in the palette):
 - **Relief** from the Mapterhorn DEM (`dem`), faded out by z16 as Standard does. CartoCSS cannot
   draw a raster, so on the SDK it is the app's `HillshadeRasterTileLayer`; the layer's
   `massif:sdk-layer` metadata says how to set it up (exaggeration 0.35, opacity 0.55, visible to
-  z16), and the preview builds exactly that.
+  z16), and the preview builds exactly that, reading the DEM to the source's `maxzoom`.
 - **Contours** from the optional `contours` source (layer `contour`, `ele` and `div`: the prebaked
   archive or `ContourTileDataSource`, same schema): 10 m lines from z12, index lines (`div >= 100`)
   from z11, labelled from z13.
@@ -90,6 +90,9 @@ deeper woods (`OUTDOOR` in the palette):
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
 - **Peaks from z9**, the three most prominent per tile first.
+- **A walker's POIs early**: huts, bivouacs and springs from z12, shelters from z13, drinking water
+  from z14 - each until its ordinary POI layer takes over. A hut draws the hut glyph, where
+  OpenMapTiles' `lodging` class would give it a bed.
 
 ## Topo
 

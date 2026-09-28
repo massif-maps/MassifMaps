@@ -127,6 +127,18 @@ A per-variant POI palette stays a lookup in the SDK project: the converter folds
 `variant` config into one set of tables per variant (`poi-*-eink-*`), picked by a per-draw
 parameter test.
 
+## Style parameters an app sets
+
+- `variant` — `streets`, `outdoor`, `topo`, `hybrid`, `eink`; `carto/<variant>.json` picks one.
+- `building_opacity` (0.7) — the 3D buildings' alpha once the camera leans in. They are opaque
+  looking down and fade to it between tilt 60 and 30, so the streets behind a tall block stay
+  readable in a 3D view. 1 keeps them opaque at every angle. The MapLibre file draws them opaque:
+  the ramp is over the camera angle, which only the SDK can read in paint.
+- `building_tilt_drop` (90), `building_ao` (1), `buildings` (2 = 3D, 1 = flat, 0 = off) — the
+  converter's own, the same in every converted style
+  ([style-tools](../../docs/contributing/style-tools.md)).
+- `poiRanking` — `category` or `rank`, see below.
+
 ## Shields: a sprite per colour, picked per feature
 
 Written the ordinary MapLibre way — `icon-image` names a sprite, `icon-text-fit` grows it over the
@@ -362,9 +374,9 @@ MapTiler or Mapbox **style** is copied.
 
 ## Owed
 
-- **No relief.** Standard's calm at z7–z11 in the Alps is mostly its hillshade. On the SDK that is
-  an app layer (`HillshadeRasterTileLayer`), not CartoCSS, so it comes with the outdoor and topo
-  variants rather than as a style layer here.
+- **No relief in streets.** Standard's calm at z7–z11 in the Alps is mostly its hillshade. On the
+  SDK that is an app layer (`HillshadeRasterTileLayer`), so only outdoor and topo carry it, as
+  `massif:sdk-layer` settings.
 
 - `glyphs` points at OpenFreeMap's font server, which is what MapLibre reads. The SDK side no
   longer needs it: `fonts/NotoSans-Bold.ttf` ships with the style and `--fonts fonts` wires it

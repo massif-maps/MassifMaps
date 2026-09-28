@@ -5,7 +5,8 @@
     "massif:schema": "openmaptiles",
     "massif:variant": "streets",
     "massif:live-config": [
-      "poiRanking"
+      "poiRanking",
+      "building_opacity"
     ]
   },
   "sources": {
@@ -6949,6 +6950,22 @@
       },
       "metadata": {
         "massif:paint": {
+          "fill-extrusion-opacity": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "pitch"
+            ],
+            30,
+            1,
+            60,
+            [
+              "config",
+              "building_opacity"
+            ]
+          ],
           "fill-extrusion-vertical-scale": [
             "interpolate",
             [
@@ -30226,6 +30243,9 @@
         "category",
         "rank"
       ]
+    },
+    "building_opacity": {
+      "default": 0.7
     }
   }
 }

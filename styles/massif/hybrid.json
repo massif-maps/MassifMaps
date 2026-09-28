@@ -5,7 +5,8 @@
     "massif:schema": "openmaptiles",
     "massif:variant": "hybrid",
     "massif:live-config": [
-      "poiRanking"
+      "poiRanking",
+      "building_opacity"
     ]
   },
   "sources": {
@@ -25336,6 +25337,9 @@
         "category",
         "rank"
       ]
+    },
+    "building_opacity": {
+      "default": 0.7
     }
   }
 }

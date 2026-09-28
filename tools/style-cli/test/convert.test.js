@@ -364,6 +364,29 @@ test('a palette that follows the hour is one table per brightness stop', () => {
     assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
 });
 
+test('a palette per variant is one set of tables per variant, picked by the parameter', () => {
+    // A match on a live config whose branches each fold: a per-draw parameter test, then one lookup,
+    // instead of the per-feature chain a variant-dependent palette would otherwise become.
+    const styleParams = new Map();
+    const { mss } = convert({
+        metadata: { 'massif:live-config': ['variant'] },
+        schema: { variant: { default: 'streets', values: ['streets', 'eink'] } },
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['match', ['config', 'variant'],
+                    'eink', '#000000',
+                    ['match', ['get', 'class'], 'bus', '#2e5a80', '#666666']],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.match(mss, /text-fill: \(\(\[param::variant\] = 'eink'\) \? #000000 : \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\)\);/);
+    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+});
+
 test('a property the style does not ask for keeps its ternary', () => {
     const styleParams = new Map();
     const { mss } = convert({

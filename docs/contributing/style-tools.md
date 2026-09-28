@@ -1405,6 +1405,11 @@ whose every stop is such a `match` becomes one table per stop, read inside
 plain name. Keep the ramp OUTSIDE and the match inside; a match whose branches are ramps has no
 constant to tabulate and stays a ternary chain.
 
+A palette per VARIANT folds the same way: a `match` on a live config (`["config", "variant"]`, kept
+live through `massif:live-config`) whose every branch folds - a table, a brightness pair of tables
+or a constant - becomes one set of tables per branch (`poi-fill-eink-*`), picked by a
+`[param::variant]` test that costs one comparison per draw, then one lookup per feature.
+
 ### A set test's labels are constants, and a geometry name is a NUMBER
 
 `mapnik::geometry_type` is a `long long` (`mapnikvt/ExpressionContext.cpp`), so comparing it against

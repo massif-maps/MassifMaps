@@ -3420,7 +3420,7 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
         const stops: string[] = [];
         for (let i = 3; i + 1 < value.length; i += 2) {
             const last = i + 2 >= value.length;
-            const table = fieldParamTable(value[i + 1] as Json, layer, property, target, coverage, options,
+            const table = foldOrConstant(value[i + 1] as Json, layer, property, target, coverage, options,
                 last ? '' : `-b${Math.round(Number(value[i]) * 100)}`);
             if (table === null) return null;
             stops.push(`(${round(Number(value[i]))}, ${table})`);
@@ -3428,6 +3428,24 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
         return `linear([view::brightness], ${stops.join(', ')})`;
     }
     if (value[0] !== 'match') return null;
+    // A palette per VARIANT: a match on a live config whose every branch folds becomes one set of
+    // tables per branch, picked by a parameter test - a per-draw comparison, then one lookup.
+    const on = value[1];
+    if (Array.isArray(on) && on[0] === 'config' && typeof on[1] === 'string' && value.length % 2 === 1) {
+        const branches: string[] = [];
+        for (let i = 2; i + 1 < value.length; i += 2) {
+            const labels = (Array.isArray(value[i]) ? value[i] : [value[i]]) as Json[];
+            if (!labels.every((l) => typeof l === 'string' && /^[A-Za-z0-9_]+$/.test(l))) return null;
+            const table = foldOrConstant(value[i + 1] as Json, layer, property, target, coverage, options,
+                `${suffix}-${labels[0]}`);
+            if (table === null) return null;
+            const test = labels.map((l) => `[param::${on[1]}] = '${l}'`).join(' || ');
+            branches.push(`(${test}) ? ${table}`);
+        }
+        const rest = foldOrConstant(value[value.length - 1] as Json, layer, property, target, coverage, options, suffix);
+        if (rest === null) return null;
+        return `(${branches.join(' : ')} : ${rest})`;
+    }
     if (value.length < 5 || value.length % 2 === 0) return null;
     const key = value[1] as Json;
     if (!Array.isArray(key) || key[0] !== 'get' || typeof key[1] !== 'string') return null;
@@ -3454,6 +3472,13 @@ function fieldParamTable(value: Json, layer: MapboxLayer, property: string, targ
     coverage.note(`"${layer.id}": ${property} is a ${entries.length}-entry table in project.json ` +
         `(${slug}-*), read per feature by [${field}]`);
     return `(([param::${slug}-[${field}]]) ?? ${fallback})`;
+}
+
+/** A branch of a variant or brightness split: a table where it folds, a plain value where it is one. */
+function foldOrConstant(value: Json, layer: MapboxLayer, property: string, target: string,
+                        coverage: Coverage, options: ConvertOptions, suffix: string): string | null {
+    if (typeof value === 'string' || typeof value === 'number') return tryTranslate(value, property, layer.id, coverage);
+    return fieldParamTable(value, layer, property, target, coverage, options, suffix);
 }
 
 /**

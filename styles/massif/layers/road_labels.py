@@ -11,11 +11,8 @@ CLASSES = [
 ]
 
 
-DAY_TEXT, DAY_HALO = 'hsl(0, 0%, 25%)', 'hsl(0, 0%, 95%)'
-NIGHT_TEXT, NIGHT_HALO = 'hsl(0, 0%, 90%)', 'hsl(0, 0%, 30%)'
-
-
 def layers(v):
+    c = v.palette
     return [
         layer(id, 'symbol', 'transportation_name', minzoom=minzoom,
               filter=['in', get('class'), ['literal', classes]],
@@ -28,9 +25,9 @@ def layers(v):
                       'text-max-angle': 30,
                       'text-padding': 1,
                       'text-pitch-alignment': 'viewport'},
-              paint={'text-color': DAY_TEXT, 'text-halo-color': DAY_HALO, 'text-halo-width': 1},
+              paint={'text-color': c['road-label'], 'text-halo-color': c['road-label-halo'], 'text-halo-width': 1},
               # Standard's night pair: light ink on a dark halo, not the day's grey glowing
-              metadata={'massif:paint': {'text-color': by_hour(NIGHT_TEXT, DAY_TEXT),
-                                         'text-halo-color': by_hour(NIGHT_HALO, DAY_HALO)}})
+              metadata={'massif:paint': {'text-color': by_hour(c['road-label-night'], c['road-label']),
+                                         'text-halo-color': by_hour(c['road-label-halo-night'], c['road-label-halo'])}})
         for id, minzoom, classes, size in CLASSES
     ]

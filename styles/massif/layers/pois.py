@@ -117,6 +117,10 @@ def day_color():
     return flat_match(lambda cat: CATEGORY[cat]['day'], CATEGORY['default']['day'])
 
 
+def night_color():
+    return flat_match(lambda cat: CATEGORY[cat]['night'], CATEGORY['default']['night'])
+
+
 def text_color():
     """Per category, and following the hour.
 
@@ -222,7 +226,7 @@ def icon_params():
             'background-stroke-width': shape_match('border')}
 
 
-def poi_layer(id, minzoom, filter, ranking):
+def poi_layer(id, minzoom, filter, ranking, v):
     layout = {
         # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
         # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
@@ -239,24 +243,27 @@ def poi_layer(id, minzoom, filter, ranking):
         'text-justify': 'auto',
         'text-optional': True,
     }
+    # on imagery the ground is dark by day as well, so the label keeps its night pair
+    dark = v.flags.get('dark_ground', False)
     massif_layout = {'icon-image': ['image', ICON, {'params': icon_params()}]}
     if ranking == 'rank':
         # maplibre draws the default mode; the SDK turns these back on through massif:layout
         layout['visibility'] = 'none'
         massif_layout['visibility'] = 'visible'
     return layer(id, 'symbol', 'poi', minzoom=minzoom, filter=filter, layout=layout,
-                 paint={'text-color': day_color(), 'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH},
+                 paint={'text-color': night_color() if dark else day_color(),
+                        'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
                  metadata={'massif:params': ['icon-image', 'text-color'],
                            'massif:layout': massif_layout,
                            # maplibre rejects ["config", ...] in a filter, so the switch rides here
                            'massif:filter': ['==', ['config', 'poiRanking'], ranking],
-                           'massif:paint': {'text-color': text_color(),
-                                            'text-halo-color': by_hour(HALO_NIGHT, HALO_DAY)}})
+                           'massif:paint': {'text-color': night_color() if dark else text_color(),
+                                            'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY)}})
 
 
 def layers(v):
-    return ([poi_layer(id, minzoom, filter, 'rank') for id, minzoom, filter in RANK_LAYERS] +
-            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], 'category')
+    return ([poi_layer(id, minzoom, filter, 'rank', v) for id, minzoom, filter in RANK_LAYERS] +
+            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], 'category', v)
              for id, minzoom, classes in CATEGORY_LAYERS])
 
 

@@ -51,6 +51,8 @@ STREETS = {
     'boundary-state': 'hsl(345, 100%, 75%)',
     'boundary-minor': 'hsl(345, 25%, 70%)',
     'boundary-halo': 'hsl(345, 100%, 100%)',
+    'road-label': 'hsl(0, 0%, 25%)', 'road-label-halo': 'hsl(0, 0%, 95%)',
+    'road-label-night': 'hsl(0, 0%, 90%)', 'road-label-halo-night': 'hsl(0, 0%, 30%)',
     'label': 'hsl(0, 0%, 15%)',
     'label-soft': 'hsla(0, 0%, 0%, 0.6)',
     'label-natural': 'hsl(210, 20%, 40%)',
@@ -137,4 +139,29 @@ TOPO = {
     'contour-label': 'hsl(20, 28%, 32%)',
 }
 
-VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR, 'topo': TOPO}
+# Hybrid: imagery is the ground, so the roads are translucent lines over it and every label is pale
+# ink on a dark halo, by day as by night - Standard satellite's and MapTiler hybrid's arrangement
+_WHITE, _DARK = 'hsl(0, 0%, 100%)', 'hsla(0, 0%, 0%, 0.75)'
+HYBRID = {
+    **STREETS,
+    'land': 'transparent',
+    'motorway': 'hsla(38, 95%, 70%, 0.85)', 'motorway-case': 'hsla(30, 60%, 25%, 0.5)',
+    'motorway-bridge-case': 'hsla(30, 60%, 20%, 0.6)',
+    'trunk': 'hsla(45, 95%, 75%, 0.8)', 'trunk-case': 'hsla(35, 50%, 25%, 0.45)',
+    'trunk-bridge-case': 'hsla(35, 50%, 20%, 0.55)',
+    'primary': 'hsla(50, 90%, 85%, 0.7)',
+    'road': 'hsla(0, 0%, 100%, 0.55)', 'road-case': 'hsla(0, 0%, 0%, 0.25)',
+    'road-bridge-case': 'hsla(0, 0%, 0%, 0.4)',
+    'path': 'hsla(0, 0%, 100%, 0.4)', 'path-z16': 'hsla(0, 0%, 100%, 0.5)', 'path-case': 'hsla(0, 0%, 0%, 0.2)',
+    'track': 'hsla(35, 70%, 75%, 0.8)',
+    'rail': 'hsla(0, 0%, 85%, 0.8)', 'rail-night': 'hsla(0, 0%, 85%, 0.8)',
+    'boundary-country': 'hsl(345, 100%, 80%)', 'boundary-state': 'hsl(345, 80%, 85%)',
+    'boundary-minor': 'hsla(345, 40%, 85%, 0.8)', 'boundary-halo': 'hsla(0, 0%, 0%, 0.4)',
+    'road-label': _WHITE, 'road-label-halo': _DARK, 'road-label-night': _WHITE, 'road-label-halo-night': _DARK,
+    'label': _WHITE, 'label-night': _WHITE, 'halo': _DARK, 'halo-night': _DARK,
+    'label-soft': 'hsl(0, 0%, 90%)', 'label-natural': 'hsl(0, 0%, 92%)', 'label-park': 'hsl(100, 60%, 85%)',
+    'label-airport': 'hsl(225, 80%, 88%)', 'water-label': 'hsl(200, 80%, 85%)', 'housenumber': 'hsl(0, 0%, 88%)',
+    'oneway': 'hsl(0, 0%, 90%)',
+}
+
+VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR, 'topo': TOPO, 'hybrid': HYBRID}

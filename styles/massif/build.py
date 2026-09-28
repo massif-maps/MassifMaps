@@ -16,7 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from layers import boundaries, buildings, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
+from layers import boundaries, buildings, imagery, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +43,7 @@ SOURCES = {
     'bathymap': {'type': 'vector', 'url': 'bathymap.json', 'maxzoom': 6},
     'contours': {'type': 'vector', 'url': 'contours.json', 'minzoom': 11, 'maxzoom': 14},
     'routes': {'type': 'vector', 'url': 'routes.json', 'maxzoom': 14},
+    'satellite': {'type': 'raster', 'url': 'satellite.json', 'tileSize': 512},
     'dem': {'type': 'raster-dem', 'tiles': ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
             'encoding': 'terrarium', 'tileSize': 512, 'maxzoom': 16},
 }
@@ -59,10 +60,15 @@ OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
            rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels,
            labels.low, shields.layers, pois.layers, road_labels.layers, labels.places]
 
+HYBRID = [land.background, imagery.layers, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges,
+          rail.bridges, rail.overhead, boundaries.layers, labels.low, shields.layers, pois.layers, road_labels.layers,
+          labels.places]
+
 VARIANTS = {v.name: v for v in [
     Variant('streets', 'Massif Streets', STREETS),
     Variant('outdoor', 'Massif Outdoor', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
     Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
+    Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite',), dark_ground=True),
 ]}
 
 POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}

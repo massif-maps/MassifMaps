@@ -1187,6 +1187,12 @@ namespace massif {
     }
 
     bool TileLayer::prepareTerrainDrapeFrame(float deltaSeconds, const ViewState& viewState) {
+        // The shadow casters draw before onDrawFrame reads the style: with last frame's zoom ramp a fast
+        // zoom-out cast full-height buildings the screen no longer drew.
+        StyleEnvironment env;
+        if (getStyleEnvironment(viewState, env)) {
+            _tileRenderer->setStyleEnvironment(env);
+        }
         return _tileRenderer->prepareFrame(deltaSeconds, viewState);
     }
 

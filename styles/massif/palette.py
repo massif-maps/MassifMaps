@@ -95,6 +95,7 @@ OUTDOOR = {
     'scrub': 'hsla(95, 40%, 74%, 0.6)',
     'rock': 'hsl(30, 8%, 84%)',
     'glacier': 'hsl(200, 60%, 96%)',
+    'relief': 0.35,
     'hillshade-shadow': 'hsl(30, 10%, 30%)',
     'hillshade-highlight': 'hsl(40, 30%, 97%)',
     'hillshade-accent': 'hsl(30, 15%, 45%)',
@@ -108,4 +109,32 @@ OUTDOOR = {
     'route-bicycle': 'hsl(215, 80%, 55%)',
 }
 
-VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR}
+# Topo: MapTiler topo's printed-map look - grey ground, olive woods, brown contours, a deeper water
+# and a stronger relief - over the outdoor layers, so on the SDK it is colours and no new rule
+TOPO = {
+    **OUTDOOR,
+    'land': 'hsl(0, 0%, 94%)',
+    'residential': 'hsl(45, 10%, 86%)',
+    'commercial': 'hsl(30, 20%, 88%)',
+    'industrial': 'hsl(230, 8%, 87%)',
+    'wood': 'hsl(74, 31%, 72%)',
+    'wood-low': 'hsl(74, 31%, 80%)',
+    'grass': 'hsl(79, 35%, 83%)',
+    'scrub': 'hsl(75, 37%, 78%)',
+    'farmland': 'hsl(51, 34%, 88%)',
+    'park': 'hsl(79, 35%, 78%)',
+    'sand': 'hsl(54, 70%, 85%)',
+    'rock': 'hsl(20, 6%, 82%)',
+    'glacier': 'hsl(0, 0%, 100%)',
+    'water': 'hsl(199, 44%, 62%)',
+    'water-label': 'hsl(199, 60%, 30%)',
+    'relief': 0.5,
+    'hillshade-shadow': 'hsl(0, 0%, 35%)',
+    'hillshade-highlight': 'hsl(51, 12%, 90%)',
+    'hillshade-accent': 'hsl(40, 30%, 45%)',
+    'contour': 'hsl(22, 35%, 58%)',
+    'contour-index': 'hsl(22, 35%, 48%)',
+    'contour-label': 'hsl(20, 28%, 32%)',
+}
+
+VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR, 'topo': TOPO}

@@ -1,9 +1,9 @@
 {
   "version": 8,
-  "name": "Massif Outdoor",
+  "name": "Massif Topo",
   "metadata": {
     "massif:schema": "openmaptiles",
-    "massif:variant": "outdoor",
+    "massif:variant": "topo",
     "massif:live-config": [
       "poiRanking"
     ]
@@ -46,7 +46,7 @@
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "hsl(40, 25%, 94%)"
+        "background-color": "hsl(0, 0%, 94%)"
       },
       "metadata": {
         "massif:paint": {
@@ -229,7 +229,7 @@
         "tree"
       ],
       "paint": {
-        "fill-color": "hsl(105, 42%, 78%)",
+        "fill-color": "hsl(74, 31%, 80%)",
         "fill-opacity": [
           "interpolate",
           [
@@ -459,7 +459,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(35, 15%, 91%)",
+        "fill-color": "hsl(45, 10%, 86%)",
         "fill-opacity": [
           "interpolate",
           [
@@ -500,7 +500,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsla(102, 60%, 86%, 0.6)",
+        "fill-color": "hsl(51, 34%, 88%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -542,7 +542,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsla(90, 45%, 80%, 0.6)",
+        "fill-color": "hsl(79, 35%, 83%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -593,9 +593,9 @@
             "zoom"
           ],
           8,
-          "hsl(105, 42%, 78%)",
+          "hsl(74, 31%, 80%)",
           11,
-          "hsla(105, 42%, 64%, 0.75)"
+          "hsl(74, 31%, 72%)"
         ],
         "fill-antialias": false,
         "fill-opacity": [
@@ -680,7 +680,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(52, 65%, 86%)",
+        "fill-color": "hsl(54, 70%, 85%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -722,7 +722,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(30, 8%, 84%)",
+        "fill-color": "hsl(20, 6%, 82%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -764,7 +764,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(200, 60%, 96%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -807,7 +807,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsla(95, 40%, 74%, 0.6)",
+        "fill-color": "hsl(75, 37%, 78%)",
         "fill-antialias": false
       },
       "metadata": {
@@ -840,7 +840,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(115, 60%, 80%)",
+        "fill-color": "hsl(79, 35%, 78%)",
         "fill-antialias": false
       },
       "metadata": {
@@ -962,7 +962,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsla(24, 100%, 94%, 1)",
+        "fill-color": "hsl(30, 20%, 88%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1009,7 +1009,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(230, 15%, 92%)",
+        "fill-color": "hsl(230, 8%, 87%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1184,7 +1184,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(115, 60%, 80%)",
+        "fill-color": "hsl(79, 35%, 78%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1459,7 +1459,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(200, 100%, 80%)",
+        "line-color": "hsl(199, 44%, 62%)",
         "line-width": [
           "interpolate",
           [
@@ -1553,7 +1553,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(200, 100%, 80%)",
+        "line-color": "hsl(199, 44%, 62%)",
         "line-width": [
           "interpolate",
           [
@@ -1626,7 +1626,7 @@
         "tunnel"
       ],
       "paint": {
-        "fill-color": "hsl(200, 100%, 80%)",
+        "fill-color": "hsl(199, 44%, 62%)",
         "fill-antialias": false
       },
       "metadata": {
@@ -1643,7 +1643,7 @@
             0.25,
             "hsl(200, 100%, 62%)",
             0.3,
-            "hsl(200, 100%, 80%)"
+            "hsl(199, 44%, 62%)"
           ],
           "fill-emissive-strength": [
             "interpolate",
@@ -1779,7 +1779,7 @@
         0
       ],
       "paint": {
-        "fill-color": "hsl(200, 100%, 80%)",
+        "fill-color": "hsl(199, 44%, 62%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1886,20 +1886,20 @@
             "zoom"
           ],
           6,
-          0.44999999999999996,
+          0.6,
           14,
-          0.35,
+          0.5,
           16,
           0
         ],
-        "hillshade-shadow-color": "hsl(30, 10%, 30%)",
-        "hillshade-highlight-color": "hsl(40, 30%, 97%)",
-        "hillshade-accent-color": "hsl(30, 15%, 45%)"
+        "hillshade-shadow-color": "hsl(0, 0%, 35%)",
+        "hillshade-highlight-color": "hsl(51, 12%, 90%)",
+        "hillshade-accent-color": "hsl(40, 30%, 45%)"
       },
       "metadata": {
         "massif:sdk-layer": {
           "type": "hillshade",
-          "exaggeration": 0.35,
+          "exaggeration": 0.5,
           "opacity": 0.55,
           "visibleZoomRange": [
             0,
@@ -1923,7 +1923,7 @@
         100
       ],
       "paint": {
-        "line-color": "hsl(35, 35%, 52%)",
+        "line-color": "hsl(22, 35%, 58%)",
         "line-width": [
           "interpolate",
           [
@@ -1972,7 +1972,7 @@
         100
       ],
       "paint": {
-        "line-color": "hsl(35, 38%, 42%)",
+        "line-color": "hsl(22, 35%, 48%)",
         "line-width": [
           "interpolate",
           [
@@ -6898,7 +6898,7 @@
         ]
       ],
       "paint": {
-        "line-color": "hsl(40, 25%, 94%)",
+        "line-color": "hsl(0, 0%, 94%)",
         "line-width": [
           "interpolate",
           [
@@ -7998,7 +7998,7 @@
         "text-max-angle": 25
       },
       "paint": {
-        "text-color": "hsl(35, 38%, 30%)",
+        "text-color": "hsl(20, 28%, 32%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
         "text-halo-width": 1
       },
@@ -8016,7 +8016,7 @@
             0.25,
             "hsl(0, 0%, 92%)",
             0.3,
-            "hsl(35, 38%, 30%)"
+            "hsl(20, 28%, 32%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -8164,7 +8164,7 @@
         "text-max-angle": 30
       },
       "paint": {
-        "text-color": "hsl(200, 96%, 34%)",
+        "text-color": "hsl(199, 60%, 30%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
         "text-halo-width": 1
       },
@@ -8180,9 +8180,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(200, 100%, 80%)",
+            "hsl(199, 44%, 62%)",
             0.3,
-            "hsl(200, 96%, 34%)"
+            "hsl(199, 60%, 30%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -8265,7 +8265,7 @@
         "text-max-angle": 30
       },
       "paint": {
-        "text-color": "hsl(200, 96%, 34%)",
+        "text-color": "hsl(199, 60%, 30%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
         "text-halo-width": 1
       },
@@ -8281,9 +8281,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(200, 100%, 80%)",
+            "hsl(199, 44%, 62%)",
             0.3,
-            "hsl(200, 96%, 34%)"
+            "hsl(199, 60%, 30%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -8349,7 +8349,7 @@
         "text-letter-spacing": 0.05
       },
       "paint": {
-        "text-color": "hsl(200, 96%, 34%)",
+        "text-color": "hsl(199, 60%, 30%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
         "text-halo-width": 1
       },
@@ -8365,9 +8365,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(200, 100%, 80%)",
+            "hsl(199, 44%, 62%)",
             0.3,
-            "hsl(200, 96%, 34%)"
+            "hsl(199, 60%, 30%)"
           ],
           "text-halo-color": [
             "interpolate",
@@ -8468,7 +8468,7 @@
         "text-max-width": 7
       },
       "paint": {
-        "text-color": "hsl(200, 96%, 34%)",
+        "text-color": "hsl(199, 60%, 30%)",
         "text-halo-color": "hsl(0, 0%, 100%)",
         "text-halo-width": 1
       },
@@ -8484,9 +8484,9 @@
               "brightness"
             ],
             0.25,
-            "hsl(200, 100%, 80%)",
+            "hsl(199, 44%, 62%)",
             0.3,
-            "hsl(200, 96%, 34%)"
+            "hsl(199, 60%, 30%)"
           ],
           "text-halo-color": [
             "interpolate",

@@ -23,12 +23,12 @@ def hillshade(v):
     # gone by z16 as in Standard: in a street the relief is noise, and on the SDK a raster over the
     # vector layer would grey the whole city
     return [{'id': 'hillshade', 'type': 'hillshade', 'source': 'dem', 'maxzoom': 16,
-             'paint': {'hillshade-exaggeration': zoom_ramp(6, 0.45, 14, 0.35, 16, 0),
+             'paint': {'hillshade-exaggeration': zoom_ramp(6, c['relief'] + 0.1, 14, c['relief'], 16, 0),
                        'hillshade-shadow-color': c['hillshade-shadow'],
                        'hillshade-highlight-color': c['hillshade-highlight'],
                        'hillshade-accent-color': c['hillshade-accent']},
              # what an app gives its HillshadeRasterTileLayer to match: CartoCSS cannot draw a raster
-             'metadata': {'massif:sdk-layer': {'type': 'hillshade', 'exaggeration': 0.35, 'opacity': 0.55,
+             'metadata': {'massif:sdk-layer': {'type': 'hillshade', 'exaggeration': c['relief'], 'opacity': 0.55,
                                                 'visibleZoomRange': [0, 16]}}}]
 
 

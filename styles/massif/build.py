@@ -62,6 +62,7 @@ OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
 VARIANTS = {v.name: v for v in [
     Variant('streets', 'Massif Streets', STREETS),
     Variant('outdoor', 'Massif Outdoor', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
+    Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
 ]}
 
 POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}
@@ -145,8 +146,11 @@ def family_style():
         merged = by_variant(trees)
         if len(present) < len(names):
             # pruned per tile at decode: a layer the selected variant does not draw costs nothing
+            # only == and != : each converts to a bracketed test the decoder prunes per tile, where an
+            # `in` over several variants would become a when() evaluated per feature
+            absent = [n for n in names if n not in present]
             only = ['==', ['config', 'variant'], present[0]] if len(present) == 1 else \
-                ['in', ['config', 'variant'], ['literal', present]]
+                ['all', *[['!=', ['config', 'variant'], n] for n in absent]]
             meta = merged.setdefault('metadata', {})
             meta['massif:filter'] = ['all', meta['massif:filter'], only] if 'massif:filter' in meta else only
         layers.append(merged)
@@ -170,6 +174,11 @@ def main(args):
         report = subprocess.run(['node', CLI, 'mapbox2css', 'family.json', 'carto', *CONVERT], cwd=HERE,
                                 capture_output=True, text=True, check=True).stdout
         print(next(line for line in report.splitlines() if line.startswith('Coverage')))
+        # a when() is evaluated per feature and blocks rule pruning: the family is written to need none
+        mss = open(os.path.join(HERE, 'carto', 'style.mss')).read().splitlines()
+        whens = [line.split(' {')[0] for line in mss if 'when(' in line]
+        if whens:
+            sys.exit('%d when() in carto/style.mss - rewrite the layer so it brackets:\n  %s' % (len(whens), '\n  '.join(whens)))
         spec = {'values': {n: n for n in VARIANTS}}
         for name in VARIANTS:
             project = {'extends': './project.json', 'styleparameters': {'variant': {**spec, 'default': name}}}

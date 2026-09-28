@@ -2286,6 +2286,10 @@ drags per measurement, fps from the `PROF` windows. Mesh resolution was kept at 
   until after the drape bakes, shadow passes and the label-occlusion pass. 13.3/13.8 -> 13.6/13.5
   fps shadows off, 8.1/8.4 -> 8.3/8.7 on: nothing. Reverted. The label-occlusion pass's +10% is its
   own work - it redraws every visible extrusion - not the switch.
+- **Not done: refreshing the label-occlusion pass less often while the camera moves.** On top of
+  the changes above (probe `debug.massif.occevery`, shadows off): every frame 19.1 fps, every 2nd
+  19.45, every 3rd 20.15, never while moving 20.8. Kept at every frame: 2-5% is not worth labels
+  testing against buildings a frame or two late, and "never" leaves a buffer that drifts off.
 - Shadows on read 7.5-8.7 fps in this session against 10.5-11 in the previous one; the previous
   build and master measure the same side by side, so it is the bench (shadows switched on by
   broadcast after launch), not a regression.

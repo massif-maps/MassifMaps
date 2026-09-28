@@ -12,7 +12,7 @@ import { narrowLayer } from './narrow.js';
 import { collapseBranches, expandSetFilter, expandSortKey, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, liveConfig, presetsOf, resolveConfig, sceneBrightness } from './config.js';
-import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer, toHsla } from './fold.js';
+import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer, isPitch, toHsla } from './fold.js';
 import { applyLighting, emissiveDefault, emissiveForLayerType, emissiveProperty, groundRadiance, lightingFactor } from './emissive.js';
 import type { SceneLights } from './emissive.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
@@ -765,6 +765,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         if (lights !== undefined) {
             mapBlock.push(...buildingLightSettings(lights, buildingSettingsSeen, coverage,
                 (node) => foldConfig(node, values)));
+        } else if (!buildingSettingsSeen.has(HEIGHT_VIEW_SCALE)) {
+            // Not a light: without it `building_tilt_drop` is declared and drives nothing.
+            mapBlock.push(`${HEIGHT_VIEW_SCALE}: ${HEIGHT_TILT_RAMP};`);
         }
     }
     // The MEDIAN index, not the first. `road` has 82 layers spanning indices 3 to 130 in Mapbox
@@ -1058,6 +1061,8 @@ function rampLikeGroundAO(intensity: Json, layer: MapboxLayer): Json {
  */
 function flattenExtrusionOpacity(layer: MapboxLayer): { layer: MapboxLayer; opacity: number | null } {
     const opacity = layer.paint?.['fill-extrusion-opacity'];
+    // A fade over the camera angle is the style's own live value, not one to flatten.
+    if (Array.isArray(opacity) && opacity[0] === 'interpolate' && isPitch(opacity[2] as Json)) return { layer, opacity: null };
     let value: Json | undefined = opacity as Json | undefined;
     if (Array.isArray(opacity) && opacity[0] === 'interpolate') {
         const constant = representativeConstant(opacity as Json);

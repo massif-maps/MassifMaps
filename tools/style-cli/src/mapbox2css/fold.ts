@@ -145,6 +145,10 @@ const VIEWPORT: Record<string, number> = {
  * "select"]]` guards 3d-building's colour, and a dropped fill left the symbolizer on its default
  * black; `["is-active-floor"]` sits inside poi-label's filter.
  */
+export function isPitch(node: Json | undefined): boolean {
+    return Array.isArray(node) && node.length === 1 && node[0] === 'pitch';
+}
+
 const UNSET_STATE: Record<string, Json> = {
     'feature-state': null,
     'is-active-floor': false,
@@ -173,6 +177,11 @@ function fold(node: Json, context: Context): Json {
         }
         if (head === 'measure-light' && node[1] === 'brightness' && context.scene.brightness !== undefined && !context.scene.liveBrightness) {
             return context.scene.brightness;
+        }
+        // A paint ramp over the camera angle stays live, the translator's to carry over view::tilt;
+        // only Standard's label thinning, a filter `step` or comparison, resolves to the flat view.
+        if (head === 'interpolate' && isPitch(node[2])) {
+            return [head, node[1] as Json, node[2] as Json, ...node.slice(3).map((n) => fold(n as Json, context))];
         }
         if (typeof head === 'string' && node.length === 1 && head in VIEWPORT) {
             return VIEWPORT[head];

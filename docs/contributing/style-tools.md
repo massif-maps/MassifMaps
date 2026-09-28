@@ -282,6 +282,10 @@ every label in the style, while the coverage report still counted their properti
 `pitch`, `distance-from-center` and `line-progress` therefore resolve to what a flat, centred view
 sees, the clause folds to `true`, and the filter around it drops it.
 
+One exception: an `interpolate` whose input is `["pitch"]` stays live and becomes a ramp over
+`[view::tilt]`, each key turned into `90 - pitch`. Neither MapBox nor maplibre has that in paint, so
+only a `massif:paint` value can state it — Massif fades its buildings that way.
+
 Folding is **conservative by construction**: a node is simplified only where a substitution actually
 happened. Without that rule it rewrote expressions in styles that have no config at all, and quietly
 removed four layers from a MapTiler style whose render was already verified.
@@ -503,6 +507,11 @@ the better fade. Standard's ramp ends at 1, so a converted Standard is opaque ex
 
 One parameter covers every extrusion in the style. A style asking for two different alphas keeps the
 first and the coverage report says so; no source style does this.
+
+An opacity ramped over `["pitch"]` is not flattened: it is the style's own live fade (see above).
+Massif writes `30, 1, 60, ["config", "building_opacity"]`, which becomes
+`linear([view::tilt], (30, [param::building_opacity]), (60, 1))` — opaque looking down, the
+parameter once the camera leans in, and a drawn frame's translucency takes the depth pre-pass path.
 
 ## A recolourable icon: the glyph is a field, the disc is a plate
 
@@ -989,6 +998,8 @@ the camera turns onto the map:
 building-height-view-scale: 1 - ([param::building_tilt_drop] * 0.01) * linear([view::tilt], (80, 0), (90, 1));
 ```
 
+It is emitted for every style with buildings, whether or not it states MapBox `lights`: gating it
+on them left `building_tilt_drop` declared and driving nothing in every maplibre-sourced style.
 It starts late (a 3D camera at tilt 55–75 is untouched). `building_tilt_drop` is a style parameter,
 a percentage defaulting to 90, so a flattened building keeps a tenth of its height — enough to read
 the storeys — and an app changes it with a redraw, not a re-decode.

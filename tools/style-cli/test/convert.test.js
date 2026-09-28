@@ -54,14 +54,26 @@ test('--ao-follows-height fades the ground AO on the ramp that lays the building
     assert.match(line, /\[param::building_ao\]/);
     assert.match(line, /\[param::building_tilt_drop\] \* 0\.01/);
     assert.match(line, /linear\(\[view::tilt\], \(80, 0\), \(90, 1\)\)/);
-    // The same ramp the DRAWN height takes, so the two cannot drift apart. This fixture does not
-    // reach the branch that emits the height scale, so the cross-check runs only when it is there.
+    // The same ramp the DRAWN height takes, so the two cannot drift apart.
     const ramp = /1 - \(\[param::building_tilt_drop\] \* 0\.01\) \* linear\(\[view::tilt\], \(80, 0\), \(90, 1\)\)/;
     assert.match(line, ramp);
     const height = mss.split('\n').find((l) => l.includes('building-height-view-scale:'));
-    if (height) {
-        assert.match(height, ramp);
-    }
+    assert.ok(height, 'a style with no lights still lays its buildings down: building_tilt_drop drives it');
+    assert.match(height, ramp);
+});
+
+test('an extrusion opacity over the pitch stays live, as a ramp over the tilt', () => {
+    // pitch 20 -> tilt 70, pitch 50 -> tilt 40: the keys flip and the stops run in reverse.
+    const faded = JSON.parse(JSON.stringify(style));
+    faded.metadata = { ...faded.metadata, 'massif:live-config': ['building_opacity'] };
+    faded.schema = { building_opacity: { default: 0.6 } };
+    const buildings = faded.layers.find((layer) => layer.type === 'fill-extrusion');
+    buildings.paint['fill-extrusion-opacity'] = ['interpolate', ['linear'], ['pitch'],
+        20, 1, 50, ['config', 'building_opacity']];
+    const styleParams = new Map();
+    const { mss } = convert(faded, table, { ...NO_PALETTE, styleParams });
+    assert.match(mss, /building-fill-opacity: linear\(\[view::tilt\], \(40, \[param::building_opacity\]\), \(70, 1\)\);/);
+    assert.equal(styleParams.get('building_opacity'), 0.6);
 });
 
 test('each MapBox layer becomes an attachment on its source-layer', () => {

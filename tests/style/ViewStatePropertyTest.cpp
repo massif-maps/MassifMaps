@@ -13,10 +13,13 @@
 
 #include <mapnikvt/Expression.h>
 #include <mapnikvt/ExpressionContext.h>
+#include <mapnikvt/ParserUtils.h>
 #include <mapnikvt/Properties.h>
+#include <mapnikvt/StyleParameterStore.h>
 #include <vt/Styles.h>
 
 #include <cmath>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -179,5 +182,20 @@ void testViewStateProperty() {
         vt::LabelPlateStyle live, other;
         live.colorFunc = func;
         TEST_CHECK(!(live == other), "two plates differing only in a live colour are two styles");
+    }
+
+    // Massif's building fade: opaque looking down, the app's building_opacity once the camera leans.
+    {
+        auto store = std::make_shared<mvt::StyleParameterStore>(std::map<std::string, mvt::Value> { { "building_opacity", mvt::Value(0.6) } });
+        mvt::ExpressionContext context;
+        context.setStyleParameterStore(store);
+        mvt::FloatFunctionProperty opacity(1.0f);
+        opacity.setExpression(mvt::parseExpression("linear([view::tilt], 40, [param::building_opacity], 70, 1)", false));
+        vt::FloatFunction func = opacity.getFunction(context);
+        TEST_CHECK(near(func(view(17.0f, 90.0f)), 1.0f), "a top-down camera draws the buildings opaque");
+        TEST_CHECK(near(func(view(17.0f, 55.0f)), 0.8f), "half way down the ramp it is half way to the parameter");
+        TEST_CHECK(near(func(view(17.0f, 30.0f)), 0.6f), "a leaning camera draws them at building_opacity");
+        store->setValues({ { "building_opacity", mvt::Value(0.3) } });
+        TEST_CHECK(near(func(view(17.0f, 30.0f)), 0.3f), "and a new parameter value reaches the same function: no re-decode");
     }
 }

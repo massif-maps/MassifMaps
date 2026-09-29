@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from layers import boundaries, buildings, imagery, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
+from lib import FONTS  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLI = os.path.join(HERE, '..', '..', 'tools', 'style-cli', 'dist', 'cli.js')
@@ -171,7 +172,11 @@ def family_style():
             meta = merged.setdefault('metadata', {})
             meta['massif:filter'] = ['all', meta['massif:filter'], only] if 'massif:filter' in meta else only
         layers.append(merged)
-    return document('Massif', layers, {'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', 'variant']},
+    # the default palette's own names for its colours and fonts, so variables.mss says @motorway
+    own = {k: v for k, v in VARIANTS[names[0]].palette.items() if isinstance(v, str)}
+    own.update({'font-' + role: sdk for role, (_, sdk) in FONTS.items()})
+    return document('Massif', layers, {'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', 'variant'],
+                                       'massif:palette-names': own},
                     {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY,
                      'variant': {'default': names[0], 'values': names}},
                     {k: s for v in VARIANTS.values() for k, s in v.sources.items()})

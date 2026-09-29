@@ -834,7 +834,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const presetPalettes = new Map<string, string>();
     let defaultPreset: string | null = null;
     if (options.variables !== false) {
-        const result = hoistVariables(hoisted, allowed, [...alternates.values()].map(withMap));
+        const result = hoistVariables(hoisted, allowed, [...alternates.values()].map(withMap),
+            ((style as unknown as Record<string, Record<string, Json>>).metadata)?.['massif:palette-names'] as Record<string, string> | undefined);
         hoisted = result.blocks;
         palette = result.palette;
         for (const [index, preset] of [...alternates.keys()].entries()) {

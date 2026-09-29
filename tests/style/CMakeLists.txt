@@ -44,6 +44,7 @@ add_executable(style_tests
   AnchorLabelIdTest.cpp
   SymbolizerPropertyTest.cpp
   BuiltinParameterTest.cpp
+  LineAnchorsTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

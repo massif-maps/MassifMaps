@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-245 properties across 12 symbolizers.
+247 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 63 of 245.
+Live-capable properties: 63 of 247.
 
 ## `building`
 
@@ -244,6 +244,7 @@ Live-capable properties: 63 of 245.
 | `shield-icon-size` | `icon-size` | float | `0.0` |  |  |
 | `shield-image-scale` | `image-scale` | float | `1.0` | yes |  |
 | `shield-line-spacing` | `line-spacing` | float | `0.0` |  |  |
+| `shield-max-char-angle-delta` | `max-char-angle-delta` | float | `45.0` |  |  |
 | `shield-max-distance` | `max-distance` | float | `0.0` |  |  |
 | `shield-min-distance` | `minimum-distance` | float | `0.0` |  |  |
 | `shield-name` | — | ignored |  |  |  |
@@ -312,6 +313,7 @@ Live-capable properties: 63 of 245.
 | `text-halo-rasterizer` | `halo-rasterizer` | value |  |  |  |
 | `text-horizontal-alignment` | `horizontal-alignment` | value | `auto` |  |  |
 | `text-line-spacing` | `line-spacing` | float | `0.0` |  |  |
+| `text-max-char-angle-delta` | `max-char-angle-delta` | float | `45.0` |  |  |
 | `text-max-distance` | `max-distance` | float | `0.0` |  |  |
 | `text-min-distance` | `minimum-distance` | float | `0.0` |  |  |
 | `text-name` | — | ignored |  |  |  |

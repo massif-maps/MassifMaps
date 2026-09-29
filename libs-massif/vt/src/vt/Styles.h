@@ -257,6 +257,7 @@ namespace massif::vt {
     struct TextLabelStyle final {
         // mapbox text-padding / icon-padding: screen pixels around the box, for the collision test only.
         float collisionPadding = 0.0f;
+        float maxAngle = 0.785398f; // mapbox text-max-angle, radians: a line run turning more is dropped
         LabelOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;

@@ -202,3 +202,8 @@ test('a line label repeats at symbol-spacing, not at its text-padding', () => {
 test('a layer with no sort key still carries its order', () => {
     assert.match(mss({}), /text-placement-priority: 0;/);
 });
+
+test('text-max-angle carries over: a style asking 30 degrees drops runs the 45 default would bend', () => {
+    assert.match(mss({ 'symbol-placement': 'line', 'text-max-angle': 30 }), /text-max-char-angle-delta: 30;/);
+    assert.ok(!mss({ 'symbol-placement': 'line' }).includes('text-max-char-angle-delta'));
+});

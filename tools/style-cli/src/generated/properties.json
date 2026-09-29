@@ -1605,6 +1605,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-max-char-angle-delta",
+      "mapnik": "max-char-angle-delta",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "45.0",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "shield-max-distance",
       "mapnik": "max-distance",
       "symbolizer": "shield",
@@ -2231,6 +2241,16 @@
       "kind": "float",
       "type": "FloatProperty",
       "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-max-char-angle-delta",
+      "mapnik": "max-char-angle-delta",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "45.0",
       "live": false,
       "baked": false
     },

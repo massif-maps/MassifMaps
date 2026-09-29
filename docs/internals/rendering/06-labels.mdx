@@ -202,6 +202,35 @@ advances the pen, so the spacing is constant along the line instead of restartin
 border. Clipped text still gets one run per TILE the line crosses — the geometry is per tile and
 there is no label to merge them.
 
+**Where the anchors fall is maplibre's `getAnchors`** (`mapnikvt/LineAnchors.h`, from
+`generateLinePoints`). A line starting in the tile takes its first anchor half a label plus two ems
+from its start; one continued from the next tile, half a step in. An anchor must fit the whole label
+between the line's ends and pass `checkMaxAngle` (the style's `text-max-char-angle-delta`, mapbox
+`text-max-angle`, default 45°, summed over 3/5 em, run in tile pixels), and
+only when none does is the middle tried. It used to be one anchor at the middle of any line shorter
+than the step: Rue de la Viscose in Échirolles jogs 90° exactly there, so once the renderer's own
+max-angle test landed, that street lost its name at every zoom though either straight stretch holds
+it. The step between repeats stays `text-spacing` plus the label's length. The label is tested at
+HALF its size (the offset stays half the WHOLE label plus two ems; halving it too put Rue Émile
+Zola's name across its bend, short of the straight stretch maplibre uses): a tile is drawn at 1× to 2× its own pixels and the text is in screen pixels, so at
+1× the name overran the stretch it fits on screen (Rue de la Viscose unnamed below z17); the layout,
+which knows the scale, drops what then does not fit.
+
+The layout lays each glyph on the line itself, after a Douglas-Peucker pass
+(`PLACEMENT_SIMPLIFY_TOLERANCE`, 0.6 em) that drops a DEM contour's cell zigzag, about half an em,
+so the max-angle test does not read it as corners. At one em it also erased a street's real bend:
+Rue du 19 Mars 1962 bends 28° about 0.9 em off its chord at z15, and its name ran straight across
+the neighbouring streets. maplibre does no simplification; its contours are smoothed at source.
+The simplification may only FORGIVE a turn: a run is dropped when both the simplified and the source
+line fail the max-angle test. Tested on the simplified line alone, Rue Émile Zola's 18° and 25°
+bends, half an em off one chord, folded into one 34° corner, and `text-max-angle: 30` dropped a name
+maplibre keeps.
+
+The run is **centred on its anchor**, as maplibre's. The layout used to START it there while
+`clampPlacementAnchor` kept the anchor 1.25 runs from each end, so a name sat a whole run in from
+the line's start: Rue du 19 Mars 1962 at z15.97 began at the bend instead of ending before it, and
+read at the wrong angle next to maplibre's.
+
 `text-spacing` places anchors by **ground** distance, as mapbox's `symbol-spacing` does; under tilt
 they project closer together in the far field. The screen-space guarantee is `text-min-distance`,
 which gives the label a group id the culler enforces in pixels.

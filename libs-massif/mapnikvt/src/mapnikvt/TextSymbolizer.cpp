@@ -1,4 +1,5 @@
 #include "TextSymbolizer.h"
+#include "LineAnchors.h"
 
 #include "ParseTables.h"
 #include "ParserUtils.h"
@@ -54,6 +55,7 @@ namespace massif::mvt {
         // a style's separation shrank to a third of what it asked for on a hi-dpi screen.
         float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale * pixelScale;
         float collisionPadding = _collisionPadding.getValue(exprContext) * fontScale * pixelScale;
+        float maxAngle = _maxCharAngleDelta.getValue(exprContext) * boost::math::constants::pi<float>() / 180.0f;
         float maxDistance = _maxDistance.getValue(exprContext);
         float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
@@ -118,6 +120,8 @@ namespace massif::mvt {
         // What vt is given: the repeat is a billboard, and vt has no case for anything else.
         vt::LabelOrientation orientation = (billboardRepeat ? vt::LabelOrientation::BILLBOARD_3D : placement);
         float textSize = bitmapSize < 0 ? (repeatAlongLine ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
+        // a run laid along the line is tested against its turns; a billboard repeat is not
+        float glyphSize = (lineRun ? sizeStatic : 0.0f);
         float spacing = _spacing.getValue(exprContext);
         // A repeat must not stack on itself: 'spacing' is walked per TILE, so each tile starts its own
         // phase and two anchors can land a few pixels apart across a border. Only the culler can see
@@ -134,7 +138,7 @@ namespace massif::mvt {
         std::shared_ptr<vt::BitmapImage> backgroundImage;
 
         if (clip) {
-            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, lineRun, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, lineRun, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, glyphSize, maxAngle, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
                 vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, backgroundOffset, backgroundImage);
                 vt::TileLayerBuilder::TextProcessor textProcessor;
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -186,7 +190,7 @@ namespace massif::mvt {
                         for (const auto& vertices : verticesList) {
                             // A repeat is not rotated by its segment: clipped text has no camera to
                             // face, so all a billboard can keep here is the style's own angle.
-                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, lineRun)) {
+                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, lineRun, glyphSize, maxAngle)) {
                                 vt::TextStyle transformedStyle(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, transformedPoints.first + orientationAngle, fontScale, backgroundOffset, backgroundImage);
                                 textProcessor = layerBuilder.createTextProcessor(transformedStyle, formatter);
                                 if (textProcessor) {
@@ -202,9 +206,10 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutAnchorVisible, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, glyphSize, maxAngle, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutAnchorVisible, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
             style.collisionPadding = collisionPadding;
+            style.maxAngle = maxAngle;
             style.calloutBandFollow = calloutBandFollow;
             style.calloutAnchorVisible = calloutAnchorVisible;
             style.emissiveFunc = emissiveFunc;
@@ -288,7 +293,7 @@ namespace massif::mvt {
                             continue;
                         }
 
-                        for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
+                        for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, true, glyphSize, maxAngle)) {
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
                                 // The line goes with the label only when a run is laid out on it:
@@ -358,50 +363,56 @@ namespace massif::mvt {
         }
         return true;
     }
-    std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle) {
+    std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle, float glyphSize, float maxAngle) {
         std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> transformedPointList;
-
-        // text-spacing 0 means ONE run for the WHOLE line, which is what the label path does with it.
-        // Restarting the pen at the middle of every segment is why the same style drew one label per
-        // line when culled and one per bend when clipped.
-        float totalLength = 0;
-        for (std::size_t i = 1; i < vertices.size(); i++) {
-            totalLength += cglib::length(vertices[i] - vertices[i - 1]) * tileSize;
+        if (vertices.size() < 2) {
+            return transformedPointList;
         }
-        float step = (spacing > 0 ? spacing : totalLength) + textSize;
-        float linePos = std::min(totalLength, step) * 0.5f;
-        for (std::size_t i = 1; i < vertices.size(); i++) {
-            const cglib::vec2<float>& v0 = vertices[i - 1];
-            const cglib::vec2<float>& v1 = vertices[i];
-            float lineLen = cglib::length(v1 - v0) * tileSize;
-            // A segment outside the tile carries no anchor, but the pen still walks it: consuming
-            // its length is what keeps the spacing constant ALONG THE LINE rather than restarting
-            // it at every tile border.
-            if (!segmentIntersectRectangle(0,0,1,1, v0(0), v0(1), v1(0), v1(1))) {
-                linePos -= lineLen;
-                continue;
-            }
 
-            vt::TileLayerBuilder::Vertices points;
-            while (linePos < lineLen) {
-                cglib::vec2<float> pos = v0 + (v1 - v0) * (linePos / lineLen);
-                if (std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f) {
-                    points.push_back(pos);
-                }
-                linePos += step;
-            }
-            if (!points.empty()) {
-                if (applyAngle) {
-                    cglib::vec2<float> dir = cglib::unit(v1 - v0);
-                    float angle = std::atan2(-dir(1), dir(0));
-                    transformedPointList.emplace_back(angle * 180.0f / boost::math::constants::pi<float>(), std::move(points));
-                } else {
-                    transformedPointList.emplace_back(0.0f, std::move(points));
-                }
-                
-            }
+        std::vector<cglib::vec2<float>> points;
+        std::vector<float> lengths;
+        for (const cglib::vec2<float>& vertex : vertices) {
+            lengths.push_back(points.empty() ? 0.0f : lengths.back() + cglib::length(vertex * tileSize - points.back()));
+            points.push_back(vertex * tileSize);
+        }
 
-            linePos -= lineLen;
+        auto segmentAt = [&](float distance) {
+            std::size_t i = 1;
+            while (i + 1 < vertices.size() && lengths[i] < distance) {
+                i++;
+            }
+            return i;
+        };
+        auto positionAt = [&](float distance) {
+            std::size_t i = segmentAt(distance);
+            float segmentLength = lengths[i] - lengths[i - 1];
+            float t = (segmentLength > 0 ? (distance - lengths[i - 1]) / segmentLength : 0.0f);
+            return cglib::vec2<float>(vertices[i - 1] + (vertices[i] - vertices[i - 1]) * t);
+        };
+        auto inTile = [&](float distance) {
+            cglib::vec2<float> pos = positionAt(distance);
+            return std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f;
+        };
+
+        std::vector<float> anchors;
+        if (spacing > 0) {
+            bool continued = !inTile(0);
+            // a tile is drawn at 1x to 2x its own pixels, and the text in screen pixels: test the label at
+            // its smallest here and let the layout, which knows the scale, drop what does not fit
+            anchors = lineLabelAnchors(points, lengths, continued, spacing + textSize, textSize, glyphSize, maxAngle, inTile, 0.5f);
+        } else if (inTile(lengths.back() * 0.5f)) {
+            // text-spacing 0 means ONE run for the whole line, which is what the label path does with it
+            anchors.push_back(lengths.back() * 0.5f);
+        }
+
+        for (float distance : anchors) {
+            std::size_t i = segmentAt(distance);
+            float angle = 0;
+            if (applyAngle) {
+                cglib::vec2<float> dir = cglib::unit(vertices[i] - vertices[i - 1]);
+                angle = std::atan2(-dir(1), dir(0)) * 180.0f / boost::math::constants::pi<float>();
+            }
+            transformedPointList.emplace_back(angle, vt::TileLayerBuilder::Vertices { positionAt(distance) });
         }
         return transformedPointList;
     }

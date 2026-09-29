@@ -19,6 +19,7 @@ void testValueJSON();
 void testAnchorLabelId();
 void testSymbolizerProperty();
 void testBuiltinParameters();
+void testLineAnchors();
 
 int main() {
     testLayerConfig();
@@ -34,6 +35,7 @@ int main() {
     testAnchorLabelId();
     testSymbolizerProperty();
     testBuiltinParameters();
+    testLineAnchors();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

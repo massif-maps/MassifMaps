@@ -88,6 +88,27 @@ def from_zoom(expr, z):
     return expr[:3] + [z - 1, 0] + [x for stop in stops for x in stop]
 
 
+# Standard's text-occlusion-opacity: what a label keeps while a 3D building hides its anchor. Line and
+# natural labels go (0), numbers on a road stay faint (0.1); POIs and places keep the layer default.
+OCCLUSION = [(('road-label', 'path-label', 'track-label', 'waterway-label', 'stream-label', 'water-name',
+               'peak', 'contour-label', 'landcover-label', 'park-label', 'housenumber'), 0),
+             (('road-shield', 'road-exit-shield', 'trail-t'), 0.1)]
+
+
+def occlusion(lay):
+    """the OCCLUSION opacity of a symbol layer, SDK-only (maplibre has no such property)"""
+    if lay['type'] != 'symbol':
+        return lay
+    for prefixes, value in OCCLUSION:
+        if lay['id'].startswith(prefixes):
+            meta = lay.setdefault('metadata', {})
+            meta['massif:paint'] = {**meta.get('massif:paint', {}), 'text-occlusion-opacity': value}
+            if 'icon-image' in lay.get('layout', {}):
+                meta['massif:paint']['icon-occlusion-opacity'] = value
+            break
+    return lay
+
+
 def gate(lay, v, name, value=1):
     """Draw a layer only while parameter `name` is `value`. The SDK tests it per tile; MapLibre,
     which has no config in a filter, draws the layer if the variant's default is that value."""

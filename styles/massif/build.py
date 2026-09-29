@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from layers import boundaries, buildings, imagery, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
-from lib import FONTS  # noqa: E402
+from lib import FONTS, occlusion  # noqa: E402
 from params import PARAMS  # noqa: E402
 import legend  # noqa: E402
 
@@ -39,15 +39,15 @@ class Variant:
         self.flags = flags
 
     def layers(self):
-        out = [lay for part in self.parts for lay in part(self)]
-        if self.flags.get('mono'):
-            # a page lit by nothing: at any hour white stays white, so a road never reads whiter
-            # than the ground it crosses
-            for lay in out:
-                paint = lay.get('metadata', {}).get('massif:paint')
-                if paint:
-                    lay['metadata'] = {**lay['metadata'], 'massif:paint': {
-                        k: 1 if k.endswith('-emissive-strength') else v for k, v in paint.items()}}
+        out = [occlusion(lay) for part in self.parts for lay in part(self)]
+        # `lighting` 0 (e-ink, a flat OSM look): every colour as stated, lit by nothing, so white
+        # stays white and a road never reads whiter than the ground it crosses
+        for lay in out:
+            paint = lay.get('metadata', {}).get('massif:paint')
+            if paint:
+                lay['metadata'] = {**lay['metadata'], 'massif:paint': {
+                    k: ['match', ['config', 'lighting'], 0, 1, v] if k.endswith('-emissive-strength') else v
+                    for k, v in paint.items()}}
         return out
 
 
@@ -92,7 +92,7 @@ VARIANTS = {v.name: v for v in [
             trails=True),
     Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS, trails=True),
     Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite',), dark_ground=True),
-    Variant('eink', 'Massif E-ink', EINK, sources=('contours',), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1},
+    Variant('eink', 'Massif E-ink', EINK, sources=('contours',), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1, 'lighting': 0},
             mono=True, trails=True),
 ]}
 

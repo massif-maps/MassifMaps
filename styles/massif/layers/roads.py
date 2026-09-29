@@ -54,13 +54,17 @@ def fill_color(c):
     # ground's lightness would vanish without its casing
     low = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
            c['road-low']]
-    return ['step', ['zoom'], low, 14,
-            ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
-             ['secondary', 'tertiary'], c.get('secondary', c['road']), c['road']]]
+    high = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
+            ['secondary', 'tertiary'], c.get('secondary', c['road']), c['road']]
+    z = c.get('casing-from', 14)
+    # e-ink fades the grey to white as the casing grows, rather than flipping a dark road at z14
+    return ['interpolate', ['linear'], ['zoom'], z - 1, low, z, high] if c.get('casing-low') else ['step', ['zoom'], low, z, high]
 
 
 def case_color(c, key='case'):
-    return ['match', get('class'), 'motorway', c['motorway-' + key], 'trunk', c['trunk-' + key], c['road-' + key]]
+    per_class = [] if key != 'case' else ['primary', c['primary-case'], ['secondary', 'tertiary'], c['secondary-case']]
+    return ['match', get('class'), 'motorway', c['motorway-' + key], 'trunk', c['trunk-' + key], *per_class,
+            c['road-' + key]]
 
 
 def major_only_below(expr, z):
@@ -92,7 +96,8 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     case_layout = {**layout, 'line-cap': case_cap} if case_cap else layout
     # e-ink orders the major roads by the weight of their outline, having no colour to do it with; the
     # small ones stay uncased below z14 as elsewhere, a grey line rather than a heavy double one
-    casing = scaled(major_only_below(casing, 14) if c.get('casing-low') else from_zoom(casing, 14), c.get('casing-scale', 1))
+    casing = scaled(major_only_below(casing, c.get('casing-from', 14)) if c.get('casing-low') else from_zoom(casing, 14),
+                    c.get('casing-scale', 1))
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:
         case_paint['line-dasharray'] = dash
@@ -138,10 +143,11 @@ def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
 def cycleway(c, brunnel_test, prefix=''):
     """Standard's cycleway: a green dash laid over the roads, since a cycle track so often runs
     beside one and would otherwise vanish under its casing."""
-    return [layer(prefix + 'cycleway', 'line', 'transportation', minzoom=15,
+    # from z13, where a city's cycle network starts to matter (Standard waits for z15)
+    return [layer(prefix + 'cycleway', 'line', 'transportation', minzoom=13,
                   filter=['all', ['==', get('class'), 'path'], ['==', get('subclass'), 'cycleway'], brunnel_test],
-                  paint={'line-color': c['cycleway'], 'line-width': zoom_ramp(12, 0, 18, 2, 22, 20),
-                         'line-opacity': zoom_ramp(15, 0, 16, 1),
+                  paint={'line-color': c['cycleway'], 'line-width': zoom_ramp(13, 0.8, 18, 2, 22, 20),
+                         'line-opacity': zoom_ramp(13, 0, 13.5, 1),
                          'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 16, ['literal', [1, 1]]]},
                   emissive=0.6)]
 

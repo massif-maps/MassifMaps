@@ -19,6 +19,7 @@ PARAMS = {
     'show_caravan_site': {'default': 1, 'values': SWITCH},
     'campsite_allow_overlap': {'default': 0, 'values': SWITCH},
     'polygons_border': {'default': 0, 'values': SWITCH},
+    'lighting': {'default': 1, 'values': SWITCH},
     'sac_scale_labels': {'default': 0, 'values': SWITCH},
     'track_min_zoom': {'default': 12},
     'path_min_zoom': {'default': 12},

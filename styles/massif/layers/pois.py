@@ -190,7 +190,7 @@ CATEGORY_LAYERS = [
     ('poi-public', 15, ['atm', 'bank', 'cinema', 'embassy', 'fire_station', 'information', 'library', 'music',
                         'police', 'post', 'prison', 'theatre', 'town_hall']),
     ('poi-worship', 15, ['place_of_worship']),
-    ('poi-education', 15, ['college', 'school']),
+    ('poi-education', 15, ['college', 'school']),  # but a kindergarten: see kindergarten()
     ('poi-health', 14, ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary']),
     ('poi-transit', 13, ['aerialway', 'ferry', 'harbor', 'lighthouse', 'railway', 'railway_light', 'railway_metro']),
     ('poi-airport', 12, ['airfield', 'airport', 'heliport']),
@@ -358,6 +358,13 @@ def campsites(v):
     return out
 
 
+def kindergarten(v):
+    """a kindergarten in the parks' green rather than a school's brown; OpenMapTiles files it under
+    school, so it is its own layer the way a viewpoint is"""
+    return [poi_layer('poi-kindergarten', 15, ['==', get('subclass'), 'kindergarten'], 'category', v,
+                      category='park_like')]
+
+
 def water_highlight(v):
     """`highlight_drinking_water`, Alpimaps': water points larger and never hidden by another label"""
     lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], None, v,
@@ -369,9 +376,10 @@ def water_highlight(v):
 def layers(v):
     return ([poi_layer(id, minzoom, filter, 'rank', v) for id, minzoom, filter in RANK_LAYERS] + campsites(v) +
             [poi_layer(id, minzoom, ['all', ['in', get('class'), ['literal', classes]],
-                                     *([['!=', get('subclass'), 'viewpoint']] if 'attraction' in classes else [])],
+                                     *([['!=', get('subclass'), 'viewpoint']] if 'attraction' in classes else []),
+                                     *([['!=', get('subclass'), 'kindergarten']] if 'school' in classes else [])],
                        'category', v, text=shelter_text(id))
-             for id, minzoom, classes in CATEGORY_LAYERS] + water_highlight(v))
+             for id, minzoom, classes in CATEGORY_LAYERS] + kindergarten(v) + water_highlight(v))
 
 
 def write_sprite_palette(path):

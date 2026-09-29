@@ -19,6 +19,7 @@
       "show_caravan_site",
       "campsite_allow_overlap",
       "polygons_border",
+      "lighting",
       "sac_scale_labels",
       "track_min_zoom",
       "path_min_zoom",
@@ -61,7 +62,28 @@
       },
       "metadata": {
         "massif:paint": {
-          "background-emissive-strength": 1
+          "background-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "zoom"
+              ],
+              13,
+              0.1,
+              14,
+              0.25
+            ]
+          ]
         }
       }
     },
@@ -98,7 +120,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -135,7 +166,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -172,7 +212,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -209,7 +258,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -246,7 +304,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -283,7 +350,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -320,7 +396,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -357,7 +442,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -394,7 +488,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -431,7 +534,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -475,7 +587,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -517,7 +638,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -563,7 +693,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -644,7 +783,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -716,7 +864,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -788,7 +945,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -857,7 +1023,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -929,7 +1104,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -997,7 +1181,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -1072,7 +1265,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -1129,7 +1331,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -1209,7 +1420,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -1242,7 +1462,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.2
+          ]
         }
       }
     },
@@ -1285,7 +1514,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1332,7 +1570,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1379,7 +1626,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1421,7 +1677,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1467,7 +1732,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1540,7 +1814,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1611,7 +1894,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1655,7 +1947,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1701,7 +2002,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1820,7 +2130,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -1849,7 +2168,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.15
+          ]
         }
       }
     },
@@ -1885,7 +2213,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.15
+          ]
         }
       }
     },
@@ -1946,6 +2283,34 @@
             3.3,
             2.6
           ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            4.1,
+            3.1
+          ],
+          16,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            6.0,
+            4.1
+          ],
           20,
           [
             "match",
@@ -1958,7 +2323,7 @@
               "canal"
             ],
             10.5,
-            5.5
+            6.5
           ]
         ]
       }
@@ -2031,6 +2396,34 @@
             0.8,
             0.1
           ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            1.6,
+            0.6
+          ],
+          16,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            3.5,
+            1.6
+          ],
           20,
           [
             "match",
@@ -2043,7 +2436,7 @@
               "canal"
             ],
             8,
-            3
+            4
           ]
         ],
         "line-opacity": [
@@ -2129,6 +2522,34 @@
             0.8,
             0.1
           ],
+          12,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            1.6,
+            0.6
+          ],
+          16,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            3.5,
+            1.6
+          ],
           20,
           [
             "match",
@@ -2141,7 +2562,7 @@
               "canal"
             ],
             8,
-            3
+            4
           ]
         ],
         "line-dasharray": [
@@ -2183,7 +2604,28 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "interpolate",
+              [
+                "linear"
+              ],
+              [
+                "zoom"
+              ],
+              5,
+              0.1,
+              7,
+              0
+            ]
+          ]
         }
       }
     },
@@ -2267,7 +2709,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 1
+          "fill-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.15
+          ]
         }
       }
     },
@@ -2334,7 +2785,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.5
+          ]
         }
       }
     },
@@ -2517,7 +2977,16 @@
               ]
             ]
           ],
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.3
+          ]
         }
       }
     },
@@ -2593,7 +3062,16 @@
               ]
             ]
           ],
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.3
+          ]
         }
       }
     },
@@ -2742,7 +3220,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.15
+          ]
         }
       }
     },
@@ -2841,7 +3328,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -2930,7 +3426,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -3005,6 +3510,13 @@
           "hsl(0, 0%, 0%)",
           "trunk",
           "hsl(0, 0%, 0%)",
+          "primary",
+          "hsl(0, 0%, 30%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(0, 0%, 30%)",
           "hsl(0, 0%, 30%)"
         ],
         "line-gap-width": [
@@ -3234,21 +3746,6 @@
             1.4400000000000002,
             0.0
           ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            1.4400000000000002,
-            "trunk",
-            1.4400000000000002,
-            "primary",
-            1.4400000000000002,
-            0.0
-          ],
           14,
           [
             "match",
@@ -3274,7 +3771,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0
+          ]
         }
       }
     },
@@ -3340,10 +3846,14 @@
       },
       "paint": {
         "line-color": [
-          "step",
+          "interpolate",
+          [
+            "linear"
+          ],
           [
             "zoom"
           ],
+          12,
           [
             "match",
             [
@@ -3358,7 +3868,7 @@
             "hsl(0, 0%, 100%)",
             "hsl(0, 0%, 68%)"
           ],
-          14,
+          13,
           [
             "match",
             [
@@ -3526,7 +4036,28 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "motorway",
+                "trunk"
+              ],
+              0.6,
+              0.4
+            ]
+          ]
         }
       }
     },
@@ -3624,7 +4155,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.15
+          ]
         }
       }
     },
@@ -3742,7 +4282,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -3840,7 +4389,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -4006,7 +4564,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4098,7 +4665,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4179,7 +4755,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4260,7 +4845,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4341,7 +4935,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4422,7 +5025,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4503,7 +5115,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4584,7 +5205,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4665,7 +5295,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4746,7 +5385,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4827,7 +5475,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -4908,7 +5565,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -5046,7 +5712,16 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -5126,7 +5801,16 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -5206,7 +5890,16 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -5286,7 +5979,16 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -5366,7 +6068,16 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -5439,7 +6150,16 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -5519,7 +6239,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -5600,7 +6329,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -5681,7 +6419,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -5766,7 +6513,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -5817,7 +6573,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -5885,7 +6650,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -5964,7 +6738,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -6056,6 +6839,13 @@
           "hsl(0, 0%, 0%)",
           "trunk",
           "hsl(0, 0%, 0%)",
+          "primary",
+          "hsl(0, 0%, 30%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(0, 0%, 30%)",
           "hsl(0, 0%, 30%)"
         ],
         "line-gap-width": [
@@ -6134,21 +6924,6 @@
             0.9,
             0.0
           ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            0.9,
-            "trunk",
-            0.9,
-            "primary",
-            0.9,
-            0.0
-          ],
           14,
           1.4400000000000002,
           22,
@@ -6157,7 +6932,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0
+          ]
         }
       }
     },
@@ -6240,10 +7024,14 @@
       },
       "paint": {
         "line-color": [
-          "step",
+          "interpolate",
+          [
+            "linear"
+          ],
           [
             "zoom"
           ],
+          12,
           [
             "match",
             [
@@ -6258,7 +7046,7 @@
             "hsl(0, 0%, 100%)",
             "hsl(0, 0%, 68%)"
           ],
-          14,
+          13,
           [
             "match",
             [
@@ -6334,7 +7122,28 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "motorway",
+                "trunk"
+              ],
+              0.6,
+              0.4
+            ]
+          ]
         }
       }
     },
@@ -6426,6 +7235,13 @@
           "hsl(0, 0%, 0%)",
           "trunk",
           "hsl(0, 0%, 0%)",
+          "primary",
+          "hsl(0, 0%, 30%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(0, 0%, 30%)",
           "hsl(0, 0%, 30%)"
         ],
         "line-gap-width": [
@@ -6655,21 +7471,6 @@
             1.4400000000000002,
             0.0
           ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            1.4400000000000002,
-            "trunk",
-            1.4400000000000002,
-            "primary",
-            1.4400000000000002,
-            0.0
-          ],
           14,
           [
             "match",
@@ -6691,7 +7492,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0
+          ]
         }
       }
     },
@@ -6774,10 +7584,14 @@
       },
       "paint": {
         "line-color": [
-          "step",
+          "interpolate",
+          [
+            "linear"
+          ],
           [
             "zoom"
           ],
+          12,
           [
             "match",
             [
@@ -6792,7 +7606,7 @@
             "hsl(0, 0%, 100%)",
             "hsl(0, 0%, 68%)"
           ],
-          14,
+          13,
           [
             "match",
             [
@@ -6959,7 +7773,28 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "motorway",
+                "trunk"
+              ],
+              0.6,
+              0.4
+            ]
+          ]
         }
       }
     },
@@ -7286,7 +8121,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -7613,7 +8457,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -7622,7 +8475,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 15,
+      "minzoom": 13,
       "filter": [
         "all",
         [
@@ -7669,8 +8522,8 @@
           [
             "zoom"
           ],
-          12,
-          0,
+          13,
+          0.8,
           18,
           2,
           22,
@@ -7684,9 +8537,9 @@
           [
             "zoom"
           ],
-          15,
+          13,
           0,
-          16,
+          13.5,
           1
         ],
         "line-dasharray": [
@@ -7713,7 +8566,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.6
+          ]
         }
       }
     },
@@ -7773,7 +8635,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.4
+          ]
         }
       }
     },
@@ -7847,7 +8718,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "icon-emissive-strength": 1
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         }
       }
     },
@@ -7921,7 +8801,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "icon-emissive-strength": 1
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         }
       }
     },
@@ -8006,7 +8895,16 @@
           1
         ],
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.5
+          ]
         }
       }
     },
@@ -8539,7 +9437,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.15
+          ]
         }
       }
     },
@@ -8638,7 +9545,16 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -8727,7 +9643,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.25
+          ]
         }
       }
     },
@@ -8971,21 +9896,6 @@
             1.4400000000000002,
             0.0
           ],
-          13,
-          [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            "motorway",
-            1.4400000000000002,
-            "trunk",
-            1.4400000000000002,
-            "primary",
-            1.4400000000000002,
-            0.0
-          ],
           14,
           2.16,
           22,
@@ -8994,7 +9904,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0
+          ]
         }
       }
     },
@@ -9060,10 +9979,14 @@
       },
       "paint": {
         "line-color": [
-          "step",
+          "interpolate",
+          [
+            "linear"
+          ],
           [
             "zoom"
           ],
+          12,
           [
             "match",
             [
@@ -9078,7 +10001,7 @@
             "hsl(0, 0%, 100%)",
             "hsl(0, 0%, 68%)"
           ],
-          14,
+          13,
           [
             "match",
             [
@@ -9245,7 +10168,28 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            [
+              "match",
+              [
+                "get",
+                "class"
+              ],
+              [
+                "motorway",
+                "trunk"
+              ],
+              0.6,
+              0.4
+            ]
+          ]
         }
       }
     },
@@ -9254,7 +10198,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 15,
+      "minzoom": 13,
       "filter": [
         "all",
         [
@@ -9292,8 +10236,8 @@
           [
             "zoom"
           ],
-          12,
-          0,
+          13,
+          0.8,
           18,
           2,
           22,
@@ -9307,9 +10251,9 @@
           [
             "zoom"
           ],
-          15,
+          13,
           0,
-          16,
+          13.5,
           1
         ],
         "line-dasharray": [
@@ -9336,7 +10280,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.6
+          ]
         }
       }
     },
@@ -9940,7 +10893,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.5
+          ]
         }
       }
     },
@@ -9981,7 +10943,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         }
       }
     },
@@ -10040,7 +11011,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.3
+          ]
         }
       }
     },
@@ -10104,7 +11084,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.3
+          ]
         }
       }
     },
@@ -10276,7 +11265,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.5
+          ]
         },
         "massif:filter": [
           "all",
@@ -10384,7 +11382,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.5
+          ]
         },
         "massif:filter": [
           "all",
@@ -10464,7 +11471,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:filter": [
           "==",
@@ -10555,7 +11571,16 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 1
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.8
+          ]
         },
         "massif:filter": [
           "==",
@@ -10579,11 +11604,74 @@
       "source": "openmaptiles",
       "source-layer": "building",
       "minzoom": 14,
+      "maxzoom": 15,
       "paint": {
         "fill-color": "hsl(0, 0%, 90%)",
         "fill-outline-color": "hsl(0, 0%, 40%)"
       },
       "metadata": {
+        "massif:minzoom-param": "building_min_zoom"
+      }
+    },
+    {
+      "id": "building-3d",
+      "type": "fill-extrusion",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-extrusion-color": "hsl(0, 0%, 90%)",
+        "fill-extrusion-height": [
+          "coalesce",
+          [
+            "get",
+            "render_height"
+          ],
+          5
+        ],
+        "fill-extrusion-base": [
+          "coalesce",
+          [
+            "get",
+            "render_min_height"
+          ],
+          0
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "fill-extrusion-opacity": 0.5,
+          "fill-extrusion-vertical-scale": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            15,
+            0,
+            15.3,
+            1
+          ],
+          "fill-extrusion-ambient-occlusion-intensity": 0.15,
+          "fill-extrusion-ambient-occlusion-ground-radius": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            17,
+            0,
+            17.8,
+            8
+          ]
+        },
+        "massif:layout": {
+          "fill-extrusion-edge-radius": 0.4
+        },
         "massif:minzoom-param": "building_min_zoom"
       }
     },
@@ -10663,7 +11751,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -10757,8 +11846,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -10831,8 +11938,27 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -10935,8 +12061,27 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11042,8 +12187,27 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11131,8 +12295,27 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11255,8 +12438,27 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11341,8 +12543,27 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11411,8 +12632,27 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11547,8 +12787,28 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0,
+          "icon-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11659,8 +12919,28 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "text-occlusion-opacity": 0,
+          "icon-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11742,8 +13022,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -11841,7 +13139,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -11914,7 +13213,11 @@
             "road_shields"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -11997,7 +13300,11 @@
             "road_shields"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -12115,7 +13422,11 @@
             "road_shields"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -12223,7 +13534,11 @@
             "road_shields"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -12306,7 +13621,11 @@
             "road_shields"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -12389,7 +13708,11 @@
             "road_shields"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -12503,7 +13826,11 @@
             "road_shields"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -18876,6 +20203,14 @@
               "school"
             ]
           ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "subclass"
+          ],
+          "kindergarten"
         ]
       ],
       "layout": {
@@ -19737,6 +21072,215 @@
       }
     },
     {
+      "id": "poi-kindergarten",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "==",
+        [
+          "get",
+          "subclass"
+        ],
+        "kindergarten"
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 1.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "bench",
+                    "drinking_water",
+                    "garden",
+                    "picnic_site",
+                    "shelter",
+                    "telephone",
+                    "toilets",
+                    "tree",
+                    "waste_basket"
+                  ],
+                  "transparent",
+                  "hsl(0, 0%, 100%)"
+                ],
+                "background-stroke": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "bench",
+                    "drinking_water",
+                    "garden",
+                    "picnic_site",
+                    "shelter",
+                    "telephone",
+                    "toilets",
+                    "tree",
+                    "waste_basket"
+                  ],
+                  "transparent",
+                  "hsl(0, 0%, 0%)"
+                ],
+                "icon": "hsl(0, 0%, 0%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
+        },
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "poiRanking"
+          ],
+          "category"
+        ],
+        "massif:paint": {
+          "text-color": "hsl(0, 0%, 0%)",
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 5%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ]
+        }
+      }
+    },
+    {
       "id": "poi-water-highlight",
       "type": "symbol",
       "source": "openmaptiles",
@@ -20021,7 +21565,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20094,7 +21642,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20167,7 +21719,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20240,7 +21796,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20313,7 +21873,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20386,7 +21950,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20459,7 +22027,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20532,7 +22104,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20605,7 +22181,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20678,7 +22258,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20751,7 +22335,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20824,7 +22412,11 @@
             "sac_scale_labels"
           ],
           1
-        ]
+        ],
+        "massif:paint": {
+          "text-occlusion-opacity": 0.1,
+          "icon-occlusion-opacity": 0.1
+        }
       }
     },
     {
@@ -20912,7 +22504,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -21006,7 +22599,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -21103,7 +22697,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -21200,7 +22795,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -21297,7 +22893,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -21395,7 +22992,8 @@
             "hsl(0, 0%, 100%)",
             0.3,
             "hsl(0, 0%, 100%)"
-          ]
+          ],
+          "text-occlusion-opacity": 0
         },
         "massif:layout": {
           "text-font": [
@@ -21491,8 +23089,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -21589,8 +23205,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -21686,8 +23320,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -21781,8 +23433,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -21878,8 +23548,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -21975,8 +23663,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -22088,8 +23794,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -22185,8 +23909,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -22300,8 +24042,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -22399,8 +24159,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -22507,8 +24285,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -22615,8 +24411,26 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "text-emissive-strength": 1,
-          "icon-emissive-strength": 1
+          "text-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ],
+          "icon-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            1
+          ]
         },
         "massif:layout": {
           "text-font": [
@@ -22712,6 +24526,13 @@
     },
     "polygons_border": {
       "default": 1,
+      "values": [
+        0,
+        1
+      ]
+    },
+    "lighting": {
+      "default": 0,
       "values": [
         0,
         1

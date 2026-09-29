@@ -1,8 +1,11 @@
 from lib import by_hour, get, in_class, layer, padded, zoom_ramp
 
+# Standard's, with the streams wider from z12: at its 0.5 px at z14 a stream could not be found
 WIDTH = zoom_ramp(8, ['match', get('class'), ['river', 'canal'], 0.5, 0],
                   9, ['match', get('class'), ['river', 'canal'], 0.8, 0.1],
-                  20, ['match', get('class'), ['river', 'canal'], 8, 3], base=1.3)
+                  12, ['match', get('class'), ['river', 'canal'], 1.6, 0.6],
+                  16, ['match', get('class'), ['river', 'canal'], 3.5, 1.6],
+                  20, ['match', get('class'), ['river', 'canal'], 8, 4], base=1.3)
 
 
 def layers(v):

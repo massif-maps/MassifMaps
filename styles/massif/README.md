@@ -136,8 +136,8 @@ night value equals the day one. What colour says elsewhere is said here by textu
   id (`landcover-wood-pattern`), e-ink only.
 - **Ground stays white.** A class's flat grey fills only below the zoom its pattern starts, then
   hands over to the pattern alone; landuse (residential, commercial, schools...) is white too,
-  told by its edge. Nothing on the page is lit: every emissive strength is 1, so white stays white at
-  any hour and a road never reads whiter than the ground it crosses.
+  told by its edge. Nothing on the page is lit (`lighting` 0: every emissive strength is 1), so white
+  stays white at any hour and a road never reads whiter than the ground it crosses.
 - **Every landcover and landuse polygon is edged**, landcover dotted as Swisstopo and IGN edge a
   wood, so a clearing shows and the edge is not read as a contour.
 - **Water is Alpimaps' e-ink water**: openstreetmap-carto's wetland dashes, darker than a wetland's,
@@ -145,11 +145,13 @@ night value equals the day one. What colour says elsewhere is said here by textu
   Rivers and streams are dashed grey lines on a pale bed (`waterway-mono-bed`, from z12), where a
   track's dashes run on nothing; intermittent ones dotted.
 - **Roads** are white with black casings, their hierarchy carried by the casing's weight
-  (`casing-scale` 1.8). Below z14 only motorways, trunks and primaries keep a casing; the small
-  roads are an uncased light grey line at the other variants' width. **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
+  (`casing-scale` 1.8). Below z13 only motorways, trunks and primaries keep a casing; the small
+  roads are an uncased light grey line at the other variants' width, fading to white over z12-13 as
+  their casing grows (`casing-from`). **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood.
 - **Shields** are one white plate with a black ring, for every country.
-- **Buildings** are flat grey footprints with an outline at every zoom - no extrusion.
+- **Buildings** are outlined grey footprints to z15, then half-clear 3D blocks whose walls the
+  lighting shades, so a street still reads through them.
 - **POIs** are a black glyph on a white disc with a black ring, the same for every category; the
   MapLibre style names the neutral sprite rather than the colour-baked one.
 
@@ -205,6 +207,8 @@ Switches (0/1):
 - `show_caravan_site` (1), `campsite_allow_overlap` (0) — each campsite layer comes twice, with and
   without overlap, since overlap is decided per layer.
 - `polygons_border` (0; 1 on e-ink) — every landcover (dotted) and landuse polygon edged.
+- `lighting` (1; 0 on e-ink) — 0 draws every colour as stated, lit by no hour: a flat page, the
+  OSM example's look.
 - `sac_scale_labels` (0; 1 on e-ink) — the SAC grade (T1..T6) on a small plate along each trail
   from z14, where a dash alone is hard to read. A path with no `sac_scale` gets none.
 
@@ -474,9 +478,10 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
   (`['param::highlight_cycleways' = 1]`). `styles` does not merge: it is restated whole.
 
 [`examples/osm/`](examples/osm/) re-skins the family with OpenStreetMap Carto's colours as
-Alpimaps' OSM style has them (`?project=osm`): the palette redeclared, Massif's widths kept, and
-the tracks replaced - `track_min_zoom: 24` moves Massif's out of reach and `osm-rules.mss` draws them
-brown and dashed by tracktype, the OSM way. A layer is replaced that way, not by restating its rules.
+Alpimaps' OSM style has them (`?project=osm`): the palette redeclared (each road class its own casing,
+footways red), Massif's widths kept, POIs as bare glyphs (`poiStyle: plain`), nothing lit
+(`lighting: 0`), buildings from z15, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
+reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

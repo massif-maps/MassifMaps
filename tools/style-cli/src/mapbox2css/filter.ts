@@ -30,6 +30,9 @@ export function translateFilter(filter: Json): string[] {
         return filter.slice(1).flatMap((sub) => translateFilter(sub as Json));
     }
 
+    const zoomParam = translateZoomParameter(filter as Json[]);
+    if (zoomParam !== null) return [zoomParam];
+
     const bracketed = translateBracketed(filter as Json[]);
     if (bracketed !== null) return [bracketed];
 
@@ -37,6 +40,19 @@ export function translateFilter(filter: Json): string[] {
     // its grip on the rule. The positive set test is a disjunction and has no bracketed form.
     const excluded = translateExcluded(filter);
     return excluded ?? [`when(${filterExpression(filter)})`];
+}
+
+/**
+ * `["zoom"]` against a live config: a zoom threshold an app sets, as `[zoom >= 'param::name']` - a
+ * selector the decoder prunes per tile, where the expression form was a when() read per feature.
+ * Only when the two zooms agree (512 px tiles): the selector has no room for an offset.
+ */
+function translateZoomParameter(filter: Json[]): string | null {
+    const [head, zoom, config] = filter;
+    if (filter.length !== 3 || typeof head !== 'string' || !['>=', '>', '<', '<='].includes(head)) return null;
+    if (!Array.isArray(zoom) || zoom.length !== 1 || zoom[0] !== 'zoom') return null;
+    if (!Array.isArray(config) || config[0] !== 'config' || typeof config[1] !== 'string') return null;
+    return zoomOffsetLevels() === 0 ? `[zoom ${head} 'param::${config[1]}']` : null;
 }
 
 function translateExcluded(filter: Json): string[] | null {

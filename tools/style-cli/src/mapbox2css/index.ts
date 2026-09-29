@@ -1,7 +1,7 @@
 import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteContourFilter } from './contour.js';
 import { foldCasings } from './casing.js';
 import { Coverage } from './coverage.js';
-import { Untranslatable, expandTokens, setTileDrawSize, translateExpression, zoomInput } from './expression.js';
+import { Untranslatable, expandTokens, setTileDrawSize, translateExpression, zoomInput, zoomOffsetLevels } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
@@ -731,8 +731,15 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             }
             const buildings = buildingPredicate(symbolizer, sourceLayer, buildings3D.get(layer.id) === 'flat');
             if (buildings) usesBuildings = true;
+            // `massif:minzoom-param`: the zoom this layer starts at is a parameter an app sets. Only the
+            // band starting at its default takes it; a later band keeps its own bound.
+            const minParam = (layer.metadata as Record<string, Json> | undefined)?.['massif:minzoom-param'];
+            const minDefault = typeof minParam === 'string' ? Number(parameters.get(minParam)?.default) : NaN;
+            const paramStart = typeof minParam === 'string' && zoomOffsetLevels() === 0
+                && typeof layer.minzoom === 'number' && Math.floor(layer.minzoom) === minDefault;
             const predicates = [
-                ...zoomPredicates(layer.minzoom, layer.maxzoom),
+                ...(paramStart ? [`[zoom >= 'param::${minParam}']`, ...zoomPredicates(undefined, layer.maxzoom)]
+                    : zoomPredicates(layer.minzoom, layer.maxzoom)),
                 ...(buildings ? [buildings] : []),
                 ...translateFilter(filter),
             ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));

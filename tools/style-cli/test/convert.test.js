@@ -441,3 +441,21 @@ test('a property the style does not ask for keeps its ternary', () => {
     assert.match(mss, /text-fill: \(\(\[class\] = 'bus'\) \? #2e5a80 : #666666\);/);
     assert.equal(styleParams.size, 0);
 });
+
+test('a zoom an app sets is a selector on a parameter, not a when() per feature', () => {
+    const styleParams = new Map();
+    const layer = (metadata) => ({ id: 'track', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
+        minzoom: 12, filter: ['==', ['get', 'class'], 'track'], metadata, paint: { 'line-color': '#000000' } });
+    const convertWith = (metadata) => convert({ metadata: { 'massif:live-config': ['track_min_zoom'] },
+        schema: { track_min_zoom: { default: 12 } }, layers: [layer(metadata)] },
+        table, { ...NO_PALETTE, styleParams, tileDrawSize: 512 }).mss;
+
+    // massif:minzoom-param replaces the layer's own start, which stays maplibre's minzoom
+    const own = convertWith({ 'massif:minzoom-param': 'track_min_zoom' });
+    assert.match(own, /#transportation\[zoom >= 'param::track_min_zoom'\]\[class = 'track'\]::track/);
+    assert.equal(styleParams.get('track_min_zoom'), 12);
+    // and a zoom compared with a config in a filter brackets the same way
+    const filtered = convertWith({ 'massif:filter': ['>=', ['zoom'], ['config', 'track_min_zoom']] });
+    assert.match(filtered, /\[zoom >= 'param::track_min_zoom'\]/);
+    assert.doesNotMatch(filtered, /when\(/);
+});

@@ -466,6 +466,16 @@ style is unaffected: it states these in `paint`, where they are legal for it.
 `massif:filter` is the same hatch for a TEST maplibre refuses. It is ANDed onto the layer's own
 filter, and the one test that needs it is a live config — see below.
 
+`massif:minzoom-param` names a live config that holds the zoom a layer STARTS at, for an app to
+move (Alpimaps shows tracks from 13). The layer's `minzoom` stays maplibre's and is the parameter's
+default; the band of the layer that starts there becomes `[zoom >= 'param::track_min_zoom']`, a
+selector the decoder prunes per tile. A later zoom band keeps its own bound. A filter comparing
+`["zoom"]` with `["config", …]` brackets the same way; both need 512 px tiles (no zoom offset), and
+were a `when()` over `[view::zoom]`, read per feature, before.
+
+`massif:palette-names` (style metadata, name → literal) names the hoisted variables after the
+style's own palette, so an override file writes `@motorway` — see *Hoisting* below.
+
 ### A config the style keeps LIVE, and a filter that reads it
 
 Every `["config", name]` is normally folded to a constant before translation (see *Standard's

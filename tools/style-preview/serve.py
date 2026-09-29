@@ -12,6 +12,106 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
+def _varint(buf, i):
+    value = shift = 0
+    while True:
+        byte = buf[i]
+        i += 1
+        value |= (byte & 0x7F) << shift
+        shift += 7
+        if not byte & 0x80:
+            return value, i
+
+
+def _fields(buf):
+    """(tag, wire type, value, the field's raw bytes) of each field of a message"""
+    i = 0
+    while i < len(buf):
+        start = i
+        key, i = _varint(buf, i)
+        wire = key & 7
+        if wire == 0:
+            value, i = _varint(buf, i)
+        elif wire == 2:
+            length, i = _varint(buf, i)
+            value, i = buf[i:i + length], i + length
+        else:
+            value, i = None, i + (8 if wire == 1 else 4)
+        yield key >> 3, wire, value, buf[start:i]
+
+
+def _put_varint(value):
+    out = bytearray()
+    while value >= 0x80:
+        out.append((value & 0x7F) | 0x80)
+        value >>= 7
+    out.append(value)
+    return bytes(out)
+
+
+def _put_bytes(tag, data):
+    return _put_varint(tag << 3 | 2) + _put_varint(len(data)) + data
+
+
+def _shift_geometry(buf, dx, dy, lo, hi):
+    """the geometry moved by (-dx, -dy), None when it misses [lo, hi]; only the first MoveTo moves"""
+    values, i = [], 0
+    while i < len(buf):
+        v, i = _varint(buf, i)
+        values.append(v)
+    x, y, i, box = -dx, -dy, 0, None
+    while i < len(values):
+        command, count = values[i] & 7, values[i] >> 3
+        i += 1
+        for _ in range(count if command != 7 else 0):
+            if i + 1 >= len(values):
+                break
+            x += (values[i] >> 1) ^ -(values[i] & 1)
+            y += (values[i + 1] >> 1) ^ -(values[i + 1] & 1)
+            if box is None:
+                values[i], values[i + 1] = (x << 1) ^ (x >> 63), (y << 1) ^ (y >> 63)
+                box = [x, y, x, y]
+            box = [min(box[0], x), min(box[1], y), max(box[2], x), max(box[3], y)]
+            i += 2
+    if box is None or box[2] < lo or box[0] > hi or box[3] < lo or box[1] > hi:
+        return None
+    return b"".join(_put_varint(v & 0xFFFFFFFFFFFFFFFF) for v in values)
+
+
+def subtile(data, dz, x, y):
+    """the child tile (x, y) dz zooms under a tile, as MergedMBVTTileDataSource cuts it (MBVTSubtile.h)"""
+    out = b""
+    for tag, wire, layer, raw in _fields(data):
+        if tag != 3 or wire != 2:
+            out += raw
+            continue
+        extent = next((v for t, w, v, _ in _fields(layer) if t == 5 and w == 0), 4096)
+        if extent % (1 << dz):
+            return None
+        child = extent >> dz
+        mask = (1 << dz) - 1
+        dx, dy = (x & mask) * child, (y & mask) * child
+        kept = b""
+        for t, w, value, field in _fields(layer):
+            if t == 5:
+                continue
+            if t != 2 or w != 2:
+                kept += field
+                continue
+            feature, keep = b"", False
+            for ft, fw, fv, fraw in _fields(value):
+                if ft == 4 and fw == 2:
+                    geometry = _shift_geometry(fv, dx, dy, -child // 8, child + child // 8)
+                    keep = geometry is not None
+                    feature += _put_bytes(4, geometry or b"")
+                else:
+                    feature += fraw
+            if keep:
+                kept += _put_bytes(2, feature)
+        out += _put_bytes(3, kept + _put_varint(5 << 3) + _put_varint(child))
+    return out
+
+
 class Tileset:
     """One archive, or several joined with `+`: an MVT is a list of layers, so the tiles of two
     archives concatenated are one tile carrying both - what MergedMBVTTileDataSource does on a device."""
@@ -22,8 +122,10 @@ class Tileset:
         self.local = threading.local()
         meta = dict(self._db(0).execute("select name, value from metadata").fetchall())
         layers = []
+        self.maxzooms = []
         for i in range(len(self.paths)):
             other = dict(self._db(i).execute("select name, value from metadata").fetchall())
+            self.maxzooms.append(int(other.get("maxzoom", 14)))
             layers += json.loads(other.get("json", "{}")).get("vector_layers", [])
         meta["json"] = json.dumps({**json.loads(meta.get("json", "{}")), "vector_layers": layers})
         self.meta = meta
@@ -37,16 +139,20 @@ class Tileset:
         return conns[i]
 
     def tile(self, z, x, y):
-        row = (1 << z) - 1 - y
         parts = []
         for i in range(len(self.paths)):
+            # past an archive's max zoom its last tile is cut, as on a device
+            dz = max(0, z - self.maxzooms[i]) if len(self.paths) > 1 else 0
             got = self._db(i).execute(
                 "select tile_data from tiles where zoom_level=? and tile_column=? and tile_row=?",
-                (z, x, row),
+                (z - dz, x >> dz, (1 << (z - dz)) - 1 - (y >> dz)),
             ).fetchone()
             if got:
                 data = got[0]
-                parts.append(gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data)
+                data = gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data
+                data = subtile(data, dz, x, y) if dz else data
+                if data:
+                    parts.append(data)
         return b"".join(parts) if parts else None
 
     def tilejson(self, base):

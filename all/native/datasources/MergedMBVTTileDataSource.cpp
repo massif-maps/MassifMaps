@@ -14,6 +14,7 @@
 #include <stdext/zlib.h>
 
 #include <mapnikvt/CompressionUtils.h>
+#include <mapnikvt/MBVTSubtile.h>
 
 namespace massif {
     
@@ -68,16 +69,57 @@ namespace massif {
     }
 
 
+    namespace {
+        std::vector<unsigned char> inflate(const std::vector<unsigned char>& data) {
+            // header detection, not trial decompression
+            const unsigned char* bytes = data.empty() ? nullptr : data.data();
+            std::vector<unsigned char> uncompressed;
+            if (bytes && massif::mvt::compression::is_gzip(bytes, data.size())) {
+                zlib::inflate_gzip(bytes, data.size(), uncompressed);
+                return uncompressed;
+            }
+#ifdef HAVE_ZSTD
+            if (bytes && massif::mvt::compression::is_zstd(bytes, data.size())) {
+                massif::mvt::compression::inflate_zstd(bytes, data.size(), uncompressed);
+                return uncompressed;
+            }
+#endif
+#ifdef HAVE_BROTLI
+            if (massif::mvt::compression::is_brotli(bytes, data.size())) {
+                massif::mvt::compression::inflate_brotli(bytes, data.size(), uncompressed);
+                return uncompressed;
+            }
+#endif
+            return data;
+        }
+
+        // past its max zoom a source is cut out of its last tile, as the layer does for the whole
+        // tile: merged tiles hold one zoom, so the layer cannot do it for one source
+        std::shared_ptr<TileData> loadSourceTile(TileDataSource& dataSource, const MapTile& mapTile) {
+            int zoom = mapTile.getZoom();
+            if (zoom < dataSource.getMinZoom()) {
+                return std::shared_ptr<TileData>();
+            }
+            int dz = zoom - dataSource.getMaxZoom();
+            if (dz <= 0) {
+                return dataSource.loadTile(mapTile);
+            }
+            MapTile parentTile(mapTile.getX() >> dz, mapTile.getY() >> dz, dataSource.getMaxZoom(), mapTile.getFrameNr());
+            std::shared_ptr<TileData> parent = dataSource.loadTile(parentTile);
+            if (!parent || !parent->getData() || parent->isReplaceWithParent()) {
+                return std::shared_ptr<TileData>();
+            }
+            std::vector<unsigned char> child = mvt::subtileMBVT(inflate(*parent->getData()->getDataPtr()), dz, mapTile.getX(), mapTile.getY());
+            if (child.empty()) {
+                return std::shared_ptr<TileData>();
+            }
+            return std::make_shared<TileData>(std::make_shared<BinaryData>(std::move(child)));
+        }
+    }
+
     std::shared_ptr<TileData> MergedMBVTTileDataSource::loadTile(const MapTile& mapTile) {
-        int zoom = mapTile.getZoom();
-        std::shared_ptr<TileData> result1;
-        std::shared_ptr<TileData> result2;
-        if (zoom <= _dataSource1->getMaxZoom() && zoom >= _dataSource1->getMinZoom()) {
-            result1 = _dataSource1->loadTile(mapTile);
-        }
-        if (zoom <= _dataSource2->getMaxZoom() && zoom >= _dataSource2->getMinZoom()) {
-            result2 = _dataSource2->loadTile(mapTile);
-        }
+        std::shared_ptr<TileData> result1 = loadSourceTile(*_dataSource1, mapTile);
+        std::shared_ptr<TileData> result2 = loadSourceTile(*_dataSource2, mapTile);
 
         if (result1 && result2) {
             // If either result contains 'replace with parent' then the only option is to pass this result on.
@@ -90,55 +132,9 @@ namespace massif {
             }
             
             // We have data for both sources, we can merge them. Note that we may need to decompress the data first.
-            std::shared_ptr<std::vector<unsigned char>> data1 = result1->getData()->getDataPtr();
-            std::shared_ptr<std::vector<unsigned char>> data2 = result2->getData()->getDataPtr();
-
-            std::vector<unsigned char> mergedData;
-            mergedData.reserve(data1->size() + data2->size());
-
-            // Try to decompress data1 with various compression formats
-            std::vector<unsigned char> uncompressedData1;
-            // Use fast header-based detection where possible to avoid expensive trial decompression.
-            const unsigned char* bytes1 = data1->empty() ? nullptr : data1->data();
-            std::size_t size1 = data1->size();
-            if (bytes1 && massif::mvt::compression::is_gzip(bytes1, size1)) {
-                zlib::inflate_gzip(bytes1, size1, uncompressedData1);
-                mergedData.insert(mergedData.end(), uncompressedData1.begin(), uncompressedData1.end());
-#ifdef HAVE_ZSTD
-            } else if (bytes1 && massif::mvt::compression::is_zstd(bytes1, size1)) {
-                massif::mvt::compression::inflate_zstd(bytes1, size1, uncompressedData1);
-                mergedData.insert(mergedData.end(), uncompressedData1.begin(), uncompressedData1.end());
-#endif
-#ifdef HAVE_BROTLI
-            } else if (massif::mvt::compression::is_brotli(bytes1, size1)) {
-                massif::mvt::compression::inflate_brotli(bytes1, size1, uncompressedData1);
-                mergedData.insert(mergedData.end(), uncompressedData1.begin(), uncompressedData1.end());
-#endif
-            } else {
-                mergedData.insert(mergedData.end(), data1->begin(), data1->end());
-            }
-            
-            // Try to decompress data2 with various compression formats
-            std::vector<unsigned char> uncompressedData2;
-            // Use fast header-based detection where possible to avoid expensive trial decompression.
-            const unsigned char* bytes2 = data2->empty() ? nullptr : data2->data();
-            std::size_t size2 = data2->size();
-            if (bytes2 && massif::mvt::compression::is_gzip(bytes2, size2)) {
-                zlib::inflate_gzip(bytes2, size2, uncompressedData2);
-                mergedData.insert(mergedData.end(), uncompressedData2.begin(), uncompressedData2.end());
-#ifdef HAVE_ZSTD
-            } else if (bytes2 && massif::mvt::compression::is_zstd(bytes2, size2)) {
-                massif::mvt::compression::inflate_zstd(bytes2, size2, uncompressedData2);
-                mergedData.insert(mergedData.end(), uncompressedData2.begin(), uncompressedData2.end());
-#endif
-#ifdef HAVE_BROTLI
-            } else if (massif::mvt::compression::is_brotli(bytes2, size2)) {
-                massif::mvt::compression::inflate_brotli(bytes2, size2, uncompressedData1);
-                mergedData.insert(mergedData.end(), uncompressedData2.begin(), uncompressedData2.end());
-#endif
-            } else {
-                mergedData.insert(mergedData.end(), data2->begin(), data2->end());
-            }
+            std::vector<unsigned char> mergedData = inflate(*result1->getData()->getDataPtr());
+            std::vector<unsigned char> uncompressedData2 = inflate(*result2->getData()->getDataPtr());
+            mergedData.insert(mergedData.end(), uncompressedData2.begin(), uncompressedData2.end());
 
             auto mergedBinaryData = std::make_shared<BinaryData>(std::move(mergedData));
             auto mergedTileData = std::make_shared<TileData>(mergedBinaryData);

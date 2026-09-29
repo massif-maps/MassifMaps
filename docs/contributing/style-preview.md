@@ -29,7 +29,8 @@ repeats; the picker in the toolbar chooses which archive the right pane reads.
 An archive may be several joined with `+` — `--mbtiles rhone-alpes=a.mbtiles+b.mbtiles` — and each
 tile is then the two MVTs concatenated, which is a valid tile carrying both sets of layers: the
 same merge `MergedMBVTTileDataSource` does on a device, so the Massif pane sees an optional archive
-such as the bathymap. A style source whose URL is a bare file name (`"url": "bathymap.json"`) is
+such as the bathymap. Past an archive's own `maxzoom` its last tile is cut into the one asked for
+(`subtile`, the same cut as `MBVTSubtile.h`): the bathymap stops at z6 and still reaches z8. A style source whose URL is a bare file name (`"url": "bathymap.json"`) is
 pointed at the registered archive of that name.
 
 `--styles` mounts a folder of style projects at `/styles`, defaulting to the repo's own, so

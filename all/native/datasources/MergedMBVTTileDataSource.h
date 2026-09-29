@@ -15,6 +15,7 @@ namespace massif {
     /**
      * A tile data source that merges two MBVT/protobuf data sources into one.
      * It is assumed that the layer ids from the two sources are distinct.
+     * Past a source's max zoom, its last tile is cut into the requested one.
      */
     class MergedMBVTTileDataSource : public TileDataSource {
     public:

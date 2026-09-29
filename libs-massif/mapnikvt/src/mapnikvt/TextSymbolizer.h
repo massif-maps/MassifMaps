@@ -42,6 +42,7 @@ namespace massif::mvt {
             bindProperty("placement-priority", &_placementPriority);
             bindProperty("minimum-distance", &_minimumDistance);
             bindProperty("collision-padding", &_collisionPadding);
+            bindProperty("max-char-angle-delta", &_maxCharAngleDelta);
             bindProperty("max-distance", &_maxDistance);
             bindProperty("occlusion-opacity", &_occlusionOpacity);
             bindProperty("callout-screen-anchor", &_calloutScreenAnchor);
@@ -96,7 +97,9 @@ namespace massif::mvt {
 
         static bool segmentIntersectRectangle(double a_rectangleMinX, double a_rectangleMinY, double a_rectangleMaxX, double a_rectangleMaxY,
                                                        double a_p1x, double a_p1y, double a_p2x, double a_p2y);
-        static std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle = true);
+        // glyphSize 0 skips the max-angle test: a billboard is not laid along the line
+        static std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle = true, float glyphSize = 0, float maxAngle = 0);
+
 
         static cglib::bbox2<float> calculateTextSize(const std::shared_ptr<const vt::Font>& font, const std::string& text, const vt::TextFormatter& formatter);
 
@@ -136,6 +139,8 @@ namespace massif::mvt {
         // mapbox text-padding / icon-padding: pixels grown around this label's box for the
         // collision test alone, so two labels stay apart without either being drawn bigger.
         FloatProperty _collisionPadding = FloatProperty(0.0f);
+        // mapbox text-max-angle, degrees; the default is maplibre's
+        FloatProperty _maxCharAngleDelta = FloatProperty(45.0f);
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Negative = unset, i.e. the layer's own default stands.
         FloatProperty _occlusionOpacity = FloatProperty(-1.0f);

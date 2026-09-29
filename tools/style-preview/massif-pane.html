@@ -40,12 +40,65 @@
     el.textContent = [...seen].slice(-6).join('\n');
   };
 
+  const MAPTERHORN = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
   try {
     const pane = await createMassifPane(document.getElementById('map'),
-      params.get('carto'), params.get('source'), camera, report);
+      params.get('carto'), params.get('source'), camera, report, params.get('variant'));
     // the grid drives every pane from the MapLibre map above it
+    // The hour drives the SDK's day-cycle light, which is what lights the style's emissive layers.
+    const lightOf = (m) => {
+      let light = m.find('options', 'preview.light');
+      if (!light) {
+        light = m.create('options', 'preview.light', { type: 'light' });
+        m.setObject(m.find('options', 'map'), 'lightOptions', light);
+        m.set(light, 'dayCycleLightsEnabled', true);
+        m.set(light, 'sunOverridingStyle', true);
+      }
+      return light;
+    };
+    const setHour = (hour) => {
+      const m = pane.massif;
+      const light = lightOf(m);
+      // the equinox, in local solar time at the camera
+      const [lon, lat] = pane.camera.focusPos;
+      const utc = hour - lon / 15;
+      m.call(light, 'setSunPositionFromTime', [2026, 3, 20, Math.floor(utc), Math.round((utc % 1) * 60), lat, lon]);
+      // through the day, Standard's own sun (its `day` preset: azimuth 180, polar 20), so the shadows
+      // and the lit walls compare one for one with the reference pane
+      if (hour >= 8 && hour < 18) {
+        m.set(light, 'sunAzimuth', 180);
+        m.set(light, 'sunAltitude', 70);
+      }
+    };
+    if (params.get('hour')) setHour(Number(params.get('hour')));
+    // A style's relief is an app layer on the SDK, not CartoCSS: a DEM source gets a hillshade above the base.
+    if (params.get('imagery')) {
+      const imagery = pane.massif.create('layer', 'preview.imagery', { type: 'raster',
+        source: { type: 'http', url: params.get('imagery'), maxZoom: 19 } });
+      pane.massif.call(pane.massif.find('layers', 'map'), 'insert', [0, imagery]);
+    }
+        if (params.get('dem')) {
+      const hillshade = pane.massif.create('layer', 'preview.hillshade', {
+        ...JSON.parse(params.get('hillshade') || '{"type": "hillshade"}'),
+        source: { type: 'http', url: params.get('dem'), maxZoom: Number(params.get('demMaxZoom') || 22) } });
+      pane.massif.call(pane.massif.find('layers', 'map'), 'insert', [1, hillshade]);
+    }
+    // Standard casts building shadows on a flat map; ours land on a terrain surface, so the pane gets
+    // a flat one (exaggeration 0), never auto-flattened, at Standard's day depth (shadow-intensity 1).
+    if (params.get('shadows') !== '0') {
+      const m = pane.massif;
+      const terrain = m.create('options', 'preview.terrain', { type: 'terrain',
+        source: { type: 'http', url: params.get('dem') || MAPTERHORN, minZoom: 1, maxZoom: 16,
+                  metaData: { dem_encoding: 'terrarium' } },
+        exaggeration: 0, autoFlattenTilt: 0, autoFlattenParallax: 0 });
+      m.setObject(m.find('options', 'map'), 'terrainOptions', terrain);
+      const light = lightOf(m);
+      m.set(light, 'terrainLightingEnabled', true);
+      m.set(light, 'shadowStrength', 1);
+    }
     addEventListener('message', (event) => {
       if (event.data && event.data.massifCamera) pane.moveTo(event.data.massifCamera);
+      if (event.data && event.data.massifHour !== undefined) setHour(event.data.massifHour);
     });
     // The SDK starts north-up and flat whatever MASSIF_DEFAULTS said, so the opening camera is
     // pushed once the pane is up rather than left to the first sync, which only fires on a move.

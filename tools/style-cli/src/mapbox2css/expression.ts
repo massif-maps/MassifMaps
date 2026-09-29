@@ -1,3 +1,4 @@
+import { isPitch } from './fold.js';
 import type { Json } from './types.js';
 
 /** Thrown when an expression has no CartoCSS equivalent. The caller drops the property. */
@@ -106,6 +107,7 @@ export function zoomInput(): string {
  * with no re-decode. Only emitted under --live-light; otherwise the value is a build-time constant.
  */
 export const BRIGHTNESS_INPUT = '[view::brightness]';
+export const TILT_INPUT = '[view::tilt]';
 
 /**
  * MapBox expression -> a CartoCSS expression string.
@@ -454,6 +456,7 @@ function translateInterpolate(args: Json[], notes?: string[]): string {
         throw new Untranslatable(`interpolate ["${String(kind[0])}"${kind[1] !== undefined ? `, ${String(kind[1])}` : ''}]`);
     }
 
+    if (isPitch(rest[0])) return pitchRamp(rest, base);
     const input = requireZoom(rest[0], 'interpolate');
     const pairs: Array<readonly [Json, Json]> = [];
     for (let i = 1; i < rest.length; i += 2) {
@@ -483,6 +486,20 @@ function translateInterpolate(args: Json[], notes?: string[]): string {
 
     const stops = pairs.map(([k, v]) => `(${translateExpression(k)}, ${translateExpression(v)})`);
     return `${fn}(${input}, ${stops.join(', ')})`;
+}
+
+/**
+ * A ramp over MapBox's pitch, degrees away from straight down, as one over the SDK's tilt, degrees up
+ * from the horizon: each key becomes `90 - pitch`, so the stops run in reverse.
+ */
+function pitchRamp(rest: Json[], base: number | null): string {
+    if (base !== null) throw new Untranslatable('exponential interpolate over pitch');
+    const stops: string[] = [];
+    for (let i = rest.length - 2; i >= 1; i -= 2) {
+        if (typeof rest[i] !== 'number') throw new Untranslatable('interpolate over pitch with a computed stop');
+        stops.push(`(${90 - (rest[i] as number)}, ${translateExpression(rest[i + 1] as Json)})`);
+    }
+    return `linear(${TILT_INPUT}, ${stops.join(', ')})`;
 }
 
 /**

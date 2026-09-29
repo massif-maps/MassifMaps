@@ -1,5 +1,6 @@
 #include "CelestialRenderer.h"
 #include "celestial/CelestialArc.h"
+#include "celestial/CelestialImage.h"
 #include "celestial/CelestialLabel.h"
 #include "celestial/CelestialObject.h"
 #include "celestial/CelestialSprite.h"
@@ -11,6 +12,7 @@
 #include "projections/ProjectionSurface.h"
 #include "renderers/MapRenderer.h"
 #include "renderers/components/RayIntersectedElement.h"
+#include "renderers/utils/BitmapTextureCache.h"
 #include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
@@ -24,10 +26,14 @@
 namespace massif {
 
     const double CelestialRenderer::INFINITE_DISTANCE_FACTOR = 0.9;
+    // Cells per side of an image's mesh: a figure spanning 60 degrees then bends every 4 degrees.
+    const int CelestialRenderer::IMAGE_SUBDIVISIONS = 16;
+    const unsigned int CelestialRenderer::IMAGE_TEXTURE_CACHE_SIZE = 16 * 1024 * 1024;
 
     CelestialRenderer::CelestialRenderer() :
         _spriteShader(),
         _arcShader(),
+        _imageTextureCache(),
         _options(),
         _mapRenderer(),
         _objects(),
@@ -48,6 +54,7 @@ namespace massif {
         _mapRenderer = mapRenderer;
         _spriteShader.reset();
         _arcShader.reset();
+        _imageTextureCache.reset();
     }
 
     void CelestialRenderer::refreshObjects(const std::vector<std::shared_ptr<CelestialObject> >& objects) {
@@ -62,7 +69,7 @@ namespace massif {
         }
         // The custom fog shader is compiled into both programs, so a change to it has to rebuild.
         std::string fogSource = FogShader::source(mapRenderer->getOptions());
-        if (_spriteShader && _arcShader && _fogShaderSource == fogSource) {
+        if (_spriteShader && _arcShader && _fogShaderSource == fogSource && _imageTextureCache && _imageTextureCache->isValid()) {
             return true;
         }
         std::shared_ptr<GLResourceManager> resourceManager = mapRenderer->getGLResourceManager();
@@ -73,6 +80,7 @@ namespace massif {
         std::string fogBlock = FogShader::buildBlock(fogSource);
         _spriteShader = resourceManager->create<Shader>("celestial_sprite", SPRITE_VERTEX_SHADER, SPRITE_FRAGMENT_SHADER_PREFIX + fogBlock + CELESTIAL_FRAGMENT_SHADER_FOG + SPRITE_FRAGMENT_SHADER_MAIN);
         _arcShader = resourceManager->create<Shader>("celestial_arc", ARC_VERTEX_SHADER, ARC_FRAGMENT_SHADER_PREFIX + fogBlock + CELESTIAL_FRAGMENT_SHADER_FOG + ARC_FRAGMENT_SHADER_MAIN);
+        _imageTextureCache = resourceManager->create<BitmapTextureCache>(IMAGE_TEXTURE_CACHE_SIZE);
         return static_cast<bool>(_spriteShader) && static_cast<bool>(_arcShader);
     }
 
@@ -243,6 +251,7 @@ namespace massif {
         glUniformMatrix4fv(_spriteShader->getUniformLoc("u_mvpMat"), 1, GL_FALSE, viewState.getRTEModelviewProjectionMat().data());
         setupFogUniforms(_spriteShader->getProgId(), viewState);
         glUniform1i(_spriteShader->getUniformLoc("u_tex"), 0);
+        glUniform1f(_spriteShader->getUniformLoc("u_luminanceAlpha"), 0.0f);
         glActiveTexture(GL_TEXTURE0);
         glEnableVertexAttribArray(a_coord);
         glEnableVertexAttribArray(a_texCoord);
@@ -454,6 +463,111 @@ namespace massif {
         }
     }
 
+    void CelestialRenderer::drawImages(const ViewState& viewState, float opacity) {
+        std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
+        if (!projectionSurface) {
+            return;
+        }
+        MapPos focusMapPos = projectionSurface->calculateMapPos(viewState.getFocusPos());
+        double distance = viewState.getFar() * INFINITE_DISTANCE_FACTOR;
+        const int side = IMAGE_SUBDIVISIONS + 1;
+
+        bool bound = false;
+        GLuint a_coord = 0;
+        GLuint a_texCoord = 0;
+        GLuint a_color = 0;
+        for (const std::shared_ptr<CelestialObject>& object : _objects) {
+            auto image = std::dynamic_pointer_cast<CelestialImage>(object);
+            if (!image || !image->isVisible()) {
+                continue;
+            }
+            std::shared_ptr<Bitmap> bitmap = image->getBitmap();
+            if (!bitmap) {
+                continue;
+            }
+            std::vector<cglib::vec3<double> > directions = image->buildDirections(IMAGE_SUBDIVISIONS);
+            if (directions.size() != static_cast<std::size_t>(side * side)) {
+                continue;
+            }
+            std::shared_ptr<Texture> texture = _imageTextureCache->get(bitmap);
+            if (!texture) {
+                texture = _imageTextureCache->create(bitmap, true, false);
+            }
+            if (!texture) {
+                continue;
+            }
+
+            Color color = image->getColor();
+            unsigned char rgba[4] = {
+                static_cast<unsigned char>(color.getR() * opacity), static_cast<unsigned char>(color.getG() * opacity),
+                static_cast<unsigned char>(color.getB() * opacity), static_cast<unsigned char>(color.getA() * opacity)
+            };
+            _coordBuf.clear();
+            _texCoordBuf.clear();
+            _colorBuf.clear();
+            _indexBuf.clear();
+            for (int row = 0; row < side; row++) {
+                for (int column = 0; column < side; column++) {
+                    const cglib::vec3<double>& dir = directions[row * side + column];
+                    cglib::vec3<double> worldDir = cglib::unit(projectionSurface->calculateVector(focusMapPos, MapVec(dir(0), dir(1), dir(2))));
+                    cglib::vec3<double> point = worldDir * distance;
+                    for (int c = 0; c < 3; c++) {
+                        _coordBuf.push_back(static_cast<float>(point(c)));
+                    }
+                    // Bitmap rows are stored bottom-up, the grid runs from the top.
+                    _texCoordBuf.push_back(static_cast<float>(column) / IMAGE_SUBDIVISIONS);
+                    _texCoordBuf.push_back(1.0f - static_cast<float>(row) / IMAGE_SUBDIVISIONS);
+                    _colorBuf.insert(_colorBuf.end(), rgba, rgba + 4);
+                }
+            }
+            for (int row = 0; row < IMAGE_SUBDIVISIONS; row++) {
+                for (int column = 0; column < IMAGE_SUBDIVISIONS; column++) {
+                    unsigned short topLeft = static_cast<unsigned short>(row * side + column);
+                    unsigned short bottomLeft = static_cast<unsigned short>(topLeft + side);
+                    _indexBuf.push_back(topLeft);
+                    _indexBuf.push_back(bottomLeft);
+                    _indexBuf.push_back(topLeft + 1);
+                    _indexBuf.push_back(topLeft + 1);
+                    _indexBuf.push_back(bottomLeft);
+                    _indexBuf.push_back(bottomLeft + 1);
+                }
+            }
+
+            if (!bound) {
+                glUseProgram(_spriteShader->getProgId());
+                a_coord = _spriteShader->getAttribLoc("a_coord");
+                a_texCoord = _spriteShader->getAttribLoc("a_texCoord");
+                a_color = _spriteShader->getAttribLoc("a_color");
+                glUniformMatrix4fv(_spriteShader->getUniformLoc("u_mvpMat"), 1, GL_FALSE, viewState.getRTEModelviewProjectionMat().data());
+                setupFogUniforms(_spriteShader->getProgId(), viewState);
+                glUniform1i(_spriteShader->getUniformLoc("u_tex"), 0);
+                glUniform1f(_spriteShader->getUniformLoc("u_hasTex"), 1.0f);
+                glUniform1f(_spriteShader->getUniformLoc("u_softness"), 0.001f);
+                glActiveTexture(GL_TEXTURE0);
+                glEnableVertexAttribArray(a_coord);
+                glEnableVertexAttribArray(a_texCoord);
+                glEnableVertexAttribArray(a_color);
+                bound = true;
+            }
+            glUniform1f(_spriteShader->getUniformLoc("u_luminanceAlpha"), image->isLuminanceAlpha() ? 1.0f : 0.0f);
+            glBindTexture(GL_TEXTURE_2D, texture->getTexId());
+            if (image->isOccludedByMap()) {
+                glEnable(GL_DEPTH_TEST);
+            } else {
+                glDisable(GL_DEPTH_TEST);
+            }
+            glVertexAttribPointer(a_coord, 3, GL_FLOAT, GL_FALSE, 0, _coordBuf.data());
+            glVertexAttribPointer(a_texCoord, 2, GL_FLOAT, GL_FALSE, 0, _texCoordBuf.data());
+            glVertexAttribPointer(a_color, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, _colorBuf.data());
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(_indexBuf.size()), GL_UNSIGNED_SHORT, _indexBuf.data());
+        }
+        if (bound) {
+            glDisableVertexAttribArray(a_coord);
+            glDisableVertexAttribArray(a_texCoord);
+            glDisableVertexAttribArray(a_color);
+        }
+    }
+
     bool CelestialRenderer::onDrawFrame(float deltaSeconds, float opacity, const ViewState& viewState) {
         std::lock_guard<std::mutex> lock(_mutex);
         if (_objects.empty()) {
@@ -474,7 +588,8 @@ namespace massif {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glDisable(GL_CULL_FACE);
 
-        // Curves first: a body or a label on a curve reads on top of it.
+        // Artwork behind everything, then curves: a body or a label on a curve reads on top of it.
+        drawImages(viewState, opacity);
         drawArcs(viewState, opacity);
         std::vector<SpriteInstance> instances;
         buildSprites(viewState, opacity, instances);
@@ -639,6 +754,7 @@ namespace massif {
         uniform sampler2D u_tex;
         uniform float u_hasTex;
         uniform float u_softness;
+        uniform float u_luminanceAlpha;
         varying vec2 v_texCoord;
         varying vec4 v_color;
     )GLSL";
@@ -659,7 +775,13 @@ namespace massif {
             if (u_hasTex > 0.5) {
                 // A Bitmap is premultiplied; the colour here is straight until fogCelestial.
                 vec4 texel = texture2D(u_tex, v_texCoord);
-                color *= vec4(texel.a > 0.0 ? texel.rgb / texel.a : texel.rgb, texel.a);
+                vec3 straight = texel.a > 0.0 ? texel.rgb / texel.a : texel.rgb;
+                if (u_luminanceAlpha > 0.5) {
+                    // Light-on-black artwork: its brightness is the ink, the colour the hue.
+                    color.a *= dot(straight, vec3(0.2126, 0.7152, 0.0722)) * texel.a;
+                } else {
+                    color *= vec4(straight, texel.a);
+                }
             } else {
                 // No bitmap: a disc, soft at the edge by u_softness. Cheaper than a texture and
                 // enough for a disc or a point of light.

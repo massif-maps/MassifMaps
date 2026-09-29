@@ -26,6 +26,13 @@ namespace massif {
          * @param celestialObject The object on which the click was performed.
          */
         CelestialClickInfo(const ClickInfo& clickInfo, const std::shared_ptr<CelestialObject>& celestialObject);
+        /**
+         * Constructs a CelestialClickInfo object for a click on the empty sky.
+         * @param clickInfo The click info.
+         * @param azimuth The azimuth the click aimed at, in degrees.
+         * @param altitude The altitude the click aimed at, in degrees.
+         */
+        CelestialClickInfo(const ClickInfo& clickInfo, float azimuth, float altitude);
         virtual ~CelestialClickInfo();
 
         /**
@@ -42,18 +49,18 @@ namespace massif {
 
         /**
          * Returns the clicked object.
-         * @return The object on which the click was performed.
+         * @return The object on which the click was performed, or null for a click on the empty sky.
          */
         std::shared_ptr<CelestialObject> getCelestialObject() const;
 
         /**
-         * Returns the azimuth of the clicked object at the time of the click.
+         * Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at.
          * @return The azimuth in degrees, clockwise from north.
          */
         float getAzimuth() const;
 
         /**
-         * Returns the altitude of the clicked object at the time of the click.
+         * Returns the altitude of the clicked object at the time of the click, or the one the click aimed at.
          * @return The altitude in degrees above the horizon.
          */
         float getAltitude() const;

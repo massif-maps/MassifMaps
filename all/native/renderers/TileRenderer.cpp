@@ -3,6 +3,7 @@
 #include <vt/LabelFade.h>
 #include <vt/RenderStats.h>
 #include "components/Options.h"
+#include "components/DayCycleLight.h"
 #include "components/LightOptions.h"
 #include "components/TerrainOptions.h"
 #include "components/FogOptions.h"
@@ -614,35 +615,6 @@ namespace massif {
         return false;
     }
 
-    void TileRenderer::setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            tileRenderer->setLabelOcclusionDepth(depthTexture, occluderSize);
-        }
-    }
-
-    bool TileRenderer::isLabelOcclusionWanted() const {
-        if (_textOcclusionOpacity.load() < 1.0f) {
-            return true;
-        }
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            return tileRenderer->hasStyledLabelOcclusion();
-        }
-        return false;
-    }
-
-    int TileRenderer::renderLabelOcclusionDepth() {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            return tileRenderer->renderLabelOcclusionDepth();
-        }
-        return 0;
-    }
-
     int TileRenderer::renderGroundAOMask() {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1096,6 +1068,19 @@ namespace massif {
             _resolvedBuildingSunDir = lighting.sunDir;
             _resolvedSunColor = lighting.sunColor;
             _resolvedAmbientColor = lighting.ambientColor;
+            std::shared_ptr<LightOptions> lightOptions = options->getLightOptions();
+            float moon = (lightOptions && lightOptions->isDayCycleLightsEnabled()) ? DayCycleLight::moonWeight(lighting.sunDir(2)) : 0.0f;
+            if (moon > 0.0f) {
+                cglib::vec3<float> moonDir(DayCycleLight::MOON_DIR[0], DayCycleLight::MOON_DIR[1], DayCycleLight::MOON_DIR[2]);
+                _resolvedBuildingSunDir = cglib::unit(lighting.sunDir * (1.0f - moon) + moonDir * moon);
+                auto toward = [moon](unsigned char from, float to) {
+                    return static_cast<unsigned char>(std::lround(from + (to * 255.0f - from) * moon));
+                };
+                const Color& ambient = lighting.ambientColor;
+                _resolvedAmbientColor = Color(toward(ambient.getR(), DayCycleLight::NIGHT_BUILDING_AMBIENT[0]),
+                                              toward(ambient.getG(), DayCycleLight::NIGHT_BUILDING_AMBIENT[1]),
+                                              toward(ambient.getB(), DayCycleLight::NIGHT_BUILDING_AMBIENT[2]), ambient.getA());
+            }
             _buildingEmissive = lighting.buildingEmissive;
             _backgroundEmissive = lighting.backgroundEmissive;
             _resolvedRadiance = lighting.radiance;

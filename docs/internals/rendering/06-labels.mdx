@@ -202,6 +202,35 @@ advances the pen, so the spacing is constant along the line instead of restartin
 border. Clipped text still gets one run per TILE the line crosses — the geometry is per tile and
 there is no label to merge them.
 
+**Where the anchors fall is maplibre's `getAnchors`** (`mapnikvt/LineAnchors.h`, from
+`generateLinePoints`). A line starting in the tile takes its first anchor half a label plus two ems
+from its start; one continued from the next tile, half a step in. An anchor must fit the whole label
+between the line's ends and pass `checkMaxAngle` (the style's `text-max-char-angle-delta`, mapbox
+`text-max-angle`, default 45°, summed over 3/5 em, run in tile pixels), and
+only when none does is the middle tried. It used to be one anchor at the middle of any line shorter
+than the step: Rue de la Viscose in Échirolles jogs 90° exactly there, so once the renderer's own
+max-angle test landed, that street lost its name at every zoom though either straight stretch holds
+it. The step between repeats stays `text-spacing` plus the label's length. The label is tested at
+HALF its size (the offset stays half the WHOLE label plus two ems; halving it too put Rue Émile
+Zola's name across its bend, short of the straight stretch maplibre uses): a tile is drawn at 1× to 2× its own pixels and the text is in screen pixels, so at
+1× the name overran the stretch it fits on screen (Rue de la Viscose unnamed below z17); the layout,
+which knows the scale, drops what then does not fit.
+
+The layout lays each glyph on the line itself, after a Douglas-Peucker pass
+(`PLACEMENT_SIMPLIFY_TOLERANCE`, 0.6 em) that drops a DEM contour's cell zigzag, about half an em,
+so the max-angle test does not read it as corners. At one em it also erased a street's real bend:
+Rue du 19 Mars 1962 bends 28° about 0.9 em off its chord at z15, and its name ran straight across
+the neighbouring streets. maplibre does no simplification; its contours are smoothed at source.
+The simplification may only FORGIVE a turn: a run is dropped when both the simplified and the source
+line fail the max-angle test. Tested on the simplified line alone, Rue Émile Zola's 18° and 25°
+bends, half an em off one chord, folded into one 34° corner, and `text-max-angle: 30` dropped a name
+maplibre keeps.
+
+The run is **centred on its anchor**, as maplibre's. The layout used to START it there while
+`clampPlacementAnchor` kept the anchor 1.25 runs from each end, so a name sat a whole run in from
+the line's start: Rue du 19 Mars 1962 at z15.97 began at the bend instead of ending before it, and
+read at the wrong angle next to maplibre's.
+
 `text-spacing` places anchors by **ground** distance, as mapbox's `symbol-spacing` does; under tilt
 they project closer together in the far field. The screen-space guarantee is `text-min-distance`,
 which gives the label a group id the culler enforces in pixels.
@@ -773,6 +802,12 @@ rectangle with its own colour, corner radius, padding and border:
 }
 ```
 
+- The icon plate's **fill and border colours may follow the view**: a `shield-icon-background-fill`
+  or `-border-fill` reading `[view::brightness]` (a POI disc that goes pastel with a dark ring at
+  night, as Mapbox's does) is kept as a `ColorFunction` on `LabelPlateStyle` and evaluated per frame
+  where the plate's batch slot is written. Read at decode instead, where the brightness is unset,
+  every disc took the ramp's first stop — the night one — at noon. The decode-time colour stays, at
+  daylight, for `enabled()`.
 - A plate is **nine-sliced from one atlas cell** (`LabelPlateBitmap.h`, cached by radius and border
   width, the glyph map dedupes by pointer): four corner cells keep the radius, the edges stretch
   along one axis and the centre fills — which is what keeps the corners round at any name width.
@@ -1057,10 +1092,10 @@ is 500; only the difference is emboldened, and only upwards, since an outline ca
   zooming, see [04-terrain.md](04-terrain.md#query-with-the-buffers-camera-not-the-frames).
 - **Occlusion by 3D content.** The ridge test above is a CPU query per label against a read-back
   terrain depth buffer, and terrain is all it knows: a label behind a *building* was drawn in front
-  of it. The extra test is mapbox's, ported by semantics: the occluders are drawn once more into a
-  half-resolution buffer from the same camera, and `labelVsh` samples a small square around the
-  label's **anchor** and fades the whole label by how much of that square is in front of it. It is
-  never clipped — a wall crossing a word does nothing, and a word is never cut in half. See
+  of it. The extra test is mapbox's, ported by semantics: rays from the eye to a small square around
+  the label's **anchor** are tested against a CPU copy of the extrusions, and the whole label fades
+  by how many are blocked. It is never clipped — a wall crossing a word does nothing, and a word is
+  never cut in half. See
   [Per-label occlusion](#per-label-occlusion-by-3d-content) below.
 - **Terrain anchoring.** Label geometry is built flat at decode time, so a label must be re-anchored
   onto the terrain: once when it is new, and afterwards only when the elevation under one of its
@@ -1405,17 +1440,30 @@ The extra test is **mapbox's model, ported by semantics** (their `text-occlusion
 `icon-occlusion-opacity`; the spec's own wording for the absent value is *"full occlusion against
 terrain only"*, which is exactly what this codebase already did):
 
-1. `MapRenderer` draws every visible extrusion once more into a **half-resolution** buffer between
-   the 2D and the 3D layer passes, from the same camera. It is the shadow *caster* path pointed at
-   the camera instead of the sun, so the occluders are the extrusions as the frame draws them —
-   same shader, same terrain anchoring, the tile's own fade — with their window depth packed into
-   rgb.
-2. `labelVsh` projects the label's **anchor**, samples a 30 px square around it (4 taps), compares
-   each against the anchor's depth through a soft ramp, and averages them into one opacity for the
-   whole label.
+1. Each extrusion geometry keeps a CPU copy of its mesh, `vt::ExtrusionOccluder`: tile-local xy,
+   raw height units and the triangles, binned in a 32 x 32 grid over the tile. It is built on the
+   decode thread (`TileLayerBuilder`), because the GPU upload releases the indices it needs.
+2. Per frame, `GLTileRenderer::calculateLabelVisibility` lists the visible extrusions with their
+   tile frame and height scale - the zoom ramp and the tile's own grow-in, the shader's arithmetic.
+   The base comes from the vertex bytes `resolveExtrusionBases` writes, so a building rises with
+   its DEM; one not yet resolved occludes nothing.
+3. For a label whose opacity asks for it, four rays go from the eye to the corners of a 30 px
+   square around the **anchor**, at the anchor's distance (mapbox's square of taps). A ray stops
+   1 m short of its target, so a label on a roof is not hidden by that roof. The fraction of rays
+   no triangle blocks is the label's visibility, multiplied into its opacity on the CPU
+   (`Label::setOcclusion`).
 
-The ground is deliberately **not** in the buffer: terrain occlusion is already answered on the CPU,
-per label, and drawing the surfaces here would only pay for it twice.
+The ground is deliberately **not** tested: terrain occlusion is already answered on the CPU, per
+label, above.
+
+**Why not on the GPU.** It used to be: every visible extrusion drawn once more into a half-res
+packed-depth buffer and sampled in `labelVsh`. That pass redrew the whole building geometry every
+frame and broke the screen pass on a tiling GPU. mapbox's own route, copying the screen depth
+(`blitDepth`), was tried too: one copy after the buildings holds the ground as well, so road names
+faded against their own road, and a second copy of the ground alone costs as much as it saves -
+each copy stops the tiler and reloads the screen. Crosscall, Grenoble z17.2 tilt 45: the redraw
+pass 16.6 fps, one copy 22.3 vs 20.0 (wrong labels), two copies +2%, the CPU rays **16.6 -> 18.25**
+shadows off and 11.25 -> 12.35 on, for about 1.3 ms of render-thread CPU.
 
 **Per label, not per fragment.** A depth test on the label pass is the obvious alternative and it is
 wrong twice over: a building crossing a word cuts it in half, and — the reason it was abandoned — a
@@ -1423,28 +1471,20 @@ label's anchor sits ON the ground, so the ground eats it. Nearly every label on 
 disappeared. mapbox's small NDC offset (`-0.0001`, "to prevent coplanar symbol/geometry cases") plus
 the multi-tap average is what makes the coplanar case a non-event.
 
-**Packed colour, not a depth texture.** The first version attached a `GL_DEPTH_COMPONENT24` texture
-and sampled it with `texture2D` in the vertex stage. Every tap came back `1.0` on the emulator, with
-the pass demonstrably drawing into the buffer. The packed-rgb encoding is what `TerrainShadowMap`
-falls back to for the same reason, and it costs one `dot` per tap.
-
-**Cost:** 0.80–0.90 ms of GPU on an Adreno 610 at a city camera (frame total 10.2 → 10.7 ms), and
-zero when nothing asks for it — the pass does not run. See the
-[performance log](../performance-log.md).
+**Not on a globe** (the planar tile frame the rays are cast in does not hold there) and not for a
+translated extrusion layer or a bridge span, which the old pass skipped as well.
 
 ### Asking for it
 
 `TerrainOptions::setTextOcclusionOpacity(float)` — the opacity an occluded label **keeps**. 1, the
-default, is no occlusion at all and the pass does not run; 0 hides such a label completely. The
+default, is no occlusion at all and no ray is cast; 0 hides such a label completely. The
 style's `text-occlusion-opacity` (a `Map`-block property) wins over it wherever it sets one, as
 every other style/option pair here does (`resolveTextOcclusionOpacity`).
 
 A **style layer** may set its own `text-occlusion-opacity` (a `TextSymbolizer` property, so
 `#roads { text-occlusion-opacity: 0; }`), and that wins for its labels — a style can hide its road
-names behind a building and leave its POI labels alone, which is mapbox's granularity. It also turns
-the pass on by itself: `hasStyledLabelOcclusion` is noted while the pass label lists are rebuilt,
-because that loop already touches every label once, and the owner needs the answer *before* the
-layer passes.
+names behind a building and leave its POI labels alone, which is mapbox's granularity. Only such
+labels cast rays.
 
 So three scopes, each overriding the one above it: `TerrainOptions` → the style's `Map` block →
 the style layer.

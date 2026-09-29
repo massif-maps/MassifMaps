@@ -53,4 +53,9 @@ void testCartoCSSParse() {
     // and the tail is what makes it a list.
     css::StyleSheet list = css::CartoCSSParser::parse("#a { line-dasharray: 1, 2, 3; }");
     TEST_CHECK(!list.getElements().empty(), "a comma list still parses");
+
+    // mapbox2css writes an app-set zoom threshold (massif:minzoom-param) as a parameter predicate.
+    css::StyleSheet threshold = css::CartoCSSParser::parse(
+        "#transportation[zoom >= 'param::track_min_zoom'][class = 'track']::track { line-color: #000000; }");
+    TEST_CHECK(!threshold.getElements().empty(), "a zoom compared with a style parameter parses");
 }

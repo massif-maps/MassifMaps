@@ -60,6 +60,16 @@ void testInterpolateExpression() {
         TEST_CHECK(colorAt(10.0f) == 0xff0000ffu, "and steps to the next one at its key");
     }
 
+    // 2b. a colour curve as a step's value - an extending style's `@primary: linear(...)` - is still a
+    //     colour, not its packed integer read as a number
+    {
+        auto inner = std::make_shared<mvt::InterpolateExpression>(Method::LINEAR, value(0.0),
+            std::vector<mvt::Expression> { value(0.0), value("#ff0000"), value(10.0), value("#0000ff") });
+        mvt::InterpolateExpression fill(Method::STEP, value(0.0), { value(0.0), inner, value(14.0), inner });
+        unsigned int color = static_cast<unsigned int>(mvt::ValueConverter<long long>::convert(fill.evaluate(5.0f, context)));
+        TEST_CHECK(fill.isColor() && color == 0xffff0000u, "a nested colour curve yields that colour");
+    }
+
     // 3. exponential: mapbox's t = (b^(x-x0) - 1) / (b^(x1-x0) - 1) over the span, fed to a LINEAR
     //    curve. Read linearly instead, the road width below comes out at 7.0 rather than 4.96.
     {

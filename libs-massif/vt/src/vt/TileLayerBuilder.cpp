@@ -1,5 +1,6 @@
 #include "TileLayerBuilder.h"
 #include "SpanGeometry.h"
+#include "ExtrusionOccluder.h"
 
 #include <array>
 
@@ -672,6 +673,7 @@ namespace massif::vt {
             auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, massif::vt::resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
             labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
             labelStyle->collisionPadding = style.collisionPadding;
+            labelStyle->maxAngle = style.maxAngle;
             labelStyle->calloutBandFollow = style.calloutBandFollow;
             labelStyle->calloutAnchorVisible = style.calloutAnchorVisible;
             labelStyle->iconHaloColorFunc = style.iconHaloColorFunc;
@@ -1283,6 +1285,10 @@ namespace massif::vt {
         auto geometry = std::make_shared<TileGeometry>(type, _geomScale, styleParameters, vertexGeomLayoutParams, std::move(compressedVertexGeometry), std::move(compressedIndices), std::move(compressedIds), std::move(compressedGeoPosIndexes));
         if (!featureStyleRanges.empty()) {
             geometry->setFeatureStyleRanges(std::move(featureStyleRanges), _styleState, _stateKey);
+        }
+        // Here, on the decode thread: the upload releases the indices the label ray tests need.
+        if (type == TileGeometry::Type::POLYGON3D && spanInfos.empty()) {
+            geometry->setOccluder(ExtrusionOccluder::build(*geometry));
         }
         // One record per span piece: the vertices arrive grouped by feature, so a run of equal
         // info IS a piece.

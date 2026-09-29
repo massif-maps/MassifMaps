@@ -372,7 +372,7 @@ namespace massif::mvt {
             _contextVars = _viewStateVars = _styleParamVars = false;
             std::visit(ExpressionVariableVisitor(DependencyChecker(_contextVars, _viewStateVars, _styleParamVars)), expr);
             if (!_contextVars && !_styleParamVars) {
-                _func = buildFunction(ExpressionContext());
+                _func = buildFunction(_expr, ExpressionContext());
             }
         }
 
@@ -393,10 +393,32 @@ namespace massif::mvt {
                 if (_liveFuncs.size() >= MAX_LIVE_FUNCS) {
                     _liveFuncs.clear();
                 }
-                _liveFuncs.emplace_back(store, buildFunction(context));
+                _liveFuncs.emplace_back(store, buildFunction(_expr, context));
                 return _liveFuncs.back().second;
             }
-            return buildFunction(context);
+            if (!_viewStateVars) {
+                return buildFunction(_expr, context);
+            }
+            // The feature half folded now; features that fold alike share one object, which the
+            // renderer then evaluates once a frame instead of once per label.
+            Expression folded = foldContextExpressions(_expr, context);
+            bool contextVars = false, viewStateVars = false, styleParamVars = false;
+            std::visit(ExpressionVariableVisitor(DependencyChecker(contextVars, viewStateVars, styleParamVars)), folded);
+            if (contextVars) {
+                return buildFunction(folded, context);
+            }
+            const StyleParameterStore* store = context.getStyleParameterStore().get();
+            std::lock_guard<std::mutex> lock(_liveFuncMutex);
+            for (const FoldedFunc& foldedFunc : _foldedFuncs) {
+                if (foldedFunc.store == store && std::visit(ExpressionDeepEqualsChecker(), foldedFunc.expr, folded)) {
+                    return foldedFunc.func;
+                }
+            }
+            if (_foldedFuncs.size() >= MAX_FOLDED_FUNCS) {
+                _foldedFuncs.clear();
+            }
+            _foldedFuncs.push_back(FoldedFunc { store, folded, buildFunction(folded, context) });
+            return _foldedFuncs.back().func;
         }
 
         V getStaticValue(const ExpressionContext& context) const {
@@ -423,6 +445,7 @@ namespace massif::mvt {
                 _expr = other._expr;
                 std::lock_guard<std::mutex> lock(_liveFuncMutex);
                 _liveFuncs.clear();
+                _foldedFuncs.clear();
             }
             return *this;
         }
@@ -443,9 +466,9 @@ namespace massif::mvt {
 
         // _defaultValue before buildFunction: the build reads it.
         template <typename S>
-        void initialize(const S& defaultValue) { _expr = Value(defaultValue); _defaultValue = Value(defaultValue); _func = buildFunction(ExpressionContext()); }
+        void initialize(const S& defaultValue) { _expr = Value(defaultValue); _defaultValue = Value(defaultValue); _func = buildFunction(_expr, ExpressionContext()); }
 
-        virtual T buildFunction(const ExpressionContext& context) const = 0;
+        virtual T buildFunction(const Expression& expr, const ExpressionContext& context) const = 0;
 
         bool _defined = false;
         bool _contextVars = false;
@@ -459,6 +482,14 @@ namespace massif::mvt {
         static constexpr std::size_t MAX_LIVE_FUNCS = 4;
         mutable std::mutex _liveFuncMutex;
         mutable std::vector<std::pair<const StyleParameterStore*, T>> _liveFuncs;
+        // Feature-bound functions by their folded expression; same mutex.
+        struct FoldedFunc {
+            const StyleParameterStore* store;
+            Expression expr;
+            T func;
+        };
+        static constexpr std::size_t MAX_FOLDED_FUNCS = 16;
+        mutable std::vector<FoldedFunc> _foldedFuncs;
     };
 
     struct FloatFunctionProperty : GenericFunctionProperty<float, vt::FloatFunction> {
@@ -466,9 +497,8 @@ namespace massif::mvt {
         explicit FloatFunctionProperty(float defaultValue) : GenericFunctionProperty(defaultValue) { }
 
     protected:
-        virtual vt::FloatFunction buildFunction(const ExpressionContext& context) const override {
+        virtual vt::FloatFunction buildFunction(const Expression& expr, const ExpressionContext& context) const override {
             if (_viewStateVars || !foldsStyleParams(context)) {
-                Expression expr = _expr;
                 // By value: this function outlives the property that built it.
                 Value defaultValue = _defaultValue;
                 auto func = [expr, context, defaultValue](const vt::ViewState& viewState) -> float {
@@ -482,7 +512,7 @@ namespace massif::mvt {
                 };
                 return vt::FloatFunction(std::make_shared<std::function<float(const vt::ViewState&)>>(std::move(func)));
             } else {
-                Value val = evalExpression(_expr, context, nullptr, _defaultValue);
+                Value val = evalExpression(expr, context, nullptr, _defaultValue);
                 return vt::FloatFunction(ValueConverter<float>::convert(val));
             }
         }
@@ -493,9 +523,8 @@ namespace massif::mvt {
         explicit ColorFunctionProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
-        virtual vt::ColorFunction buildFunction(const ExpressionContext& context) const override {
+        virtual vt::ColorFunction buildFunction(const Expression& expr, const ExpressionContext& context) const override {
             if (_viewStateVars || !foldsStyleParams(context)) {
-                Expression expr = _expr;
                 // By value: this function outlives the property that built it.
                 Value defaultValue = _defaultValue;
                 auto func = [expr, context, defaultValue](const vt::ViewState& viewState) -> vt::Color {
@@ -509,7 +538,7 @@ namespace massif::mvt {
                 };
                 return vt::ColorFunction(std::make_shared<std::function<vt::Color(const vt::ViewState&)>>(std::move(func)));
             } else {
-                Value val = evalExpression(_expr, context, nullptr, _defaultValue);
+                Value val = evalExpression(expr, context, nullptr, _defaultValue);
                 return vt::ColorFunction(convertColor(val));
             }
         }

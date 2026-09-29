@@ -16,6 +16,7 @@
 #include "components/LightOptions.h"
 #include "components/TerrainOptions.h"
 #include "celestial/CelestialArc.h"
+#include "celestial/CelestialImage.h"
 #include "celestial/CelestialLabel.h"
 #include "celestial/CelestialObject.h"
 #include "layers/CelestialLayer.h"
@@ -448,6 +449,16 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** setAnchors([u, v, az, alt] x 3) - three points of a sky image pinned to three directions. */
+        Result setImageAnchors(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::vector<double> anchors;
+            if (!getNumbers(args, 0, anchors) || anchors.size() != 12) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<CelestialImage*>(obj)->setAnchors(anchors);
+            return RESULT_OK;
+        }
+
         /** setAnchorPoint(x, y) - which point of a sky label sits on its direction, -1..1 each. */
         Result setLabelAnchorPoint(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             double x = 0, y = 0;
@@ -818,6 +829,7 @@ namespace massif { namespace api {
         registerMethod("massif::CelestialArc", "setDirections", &setArcDirections);
         registerMethod("massif::CelestialArc", "setSegments", &setArcSegments);
         registerMethod("massif::CelestialArc", "setCircle", &setArcCircle);
+        registerMethod("massif::CelestialImage", "setAnchors", &setImageAnchors);
         registerMethod("massif::CelestialLabel", "setAnchorPoint", &setLabelAnchorPoint);
         registerMethod("massif::CelestialLabel", "setOffset", &setLabelOffset);
         registerMethod("massif::TerrainOptions", "calculateHorizon", &calculateHorizon);

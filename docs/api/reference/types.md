@@ -136,8 +136,8 @@ Inherited from `StyleBuilder`:
 
 | Property | Type | Access | Description |
 |---|---|---|---|
-| `altitude` | number | read-only | Returns the altitude of the clicked object at the time of the click. |
-| `azimuth` | number | read-only | Returns the azimuth of the clicked object at the time of the click. |
+| `altitude` | number | read-only | Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. |
+| `azimuth` | number | read-only | Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at. |
 | `celestialObject` | object `celestial.CelestialObject` | read-only | Returns the clicked object. |
 | `clickInfo` | struct `massif::ClickInfo` | read-only | Returns the click info. |
 | `clickType` | [enum](enums.md#enum-clicktype) | read-only | Returns the click type. |

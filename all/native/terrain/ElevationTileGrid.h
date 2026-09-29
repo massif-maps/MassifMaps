@@ -109,6 +109,12 @@ namespace massif {
         void encodeNodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, BorderStrips& strips) const;
 
         /**
+         * ElevationGradient over the rect [x0, x0 + rectWidth) x [y0, y0 + rectHeight) of a width x height texture in
+         * this grid's encoding (encodeTextureWithBorders), rows south-to-north.
+         */
+        void encodeGradientTexture(const std::uint8_t* textureData, int width, int height, int x0, int y0, int rectWidth, int rectHeight, std::vector<std::uint16_t>& gradient) const;
+
+        /**
          * Wraps a DEM bitmap in a grid with the given color coefficients; null for an unsupported format.
          * nodesPerEdge is the node field's lattice (0 = none), boxCells the cells a node averages.
          */

@@ -190,7 +190,14 @@ function siteLiterals(declaration: string, allowed: Map<string, CartoProperty>):
  * two files, and the night palette silently stopped being a drop-in.
  */
 export function hoistVariables(blocks: HoistBlock[], allowed: Map<string, CartoProperty>,
-        alternates: HoistBlock[][] = []): HoistResult {
+        alternates: HoistBlock[][] = [], preferred: Record<string, string> = {}): HoistResult {
+    // A style that names its own palette (`massif:palette-names`, name -> literal) gets those names:
+    // an override file then says `@motorway`, not whatever layer the colour happened to land on.
+    const byLiteral = new Map<string, string>();
+    for (const [name, literal] of Object.entries(preferred)) {
+        const key = normalise(literal.replace(/^'|'$/g, ''));
+        if (!byLiteral.has(key)) byLiteral.set(key, slug(name));
+    }
     const entries = new Map<string, Entry>();
     // "block:declaration" -> the entry key of each literal in it, in the order they appear. The
     // rewrite reads this rather than re-deriving a key, since a key now spans every pass.
@@ -255,7 +262,8 @@ export function hoistVariables(blocks: HoistBlock[], allowed: Map<string, CartoP
             : mapProperty ? slug(mapProperty.replace(/-colou?r$/, ''))
             : scope ? `${scope}_${role(property, allowed)}`
             : group(property, allowed);
-        let name = base;
+        const own = entry.variants.length === 0 ? byLiteral.get(normalise(entry.raw.replace(/^'|'$/g, ''))) : undefined;
+        let name = own && !taken.has(own) ? own : base;
         for (let n = 2; taken.has(name); n++) name = `${base}_${n}`;
         taken.add(name);
         names.set(key, name);

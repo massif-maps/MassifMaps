@@ -38,7 +38,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> ACTION = MassifObject.key("action");
     /** Returns the address of the result. */
     public static final MassifObject.Key<String> ADDRESS = MassifObject.key("address");
-    /** Returns the altitude of the clicked object at the time of the click. */
+    /** Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
     public static final MassifObject.Key<Double> ALTITUDE = MassifObject.key("altitude");
     /** Returns the ambient light color. */
     public static final MassifObject.Key<Integer> AMBIENT_COLOR = MassifObject.key("ambientColor");
@@ -88,7 +88,7 @@ public final class ApiNames {
     /** Returns the tilt at or above which the terrain renders flat. */
     public static final MassifObject.Key<Double> AUTO_FLATTEN_TILT = MassifObject.key("autoFlattenTilt");
     public static final MassifObject.Key<Boolean> AUTOCOMPLETE = MassifObject.key("autocomplete");
-    /** Returns the azimuth of the clicked object at the time of the click. */
+    /** Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at. */
     public static final MassifObject.Key<Double> AZIMUTH = MassifObject.key("azimuth");
     /** Returns the blue component of this map color. */
     public static final MassifObject.Key<Long> B = MassifObject.key("b");
@@ -118,7 +118,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> BILLBOARD_OCCLUSION_ENABLED = MassifObject.key("billboardOcclusionEnabled");
     /** Returns the billboard/label terrain occlusion tolerance. */
     public static final MassifObject.Key<Double> BILLBOARD_OCCLUSION_TOLERANCE = MassifObject.key("billboardOcclusionTolerance");
-    /** Returns the bitmap of the sprite. */
+    /** Returns the bitmap of the image. */
     public static final MassifObject.Key<MassifObject> BITMAP = MassifObject.key("bitmap");
     /** Returns the bitmap scaling factor. */
     public static final MassifObject.Key<Double> BITMAP_SCALE = MassifObject.key("bitmapScale");
@@ -504,6 +504,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> LONG = MassifObject.key("long");
     /** Returns the long click duration in seconds. */
     public static final MassifObject.Key<Double> LONG_CLICK_DURATION = MassifObject.key("longClickDuration");
+    /** Returns whether the bitmap's brightness is read as its opacity. */
+    public static final MassifObject.Key<Boolean> LUMINANCE_ALPHA = MassifObject.key("luminanceAlpha");
     /** Returns the color of the main light. */
     public static final MassifObject.Key<Integer> MAIN_LIGHT_COLOR = MassifObject.key("mainLightColor");
     /** Returns the direction of the main light. */
@@ -1080,6 +1082,7 @@ public final class ApiNames {
     public static final String METHOD_SCREEN_TO_MAP = "screenToMap";
     public static final String METHOD_SET = "set";
     public static final String METHOD_SET_ANCHOR_POINT = "setAnchorPoint";
+    public static final String METHOD_SET_ANCHORS = "setAnchors";
     public static final String METHOD_SET_CIRCLE = "setCircle";
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
@@ -1113,6 +1116,7 @@ public final class ApiNames {
     public static final String EVENT_MAP_INTERACTION = "map.interaction";
     public static final String EVENT_MAP_MOVED = "map.moved";
     public static final String EVENT_MAP_STABLE = "map.stable";
+    public static final String EVENT_SKY_CLICKED = "sky.clicked";
     public static final String EVENT_VECTORELEMENT_CLICKED = "vectorelement.clicked";
     public static final String EVENT_VECTORTILE_CLICKED = "vectortile.clicked";
 
@@ -1137,6 +1141,7 @@ public final class ApiNames {
     public static final String TYPE_ASSETS_DIR = "dir";
     public static final String TYPE_ASSETS_ZIP = "zip";
     public static final String TYPE_CELESTIAL_ARC = "arc";
+    public static final String TYPE_CELESTIAL_IMAGE = "image";
     public static final String TYPE_CELESTIAL_LABEL = "label";
     public static final String TYPE_CELESTIAL_SPRITE = "sprite";
     public static final String TYPE_EFFECT_POSTPROCESS = "postprocess";

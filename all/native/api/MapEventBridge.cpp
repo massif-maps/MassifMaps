@@ -122,4 +122,10 @@ namespace massif { namespace api {
         return chainedHandled || consumed;
     }
 
+    bool CelestialEventBridge::onSkyClicked(const ClickInfo& clickInfo, float azimuth, float altitude) {
+        bool chainedHandled = _chained ? _chained->onSkyClicked(clickInfo, azimuth, altitude) : false;
+        bool consumed = _emitter.emit("sky.clicked", std::make_shared<CelestialClickInfo>(clickInfo, azimuth, altitude), "massif::CelestialClickInfo");
+        return chainedHandled || consumed;
+    }
+
 } }

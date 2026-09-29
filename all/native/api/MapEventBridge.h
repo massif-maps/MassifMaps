@@ -100,7 +100,7 @@ namespace massif { namespace api {
     };
 
     /**
-     * The same for a celestial layer's object clicks.
+     * The same for a celestial layer's object clicks and empty-sky clicks.
      */
     class CelestialEventBridge : public CelestialEventListener {
     public:
@@ -109,6 +109,7 @@ namespace massif { namespace api {
         virtual ~CelestialEventBridge();
 
         virtual bool onCelestialObjectClicked(const ClickInfo& clickInfo, const std::shared_ptr<CelestialObject>& celestialObject);
+        virtual bool onSkyClicked(const ClickInfo& clickInfo, float azimuth, float altitude);
 
     private:
         PayloadEmitter _emitter;

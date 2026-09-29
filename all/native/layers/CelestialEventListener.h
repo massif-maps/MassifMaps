@@ -15,7 +15,7 @@ namespace massif {
     class CelestialObject;
 
     /**
-     * Reports clicks on the objects of a CelestialLayer.
+     * Reports clicks on the objects of a CelestialLayer, and on the empty sky around them.
      */
     class CelestialEventListener {
     public:
@@ -29,6 +29,18 @@ namespace massif {
          * @return True if the click was handled and must not be passed on, false otherwise.
          */
         virtual bool onCelestialObjectClicked(const ClickInfo& clickInfo, const std::shared_ptr<CelestialObject>& celestialObject) {
+            return false;
+        }
+
+        /**
+         * Called when a click aims at the sky and hits nothing, on no layer: the map listener is not
+         * called then, as there is no ground position to report. E.g. to clear a selection.
+         * @param clickInfo The click.
+         * @param azimuth The azimuth the click aimed at, in degrees clockwise from north.
+         * @param altitude The altitude the click aimed at, in degrees above the horizon.
+         * @return True if the click was handled and must not be passed on to the other celestial layers.
+         */
+        virtual bool onSkyClicked(const ClickInfo& clickInfo, float azimuth, float altitude) {
             return false;
         }
     };

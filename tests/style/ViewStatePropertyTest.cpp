@@ -13,9 +13,13 @@
 
 #include <mapnikvt/Expression.h>
 #include <mapnikvt/ExpressionContext.h>
+#include <mapnikvt/ParserUtils.h>
 #include <mapnikvt/Properties.h>
+#include <mapnikvt/StyleParameterStore.h>
+#include <vt/Styles.h>
 
 #include <cmath>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -153,5 +157,45 @@ void testViewStateProperty() {
 
         TEST_CHECK(near(evaluate(backgroundEmissive, view(17.0f, 0.0f)), 0.25f),
             "a ViewState with no brightness set reads 1 - the DAYLIGHT end, which is why it has to be passed in");
+    }
+
+    // 6. A POI plate that follows the hour: Mapbox's night disc is pastel with a dark ring. The plate
+    //    colour used to be read ONCE at decode, where view::brightness is unset - so every disc took
+    //    the ramp's first (night) stop at noon. It must stay a function the renderer calls per frame,
+    //    and the decode-time value the plate's enabled() test reads must be the daylight one.
+    {
+        std::vector<mvt::Expression> stops = { mvt::Value(0.25), mvt::Value(std::string("#202020")),
+                                               mvt::Value(0.3), mvt::Value(std::string("#ffffff")) };
+        mvt::ColorFunctionProperty ring("#000000");
+        ring.setExpression(std::make_shared<mvt::InterpolateExpression>(Method::LINEAR, variable("view::brightness"), stops));
+        vt::ColorFunction func = ring.getFunction(mvt::ExpressionContext());
+
+        TEST_CHECK(func.function() != nullptr, "a ring ramped over the brightness stays a per-frame function");
+        auto grey = [](const vt::Color& color, float level) {
+            return near(color.rgba()[0], level) && near(color.rgba()[1], level) && near(color.rgba()[2], level);
+        };
+        TEST_CHECK(grey(func(lit(0.0136f)), 32.0f / 255.0f), "night brightness draws the dark ring");
+        TEST_CHECK(grey(func(lit(0.478f)), 1.0f), "day brightness draws the white one");
+        TEST_CHECK(grey(ring.getStaticValue(mvt::ExpressionContext()), 1.0f),
+            "and the decode-time value is the daylight colour, not the night stop");
+
+        vt::LabelPlateStyle live, other;
+        live.colorFunc = func;
+        TEST_CHECK(!(live == other), "two plates differing only in a live colour are two styles");
+    }
+
+    // Massif's building fade: building_opacity looking straight down, so tunnels show; opaque leaning in.
+    {
+        auto store = std::make_shared<mvt::StyleParameterStore>(std::map<std::string, mvt::Value> { { "building_opacity", mvt::Value(0.6) } });
+        mvt::ExpressionContext context;
+        context.setStyleParameterStore(store);
+        mvt::FloatFunctionProperty opacity(1.0f);
+        opacity.setExpression(mvt::parseExpression("linear([view::tilt], 70, 1, 85, [param::building_opacity])", false));
+        vt::FloatFunction func = opacity.getFunction(context);
+        TEST_CHECK(near(func(view(17.0f, 90.0f)), 0.6f), "a top-down camera draws the buildings at building_opacity");
+        TEST_CHECK(near(func(view(17.0f, 77.5f)), 0.8f), "half way down the ramp it is half way to opaque");
+        TEST_CHECK(near(func(view(17.0f, 30.0f)), 1.0f), "a leaning camera draws them opaque");
+        store->setValues({ { "building_opacity", mvt::Value(0.3) } });
+        TEST_CHECK(near(func(view(17.0f, 90.0f)), 0.3f), "and a new parameter value reaches the same function: no re-decode");
     }
 }

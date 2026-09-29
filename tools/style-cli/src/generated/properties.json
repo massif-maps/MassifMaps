@@ -1399,9 +1399,9 @@
       "mapnik": "icon-background-border-fill",
       "symbolizer": "shield",
       "kind": "color",
-      "type": "ColorProperty",
+      "type": "ColorFunctionProperty",
       "default": "#000000",
-      "live": false,
+      "live": true,
       "baked": false
     },
     {
@@ -1429,9 +1429,9 @@
       "mapnik": "icon-background-fill",
       "symbolizer": "shield",
       "kind": "color",
-      "type": "ColorProperty",
+      "type": "ColorFunctionProperty",
       "default": "transparent",
-      "live": false,
+      "live": true,
       "baked": false
     },
     {
@@ -1601,6 +1601,16 @@
       "kind": "float",
       "type": "FloatProperty",
       "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-max-char-angle-delta",
+      "mapnik": "max-char-angle-delta",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "45.0",
       "live": false,
       "baked": false
     },
@@ -1975,6 +1985,16 @@
       "baked": false
     },
     {
+      "cartocss": "text-callout-anchor-visible",
+      "mapnik": "callout-anchor-visible",
+      "symbolizer": "text",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "text-callout-band-follow",
       "mapnik": "callout-band-follow",
       "symbolizer": "text",
@@ -2221,6 +2241,16 @@
       "kind": "float",
       "type": "FloatProperty",
       "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-max-char-angle-delta",
+      "mapnik": "max-char-angle-delta",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatProperty",
+      "default": "45.0",
       "live": false,
       "baked": false
     },

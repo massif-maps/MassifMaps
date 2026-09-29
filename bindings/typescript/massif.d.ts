@@ -55,6 +55,7 @@ export type ClassName =
   | "massif::CelestialArc"
   | "massif::CelestialClickInfo"
   | "massif::CelestialEventListener"
+  | "massif::CelestialImage"
   | "massif::CelestialLabel"
   | "massif::CelestialLayer"
   | "massif::CelestialObject"
@@ -1517,9 +1518,9 @@ export interface PropertyTypes {
   "massif::CelestialClickInfo": {
     /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
     [key: `celestialObject.metaData.${string}`]: Json;
-    /** (read-only) Returns the altitude of the clicked object at the time of the click. */
+    /** (read-only) Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
     readonly "altitude": number;
-    /** (read-only) Returns the azimuth of the clicked object at the time of the click. */
+    /** (read-only) Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at. */
     readonly "azimuth": number;
     /** (read-only) Returns the clicked object. */
     readonly "celestialObject": Handle<"massif::CelestialObject">;
@@ -1549,6 +1550,42 @@ export interface PropertyTypes {
     readonly "clickType": "CLICK_TYPE_SINGLE" | "CLICK_TYPE_LONG" | "CLICK_TYPE_DOUBLE" | "CLICK_TYPE_DUAL";
   };
   "massif::CelestialEventListener": {
+  };
+  "massif::CelestialImage": {
+    /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+    [key: `metaData.${string}`]: Json;
+    /** (read-only) Returns the altitude of a direction-anchored object. */
+    readonly "altitude": number;
+    /** (read-only) Returns the azimuth of a direction-anchored object. */
+    readonly "azimuth": number;
+    /** Returns the bitmap of the image. */
+    "bitmap": Handle<"massif::Bitmap">;
+    /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
+    readonly "bitmap.bytesPerPixel": number;
+    /** (read-only) Returns the color format of this bitmap. */
+    readonly "bitmap.colorFormat": "COLOR_FORMAT_UNSUPPORTED" | "COLOR_FORMAT_BGRA" | "COLOR_FORMAT_RGBA_4444" | "COLOR_FORMAT_RGB_565";
+    /** (read-only) Returns the height of the bitmap. */
+    readonly "bitmap.height": number;
+    /** (read-only) Returns the width of the bitmap. */
+    readonly "bitmap.width": number;
+    /** Returns the color of the object. */
+    "color": number;
+    /** (read-only) Returns true if the object is anchored by direction, false if by geographic position. */
+    readonly "directionAnchored": boolean;
+    /** (read-only) Returns the distance of a direction-anchored object. */
+    readonly "distance": number;
+    /** Returns whether the bitmap's brightness is read as its opacity. */
+    "luminanceAlpha": boolean;
+    /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+    "metaData": Record<string, Json>;
+    /** Returns whether the map in front hides the object. */
+    "occludedByMap": boolean;
+    /** (read-only) Returns the geographic position of a position-anchored object. */
+    readonly "position": Position;
+    /** (read-only) Returns the altitude of a position-anchored object. */
+    readonly "positionAltitude": number;
+    /** Returns the visibility of the object. */
+    "visible": boolean;
   };
   "massif::CelestialLabel": {
     /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
@@ -6986,6 +7023,22 @@ export interface CelestialSpec_arc {
   width?: number;
 }
 
+export interface CelestialSpec_image {
+  type: "image";
+  /** Returns the bitmap of the image. */
+  bitmap?: Handle<"massif::Bitmap">;
+  /** Returns the color of the object. */
+  color?: number;
+  /** Returns whether the bitmap's brightness is read as its opacity. */
+  luminanceAlpha?: boolean;
+  /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+  metaData?: Record<string, Json>;
+  /** Returns whether the map in front hides the object. */
+  occludedByMap?: boolean;
+  /** Returns the visibility of the object. */
+  visible?: boolean;
+}
+
 export interface CelestialSpec_label {
   type: "label";
   /** Returns the background colour. */
@@ -7042,7 +7095,7 @@ export interface CelestialSpec_sprite {
   visible?: boolean;
 }
 
-export type CelestialSpec = CelestialSpec_arc | CelestialSpec_label | CelestialSpec_sprite;
+export type CelestialSpec = CelestialSpec_arc | CelestialSpec_image | CelestialSpec_label | CelestialSpec_sprite;
 
 export interface EffectSpec_postprocess {
   type: "postprocess";
@@ -8330,6 +8383,10 @@ export interface MethodTypes {
   };
   "massif::CelestialEventListener": {
   };
+  "massif::CelestialImage": {
+    setAnchors: (anchors: Json) => void;
+    setDirection: (azimuth: number, altitude: number, distance: number) => void;
+  };
   "massif::CelestialLabel": {
     setAnchorPoint: (x: number, y: number) => void;
     setDirection: (azimuth: number, altitude: number, distance: number) => void;
@@ -8981,10 +9038,13 @@ export interface EventTypes {
   };
   "massif::CelestialEventListener": {
   };
+  "massif::CelestialImage": {
+  };
   "massif::CelestialLabel": {
   };
   "massif::CelestialLayer": {
     "celestial.clicked": Handle<"massif::CelestialClickInfo">;
+    "sky.clicked": Handle<"massif::CelestialClickInfo">;
   };
   "massif::CelestialObject": {
   };

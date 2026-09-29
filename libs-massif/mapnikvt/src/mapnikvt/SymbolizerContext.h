@@ -22,6 +22,12 @@ namespace massif::mvt {
         struct Settings {
             explicit Settings(float tileSize, std::shared_ptr<const StyleParameterStore> styleParameterStore, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale = 1.0f, vt::StyleStateRef styleState = vt::StyleStateRef());
 
+            // The parameters read here, with their defaults: every style has them, declared or not.
+            static const std::map<std::string, float>& getBuiltinParameters() {
+                static const std::map<std::string, float> parameters = { { "_fontscale", 1.0f }, { "_geometryscale", 1.0f }, { "_zoomlevelbias", 0.0f } };
+                return parameters;
+            }
+
             float getTileSize() const { return _tileSize; }
             float getGeometryScale() const { return _geometryScale; }
             float getFontScale() const { return _fontScale; }

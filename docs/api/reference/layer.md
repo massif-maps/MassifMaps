@@ -55,6 +55,7 @@ Inherited from `Layer`:
 | Event | Payload | Consumable |
 |---|---|---|
 | `celestial.clicked` | CelestialClickInfo | yes |
+| `sky.clicked` | CelestialClickInfo | yes |
 
 ## `"composite-vector"` — CompositeVectorTileLayer {#spec-composite-vector}
 

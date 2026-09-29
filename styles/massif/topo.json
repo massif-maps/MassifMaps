@@ -12180,14 +12180,26 @@
         ],
         "icon-size": 0.4,
         "text-field": [
-          "coalesce",
+          "case",
           [
-            "get",
-            "name"
+            "==",
+            [
+              "get",
+              "shelter_type"
+            ],
+            "public_transport"
           ],
+          "",
           [
-            "get",
-            "name_int"
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
           ]
         ],
         "text-font": [
@@ -32509,14 +32521,26 @@
         ],
         "icon-size": 0.4,
         "text-field": [
-          "coalesce",
+          "case",
           [
-            "get",
-            "name"
+            "==",
+            [
+              "get",
+              "shelter_type"
+            ],
+            "public_transport"
           ],
+          "",
           [
-            "get",
-            "name_int"
+            "coalesce",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "get",
+              "name_int"
+            ]
           ]
         ],
         "text-font": [

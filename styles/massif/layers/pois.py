@@ -244,13 +244,18 @@ def mono_params():
             'background-stroke-width': shape_match('border')}
 
 
-def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None):
+NAME = ['coalesce', get('name'), get('name_int')]
+# a bus shelter is named after its stop, which the stop's own POI already says; a hut's shelter is not
+SHELTER_NAME = ['case', ['==', get('shelter_type'), 'public_transport'], '', NAME]
+
+
+def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAME):
     layout = {
         # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
         # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
         'icon-image': icon if v.flags.get('mono') else ['concat', icon, '-poi'],
         'icon-size': 0.4,
-        'text-field': ['coalesce', get('name'), get('name_int')],
+        'text-field': text,
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
         'text-font': ['Noto Sans Regular'],
         'text-size': 12,
@@ -295,14 +300,18 @@ MOUNTAIN_LAYERS = [
 ]
 
 
+def shelter_text(id):
+    return SHELTER_NAME if id in ('poi-lodging', 'poi-mountain-shelter') else NAME
+
+
 def mountain(v):
-    return [poi_layer(id, minzoom, filter, None, v, icon=icon, maxzoom=maxzoom)
+    return [poi_layer(id, minzoom, filter, None, v, icon=icon, maxzoom=maxzoom, text=shelter_text(id))
             for id, minzoom, maxzoom, filter, icon in MOUNTAIN_LAYERS]
 
 
 def layers(v):
     return ([poi_layer(id, minzoom, filter, 'rank', v) for id, minzoom, filter in RANK_LAYERS] +
-            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], 'category', v)
+            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], 'category', v, text=shelter_text(id))
              for id, minzoom, classes in CATEGORY_LAYERS])
 
 

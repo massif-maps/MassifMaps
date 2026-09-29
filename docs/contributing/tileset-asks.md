@@ -24,6 +24,7 @@ carry has to fall back on its own — see [the shield fallback](#the-rule-for-a-
 | `network` | `transportation_name` | **road shields.** Commented out at `TransportationName.java:268`. Without it no shield can tell an interstate from a departmental road, and every ref falls to the neutral plate |
 | `iso_a2` | `transportation_name` | **shield colours per country.** A French `N` is red, a Dutch `N` is yellow, a Belgian `N` is blue; the ref's letter alone cannot separate them. MapTiler's `road_label` carries it for exactly this reason |
 | `maritime`, `class` | `boundary` | a coastline boundary cannot be told from a land one, so both draw the same |
+| `shelter_type` | `poi` (`class=shelter`) | **a bus shelter without its stop's name.** Massif hides the name when it is `public_transport`; without the field, every shelter at a Grenoble stop repeats the stop's name next to the stop's own POI, and none can be told from a mountain cabane |
 
 `network` is worth more than the shields. Stock OMT collapses the OSM route network onto a
 14-value enum — `us-interstate`, `ca-transcanada`, `gb-motorway`, `e-road`, … — which has no French,

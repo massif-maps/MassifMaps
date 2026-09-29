@@ -467,9 +467,10 @@ style is unaffected: it states these in `paint`, where they are legal for it.
 filter, and the one test that needs it is a live config — see below.
 
 `massif:minzoom-param` names a live config that holds the zoom a layer STARTS at, for an app to
-move (Alpimaps shows tracks from 13). The layer's `minzoom` stays maplibre's and is the parameter's
-default; the band of the layer that starts there becomes `[zoom >= 'param::track_min_zoom']`, a
-selector the decoder prunes per tile. A later zoom band keeps its own bound. A filter comparing
+move (Alpimaps shows tracks from 13). Every band of the layer tests `[zoom >= 'param::track_min_zoom']`,
+a selector the decoder prunes per tile. The band starting AT the parameter's default drops its own
+start, so an app may go lower; a layer starting below its default keeps that floor (`[zoom >= 12]`
+beside the parameter), the lowest an app may go, and pays for decoding those tiles. A filter comparing
 `["zoom"]` with `["config", …]` brackets the same way; both need 512 px tiles (no zoom offset), and
 were a `when()` over `[view::zoom]`, read per feature, before.
 
@@ -549,6 +550,11 @@ and each becomes a different thing:
 | the glyph | a distance field, `shield-file` + `shield-sdf` | `shield-icon-fill` ← the `icon` param |
 | the disc | the shield's icon PLATE | `shield-icon-background-fill` ← `background` |
 | the ring | that plate's border | `shield-icon-background-border-fill` ← `background-stroke` |
+
+The plate's corner and ring — stated as `radius` / `background-stroke-width` or measured off the
+artwork — are the artwork's pixels at icon-size 1, so they are emitted times `icon-size`. Carried as
+they were, Massif's POIs (icon-size 0.4, ring 3) drew a 3 px ring where MapLibre draws 1.2, and the
+disc a third wider with it.
 
 Which colour inside the disc is the *glyph* is the part that took two tries, because MapBox composes
 an icon as `icon-stroke` under `icon` and the sheet renders both:
@@ -889,6 +895,10 @@ takes ONE pattern where MapBox takes a ramp. Two rules follow from that:
   cycleway dashes came out two and a half times too long with gaps to match. The `match`/`case`
   fallback is the width nearly every feature has; a piste is the exception, and one pattern cannot
   serve both.
+- **A width chosen per config value is read at its fallback too.** Massif's e-ink draws tracks 1.6×
+  wider, a `match` on `["config", "variant"]` around two ramps. That is no ramp to read, and the mean
+  of every number in both drew a grade2 track's `[5, 2]` as a 50 px dash where gl-js draws 5. The
+  other variants' dashes are exact; e-ink's come out 1/1.6 of their length.
 
 ### A PLAIN dash over a ramped width becomes one rule per zoom band
 

@@ -731,15 +731,16 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             }
             const buildings = buildingPredicate(symbolizer, sourceLayer, buildings3D.get(layer.id) === 'flat');
             if (buildings) usesBuildings = true;
-            // `massif:minzoom-param`: the zoom this layer starts at is a parameter an app sets. Only the
-            // band starting at its default takes it; a later band keeps its own bound.
+            // `massif:minzoom-param`: the zoom this layer starts at is a parameter an app sets, tested by
+            // every band. The band starting AT its default drops its own start, so an app may go lower;
+            // a layer starting below its default keeps that floor, the lowest an app may go.
             const minParam = (layer.metadata as Record<string, Json> | undefined)?.['massif:minzoom-param'];
             const minDefault = typeof minParam === 'string' ? Number(parameters.get(minParam)?.default) : NaN;
-            const paramStart = typeof minParam === 'string' && zoomOffsetLevels() === 0
-                && typeof layer.minzoom === 'number' && Math.floor(layer.minzoom) === minDefault;
+            const hasParam = typeof minParam === 'string' && zoomOffsetLevels() === 0;
+            const paramStart = hasParam && typeof layer.minzoom === 'number' && Math.floor(layer.minzoom) === minDefault;
             const predicates = [
-                ...(paramStart ? [`[zoom >= 'param::${minParam}']`, ...zoomPredicates(undefined, layer.maxzoom)]
-                    : zoomPredicates(layer.minzoom, layer.maxzoom)),
+                ...(hasParam ? [`[zoom >= 'param::${minParam}']`] : []),
+                ...zoomPredicates(paramStart ? undefined : layer.minzoom, layer.maxzoom),
                 ...(buildings ? [buildings] : []),
                 ...translateFilter(filter),
             ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));
@@ -1577,7 +1578,7 @@ function layerDeclarations(
                 coverage.approximate(`line-dasharray taken at one stop, ${pattern.join(',')}: ` +
                     'CartoCSS takes one dash pattern, not a ramp');
             }
-            const width = layer.paint?.['line-width'];
+            const width = dashWidth(layer.paint?.['line-width']);
             // At the zoom the pattern is CHOSEN at, not the mean of the width's stops: Standard's
             // steps ramp to 80 px by z22, so the mean is 43 and its 0.2 dash came out at 8.6 px
             // where gl-js draws under 2 - coarse bands instead of fine treads.
@@ -1764,7 +1765,7 @@ function layerDeclarations(
  * border falls exactly where the artwork's ring was. All three colours are style properties here,
  * so they are evaluated per feature, which is what gets a POI its class colour back.
  */
-function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage,
+function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, sized: string, coverage: Coverage,
                                options: ConvertOptions): string[] {
     const params = layer.layout?.[ICON_PARAMS] as Record<string, Json> | undefined;
     if (!icon.plate || !params) return [];
@@ -1772,14 +1773,18 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     // Where the plate covers only some features, its colours are transparent for the others - a
     // plate with no fill and no border draws nothing (TileLabel::Style::Plate::draws).
     const scoped = (value: string) => (icon.plateWhen ? `(${icon.plateWhen} ? ${value} : transparent)` : value);
-    const colour = (name: string, target: string, gate = false): boolean => {
+    // Radius and ring are the artwork's pixels at icon-size 1, the plate's are the screen's: at
+    // icon-size 0.4 a ring stated 3 drew 3 px where MapLibre draws 1.2, and the disc grew with it.
+    const sizedBy = (value: string) => (sized === '1' ? value : `((${value}) * (${sized}))`);
+    const colour = (name: string, target: string, gate = false, size = false): boolean => {
         if (params[name] === undefined) return false;
         // `"massif:params": ["icon-image"]` puts the icon's own palette in project.json too, so the
         // disc, its ring and the glyph are tuned in the same place as the label's colour.
         const translated = fieldParamTable(params[name], layer, 'icon-image', target, coverage, options)
             ?? tryTranslate(params[name], `icon-image params.${name}`, layer.id, coverage);
         if (translated === null) return false;
-        out.push(`${target}: ${gate ? scoped(translated) : translated};`);
+        const value = size ? sizedBy(translated) : translated;
+        out.push(`${target}: ${gate ? scoped(value) : value};`);
         coverage.emit(target);
         return true;
     };
@@ -1791,8 +1796,8 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     // plate there is - half the box is a circle, a few pixels a rounded square, 0 a rectangle - so a
     // transit badge needs no artwork of its own, and one sheet of discs covers the lot. Measured
     // otherwise, which is what a Standard sheet of real roundels wants.
-    if (!colour('radius', 'shield-icon-background-radius')) {
-        out.push(`shield-icon-background-radius: ${round(icon.plate.radius)};`);
+    if (!colour('radius', 'shield-icon-background-radius', false, true)) {
+        out.push(`shield-icon-background-radius: ${sizedBy(String(round(icon.plate.radius)))};`);
         coverage.emit('shield-icon-background-radius');
     }
     // Both paddings default to a text plate's, which would grow the disc off its own artwork.
@@ -1807,8 +1812,8 @@ function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage
     if (icon.plate.borderWidth > 0 && colour('background-stroke', 'shield-icon-background-border-fill', true)) {
         // Stated wins over measured, as `radius` does: the ring is measured off the artwork, and one
         // sheet of identical discs therefore rings a small badge as heavily as a full circle.
-        if (!colour('background-stroke-width', 'shield-icon-background-border-width')) {
-            out.push(`shield-icon-background-border-width: ${round(icon.plate.borderWidth)};`);
+        if (!colour('background-stroke-width', 'shield-icon-background-border-width', false, true)) {
+            out.push(`shield-icon-background-border-width: ${sizedBy(String(round(icon.plate.borderWidth)))};`);
             coverage.emit('shield-icon-background-border-width');
         }
     }
@@ -2051,7 +2056,7 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
         // mapbox and now separate here.
         emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
         emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
-        out.push(...iconPlateDeclarations(layer, icon, coverage, options));
+        out.push(...iconPlateDeclarations(layer, icon, sized, coverage, options));
     } else if (layer.layout?.[RECOLOURABLE_ICON] === true) {
         // A recolourable sprite whose artwork is NOT a disc with a glyph on it (extractIconPlate
         // took it apart where it is): the sheet ships one flat render with the icon's own default
@@ -2128,7 +2133,7 @@ function dashPattern(value: Json): { pattern: number[]; zoom: number | null } | 
  */
 function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
     const dash = layer.paint?.['line-dasharray'];
-    const width = layer.paint?.['line-width'];
+    const width = dashWidth(layer.paint?.['line-width']);
     if (dash === undefined || layer.dashZoom !== undefined || !Array.isArray(width)) return [layer];
     const pattern = dashPattern(dash as Json);
     // A dash the style RAMPS states the zoom its pattern begins at, and reading the width there is
@@ -2170,6 +2175,17 @@ function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] 
         + 'dash is a multiple of the line width and CartoCSS takes one pattern per rule, so a '
         + 'ramped width needs a rule per band to stay in proportion');
     return bands;
+}
+
+/**
+ * The width a dash is scaled by. A width chosen per config value (`match` on `["config", ...]`) is
+ * read at its fallback: its numbers averaged over every branch drew an e-ink track's 5 px dash 50 px.
+ */
+function dashWidth(width: Json | undefined): Json | undefined {
+    if (Array.isArray(width) && width[0] === 'match' && Array.isArray(width[1]) && width[1][0] === 'config') {
+        return dashWidth(width[width.length - 1] as Json);
+    }
+    return width;
 }
 
 /** A zoom ramp's `(zoom, value)` stops, in order. Empty for anything that is not one. */
@@ -2323,6 +2339,13 @@ function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage, opti
         coverage.emit('shield-text-optional');
     } else if (layout['text-optional'] !== undefined && layout['text-optional'] !== false) {
         coverage.drop('text-optional', 'only a literal true is carried', layer.id);
+    }
+
+    // The icon placed whatever it covers. The shield is one label, so its name overlaps too, where
+    // MapBox would drop an optional name that collides.
+    if (layout['icon-allow-overlap'] === true) {
+        out.push('shield-allow-overlap: true;');
+        coverage.emit('shield-allow-overlap');
     }
 
     // Carried as MapBox's own property, not as dx: it is measured from the ANCHOR to the near edge

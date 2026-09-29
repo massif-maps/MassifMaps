@@ -240,6 +240,19 @@ test('a width whose stops are data-driven still scales the dash at that zoom', (
     assert.match(out, /line-dasharray: 1.33,1.33;/);
 });
 
+test('a width chosen per config value scales the dash by its fallback ramp', () => {
+    // Massif's e-ink tracks are 1.6x wider: a match on the variant around two ramps. Averaged over
+    // both, the grade2 [5, 2] dash drew 50 px where gl-js draws 5.
+    const track = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['match', ['config', 'variant'], 'eink',
+            ['interpolate', ['linear'], ['zoom'], 12, 1.6, 16, 1.6],
+            ['interpolate', ['linear'], ['zoom'], 12, 1, 16, 1]],
+        'line-dasharray': [5, 2],
+    } };
+    const out = convert({ layers: [track] }, table, NO_PALETTE).mss;
+    assert.match(out, /line-dasharray: 5,2;/);
+});
+
 test('a fill pattern names a FILE, not the sheet-qualified sprite', () => {
     // 'misc:construction_pattern' reached the decoder verbatim and no such file has ever existed,
     // so every construction area drew as a bare outline. The sheet only says where to look.
@@ -454,6 +467,11 @@ test('a zoom an app sets is a selector on a parameter, not a when() per feature'
     const own = convertWith({ 'massif:minzoom-param': 'track_min_zoom' });
     assert.match(own, /#transportation\[zoom >= 'param::track_min_zoom'\]\[class = 'track'\]::track/);
     assert.equal(styleParams.get('track_min_zoom'), 12);
+    // a layer starting BELOW its default keeps that floor beside the parameter
+    const floored = convert({ metadata: { 'massif:live-config': ['track_min_zoom'] },
+        schema: { track_min_zoom: { default: 14 } },
+        layers: [layer({ 'massif:minzoom-param': 'track_min_zoom' })] }, table, { ...NO_PALETTE, tileDrawSize: 512 }).mss;
+    assert.match(floored, /#transportation\[zoom >= 'param::track_min_zoom'\]\[zoom >= 12\]\[class = 'track'\]::track/);
     // and a zoom compared with a config in a filter brackets the same way
     const filtered = convertWith({ 'massif:filter': ['>=', ['zoom'], ['config', 'track_min_zoom']] });
     assert.match(filtered, /\[zoom >= 'param::track_min_zoom'\]/);

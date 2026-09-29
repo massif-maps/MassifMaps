@@ -53,16 +53,16 @@ def fill_color(c):
     # below z14, uncased, Standard's one grey-blue for every road under a primary: a fill near the
     # ground's lightness would vanish without its casing
     low = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
-           c['road-low']]
+           'secondary', c['secondary-low'], c['road-low']]
     high = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
-            ['secondary', 'tertiary'], c.get('secondary', c['road']), c['road']]
+            'secondary', c['secondary'], 'tertiary', c['tertiary'], c['road']]
     z = c.get('casing-from', 14)
     # e-ink fades the grey to white as the casing grows, rather than flipping a dark road at z14
     return ['interpolate', ['linear'], ['zoom'], z - 1, low, z, high] if c.get('casing-low') else ['step', ['zoom'], low, z, high]
 
 
 def case_color(c, key='case'):
-    per_class = [] if key != 'case' else ['primary', c['primary-case'], ['secondary', 'tertiary'], c['secondary-case']]
+    per_class = [] if key != 'case' else ['primary', c['primary-case'], 'secondary', c['secondary-case'], 'tertiary', c['tertiary-case']]
     return ['match', get('class'), 'motorway', c['motorway-' + key], 'trunk', c['trunk-' + key], *per_class,
             c['road-' + key]]
 

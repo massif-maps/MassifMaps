@@ -70,11 +70,18 @@ STREETS = {
     'motorway': 'hsl(214, 23%, 70%)', 'motorway-case': 'hsl(214, 23%, 60%)', 'motorway-bridge-case': 'hsl(214, 23%, 50%)',
     'trunk': 'hsl(235, 20%, 70%)', 'trunk-case': 'hsl(235, 20%, 60%)', 'trunk-bridge-case': 'hsl(235, 20%, 50%)',
     'primary': 'hsl(224, 26%, 74%)', 'secondary': 'hsl(224, 25%, 82%)',
+    # Standard fills secondary and tertiary alike; a key apart (a hair apart) lets an extending style
+    # draw a tertiary white under OSM's yellow secondary
+    'tertiary': 'hsl(224, 25%, 82.5%)',
     'road': 'hsl(224, 20%, 90%)', 'road-case': 'hsl(224, 22%, 72%)', 'road-bridge-case': 'hsl(224, 25%, 60%)',
     # Standard cases every road alike; its own key per class (a hair apart, so each is its own palette
     # name) is what lets an extending style case a primary as OSM does
     'primary-case': 'hsl(224, 22%, 71%)', 'secondary-case': 'hsl(224, 22%, 71.5%)',
+    'tertiary-case': 'hsl(224, 22%, 72.5%)',
     'road-low': 'hsl(224, 25%, 80%)',
+    # secondary and tertiary below z14: the road-low grey, its own key (a hair apart) so an extending
+    # style can keep OSM's yellow at every zoom
+    'secondary-low': 'hsl(224, 25%, 79.5%)',
     'path': 'hsl(295, 10%, 97%)',
     'path-z16': 'hsl(295, 10%, 93%)',
     'path-case': 'hsl(0, 10%, 80%)',
@@ -166,8 +173,9 @@ HYBRID = {
     'trunk': 'hsla(45, 95%, 75%, 0.8)', 'trunk-case': 'hsla(35, 50%, 25%, 0.45)',
     'trunk-bridge-case': 'hsla(35, 50%, 20%, 0.55)',
     'primary': 'hsla(50, 90%, 85%, 0.7)',
-    'secondary': 'hsla(50, 90%, 92%, 0.6)', 'road': 'hsla(0, 0%, 100%, 0.55)', 'road-low': 'hsla(0, 0%, 100%, 0.55)', 'road-case': 'hsla(0, 0%, 0%, 0.25)',
+    'secondary': 'hsla(50, 90%, 92%, 0.6)', 'tertiary': 'hsla(50, 90%, 92%, 0.6)', 'road': 'hsla(0, 0%, 100%, 0.55)', 'road-low': 'hsla(0, 0%, 100%, 0.55)', 'secondary-low': 'hsla(0, 0%, 100%, 0.55)', 'road-case': 'hsla(0, 0%, 0%, 0.25)',
     'primary-case': 'hsla(0, 0%, 0%, 0.25)', 'secondary-case': 'hsla(0, 0%, 0%, 0.25)',
+    'tertiary-case': 'hsla(0, 0%, 0%, 0.25)',
     'road-bridge-case': 'hsla(0, 0%, 0%, 0.4)',
     'path': 'hsla(0, 0%, 100%, 0.4)', 'path-z16': 'hsla(0, 0%, 100%, 0.5)', 'path-case': 'hsla(0, 0%, 0%, 0.2)',
     'track': 'hsla(35, 70%, 75%, 0.8)',
@@ -214,8 +222,8 @@ EINK.update({
     'depth-7000': 'hsl(0, 0%, 93%)',
     'motorway': _W, 'motorway-case': _K, 'motorway-bridge-case': _K,
     'trunk': _W, 'trunk-case': _K, 'trunk-bridge-case': _K,
-    'primary': _W, 'secondary': _W, 'road': _W, 'road-low': 'hsl(0, 0%, 68%)', 'casing-low': True, 'casing-from': 13, 'road-case': 'hsl(0, 0%, 30%)',
-    'primary-case': 'hsl(0, 0%, 30%)', 'secondary-case': 'hsl(0, 0%, 30%)', 'road-bridge-case': _K, 'casing-scale': 1.8,
+    'primary': _W, 'secondary': _W, 'tertiary': _W, 'road': _W, 'road-low': 'hsl(0, 0%, 68%)', 'secondary-low': 'hsl(0, 0%, 68%)', 'casing-low': True, 'casing-from': 13, 'road-case': 'hsl(0, 0%, 30%)',
+    'primary-case': 'hsl(0, 0%, 30%)', 'secondary-case': 'hsl(0, 0%, 30%)', 'tertiary-case': 'hsl(0, 0%, 30%)', 'road-bridge-case': _K, 'casing-scale': 1.8,
     'path': _W, 'path-z16': _W, 'path-case': 'hsl(0, 0%, 25%)', 'cycleway': 'hsl(0, 0%, 25%)',
     'bridleway': 'hsl(0, 0%, 35%)', 'track': _K, 'via-ferrata': _K,
     'no-access': 'hsla(0, 0%, 0%, 0.6)', 'construction': 'hsl(0, 0%, 60%)', 'ferry': 'hsl(0, 0%, 30%)',

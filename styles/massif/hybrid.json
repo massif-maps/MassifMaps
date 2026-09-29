@@ -537,10 +537,9 @@
           "hsla(35, 50%, 25%, 0.45)",
           "primary",
           "hsla(0, 0%, 0%, 0.25)",
-          [
-            "secondary",
-            "tertiary"
-          ],
+          "secondary",
+          "hsla(0, 0%, 0%, 0.25)",
+          "tertiary",
           "hsla(0, 0%, 0%, 0.25)",
           "hsla(0, 0%, 0%, 0.25)"
         ],
@@ -814,6 +813,8 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
+            "secondary",
+            "hsla(0, 0%, 100%, 0.55)",
             "hsla(0, 0%, 100%, 0.55)"
           ],
           14,
@@ -829,10 +830,9 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
-            [
-              "secondary",
-              "tertiary"
-            ],
+            "secondary",
+            "hsla(50, 90%, 92%, 0.6)",
+            "tertiary",
             "hsla(50, 90%, 92%, 0.6)",
             "hsla(0, 0%, 100%, 0.55)"
           ]
@@ -2168,10 +2168,9 @@
           "hsla(35, 50%, 25%, 0.45)",
           "primary",
           "hsla(0, 0%, 0%, 0.25)",
-          [
-            "secondary",
-            "tertiary"
-          ],
+          "secondary",
+          "hsla(0, 0%, 0%, 0.25)",
+          "tertiary",
           "hsla(0, 0%, 0%, 0.25)",
           "hsla(0, 0%, 0%, 0.25)"
         ],
@@ -2354,6 +2353,8 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
+            "secondary",
+            "hsla(0, 0%, 100%, 0.55)",
             "hsla(0, 0%, 100%, 0.55)"
           ],
           14,
@@ -2369,10 +2370,9 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
-            [
-              "secondary",
-              "tertiary"
-            ],
+            "secondary",
+            "hsla(50, 90%, 92%, 0.6)",
+            "tertiary",
             "hsla(50, 90%, 92%, 0.6)",
             "hsla(0, 0%, 100%, 0.55)"
           ]
@@ -2547,10 +2547,9 @@
           "hsla(35, 50%, 25%, 0.45)",
           "primary",
           "hsla(0, 0%, 0%, 0.25)",
-          [
-            "secondary",
-            "tertiary"
-          ],
+          "secondary",
+          "hsla(0, 0%, 0%, 0.25)",
+          "tertiary",
           "hsla(0, 0%, 0%, 0.25)",
           "hsla(0, 0%, 0%, 0.25)"
         ],
@@ -2837,6 +2836,8 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
+            "secondary",
+            "hsla(0, 0%, 100%, 0.55)",
             "hsla(0, 0%, 100%, 0.55)"
           ],
           14,
@@ -2852,10 +2853,9 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
-            [
-              "secondary",
-              "tertiary"
-            ],
+            "secondary",
+            "hsla(50, 90%, 92%, 0.6)",
+            "tertiary",
             "hsla(50, 90%, 92%, 0.6)",
             "hsla(0, 0%, 100%, 0.55)"
           ]
@@ -5215,6 +5215,8 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
+            "secondary",
+            "hsla(0, 0%, 100%, 0.55)",
             "hsla(0, 0%, 100%, 0.55)"
           ],
           14,
@@ -5230,10 +5232,9 @@
             "hsla(45, 95%, 75%, 0.8)",
             "primary",
             "hsla(50, 90%, 85%, 0.7)",
-            [
-              "secondary",
-              "tertiary"
-            ],
+            "secondary",
+            "hsla(50, 90%, 92%, 0.6)",
+            "tertiary",
             "hsla(50, 90%, 92%, 0.6)",
             "hsla(0, 0%, 100%, 0.55)"
           ]
@@ -6884,7 +6885,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "waterway",
-      "minzoom": 13,
+      "minzoom": 11,
       "filter": [
         "all",
         [
@@ -6930,10 +6931,10 @@
           [
             "zoom"
           ],
-          13,
-          12,
+          11,
+          10,
           18,
-          16
+          14
         ],
         "text-letter-spacing": 0.05,
         "text-max-angle": 30
@@ -7008,7 +7009,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "waterway",
-      "minzoom": 15,
+      "minzoom": 14,
       "filter": [
         "all",
         [
@@ -7057,10 +7058,10 @@
           [
             "zoom"
           ],
-          15,
-          10,
+          14,
+          9,
           18,
-          13
+          12
         ],
         "text-max-angle": 30
       },
@@ -7166,9 +7167,9 @@
             "zoom"
           ],
           9,
-          12,
+          11,
           18,
-          18
+          15
         ],
         "text-letter-spacing": 0.05
       },
@@ -7297,8 +7298,8 @@
               "ocean",
               "sea"
             ],
-            20,
-            16
+            18,
+            13
           ]
         ],
         "text-letter-spacing": [
@@ -10338,7 +10339,18 @@
         },
         "massif:paint": {
           "text-color": "hsl(110, 55%, 65%)",
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -11531,7 +11543,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -12727,7 +12750,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -13906,7 +13940,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -15108,7 +15153,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -16139,8 +16195,8 @@
               "poiStyle"
             ],
             "plain",
-            0.6,
-            0.4
+            0.44999999999999996,
+            0.30000000000000004
           ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
@@ -16289,7 +16345,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         },
         "massif:minzoom-param": "water_min_zoom",
         "massif:filter": [
@@ -16303,8 +16370,8 @@
       }
     },
     {
-      "id": "poi-mountain-spring",
-      "type": "symbol",
+      "id": "poi-spring",
+      "type": "circle",
       "source": "openmaptiles",
       "source-layer": "poi",
       "minzoom": 14,
@@ -16316,30 +16383,71 @@
         ],
         "spring"
       ],
-      "layout": {
-        "icon-image": [
-          "concat",
+      "paint": {
+        "circle-color": "hsl(200, 85%, 45%)",
+        "circle-radius": [
+          "interpolate",
           [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            [
-              "lodging",
-              "wilderness_hut"
-            ],
-            "alpine_hut",
-            "spring",
-            "water",
-            [
-              "get",
-              "class"
-            ]
+            "linear"
           ],
-          "-poi"
+          [
+            "zoom"
+          ],
+          12,
+          1.5,
+          14,
+          2,
+          16,
+          5
         ],
-        "icon-size": 0.4,
+        "circle-stroke-color": "hsl(0, 0%, 100%)",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13.5,
+          0,
+          14,
+          1
+        ]
+      },
+      "metadata": {
+        "massif:minzoom-param": "water_min_zoom",
+        "massif:filter": [
+          "==",
+          [
+            "config",
+            "highlight_drinking_water"
+          ],
+          0
+        ],
+        "massif:layout": {
+          "visibility": "visible"
+        }
+      },
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "poi-spring-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "spring"
+      ],
+      "layout": {
         "text-field": [
           "coalesce",
           [
@@ -16356,1131 +16464,26 @@
         ],
         "text-size": 12,
         "text-max-width": 9,
-        "text-padding": 2,
-        "text-variable-anchor": [
-          "top",
-          "left",
-          "right"
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.6
         ],
-        "text-radial-offset": 1.0,
-        "text-justify": "auto",
         "text-optional": true,
         "visibility": "visible"
       },
       "paint": {
-        "text-color": [
-          "match",
-          [
-            "get",
-            "class"
-          ],
-          [
-            "bar",
-            "cafe",
-            "fast_food",
-            "ice_cream",
-            "restaurant",
-            "sushi"
-          ],
-          "hsl(40, 95%, 70%)",
-          [
-            "alcohol_shop",
-            "bakery",
-            "beer",
-            "butcher",
-            "clothing_store",
-            "florist",
-            "furniture",
-            "gift",
-            "grocery",
-            "hairdresser",
-            "laundry",
-            "shop"
-          ],
-          "hsl(210, 70%, 75%)",
-          [
-            "amusement_park",
-            "aquarium",
-            "archaeological_site",
-            "art_gallery",
-            "attraction",
-            "castle",
-            "cinema",
-            "fort",
-            "fountain",
-            "monument",
-            "museum",
-            "music",
-            "ruins",
-            "theatre",
-            "windmill",
-            "zoo"
-          ],
-          "hsl(320, 70%, 75%)",
-          [
-            "alpine_hut",
-            "atm",
-            "bank",
-            "bicycle",
-            "bicycle_rental",
-            "car",
-            "embassy",
-            "fire_station",
-            "fuel",
-            "lodging",
-            "parking",
-            "parking_garage",
-            "police",
-            "post",
-            "prison",
-            "town_hall",
-            "wilderness_hut"
-          ],
-          "hsl(260, 70%, 75%)",
-          [
-            "american_football",
-            "baseball",
-            "basketball",
-            "cricket",
-            "golf",
-            "nightclub",
-            "pitch",
-            "skiing",
-            "soccer",
-            "stadium",
-            "swimming",
-            "tennis"
-          ],
-          "hsl(190, 60%, 70%)",
-          [
-            "adit",
-            "beach",
-            "bird_hide",
-            "campsite",
-            "cave_entrance",
-            "cemetery",
-            "dog_park",
-            "mountain",
-            "park",
-            "playground",
-            "ranger_station",
-            "viewpoint",
-            "volcano",
-            "waterfall",
-            "wetland"
-          ],
-          "hsl(110, 55%, 65%)",
-          [
-            "dentist",
-            "doctors",
-            "hospital",
-            "pharmacy",
-            "veterinary"
-          ],
-          "hsl(0, 70%, 70%)",
-          [
-            "college",
-            "library",
-            "school"
-          ],
-          "hsl(30, 50%, 70%)",
-          [
-            "spring",
-            "water",
-            "water_point",
-            "watering_place"
-          ],
-          "hsl(200, 80%, 72%)",
-          [
-            "aerialway",
-            "airfield",
-            "airport",
-            "bus",
-            "ferry",
-            "harbor",
-            "heliport",
-            "lighthouse",
-            "railway",
-            "railway_light",
-            "railway_metro"
-          ],
-          "hsl(225, 55%, 78%)",
-          "place_of_worship",
-          "hsl(210, 20%, 70%)",
-          "hsl(210, 20%, 70%)"
-        ],
-        "text-halo-color": "hsl(0, 0%, 5%)",
+        "text-color": "hsl(200, 85%, 40%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
         "text-halo-width": 1.25
       },
       "metadata": {
-        "massif:params": [
-          "icon-image",
-          "text-color"
-        ],
         "massif:layout": {
-          "icon-image": [
-            "image",
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "lodging",
-                "wilderness_hut"
-              ],
-              "alpine_hut",
-              "spring",
-              "water",
-              [
-                "get",
-                "class"
-              ]
-            ],
-            {
-              "params": {
-                "background": [
-                  "match",
-                  [
-                    "config",
-                    "poiStyle"
-                  ],
-                  "plain",
-                  "transparent",
-                  [
-                    "interpolate",
-                    [
-                      "linear"
-                    ],
-                    [
-                      "measure-light",
-                      "brightness"
-                    ],
-                    0.25,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "adit",
-                        "beach",
-                        "bird_hide",
-                        "campsite",
-                        "cave_entrance",
-                        "cemetery",
-                        "dog_park",
-                        "mountain",
-                        "park",
-                        "playground",
-                        "ranger_station",
-                        "viewpoint",
-                        "volcano",
-                        "waterfall",
-                        "wetland"
-                      ],
-                      "hsl(110, 55%, 65%)",
-                      [
-                        "aerialway",
-                        "airfield",
-                        "airport",
-                        "bus",
-                        "ferry",
-                        "harbor",
-                        "heliport",
-                        "lighthouse",
-                        "railway",
-                        "railway_light",
-                        "railway_metro"
-                      ],
-                      "hsl(225, 55%, 78%)",
-                      [
-                        "alcohol_shop",
-                        "bakery",
-                        "beer",
-                        "butcher",
-                        "clothing_store",
-                        "florist",
-                        "furniture",
-                        "gift",
-                        "grocery",
-                        "hairdresser",
-                        "laundry",
-                        "shop"
-                      ],
-                      "hsl(210, 70%, 75%)",
-                      [
-                        "alpine_hut",
-                        "atm",
-                        "bank",
-                        "bicycle",
-                        "bicycle_rental",
-                        "car",
-                        "embassy",
-                        "fire_station",
-                        "fuel",
-                        "lodging",
-                        "parking",
-                        "parking_garage",
-                        "police",
-                        "post",
-                        "prison",
-                        "town_hall",
-                        "wilderness_hut"
-                      ],
-                      "hsl(260, 70%, 75%)",
-                      [
-                        "american_football",
-                        "baseball",
-                        "basketball",
-                        "cricket",
-                        "golf",
-                        "nightclub",
-                        "pitch",
-                        "skiing",
-                        "soccer",
-                        "stadium",
-                        "swimming",
-                        "tennis"
-                      ],
-                      "hsl(190, 60%, 70%)",
-                      [
-                        "amusement_park",
-                        "aquarium",
-                        "archaeological_site",
-                        "art_gallery",
-                        "attraction",
-                        "castle",
-                        "cinema",
-                        "fort",
-                        "fountain",
-                        "monument",
-                        "museum",
-                        "music",
-                        "ruins",
-                        "theatre",
-                        "windmill",
-                        "zoo"
-                      ],
-                      "hsl(320, 70%, 75%)",
-                      [
-                        "bar",
-                        "cafe",
-                        "fast_food",
-                        "ice_cream",
-                        "restaurant",
-                        "sushi"
-                      ],
-                      "hsl(40, 95%, 70%)",
-                      [
-                        "bench",
-                        "drinking_water",
-                        "garden",
-                        "picnic_site",
-                        "shelter",
-                        "telephone",
-                        "toilets",
-                        "tree",
-                        "waste_basket"
-                      ],
-                      "transparent",
-                      [
-                        "college",
-                        "library",
-                        "school"
-                      ],
-                      "hsl(30, 50%, 70%)",
-                      [
-                        "dentist",
-                        "doctors",
-                        "hospital",
-                        "pharmacy",
-                        "veterinary"
-                      ],
-                      "hsl(0, 70%, 70%)",
-                      [
-                        "spring",
-                        "water",
-                        "water_point",
-                        "watering_place"
-                      ],
-                      "hsl(200, 80%, 72%)",
-                      "hsl(210, 20%, 70%)"
-                    ],
-                    0.3,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "adit",
-                        "beach",
-                        "bird_hide",
-                        "campsite",
-                        "cave_entrance",
-                        "cemetery",
-                        "dog_park",
-                        "mountain",
-                        "park",
-                        "playground",
-                        "ranger_station",
-                        "viewpoint",
-                        "volcano",
-                        "waterfall",
-                        "wetland"
-                      ],
-                      "hsl(110, 70%, 40%)",
-                      [
-                        "aerialway",
-                        "airfield",
-                        "airport",
-                        "bus",
-                        "ferry",
-                        "harbor",
-                        "heliport",
-                        "lighthouse",
-                        "railway",
-                        "railway_light",
-                        "railway_metro"
-                      ],
-                      "hsl(225, 60%, 58%)",
-                      [
-                        "alcohol_shop",
-                        "bakery",
-                        "beer",
-                        "butcher",
-                        "clothing_store",
-                        "florist",
-                        "furniture",
-                        "gift",
-                        "grocery",
-                        "hairdresser",
-                        "laundry",
-                        "shop"
-                      ],
-                      "hsl(210, 75%, 65%)",
-                      [
-                        "alpine_hut",
-                        "atm",
-                        "bank",
-                        "bicycle",
-                        "bicycle_rental",
-                        "car",
-                        "embassy",
-                        "fire_station",
-                        "fuel",
-                        "lodging",
-                        "parking",
-                        "parking_garage",
-                        "police",
-                        "post",
-                        "prison",
-                        "town_hall",
-                        "wilderness_hut"
-                      ],
-                      "hsl(250, 75%, 72%)",
-                      [
-                        "american_football",
-                        "baseball",
-                        "basketball",
-                        "cricket",
-                        "golf",
-                        "nightclub",
-                        "pitch",
-                        "skiing",
-                        "soccer",
-                        "stadium",
-                        "swimming",
-                        "tennis"
-                      ],
-                      "hsl(190, 75%, 50%)",
-                      [
-                        "amusement_park",
-                        "aquarium",
-                        "archaeological_site",
-                        "art_gallery",
-                        "attraction",
-                        "castle",
-                        "cinema",
-                        "fort",
-                        "fountain",
-                        "monument",
-                        "museum",
-                        "music",
-                        "ruins",
-                        "theatre",
-                        "windmill",
-                        "zoo"
-                      ],
-                      "hsl(320, 85%, 72%)",
-                      [
-                        "bar",
-                        "cafe",
-                        "fast_food",
-                        "ice_cream",
-                        "restaurant",
-                        "sushi"
-                      ],
-                      "hsl(30, 100%, 60%)",
-                      [
-                        "bench",
-                        "drinking_water",
-                        "garden",
-                        "picnic_site",
-                        "shelter",
-                        "telephone",
-                        "toilets",
-                        "tree",
-                        "waste_basket"
-                      ],
-                      "transparent",
-                      [
-                        "college",
-                        "library",
-                        "school"
-                      ],
-                      "hsl(30, 50%, 50%)",
-                      [
-                        "dentist",
-                        "doctors",
-                        "hospital",
-                        "pharmacy",
-                        "veterinary"
-                      ],
-                      "hsl(0, 94%, 72%)",
-                      [
-                        "spring",
-                        "water",
-                        "water_point",
-                        "watering_place"
-                      ],
-                      "hsl(200, 85%, 45%)",
-                      "hsl(200, 20%, 55%)"
-                    ]
-                  ]
-                ],
-                "background-stroke": [
-                  "match",
-                  [
-                    "config",
-                    "poiStyle"
-                  ],
-                  "plain",
-                  "transparent",
-                  [
-                    "interpolate",
-                    [
-                      "linear"
-                    ],
-                    [
-                      "measure-light",
-                      "brightness"
-                    ],
-                    0.25,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "bench",
-                        "drinking_water",
-                        "garden",
-                        "picnic_site",
-                        "shelter",
-                        "telephone",
-                        "toilets",
-                        "tree",
-                        "waste_basket"
-                      ],
-                      "transparent",
-                      "hsl(0, 0%, 12%)"
-                    ],
-                    0.3,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "bench",
-                        "drinking_water",
-                        "garden",
-                        "picnic_site",
-                        "shelter",
-                        "telephone",
-                        "toilets",
-                        "tree",
-                        "waste_basket"
-                      ],
-                      "transparent",
-                      "hsl(0, 0%, 100%)"
-                    ]
-                  ]
-                ],
-                "icon": [
-                  "match",
-                  [
-                    "config",
-                    "poiStyle"
-                  ],
-                  "plain",
-                  [
-                    "interpolate",
-                    [
-                      "linear"
-                    ],
-                    [
-                      "measure-light",
-                      "brightness"
-                    ],
-                    0.25,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "adit",
-                        "beach",
-                        "bird_hide",
-                        "campsite",
-                        "cave_entrance",
-                        "cemetery",
-                        "dog_park",
-                        "garden",
-                        "mountain",
-                        "park",
-                        "playground",
-                        "ranger_station",
-                        "viewpoint",
-                        "volcano",
-                        "waterfall",
-                        "wetland"
-                      ],
-                      "hsl(110, 55%, 65%)",
-                      [
-                        "aerialway",
-                        "airfield",
-                        "airport",
-                        "bus",
-                        "ferry",
-                        "harbor",
-                        "heliport",
-                        "lighthouse",
-                        "railway",
-                        "railway_light",
-                        "railway_metro"
-                      ],
-                      "hsl(225, 55%, 78%)",
-                      [
-                        "alcohol_shop",
-                        "bakery",
-                        "beer",
-                        "butcher",
-                        "clothing_store",
-                        "florist",
-                        "furniture",
-                        "gift",
-                        "grocery",
-                        "hairdresser",
-                        "laundry",
-                        "shop"
-                      ],
-                      "hsl(210, 70%, 75%)",
-                      [
-                        "alpine_hut",
-                        "atm",
-                        "bank",
-                        "bicycle",
-                        "bicycle_rental",
-                        "car",
-                        "embassy",
-                        "fire_station",
-                        "fuel",
-                        "lodging",
-                        "parking",
-                        "parking_garage",
-                        "police",
-                        "post",
-                        "prison",
-                        "town_hall",
-                        "wilderness_hut"
-                      ],
-                      "hsl(260, 70%, 75%)",
-                      [
-                        "american_football",
-                        "baseball",
-                        "basketball",
-                        "cricket",
-                        "golf",
-                        "nightclub",
-                        "pitch",
-                        "skiing",
-                        "soccer",
-                        "stadium",
-                        "swimming",
-                        "tennis"
-                      ],
-                      "hsl(190, 60%, 70%)",
-                      [
-                        "amusement_park",
-                        "aquarium",
-                        "archaeological_site",
-                        "art_gallery",
-                        "attraction",
-                        "castle",
-                        "cinema",
-                        "fort",
-                        "fountain",
-                        "monument",
-                        "museum",
-                        "music",
-                        "ruins",
-                        "theatre",
-                        "windmill",
-                        "zoo"
-                      ],
-                      "hsl(320, 70%, 75%)",
-                      [
-                        "bar",
-                        "cafe",
-                        "fast_food",
-                        "ice_cream",
-                        "restaurant",
-                        "sushi"
-                      ],
-                      "hsl(40, 95%, 70%)",
-                      [
-                        "college",
-                        "library",
-                        "school"
-                      ],
-                      "hsl(30, 50%, 70%)",
-                      [
-                        "dentist",
-                        "doctors",
-                        "hospital",
-                        "pharmacy",
-                        "veterinary"
-                      ],
-                      "hsl(0, 70%, 70%)",
-                      [
-                        "drinking_water",
-                        "spring",
-                        "water",
-                        "water_point",
-                        "watering_place"
-                      ],
-                      "hsl(200, 80%, 72%)",
-                      "hsl(210, 20%, 70%)"
-                    ],
-                    0.3,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "adit",
-                        "beach",
-                        "bird_hide",
-                        "campsite",
-                        "cave_entrance",
-                        "cemetery",
-                        "dog_park",
-                        "garden",
-                        "mountain",
-                        "park",
-                        "playground",
-                        "ranger_station",
-                        "viewpoint",
-                        "volcano",
-                        "waterfall",
-                        "wetland"
-                      ],
-                      "hsl(110, 70%, 40%)",
-                      [
-                        "aerialway",
-                        "airfield",
-                        "airport",
-                        "bus",
-                        "ferry",
-                        "harbor",
-                        "heliport",
-                        "lighthouse",
-                        "railway",
-                        "railway_light",
-                        "railway_metro"
-                      ],
-                      "hsl(225, 60%, 58%)",
-                      [
-                        "alcohol_shop",
-                        "bakery",
-                        "beer",
-                        "butcher",
-                        "clothing_store",
-                        "florist",
-                        "furniture",
-                        "gift",
-                        "grocery",
-                        "hairdresser",
-                        "laundry",
-                        "shop"
-                      ],
-                      "hsl(210, 75%, 65%)",
-                      [
-                        "alpine_hut",
-                        "atm",
-                        "bank",
-                        "bicycle",
-                        "bicycle_rental",
-                        "car",
-                        "embassy",
-                        "fire_station",
-                        "fuel",
-                        "lodging",
-                        "parking",
-                        "parking_garage",
-                        "police",
-                        "post",
-                        "prison",
-                        "town_hall",
-                        "wilderness_hut"
-                      ],
-                      "hsl(250, 75%, 72%)",
-                      [
-                        "american_football",
-                        "baseball",
-                        "basketball",
-                        "cricket",
-                        "golf",
-                        "nightclub",
-                        "pitch",
-                        "skiing",
-                        "soccer",
-                        "stadium",
-                        "swimming",
-                        "tennis"
-                      ],
-                      "hsl(190, 75%, 50%)",
-                      [
-                        "amusement_park",
-                        "aquarium",
-                        "archaeological_site",
-                        "art_gallery",
-                        "attraction",
-                        "castle",
-                        "cinema",
-                        "fort",
-                        "fountain",
-                        "monument",
-                        "museum",
-                        "music",
-                        "ruins",
-                        "theatre",
-                        "windmill",
-                        "zoo"
-                      ],
-                      "hsl(320, 85%, 72%)",
-                      [
-                        "bar",
-                        "cafe",
-                        "fast_food",
-                        "ice_cream",
-                        "restaurant",
-                        "sushi"
-                      ],
-                      "hsl(30, 100%, 60%)",
-                      [
-                        "college",
-                        "library",
-                        "school"
-                      ],
-                      "hsl(30, 50%, 50%)",
-                      [
-                        "dentist",
-                        "doctors",
-                        "hospital",
-                        "pharmacy",
-                        "veterinary"
-                      ],
-                      "hsl(0, 94%, 72%)",
-                      [
-                        "drinking_water",
-                        "spring",
-                        "water",
-                        "water_point",
-                        "watering_place"
-                      ],
-                      "hsl(200, 85%, 45%)",
-                      "hsl(200, 20%, 55%)"
-                    ]
-                  ],
-                  [
-                    "interpolate",
-                    [
-                      "linear"
-                    ],
-                    [
-                      "measure-light",
-                      "brightness"
-                    ],
-                    0.25,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "bench",
-                        "picnic_site",
-                        "shelter",
-                        "telephone",
-                        "toilets",
-                        "tree",
-                        "waste_basket"
-                      ],
-                      "hsl(210, 20%, 70%)",
-                      "drinking_water",
-                      "hsl(200, 80%, 72%)",
-                      "garden",
-                      "hsl(110, 55%, 65%)",
-                      "hsl(0, 0%, 12%)"
-                    ],
-                    0.3,
-                    [
-                      "match",
-                      [
-                        "get",
-                        "class"
-                      ],
-                      [
-                        "bench",
-                        "picnic_site",
-                        "shelter",
-                        "telephone",
-                        "toilets",
-                        "tree",
-                        "waste_basket"
-                      ],
-                      "hsl(200, 20%, 55%)",
-                      "drinking_water",
-                      "hsl(200, 85%, 45%)",
-                      "garden",
-                      "hsl(110, 70%, 40%)",
-                      "hsl(0, 0%, 100%)"
-                    ]
-                  ]
-                ],
-                "radius": [
-                  "match",
-                  [
-                    "get",
-                    "class"
-                  ],
-                  "airfield",
-                  8,
-                  "airport",
-                  8,
-                  "heliport",
-                  8,
-                  "railway",
-                  5,
-                  "railway_light",
-                  11,
-                  21
-                ],
-                "background-stroke-width": [
-                  "match",
-                  [
-                    "get",
-                    "class"
-                  ],
-                  "airfield",
-                  1.75,
-                  "airport",
-                  1.75,
-                  "heliport",
-                  1.75,
-                  "railway",
-                  1.5,
-                  "railway_light",
-                  2,
-                  3
-                ]
-              }
-            }
-          ],
-          "icon-size": [
-            "match",
-            [
-              "config",
-              "poiStyle"
-            ],
-            "plain",
-            0.6,
-            0.4
-          ],
           "text-font": [
             "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ],
           "visibility": "visible"
         },
-        "massif:paint": {
-          "text-color": [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            [
-              "bar",
-              "cafe",
-              "fast_food",
-              "ice_cream",
-              "restaurant",
-              "sushi"
-            ],
-            "hsl(40, 95%, 70%)",
-            [
-              "alcohol_shop",
-              "bakery",
-              "beer",
-              "butcher",
-              "clothing_store",
-              "florist",
-              "furniture",
-              "gift",
-              "grocery",
-              "hairdresser",
-              "laundry",
-              "shop"
-            ],
-            "hsl(210, 70%, 75%)",
-            [
-              "amusement_park",
-              "aquarium",
-              "archaeological_site",
-              "art_gallery",
-              "attraction",
-              "castle",
-              "cinema",
-              "fort",
-              "fountain",
-              "monument",
-              "museum",
-              "music",
-              "ruins",
-              "theatre",
-              "windmill",
-              "zoo"
-            ],
-            "hsl(320, 70%, 75%)",
-            [
-              "alpine_hut",
-              "atm",
-              "bank",
-              "bicycle",
-              "bicycle_rental",
-              "car",
-              "embassy",
-              "fire_station",
-              "fuel",
-              "lodging",
-              "parking",
-              "parking_garage",
-              "police",
-              "post",
-              "prison",
-              "town_hall",
-              "wilderness_hut"
-            ],
-            "hsl(260, 70%, 75%)",
-            [
-              "american_football",
-              "baseball",
-              "basketball",
-              "cricket",
-              "golf",
-              "nightclub",
-              "pitch",
-              "skiing",
-              "soccer",
-              "stadium",
-              "swimming",
-              "tennis"
-            ],
-            "hsl(190, 60%, 70%)",
-            [
-              "adit",
-              "beach",
-              "bird_hide",
-              "campsite",
-              "cave_entrance",
-              "cemetery",
-              "dog_park",
-              "mountain",
-              "park",
-              "playground",
-              "ranger_station",
-              "viewpoint",
-              "volcano",
-              "waterfall",
-              "wetland"
-            ],
-            "hsl(110, 55%, 65%)",
-            [
-              "dentist",
-              "doctors",
-              "hospital",
-              "pharmacy",
-              "veterinary"
-            ],
-            "hsl(0, 70%, 70%)",
-            [
-              "college",
-              "library",
-              "school"
-            ],
-            "hsl(30, 50%, 70%)",
-            [
-              "spring",
-              "water",
-              "water_point",
-              "watering_place"
-            ],
-            "hsl(200, 80%, 72%)",
-            [
-              "aerialway",
-              "airfield",
-              "airport",
-              "bus",
-              "ferry",
-              "harbor",
-              "heliport",
-              "lighthouse",
-              "railway",
-              "railway_light",
-              "railway_metro"
-            ],
-            "hsl(225, 55%, 78%)",
-            "place_of_worship",
-            "hsl(210, 20%, 70%)",
-            "hsl(210, 20%, 70%)"
-          ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
-        },
-        "massif:minzoom-param": "water_min_zoom",
         "massif:filter": [
           "==",
           [
@@ -18665,7 +17668,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -19844,7 +18858,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -21039,7 +20064,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -22242,7 +21278,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -23445,7 +22492,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -24640,7 +23698,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         },
         "massif:minzoom-param": "campsite_min_zoom",
         "massif:filter": [
@@ -25845,7 +24914,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         },
         "massif:minzoom-param": "campsite_min_zoom",
         "massif:filter": [
@@ -27049,7 +26129,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         },
         "massif:minzoom-param": "campsite_min_zoom",
         "massif:filter": [
@@ -28265,7 +27356,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         },
         "massif:minzoom-param": "campsite_min_zoom",
         "massif:filter": [
@@ -29485,7 +28587,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -30698,7 +29811,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -31901,7 +31025,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -33099,7 +32234,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -34307,7 +33453,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -35513,7 +34670,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -36721,7 +35889,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -37934,7 +37113,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -39135,7 +38325,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -40333,7 +39534,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -41546,7 +40758,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -42756,7 +41979,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -43954,7 +43188,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -45161,7 +44406,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -46363,7 +45619,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -47567,7 +46834,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -48767,7 +48045,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -49017,7 +48306,18 @@
         ],
         "massif:paint": {
           "text-color": "hsl(110, 55%, 65%)",
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         }
       }
     },
@@ -50204,7 +49504,18 @@
             "hsl(210, 20%, 70%)",
             "hsl(210, 20%, 70%)"
           ],
-          "text-halo-color": "hsl(0, 0%, 5%)"
+          "text-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-color": "hsl(0, 0%, 5%)",
+          "icon-halo-width": [
+            "match",
+            [
+              "config",
+              "poiStyle"
+            ],
+            "plain",
+            1.5,
+            0
+          ]
         },
         "massif:minzoom-param": "water_min_zoom",
         "massif:filter": [
@@ -52362,7 +51673,7 @@
       "default": 3
     },
     "river_label_min_zoom": {
-      "default": 13
+      "default": 11
     },
     "forest_pattern_zoom": {
       "default": 11

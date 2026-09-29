@@ -57,7 +57,7 @@ def layers(v):
     ]
     # below z8 the bathymap archive's generalised landcover draws instead (lowzoom.py), and the two
     # crossfade; Standard's woods are a paler green that deepens as the forests resolve into stands
-    fade = zoom_ramp(8, 0, 9, 1)
+    fade = zoom_ramp(7.8, 0, 8, 1)
     wood = {'fill-color': zoom_ramp(8, c['wood-low'], 11, c['wood']), 'fill-antialias': False}
     def opacity(key, ramp):
         # e-ink hands the flat grey over to the pattern: ground stays white where there is texture
@@ -66,21 +66,19 @@ def layers(v):
         stops = ramp[3:] if ramp else [PATTERNS[key] - 2, 1]
         return {'fill-opacity': zoom_ramp(*stops, PATTERNS[key] - 1, stops[-1], PATTERNS[key], 0)}
 
+    def landcover(key, classes):
+        return [layer('landcover-' + key, 'fill', 'landcover', minzoom=7, filter=in_class(classes),
+                      paint={**(wood if key == 'wood' else fill(key)), **opacity(key, fade)}, emissive=0.2),
+                *patterned('landcover-' + key, key, 'landcover', 7, in_class(classes))]
+
     for key, classes in LANDCOVER:
-        out.append(layer('landcover-' + key, 'fill', 'landcover', minzoom=8, filter=in_class(classes),
-                         paint={**(wood if key == 'wood' else fill(key)), **opacity(key, fade)}, emissive=0.2))
-        out += patterned('landcover-' + key, key, 'landcover', 8, in_class(classes))
+        if key != 'wood':
+            out += landcover(key, classes)
     for key, subclasses in LANDCOVER_SUBCLASS:
         out.append(layer('landcover-' + key + '-sub', 'fill', 'landcover', minzoom=10,
                          filter=in_class(subclasses, 'subclass'),
                          paint={**fill(key), **opacity(key, None)}, emissive=0.2))
         out += patterned('landcover-' + key + '-sub', key, 'landcover', 10, in_class(subclasses, 'subclass'))
-    # `polygons_border`, on for e-ink: a texture alone does not say where a wood or its clearing
-    # stops; dotted, as Swisstopo and IGN edge a wood, so it is not read as a contour
-    out.append(gate(layer('landcover-outline', 'line', 'landcover', minzoom=12,
-                          filter=['==', ['geometry-type'], 'Polygon'],
-                          paint={'line-color': c['landcover-outline'], 'line-width': zoom_ramp(12, 0.6, 16, 1),
-                                 'line-dasharray': [1, 2]}), v, 'polygons_border'))
     out += [
         layer('park', 'fill', 'park', minzoom=5,
               paint={'fill-color': c['national-park'], 'fill-opacity': zoom_ramp(5, 0, 6, 0.5, 13, 0.3)},
@@ -94,6 +92,15 @@ def layers(v):
         out.append(layer('landuse-' + key, 'fill', 'landuse', minzoom=9, filter=in_class(classes),
                          paint={**fill(key), **opacity(key, zoom_ramp(9, 0, 10, 1))}, emissive=0.25))
         out += patterned('landuse-' + key, key, 'landuse', 9, in_class(classes))
+    # a wood over the landuse, as Standard's one landuse layer draws it: a park's woods read darker
+    # instead of vanishing under its lawn
+    out += landcover('wood', dict(LANDCOVER)['wood'])
+    # `polygons_border`, on for e-ink: a texture alone does not say where a wood or its clearing
+    # stops; dotted, as Swisstopo and IGN edge a wood, so it is not read as a contour
+    out.append(gate(layer('landcover-outline', 'line', 'landcover', minzoom=12,
+                          filter=['==', ['geometry-type'], 'Polygon'],
+                          paint={'line-color': c['landcover-outline'], 'line-width': zoom_ramp(12, 0.6, 16, 1),
+                                 'line-dasharray': [1, 2]}), v, 'polygons_border'))
     out.append(gate(layer('landuse-outline', 'line', 'landuse', minzoom=13,
                           filter=['all', ['==', ['geometry-type'], 'Polygon'], ['!', in_class(RESIDENTIAL)]],
                           paint={'line-color': c['landcover-outline'], 'line-width': zoom_ramp(13, 0.4, 16, 0.8)}),

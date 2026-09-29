@@ -41,6 +41,13 @@ palette plus the modules it adds.
   field-driven colour, and past 8 values it keeps only the fallback. Landuse is ten groups, and
   landcover's grass subclasses (scrub, park, golf) sit under one class, so each group is its own
   layer with a bracketed class test and a constant colour.
+- **Buildings under Standard's day lights.** The SDK project (not the MapLibre styles) carries
+  Standard's `lights` (ambient 0.8, sun 0.2 from `[180, 20]`), which is what gives the walls
+  gl-js's shading; without them the buildings kept the SDK's own lighting, walls as bright as the
+  roofs. At night a block takes Standard's night tone (`hsl(0, 0%, 58%)`) with a tenth of it emitted,
+  and the ground AO fades in over z17-18.
+- **Woods over the landuse**, as Standard's one landuse layer draws them: a park's woods read a
+  darker green instead of vanishing under its lawn.
 - **Tracks by `tracktype`**, OSM Carto's ladder: grade1 solid, grade5 dotted, one layer per grade.
   `access` in `no`/`private` lays red dashes over the road, as MapTiler does. Our fork's
   `construction` flag and stock OMT's `*_construction` classes both draw.
@@ -65,7 +72,7 @@ palette plus the modules it adds.
 **Low zoom comes from a second, optional archive.** The alpimaps bathymap (`global_landcover`:
 ESA WorldCover classes, `depth`: Natural Earth isobaths, z0-6) is the `bathymap` source, drawn the
 way Standard draws its own landcover and water-depth: generalised greens, white glaciers and a
-darker veil per isobath, handing over to OMT's landcover by crossfade over z8-9. The style names
+darker veil per isobath, handing over to OMT's landcover by crossfade over z7.8-8. The style names
 the source with no public URL - an app that ships the archive merges it into its main tiles
 (`MergedMBVTTileDataSource`), where the rules find the two layers by name; one that does not simply
 has no landcover below z7. `min_depth 0` is the whole ocean, which also paints the sea a regional
@@ -101,7 +108,9 @@ deeper woods (`OUTDOOR` in the palette):
   archaeological sites, waterfalls and named parks and gardens (Standard shows park_like early too)
   from z14, parks over the sights and a viewpoint yielding to all of them, keeping its
   own glyph and nature's green at every zoom (OpenMapTiles files it under `attraction`); drinking water
-  and springs from `water_min_zoom` - each until its ordinary POI layer takes over. Water points have their own
+  and springs from `water_min_zoom` - each until its ordinary POI layer takes over. A spring is
+  Alpimaps' water-blue dot in a white ring (`poi-spring`), never hidden, named from z17; a drinking
+  water glyph is a size down. Water points have their own
   category, in the water's blue. A hut draws the hut glyph, where
   OpenMapTiles' `lodging` class would give it a bed.
 
@@ -124,8 +133,8 @@ arrangement; POI names keep their category colour at its night lightness.
 ## E-ink
 
 Everything outdoor draws but the relief and the route bands, which grey into mud, on a page of
-black, white and a few greys (`EINK`), with no night - a still page is read under a lamp, so every
-night value equals the day one. What colour says elsewhere is said here by texture and weight:
+black, white and a few greys (`EINK`). At night the page inverts (`lib.night_inverted`): every
+colour's lightness mirrored past brightness 0.25-0.3, so the page goes black and the ink white. What colour says elsewhere is said here by texture and weight:
 
 - **Patterns** from `sprite-src/pattern/`, the ones Alpimaps' e-ink style uses: openstreetmap-carto's
   trees, scrub, wetland, rock, beach, ice sheet, graves and hatching, baked to one grey at 45 %
@@ -150,8 +159,8 @@ night value equals the day one. What colour says elsewhere is said here by textu
   their casing grows (`casing-from`). **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood.
 - **Shields** are one white plate with a black ring, for every country.
-- **Buildings** are outlined grey footprints to z15, then half-clear 3D blocks whose walls the
-  lighting shades, so a street still reads through them.
+- **Buildings** are outlined grey footprints to z15, then grey 3D blocks as in the other variants
+  (`building_opacity` looking down, opaque once the camera leans in).
 - **POIs** are a black glyph on a white disc with a black ring, the same for every category; the
   MapLibre style names the neutral sprite rather than the colour-baked one.
 
@@ -194,7 +203,7 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `water_min_zoom` (14) — drinking water and springs; 12 to plan a hike by its water.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
-  (3, the city dots), `river_label_min_zoom` (13).
+  (3, the city dots), `river_label_min_zoom` (11).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
   `wetland_pattern_zoom` (13) — where e-ink's textures start.
 
@@ -479,8 +488,9 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
 
 [`examples/osm/`](examples/osm/) re-skins the family with OpenStreetMap Carto's colours as
 Alpimaps' OSM style has them (`?project=osm`): the palette redeclared (each road class its own casing,
-footways red), Massif's widths kept, POIs as bare glyphs (`poiStyle: plain`), nothing lit
-(`lighting: 0`), buildings from z15, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
+footways red, road colours ramped over zoom as Alpimaps ramps them, tertiaries white), Massif's
+widths kept, POIs as bare glyphs (`poiStyle: plain`), Alpimaps' textures on woods, scrub, wetland
+and rock, and the tracks replaced - `track_min_zoom: 24` moves Massif's out of
 reach and `osm-rules.mss` draws them as Alpimaps does, a brown line under white dashes by tracktype. A layer is replaced that way, not by restating its rules.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value

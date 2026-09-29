@@ -63,6 +63,12 @@
       const [lon, lat] = pane.camera.focusPos;
       const utc = hour - lon / 15;
       m.call(light, 'setSunPositionFromTime', [2026, 3, 20, Math.floor(utc), Math.round((utc % 1) * 60), lat, lon]);
+      // through the day, Standard's own sun (its `day` preset: azimuth 180, polar 20), so the shadows
+      // and the lit walls compare one for one with the reference pane
+      if (hour >= 8 && hour < 18) {
+        m.set(light, 'sunAzimuth', 180);
+        m.set(light, 'sunAltitude', 70);
+      }
     };
     if (params.get('hour')) setHour(Number(params.get('hour')));
     // A style's relief is an app layer on the SDK, not CartoCSS: a DEM source gets a hillshade above the base.

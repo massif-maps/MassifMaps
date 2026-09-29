@@ -24,8 +24,6 @@
         "badge": "badge",
         "plain": "plain"
       }
-    },
-    "building_min_zoom": 15,
-    "lighting": 0
+    }
   }
 }

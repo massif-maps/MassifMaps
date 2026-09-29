@@ -6,7 +6,7 @@ key on per layer to fold it into one project.json table - see the style's README
 import json
 from collections import OrderedDict
 
-from lib import by_hour, gate, get, layer
+from lib import by_hour, gate, get, layer, zoom_ramp
 
 # Standard's poi-label text-color, read off mapbox/standard: night (brightness 0.25) and day (0.3).
 # disc: Standard's day disc, a shade lighter than its text (day); night: both at night
@@ -297,7 +297,10 @@ def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAM
                            # maplibre rejects ["config", ...] in a filter, so the switch rides here
                            **({'massif:filter': ['==', ['config', 'poiRanking'], ranking]} if ranking else {}),
                            'massif:paint': {'text-color': MONO_INK if mono else night_color(category) if dark else text_color(category),
-                                            'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY)}})
+                                            'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
+                                            # `plain`: a bare glyph needs the halo its disc gave it
+                                            'icon-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY),
+                                            'icon-halo-width': 0 if mono else ['match', ['config', 'poiStyle'], 'plain', 1.5, 0]}})
 
 
 # A walker's POIs, each until its category layer takes over, water from `water_min_zoom`.
@@ -315,7 +318,6 @@ MOUNTAIN_LAYERS = [
     ('poi-mountain-shelter', 13, 15, ['all', ['==', get('class'), 'shelter'],
                                       ['!=', get('shelter_type'), 'public_transport']], MOUNTAIN_ICON, None),
     ('poi-mountain-water', 12, 18, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
-    ('poi-mountain-spring', 12, None, ['==', get('class'), 'spring'], MOUNTAIN_ICON, 'water_min_zoom'),
     ('poi-mountain', 12, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
     # OpenMapTiles files a hut under lodging, whose glyph is a bed
     ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),
@@ -326,17 +328,40 @@ def shelter_text(id):
     return SHELTER_NAME if id in ('poi-lodging', 'poi-mountain-shelter') else NAME
 
 
+def springs(v):
+    """a spring as Alpimaps' OSM style draws it: a water-blue dot in a white ring, growing over z12-16,
+    never hidden by another label; named from z17"""
+    mono = v.flags.get('mono', False)
+    spring = ['==', get('class'), 'spring']
+    dot = layer('poi-spring', 'circle', 'poi', minzoom=12, filter=spring,
+                paint={'circle-color': MONO_INK if mono else CATEGORY['water']['disc'],
+                       'circle-radius': zoom_ramp(12, 1.5, 14, 2, 16, 5),
+                       'circle-stroke-color': HALO_DAY, 'circle-stroke-width': zoom_ramp(13.5, 0, 14, 1)},
+                metadata={'massif:minzoom-param': 'water_min_zoom'})
+    name = layer('poi-spring-label', 'symbol', 'poi', minzoom=17, filter=spring,
+                 layout={'text-field': NAME, 'text-font': 'medium', 'text-size': 12, 'text-max-width': 9,
+                         'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': True},
+                 paint={'text-color': MONO_INK if mono else CATEGORY['water']['day'],
+                        'text-halo-color': HALO_DAY, 'text-halo-width': HALO_WIDTH})
+    # `highlight_drinking_water` draws springs in water_highlight() instead
+    return [gate(dot, v, 'highlight_drinking_water', 0), gate(name, v, 'highlight_drinking_water', 0)]
+
+
 def mountain(v):
     out = []
     for id, minzoom, maxzoom, filter, icon, param in MOUNTAIN_LAYERS:
+        # a water point's glyph a size down: they are many, and a walker needs the dot, not the badge
         lay = poi_layer(id, minzoom, filter, None, v, icon=icon, maxzoom=maxzoom, text=shelter_text(id),
-                        category='park_like' if id == 'poi-mountain-viewpoint' else None)
+                        category='park_like' if id == 'poi-mountain-viewpoint' else None,
+                        scale=0.75 if id == 'poi-mountain-water' else 1)
         if param:
             lay['metadata']['massif:minzoom-param'] = param
         if param == 'water_min_zoom':
             # `highlight_drinking_water` draws these in water_highlight() instead
             gate(lay, v, 'highlight_drinking_water', 0)
         out.append(lay)
+        if id == 'poi-mountain-water':
+            out += springs(v)
     return out
 
 

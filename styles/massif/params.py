@@ -27,7 +27,7 @@ PARAMS = {
     'campsite_min_zoom': {'default': 15},
     'building_min_zoom': {'default': 14},
     'city_min_zoom': {'default': 3},
-    'river_label_min_zoom': {'default': 13},
+    'river_label_min_zoom': {'default': 11},
     'forest_pattern_zoom': {'default': 11},
     'scrub_pattern_zoom': {'default': 12},
     'rock_pattern_zoom': {'default': 12},

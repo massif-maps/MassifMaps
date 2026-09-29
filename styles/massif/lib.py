@@ -1,4 +1,5 @@
 """Expression helpers shared by every layer module."""
+import re
 
 SOURCE = 'openmaptiles'
 
@@ -21,6 +22,43 @@ def by_hour(night, day):
     """Standard's two measure-light stops. maplibre rejects measure-light, so this rides in
     `massif:paint` and the DAY value stays in the plain property for the reference pane."""
     return ['interpolate', ['linear'], ['measure-light', 'brightness'], 0.25, night, 0.3, day]
+
+
+HSL = re.compile(r'^(hsla?\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*)([\d.]+)(%.*)$')
+
+
+def inverted(expr):
+    """every hsl colour in an expression with its lightness mirrored, for a page read at night"""
+    if isinstance(expr, str):
+        m = HSL.match(expr)
+        return m.group(1) + ('%g' % (100 - float(m.group(2)))) + m.group(3) if m else expr
+    if isinstance(expr, list):
+        return [inverted(x) for x in expr]
+    if isinstance(expr, dict):
+        return {k: inverted(v) for k, v in expr.items()}
+    return expr
+
+
+def night_inverted(lay):
+    """e-ink at night: the page turns black and the ink white, every colour's lightness mirrored
+    past brightness 0.25-0.3 (SDK only, in `massif:paint`, as by_hour)"""
+    meta = lay.setdefault('metadata', {})
+    paint = {**lay.get('paint', {}), **meta.get('massif:paint', {})}
+    def night(v):
+        # a zoom ramp stays outside: the converter carries a brightness ramp inside one, not around it
+        if isinstance(v, list) and v[:1] == ['interpolate'] and v[2] == ['zoom']:
+            return v[:3] + [x if i % 2 == 0 else night(x) for i, x in enumerate(v[3:])]
+        if isinstance(v, list) and v[:1] == ['step'] and v[1] == ['zoom']:
+            return v[:2] + [night(v[2])] + [x if i % 2 == 0 else night(x) for i, x in enumerate(v[3:])]
+        return by_hour(inverted(v), v)
+    colours = {k: night(v) for k, v in paint.items() if k.endswith('-color') and v != inverted(v)}
+    if colours:
+        meta['massif:paint'] = {**meta.get('massif:paint', {}), **colours}
+    image = meta.get('massif:layout', {}).get('icon-image')
+    if isinstance(image, list) and len(image) == 3 and isinstance(image[2], dict) and 'params' in image[2]:
+        params = {k: by_hour(inverted(v), v) if v != inverted(v) else v for k, v in image[2]['params'].items()}
+        meta['massif:layout'] = {**meta['massif:layout'], 'icon-image': [image[0], image[1], {**image[2], 'params': params}]}
+    return lay
 
 
 # a role -> MapLibre's glyph-server face, and the SDK's system font list: iOS by name, Android's

@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from layers import boundaries, buildings, imagery, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
-from lib import FONTS, occlusion  # noqa: E402
+from lib import FONTS, night_inverted, occlusion  # noqa: E402
 from params import PARAMS  # noqa: E402
 import legend  # noqa: E402
 
@@ -40,13 +40,17 @@ class Variant:
 
     def layers(self):
         out = [occlusion(lay) for part in self.parts for lay in part(self)]
+        if self.flags.get('mono'):
+            out = [night_inverted(lay) for lay in out]
         # `lighting` 0 (e-ink, a flat OSM look): every colour as stated, lit by nothing, so white
         # stays white and a road never reads whiter than the ground it crosses
         for lay in out:
             paint = lay.get('metadata', {}).get('massif:paint')
             if paint:
                 lay['metadata'] = {**lay['metadata'], 'massif:paint': {
-                    k: ['match', ['config', 'lighting'], 0, 1, v] if k.endswith('-emissive-strength') else v
+                    # not a building's: unlit, its walls would read as its roof
+                    k: ['match', ['config', 'lighting'], 0, 1, v]
+                    if k.endswith('-emissive-strength') and lay['type'] != 'fill-extrusion' else v
                     for k, v in paint.items()}}
         return out
 
@@ -185,6 +189,14 @@ def family_style():
     for id in ordered_union([list(per[n]) for n in names]):
         present = [n for n in names if id in per[n]]
         trees = {n: per[n][id] for n in present}
+        # e-ink's night inversion states a colour in massif:paint where the others leave it to the
+        # plain paint: give those the plain value, so the key merges into a match on the variant
+        sdk_keys = {k for t in trees.values() for k in t.get('metadata', {}).get('massif:paint', {})}
+        for t in trees.values():
+            for k in sdk_keys:
+                if k.endswith('-color') and k in t.get('paint', {}) and k not in t.get('metadata', {}).get('massif:paint', {}):
+                    t.setdefault('metadata', {})
+                    t['metadata']['massif:paint'] = {**t['metadata'].get('massif:paint', {}), k: t['paint'][k]}
         for key in FIXED:
             if len({json.dumps(t.get(key)) for t in trees.values()}) > 1:
                 raise ValueError('%s: %s differs between variants - give each its own layer' % (id, key))
@@ -202,11 +214,23 @@ def family_style():
     # the default palette's own names for its colours and fonts, so variables.mss says @motorway
     own = {k: v for k, v in VARIANTS[names[0]].palette.items() if isinstance(v, str)}
     own.update({'font-' + role: sdk for role, (_, sdk) in FONTS.items()})
-    return document('Massif', layers, {'massif:live-config': [*PARAMS, 'variant'],
-                                       'massif:palette-names': own},
-                    {**PARAMS,
-                     'variant': {'default': names[0], 'values': names}},
-                    {k: s for v in VARIANTS.values() for k, s in v.sources.items()})
+    doc = document('Massif', layers, {'massif:live-config': [*PARAMS, 'variant'],
+                                      'massif:palette-names': own},
+                   {**PARAMS,
+                    'variant': {'default': names[0], 'values': names}},
+                   {k: s for v in VARIANTS.values() for k, s in v.sources.items()})
+    # Standard's `day` lights, for the SDK project only (MapLibre has its own `light`): without them
+    # the buildings kept the SDK's own lighting, whose walls read as bright as the roofs
+    doc['lights'] = LIGHTS
+    return doc
+
+
+LIGHTS = [
+    {'id': 'ambient', 'type': 'ambient', 'properties': {'color': 'hsl(0, 0%, 100%)', 'intensity': 0.8}},
+    {'id': 'directional', 'type': 'directional',
+     'properties': {'direction': ['literal', [180, 20]], 'color': 'hsl(0, 0%, 100%)', 'intensity': 0.2,
+                    'cast-shadows': True, 'shadow-intensity': 1}},
+]
 
 
 def write(name, doc):

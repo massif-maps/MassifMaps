@@ -334,7 +334,9 @@ async function startMassif() {
       tilt: maps[0].getPitch(), rot: maps[0].getBearing(),
       hour: $('hour').value,
       // a family project holds every variant; the style says which one it is
-      ...(styleJSON.metadata?.['massif:variant'] ? { variant: styleJSON.metadata['massif:variant'] } : {}),
+      // ?project=custom loads carto/custom.json, a child project, in place of the style's variant
+      ...(ASKED.get('project') ? { variant: ASKED.get('project') }
+        : styleJSON.metadata?.['massif:variant'] ? { variant: styleJSON.metadata['massif:variant'] } : {}),
       // the relief is an app layer on the SDK; the style says how to set one up
       ...hillshadeOf(styleJSON),
       ...(imagery ? { imagery } : {}),

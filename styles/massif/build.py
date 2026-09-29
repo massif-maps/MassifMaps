@@ -11,6 +11,7 @@ project.json with that parameter set. Generated files are never edited by hand.
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -206,7 +207,13 @@ def main(args):
         for name in VARIANTS:
             project = {'extends': './project.json', 'styleparameters': {'variant': {**spec, 'default': name}}}
             open(os.path.join(HERE, 'carto', name + '.json'), 'w').write(json.dumps(project, indent=2) + '\n')
-        print('carto/ + ' + ', '.join(n + '.json' for n in VARIANTS))
+        # the override examples are child projects of this one, so they sit beside it
+        for example in sorted(os.listdir(os.path.join(HERE, 'examples'))):
+            folder = os.path.join(HERE, 'examples', example)
+            for f in sorted(os.listdir(folder)):
+                if f.endswith(('.json', '.mss')):
+                    shutil.copy(os.path.join(folder, f), os.path.join(HERE, 'carto', f))
+        print('carto/ + ' + ', '.join(n + '.json' for n in VARIANTS) + ' + examples')
 
 
 if __name__ == '__main__':

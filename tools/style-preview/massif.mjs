@@ -18,7 +18,9 @@ const IMAGE_PATH = /[\w./-]+\.(?:png|jpg|jpeg|svg)/g;
  */
 async function projectFiles(base, variant) {
     const project = await (await fetch(`${base}/project.json`)).json();
-    const styles = project.styles ?? [];
+    // a child project may restate the stylesheet list, with files of its own around the base ones
+    const child = variant ? await (await fetch(`${base}/${variant}.json`)).json() : {};
+    const styles = [...new Set([...(project.styles ?? []), ...(child.styles ?? [])])];
     const texts = await Promise.all(styles.map((name) => fetch(`${base}/${name}`).then((r) => r.text())));
     const images = new Set(Object.values(project.styleparameters ?? {})
         .filter((v) => typeof v === 'string' && /\.(?:png|jpg|jpeg|svg)$/.test(v)));

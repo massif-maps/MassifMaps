@@ -1,0 +1,10 @@
+{
+  "extends": "./project.json",
+  "styles": ["custom-colors.mss", "variables.mss", "style.mss", "custom-rules.mss"],
+  "styleparameters": {
+    "variant": { "default": "streets", "values": { "streets": "streets", "outdoor": "outdoor", "topo": "topo", "hybrid": "hybrid", "eink": "eink" } },
+    "poiStyle": { "default": "plain", "values": { "badge": "badge", "plain": "plain" } },
+    "building_opacity": 1,
+    "highlight_cycleways": { "default": 1, "values": { "off": 0, "on": 1 } }
+  }
+}

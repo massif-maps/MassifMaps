@@ -369,6 +369,29 @@ style is written to give the converter tests it can bracket — see
 paints one way throughout, which `expandSetFilter` used to leave whole; it now splits a set that is
 the whole filter regardless, since each attachment is then one bracketed test and nothing else.
 
+## Building on Massif: a project of your own
+
+The SDK project is meant to be a base. A child project `extends` it and restates what it changes;
+[`examples/custom/`](examples/custom/) does all three of the useful things, and `build.py --convert`
+copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
+
+- **Colours and fonts**: a stylesheet listed BEFORE `variables.mss` redeclares `@motorway`,
+  `@water`, `@font_medium`... - the compiler keeps the first declaration of a variable. The names are
+  the palette's own (`palette.py`, the `FONTS` roles in `lib.py`), through `massif:palette-names`.
+  A colour the palette does not name keeps the layer-derived name the converter gives it.
+- **Rules**: a stylesheet listed AFTER `style.mss` adds its own; a new attachment (`::custom_...`)
+  draws over the base without touching it.
+- **Parameters**: `styleparameters` merge key by key, so the child sets defaults
+  (`poiStyle: plain`, `building_opacity: 1`) and declares its own for its rules
+  (`['param::highlight_cycleways' = 1]`). `styles` does not merge: it is restated whole.
+
+That is also how a variant of your own is made: the child IS the variant. A new `variant` value
+draws what `streets` draws, since the base's variant-only rules are gated by name.
+
+Two limits. A variable names a LITERAL, so two palette entries with the same value share one name,
+and overriding it changes both. And the MapLibre side has no such mechanism: a MapLibre override
+edits `palette.py` and regenerates.
+
 ## Fonts: the device's, none packaged
 
 Each label names a role (`FONTS` in `lib.py`): MapLibre

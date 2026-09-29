@@ -1,0 +1,22 @@
+{
+  "extends": "./project.json",
+  "styles": [
+    "osm-colors.mss",
+    "variables.mss",
+    "style.mss",
+    "osm-rules.mss"
+  ],
+  "styleparameters": {
+    "variant": {
+      "default": "streets",
+      "values": {
+        "streets": "streets",
+        "outdoor": "outdoor",
+        "topo": "topo",
+        "hybrid": "hybrid",
+        "eink": "eink"
+      }
+    },
+    "track_min_zoom": 24
+  }
+}

@@ -44,7 +44,7 @@
     <button id="reload">reload</button>
     <select id="variant" title="a Massif variant: the page reloads on it, camera kept" style="display:none">
       <option>streets</option><option>outdoor</option><option>topo</option><option>hybrid</option>
-      <option>eink</option><option value="custom">custom (example project)</option>
+      <option>eink</option><option value="custom">custom (example project)</option><option value="osm">osm (example project)</option>
     </select>
     <label><input id="sync" type="checkbox" checked> sync</label>
     <select id="local-set"></select>
@@ -257,12 +257,15 @@ function setupVariant() {
   if (!match) return;
   const sel = $('variant');
   sel.style.display = '';
-  sel.value = ASKED.get('project') === 'custom' ? 'custom' : match[1];
+  // the example projects extend the family, drawn from the streets variant
+  const EXAMPLES = ['custom', 'osm'];
+  sel.value = EXAMPLES.includes(ASKED.get('project')) ? ASKED.get('project') : match[1];
   sel.onchange = () => {
     const next = new URL(location.href);
     const c = maps[0].getCenter();
-    next.searchParams.set('style', url.replace(/[a-z]+\.json$/, (sel.value === 'custom' ? 'streets' : sel.value) + '.json'));
-    if (sel.value === 'custom') next.searchParams.set('project', 'custom'); else next.searchParams.delete('project');
+    const example = EXAMPLES.includes(sel.value);
+    next.searchParams.set('style', url.replace(/[a-z]+\.json$/, (example ? 'streets' : sel.value) + '.json'));
+    if (example) next.searchParams.set('project', sel.value); else next.searchParams.delete('project');
     next.searchParams.set('lon', c.lng.toFixed(5));
     next.searchParams.set('lat', c.lat.toFixed(5));
     next.searchParams.set('zoom', maps[0].getZoom().toFixed(2));
@@ -364,7 +367,7 @@ async function startMassif() {
       tilt: maps[0].getPitch(), rot: maps[0].getBearing(),
       hour: $('hour').value,
       // a family project holds every variant; the style says which one it is
-      // ?project=custom loads carto/custom.json, a child project, in place of the style's variant
+      // ?project=custom|osm loads carto/<project>.json, a child project, in place of the style's variant
       ...(ASKED.get('project') ? { variant: ASKED.get('project') }
         : styleJSON.metadata?.['massif:variant'] ? { variant: styleJSON.metadata['massif:variant'] } : {}),
       // the relief is an app layer on the SDK; the style says how to set one up

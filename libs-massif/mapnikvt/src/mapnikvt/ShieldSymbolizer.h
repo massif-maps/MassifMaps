@@ -49,6 +49,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "shield"; }
+
     protected:
         static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 
@@ -94,18 +96,20 @@ namespace massif::mvt {
         // The plate behind the ICON, mirroring 'background-*' (which is the one behind the text).
         // The shield image is a distance field, drawn like a glyph rather than blitted.
         BoolProperty _sdf = BoolProperty(false);
-        ColorProperty _iconBackgroundFill = ColorProperty("transparent");
+        ColorFunctionProperty _iconBackgroundFill = ColorFunctionProperty("transparent");
         FloatProperty _iconBackgroundOpacity = FloatProperty(1.0f);
         FloatProperty _iconBackgroundRadius = FloatProperty(0.0f);
         FloatProperty _iconBackgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _iconBackgroundPaddingY = FloatProperty(2.0f);
         FloatProperty _iconBackgroundWidth = FloatProperty(0.0f);
         FloatProperty _iconBackgroundHeight = FloatProperty(0.0f);
-        ColorProperty _iconBackgroundBorderFill = ColorProperty("#000000");
+        ColorFunctionProperty _iconBackgroundBorderFill = ColorFunctionProperty("#000000");
         FloatProperty _iconBackgroundBorderOpacity = FloatProperty(1.0f);
         FloatProperty _iconBackgroundBorderWidth = FloatProperty(0.0f);
 
         ColorFunctionBuilder _iconFillFuncBuilder;
+        ColorFunctionBuilder _iconBackgroundFillFuncBuilder;
+        ColorFunctionBuilder _iconBackgroundBorderFillFuncBuilder;
         FloatFunctionBuilder _imageScaleFuncBuilder;
         ColorFunctionBuilder _iconHaloFillFuncBuilder;
         FloatFunctionBuilder _iconHaloRadiusFuncBuilder;

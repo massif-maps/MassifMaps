@@ -131,3 +131,17 @@ test('the palette compiles to the same mapnik XML as the literals it replaced', 
     };
     assert.equal(compile({}), compile({ variables: false }));
 });
+
+test('a style that names its palette gets those names, spelling aside', () => {
+    const { mss, variables } = convert({
+        name: 'T',
+        metadata: { 'massif:palette-names': { motorway: 'hsl(214, 23%, 70%)', 'road-case': '#aabbcc', 'font-medium': 'Roboto Medium' } },
+        layers: [line('Motorway', 'hsl(214,23%,70%)'), line('Street casing', '#AABBCC'), label('Town', 'Roboto Medium'), fill('Glacier', '#ffffff')],
+    }, TABLE);
+    assert.match(variables, /@motorway: hsl\(214,23%,70%\);/);
+    assert.match(variables, /@road_case: #AABBCC;/);
+    assert.match(variables, /@font_medium: 'Roboto Medium';/);
+    assert.match(mss, /line-color: @motorway;/);
+    // a colour the palette does not name keeps the name its layer gives it
+    assert.match(variables, /@glacier_fill: #ffffff;/);
+});

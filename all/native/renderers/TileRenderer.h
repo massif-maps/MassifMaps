@@ -138,10 +138,6 @@ namespace massif {
         bool isGroundAOActive() const;
         bool isGroundAOBakeable() const;
         bool hasGroundContent() const;
-        void setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize);
-        // The resolved TerrainOptions/Map default, or any style layer's own text-occlusion-opacity.
-        bool isLabelOcclusionWanted() const;
-        int renderLabelOcclusionDepth();
         int renderGroundAOMask();
         int bakeGroundAOMask(const vt::TileId& tileId);
         // Pushed before the shared terrain surface draws; onDrawFrame runs after it, a frame late.

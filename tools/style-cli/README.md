@@ -13,12 +13,14 @@ npx @massif-maps/style-tools css2xml style/project.json style.xml
 |---|---|
 | `css2xml <project.json> <out.xml>` | compile a CartoCSS style project to the mapnik XML the decoder reads |
 | `mapbox2css <style.json> <outdir>` | translate a MapBox/MapLibre style to a CartoCSS project |
+| `legend <project.json> [--spec legend.json] [--params k=v]... [--svg out.svg]` | resolve a [legend spec](../../docs/features/legends.md) against the style, as JSON, and optionally draw it |
 
 `css2xml` runs the SDK's own C++ compiled to WebAssembly — the same compiler the map uses at
 runtime, so what compiles here renders there. `mapbox2css` is TypeScript.
 
 ```sh
 massif-style css2xml --roundtrip project.json out.xml   # also parse the XML back and diff
+massif-style legend project.json --params variant=eink --svg legend.svg   # the legend as a parameter paints it
 massif-style mapbox2css style.json out/ --validate      # compile the result before writing it
 massif-style mapbox2css topo.json out/ --contour-schema div   # nth_line -> div contour attributes
 massif-style mapbox2css standard.json out/ --schema openmaptiles   # read OpenMapTiles tiles instead

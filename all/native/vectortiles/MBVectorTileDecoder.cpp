@@ -36,6 +36,7 @@
 #include <mapnikvt/MBVTFeatureDecoder.h>
 #include <mapnikvt/MLTFeatureDecoder.h>
 #include <mapnikvt/LayerTileReader.h>
+#include <mapnikvt/LegendResolver.h>
 #include <mapnikvt/MapParser.h>
 #include <mapnikvt/StyleParameterResolver.h>
 #include <cartocss/CartoCSSMapLoader.h>
@@ -266,7 +267,15 @@ namespace massif {
 
         auto it = _map->getStyleParameterMap().find(param);
         if (it == _map->getStyleParameterMap().end()) {
-            throw InvalidArgumentException("Could not find parameter");
+            // a scale every style has, declared or not
+            const std::map<std::string, float>& builtins = mvt::SymbolizerContext::Settings::getBuiltinParameters();
+            auto builtin = builtins.find(param);
+            if (builtin == builtins.end()) {
+                throw InvalidArgumentException("Could not find parameter");
+            }
+            auto it2 = _parameterValueMap.find(param);
+            const double* set = (it2 != _parameterValueMap.end() ? std::get_if<double>(&it2->second) : nullptr);
+            return boost::lexical_cast<std::string>(set ? *set : builtin->second);
         }
         const mvt::StyleParameter& styleParam = it->second;
         
@@ -387,6 +396,16 @@ namespace massif {
     bool MBVectorTileDecoder::setStyleParameterInternal(const std::string& param, const std::string& value) {
         auto it = _map->getStyleParameterMap().find(param);
         if (it == _map->getStyleParameterMap().end()) {
+            if (mvt::SymbolizerContext::Settings::getBuiltinParameters().count(param) > 0) {
+                try {
+                    _parameterValueMap[param] = mvt::Value(boost::lexical_cast<double>(value));
+                    return true;
+                }
+                catch (const std::exception& ex) {
+                    Log::Errorf("MBVectorTileDecoder::setStyleParameter: Exception while converting parameter %s/%s: %s", param.c_str(), value.c_str(), ex.what());
+                    return false;
+                }
+            }
             Log::Errorf("MBVectorTileDecoder::setStyleParameter: Could not find parameter: %s", param.c_str());
             return false;
         }
@@ -526,6 +545,32 @@ namespace massif {
             notifyDecoderRefreshed();
         } else {
             notifyDecoderChanged();
+        }
+    }
+
+    std::string MBVectorTileDecoder::getLegend(const std::string& spec) const {
+        std::shared_ptr<const mvt::Map> map;
+        std::shared_ptr<const mvt::StyleParameterStore> parameterStore;
+        std::string specJSON = spec;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            map = _map;
+            parameterStore = _parameterStore;
+            if (specJSON.empty() && _styleAssetPackage) {
+                if (std::shared_ptr<BinaryData> legendData = _styleAssetPackage->loadAsset(FileUtils::GetFilePath(_styleAssetName) + "legend.json")) {
+                    specJSON.assign(reinterpret_cast<const char*>(legendData->data()), legendData->size());
+                }
+            }
+        }
+        if (specJSON.empty()) {
+            return std::string();
+        }
+
+        try {
+            return mvt::resolveLegend(*map, specJSON, parameterStore);
+        }
+        catch (const std::invalid_argument& ex) {
+            throw InvalidArgumentException(std::string("Invalid legend spec: ") + ex.what());
         }
     }
 
@@ -1015,7 +1060,12 @@ namespace massif {
         for (auto it = _parameterValueMap.begin(); it != _parameterValueMap.end(); ) {
             auto it2 = map->getStyleParameterMap().find(it->first);
             if (it2 == map->getStyleParameterMap().end()) {
-                it = _parameterValueMap.erase(it);
+                // a built-in scale outlives the style it was set under
+                if (mvt::SymbolizerContext::Settings::getBuiltinParameters().count(it->first) > 0) {
+                    it++;
+                } else {
+                    it = _parameterValueMap.erase(it);
+                }
                 continue;
             }
             const mvt::StyleParameter& styleParam = it2->second;

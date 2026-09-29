@@ -223,6 +223,24 @@ test('a stated ring width wins over the one measured off the artwork', () => {
     assert.match(out, /shield-icon-background-radius: 4;/, 'and the corner it states too');
 });
 
+test('the plate\'s ring and corner shrink with icon-size, as the artwork\'s do in MapLibre', () => {
+    // Stated in the artwork's pixels at icon-size 1: at 0.4 a ring of 3 drew 3 px on the SDK where
+    // MapLibre draws 1.2, and the disc grew by the extra ring.
+    const out = convert({ layers: [symbol(
+        {
+            'text-field': '{name}', 'icon-size': 0.4,
+            'icon-image': ['image', ['get', 'maki'], { params: {
+                background: '#ff0000', 'background-stroke': '#00ff00',
+                'background-stroke-width': 3, radius: 21,
+            } }],
+        },
+        {})] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: compositeSheet(), outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(out, /shield-icon-background-border-width: \(\(3\) \* \(0\.4\)\);/);
+    assert.match(out, /shield-icon-background-radius: \(\(21\) \* \(0\.4\)\);/);
+});
+
 test('a plate with no border colour draws no border, rather than the default black one', () => {
     // shield-icon-background-border-fill defaults to BLACK and LabelPlateStyle::hasBorder is
     // colour-AND-width, so a width on its own drew an opaque black ring round the artwork - a peak's
@@ -315,6 +333,21 @@ test('a style that states its own variable anchors keeps them, flag or not', () 
 
     assert.match(out, /shield-anchors: 'bottom,topright';/);
     assert.ok(!out.includes("shield-anchors: 'right,left'"));
+});
+
+test('an icon that may overlap makes the shield overlap', () => {
+    // Massif's highlighted water points and campsites: placed whatever label is already there.
+    const sprites = new Map([['default', {
+        index: { circle: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const poi = (layout) => convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'circle', 'text-variable-anchor': ['top'], ...layout },
+        { 'icon-color': '#000000' })] },
+    TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(poi({ 'icon-allow-overlap': true }), /shield-allow-overlap: true;/);
+    assert.ok(!poi({}).includes('shield-allow-overlap'));
 });
 
 test('--icon-font draws a shield icon as a glyph, and needs no sprite sheet at all', () => {

@@ -1,0 +1,31 @@
+{
+  "extends": "./project.json",
+  "styles": [
+    "osm-colors.mss",
+    "variables.mss",
+    "style.mss",
+    "osm-rules.mss"
+  ],
+  "styleparameters": {
+    "variant": {
+      "default": "streets",
+      "values": {
+        "streets": "streets",
+        "outdoor": "outdoor",
+        "topo": "topo",
+        "hybrid": "hybrid",
+        "eink": "eink"
+      }
+    },
+    "track_min_zoom": 24,
+    "poiStyle": {
+      "default": "plain",
+      "values": {
+        "badge": "badge",
+        "plain": "plain"
+      }
+    },
+    "road_osm_low": 1,
+    "tunnel_min_zoom": 13
+  }
+}

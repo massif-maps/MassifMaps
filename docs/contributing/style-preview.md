@@ -26,8 +26,15 @@ Python's standard library only — `serve.py` reads tiles straight out of the SQ
 serves a TileJSON beside them, so there is no conversion step and no 250 MB copy. `--mbtiles`
 repeats; the picker in the toolbar chooses which archive the right pane reads.
 
+An archive may be several joined with `+` — `--mbtiles rhone-alpes=a.mbtiles+b.mbtiles` — and each
+tile is then the two MVTs concatenated, which is a valid tile carrying both sets of layers: the
+same merge `MergedMBVTTileDataSource` does on a device, so the Massif pane sees an optional archive
+such as the bathymap. Past an archive's own `maxzoom` its last tile is cut into the one asked for
+(`subtile`, the same cut as `MBVTSubtile.h`): the bathymap stops at z6 and still reaches z8. A style source whose URL is a bare file name (`"url": "bathymap.json"`) is
+pointed at the registered archive of that name.
+
 `--styles` mounts a folder of style projects at `/styles`, defaulting to the repo's own, so
-`styles/massif-streets` is served without being copied anywhere. `?style=<url>` opens straight on
+`styles/massif` is served without being copied anywhere. `?style=<url>` opens straight on
 one.
 
 The `style` box takes any MapLibre style URL. The left pane loads it as written; the right pane gets
@@ -76,6 +83,45 @@ Three things about the web build shape this:
 
 `serve.py` sends COOP/COEP so the module gets SharedArrayBuffer. OpenFreeMap keeps working through
 that: MapLibre fetches with CORS, which satisfies `require-corp`, so nothing has to be proxied.
+
+## The reference pane
+
+The `reference` picker swaps the local MapLibre pane for a style we are measuring ourselves against,
+fed the same camera as the rest of the grid: `mapbox-standard` (drawn by mapbox-gl-js v3, its real
+config — `?preset=night` sets `lightPreset`) or one of MapTiler's `streets-v4`, `outdoor-v4`,
+`topo-v4`, `hybrid-v4` and `openstreetmap`. `?ref=mapbox-standard&massif=1` opens straight on the
+comparison: ours over OpenFreeMap, the reference, and the SDK row under both.
+
+The `hour` slider (`?hour=21.5`) sets the Massif panes' day-cycle light — the sun at that local solar
+time on the equinox, at the camera — which is what lights a style's emissive layers, and moves the
+Standard reference to the matching preset: night before 6 and from 20:30, dawn to 8, dusk from 18.
+
+For a Massif style the bar gets a **variant** picker: the page reloads on the sibling file
+(`streets.json` → `eink.json`, …) with the camera, the hour, the reference and the Massif row kept;
+`custom` loads streets with `?project=custom`, the [override example](../../styles/massif/examples/custom/).
+
+The Massif panes cast building shadows the way Standard does, at its day depth (`shadowStrength` 1).
+Ours land on a terrain surface, so each pane carries a flat one (the Mapterhorn DEM at exaggeration
+0, never auto-flattened); `?shadows=0` drops it.
+
+The tokens are read by `serve.py` from `~/.mapbox_token` and `~/.maptiler_token`
+(`--mapbox-token`, `--maptiler-token` to point elsewhere) and served to the page at `/tokens.json`,
+so nothing is committed. The pane is an iframe: mapbox-gl and maplibre in one document fight over
+their globals, and its script is loaded in CORS mode, which the page's COEP requires.
+
+A MapLibre error that a source-layer "does not exist on source" is not shown on the pane: a style
+written for both tilesets reads layers only our fork carries, and the gaps panel lists those.
+
+A family project (see `styles/massif/README.md`) is drawn as the variant the style names in
+`metadata["massif:variant"]` - the pane loads `carto/<variant>.json`. A style with a hillshade layer
+carrying `massif:sdk-layer` gets a `HillshadeRasterTileLayer` built from those settings above the
+Massif pane's base layer, since the SDK draws relief as a layer of its own and not from CartoCSS.
+
+`--remote NAME=URL` serves a hosted TileJSON at `/tiles/NAME.json`, fetched by the server so a key
+never reaches the style: `--remote satellite=https://api.maptiler.com/tiles/satellite-v2/tiles.json?key={maptiler}`
+is how the hybrid's optional `satellite` source is drawn, `{maptiler}` and `{mapbox}` taking the
+tokens. A raster layer carrying `massif:sdk-layer` becomes a `RasterTileLayer` below the Massif
+pane's base layer.
 
 ## The gaps panel
 

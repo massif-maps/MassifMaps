@@ -12,29 +12,148 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
+def _varint(buf, i):
+    value = shift = 0
+    while True:
+        byte = buf[i]
+        i += 1
+        value |= (byte & 0x7F) << shift
+        shift += 7
+        if not byte & 0x80:
+            return value, i
+
+
+def _fields(buf):
+    """(tag, wire type, value, the field's raw bytes) of each field of a message"""
+    i = 0
+    while i < len(buf):
+        start = i
+        key, i = _varint(buf, i)
+        wire = key & 7
+        if wire == 0:
+            value, i = _varint(buf, i)
+        elif wire == 2:
+            length, i = _varint(buf, i)
+            value, i = buf[i:i + length], i + length
+        else:
+            value, i = None, i + (8 if wire == 1 else 4)
+        yield key >> 3, wire, value, buf[start:i]
+
+
+def _put_varint(value):
+    out = bytearray()
+    while value >= 0x80:
+        out.append((value & 0x7F) | 0x80)
+        value >>= 7
+    out.append(value)
+    return bytes(out)
+
+
+def _put_bytes(tag, data):
+    return _put_varint(tag << 3 | 2) + _put_varint(len(data)) + data
+
+
+def _shift_geometry(buf, dx, dy, lo, hi):
+    """the geometry moved by (-dx, -dy), None when it misses [lo, hi]; only the first MoveTo moves"""
+    values, i = [], 0
+    while i < len(buf):
+        v, i = _varint(buf, i)
+        values.append(v)
+    x, y, i, box = -dx, -dy, 0, None
+    while i < len(values):
+        command, count = values[i] & 7, values[i] >> 3
+        i += 1
+        for _ in range(count if command != 7 else 0):
+            if i + 1 >= len(values):
+                break
+            x += (values[i] >> 1) ^ -(values[i] & 1)
+            y += (values[i + 1] >> 1) ^ -(values[i + 1] & 1)
+            if box is None:
+                values[i], values[i + 1] = (x << 1) ^ (x >> 63), (y << 1) ^ (y >> 63)
+                box = [x, y, x, y]
+            box = [min(box[0], x), min(box[1], y), max(box[2], x), max(box[3], y)]
+            i += 2
+    if box is None or box[2] < lo or box[0] > hi or box[3] < lo or box[1] > hi:
+        return None
+    return b"".join(_put_varint(v & 0xFFFFFFFFFFFFFFFF) for v in values)
+
+
+def subtile(data, dz, x, y):
+    """the child tile (x, y) dz zooms under a tile, as MergedMBVTTileDataSource cuts it (MBVTSubtile.h)"""
+    out = b""
+    for tag, wire, layer, raw in _fields(data):
+        if tag != 3 or wire != 2:
+            out += raw
+            continue
+        extent = next((v for t, w, v, _ in _fields(layer) if t == 5 and w == 0), 4096)
+        if extent % (1 << dz):
+            return None
+        child = extent >> dz
+        mask = (1 << dz) - 1
+        dx, dy = (x & mask) * child, (y & mask) * child
+        kept = b""
+        for t, w, value, field in _fields(layer):
+            if t == 5:
+                continue
+            if t != 2 or w != 2:
+                kept += field
+                continue
+            feature, keep = b"", False
+            for ft, fw, fv, fraw in _fields(value):
+                if ft == 4 and fw == 2:
+                    geometry = _shift_geometry(fv, dx, dy, -child // 8, child + child // 8)
+                    keep = geometry is not None
+                    feature += _put_bytes(4, geometry or b"")
+                else:
+                    feature += fraw
+            if keep:
+                kept += _put_bytes(2, feature)
+        out += _put_bytes(3, kept + _put_varint(5 << 3) + _put_varint(child))
+    return out
+
+
 class Tileset:
+    """One archive, or several joined with `+`: an MVT is a list of layers, so the tiles of two
+    archives concatenated are one tile carrying both - what MergedMBVTTileDataSource does on a device."""
+
     def __init__(self, name, path):
         self.name = name
-        self.path = path
+        self.paths = path.split("+")
         self.local = threading.local()
-        meta = dict(self._db().execute("select name, value from metadata").fetchall())
+        meta = dict(self._db(0).execute("select name, value from metadata").fetchall())
+        layers = []
+        self.maxzooms = []
+        for i in range(len(self.paths)):
+            other = dict(self._db(i).execute("select name, value from metadata").fetchall())
+            self.maxzooms.append(int(other.get("maxzoom", 14)))
+            layers += json.loads(other.get("json", "{}")).get("vector_layers", [])
+        meta["json"] = json.dumps({**json.loads(meta.get("json", "{}")), "vector_layers": layers})
         self.meta = meta
-        self.gzipped = meta.get("compression", "gzip") == "gzip"
 
-    def _db(self):
-        conn = getattr(self.local, "conn", None)
-        if conn is None:
-            conn = sqlite3.connect("file:%s?mode=ro" % self.path, uri=True, check_same_thread=False)
-            self.local.conn = conn
-        return conn
+    def _db(self, i):
+        conns = getattr(self.local, "conns", None)
+        if conns is None:
+            conns = self.local.conns = {}
+        if i not in conns:
+            conns[i] = sqlite3.connect("file:%s?mode=ro" % self.paths[i], uri=True, check_same_thread=False)
+        return conns[i]
 
     def tile(self, z, x, y):
-        row = (1 << z) - 1 - y
-        got = self._db().execute(
-            "select tile_data from tiles where zoom_level=? and tile_column=? and tile_row=?",
-            (z, x, row),
-        ).fetchone()
-        return got[0] if got else None
+        parts = []
+        for i in range(len(self.paths)):
+            # past an archive's max zoom its last tile is cut, as on a device
+            dz = max(0, z - self.maxzooms[i]) if len(self.paths) > 1 else 0
+            got = self._db(i).execute(
+                "select tile_data from tiles where zoom_level=? and tile_column=? and tile_row=?",
+                (z - dz, x >> dz, (1 << (z - dz)) - 1 - (y >> dz)),
+            ).fetchone()
+            if got:
+                data = got[0]
+                data = gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data
+                data = subtile(data, dz, x, y) if dz else data
+                if data:
+                    parts.append(data)
+        return b"".join(parts) if parts else None
 
     def tilejson(self, base):
         meta = self.meta
@@ -58,6 +177,8 @@ class Handler(SimpleHTTPRequestHandler):
     styles_dir = None
     massif_dir = None
     isolate = False
+    tokens = {}
+    remotes = {}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
@@ -89,8 +210,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
+        if path == "/tokens.json":
+            return self._json(self.tokens)
         if path == "/tilesets.json":
-            return self._json({n: t.meta.get("name", n) for n, t in self.tilesets.items()})
+            names = {n: t.meta.get("name", n) for n, t in self.tilesets.items()}
+            return self._json({**names, **{n: "remote" for n in self.remotes}})
+        parts = path.strip("/").split("/")
+        if len(parts) == 2 and parts[0] == "tiles" and parts[1][:-5] in self.remotes:
+            return self._remote(self.remotes[parts[1][:-5]])
         parts = path.strip("/").split("/")
         if len(parts) == 2 and parts[0] == "tiles" and parts[1].endswith(".json"):
             name = parts[1][:-5]
@@ -100,6 +227,12 @@ class Handler(SimpleHTTPRequestHandler):
         if len(parts) == 5 and parts[0] == "tiles" and parts[4].endswith(".pbf"):
             return self._tile(parts[1], parts[2], parts[3], parts[4][:-4])
         return super().do_GET()
+
+    def _remote(self, url):
+        # a hosted TileJSON the style names by a bare file, fetched here so its key stays server-side
+        from urllib.request import urlopen
+        with urlopen(url.format(**self.tokens), timeout=20) as response:
+            return self._json(json.loads(response.read()))
 
     def _json(self, obj):
         body = json.dumps(obj).encode()
@@ -135,12 +268,18 @@ class Handler(SimpleHTTPRequestHandler):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--port", type=int, default=8787)
-    ap.add_argument("--mbtiles", action="append", default=[], metavar="NAME=PATH",
-                    help="register an archive at /tiles/NAME (repeatable)")
+    ap.add_argument("--mbtiles", action="append", default=[], metavar="NAME=PATH[+PATH]",
+                    help="register an archive at /tiles/NAME (repeatable); PATH+PATH merges them")
     ap.add_argument("--styles", metavar="DIR", default=os.path.join(ROOT, "..", "..", "styles"),
                     help="folder served at /styles, holding the style projects")
     ap.add_argument("--massif", metavar="DIR", default=os.path.join(ROOT, "..", "..", "web"),
                     help="the web build, served at /massif; needs massif-demo.wasm in its demo/")
+    ap.add_argument("--mapbox-token", metavar="FILE", default="~/.mapbox_token",
+                    help="token for the mapbox-* reference panes")
+    ap.add_argument("--maptiler-token", metavar="FILE", default="~/.maptiler_token",
+                    help="token for the maptiler-* reference panes")
+    ap.add_argument("--remote", action="append", default=[], metavar="NAME=URL",
+                    help="serve a hosted TileJSON at /tiles/NAME.json; {maptiler} and {mapbox} take the tokens")
     ap.add_argument("--no-isolate", dest="isolate", action="store_false",
                     help="drop COOP/COEP, which the Massif panes need but a strict CDN dislikes")
     args = ap.parse_args()
@@ -148,14 +287,22 @@ def main():
     Handler.styles_dir = os.path.abspath(args.styles)
     Handler.massif_dir = os.path.abspath(args.massif)
     Handler.isolate = args.isolate
+    for name, path in (("mapbox", args.mapbox_token), ("maptiler", args.maptiler_token)):
+        path = os.path.expanduser(path)
+        if os.path.exists(path):
+            Handler.tokens[name] = open(path).read().strip()
 
+    for spec in args.remote:
+        name, _, url = spec.partition("=")
+        Handler.remotes[name] = url
     for spec in args.mbtiles:
         name, _, path = spec.partition("=")
         if not path:
             ap.error("--mbtiles takes NAME=PATH, got %r" % spec)
-        path = os.path.abspath(os.path.expanduser(path))
-        if not os.path.exists(path):
-            ap.error("no such archive: %s" % path)
+        path = "+".join(os.path.abspath(os.path.expanduser(p)) for p in path.split("+"))
+        for one in path.split("+"):
+            if not os.path.exists(one):
+                ap.error("no such archive: %s" % one)
         Handler.tilesets[name] = Tileset(name, path)
         print("  /tiles/%s  <-  %s" % (name, path))
 

@@ -107,6 +107,13 @@ namespace massif::mvt {
         std::function<void(const std::shared_ptr<VariableExpression>&)> _visitor;
     };
 
+    /**
+     * Replaces every sub-expression that reads neither the view state nor a style parameter by its value
+     * in this context, so a per-frame evaluation redoes only what can change: an interpolation whose stops
+     * read feature fields then builds its curve once, not per call.
+     */
+    Expression foldContextExpressions(const Expression& expr, const ExpressionContext& context);
+
     struct ExpressionDeepEqualsChecker {
         bool operator() (const Value& val1, const Value& val2) const { return val1 == val2; }
         bool operator() (const Predicate& pred1, const Predicate& pred2) const;

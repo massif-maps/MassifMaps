@@ -46,7 +46,7 @@ is **not** baked is drawn live into the 3D scene and was therefore the only thin
 kept its flat style colour: a `TerrainOptions.NoDrapeLayerFilter` layer (contours by default), and
 everything 2D when the drape is off. `GEOMETRY_LIGHT` in `renderTileGeometry` closes that — point,
 line and polygon programs multiply by the same normalised Lambert the surface uses, with N·L taken
-from the **terrain** normal (`terrainNdl`, the 3×3 DEM stencil), never from the geometry's own flat
+from the **terrain** normal (`terrainNdl`, [the DEM gradient](#the-terrain-normal-is-two-fetches)), never from the geometry's own flat
 normal. Extrusions are excluded: they light by their own model (see [Buildings](#buildings)).
 
 Shadows already worked this way, so the shading and the shadow now share one `ndl` per fragment
@@ -66,6 +66,27 @@ With shadows on it is free: the stencil was already being paid for the shadow's 
 shadows off the lighting is what pays for it, +1.2 ms of `layers` (+6% of the frame) — the price of
 a contour that shades like the ground under it. Cheaper normals were not tried: a different normal
 than the surface's would make the two disagree exactly where the eye compares them.
+
+### The terrain normal is two fetches
+
+The normal is tangram's quadratic DEM stencil. Evaluated per fragment it took nine elevation taps,
+the most expensive thing on the lit surface. Inside a texel that stencil's gradient is a linear ramp
+between the forward differences on the texel's two edges, so `ElevationGradient` (all/native/terrain)
+stores those differences per texel, RG16F in metres, built with the elevation texture on the encode
+worker. `terrainNormal` and `terrainNdl` read them half a texel back with linear filtering: two
+fetches, the same ramp along each axis exactly (tests/api/ElevationGradientTest.cpp), and a cross
+term that is now continuous across texel rows where the stencil's jumped.
+
+Crosscall, Grenoble 5.7245/45.1885 z17.2 tilt 45, `day-cycle-light --es hour 14.5`, mesh 128,
+continuous drags, interleaved APKs: 16.3–16.8 → 17.5–18.6 fps with shadows off, 11.1–11.2 →
+12.3–12.9 with shadows on. At Gavet 5.8804/45.0536 z14 tilt 45 `--es shadow 5` the two builds differ
+by more than 24/255 on 0.45% of the pixels, at shadow edges. The cost is memory: 4 bytes per DEM
+texel, about 1 MB per cached DEM tile.
+
+The day-cycle example shows almost none of the Lambert term itself, with or without this change:
+`--es terrainLight false` changes no pixel at Gavet at 17:30, nor at 10:00 with `--es ambient 0.2
+--es sunIntensity 1`. Not investigated here. What is visible is the
+slope term of the shadow, so that is the camera to compare normals at.
 
 ## A 2D colour's own emissive, and an hour-driven palette
 
@@ -239,18 +260,11 @@ uniform change, so without this, moving the hour on a running map moved the buil
 per-frame uniform — and left the ground exactly as it was. It is quantised to 64 steps per channel,
 so a whole day cycle re-bakes a few dozen times rather than every frame.
 
-### Known gap: a TRANSLUCENT extrusion has no path
+### A TRANSLUCENT extrusion takes a depth pre-pass
 
-The 3D pass runs with blending off and depth writes on — one opaque surface per pixel, which is
-what lets the extrusions occlude each other and what the shadow map is drawn against. A
-`building-fill-opacity` below 1 therefore has nowhere to go: the fractional alpha is written
-straight into the frame rather than composited, and a city drawn that way reads as a wash of
-half-buildings showing through one another.
-
-MapTiler Streets states `fill-extrusion-opacity: 0.4`, so this is not hypothetical. The converter
-clamps it to 1 and says so in its coverage report; drawn opaque is much the closer of the two
-answers. The real fix is a depth pre-pass — extrusions rendered depth-only first, then blended with
-`GL_EQUAL` and no depth write — so exactly one translucent surface survives per pixel. Not done.
+A `building-fill-opacity` below 1 is drawn depth-only first, then in colour with the depth pulled
+one unit towards the camera, so exactly one surface blends per pixel. See
+[the frame](01-frame.md) for the pass order.
 
 ## Cast shadows
 
@@ -288,7 +302,10 @@ Design points, each measured:
   `shadow-intensity` default, and with the share applied that is their shadow exactly rather than a
   maximum. Above 1 exaggerates; the product is clamped to 1 because the shaders read it as
   `mix(1, lit, strength)`, which a value past 1 would invert. The bench and the example panel let it
-  reach 2 for that reason.
+  reach 2 for that reason. The share is linear light while the shaders darken sRGB colours, so the
+  strength they get is `1 − (1 − share)^(1/2.2)` (`DayCycleLight::srgbShadowStrength`), gl-js's
+  `linearTosRGB`. Sent linear, a full shadow under Standard's day kept 0.8 of the ground where
+  gl-js keeps 0.91: twice the darkening, and the buildings' shadowed faces with it.
 
   What this fixed, on the `day-cycle-light` example at Paris (`shadowStrength 0.35`): the shadow map
   was still being drawn all night — cast from the 15° floor above, azimuth intact — so shadow blocks

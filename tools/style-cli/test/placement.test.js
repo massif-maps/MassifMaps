@@ -47,6 +47,13 @@ test('a viewport rotation on a line is the repeat placement - upright, not turni
         'billboard-line-repeat');
 });
 
+test('an upright line-center label is one billboard at the line\'s middle, not a repeat', () => {
+    assert.equal(resolvePlacement(symbolLayer({ 'symbol-placement': 'line-center',
+        'text-rotation-alignment': 'viewport', 'text-pitch-alignment': 'viewport' }), 'text'), 'billboard');
+    assert.equal(followsLine(symbolLayer({ 'symbol-placement': 'line-center', 'text-rotation-alignment': 'viewport' })),
+        false, 'and it wraps at text-max-width, as a point label does');
+});
+
 test('the icon resolves from its own alignments', () => {
     const layer = symbolLayer({ 'symbol-placement': 'line', 'icon-rotation-alignment': 'viewport' });
     assert.equal(resolvePlacement(layer, 'icon'), 'billboard-line-repeat');
@@ -201,4 +208,9 @@ test('a line label repeats at symbol-spacing, not at its text-padding', () => {
 
 test('a layer with no sort key still carries its order', () => {
     assert.match(mss({}), /text-placement-priority: 0;/);
+});
+
+test('text-max-angle carries over: a style asking 30 degrees drops runs the 45 default would bend', () => {
+    assert.match(mss({ 'symbol-placement': 'line', 'text-max-angle': 30 }), /text-max-char-angle-delta: 30;/);
+    assert.ok(!mss({ 'symbol-placement': 'line' }).includes('text-max-char-angle-delta'));
 });

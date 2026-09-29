@@ -54,14 +54,32 @@ test('--ao-follows-height fades the ground AO on the ramp that lays the building
     assert.match(line, /\[param::building_ao\]/);
     assert.match(line, /\[param::building_tilt_drop\] \* 0\.01/);
     assert.match(line, /linear\(\[view::tilt\], \(80, 0\), \(90, 1\)\)/);
-    // The same ramp the DRAWN height takes, so the two cannot drift apart. This fixture does not
-    // reach the branch that emits the height scale, so the cross-check runs only when it is there.
+    // The same ramp the DRAWN height takes, so the two cannot drift apart.
     const ramp = /1 - \(\[param::building_tilt_drop\] \* 0\.01\) \* linear\(\[view::tilt\], \(80, 0\), \(90, 1\)\)/;
     assert.match(line, ramp);
     const height = mss.split('\n').find((l) => l.includes('building-height-view-scale:'));
-    if (height) {
-        assert.match(height, ramp);
-    }
+    assert.ok(height, 'a style with no lights still lays its buildings down: building_tilt_drop drives it');
+    assert.match(height, ramp);
+});
+
+test('a live-lit style says its colours are pre-lit, lights or not', () => {
+    // Without it terrain lighting shades the ground again under the grading the renderer already gave it.
+    assert.match(convert(style, table, { ...NO_PALETTE, liveLight: true }).mss, /Map \{[^}]*colors-prelit: 1;/);
+    assert.doesNotMatch(convert(style, table, NO_PALETTE).mss, /colors-prelit/);
+});
+
+test('an extrusion opacity over the pitch stays live, as a ramp over the tilt', () => {
+    // pitch 20 -> tilt 70, pitch 50 -> tilt 40: the keys flip and the stops run in reverse.
+    const faded = JSON.parse(JSON.stringify(style));
+    faded.metadata = { ...faded.metadata, 'massif:live-config': ['building_opacity'] };
+    faded.schema = { building_opacity: { default: 0.6 } };
+    const buildings = faded.layers.find((layer) => layer.type === 'fill-extrusion');
+    buildings.paint['fill-extrusion-opacity'] = ['interpolate', ['linear'], ['pitch'],
+        20, 1, 50, ['config', 'building_opacity']];
+    const styleParams = new Map();
+    const { mss } = convert(faded, table, { ...NO_PALETTE, styleParams });
+    assert.match(mss, /building-fill-opacity: linear\(\[view::tilt\], \(40, \[param::building_opacity\]\), \(70, 1\)\);/);
+    assert.equal(styleParams.get('building_opacity'), 0.6);
 });
 
 test('each MapBox layer becomes an attachment on its source-layer', () => {
@@ -222,6 +240,19 @@ test('a width whose stops are data-driven still scales the dash at that zoom', (
     assert.match(out, /line-dasharray: 1.33,1.33;/);
 });
 
+test('a width chosen per config value scales the dash by its fallback ramp', () => {
+    // Massif's e-ink tracks are 1.6x wider: a match on the variant around two ramps. Averaged over
+    // both, the grade2 [5, 2] dash drew 50 px where gl-js draws 5.
+    const track = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['match', ['config', 'variant'], 'eink',
+            ['interpolate', ['linear'], ['zoom'], 12, 1.6, 16, 1.6],
+            ['interpolate', ['linear'], ['zoom'], 12, 1, 16, 1]],
+        'line-dasharray': [5, 2],
+    } };
+    const out = convert({ layers: [track] }, table, NO_PALETTE).mss;
+    assert.match(out, /line-dasharray: 5,2;/);
+});
+
 test('a fill pattern names a FILE, not the sheet-qualified sprite', () => {
     // 'misc:construction_pattern' reached the decoder verbatim and no such file has ever existed,
     // so every construction area drew as a bare outline. The sheet only says where to look.
@@ -342,6 +373,74 @@ test('a parameter colour goes in as hex, because that is what the decoder can pa
     assert.equal(styleParams.get('poi-fill-park'), '#3b9144');
 });
 
+test('a palette that follows the hour is one table per brightness stop', () => {
+    // measure-light over two class matches: a lookup per stop, not the ternary chain per feature
+    // the ramp would otherwise become.
+    const styleParams = new Map();
+    const { mss } = convert({
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['interpolate', ['linear'], ['measure-light', 'brightness'],
+                    0.25, ['match', ['get', 'class'], 'bus', '#aabbcc', '#eeeeee'],
+                    0.3, ['match', ['get', 'class'], 'bus', '#2e5a80', '#666666']],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.match(mss, /text-fill: linear\(\[view::brightness\], \(0\.25, \(\(\[param::poi-fill-b25-\[class\]\]\) \?\? #eeeeee\)\), \(0\.3, \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\)\)\);/);
+    assert.equal(styleParams.get('poi-fill-b25-bus'), '#aabbcc');
+    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+});
+
+test('a palette per variant is one set of tables per variant, picked by the parameter', () => {
+    // A match on a live config whose branches each fold: a per-draw parameter test, then one lookup,
+    // instead of the per-feature chain a variant-dependent palette would otherwise become.
+    const styleParams = new Map();
+    const { mss } = convert({
+        metadata: { 'massif:live-config': ['variant'] },
+        schema: { variant: { default: 'streets', values: ['streets', 'eink'] } },
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: {
+                'text-color': ['match', ['config', 'variant'],
+                    'eink', '#000000',
+                    ['match', ['get', 'class'], 'bus', '#2e5a80', '#666666']],
+            },
+        }],
+    }, table, { ...NO_PALETTE, styleParams });
+
+    assert.match(mss, /text-fill: \(\(\[param::variant\] = 'eink'\) \? #000000 : \(\(\[param::poi-fill-\[class\]\]\) \?\? #666666\)\);/);
+    assert.equal(styleParams.get('poi-fill-bus'), '#2e5a80');
+});
+
+test('a day/night palette under a config branch keeps that branch its own tables', () => {
+    // Folded without the branch's suffix, both branches wrote poi-fill-bus and the last one won.
+    const styleParams = new Map();
+    const ramp = (night, day) => ['interpolate', ['linear'], ['measure-light', 'brightness'],
+        0.25, ['match', ['get', 'class'], 'bus', night, '#666666'], 0.3, ['match', ['get', 'class'], 'bus', day, '#666666']];
+    const { mss } = convert({
+        metadata: { 'massif:live-config': ['poiStyle'] },
+        schema: { poiStyle: { default: 'badge', values: ['badge', 'plain'] } },
+        layers: [{
+            id: 'poi-major', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi',
+            metadata: { 'massif:params': ['text-color'] },
+            layout: { 'text-field': ['get', 'name'] },
+            paint: { 'text-color': ['match', ['config', 'poiStyle'], 'plain', ramp('#111111', '#222222'), ramp('#333333', '#444444')] },
+        }],
+    }, table, { ...NO_PALETTE, styleParams, liveLight: true });
+
+    assert.equal(styleParams.get('poi-fill-plain-bus'), '#222222');
+    assert.equal(styleParams.get('poi-fill-plain-b25-bus'), '#111111');
+    assert.equal(styleParams.get('poi-fill-bus'), '#444444');
+    assert.equal(styleParams.get('poi-fill-b25-bus'), '#333333');
+    assert.match(mss, /\[param::poi-fill-plain-\[class\]\]/);
+});
+
 test('a property the style does not ask for keeps its ternary', () => {
     const styleParams = new Map();
     const { mss } = convert({
@@ -354,4 +453,46 @@ test('a property the style does not ask for keeps its ternary', () => {
 
     assert.match(mss, /text-fill: \(\(\[class\] = 'bus'\) \? #2e5a80 : #666666\);/);
     assert.equal(styleParams.size, 0);
+});
+
+test('a zoom an app sets is a selector on a parameter, not a when() per feature', () => {
+    const styleParams = new Map();
+    const layer = (metadata) => ({ id: 'track', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
+        minzoom: 12, filter: ['==', ['get', 'class'], 'track'], metadata, paint: { 'line-color': '#000000' } });
+    const convertWith = (metadata) => convert({ metadata: { 'massif:live-config': ['track_min_zoom'] },
+        schema: { track_min_zoom: { default: 12 } }, layers: [layer(metadata)] },
+        table, { ...NO_PALETTE, styleParams, tileDrawSize: 512 }).mss;
+
+    // massif:minzoom-param replaces the layer's own start, which stays maplibre's minzoom
+    const own = convertWith({ 'massif:minzoom-param': 'track_min_zoom' });
+    assert.match(own, /#transportation\[zoom >= 'param::track_min_zoom'\]\[class = 'track'\]::track/);
+    assert.equal(styleParams.get('track_min_zoom'), 12);
+    // a layer starting BELOW its default keeps that floor beside the parameter
+    const floored = convert({ metadata: { 'massif:live-config': ['track_min_zoom'] },
+        schema: { track_min_zoom: { default: 14 } },
+        layers: [layer({ 'massif:minzoom-param': 'track_min_zoom' })] }, table, { ...NO_PALETTE, tileDrawSize: 512 }).mss;
+    assert.match(floored, /#transportation\[zoom >= 'param::track_min_zoom'\]\[zoom >= 12\]\[class = 'track'\]::track/);
+    // and a zoom compared with a config in a filter brackets the same way
+    const filtered = convertWith({ 'massif:filter': ['>=', ['zoom'], ['config', 'track_min_zoom']] });
+    assert.match(filtered, /\[zoom >= 'param::track_min_zoom'\]/);
+    assert.doesNotMatch(filtered, /when\(/);
+});
+
+test('a circle\'s radius becomes a marker\'s width, which is a diameter', () => {
+    const out = convert({ layers: [{ id: 'dot', type: 'circle', source: 'openmaptiles', 'source-layer': 'poi',
+        paint: { 'circle-radius': 5, 'circle-color': '#ff0000' } }] }, table, NO_PALETTE).mss;
+    assert.match(out, /marker-width: \(2 \* 5\);/);
+    assert.match(out, /marker-allow-overlap: true;/, 'a circle never collides');
+});
+
+test('under lights a wall\'s foot takes gl-js\'s faux AO, not the unlit vertical gradient', () => {
+    const lit = JSON.parse(JSON.stringify(style));
+    lit.lights = [{ id: 'ambient', type: 'ambient', properties: { intensity: 0.8 } },
+        { id: 'sun', type: 'directional', properties: { intensity: 0.2, direction: [180, 20] } }];
+    const buildings = lit.layers.find((layer) => layer.type === 'fill-extrusion');
+    buildings.paint['fill-extrusion-ambient-occlusion-intensity'] = 0.15;
+    const { mss } = convert(lit, table, NO_PALETTE);
+    // 1 - (1 - 0.08 * 0.15) * (1 - 0.9 * 0.15) = 0.1454, to two places
+    assert.match(mss, /building-vertical-gradient: 0\.15;/);
+    assert.match(mss, /building-vertical-gradient-height: 6;/);
 });

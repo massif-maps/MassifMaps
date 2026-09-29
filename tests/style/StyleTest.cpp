@@ -14,10 +14,15 @@ void testExpressionRoundTrip();
 void testDataDrivenProperty();
 void testInterpolateExpression();
 void testViewStateProperty();
+void testContextFold();
 void testFontNames();
 void testValueJSON();
 void testAnchorLabelId();
 void testSymbolizerProperty();
+void testLegendResolver();
+void testBuiltinParameters();
+void testLineAnchors();
+void testMBVTSubtile();
 
 int main() {
     testLayerConfig();
@@ -28,10 +33,15 @@ int main() {
     testDataDrivenProperty();
     testInterpolateExpression();
     testViewStateProperty();
+    testContextFold();
     testFontNames();
     testValueJSON();
     testAnchorLabelId();
     testSymbolizerProperty();
+    testLegendResolver();
+    testBuiltinParameters();
+    testLineAnchors();
+    testMBVTSubtile();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

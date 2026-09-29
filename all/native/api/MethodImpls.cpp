@@ -178,6 +178,22 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** getLegend(spec?) -> the resolved legend; no spec means the style's own legend.json, null when it has none. */
+        Result getLegend(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            Variant spec = args.get(0);
+            std::string specJSON;
+            if (spec.getType() == VariantType::VARIANT_TYPE_OBJECT) {
+                specJSON = spec.toString();
+            }
+            else if (spec.getType() != VariantType::VARIANT_TYPE_NULL) {
+                return RESULT_BAD_SPEC;
+            }
+            std::string legend = static_cast<MBVectorTileDecoder*>(obj)->getLegend(specJSON);
+            result = PropertyValue::ofString(legend.empty() ? std::string("null") : legend);
+            result.type = PT_VARIANT;
+            return RESULT_OK;
+        }
+
         /** setSunPositionFromTime(year, month, day, hour, minute, latitude, longitude); pass the map centre. */
         Result setSunPositionFromTime(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             long long year = 0, month = 0, day = 0, hour = 0, minute = 0;
@@ -791,6 +807,7 @@ namespace massif { namespace api {
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameters", &setStyleParameters);
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
         registerMethod("massif::MBVectorTileDecoder", "addFallbackFont", &addFallbackFont);
+        registerMethod("massif::MBVectorTileDecoder", "getLegend", &getLegend);
         registerMethod("massif::LightOptions", "setSunPositionFromTime", &setSunPositionFromTime);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);

@@ -146,6 +146,10 @@ a texture. `ElevationTextureCache` (all/native/renderers/utils/) turns a grid in
   which is what survives a context loss). Measured over a cold load: full re-encodes 353 → 24. It
   changes no frame rate — the encode was never on the render thread — so treat it as work removed,
   not speed gained. In a warm pan the whole pipeline is **idle**: zero encodes, zero patches;
+- the lit surfaces take their normal from a **gradient texture** per DEM tile: RG16F forward
+  differences in metres (`ElevationGradient`), built on the same worker from the same encode and
+  re-patched one texel wider than the ring. See
+  [the terrain normal](08-lighting-sky-fog.md#the-terrain-normal-is-two-fetches);
 - `_frameResolved` memoises the per-frame tile → grid resolution, because the provider is called
   once per tile **per render pass** and each miss costs 9 locked cache lookups.
 
@@ -269,7 +273,14 @@ adaptive path is only reached on a GPU without vertex texture fetch (no elevatio
   `TerrainOptions::MeshResolution` cells, built once, drawn for every tile with the tile's own
   matrix and uniforms. `surfIndices / surfDraws` comes out at exactly `24576 = 64·64·2·3` — one grid
   per draw. This is tangram's `RasterStyle` arrangement (`core/src/style/rasterStyle.cpp`), and it is
-  already implemented: there is nothing left to port here.
+  already implemented: there is nothing left to port here. Since culling (below) that ratio is lower:
+  `surfIndices` counts the indices actually drawn.
+- **Its indices come in 4×4 blocks** (`GRID_CULL_BLOCKS`), each contiguous and banded
+  (`GRID_INDEX_BAND`, for the vertex cache). The drape and fill draws (`drawSurfaceElements`) test
+  each block against the view frustum - tile box in xy, the DEM raster's min/max height (plus 10% and
+  10 m for the border and node filter) in z - and draw the visible runs only. At the mesh-128
+  Grenoble camera that skips 58% of the terrain indices: tiles overhang the screen edges. Off on a
+  globe, and off in the shadow caster pass, which draws for the light, not the camera.
 - **Per-tile adaptive surfaces** (`buildTileSurface`, red-green edge-local refinement over corner
   fans) — used only by the non-grid draw path and by ray-cast picking
   (`findTileBitmapIntersections`). In grid mode `_tileSurfaceMap` stays **empty**, and both

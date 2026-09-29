@@ -1,5 +1,6 @@
 #include "ElevationTileGrid.h"
 #include "ElevationNodeField.h"
+#include "ElevationGradient.h"
 #include "graphics/Bitmap.h"
 #include "utils/Const.h"
 #include "utils/Log.h"
@@ -461,6 +462,13 @@ namespace massif {
         // The tap is a bilinear read, so the texel PAST its reach is sampled too.
         int border = static_cast<int>(std::ceil(reachMetres / texelMetres)) + 1;
         return std::max(1, std::min(border, std::min(MAX_TEXTURE_BORDER_TEXELS, std::min(_width, _height))));
+    }
+
+    void ElevationTileGrid::encodeGradientTexture(const std::uint8_t* textureData, int width, int height, int x0, int y0, int rectWidth, int rectHeight, std::vector<std::uint16_t>& gradient) const {
+        auto heightAt = [this, textureData, width](int x, int y) {
+            return decodeTexel(textureData + (static_cast<std::size_t>(y) * width + x) * _bytesPerTexel);
+        };
+        ElevationGradient::encode(heightAt, width, height, x0, y0, rectWidth, rectHeight, gradient);
     }
 
     void ElevationTileGrid::encodeTextureWithBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, int border, std::vector<std::uint8_t>& textureData) const {

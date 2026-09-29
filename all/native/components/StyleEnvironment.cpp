@@ -249,9 +249,8 @@ namespace {
             DayCycleLight::groundRadiance(light, lighting.sunDir(2), radiance);
             lighting.radiance = cglib::vec3<float>(radiance[0], radiance[1], radiance[2]);
             lighting.brightness = DayCycleLight::brightness(light, lighting.sunDir(2));
-            // A shadow hides only the direct light, so scale by its share (0 below the horizon skips the
-            // caster pass). Clamped: the shaders' `mix(1, lit, strength)` inverts past 1.
-            lighting.shadowStrength = std::min(1.0f, lighting.shadowStrength * DayCycleLight::directShare(light, lighting.sunDir(2)));
+            // A shadow hides only the direct light's share (0 below the horizon skips the caster pass).
+            lighting.shadowStrength = DayCycleLight::srgbShadowStrength(light, lighting.sunDir(2), lighting.shadowStrength);
         }
         return lighting;
     }

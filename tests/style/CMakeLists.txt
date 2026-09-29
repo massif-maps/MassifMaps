@@ -3,6 +3,7 @@
 # weight ../README.md keeps out of this suite. Symbolizer.cpp itself is the property binding only.
 set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/LayerConfigResolver.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/LegendResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Symbolizer.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Map.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Style.cpp"
@@ -39,10 +40,15 @@ add_executable(style_tests
   InterpolateExpressionTest.cpp
   DataDrivenPropertyTest.cpp
   ViewStatePropertyTest.cpp
+  ContextFoldTest.cpp
   FontNamesTest.cpp
   ValueJSONTest.cpp
   AnchorLabelIdTest.cpp
   SymbolizerPropertyTest.cpp
+  LegendResolverTest.cpp
+  BuiltinParameterTest.cpp
+  LineAnchorsTest.cpp
+  MBVTSubtileTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE
@@ -59,6 +65,7 @@ target_include_directories(style_tests PRIVATE
   "${SDK_BASE_DIR}/libs-external/utf8/source"
   "${SDK_BASE_DIR}/libs-external/boost"
   "${SDK_BASE_DIR}/libs-external/picojson"
+  "${SDK_BASE_DIR}/libs-external/pbf"
   # rapidjson, for the JSON a table style parameter is carried as (Value.cpp).
   "${SDK_BASE_DIR}/libs-external/rapidjson/include"
   "${SDK_BASE_DIR}/libs-external/tinyformat")

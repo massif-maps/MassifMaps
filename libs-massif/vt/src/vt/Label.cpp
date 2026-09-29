@@ -203,48 +203,67 @@ namespace massif::vt {
         return cglib::bbox3<double>(_geometryBBox.min - marginVec, _geometryBBox.max + marginVec);
     }
 
-    void Label::smoothPlacementLine(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, double minEdgeLength, std::vector<cglib::vec3<double>>& smoothedVertices, std::size_t& smoothedIndex) {
-        // Edges shorter than a glyph turn line noise (a DEM contour's cell zigzag) into turns of the text.
-        // Window-averaged, not decimated, and only for the placement; the geometry is unchanged.
-        smoothedVertices.clear();
-        smoothedIndex = index;
-        if (vertices.size() < 2 || !(minEdgeLength > 0)) {
-            smoothedVertices = vertices;
+    float Label::calculateLineRunLength() const {
+        // Pen advances only: a CR's x advance is the alignment offset, -width/2 for centred text.
+        float runLength = 0;
+        float lineLength = 0;
+        for (const Font::Glyph& glyph : _glyphs) {
+            if (glyph.codePoint == Font::CR_CODEPOINT) {
+                lineLength = 0;
+                continue;
+            }
+            lineLength += glyph.advance(0);
+            runLength = std::max(runLength, lineLength);
+        }
+        return runLength;
+    }
+
+    void Label::simplifyPlacementLine(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, double tolerance, std::vector<cglib::vec3<double>>& simplifiedVertices, std::size_t& simplifiedIndex) {
+        // Douglas-Peucker: drops a DEM contour's cell zigzag but keeps a real corner for the max-angle
+        // check. Averaging instead turned a road's jog into one slanted edge the text followed.
+        simplifiedVertices.clear();
+        simplifiedIndex = index;
+        if (vertices.size() < 3 || !(tolerance > 0)) {
+            simplifiedVertices = vertices;
             return;
         }
 
-        // Ends stay put: averaging them pulls the line in by half a window per end, and the window
-        // scales with the text, so a longer run would shorten the line it must fit on.
-        std::vector<std::size_t> sourceIndices;
-        smoothedVertices.push_back(vertices.front());
-        sourceIndices.push_back(0);
-        cglib::vec3<double> sum(0, 0, 0);
-        std::size_t count = 0;
-        double length = 0;
-        for (std::size_t i = 1; i + 1 < vertices.size(); i++) {
-            length += cglib::length(vertices[i] - vertices[i - 1]);
-            sum += vertices[i];
-            count++;
-            if (length >= minEdgeLength) {
-                smoothedVertices.push_back(sum * (1.0 / count));
-                sourceIndices.push_back(i);
-                sum = cglib::vec3<double>(0, 0, 0);
-                count = 0;
-                length = 0;
+        std::vector<bool> keep(vertices.size(), false);
+        keep.front() = true;
+        keep.back() = true;
+        std::vector<std::pair<std::size_t, std::size_t>> spans { { 0, vertices.size() - 1 } };
+        while (!spans.empty()) {
+            std::pair<std::size_t, std::size_t> span = spans.back();
+            spans.pop_back();
+            cglib::vec3<double> chord = vertices[span.second] - vertices[span.first];
+            double chordLength2 = cglib::norm(chord);
+            double maxDistance2 = tolerance * tolerance;
+            std::size_t split = 0;
+            for (std::size_t i = span.first + 1; i < span.second; i++) {
+                cglib::vec3<double> offset = vertices[i] - vertices[span.first];
+                double t = (chordLength2 > 0 ? std::max(0.0, std::min(1.0, cglib::dot_product(offset, chord) / chordLength2)) : 0.0);
+                double distance2 = cglib::norm(offset - chord * t);
+                if (distance2 > maxDistance2) {
+                    maxDistance2 = distance2;
+                    split = i;
+                }
+            }
+            if (split > 0) {
+                keep[split] = true;
+                spans.emplace_back(span.first, split);
+                spans.emplace_back(split, span.second);
             }
         }
-        smoothedVertices.push_back(vertices.back());
-        sourceIndices.push_back(vertices.size() - 1);
 
-        // Smoothed vertex i averages the window ending at sourceIndices[i]; the anchor's edge starts at
-        // the first window reaching past source segment [index, index + 1].
-        smoothedIndex = smoothedVertices.size() - 2;
-        for (std::size_t i = 0; i < sourceIndices.size(); i++) {
-            if (index <= sourceIndices[i]) {
-                smoothedIndex = std::min(i, smoothedVertices.size() - 2);
-                break;
+        for (std::size_t i = 0; i < vertices.size(); i++) {
+            if (keep[i]) {
+                if (i <= index) {
+                    simplifiedIndex = simplifiedVertices.size();
+                }
+                simplifiedVertices.push_back(vertices[i]);
             }
         }
+        simplifiedIndex = std::min(simplifiedIndex, simplifiedVertices.size() - 2);
     }
 
     void Label::clampPlacementAnchor(const std::vector<cglib::vec3<double>>& vertices, double textLength, std::size_t& index, cglib::vec3<double>& position) {
@@ -265,9 +284,9 @@ namespace massif::vt {
 
         index = std::min(index, vertices.size() - 2);
         double anchor = lengths[index] + cglib::length(position - vertices[index]);
-        // Too short for room on both sides: its middle. The room factor covers the edge-by-edge fit,
-        // which consumes slightly more line than each glyph's advance.
-        double room = textLength * PLACEMENT_ROOM_FACTOR;
+        // The run is centred on its anchor, as maplibre's. Too short for room on both sides: its middle.
+        // The room factor covers the edge-by-edge fit, which consumes slightly more line than the advances.
+        double room = textLength * 0.5 * PLACEMENT_ROOM_FACTOR;
         double minAnchor = std::min(room, total * 0.5);
         double maxAnchor = std::max(total - room, total * 0.5);
         double clamped = std::min(std::max(anchor, minAnchor), maxAnchor);
@@ -285,6 +304,45 @@ namespace massif::vt {
         position = vertices[i] + (vertices[i + 1] - vertices[i]) * std::min(1.0, std::max(0.0, t));
     }
 
+    bool Label::checkPlacementMaxAngle(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, const cglib::vec3<double>& position, double textLength, double windowLength, double maxAngle) {
+        // maplibre's checkMaxAngle (check_max_angle.ts), over the span buildLineVertexData lays the
+        // run on at tilt 0: centred on the anchor, slid to fit.
+        if (vertices.size() < 3 || !(textLength > 0)) {
+            return true;
+        }
+
+        std::vector<double> lengths(vertices.size(), 0);
+        for (std::size_t i = 1; i < vertices.size(); i++) {
+            lengths[i] = lengths[i - 1] + cglib::length(vertices[i] - vertices[i - 1]);
+        }
+        index = std::min(index, vertices.size() - 2);
+        double start = std::max(0.0, std::min(lengths[index] + cglib::length(position - vertices[index]) - textLength * 0.5, lengths.back() - textLength));
+        double end = start + textLength;
+
+        auto cornerAngle = [&vertices](std::size_t i) {
+            cglib::vec3<double> edge0 = vertices[i] - vertices[i - 1];
+            cglib::vec3<double> edge1 = vertices[i + 1] - vertices[i];
+            double lengthProduct = cglib::length(edge0) * cglib::length(edge1);
+            return (lengthProduct > 0 ? std::acos(std::max(-1.0, std::min(1.0, cglib::dot_product(edge0, edge1) / lengthProduct))) : 0.0);
+        };
+        std::size_t first = 1;
+        double windowAngle = 0;
+        for (std::size_t i = 1; i + 1 < vertices.size() && lengths[i] < end; i++) {
+            if (lengths[i] <= start) {
+                first = i + 1;
+                continue;
+            }
+            windowAngle += cornerAngle(i);
+            while (lengths[i] - lengths[first] > windowLength) {
+                windowAngle -= cornerAngle(first++);
+            }
+            if (windowAngle > maxAngle) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     std::shared_ptr<const Label::Placement> Label::buildLinePlacement(const TileLine& tileLine, std::size_t index, const cglib::vec3<double>& position) const {
         // Height from the line's own chord: vertex and anchor heights may come from different elevation states.
         const cglib::vec3<double>& vertex0 = tileLine.vertices[index];
@@ -295,18 +353,29 @@ namespace massif::vt {
         double t = (len2 > 0 ? ((position(0) - vertex0(0)) * dx + (position(1) - vertex0(1)) * dy) / len2 : 0);
         t = std::max(0.0, std::min(1.0, t));
         cglib::vec3<double> pos = vertex0 + (vertex1 - vertex0) * t;
-        std::vector<cglib::vec3<double>> smoothedVertices;
-        std::size_t smoothedIndex = index;
-        smoothPlacementLine(tileLine.vertices, index, _placementTextLength * PLACEMENT_SMOOTH_TEXT_FRACTION, smoothedVertices, smoothedIndex);
-        clampPlacementAnchor(smoothedVertices, _placementTextLength, smoothedIndex, pos);
-        return std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, smoothedVertices, smoothedIndex, index, pos, tileLine.normal);
+        std::vector<cglib::vec3<double>> simplifiedVertices;
+        std::size_t simplifiedIndex = index;
+        simplifyPlacementLine(tileLine.vertices, index, _placementGlyphScale * PLACEMENT_SIMPLIFY_TOLERANCE, simplifiedVertices, simplifiedIndex);
+        std::size_t sourceIndex = index;
+        cglib::vec3<double> sourcePos = pos;
+        clampPlacementAnchor(simplifiedVertices, _placementTextLength, simplifiedIndex, pos);
+        clampPlacementAnchor(tileLine.vertices, _placementTextLength, sourceIndex, sourcePos);
+        // As maplibre: a run turning too sharply is dropped, not moved. The simplification may forgive a
+        // turn (a contour's zigzag) but never make one: it folded two bends into one corner.
+        double window = _placementGlyphScale * PLACEMENT_ANGLE_WINDOW;
+        if (!checkPlacementMaxAngle(simplifiedVertices, simplifiedIndex, pos, _placementTextLength, window, _style->maxAngle)
+            && !checkPlacementMaxAngle(tileLine.vertices, sourceIndex, sourcePos, _placementTextLength, window, _style->maxAngle)) {
+            return std::shared_ptr<const Placement>();
+        }
+        return std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, simplifiedVertices, simplifiedIndex, index, pos, tileLine.normal);
     }
 
     void Label::snapPlacement(const Label& label) {
         _placement = label._placement;
         _cachedFlippedPlacement = label._cachedFlippedPlacement;
-        // The re-snap below runs before any view state: smooth by the old length or the run changes shape.
+        // The re-snap below runs before any view state: place by the old scale or the run changes shape.
         _placementTextLength = label._placementTextLength;
+        _placementGlyphScale = label._placementGlyphScale;
         // A rebuilt label is the same label to the user; re-judging it strictly makes it blink.
         _lineLayoutValid = label._lineLayoutValid;
         // Callout lift belongs to the label; restarting at 0 drops names onto their anchors as tiles stream.
@@ -472,11 +541,8 @@ namespace massif::vt {
             float scale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
             // At the placement: the merged geometry's centre can be far away, and the factor varies with distance.
             scale *= calculateTerrainScaleFactor(_placement ? _placement->position : calculateGeometryBBox(viewState).center(), viewState);
-            float textLength = 0;
-            for (const Font::Glyph& glyph : _glyphs) {
-                textLength += glyph.advance(0) * scale;
-            }
-            _placementTextLength = textLength;
+            _placementGlyphScale = scale;
+            _placementTextLength = calculateLineRunLength() * scale;
         }
         if (_placement) {
             std::array<cglib::vec3<float>, 4> envelope;
@@ -854,7 +920,7 @@ namespace massif::vt {
 
     // attrib(0) is the run: 2 = icon, 0/1 = text/secondary, which have their own opacity.
     std::int8_t Label::runOpacity(const cglib::vec4<std::int8_t>& attrib) const {
-        return static_cast<std::int8_t>((attrib(0) == 2 ? _opacity : _textOpacity) * 127.0f);
+        return static_cast<std::int8_t>((attrib(0) == 2 ? _opacity : _textOpacity) * _occlusion * 127.0f);
     }
 
     void Label::buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
@@ -966,7 +1032,7 @@ namespace massif::vt {
                 std::int16_t sv0 = static_cast<std::int16_t>(row.t0), sv1 = static_cast<std::int16_t>(row.t1);
                 texCoords.append(cglib::vec2<std::int16_t>(su0, sv0), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su0, sv1));
 
-                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * 127.0f), offsetMode(cameraAxes));
+                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * _occlusion * 127.0f), offsetMode(cameraAxes));
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 const cglib::vec2<float> corners[4] = {
@@ -1013,7 +1079,7 @@ namespace massif::vt {
         }
         texCoords.copy(lineTexCoords, 0, lineTexCoords.size());
         for (const cglib::vec4<std::int8_t>& attrib : lineAttribs) {
-            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), offsetMode(true)));
+            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * _occlusion * 127.0f), offsetMode(true)));
         }
         for (std::uint16_t idx : lineIndices) {
             indices.append(idx + indexOffset);
@@ -1241,20 +1307,10 @@ namespace massif::vt {
         if (cglib::norm(segmentVec) == 0) {
             return LineLayout::NO_ROOM;
         }
-        float penStart = lengths[segment] + cglib::dot_product(-points[segment], cglib::unit(segmentVec));
-
         // The anchor was clamped in world units, but tilt compresses the projected line: slide the run
         // back rather than drop it, or the label blinks.
-        float runLength = 0;
-        float lineLength = 0;
-        for (const Font::Glyph& glyph : _glyphs) {
-            if (glyph.codePoint == Font::CR_CODEPOINT) {
-                lineLength = 0;
-                continue;
-            }
-            lineLength += glyph.advance(0);
-            runLength = std::max(runLength, lineLength);
-        }
+        float runLength = calculateLineRunLength();
+        float penStart = lengths[segment] + cglib::dot_product(-points[segment], cglib::unit(segmentVec)) - runLength * 0.5f;
         // Must fit inside the line (tangram's CurvedLabel::updateScreenTransform); a run on the edge
         // is absorbed by LINE_LAYOUT_FAILURE_GRACE, not by an allowance here.
         if (runLength > total) {
@@ -1621,11 +1677,7 @@ namespace massif::vt {
             return std::shared_ptr<const Placement>();
         }
 
-        std::vector<cglib::vec3<double>> smoothedVertices;
-        std::size_t smoothedIndex = bestIndex;
-        smoothPlacementLine(bestTileLine->vertices, bestIndex, _placementTextLength * PLACEMENT_SMOOTH_TEXT_FRACTION, smoothedVertices, smoothedIndex);
-        clampPlacementAnchor(smoothedVertices, _placementTextLength, smoothedIndex, bestPos);
-        return std::make_shared<const Placement>(bestTileLine->tileId, bestTileLine->localId, smoothedVertices, smoothedIndex, bestIndex, bestPos, bestTileLine->normal);
+        return buildLinePlacement(*bestTileLine, bestIndex, bestPos);
     }
 
     std::shared_ptr<const Label::Placement> Label::findClippedPointPlacement(const ViewState& viewState, const std::list<TilePoint>& tilePoints) const {
@@ -1689,9 +1741,7 @@ namespace massif::vt {
         double textLengthBase = 0;
         if (isLineRun()) {
             float glyphScale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
-            for (const Font::Glyph& glyph : _glyphs) {
-                textLengthBase += glyph.advance(0) * glyphScale;
-            }
+            textLengthBase = calculateLineRunLength() * glyphScale;
         }
 
         // Ranking and fit use the run's own plane: projected length for a screen run (tilt shortens
@@ -1793,12 +1843,10 @@ namespace massif::vt {
                         double diff = cglib::length(pos1 - pos0);
                         if (ofs < diff) {
                             cglib::vec3<double> pos = pos0 + (pos1 - pos0) * (ofs / diff); // this assumes central anchor point
-                            std::vector<cglib::vec3<double>> smoothedVertices;
-                            std::size_t smoothedIndex = i;
-                            smoothPlacementLine(tileLine.vertices, i, _placementTextLength * PLACEMENT_SMOOTH_TEXT_FRACTION, smoothedVertices, smoothedIndex);
-                            clampPlacementAnchor(smoothedVertices, _placementTextLength, smoothedIndex, pos);
-                            bestPlacement = std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, smoothedVertices, smoothedIndex, i, pos, tileLine.normal);
-                            bestLen = candidateLen;
+                            if (std::shared_ptr<const Placement> placement = buildLinePlacement(tileLine, i, pos)) {
+                                bestPlacement = placement;
+                                bestLen = candidateLen;
+                            }
                             break;
                         }
                         ofs -= diff;

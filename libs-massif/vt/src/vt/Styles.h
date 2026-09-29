@@ -97,13 +97,17 @@ namespace massif::vt {
         cglib::vec2<float> size = cglib::vec2<float>(0, 0);
         Color borderColor;
         float borderWidth = 0.0f;
+        // Set when the colour follows the view (the hour): read per frame instead of color/borderColor,
+        // which stay the decode-time value the enabled() tests read.
+        std::optional<ColorFunction> colorFunc;
+        std::optional<ColorFunction> borderColorFunc;
 
         bool hasFill() const { return color.value() != 0; }
         bool hasBorder() const { return borderColor.value() != 0 && borderWidth > 0.0f; }
         bool enabled() const { return hasFill() || hasBorder(); }
 
         bool operator == (const LabelPlateStyle& other) const {
-            return color == other.color && radius == other.radius && padding == other.padding && size == other.size && borderColor == other.borderColor && borderWidth == other.borderWidth;
+            return color == other.color && radius == other.radius && padding == other.padding && size == other.size && borderColor == other.borderColor && borderWidth == other.borderWidth && colorFunc == other.colorFunc && borderColorFunc == other.borderColorFunc;
         }
         bool operator != (const LabelPlateStyle& other) const { return !(*this == other); }
     };
@@ -253,6 +257,7 @@ namespace massif::vt {
     struct TextLabelStyle final {
         // mapbox text-padding / icon-padding: screen pixels around the box, for the collision test only.
         float collisionPadding = 0.0f;
+        float maxAngle = 0.785398f; // mapbox text-max-angle, radians: a line run turning more is dropped
         LabelOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;

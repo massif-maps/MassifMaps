@@ -2246,3 +2246,51 @@ Wrongly blamed first, both ruled out by probes: a surface-arrival cache wipe (`T
 clears on a new `GLResourceManager`, but at startup it fires before the first fetch) and a
 visible/preload cancel-and-refetch (no cancel fired). Each tile id showed up 2-3 times in the loads
 only because three layers fetched it.
+
+## 32. The mesh-128 terrain frame is waiting on the GPU (2026-09-28)
+
+Crosscall HLTE556N (Adreno 610), `-PprofileRender`, `day-cycle-light --es ui false --es hour 14.5`,
+Grenoble 5.7245/45.1885 z17.2 tilt 45, mesh 128, shadows off unless stated, four 4 s continuous
+drags per measurement, fps from the `PROF` windows. Mesh resolution was kept at 128 on purpose.
+
+| | fps |
+|---|---|
+| terrain, mesh 128 | 12.5 |
+| terrain off (the flat city) | 15.6 |
+| mesh 32 (diagnostic only) | 15.5 |
+| `--es terrainLight false` | 13.8 |
+| `--es sky false` / `debug.massif.background 0` | ~12.9 / ~13.0 |
+| label-occlusion pass skipped (probe) | 14.9 |
+
+- **GPU-bound, and the GPU timers say otherwise.** simpleperf over the GL thread during the drags
+  (`--trace-offcpu`): 30% in `dequeueBuffer`, 12% in `eglSwapBuffers`'s "Throttling EGL Production"
+  fence wait - frame N waiting for frame N-1 on the GPU. The `PROF GPU` sections sum to ~30 ms
+  against a 75-80 ms frame: on this tiler they undercount, so fps is the only GPU measure here.
+- **CPU savings do not show.** `isLayerDraped` ran `std::regex_match` on every call, ~5 ms a frame
+  (5.1% of the GL thread); memoised per layer name the CPU frame drops 4.5 ms and fps does not move.
+  Kept anyway, it is headroom once the GPU is lighter.
+- **The shared grid in index bands: +5%.** Row order re-shades every vertex twice (a 129-vertex row
+  never survives in the post-transform cache). Bands of 6 cells: 12.2-12.6 -> 12.8-13.2 fps over
+  four paired runs; 12-cell bands gain less. `TileSurfaceBuilder::GRID_INDEX_BAND`.
+- **Skipping the grid blocks off screen: +5-9%.** The grid's indices in 4×4 blocks, each tested
+  against the frustum with the DEM's height range: 3.2M -> 1.34M terrain indices a frame, 18.7-18.8
+  -> 19.8 fps shadows off, 12.9-13.1 -> 14.1-14.2 on (the shadow mask pass is culled too). Screenshots
+  at Grenoble (shadows on) and Gavet (`--es shadow 5`) are identical outside the status bar. That 58%
+  fewer indices buy only 5-9% says the terrain's vertices are no longer the frame's main cost.
+- **The terrain normal from a gradient texture: +10-13%.** 16.3-16.8 -> 17.5-18.6 fps shadows off,
+  11.1-11.2 -> 12.3-12.9 shadows on (these rounds ran after the phone reconnected, when every build
+  measured higher than before). See
+  [the terrain normal](rendering/08-lighting-sky-fog.md#the-terrain-normal-is-two-fetches).
+- **Dead end: offscreen passes before the first screen draw.** On a tiler an FBO switch in the middle
+  of the screen pass stores and reloads the screen, so the clear, sky and background were deferred
+  until after the drape bakes, shadow passes and the label-occlusion pass. 13.3/13.8 -> 13.6/13.5
+  fps shadows off, 8.1/8.4 -> 8.3/8.7 on: nothing. Reverted. The label-occlusion pass's +10% is its
+  own work - it redraws every visible extrusion - not the switch.
+- **Not done: refreshing the label-occlusion pass less often while the camera moves.** On top of
+  the changes above (probe `debug.massif.occevery`, shadows off): every frame 19.1 fps, every 2nd
+  19.45, every 3rd 20.15, never while moving 20.8. Kept at every frame: 2-5% is not worth labels
+  testing against buildings a frame or two late, and "never" leaves a buffer that drifts off.
+- Shadows on read 7.5-8.7 fps in this session against 10.5-11 in the previous one; the previous
+  build and master measure the same side by side, so it is the bench (shadows switched on by
+  broadcast after launch), not a regression.
+

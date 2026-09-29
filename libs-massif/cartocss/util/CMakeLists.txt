@@ -98,7 +98,7 @@ add_subdirectory("${LIBS_DIR}/zlib" zlib)
 set(TOOL_LIBRARIES cartocss mapnikvt vt pugixml tess2 brotli miniz mlt zlib freetype harfbuzz bidi)
 
 # The tool the npm package (@massif-maps/style-tools) wraps: one binary, one wasm module.
-add_executable(massif-style massif-style.cpp css2xml.cpp)
+add_executable(massif-style massif-style.cpp css2xml.cpp legend.cpp)
 target_link_libraries(massif-style ${TOOL_LIBRARIES})
 
 add_executable(css2xml css2xml_main.cpp css2xml.cpp)

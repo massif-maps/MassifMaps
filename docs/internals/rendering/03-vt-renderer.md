@@ -436,6 +436,16 @@ CartoCSS values may be functions of view state (zoom, style parameters), so colo
 opacities are evaluated per frame per style layer through small caches keyed by the function plus
 view state (`_colorFuncCache` and friends, with `styleFuncLookups`/`styleFuncMisses` counters).
 
+The cache is keyed by the function OBJECT, so it only helps when features share one. A function that
+reads a feature field as well as the view (Standard's `linear([view::brightness], (0.3, ([class] =
+'pedestrian') ? 9 : 6.5), ...)`) used to be built per feature, carrying the whole expression, and was
+evaluated per label per frame - feature lookups and an interpolation curve rebuilt on every call.
+`foldContextExpressions` (mapnikvt/ExpressionUtils.h) now evaluates the parts that read neither the
+view nor a style parameter when the function is built, and `GenericFunctionProperty::getFunction`
+hands every feature that folds to the same expression one shared object. Crosscall, Grenoble z17.2
+tilt 45: the labels' render-thread CPU 7.05 -> 5.8 ms a frame, 19.45 -> 20.2 fps (shadows on: no
+change measured).
+
 ## Interaction with the rest of the frame
 
 - The renderer holds one mutex covering its tile/label state. The label placement worker holds it

@@ -363,8 +363,6 @@ namespace massif {
         std::size_t _drapeBakeZoomTerm = 0;
         std::unique_ptr<ScreenMaskBuffer> _terrainShadowMaskBuffer;
         std::unique_ptr<ScreenMaskBuffer> _groundAOMaskBuffer;
-        // Depth of the 3D occluders, for per-label occlusion (see the pass in drawLayers).
-        std::unique_ptr<ScreenMaskBuffer> _labelOcclusionBuffer;
         std::unique_ptr<ScreenMaskBuffer> _groundAODrapeBuffer;
         bool _shadowMapValid = false;
         mutable std::mutex _shadowSunMutex;

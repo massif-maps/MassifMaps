@@ -3,6 +3,7 @@
 #include "core/MapTile.h"
 #include "graphics/Bitmap.h"
 #include "renderers/utils/GLResourceManager.h"
+#include "renderers/utils/HalfFloatTexture.h"
 #include "renderers/utils/Texture.h"
 #include "terrain/ElevationManager.h"
 #include "terrain/ElevationTileGrid.h"
@@ -333,6 +334,7 @@ namespace massif {
                 job.grid->encodeNodeTexture(job.neighbours, _nodeScratch);
                 encoded.nodeBitmap = std::make_shared<BorderBitmap>(_nodeScratch.data(), nodeSize, nodeSize, job.grid->getColorFormat(), -texelBytes * nodeSize);
             }
+            job.grid->encodeGradientTexture(_encodeScratch.data(), width, height, 0, 0, width, height, encoded.gradient);
             VT_STAT_SPLIT(demEncodeNodeNs, encodeClock);
             VT_STAT_SPLIT(demEncodeNs, totalClock);
 #if MASSIF_VT_RENDER_STATS
@@ -404,6 +406,9 @@ namespace massif {
                 entry.nodeBitmap = encoded.nodeBitmap;
                 entry.nodeTexture = _glResourceManager->create<Texture>(encoded.nodeBitmap, false, false);
             }
+            if (!encoded.gradient.empty()) {
+                entry.gradientTexture = _glResourceManager->create<HalfFloatTexture>(static_cast<int>(encoded.bitmap->getWidth()), static_cast<int>(encoded.bitmap->getHeight()), std::move(encoded.gradient));
+            }
             VT_STAT_SPLIT(demUploadNs, uploadClock);
             VT_STAT_INC(demUploads);
             _cache.insert_or_assign(encoded.gridTileId, std::move(entry));
@@ -440,6 +445,20 @@ namespace massif {
             texture->updateSubImage(0, 0, thickness, height, patch.strips.west.data());
             bitmap->writeRect(width - thickness, 0, thickness, height, patch.strips.east);
             texture->updateSubImage(width - thickness, 0, thickness, height, patch.strips.east.data());
+            if (const std::shared_ptr<HalfFloatTexture>& gradientTexture = it->second.gradientTexture) {
+                // One texel wider: a forward difference also reads the next texel inward.
+                int ring = thickness + 1;
+                const std::uint8_t* data = bitmap->getPixelData().data();
+                std::vector<std::uint16_t> gradient;
+                patch.grid->encodeGradientTexture(data, width, height, 0, 0, width, ring, gradient);
+                gradientTexture->updateSubImage(0, 0, width, ring, gradient.data());
+                patch.grid->encodeGradientTexture(data, width, height, 0, height - ring, width, ring, gradient);
+                gradientTexture->updateSubImage(0, height - ring, width, ring, gradient.data());
+                patch.grid->encodeGradientTexture(data, width, height, 0, 0, ring, height, gradient);
+                gradientTexture->updateSubImage(0, 0, ring, height, gradient.data());
+                patch.grid->encodeGradientTexture(data, width, height, width - ring, 0, ring, height, gradient);
+                gradientTexture->updateSubImage(width - ring, 0, ring, height, gradient.data());
+            }
             // The node texture's four edge rows/columns, the only node texels a neighbour changes.
             if (it->second.nodeBitmap && it->second.nodeTexture && !patch.nodeStrips.south.empty()) {
                 int nodeSize = patch.grid->getNodesPerEdge() + 1;
@@ -491,6 +510,9 @@ namespace massif {
         double texelY = (bounds.getMax().getY() - bounds.getMin().getY()) / entry.grid->getHeight();
         int border = entry.border;
         terrainTexture.textureId = entry.texture->getTexId();
+        terrainTexture.gradientTextureId = (entry.gradientTexture ? entry.gradientTexture->getTexId() : 0);
+        terrainTexture.minHeight = entry.grid->getMinHeight();
+        terrainTexture.maxHeight = entry.grid->getMaxHeight();
         terrainTexture.textureSize = cglib::vec2<int>(entry.grid->getWidth() + 2 * border, entry.grid->getHeight() + 2 * border);
         terrainTexture.borderTexels = border;
         terrainTexture.internalOrigin = cglib::vec2<double>(bounds.getMin().getX() - border * texelX, bounds.getMin().getY() - border * texelY);

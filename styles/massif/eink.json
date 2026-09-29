@@ -61,19 +61,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "background-emissive-strength": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "zoom"
-            ],
-            13,
-            0.1,
-            14,
-            0.25
-          ]
+          "background-emissive-strength": 1
         }
       }
     },
@@ -110,7 +98,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -147,7 +135,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -184,7 +172,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -221,7 +209,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -258,7 +246,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -295,7 +283,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -332,7 +320,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -369,7 +357,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -406,7 +394,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -443,7 +431,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -470,7 +458,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 97%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-opacity": [
           "interpolate",
           [
@@ -487,7 +475,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -529,7 +517,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -575,7 +563,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -656,7 +644,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -728,7 +716,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -800,7 +788,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -869,7 +857,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -941,7 +929,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1009,7 +997,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1084,7 +1072,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1135,13 +1123,13 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 97%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": 1
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1221,7 +1209,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.2
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1254,7 +1242,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.2
+          "line-emissive-strength": 1
         }
       }
     },
@@ -1279,7 +1267,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 96%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1297,7 +1285,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1326,7 +1314,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 95%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1344,7 +1332,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1373,7 +1361,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 97%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1391,7 +1379,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1415,7 +1403,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 97%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1433,7 +1421,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1479,7 +1467,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1552,7 +1540,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1605,7 +1593,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 97%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1623,7 +1611,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1649,7 +1637,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(0, 0%, 95%)",
+        "fill-color": "hsl(0, 0%, 100%)",
         "fill-antialias": false,
         "fill-opacity": [
           "interpolate",
@@ -1667,7 +1655,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1713,7 +1701,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.25
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -1832,7 +1820,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -1861,7 +1849,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.15
+          "line-emissive-strength": 1
         }
       }
     },
@@ -1897,8 +1885,82 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.15
+          "line-emissive-strength": 1
         }
+      }
+    },
+    {
+      "id": "waterway-mono-bed",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "waterway",
+      "minzoom": 12,
+      "filter": [
+        "!=",
+        [
+          "get",
+          "brunnel"
+        ],
+        "tunnel"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "hsl(0, 0%, 84%)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.3
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            3.0,
+            2.5
+          ],
+          9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            3.3,
+            2.6
+          ],
+          20,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            [
+              "river",
+              "canal"
+            ],
+            10.5,
+            5.5
+          ]
+        ]
       }
     },
     {
@@ -2121,19 +2183,7 @@
             0.3,
             "hsl(0, 0%, 100%)"
           ],
-          "fill-emissive-strength": [
-            "interpolate",
-            [
-              "linear"
-            ],
-            [
-              "zoom"
-            ],
-            5,
-            0.1,
-            7,
-            0
-          ]
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -2217,7 +2267,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "fill-emissive-strength": 0.15
+          "fill-emissive-strength": 1
         }
       }
     },
@@ -2284,7 +2334,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.5
+          "line-emissive-strength": 1
         }
       }
     },
@@ -2467,7 +2517,7 @@
               ]
             ]
           ],
-          "line-emissive-strength": 0.3
+          "line-emissive-strength": 1
         }
       }
     },
@@ -2543,7 +2593,7 @@
               ]
             ]
           ],
-          "line-emissive-strength": 0.3
+          "line-emissive-strength": 1
         }
       }
     },
@@ -2692,7 +2742,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.15
+          "line-emissive-strength": 1
         }
       }
     },
@@ -2791,7 +2841,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -2880,7 +2930,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -3116,11 +3166,12 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk"
-            ],
+            "motorway",
             0.45,
+            "trunk",
+            0.45,
+            "primary",
+            0.0,
             0.0
           ],
           6,
@@ -3130,10 +3181,9 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk"
-            ],
+            "motorway",
+            0.45,
+            "trunk",
             0.45,
             "primary",
             0.27,
@@ -3146,11 +3196,11 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk",
-              "primary"
-            ],
+            "motorway",
+            0.54,
+            "trunk",
+            0.54,
+            "primary",
             0.54,
             0.0
           ],
@@ -3161,14 +3211,12 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk",
-              "primary"
-            ],
+            "motorway",
             0.81,
-            "secondary",
-            0.54,
+            "trunk",
+            0.81,
+            "primary",
+            0.81,
             0.0
           ],
           12,
@@ -3178,16 +3226,27 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk",
-              "primary",
-              "secondary",
-              "tertiary"
-            ],
+            "motorway",
             1.4400000000000002,
-            "minor",
-            0.9,
+            "trunk",
+            1.4400000000000002,
+            "primary",
+            1.4400000000000002,
+            0.0
+          ],
+          13,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.4400000000000002,
+            "trunk",
+            1.4400000000000002,
+            "primary",
+            1.4400000000000002,
             0.0
           ],
           14,
@@ -3215,7 +3274,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0
+          "line-emissive-strength": 1
         }
       }
     },
@@ -3297,7 +3356,7 @@
             "hsl(0, 0%, 100%)",
             "primary",
             "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
+            "hsl(0, 0%, 68%)"
           ],
           14,
           [
@@ -3467,19 +3526,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            [
-              "motorway",
-              "trunk"
-            ],
-            0.6,
-            0.4
-          ]
+          "line-emissive-strength": 1
         }
       }
     },
@@ -3577,7 +3624,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.15
+          "line-emissive-strength": 1
         }
       }
     },
@@ -3695,7 +3742,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -3793,7 +3840,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -3959,7 +4006,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4051,7 +4098,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4132,7 +4179,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4213,7 +4260,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4294,7 +4341,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4375,7 +4422,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4456,7 +4503,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4537,7 +4584,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4618,7 +4665,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4699,7 +4746,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4780,7 +4827,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4861,7 +4908,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -4999,7 +5046,7 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5079,7 +5126,7 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5159,7 +5206,7 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5239,7 +5286,7 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5319,7 +5366,7 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5392,7 +5439,7 @@
       "metadata": {
         "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5472,7 +5519,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5553,7 +5600,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5634,7 +5681,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5719,7 +5766,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5770,7 +5817,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5838,7 +5885,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -5917,7 +5964,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -6073,7 +6120,35 @@
             "zoom"
           ],
           12,
-          0.9,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            0.9,
+            "trunk",
+            0.9,
+            "primary",
+            0.9,
+            0.0
+          ],
+          13,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            0.9,
+            "trunk",
+            0.9,
+            "primary",
+            0.9,
+            0.0
+          ],
           14,
           1.4400000000000002,
           22,
@@ -6082,7 +6157,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0
+          "line-emissive-strength": 1
         }
       }
     },
@@ -6181,7 +6256,7 @@
             "hsl(0, 0%, 100%)",
             "primary",
             "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
+            "hsl(0, 0%, 68%)"
           ],
           14,
           [
@@ -6259,19 +6334,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            [
-              "motorway",
-              "trunk"
-            ],
-            0.6,
-            0.4
-          ]
+          "line-emissive-strength": 1
         }
       }
     },
@@ -6524,11 +6587,12 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk"
-            ],
+            "motorway",
             0.45,
+            "trunk",
+            0.45,
+            "primary",
+            0.0,
             0.0
           ],
           6,
@@ -6538,10 +6602,9 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk"
-            ],
+            "motorway",
+            0.45,
+            "trunk",
             0.45,
             "primary",
             0.27,
@@ -6554,11 +6617,11 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk",
-              "primary"
-            ],
+            "motorway",
+            0.54,
+            "trunk",
+            0.54,
+            "primary",
             0.54,
             0.0
           ],
@@ -6569,14 +6632,12 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk",
-              "primary"
-            ],
+            "motorway",
             0.81,
-            "secondary",
-            0.54,
+            "trunk",
+            0.81,
+            "primary",
+            0.81,
             0.0
           ],
           12,
@@ -6586,16 +6647,27 @@
               "get",
               "class"
             ],
-            [
-              "motorway",
-              "trunk",
-              "primary",
-              "secondary",
-              "tertiary"
-            ],
+            "motorway",
             1.4400000000000002,
-            "minor",
-            0.9,
+            "trunk",
+            1.4400000000000002,
+            "primary",
+            1.4400000000000002,
+            0.0
+          ],
+          13,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.4400000000000002,
+            "trunk",
+            1.4400000000000002,
+            "primary",
+            1.4400000000000002,
             0.0
           ],
           14,
@@ -6619,7 +6691,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0
+          "line-emissive-strength": 1
         }
       }
     },
@@ -6718,7 +6790,7 @@
             "hsl(0, 0%, 100%)",
             "primary",
             "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
+            "hsl(0, 0%, 68%)"
           ],
           14,
           [
@@ -6887,19 +6959,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            [
-              "motorway",
-              "trunk"
-            ],
-            0.6,
-            0.4
-          ]
+          "line-emissive-strength": 1
         }
       }
     },
@@ -7226,7 +7286,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -7553,7 +7613,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -7653,7 +7713,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.6
+          "line-emissive-strength": 1
         }
       }
     },
@@ -7713,7 +7773,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.4
+          "line-emissive-strength": 1
         }
       }
     },
@@ -7946,7 +8006,7 @@
           1
         ],
         "massif:paint": {
-          "line-emissive-strength": 0.5
+          "line-emissive-strength": 1
         }
       }
     },
@@ -8479,7 +8539,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.15
+          "line-emissive-strength": 1
         }
       }
     },
@@ -8578,7 +8638,7 @@
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -8667,7 +8727,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.25
+          "line-emissive-strength": 1
         }
       }
     },
@@ -8897,7 +8957,35 @@
             "zoom"
           ],
           12,
-          1.4400000000000002,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.4400000000000002,
+            "trunk",
+            1.4400000000000002,
+            "primary",
+            1.4400000000000002,
+            0.0
+          ],
+          13,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "motorway",
+            1.4400000000000002,
+            "trunk",
+            1.4400000000000002,
+            "primary",
+            1.4400000000000002,
+            0.0
+          ],
           14,
           2.16,
           22,
@@ -8906,7 +8994,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0
+          "line-emissive-strength": 1
         }
       }
     },
@@ -8988,7 +9076,7 @@
             "hsl(0, 0%, 100%)",
             "primary",
             "hsl(0, 0%, 100%)",
-            "hsl(0, 0%, 100%)"
+            "hsl(0, 0%, 68%)"
           ],
           14,
           [
@@ -9157,19 +9245,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": [
-            "match",
-            [
-              "get",
-              "class"
-            ],
-            [
-              "motorway",
-              "trunk"
-            ],
-            0.6,
-            0.4
-          ]
+          "line-emissive-strength": 1
         }
       }
     },
@@ -9260,7 +9336,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.6
+          "line-emissive-strength": 1
         }
       }
     },
@@ -9864,7 +9940,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.5
+          "line-emissive-strength": 1
         }
       }
     },
@@ -9964,7 +10040,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.3
+          "line-emissive-strength": 1
         }
       }
     },
@@ -10028,7 +10104,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.3
+          "line-emissive-strength": 1
         }
       }
     },
@@ -10200,7 +10276,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.5
+          "line-emissive-strength": 1
         },
         "massif:filter": [
           "all",
@@ -10308,7 +10384,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.5
+          "line-emissive-strength": 1
         },
         "massif:filter": [
           "all",
@@ -10479,7 +10555,7 @@
       },
       "metadata": {
         "massif:paint": {
-          "line-emissive-strength": 0.8
+          "line-emissive-strength": 1
         },
         "massif:filter": [
           "==",
@@ -12654,6 +12730,221 @@
             "fort",
             "waterfall"
           ]
+        ]
+      ],
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "florist",
+            "furniture",
+            "viewpoint"
+          ],
+          [
+            "get",
+            "subclass"
+          ],
+          [
+            "get",
+            "class"
+          ]
+        ],
+        "icon-size": 0.4,
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_int"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-max-width": 9,
+        "text-padding": 2,
+        "text-variable-anchor": [
+          "top",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 1.0,
+        "text-justify": "auto",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 0%)",
+        "text-halo-color": "hsl(0, 0%, 100%)",
+        "text-halo-width": 1.25
+      },
+      "metadata": {
+        "massif:params": [
+          "icon-image",
+          "text-color"
+        ],
+        "massif:layout": {
+          "icon-image": [
+            "image",
+            [
+              "match",
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "florist",
+                "furniture",
+                "viewpoint"
+              ],
+              [
+                "get",
+                "subclass"
+              ],
+              [
+                "get",
+                "class"
+              ]
+            ],
+            {
+              "params": {
+                "background": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "bench",
+                    "drinking_water",
+                    "garden",
+                    "picnic_site",
+                    "shelter",
+                    "telephone",
+                    "toilets",
+                    "tree",
+                    "waste_basket"
+                  ],
+                  "transparent",
+                  "hsl(0, 0%, 100%)"
+                ],
+                "background-stroke": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  [
+                    "bench",
+                    "drinking_water",
+                    "garden",
+                    "picnic_site",
+                    "shelter",
+                    "telephone",
+                    "toilets",
+                    "tree",
+                    "waste_basket"
+                  ],
+                  "transparent",
+                  "hsl(0, 0%, 0%)"
+                ],
+                "icon": "hsl(0, 0%, 0%)",
+                "radius": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  8,
+                  "airport",
+                  8,
+                  "heliport",
+                  8,
+                  "railway",
+                  5,
+                  "railway_light",
+                  11,
+                  21
+                ],
+                "background-stroke-width": [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "airfield",
+                  1.75,
+                  "airport",
+                  1.75,
+                  "heliport",
+                  1.75,
+                  "railway",
+                  1.5,
+                  "railway_light",
+                  2,
+                  3
+                ]
+              }
+            }
+          ],
+          "icon-size": 0.4,
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
+        },
+        "massif:paint": {
+          "text-color": "hsl(0, 0%, 0%)",
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 5%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "poi-mountain-park",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "maxzoom": 16,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "park",
+              "garden"
+            ]
+          ]
+        ],
+        [
+          "has",
+          "name"
         ]
       ],
       "layout": {

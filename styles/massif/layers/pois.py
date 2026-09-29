@@ -9,20 +9,21 @@ from collections import OrderedDict
 from lib import by_hour, gate, get, layer
 
 # Standard's poi-label text-color, read off mapbox/standard: night (brightness 0.25) and day (0.3).
+# disc: Standard's day disc, a shade lighter than its text (day); night: both at night
 CATEGORY = OrderedDict([
-    ('food_and_drink', {'disc': 'hsl(30, 100%, 48%)', 'night': 'hsl(40, 95%, 70%)', 'day': 'hsl(30, 100%, 48%)'}),
-    ('store_like', {'disc': 'hsl(210, 75%, 53%)', 'night': 'hsl(210, 70%, 75%)', 'day': 'hsl(210, 75%, 53%)'}),
-    ('arts_and_entertainment', {'disc': 'hsl(320, 85%, 60%)', 'night': 'hsl(320, 70%, 75%)', 'day': 'hsl(320, 85%, 60%)'}),
-    ('commercial_services', {'disc': 'hsl(250, 75%, 60%)', 'night': 'hsl(260, 70%, 75%)', 'day': 'hsl(250, 75%, 60%)'}),
-    ('sport_and_leisure', {'disc': 'hsl(190, 75%, 38%)', 'night': 'hsl(190, 60%, 70%)', 'day': 'hsl(190, 75%, 38%)'}),
-    ('park_like', {'disc': 'hsl(110, 70%, 28%)', 'night': 'hsl(110, 55%, 65%)', 'day': 'hsl(110, 70%, 28%)'}),
-    ('medical', {'disc': 'hsl(0, 90%, 60%)', 'night': 'hsl(0, 70%, 70%)', 'day': 'hsl(0, 90%, 60%)'}),
-    ('education', {'disc': 'hsl(30, 50%, 38%)', 'night': 'hsl(30, 50%, 70%)', 'day': 'hsl(30, 50%, 38%)'}),
+    ('food_and_drink', {'disc': 'hsl(30, 100%, 60%)', 'night': 'hsl(40, 95%, 70%)', 'day': 'hsl(30, 100%, 48%)'}),
+    ('store_like', {'disc': 'hsl(210, 75%, 65%)', 'night': 'hsl(210, 70%, 75%)', 'day': 'hsl(210, 75%, 53%)'}),
+    ('arts_and_entertainment', {'disc': 'hsl(320, 85%, 72%)', 'night': 'hsl(320, 70%, 75%)', 'day': 'hsl(320, 85%, 60%)'}),
+    ('commercial_services', {'disc': 'hsl(250, 75%, 72%)', 'night': 'hsl(260, 70%, 75%)', 'day': 'hsl(250, 75%, 60%)'}),
+    ('sport_and_leisure', {'disc': 'hsl(190, 75%, 50%)', 'night': 'hsl(190, 60%, 70%)', 'day': 'hsl(190, 75%, 38%)'}),
+    ('park_like', {'disc': 'hsl(110, 70%, 40%)', 'night': 'hsl(110, 55%, 65%)', 'day': 'hsl(110, 70%, 28%)'}),
+    ('medical', {'disc': 'hsl(0, 94%, 72%)', 'night': 'hsl(0, 70%, 70%)', 'day': 'hsl(0, 90%, 60%)'}),
+    ('education', {'disc': 'hsl(30, 50%, 50%)', 'night': 'hsl(30, 50%, 70%)', 'day': 'hsl(30, 50%, 38%)'}),
     # ours: drinking water and springs in the water's own blue, so a walker reads "water" at a glance
     ('water', {'disc': 'hsl(200, 85%, 45%)', 'night': 'hsl(200, 80%, 72%)', 'day': 'hsl(200, 85%, 40%)'}),
     # Standard draws transit in its own layer and its own blue; this style keeps that.
     ('transit', {'disc': 'hsl(225, 60%, 58%)', 'night': 'hsl(225, 55%, 78%)', 'day': 'hsl(225, 60%, 48%)'}),
-    ('default', {'disc': 'hsl(210, 20%, 43%)', 'night': 'hsl(210, 20%, 70%)', 'day': 'hsl(210, 20%, 43%)'}),
+    ('default', {'disc': 'hsl(200, 20%, 55%)', 'night': 'hsl(210, 20%, 70%)', 'day': 'hsl(210, 20%, 43%)'}),
 ])
 
 CLASSES = {
@@ -308,6 +309,8 @@ MOUNTAIN_LAYERS = [
     ('poi-mountain-viewpoint', 14, None, ['==', get('subclass'), 'viewpoint'], ICON, None),
     ('poi-mountain-sight', 14, 16, ['in', get('class'), ['literal', ['adit', 'archaeological_site', 'castle',
                                                                       'cave_entrance', 'fort', 'waterfall']]], ICON, None),
+    # a named park early and over the sights, as Standard gives park_like a wider filterrank
+    ('poi-mountain-park', 14, 16, ['all', ['in', get('class'), ['literal', ['park', 'garden']]], ['has', 'name']], ICON, None),
     ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], MOUNTAIN_ICON, None),
     ('poi-mountain-shelter', 13, 15, ['all', ['==', get('class'), 'shelter'],
                                       ['!=', get('shelter_type'), 'public_transport']], MOUNTAIN_ICON, None),

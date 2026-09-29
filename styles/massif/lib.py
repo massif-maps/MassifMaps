@@ -105,6 +105,9 @@ def padded(expr, px):
         return expr + px
     if expr[0] == 'interpolate':
         return expr[:3] + [x if i % 2 == 0 else padded(x, px) for i, x in enumerate(expr[3:])]
+    if expr[0] == 'match':
+        body = expr[2:-1]
+        return expr[:2] + [x if i % 2 == 0 else padded(x, px) for i, x in enumerate(body)] + [padded(expr[-1], px)]
     raise ValueError('padded: %s' % expr[0])
 
 

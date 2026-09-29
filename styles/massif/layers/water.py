@@ -1,4 +1,4 @@
-from lib import by_hour, get, in_class, layer, zoom_ramp
+from lib import by_hour, get, in_class, layer, padded, zoom_ramp
 
 WIDTH = zoom_ramp(8, ['match', get('class'), ['river', 'canal'], 0.5, 0],
                   9, ['match', get('class'), ['river', 'canal'], 0.8, 0.1],
@@ -17,7 +17,11 @@ def layers(v):
     running = {'line-color': stream, 'line-width': WIDTH, 'line-opacity': zoom_ramp(8, 0, 8.5, 1)}
     if dash:
         running['line-dasharray'] = dash
-    return [
+    # e-ink: a stream's dashes run on a pale bed, where a track's run on nothing, so the two dashed
+    # lines are told apart without colour
+    bed = [layer('waterway-mono-bed', 'line', 'waterway', minzoom=12, filter=ground, layout=line,
+                 paint={'line-color': c['waterway-bed'], 'line-width': padded(WIDTH, 2.5)})] if mono else []
+    return bed + [
         layer('waterway' + suffix, 'line', 'waterway', minzoom=8,
               filter=['all', ground, ['!=', get('intermittent'), 1]], layout=line, paint=running),
         layer('waterway-intermittent' + suffix, 'line', 'waterway', minzoom=12,

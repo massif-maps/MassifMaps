@@ -98,7 +98,8 @@ deeper woods (`OUTDOOR` in the palette):
 - **Peaks from z9**, the three most prominent per tile first.
 - **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters (not a bus
   stop's), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
-  archaeological sites and waterfalls from z14, a viewpoint yielding to any of them and keeping its
+  archaeological sites, waterfalls and named parks and gardens (Standard shows park_like early too)
+  from z14, parks over the sights and a viewpoint yielding to all of them, keeping its
   own glyph and nature's green at every zoom (OpenMapTiles files it under `attraction`); drinking water
   and springs from `water_min_zoom` - each until its ordinary POI layer takes over. Water points have their own
   category, in the water's blue. A hut draws the hut glyph, where
@@ -134,14 +135,18 @@ night value equals the day one. What colour says elsewhere is said here by textu
   is a textured fill per tile and at z8 a wood's trees are noise. A patterned fill is its own layer
   id (`landcover-wood-pattern`), e-ink only.
 - **Ground stays white.** A class's flat grey fills only below the zoom its pattern starts, then
-  hands over to the pattern alone; the other fills are 95-97 % grey. Grey is kept for what has no
-  texture to say it.
+  hands over to the pattern alone; landuse (residential, commercial, schools...) is white too,
+  told by its edge. Nothing on the page is lit: every emissive strength is 1, so white stays white at
+  any hour and a road never reads whiter than the ground it crosses.
 - **Every landcover and landuse polygon is edged**, landcover dotted as Swisstopo and IGN edge a
   wood, so a clearing shows and the edge is not read as a contour.
-- **Water is ruled lines on white** inside a thin mid-grey shore - two dark shores around a plain
-  river read as a road. Rivers and streams are dashed grey lines, intermittent ones dotted.
+- **Water is Alpimaps' e-ink water**: openstreetmap-carto's wetland dashes, darker than a wetland's,
+  on white inside a thin mid-grey shore - two dark shores around a plain river read as a road.
+  Rivers and streams are dashed grey lines on a pale bed (`waterway-mono-bed`, from z12), where a
+  track's dashes run on nothing; intermittent ones dotted.
 - **Roads** are white with black casings, their hierarchy carried by the casing's weight
-  (`casing-scale` 1.8). **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
+  (`casing-scale` 1.8). Below z14 only motorways, trunks and primaries keep a casing; the small
+  roads are an uncased light grey line at the other variants' width. **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
   margin (`line-halo`) that keeps them readable across a patterned wood.
 - **Shields** are one white plate with a black ring, for every country.
 - **Buildings** are flat grey footprints with an outline at every zoom - no extrusion.
@@ -351,6 +356,9 @@ sprite. A class with no drawing simply draws its label, which is what Liberty do
 no cave, adit, fort, archaeological site, fountain, bird hide or windmill: those glyphs are
 openstreetmap-carto's (an adit takes the cave), on the same disc.
 
+The discs are Standard's day disc colours (park_like `hsl(110, 70%, 40%)`, a shade lighter than its
+text), the labels its text colours.
+
 **The icon sits on a disc, and ONE sprite carries every colour.** Each drawing is a white disc with
 a grey ring and a neutral glyph — three flats, which is what lets `extractIconPlate` split it: the
 glyph becomes a distance field the style tints (`shield-icon-fill`) and the disc becomes the label's
@@ -460,10 +468,15 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
   the palette's own (`palette.py`, the `FONTS` roles in `lib.py`), through `massif:palette-names`.
   A colour the palette does not name keeps the layer-derived name the converter gives it.
 - **Rules**: a stylesheet listed AFTER `style.mss` adds its own; a new attachment (`::custom_...`)
-  draws over the base without touching it.
+  draws with its source layer's topmost entry, over the base, without touching it.
 - **Parameters**: `styleparameters` merge key by key, so the child sets defaults
   (`poiStyle: plain`, `building_opacity: 1`, `track_min_zoom: 13`, `water_min_zoom: 12`) and declares its own for its rules
   (`['param::highlight_cycleways' = 1]`). `styles` does not merge: it is restated whole.
+
+[`examples/osm/`](examples/osm/) re-skins the family with OpenStreetMap Carto's colours as
+Alpimaps' OSM style has them (`?project=osm`): the palette redeclared, Massif's widths kept, and
+the tracks replaced - `track_min_zoom: 24` moves Massif's out of reach and `osm-rules.mss` draws them
+brown and dashed by tracktype, the OSM way. A layer is replaced that way, not by restating its rules.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
 draws what `streets` draws, since the base's variant-only rules are gated by name.

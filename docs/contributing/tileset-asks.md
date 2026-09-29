@@ -69,6 +69,7 @@ should use them where they are and cope where they are not.
 `transportation_name` carries `network` (raw OSM, `FR:A-road`), `iso_a2`, and motorway exits as
 `subclass=junction` points. `poi` carries `shelter_type`, a transit stop's `network` and `agg_stop`.
 `tracktype` and `sac_scale` are written as their index in OSM's list (grade1 = 0, hiking = 0), where
-stock OpenMapTiles writes the name; the Massif styles accept both. There are `building_name`,
+stock OpenMapTiles writes the name; the Massif styles accept both. `building.render_height` is left
+out when it is the 5 m default (stock writes 5), so a style reads it through a coalesce. There are `building_name`,
 `landcover_name` and `landuse_name` layers, and a `Route.java` for route relations. Contours and
 terrain-RGB are separate archives.

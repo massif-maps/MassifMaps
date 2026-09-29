@@ -39,7 +39,16 @@ class Variant:
         self.flags = flags
 
     def layers(self):
-        return [lay for part in self.parts for lay in part(self)]
+        out = [lay for part in self.parts for lay in part(self)]
+        if self.flags.get('mono'):
+            # a page lit by nothing: at any hour white stays white, so a road never reads whiter
+            # than the ground it crosses
+            for lay in out:
+                paint = lay.get('metadata', {}).get('massif:paint')
+                if paint:
+                    lay['metadata'] = {**lay['metadata'], 'massif:paint': {
+                        k: 1 if k.endswith('-emissive-strength') else v for k, v in paint.items()}}
+        return out
 
 
 

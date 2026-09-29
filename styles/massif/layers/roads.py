@@ -63,12 +63,36 @@ def case_color(c, key='case'):
     return ['match', get('class'), 'motorway', c['motorway-' + key], 'trunk', c['trunk-' + key], c['road-' + key]]
 
 
+def major_only_below(expr, z):
+    """A per-class width ramp whose stops below zoom z keep motorway, trunk and primary only."""
+    def value(match, cls):
+        if not isinstance(match, list):
+            return match
+        for i in range(2, len(match) - 1, 2):
+            if match[i] == cls or (isinstance(match[i], list) and cls in match[i]):
+                return match[i + 1]
+        return match[-1]
+    if not isinstance(expr, list) or expr[0] != 'interpolate':
+        return expr
+    out = expr[:3]
+    for i in range(3, len(expr), 2):
+        stop, match = expr[i], expr[i + 1]
+        if stop < z:
+            match = ['match', get('class'), *[x for cls in ('motorway', 'trunk', 'primary') for x in (cls, value(match, cls))], 0]
+        elif out[-2] < z - 1:
+            # the small roads' casing grows over z13-14, as from_zoom's does, not from the stop before
+            out += [z - 1, out[-1]]
+        out += [stop, match]
+    return out
+
+
 def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None, layout=None, fill_opacity=None,
               case_cap=None):
     layout = layout or {'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY}
     case_layout = {**layout, 'line-cap': case_cap} if case_cap else layout
-    # e-ink orders the roads by the weight of their outline, having no colour to do it with
-    casing = scaled(casing if c.get('casing-low') else from_zoom(casing, 14), c.get('casing-scale', 1))
+    # e-ink orders the major roads by the weight of their outline, having no colour to do it with; the
+    # small ones stay uncased below z14 as elsewhere, a grey line rather than a heavy double one
+    casing = scaled(major_only_below(casing, 14) if c.get('casing-low') else from_zoom(casing, 14), c.get('casing-scale', 1))
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:
         case_paint['line-dasharray'] = dash

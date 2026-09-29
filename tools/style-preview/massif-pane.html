@@ -40,13 +40,13 @@
     el.textContent = [...seen].slice(-6).join('\n');
   };
 
+  const MAPTERHORN = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
   try {
     const pane = await createMassifPane(document.getElementById('map'),
       params.get('carto'), params.get('source'), camera, report, params.get('variant'));
     // the grid drives every pane from the MapLibre map above it
     // The hour drives the SDK's day-cycle light, which is what lights the style's emissive layers.
-    const setHour = (hour) => {
-      const m = pane.massif;
+    const lightOf = (m) => {
       let light = m.find('options', 'preview.light');
       if (!light) {
         light = m.create('options', 'preview.light', { type: 'light' });
@@ -54,6 +54,11 @@
         m.set(light, 'dayCycleLightsEnabled', true);
         m.set(light, 'sunOverridingStyle', true);
       }
+      return light;
+    };
+    const setHour = (hour) => {
+      const m = pane.massif;
+      const light = lightOf(m);
       // the equinox, in local solar time at the camera
       const [lon, lat] = pane.camera.focusPos;
       const utc = hour - lon / 15;
@@ -71,6 +76,19 @@
         ...JSON.parse(params.get('hillshade') || '{"type": "hillshade"}'),
         source: { type: 'http', url: params.get('dem'), maxZoom: Number(params.get('demMaxZoom') || 22) } });
       pane.massif.call(pane.massif.find('layers', 'map'), 'insert', [1, hillshade]);
+    }
+    // Standard casts building shadows on a flat map; ours land on a terrain surface, so the pane gets
+    // a flat one (exaggeration 0), never auto-flattened, at Standard's day depth (shadow-intensity 1).
+    if (params.get('shadows') !== '0') {
+      const m = pane.massif;
+      const terrain = m.create('options', 'preview.terrain', { type: 'terrain',
+        source: { type: 'http', url: params.get('dem') || MAPTERHORN, minZoom: 1, maxZoom: 16,
+                  metaData: { dem_encoding: 'terrarium' } },
+        exaggeration: 0, autoFlattenTilt: 0, autoFlattenParallax: 0 });
+      m.setObject(m.find('options', 'map'), 'terrainOptions', terrain);
+      const light = lightOf(m);
+      m.set(light, 'terrainLightingEnabled', true);
+      m.set(light, 'shadowStrength', 1);
     }
     addEventListener('message', (event) => {
       if (event.data && event.data.massifCamera) pane.moveTo(event.data.massifCamera);

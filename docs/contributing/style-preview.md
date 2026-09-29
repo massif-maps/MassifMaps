@@ -95,6 +95,10 @@ The `hour` slider (`?hour=21.5`) sets the Massif panes' day-cycle light — the 
 time on the equinox, at the camera — which is what lights a style's emissive layers, and moves the
 Standard reference to the matching preset: night before 6 and from 20:30, dawn to 8, dusk from 18.
 
+The Massif panes cast building shadows the way Standard does, at its day depth (`shadowStrength` 1).
+Ours land on a terrain surface, so each pane carries a flat one (the Mapterhorn DEM at exaggeration
+0, never auto-flattened); `?shadows=0` drops it.
+
 The tokens are read by `serve.py` from `~/.mapbox_token` and `~/.maptiler_token`
 (`--mapbox-token`, `--maptiler-token` to point elsewhere) and served to the page at `/tokens.json`,
 so nothing is committed. The pane is an iframe: mapbox-gl and maplibre in one document fight over

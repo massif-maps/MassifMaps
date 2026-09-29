@@ -338,6 +338,8 @@ async function startMassif() {
       // the relief is an app layer on the SDK; the style says how to set one up
       ...hillshadeOf(styleJSON),
       ...(imagery ? { imagery } : {}),
+      // ?shadows=0 drops the terrain the building shadows land on
+      shadows: ASKED.get('shadows') ?? 1,
     });
     $(id).src = `./massif-pane.html?${query}`;
   }

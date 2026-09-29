@@ -100,6 +100,17 @@ def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
     ]
 
 
+def cycleway(c, brunnel_test, prefix=''):
+    """Standard's cycleway: a green dash laid over the roads, since a cycle track so often runs
+    beside one and would otherwise vanish under its casing."""
+    return [layer(prefix + 'cycleway', 'line', 'transportation', minzoom=15,
+                  filter=['all', ['==', get('class'), 'path'], ['==', get('subclass'), 'cycleway'], brunnel_test],
+                  paint={'line-color': c['cycleway'], 'line-width': zoom_ramp(12, 0, 18, 2, 22, 20),
+                         'line-opacity': zoom_ramp(15, 0, 16, 1),
+                         'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 16, ['literal', [1, 1]]]},
+                  emissive=0.6)]
+
+
 def tracks(c, brunnel_test):
     out = []
     for grade, dash in TRACK_GRADES + [('unknown', [3, 2])]:
@@ -142,7 +153,8 @@ def ground(v):
                          ('road-construction-omt', in_class([k + '_construction' for k in CLASSES])))
     ] + road_pair(c, 'road-link', ['all', in_class(CLASSES), surface, ['==', get('ramp'), 1]], 12,
                   LINK_WIDTH, LINK_CASING)
-      + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH) + [
+      + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH)
+      + cycleway(c, surface) + [
         # private and no-access ways: the casing's red dashes, the OSM convention MapTiler also draws
         layer('road-no-access', 'line', 'transportation', minzoom=15,
               filter=['all', ['!=', get('class'), 'path'], ['in', get('access'), ['literal', ['no', 'private']]]],
@@ -169,4 +181,4 @@ def bridges(v):
             road_pair(c, 'road-bridge', ['all', in_class(CLASSES), bridge], 12, WIDTH,
                       zoom_ramp(12, 0.8, 14, 1.2, 22, 3, base=1.5), case_key='bridge-case',
                       # Standard's: a round casing rings the bridge's end over the road it lands on
-                      case_cap='butt'))
+                      case_cap='butt') + cycleway(c, bridge, 'bridge-'))

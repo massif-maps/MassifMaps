@@ -4592,6 +4592,106 @@
       }
     },
     {
+      "id": "cycleway",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "cycleway"
+        ],
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "brunnel"
+            ],
+            [
+              "literal",
+              [
+                "tunnel",
+                "bridge"
+              ]
+            ]
+          ]
+        ]
+      ],
+      "paint": {
+        "line-color": "hsl(0, 0%, 25%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          18,
+          2,
+          22,
+          20
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          16,
+          1
+        ],
+        "line-dasharray": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "literal",
+            [
+              1,
+              0
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              1,
+              1
+            ]
+          ]
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": 0.6
+        }
+      }
+    },
+    {
       "id": "road-no-access",
       "type": "line",
       "source": "openmaptiles",
@@ -5947,6 +6047,97 @@
             0.6,
             0.4
           ]
+        }
+      }
+    },
+    {
+      "id": "bridge-cycleway",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "path"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "cycleway"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "brunnel"
+          ],
+          "bridge"
+        ]
+      ],
+      "paint": {
+        "line-color": "hsl(0, 0%, 25%)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0,
+          18,
+          2,
+          22,
+          20
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          16,
+          1
+        ],
+        "line-dasharray": [
+          "step",
+          [
+            "zoom"
+          ],
+          [
+            "literal",
+            [
+              1,
+              0
+            ]
+          ],
+          16,
+          [
+            "literal",
+            [
+              1,
+              1
+            ]
+          ]
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-emissive-strength": 0.6
         }
       }
     },

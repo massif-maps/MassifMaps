@@ -639,6 +639,11 @@ A **bare entry keeps every attachment no other entry claims**, so a project that
 unaffected and none of the existing styles change. This is a loader feature, not a converter one —
 a hand-written project can use it too.
 
+A layer with **no** bare entry draws its unclaimed attachments with its topmost entry, after that
+entry's own. A converted project names every attachment, so without this a child project's new
+rules (`custom_cycleway` in Massif's custom example, the OSM example's tracks) compiled and were
+never drawn: `extends` replaces `layers` whole, and the child would have had to restate 500 entries.
+
 `mapbox2css` emits one entry per RUN of consecutive attachments, which reproduces MapBox's order
 exactly and leaves a layer that interleaves with nothing on its bare entry. Standard goes from
 about 35 entries to 127, and six source-layers end up at more than one depth (`building`,

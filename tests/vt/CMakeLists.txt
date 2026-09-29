@@ -34,6 +34,7 @@ add_executable(vt_tests
   # The arithmetic the TERRAIN_SPHERICAL shader path rests on, checked against the transformer
   # the geometry is built with. Needs TileTransformer.cpp, added below.
   SphericalTerrainTest.cpp
+  GridIndexOrderTest.cpp
   RenderTileBlendTest.cpp
   LabelSliceTest.cpp
   LabelFadeTest.cpp

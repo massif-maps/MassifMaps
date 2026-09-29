@@ -246,6 +246,8 @@ add_executable(api_tests
   TerrainDecodeWaitTest.cpp
   # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.
   ElevationNodeFieldTest.cpp
+  # Same: ElevationGradient.h is the lit surfaces' forward differences and nothing else.
+  ElevationGradientTest.cpp
   # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.
   DayCycleLightTest.cpp
   # Same: PrefetchOrder.h is the DEM prefetch queue's distance metric and nothing else. It was

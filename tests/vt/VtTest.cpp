@@ -26,6 +26,7 @@ void testExtrusionGroupAnchor();
 void testSpanDrapeLight();
 void testSpanResolver();
 void testSphericalTerrain();
+void testGridIndexOrder();
 void testRenderTileBlend();
 void testLabelSlice();
 void testLabelFade();
@@ -63,6 +64,7 @@ int main() {
     testSpanDrapeLight();
     testSpanResolver();
     testSphericalTerrain();
+    testGridIndexOrder();
     testRenderTileBlend();
     testLabelSlice();
     testLabelFade();

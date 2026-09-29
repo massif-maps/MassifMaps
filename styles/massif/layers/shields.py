@@ -48,7 +48,7 @@ def shield(id, minzoom, filter, image, text_color, spacing=350, text_size=10, pa
                          'icon-text-fit': 'both',
                          'icon-text-fit-padding': list(padding),
                          'text-field': get('ref'),
-                         'text-font': ['Noto Sans Bold'],
+                         'text-font': 'bold',
                          'text-size': text_size,
                          'text-rotation-alignment': 'viewport',
                          'icon-rotation-alignment': 'viewport',

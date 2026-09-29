@@ -23,6 +23,15 @@ def by_hour(night, day):
     return ['interpolate', ['linear'], ['measure-light', 'brightness'], 0.25, night, 0.3, day]
 
 
+# a role -> MapLibre's glyph-server face, and the SDK's system font list: iOS by name, Android's
+# Roboto (its weight axis), the web build's preloaded Roboto behind the generic name. Nothing packaged.
+FONTS = {
+    'regular': ('Noto Sans Regular', 'ios:Helvetica Neue, Roboto, sans-serif'),
+    'medium': ('Noto Sans Regular', 'ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium'),
+    'bold': ('Noto Sans Bold', 'ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold'),
+    'italic': ('Noto Sans Italic', 'ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic'),
+}
+
 EMISSIVE = {'background': 'background', 'fill': 'fill', 'line': 'line', 'fill-extrusion': 'fill-extrusion'}
 
 
@@ -43,6 +52,11 @@ def layer(id, type, source_layer=None, minzoom=None, maxzoom=None, filter=None, 
         out['maxzoom'] = maxzoom
     if filter is not None:
         out['filter'] = filter
+    if layout and isinstance(layout.get('text-font'), str):
+        maplibre, sdk = FONTS[layout['text-font']]
+        layout = {**layout, 'text-font': [maplibre]}
+        metadata = dict(metadata or {})
+        metadata['massif:layout'] = {**metadata.get('massif:layout', {}), 'text-font': [sdk]}
     if layout:
         out['layout'] = layout
     if paint is not None:

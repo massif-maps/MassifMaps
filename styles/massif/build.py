@@ -21,7 +21,7 @@ from palette import VARIANTS as PALETTES  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLI = os.path.join(HERE, '..', '..', 'tools', 'style-cli', 'dist', 'cli.js')
-CONVERT = ['--fold-casings', '--tile-draw-size', '512', '--fonts', 'fonts', '--live-light']
+CONVERT = ['--fold-casings', '--tile-draw-size', '512', '--live-light']
 
 
 class Variant:

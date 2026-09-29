@@ -18,7 +18,7 @@ def layers(v):
               filter=['in', get('class'), ['literal', classes]],
               layout={'symbol-placement': 'line',
                       'text-field': ['coalesce', get('name'), get('name_int')],
-                      'text-font': ['Noto Sans Regular'],
+                      'text-font': 'medium',
                       'text-size': zoom_ramp(10, size[0], 18, size[1]),
                       'text-transform': 'uppercase',
                       'text-letter-spacing': 0.15,

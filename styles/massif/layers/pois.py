@@ -257,7 +257,7 @@ def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAM
         'icon-size': 0.4,
         'text-field': text,
         # named, not dropped: without it maplibre falls back to a stack the glyph server lacks
-        'text-font': ['Noto Sans Regular'],
+        'text-font': 'medium',
         'text-size': 12,
         'text-max-width': 9,
         'text-padding': 2,

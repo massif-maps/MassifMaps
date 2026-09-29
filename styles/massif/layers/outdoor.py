@@ -50,7 +50,7 @@ def contour_labels(v):
     return [layer('contour-label', 'symbol', 'contour', source='contours', minzoom=13,
                   filter=['>=', get('div'), 100],
                   layout={'symbol-placement': 'line', 'text-field': ['to-string', get('ele')],
-                          'text-font': ['Noto Sans Italic'], 'text-size': zoom_ramp(13, 9, 17, 11),
+                          'text-font': 'italic', 'text-size': zoom_ramp(13, 9, 17, 11),
                           'text-padding': 4, 'text-max-angle': 25},
                   paint={'text-color': c['contour-label'], 'text-halo-color': c['halo'], 'text-halo-width': 1},
                   metadata={'massif:paint': {'text-color': by_hour(c['label-night'], c['contour-label']),

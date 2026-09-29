@@ -1,7 +1,7 @@
 from lib import by_hour, get, in_class, layer, zoom_ramp
 
 NAME = ['coalesce', get('name'), get('name_int')]
-REGULAR, BOLD, ITALIC = ['Noto Sans Regular'], ['Noto Sans Bold'], ['Noto Sans Italic']
+REGULAR, MEDIUM, BOLD, ITALIC = 'regular', 'medium', 'bold', 'italic'
 
 
 def text(c, color='label', halo='halo', halo_width=1, night_color='label-night'):
@@ -108,16 +108,16 @@ def places(v):
               zoom_ramp(13, 10, 16, 13), c, color='label-soft', extra={**soft, 'text-letter-spacing': 0.05}),
         place('place-suburb', ['suburb'], 11, 15, zoom_ramp(11, 11, 15, 15), c, color='label-soft', extra=soft),
         place('place-island', ['island', 'islet'], 10, None, zoom_ramp(10, 11, 16, 15), c, font=ITALIC),
-        place('place-village', ['village'], 10, 16, zoom_ramp(10, 10, 14, 14, 16, 16), c),
-        place('place-town', ['town'], 8, 16, zoom_ramp(8, 11, 12, 16, 16, 20), c),
-        place('place-town-dot', ['town'], 6, 8, zoom_ramp(6, 10, 8, 11), c, extra=dot),
-        place('place-city', ['city'], 8, 15, zoom_ramp(8, 16, 12, 20, 15, 24), c),
-        place('place-city-dot', ['city'], 3, 8, zoom_ramp(3, 11, 6, 14, 8, 16), c, extra=dot),
+        place('place-village', ['village'], 10, 16, zoom_ramp(10, 10, 14, 14, 16, 16), c, font=MEDIUM),
+        place('place-town', ['town'], 8, 16, zoom_ramp(8, 11, 12, 16, 16, 20), c, font=MEDIUM),
+        place('place-town-dot', ['town'], 6, 8, zoom_ramp(6, 10, 8, 11), c, extra=dot, font=MEDIUM),
+        place('place-city', ['city'], 8, 15, zoom_ramp(8, 16, 12, 20, 15, 24), c, font=MEDIUM),
+        place('place-city-dot', ['city'], 3, 8, zoom_ramp(3, 11, 6, 14, 8, 16), c, extra=dot, font=MEDIUM),
         place('place-state', ['state', 'province'], 4, 9, zoom_ramp(4, 9, 9, 16), c, font=BOLD,
               color='label-soft', extra={**soft, 'text-letter-spacing': 0.15, 'text-max-width': 6}),
         # Standard sizes a country by its rank; OMT ranks 1-6, and Liechtenstein is not France
-        place('place-country-minor', ['country'], 3, 10, zoom_ramp(3, 9, 6, 12, 9, 16), c,
+        place('place-country-minor', ['country'], 3, 10, zoom_ramp(3, 9, 6, 12, 9, 16), c, font=MEDIUM,
               extra={'text-max-width': 6}, filter=['all', in_class(['country']), ['>', get('rank'), 3]]),
-        place('place-country', ['country'], 1, 10, zoom_ramp(1, 11, 5, 16, 9, 22), c,
+        place('place-country', ['country'], 1, 10, zoom_ramp(1, 11, 5, 16, 9, 22), c, font=MEDIUM,
               extra={'text-max-width': 6}, filter=['all', in_class(['country']), ['<=', get('rank'), 3]]),
     ]

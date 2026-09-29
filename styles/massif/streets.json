@@ -7277,6 +7277,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ]
         }
       }
     },
@@ -7376,6 +7381,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
         }
       }
     },
@@ -7477,6 +7487,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
         }
       }
     },
@@ -7561,6 +7576,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
         }
       }
     },
@@ -7680,6 +7700,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
         }
       }
     },
@@ -7761,6 +7786,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
         }
       }
     },
@@ -7826,6 +7856,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
         }
       }
     },
@@ -7949,6 +7984,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ]
         }
       }
     },
@@ -8027,6 +8067,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
         }
       }
     },
@@ -8119,6 +8164,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ]
         }
       }
     },
@@ -8185,6 +8235,13 @@
       },
       "paint": {
         "text-color": "#ffffff"
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
+        }
       }
     },
     {
@@ -8250,6 +8307,13 @@
       },
       "paint": {
         "text-color": "#1a1a1a"
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
+        }
       }
     },
     {
@@ -8723,6 +8787,13 @@
           "#2b2400",
           "#ffffff"
         ]
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
+        }
       }
     },
     {
@@ -9190,6 +9261,13 @@
           "#2b2400",
           "#ffffff"
         ]
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
+        }
       }
     },
     {
@@ -9667,6 +9745,13 @@
           "#2b2400",
           "#ffffff"
         ]
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
+        }
       }
     },
     {
@@ -9716,6 +9801,13 @@
       },
       "paint": {
         "text-color": "#4a463d"
+      },
+      "metadata": {
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
+        }
       }
     },
     {
@@ -10688,7 +10780,10 @@
             0.6,
             0.4
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         },
         "massif:filter": [
           "==",
@@ -11964,7 +12059,10 @@
             0.6,
             0.4
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         },
         "massif:filter": [
           "==",
@@ -13240,7 +13338,10 @@
             0.6,
             0.4
           ],
-          "visibility": "visible"
+          "visibility": "visible",
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         },
         "massif:filter": [
           "==",
@@ -14510,6 +14611,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -15793,6 +15897,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -17066,6 +17173,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -18334,6 +18444,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -19604,6 +19717,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -20876,6 +20992,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -22154,6 +22273,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -23434,6 +23556,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -24705,6 +24830,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -25973,6 +26101,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -27257,6 +27388,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -28537,6 +28671,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -29805,6 +29942,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -31074,6 +31214,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -32346,6 +32489,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -33620,6 +33766,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -34890,6 +35039,9 @@
             "plain",
             0.6,
             0.4
+          ],
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         },
         "massif:filter": [
@@ -35277,6 +35429,11 @@
             0.3,
             "hsl(0, 0%, 95%)"
           ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -35369,6 +35526,11 @@
             0.3,
             "hsl(0, 0%, 95%)"
           ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -35460,6 +35622,11 @@
             "hsl(0, 0%, 30%)",
             0.3,
             "hsl(0, 0%, 95%)"
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         }
       }
@@ -35554,6 +35721,11 @@
             0.3,
             "hsl(0, 0%, 95%)"
           ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -35646,6 +35818,11 @@
             "hsl(0, 0%, 30%)",
             0.3,
             "hsl(0, 0%, 95%)"
+          ]
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
           ]
         }
       }
@@ -35740,6 +35917,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ]
         }
       }
     },
@@ -35833,6 +36015,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ]
         }
       }
     },
@@ -35925,6 +36112,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue, Roboto, sans-serif"
+          ]
         }
       }
     },
@@ -36015,6 +36207,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
         }
       }
     },
@@ -36107,6 +36304,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -36199,6 +36401,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -36307,6 +36514,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -36399,6 +36611,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -36509,6 +36726,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -36602,6 +36824,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Bold, Roboto Bold, sans-serif Bold"
+          ]
         }
       }
     },
@@ -36705,6 +36932,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     },
@@ -36808,6 +37040,11 @@
           ],
           "text-emissive-strength": 1,
           "icon-emissive-strength": 1
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Medium, Roboto Medium, sans-serif Medium"
+          ]
         }
       }
     }

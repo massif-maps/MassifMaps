@@ -27,7 +27,7 @@ python3 ../../tools/style-preview/serve.py --mbtiles <name>=<path>.mbtiles
 open 'http://127.0.0.1:8787/?style=http://127.0.0.1:8787/styles/massif/streets.json&ref=mapbox-standard&massif=1'
 ```
 
-The converter runs with `--fold-casings --tile-draw-size 512 --fonts fonts --live-light`.
+The converter runs with `--fold-casings --tile-draw-size 512 --live-light`.
 
 ## The base map
 
@@ -369,6 +369,14 @@ style is written to give the converter tests it can bracket — see
 paints one way throughout, which `expandSetFilter` used to leave whole; it now splits a set that is
 the whole filter regardless, since each attachment is then one bracketed test and nothing else.
 
+## Fonts: the device's, none packaged
+
+Each label names a role (`FONTS` in `lib.py`): MapLibre
+gets OpenFreeMap's Noto glyphs, the SDK a list it resolves per platform - Helvetica Neue on iOS,
+Roboto on Android, and the web build's preloaded Roboto behind `sans-serif`. Road, POI and place
+names are Medium, as in Standard; water Italic; shields and states Bold. MapLibre has no Noto
+Medium on that server, so its names draw Regular.
+
 ## Licensing
 
 `sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
@@ -386,9 +394,6 @@ MapTiler or Mapbox **style** is copied.
   SDK that is an app layer (`HillshadeRasterTileLayer`), so only outdoor and topo carry it, as
   `massif:sdk-layer` settings.
 
-- `glyphs` points at OpenFreeMap's font server, which is what MapLibre reads. The SDK side no
-  longer needs it: `fonts/NotoSans-Bold.ttf` ships with the style and `--fonts fonts` wires it
-  through `project.json`.
 - **A transit POI is not coloured or set beside its icon.** Liberty gives `airport`/`bus`/`rail`
   their own layer, in blue with the label to the right; here they take the ordinary POI treatment.
 - The country's colour needs `iso_a2` on `transportation_name`, and neither tileset carries it, so

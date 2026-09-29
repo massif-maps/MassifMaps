@@ -24,6 +24,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "point"; }
+
     protected:
         static constexpr int RECTANGLE_SIZE = 4;
 

@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { VARIABLES_FILE, convert } from './mapbox2css/index.js';
 import { nodeSpriteHost } from './mapbox2css/node-host.js';
 import { loadSprites, setSpriteHost } from './mapbox2css/sprite.js';
 import type { Json, MapboxStyle, PropertyTable } from './mapbox2css/types.js';
+import { type Legend, renderLegendSvg } from './legend-svg.js';
 import { WasmMissing, runWasm, wasmAvailable } from './wasm.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -117,6 +119,18 @@ const USAGE = `Usage: massif-style <command> [options] [args]
 
   css2xml [--roundtrip] <project.json> <out.xml>
       compile a CartoCSS style project to mapnik XML
+
+  legend <project.json> [--spec legend.json] [--params k=v]... [--out out.json]
+                        [--svg out.svg] [--lang en]
+      resolve a legend spec against the style: every item is a synthetic feature, and comes
+      back as the swatch the style draws it with - lines, fill, icon, road plate, text - as
+      the SDK's MBVectorTileDecoder.getLegend returns it
+
+      --spec FILE           the spec; legend.json beside the project by default
+      --params k=v          a style parameter value, as setStyleParameter takes it. Repeatable
+      --out FILE            write the JSON there instead of stdout
+      --svg FILE            also draw the legend as an SVG sheet, images inlined
+      --lang CODE           which label to draw when a label is a {lang: text} object
 `;
 
 function loadPropertyTable(): PropertyTable {
@@ -146,7 +160,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'tile-draw-size', 'fonts', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
+const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'tile-draw-size', 'fonts', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config', 'spec', 'params', 'out', 'svg', 'lang']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -370,6 +384,41 @@ async function mapbox2css(args: string[]): Promise<number> {
     return 0;
 }
 
+const IMAGE_TYPES: Record<string, string> = { '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
+
+async function legend(args: string[]): Promise<number> {
+    const { flags, positional } = parseFlags(args);
+    const [project] = positional;
+    if (!project) {
+        process.stderr.write(USAGE);
+        return 2;
+    }
+    const svg = flags.get('svg');
+    // --svg and --lang are drawn here; every other option is the C++ command's own.
+    const local = ['--svg', '--lang'];
+    const wasmArgs = args.filter((arg, i) => !local.includes(arg) && !local.includes(args[i - 1]));
+    const out = flags.get('out') || (svg ? join(mkdtempSync(join(tmpdir(), 'massif-legend-')), 'legend.json') : undefined);
+    if (svg && !flags.get('out')) {
+        wasmArgs.push('--out', out!);
+    }
+    const status = await runWasm(['legend', ...wasmArgs]);
+    if (status !== 0 || !svg || !out) {
+        return status;
+    }
+    if (!flags.get('out')) {
+        process.stdout.write(`${readFileSync(out, 'utf8')}\n`);
+    }
+    // Inlined, so the sheet still shows its icons once it is moved away from the project.
+    const folder = dirname(project);
+    const imageHref = (file: string): string => {
+        const path = join(folder, file);
+        const type = IMAGE_TYPES[extname(file).toLowerCase()];
+        return type && existsSync(path) ? `data:${type};base64,${readFileSync(path).toString('base64')}` : file;
+    };
+    writeFileSync(svg, renderLegendSvg(JSON.parse(readFileSync(out, 'utf8')) as Legend, { lang: flags.get('lang'), imageHref }));
+    return 0;
+}
+
 async function main(argv: string[]): Promise<number> {
     // The slicer reads and writes through a host so it can also run in a browser; here it is node.
     setSpriteHost(nodeSpriteHost);
@@ -382,6 +431,7 @@ async function main(argv: string[]): Promise<number> {
     try {
         if (command === 'mapbox2css') return await mapbox2css(args);
         if (command === 'css2xml') return await runWasm([command, ...args]);
+        if (command === 'legend') return await legend(args);
     } catch (error) {
         if (error instanceof WasmMissing) {
             process.stderr.write(`${error.message}\n`);

@@ -38,7 +38,7 @@ namespace massif::mvt {
     }
 
     TileReader::TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger) :
-        _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _logger(std::move(logger)), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, Predicate(true)))
+        _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _logger(std::move(logger))
     {
     }
 
@@ -244,7 +244,7 @@ namespace massif::mvt {
                 auto symbolizersIt = featureDataSymbolizerMap.find(filterFeatureData);
                 if (symbolizersIt == featureDataSymbolizerMap.end()) {
                     exprContext.setFeatureData(filterFeatureData);
-                    std::vector<std::shared_ptr<const Symbolizer>> symbolizers = findFeatureSymbolizers(style, rules, exprContext);
+                    std::vector<std::shared_ptr<const Symbolizer>> symbolizers = style->findFeatureSymbolizers(rules, exprContext);
                     symbolizersIt = featureDataSymbolizerMap.emplace(filterFeatureData, std::move(symbolizers)).first;
                 }
                 if (symbolizersIt->second.empty()) {
@@ -369,52 +369,5 @@ namespace massif::mvt {
             rules.push_back(rule);
         }
         return rules;
-    }
-
-    std::vector<std::shared_ptr<const Symbolizer>> TileReader::findFeatureSymbolizers(const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext) const {
-        PredicateEvaluator predEvaluator(exprContext, nullptr);
-        bool anyMatch = false;
-        std::vector<std::shared_ptr<const Symbolizer>> symbolizers;
-        for (const std::shared_ptr<const Rule>& rule : rules) {
-            std::shared_ptr<const Filter> filter = rule->getFilter();
-            if (!filter) {
-                filter = _trueFilter;
-            }
-            
-            // Filter matching logic
-            bool match = true;
-            switch (filter->getType()) {
-            case Filter::Type::FILTER:
-                switch (style->getFilterMode()) {
-                case Style::FilterMode::FIRST:
-                    if (anyMatch) {
-                        match = false;
-                    }
-                    else if (filter->getPredicate()) {
-                        match = std::visit(predEvaluator, *filter->getPredicate());
-                    }
-                    break;
-                case Style::FilterMode::ALL:
-                    if (filter->getPredicate()) {
-                        match = std::visit(predEvaluator, *filter->getPredicate());
-                    }
-                    break;
-                }
-                anyMatch = anyMatch || match;
-                break;
-            case Filter::Type::ELSEFILTER:
-                match = !anyMatch;
-                break;
-            case Filter::Type::ALSOFILTER:
-                match = anyMatch;
-                break;
-            }
-
-            // If match, add all rule symbolizers to the symbolizer list
-            if (match) {
-                symbolizers.insert(symbolizers.end(), rule->getSymbolizers().begin(), rule->getSymbolizers().end());
-            }
-        }
-        return symbolizers;
     }
 }

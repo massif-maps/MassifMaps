@@ -51,6 +51,21 @@ namespace massif::mvt {
         bool isSelectionFoldable() const { return _selectionFoldable; }
         void setSelectionFoldable(bool selectionFoldable) { _selectionFoldable = selectionFoldable; }
 
+        /**
+         * The raw value as drawn in this context and view state, falling back to the default as a
+         * decode does. Not converted to the property's type: see convertColor for a colour.
+         */
+        Value evaluate(const ExpressionContext& context, const vt::ViewState& viewState) const {
+            return evalExpression(getExpression(), context, &viewState, _defaultValue);
+        }
+
+        static vt::Color convertColor(const Value& val) {
+            if (auto longVal = std::get_if<long long>(&val)) {
+                return vt::Color::fromValue(static_cast<unsigned int>(*longVal));
+            }
+            return parseColor(ValueConverter<std::string>::convert(val));
+        }
+
     protected:
         /**
          * An unset result (missing field or parameter) falls back to the declared default: as "" or 0
@@ -96,13 +111,6 @@ namespace massif::mvt {
             bool& _viewStateVars;
             bool& _styleParamVars;
         };
-
-        static vt::Color convertColor(const Value& val) {
-            if (auto longVal = std::get_if<long long>(&val)) {
-                return vt::Color::fromValue(static_cast<unsigned int>(*longVal));
-            }
-            return parseColor(ValueConverter<std::string>::convert(val));
-        }
     };
 
     template <typename T>

@@ -49,6 +49,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "shield"; }
+
     protected:
         static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 

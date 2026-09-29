@@ -147,10 +147,31 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiSugar")) {
             applyApiSugar("true".equals(extras.getString("apiSugar")));
         }
+        if (extras.containsKey("legend")) {
+            applyLegend(extras.getString("legend"));
+        }
         if (extras.containsKey("apiCancel")) {
             Log.i(TAG, "apiCancel " + apiCall + " -> " + MassifApi.cancelCall(apiCall));
         }
         demo.mapView.requestRender();
+    }
+
+    /**
+     * Logs the base style's legend, resolved against its live parameters:
+     *
+     *   --es legend ''                          the legend.json the style ships
+     *   --es legend '{"zoom":15,"sections":[...]}'   any spec
+     */
+    private void applyLegend(String spec) {
+        if (demo.baseDecoder == null) {
+            Log.w(TAG, "legend: no base decoder");
+            return;
+        }
+        try {
+            Log.i(TAG, "legend " + demo.baseDecoder.getLegend(spec != null ? spec : ""));
+        } catch (Exception e) {
+            Log.w(TAG, "legend failed: " + e.getMessage());
+        }
     }
 
     /**

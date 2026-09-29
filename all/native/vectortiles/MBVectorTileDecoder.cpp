@@ -36,6 +36,7 @@
 #include <mapnikvt/MBVTFeatureDecoder.h>
 #include <mapnikvt/MLTFeatureDecoder.h>
 #include <mapnikvt/LayerTileReader.h>
+#include <mapnikvt/LegendResolver.h>
 #include <mapnikvt/MapParser.h>
 #include <mapnikvt/StyleParameterResolver.h>
 #include <cartocss/CartoCSSMapLoader.h>
@@ -544,6 +545,32 @@ namespace massif {
             notifyDecoderRefreshed();
         } else {
             notifyDecoderChanged();
+        }
+    }
+
+    std::string MBVectorTileDecoder::getLegend(const std::string& spec) const {
+        std::shared_ptr<const mvt::Map> map;
+        std::shared_ptr<const mvt::StyleParameterStore> parameterStore;
+        std::string specJSON = spec;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            map = _map;
+            parameterStore = _parameterStore;
+            if (specJSON.empty() && _styleAssetPackage) {
+                if (std::shared_ptr<BinaryData> legendData = _styleAssetPackage->loadAsset(FileUtils::GetFilePath(_styleAssetName) + "legend.json")) {
+                    specJSON.assign(reinterpret_cast<const char*>(legendData->data()), legendData->size());
+                }
+            }
+        }
+        if (specJSON.empty()) {
+            return std::string();
+        }
+
+        try {
+            return mvt::resolveLegend(*map, specJSON, parameterStore);
+        }
+        catch (const std::invalid_argument& ex) {
+            throw InvalidArgumentException(std::string("Invalid legend spec: ") + ex.what());
         }
     }
 

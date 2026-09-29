@@ -22,6 +22,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "polygon"; }
+
     protected:
         ColorFunctionProperty _fill = ColorFunctionProperty("#808080");
         FloatFunctionProperty _fillOpacity = FloatFunctionProperty(1.0f);

@@ -1,0 +1,22 @@
+{
+  "styles": ["style.mss"],
+  "layers": [
+    "place",
+    "transportation_name::shield_icon",
+    "transportation_name::shield_plate",
+    "poi",
+    "mountain_peak",
+    "transportation::mtb",
+    "transportation",
+    "transportation::casing",
+    "water::outline",
+    "water",
+    "landcover::pattern",
+    "landcover"
+  ],
+  "styleparameters": {
+    "trail_color": "#c0392b",
+    "show_mtb": 1,
+    "eink": 0
+  }
+}

@@ -11474,6 +11474,7 @@ export interface MethodTypes {
     };
     'massif::MBVectorTileDecoder': {
         addFallbackFont: { args: [font: Handle]; result: void };
+        getLegend: { args: [spec: Json]; result: Json };
         getStyleParameter: { args: [name: string]; result: string };
         setStyleParameter: { args: [name: string, value: string]; result: boolean };
         setStyleParameters: { args: [params: Json]; result: void };

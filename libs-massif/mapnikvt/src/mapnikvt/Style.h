@@ -20,6 +20,8 @@
 
 namespace massif::mvt {
     class Rule;
+    class Symbolizer;
+    class ExpressionContext;
     
     class Style final {
     public:
@@ -39,6 +41,9 @@ namespace massif::mvt {
 
         const std::vector<std::shared_ptr<const Rule>>& getRules() const { return _rules; }
         const std::vector<std::shared_ptr<const Rule>>& getZoomRules(int zoom) const;
+
+        // The symbolizers of the rules the context's feature matches, in draw order, under the filter mode.
+        std::vector<std::shared_ptr<const Symbolizer>> findFeatureSymbolizers(const std::vector<std::shared_ptr<const Rule>>& rules, const ExpressionContext& exprContext) const;
 
         void optimizeRules();
 

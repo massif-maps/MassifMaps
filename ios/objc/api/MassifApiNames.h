@@ -1066,6 +1066,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodGetExternalChildLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetExternalDataSourceNames;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetInstruction;
+FOUNDATION_EXPORT MassifMethod const MassifMethodGetLegend;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetMetaDataElement;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetPoints;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetStyleParameter;

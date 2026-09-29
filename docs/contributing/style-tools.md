@@ -14,6 +14,7 @@ implementation to keep in step.
 | Subcommand | Runs | What it does |
 |---|---|---|
 | `css2xml` | wasm | compiles a CartoCSS style project to the mapnik XML the decoder reads |
+| `legend` | wasm + TypeScript | resolves a [legend spec](../features/legends.md) against the compiled style; `--svg` draws the sheet in TypeScript |
 | `mapbox2css` | TypeScript | translates a MapBox/MapLibre style JSON to a CartoCSS project |
 | `carto2css` | — | not written yet |
 
@@ -64,7 +65,9 @@ tools/style-cli/
 ```
 
 The C++ lives in-tree under `libs-massif/cartocss/util/`, where `massif-style.cpp` dispatches to
-`css2xml.cpp` (`mvt2xml` stays out: it needs compiled Boost.Serialization).
+`css2xml.cpp` and `legend.cpp` (`mvt2xml` stays out: it needs compiled Boost.Serialization).
+`legend.cpp` calls `mvt::resolveLegend`, the function `MBVectorTileDecoder::getLegend` calls, and
+`src/legend-svg.ts` draws its JSON without touching the filesystem, so a browser can reuse it.
 
 ## The property allowlist
 

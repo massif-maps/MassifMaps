@@ -27,6 +27,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "building"; }
+
         virtual bool needsExtrusionAnchors() const override { return true; }
 
     protected:

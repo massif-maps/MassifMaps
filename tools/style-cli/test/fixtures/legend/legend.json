@@ -1,0 +1,41 @@
+{
+  "title": { "en": "Test legend", "fr": "Légende test" },
+  "zoom": 15,
+  "sections": [
+    { "id": "roads", "label": { "en": "Roads", "fr": "Routes" }, "items": [
+      { "id": "motorway", "label": "Motorway", "layer": "transportation", "geometry": "line", "properties": { "class": "motorway" } },
+      { "id": "primary", "label": "Primary road", "layer": "transportation", "geometry": "line", "properties": { "class": "primary" } }
+    ]},
+    { "id": "tracks", "label": "Tracks", "items": [
+      { "id": "track-grade1", "label": "Track, paved or solid", "layer": "transportation", "geometry": "line", "properties": { "class": "track", "tracktype": "grade1" } },
+      { "id": "track-grade3", "label": "Track, mixed", "layer": "transportation", "geometry": "line", "properties": { "class": "track", "tracktype": "grade3" } },
+      { "id": "track-grade5", "label": "Track, soft", "layer": "transportation", "geometry": "line", "properties": { "class": "track", "tracktype": "grade5" } }
+    ]},
+    { "id": "trails", "label": "Hiking difficulty (SAC scale)", "items": [
+      { "id": "sac-t1", "label": "T1 hiking", "layer": "transportation", "geometry": "line", "properties": { "class": "path", "sac_scale": "hiking" } },
+      { "id": "sac-t2", "label": "T2 mountain hiking", "layer": "transportation", "geometry": "line", "properties": { "class": "path", "sac_scale": "mountain_hiking" } },
+      { "id": "sac-t4", "label": "T4 alpine hiking", "layer": "transportation", "geometry": "line", "properties": { "class": "path", "sac_scale": "alpine_hiking" } }
+    ]},
+    { "id": "mtb", "label": "Mountain bike difficulty (beside the path)", "items": [
+      { "id": "mtb-easy", "label": "MTB 0-2", "layer": "transportation", "geometry": "line", "attachment": "^mtb$", "properties": { "class": "path", "mtb_scale": 1 } },
+      { "id": "mtb-hard", "label": "MTB 3+", "layer": "transportation", "geometry": "line", "attachment": "^mtb$", "properties": { "class": "path", "mtb_scale": 4 } }
+    ]},
+    { "id": "land", "label": "Land and water", "items": [
+      { "id": "water", "label": "Lake, river", "layer": "water", "geometry": "polygon", "properties": { "class": "lake" } },
+      { "id": "wood", "label": "Forest", "layer": "landcover", "geometry": "polygon", "properties": { "class": "wood" } }
+    ]},
+    { "id": "pois", "label": "Places of interest", "items": [
+      { "id": "shelter", "label": "Shelter", "layer": "poi", "geometry": "point", "properties": { "class": "shelter" } },
+      { "id": "spring", "label": "Spring", "layer": "poi", "geometry": "point", "properties": { "class": "spring" } },
+      { "id": "peak", "label": "Summit", "layer": "mountain_peak", "geometry": "point", "properties": { "name": "Mont Blanc" } }
+    ]},
+    { "id": "shields", "label": "Road numbers", "items": [
+      { "id": "shield-interstate", "label": "Interstate (icon)", "layer": "transportation_name", "geometry": "line", "properties": { "network": "us-interstate", "ref": "95" } },
+      { "id": "shield-national", "label": "National road (plate)", "layer": "transportation_name", "geometry": "line", "properties": { "network": "fr-national", "ref": "N 7" } },
+      { "id": "shield-departmental", "label": "Departmental road (plate)", "layer": "transportation_name", "geometry": "line", "properties": { "network": "fr-departmental", "ref": "D 902" } }
+    ]},
+    { "id": "places", "label": "Place names", "items": [
+      { "id": "city", "label": "City", "layer": "place", "geometry": "point", "properties": { "class": "city", "name": "Grenoble" } }
+    ]}
+  ]
+}

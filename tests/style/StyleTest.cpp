@@ -19,6 +19,7 @@ void testFontNames();
 void testValueJSON();
 void testAnchorLabelId();
 void testSymbolizerProperty();
+void testLegendResolver();
 void testBuiltinParameters();
 void testLineAnchors();
 void testMBVTSubtile();
@@ -37,6 +38,7 @@ int main() {
     testValueJSON();
     testAnchorLabelId();
     testSymbolizerProperty();
+    testLegendResolver();
     testBuiltinParameters();
     testLineAnchors();
     testMBVTSubtile();

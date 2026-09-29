@@ -144,6 +144,8 @@ parameter test.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger. It reads the class tables, so switching is a re-decode.
 - `poiRanking` — `category` or `rank`, see below.
+- `track_min_zoom`, `path_min_zoom` (12) — where tracks, and paths and trails, start. A threshold in
+  the selector (`massif:minzoom-param`), so moving it is a re-decode; Alpimaps would set 13.
 
 ## Shields: a sprite per colour, picked per feature
 
@@ -382,7 +384,7 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
 - **Rules**: a stylesheet listed AFTER `style.mss` adds its own; a new attachment (`::custom_...`)
   draws over the base without touching it.
 - **Parameters**: `styleparameters` merge key by key, so the child sets defaults
-  (`poiStyle: plain`, `building_opacity: 1`) and declares its own for its rules
+  (`poiStyle: plain`, `building_opacity: 1`, `track_min_zoom: 13`) and declares its own for its rules
   (`['param::highlight_cycleways' = 1]`). `styles` does not merge: it is restated whole.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value

@@ -91,6 +91,7 @@ def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
               paint={'line-color': c['path-case'], 'line-gap-width': PATH_WIDTH,
                      'line-width': zoom_ramp(14, 0.5, 18, 1, 22, 2, base=1.5)}, emissive=0.15),
         layer(walk_prefix + 'path', 'line', 'transportation', minzoom=minzoom, filter=walk,
+              metadata={'massif:minzoom-param': 'path_min_zoom'},
               layout={'line-cap': 'round', 'line-join': 'round'},
               paint={'line-color': color, 'line-width': PATH_WIDTH}, emissive=0.25),
         layer(prefix + 'steps', 'line', 'transportation', minzoom=14, filter=steps,
@@ -114,12 +115,15 @@ def cycleway(c, brunnel_test, prefix=''):
 def tracks(c, brunnel_test):
     out = []
     for grade, dash in TRACK_GRADES + [('unknown', [3, 2])]:
-        test = ['!', ['has', 'tracktype']] if grade == 'unknown' else ['==', get('tracktype'), grade]
+        # Alpimaps' planetiler writes the grade's index in OSM's list (grade1 = 0), OpenMapTiles the name
+        test = ['!', ['has', 'tracktype']] if grade == 'unknown' else \
+            ['in', get('tracktype'), ['literal', [grade, int(grade[-1]) - 1]]]
         paint = {'line-color': c['track'], 'line-width': TRACK_WIDTH}
         if dash:
             paint['line-dasharray'] = dash
         out.append(layer('track-' + grade, 'line', 'transportation', minzoom=12,
                          filter=['all', ['==', get('class'), 'track'], test, brunnel_test],
+                         metadata={'massif:minzoom-param': 'track_min_zoom'},
                          paint=paint, emissive=0.25))
     return out
 

@@ -7,7 +7,9 @@
     "massif:live-config": [
       "poiRanking",
       "poiStyle",
-      "building_opacity"
+      "building_opacity",
+      "track_min_zoom",
+      "path_min_zoom"
     ]
   },
   "sources": {
@@ -2055,6 +2057,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -2917,6 +2920,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -3037,12 +3041,18 @@
           "track"
         ],
         [
-          "==",
+          "in",
           [
             "get",
             "tracktype"
           ],
-          "grade1"
+          [
+            "literal",
+            [
+              "grade1",
+              0
+            ]
+          ]
         ],
         [
           "!",
@@ -3084,6 +3094,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -3106,12 +3117,18 @@
           "track"
         ],
         [
-          "==",
+          "in",
           [
             "get",
             "tracktype"
           ],
-          "grade2"
+          [
+            "literal",
+            [
+              "grade2",
+              1
+            ]
+          ]
         ],
         [
           "!",
@@ -3157,6 +3174,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -3179,12 +3197,18 @@
           "track"
         ],
         [
-          "==",
+          "in",
           [
             "get",
             "tracktype"
           ],
-          "grade3"
+          [
+            "literal",
+            [
+              "grade3",
+              2
+            ]
+          ]
         ],
         [
           "!",
@@ -3230,6 +3254,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -3252,12 +3277,18 @@
           "track"
         ],
         [
-          "==",
+          "in",
           [
             "get",
             "tracktype"
           ],
-          "grade4"
+          [
+            "literal",
+            [
+              "grade4",
+              3
+            ]
+          ]
         ],
         [
           "!",
@@ -3303,6 +3334,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -3325,12 +3357,18 @@
           "track"
         ],
         [
-          "==",
+          "in",
           [
             "get",
             "tracktype"
           ],
-          "grade5"
+          [
+            "literal",
+            [
+              "grade5",
+              4
+            ]
+          ]
         ],
         [
           "!",
@@ -3376,6 +3414,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -3448,6 +3487,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "track_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -5475,6 +5515,7 @@
         ]
       },
       "metadata": {
+        "massif:minzoom-param": "path_min_zoom",
         "massif:paint": {
           "line-emissive-strength": 0.25
         }
@@ -15793,6 +15834,12 @@
     },
     "building_opacity": {
       "default": 0.6
+    },
+    "track_min_zoom": {
+      "default": 12
+    },
+    "path_min_zoom": {
+      "default": 12
     }
   }
 }

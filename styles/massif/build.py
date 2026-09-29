@@ -77,6 +77,8 @@ VARIANTS = {v.name: v for v in [
 POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}
 BUILDING_OPACITY = {'default': 0.6}
 POI_STYLE = {'default': 'badge', 'values': ['badge', 'plain']}
+# where the tracks and paths start, an app's to move (Alpimaps shows tracks from 13)
+ZOOMS = {'track_min_zoom': {'default': 12}, 'path_min_zoom': {'default': 12}}
 
 
 def document(name, layers, metadata, schema, sources):
@@ -93,8 +95,9 @@ def document(name, layers, metadata, schema, sources):
 
 
 def maplibre_style(v):
-    return document(v.title, v.layers(), {'massif:variant': v.name, 'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity']},
-                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY}, v.sources)
+    return document(v.title, v.layers(), {'massif:variant': v.name, 'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', *ZOOMS]},
+                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY, **ZOOMS},
+                    v.sources)
 
 
 FIXED = ('id', 'type', 'source', 'source-layer', 'minzoom', 'maxzoom', 'filter')
@@ -176,9 +179,9 @@ def family_style():
     # the default palette's own names for its colours and fonts, so variables.mss says @motorway
     own = {k: v for k, v in VARIANTS[names[0]].palette.items() if isinstance(v, str)}
     own.update({'font-' + role: sdk for role, (_, sdk) in FONTS.items()})
-    return document('Massif', layers, {'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', 'variant'],
+    return document('Massif', layers, {'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', 'variant', *ZOOMS],
                                        'massif:palette-names': own},
-                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY,
+                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY, **ZOOMS,
                      'variant': {'default': names[0], 'values': names}},
                     {k: s for v in VARIANTS.values() for k, s in v.sources.items()})
 

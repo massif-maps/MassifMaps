@@ -14,6 +14,10 @@ SAC = [
     # its own layer rather than a second set in T5's filter: two sets in one filter are a when()
     ('trail-t6', ['difficult_alpine_hiking'], 'trail-alpine', [1, 1.5]),
 ]
+# Alpimaps' planetiler writes a scale's index in OSM's list (hiking = 0), OpenMapTiles the name
+SAC_ORDER = ['hiking', 'mountain_hiking', 'demanding_mountain_hiking', 'alpine_hiking', 'demanding_alpine_hiking',
+             'difficult_alpine_hiking']
+SAC = [(id, values + [SAC_ORDER.index(v) for v in values], key, dash) for id, values, key, dash in SAC]
 TRAIL_WIDTH = zoom_ramp(12, 0.6, 15, 1.4, 18, 2.6, base=1.3)
 TRAILS = ['path', 'bridleway']
 
@@ -73,14 +77,16 @@ def cliffs(v):
 
 
 def trails(c, brunnel_test):
-    return [layer(id, 'line', 'transportation', minzoom=12,
-                  filter=['all', in_class(TRAILS, 'subclass'), brunnel_test,
+    # one layer per subclass: with both scale spellings the scale is a set, and two sets are a when()
+    return [layer(id + ('' if sub == 'path' else '-' + sub), 'line', 'transportation', minzoom=12,
+                  filter=['all', ['==', get('subclass'), sub], brunnel_test,
                           ['in', get('sac_scale'), ['literal', values]] if id != 'trail-t1' else
                           ['!', ['in', get('sac_scale'), ['literal', [v for _, vs, _, _ in SAC[1:] for v in vs]]]]],
                   layout={'line-join': 'round'},
                   paint={'line-color': c[key], 'line-width': TRAIL_WIDTH, 'line-dasharray': dash},
+                  metadata={'massif:minzoom-param': 'path_min_zoom'},
                   emissive=0.4)
-            for id, values, key, dash in SAC]
+            for id, values, key, dash in SAC for sub in TRAILS]
 
 
 def routes(v):

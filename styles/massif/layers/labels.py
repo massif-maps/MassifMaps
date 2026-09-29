@@ -17,7 +17,7 @@ def low(v):
     """labels that give way to everything: house numbers, water, parks, peaks"""
     c = v.palette
     outdoor = v.flags.get('trails', False)
-    water = text(c, 'water-label', night_color='water')
+    water = text(c, 'water-label', halo='water-halo', night_color='water')
     return [
         # a named spot, not a settlement: it gives way to a shield, "Échangeur du Rondeau" to A 480
         place('place-locality', ['locality'], 13, 18, zoom_ramp(13, 10, 16, 13), c, color='label-soft'),
@@ -28,7 +28,7 @@ def low(v):
         param(layer('waterway-label', 'symbol', 'waterway', minzoom=8,
               filter=['all', ['has', 'name'], in_class(['river', 'canal'])],
               layout={'symbol-placement': 'line', 'text-field': NAME, 'text-font': ITALIC,
-                      'text-size': zoom_ramp(11, 10, 18, 14), 'text-letter-spacing': 0.05,
+                      'text-size': zoom_ramp(9, 9, 18, 14), 'text-letter-spacing': 0.05,
                       'text-max-angle': 30},
               **water), 'river_label_min_zoom'),
         layer('stream-label', 'symbol', 'waterway', minzoom=14,
@@ -36,10 +36,13 @@ def low(v):
               layout={'symbol-placement': 'line', 'text-field': NAME, 'text-font': ITALIC,
                       'text-size': zoom_ramp(14, 9, 18, 12), 'text-max-angle': 30},
               **water),
-        layer('water-name-line', 'symbol', 'water_name', minzoom=9,
+        layer('water-name-line', 'symbol', 'water_name',
               filter=['==', ['geometry-type'], 'LineString'],
-              layout={'symbol-placement': 'line-center', 'text-field': NAME, 'text-font': ITALIC,
-                      'text-size': zoom_ramp(9, 11, 18, 15), 'text-letter-spacing': 0.05},
+              # a lake's name at the middle of its centreline, upright, as OSM Carto and Alpimaps set it
+              layout={'symbol-placement': 'line-center', 'text-rotation-alignment': 'viewport',
+                      'text-pitch-alignment': 'viewport', 'text-field': NAME, 'text-font': ITALIC,
+                      # Alpimaps' size and its narrow wrap, two or three words a line
+                      'text-size': zoom_ramp(12, 9, 18, 14), 'text-letter-spacing': 0.05, 'text-max-width': 5},
               **water),
         layer('water-name', 'symbol', 'water_name', minzoom=3,
               filter=['==', ['geometry-type'], 'Point'],

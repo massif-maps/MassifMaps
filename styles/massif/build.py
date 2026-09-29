@@ -69,7 +69,7 @@ SOURCES = {
 
 STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, rail.tunnels,
            roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges, rail.overhead,
-           boundaries.layers, buildings.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
+           outdoor.cliffs, boundaries.layers, buildings.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
            labels.places]
 
 # bottom to top; among the labels, the later a layer the higher its placement priority. The first
@@ -84,7 +84,7 @@ OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
 EINK = [p for p in OUTDOOR if p not in (outdoor.hillshade, outdoor.routes)]
 
 HYBRID = [land.background, imagery.layers, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges,
-          rail.bridges, rail.overhead, boundaries.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
+          rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
           labels.places]
 
 # a walker's map brings the campsites in with the huts

@@ -24,6 +24,7 @@
         "badge": "badge",
         "plain": "plain"
       }
-    }
+    },
+    "road_osm_low": 1
   }
 }

@@ -47,6 +47,7 @@
       <option>eink</option><option value="custom">custom (example project)</option><option value="osm">osm (example project)</option>
     </select>
     <label><input id="sync" type="checkbox" checked> sync</label>
+    <label title="building shadows in the massif row; they cost the page most of its frame rate"><input id="shadows" type="checkbox"> shadows</label>
     <select id="local-set"></select>
     <button id="fit">fit local</button>
     <button id="gaps-toggle">gaps</button>
@@ -274,6 +275,7 @@ function setupVariant() {
     next.searchParams.set('hour', $('hour').value);
     if ($('ref').value) next.searchParams.set('ref', $('ref').value);
     if (massifStarted) next.searchParams.set('massif', '1');
+    if ($('shadows').checked) next.searchParams.set('shadows', '1'); else next.searchParams.delete('shadows');
     location.href = next.href;
   };
 }
@@ -373,8 +375,8 @@ async function startMassif() {
       // the relief is an app layer on the SDK; the style says how to set one up
       ...hillshadeOf(styleJSON),
       ...(imagery ? { imagery } : {}),
-      // ?shadows=0 drops the terrain the building shadows land on
-      shadows: ASKED.get('shadows') ?? 1,
+      // off, no terrain for the building shadows to land on
+      shadows: $('shadows').checked ? 1 : 0,
     });
     $(id).src = `./massif-pane.html?${query}`;
   }
@@ -451,6 +453,8 @@ $('massif-toggle').onclick = () => {
 
 $('reload').onclick = load;
 $('ref').onchange = showRef;
+$('shadows').checked = ASKED.get('shadows') === '1';
+$('shadows').onchange = () => { if (massifStarted) startMassif(); };
 $('hour').oninput = postHour;
 $('fit').onclick = () => {
   if (!localTileJSON || !localTileJSON.bounds) return;

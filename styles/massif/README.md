@@ -44,8 +44,12 @@ palette plus the modules it adds.
 - **Buildings under Standard's day lights.** The SDK project (not the MapLibre styles) carries
   Standard's `lights` (ambient 0.8, sun 0.2 from `[180, 20]`), which is what gives the walls
   gl-js's shading; without them the buildings kept the SDK's own lighting, walls as bright as the
-  roofs. At night a block takes Standard's night tone (`hsl(0, 0%, 58%)`) with a tenth of it emitted,
-  and the ground AO fades in over z17-18.
+  roofs. A wall's foot takes gl-js's faux AO (the converter's `building-vertical-gradient` over 6 m).
+  At night a block takes Standard's night tone (`hsl(0, 0%, 58%)`) with a tenth of it emitted, and
+  the SDK lights it with Standard's moon; the ground AO fades in over z17-18.
+- **Water names**: rivers from z9 (`river_label_min_zoom`), a lake's name upright at the middle of
+  its centreline from whatever zoom the tiles carry it, a word a line, as Alpimaps sets it; in a
+  softer blue on a half-transparent halo.
 - **Woods over the landuse**, as Standard's one landuse layer draws them: a park's woods read a
   darker green instead of vanishing under its lawn.
 - **Tracks by `tracktype`**, OSM Carto's ladder: grade1 solid, grade5 dotted, one layer per grade.
@@ -74,8 +78,9 @@ ESA WorldCover classes, `depth`: Natural Earth isobaths, z0-6) is the `bathymap`
 way Standard draws its own landcover and water-depth: generalised greens, white glaciers and a
 darker veil per isobath, handing over to OMT's landcover by crossfade over z7.8-8. The style names
 the source with no public URL - an app that ships the archive merges it into its main tiles
-(`MergedMBVTTileDataSource`), where the rules find the two layers by name; one that does not simply
-has no landcover below z7. `min_depth 0` is the whole ocean, which also paints the sea a regional
+(`MergedMBVTTileDataSource`, which cuts the archive's z6 tiles into the z7-8 ones the crossfade
+needs), where the rules find the two layers by name; one that does not simply has no landcover
+below z7. `min_depth 0` is the whole ocean, which also paints the sea a regional
 tileset stops short of.
 
 `landcover_name`, `landuse_name` and the richer landuse classes exist only in our fork; the layers
@@ -99,7 +104,8 @@ deeper woods (`OUTDOOR` in the palette):
   ribbon (`urban-path`).
 - **`mtb_scale` as a thin line beside the path** from z14, in a French VTT waymark's colour (0-1
   green, 2 blue, 3 red, 4+ black) and a dash that tightens with the grade, so e-ink says it too.
-- **Cliffs**: our fork's `mountain_peak` cliff lines, MapTiler's edge plus offset teeth.
+- **Cliffs**: our fork's `mountain_peak` cliff lines, MapTiler's edge plus offset teeth. Streets and
+  hybrid draw them too.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
 - **Peaks from z9**, the three most prominent per tile first.
@@ -182,9 +188,9 @@ overrides, and an item a variant does not draw is dropped. One spec serves every
 ## Style parameters an app sets
 
 - `variant` — `streets`, `outdoor`, `topo`, `hybrid`, `eink`; `carto/<variant>.json` picks one.
-- `building_opacity` (0.6) — the 3D buildings' alpha looking straight down, so the tunnels under
-  them show through. They turn opaque as the camera leans in, between tilt 85 and 70. 1 keeps them
-  opaque at every angle. The MapLibre file draws them opaque: the ramp is over the camera angle,
+- `building_opacity` (1, as Standard) — the 3D buildings' alpha looking straight down; below 1 the
+  tunnels under them show through, and so do the ground's shadows. They turn opaque as the camera
+  leans in, between tilt 85 and 70. The MapLibre file draws them opaque: the ramp is over the camera angle,
   which only the SDK can read in paint.
 - `building_tilt_drop` (90), `building_ao` (1), `buildings` (2 = 3D, 1 = flat, 0 = off) — the
   converter's own, the same in every converted style
@@ -203,7 +209,7 @@ Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app c
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
 - `water_min_zoom` (14) — drinking water and springs; 12 to plan a hike by its water.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
-  (3, the city dots), `river_label_min_zoom` (11).
+  (3, the city dots), `river_label_min_zoom` (9).
 - `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
   `wetland_pattern_zoom` (13) — where e-ink's textures start.
 
@@ -218,6 +224,8 @@ Switches (0/1):
 - `polygons_border` (0; 1 on e-ink) — every landcover (dotted) and landuse polygon edged.
 - `lighting` (1; 0 on e-ink) — 0 draws every colour as stated, lit by no hour: a flat page, the
   OSM example's look.
+- `road_osm_low` (0) — motorway to tertiary drawn as OSM Carto (Alpimaps) draws them at low zoom:
+  its wider lines below z12 and its outlines below z14 (the OSM example sets it).
 - `sac_scale_labels` (0; 1 on e-ink) — the SAC grade (T1..T6) on a small plate along each trail
   from z14, where a dash alone is hard to read. A path with no `sac_scale` gets none.
 

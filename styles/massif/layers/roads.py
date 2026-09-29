@@ -1,4 +1,4 @@
-from lib import from_zoom, get, halo, in_class, layer, scaled, zoom_ramp
+from lib import from_zoom, gate, get, halo, in_class, layer, scaled, zoom_ramp
 from layers import outdoor
 
 CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']
@@ -8,11 +8,24 @@ SORT_KEY = ['match', get('class'), 'motorway', 7, 'trunk', 6, 'primary', 5, 'sec
 
 # Mapbox Standard's `roads` widths on OMT classes: its street is our minor, its fallback our service.
 # a class stays at 0 until Standard's own filter lets it in: primary at 6, secondary 8, tertiary 9
+# `road_osm_low` takes OSM Carto's (Alpimaps') wider ones below z12; 10 and 11 are Standard's own
+# curve read at those zooms.
+def osm_low(osm, standard):
+    return ['match', ['config', 'road_osm_low'], 1, osm, standard]
+
+
 WIDTH = zoom_ramp(
     3, ['match', get('class'), ['motorway', 'trunk'], 0.8, 0],
-    6, ['match', get('class'), ['motorway', 'trunk'], 1, 'primary', 0.4, 0],
-    8, ['match', get('class'), ['motorway', 'trunk'], 1.3, 'primary', 1.1, 0],
-    9, ['match', get('class'), ['motorway', 'trunk'], 1.6, 'primary', 1.4, 'secondary', 0.6, 0],
+    6, osm_low(['match', get('class'), ['motorway', 'trunk'], 0.85, 0],
+               ['match', get('class'), ['motorway', 'trunk'], 1, 'primary', 0.4, 0]),
+    8, osm_low(['match', get('class'), ['motorway', 'trunk'], 1.14, 'primary', 1, 0],
+               ['match', get('class'), ['motorway', 'trunk'], 1.3, 'primary', 1.1, 0]),
+    9, osm_low(['match', get('class'), ['motorway', 'trunk'], 1.4, 'primary', 1.5, 'secondary', 1, 0],
+               ['match', get('class'), ['motorway', 'trunk'], 1.6, 'primary', 1.4, 'secondary', 0.6, 0]),
+    10, osm_low(['match', get('class'), ['motorway', 'trunk'], 1.82, ['primary', 'secondary'], 2, 'tertiary', 0.35, 0],
+                ['match', get('class'), ['motorway', 'trunk'], 1.94, 'primary', 1.74, 'secondary', 0.94, 'tertiary', 0.46, 'minor', 0.11, 0]),
+    11, osm_low(['match', get('class'), ['motorway', 'trunk'], 2.34, 'primary', 2.33, 'secondary', 2.07, 'tertiary', 0.95, 0],
+                ['match', get('class'), ['motorway', 'trunk'], 2.44, 'primary', 2.24, 'secondary', 1.44, 'tertiary', 1.16, 'minor', 0.26, 0]),
     12, ['match', get('class'), ['motorway', 'trunk'], 3.2, 'primary', 3, ['secondary', 'tertiary'], 2.2, 'minor', 0.5, 0],
     18, ['match', get('class'), ['motorway', 'trunk'], 30, 'primary', 28, ['secondary', 'tertiary'], 26, 'minor', 20, 10],
     22, ['match', get('class'), ['motorway', 'trunk'], 300, 'primary', 280, ['secondary', 'tertiary'], 260, 'minor', 200, 100],
@@ -29,6 +42,15 @@ CASING_WIDTH = zoom_ramp(
     14, ['match', get('class'), ['motorway', 'trunk', 'primary'], 1, 0.8],
     22, 2,
     base=1.5)
+
+# `road_osm_low`: the major roads outlined below z14 too, where OSM Carto (Alpimaps) brings each
+# casing in: motorway from z9, trunk from z10, the others at z11. Earlier, the outline is all you see.
+LOW_CASING_WIDTH = zoom_ramp(
+    9, 0,
+    10, ['match', get('class'), 'motorway', 0.5, 0],
+    10.5, ['match', get('class'), 'motorway', 0.55, 'trunk', 0.3, 0],
+    11, ['match', get('class'), ['motorway', 'trunk'], 0.6, ['primary', 'secondary', 'tertiary'], 0.5, 0],
+    14, ['match', get('class'), ['motorway', 'trunk', 'primary'], 1, ['secondary', 'tertiary'], 0.8, 0])
 
 # Standard's *_link widths; OMT marks a link with ramp=1 on the class it serves
 LINK_WIDTH = zoom_ramp(12, ['match', get('class'), ['motorway', 'trunk'], 0.8, 0.4],
@@ -110,6 +132,16 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
         layer(id, 'line', 'transportation', minzoom=minzoom, filter=filter, layout=layout,
               paint=fill_paint, emissive=EMISSIVE),
     ]
+
+
+def low_casing(v, filter):
+    c = v.palette
+    if c.get('casing-low'):
+        return []
+    return [gate(layer('road-casing-low', 'line', 'transportation', minzoom=9, maxzoom=14, filter=filter,
+                       layout={'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY},
+                       paint={'line-color': case_color(c), 'line-gap-width': WIDTH, 'line-width': LOW_CASING_WIDTH},
+                       emissive=0), v, 'road_osm_low')]
 
 
 def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
@@ -211,6 +243,7 @@ def ground(v):
                          ('road-construction-omt', in_class([k + '_construction' for k in CLASSES])))
     ] + road_pair(c, 'road-link', ['all', in_class(CLASSES), surface, ['==', get('ramp'), 1]], 12,
                   LINK_WIDTH, LINK_CASING)
+      + low_casing(v, ['all', in_class(CLASSES), surface, no_ramp])
       + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH)
       + unpaved(c, surface) + cycleway(c, surface) + [
         # private and no-access ways: the casing's red dashes, the OSM convention MapTiler also draws

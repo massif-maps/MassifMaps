@@ -4,6 +4,7 @@
 #include "celestial/CelestialLabel.h"
 #include "celestial/CelestialObject.h"
 #include "celestial/CelestialSprite.h"
+#include "celestial/SkyDirection.h"
 #include "components/Options.h"
 #include "graphics/Bitmap.h"
 #include "graphics/ViewState.h"
@@ -101,9 +102,8 @@ namespace massif {
             // The direction is given in the local frame at the camera - x east, y north, z up -
             // and the projection surface is what turns that into a world vector, so this works on
             // a sphere as well as on a plane.
-            MapPos focusMapPos = projectionSurface->calculateMapPos(viewState.getFocusPos());
-            cglib::vec3<double> dir = object->calculateDirectionVector();
-            cglib::vec3<double> worldDir = projectionSurface->calculateVector(focusMapPos, MapVec(dir(0), dir(1), dir(2)));
+            SkyFrame frame(*projectionSurface, projectionSurface->calculateMapPos(viewState.getFocusPos()));
+            cglib::vec3<double> worldDir = frame.toWorld(object->calculateDirectionVector());
             if (cglib::norm(worldDir) < 1.0e-12) {
                 return false;
             }
@@ -330,7 +330,7 @@ namespace massif {
         if (!projectionSurface) {
             return;
         }
-        MapPos focusMapPos = projectionSurface->calculateMapPos(viewState.getFocusPos());
+        SkyFrame frame(*projectionSurface, projectionSurface->calculateMapPos(viewState.getFocusPos()));
         double distance = viewState.getFar() * INFINITE_DISTANCE_FACTOR;
         // A point behind the eye has no place on screen to widen a line from, so a run is cut
         // there. Nothing that near the side of the view is on screen for any usable field of view.
@@ -359,7 +359,7 @@ namespace massif {
             points.reserve(directions.size());
             usable.reserve(directions.size());
             for (const cglib::vec3<double>& dir : directions) {
-                cglib::vec3<double> worldDir = cglib::unit(projectionSurface->calculateVector(focusMapPos, MapVec(dir(0), dir(1), dir(2))));
+                cglib::vec3<double> worldDir = frame.toWorld(dir);
                 points.push_back(cglib::vec3<float>::convert(worldDir * distance));
                 usable.push_back((belowHorizonVisible || dir(2) >= 0) && cglib::dot_product(worldDir, forward) > 0.02);
             }
@@ -468,7 +468,7 @@ namespace massif {
         if (!projectionSurface) {
             return;
         }
-        MapPos focusMapPos = projectionSurface->calculateMapPos(viewState.getFocusPos());
+        SkyFrame frame(*projectionSurface, projectionSurface->calculateMapPos(viewState.getFocusPos()));
         double distance = viewState.getFar() * INFINITE_DISTANCE_FACTOR;
         const int side = IMAGE_SUBDIVISIONS + 1;
 
@@ -509,8 +509,7 @@ namespace massif {
             for (int row = 0; row < side; row++) {
                 for (int column = 0; column < side; column++) {
                     const cglib::vec3<double>& dir = directions[row * side + column];
-                    cglib::vec3<double> worldDir = cglib::unit(projectionSurface->calculateVector(focusMapPos, MapVec(dir(0), dir(1), dir(2))));
-                    cglib::vec3<double> point = worldDir * distance;
+                    cglib::vec3<double> point = frame.toWorld(dir) * distance;
                     for (int c = 0; c < 3; c++) {
                         _coordBuf.push_back(static_cast<float>(point(c)));
                     }
@@ -680,7 +679,7 @@ namespace massif {
         if (!projectionSurface) {
             return;
         }
-        MapPos focusMapPos = projectionSurface->calculateMapPos(viewState.getFocusPos());
+        SkyFrame frame(*projectionSurface, projectionSurface->calculateMapPos(viewState.getFocusPos()));
         double distance = viewState.getFar() * INFINITE_DISTANCE_FACTOR;
 
         for (const std::shared_ptr<CelestialObject>& object : _objects) {
@@ -705,8 +704,8 @@ namespace massif {
                 if (!belowHorizonVisible && (directions[i](2) < 0 || directions[i + 1](2) < 0)) {
                     continue;
                 }
-                cglib::vec3<double> u = cglib::unit(projectionSurface->calculateVector(focusMapPos, MapVec(directions[i](0), directions[i](1), directions[i](2))));
-                cglib::vec3<double> v = cglib::unit(projectionSurface->calculateVector(focusMapPos, MapVec(directions[i + 1](0), directions[i + 1](1), directions[i + 1](2))));
+                cglib::vec3<double> u = frame.toWorld(directions[i]);
+                cglib::vec3<double> v = frame.toWorld(directions[i + 1]);
                 cglib::vec3<double> edge = v - u;
                 double edgeNorm = cglib::norm(edge);
                 double t = (edgeNorm > 0 ? cglib::dot_product(rayDir - u, edge) / edgeNorm : 0.0);

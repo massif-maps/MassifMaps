@@ -104,6 +104,8 @@ deeper woods (`OUTDOOR` in the palette):
   ribbon (`urban-path`).
 - **`mtb_scale` as a thin line beside the path** from z14, in a French VTT waymark's colour (0-1
   green, 2 blue, 3 red, 4+ black) and a dash that tightens with the grade, so e-ink says it too.
+- **Bridges carry the trail or track they are on**: the thin ways have no bridge look of their own,
+  so a bridge is simply part of the way; left out, a track broke off at every footbridge.
 - **Cliffs**: our fork's `mountain_peak` cliff lines, MapTiler's edge plus offset teeth. Streets and
   hybrid draw them too.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
@@ -207,6 +209,8 @@ the variant's default.
 Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app can lower it to):
 
 - `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
+- `tunnel_min_zoom` (12) — where a road tunnel takes its dashed, faded look; below it a tunnel or
+  bridge is drawn as the road it carries (the OSM example sets 13, OSM Carto's).
 - `water_min_zoom` (14) — drinking water and springs; 12 to plan a hike by its water.
 - `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
   (3, the city dots), `river_label_min_zoom` (9).

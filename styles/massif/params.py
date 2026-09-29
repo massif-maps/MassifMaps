@@ -24,6 +24,7 @@ PARAMS = {
     'road_osm_low': {'default': 0, 'values': SWITCH},
     'track_min_zoom': {'default': 12},
     'path_min_zoom': {'default': 12},
+    'tunnel_min_zoom': {'default': 12},
     'water_min_zoom': {'default': 14},
     'campsite_min_zoom': {'default': 15},
     'building_min_zoom': {'default': 14},

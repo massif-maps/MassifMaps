@@ -113,7 +113,7 @@ def major_only_below(expr, z):
 
 
 def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None, layout=None, fill_opacity=None,
-              case_cap=None):
+              case_cap=None, maxzoom=None, minzoom_param=None):
     layout = layout or {'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY}
     case_layout = {**layout, 'line-cap': case_cap} if case_cap else layout
     # e-ink orders the major roads by the weight of their outline, having no colour to do it with; the
@@ -126,19 +126,20 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     fill_paint = {'line-color': fill_color(c), 'line-width': width}
     if fill_opacity is not None:
         fill_paint['line-opacity'] = fill_opacity
+    metadata = {'massif:minzoom-param': minzoom_param} if minzoom_param else None
     return [
-        layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, filter=filter, layout=case_layout,
-              paint=case_paint, emissive=0),
-        layer(id, 'line', 'transportation', minzoom=minzoom, filter=filter, layout=layout,
-              paint=fill_paint, emissive=EMISSIVE),
+        layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter,
+              layout=case_layout, paint=case_paint, emissive=0, metadata=metadata),
+        layer(id, 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
+              paint=fill_paint, emissive=EMISSIVE, metadata=metadata),
     ]
 
 
-def low_casing(v, filter):
+def low_casing(v, filter, id='road-casing-low', maxzoom=14):
     c = v.palette
     if c.get('casing-low'):
         return []
-    return [gate(layer('road-casing-low', 'line', 'transportation', minzoom=9, maxzoom=14, filter=filter,
+    return [gate(layer(id, 'line', 'transportation', minzoom=9, maxzoom=maxzoom, filter=filter,
                        layout={'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY},
                        paint={'line-color': case_color(c), 'line-gap-width': WIDTH, 'line-width': LOW_CASING_WIDTH},
                        emissive=0), v, 'road_osm_low')]
@@ -216,19 +217,32 @@ def tracks(c, brunnel_test):
 def tunnels(v):
     c = v.palette
     tunnel = ['==', get('brunnel'), 'tunnel']
-    return (paths(c, tunnel, 'tunnel-') +
+    return (paths(c, tunnel, 'tunnel-') + cycleway(c, tunnel, 'tunnel-') +
             road_pair(c, 'road-tunnel', ['all', in_class(CLASSES), tunnel], 12, WIDTH, CASING_WIDTH,
-                      dash=[3, 3], fill_opacity=0.5,
+                      dash=[3, 3], fill_opacity=0.5, minzoom_param='tunnel_min_zoom',
                       layout={'line-join': 'miter', 'line-cap': 'butt', 'line-sort-key': SORT_KEY}))
+
+
+def plain_brunnels(v, no_ramp):
+    """Tunnels and bridges below the zoom they take their own look, drawn as the road they carry:
+    left out, a motorway broke off at every tunnel. `road_osm_low` keeps a tunnel plain to z13, as
+    OSM Carto does (its `tunnel_min_zoom` 13)."""
+    c = v.palette
+    brunnel = ['all', in_class(CLASSES), ['in', get('brunnel'), ['literal', ['tunnel', 'bridge']]], no_ramp]
+    tunnel = ['all', in_class(CLASSES), ['==', get('brunnel'), 'tunnel'], no_ramp]
+    return (road_pair(c, 'road-brunnel-low', brunnel, 3, WIDTH, CASING_WIDTH, maxzoom=12)
+            + [gate(lay, v, 'road_osm_low') for lay in road_pair(c, 'road-tunnel-low', tunnel, 12, WIDTH, CASING_WIDTH, maxzoom=13)])
 
 
 def ground(v):
     c = v.palette
     surface = ['!', ['in', get('brunnel'), ['literal', ['tunnel', 'bridge']]]]
+    # the thin ways have no bridge look of their own: a track bridge is the track
+    not_tunnel = ['!=', get('brunnel'), 'tunnel']
     no_ramp = ['!=', get('ramp'), 1]
     trails = v.flags.get('trails', False)
-    return (paths(c, surface, trails=trails) + (outdoor.trails(c, surface) if trails else []) + tracks(c, surface)
-            + (outdoor.mtb(c, surface) if trails else []) + [
+    return (paths(c, surface, trails=trails) + (outdoor.trails(c, not_tunnel) if trails else []) + tracks(c, not_tunnel)
+            + (outdoor.mtb(c, not_tunnel) if trails else []) + [
         layer('via-ferrata', 'line', 'transportation', minzoom=13,
               filter=['all', ['==', get('class'), 'via_ferrata'], ['!=', get('brunnel'), 'tunnel']],
               paint={'line-color': c['via-ferrata'], 'line-width': zoom_ramp(13, 1, 18, 2.5),
@@ -243,7 +257,9 @@ def ground(v):
                          ('road-construction-omt', in_class([k + '_construction' for k in CLASSES])))
     ] + road_pair(c, 'road-link', ['all', in_class(CLASSES), surface, ['==', get('ramp'), 1]], 12,
                   LINK_WIDTH, LINK_CASING)
-      + low_casing(v, ['all', in_class(CLASSES), surface, no_ramp])
+      + low_casing(v, ['all', in_class(CLASSES), not_tunnel, no_ramp])
+      + low_casing(v, ['all', in_class(CLASSES), ['==', get('brunnel'), 'tunnel'], no_ramp], 'road-tunnel-casing-low', 13)
+      + plain_brunnels(v, no_ramp)
       + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH)
       + unpaved(c, surface) + cycleway(c, surface) + [
         # private and no-access ways: the casing's red dashes, the OSM convention MapTiler also draws

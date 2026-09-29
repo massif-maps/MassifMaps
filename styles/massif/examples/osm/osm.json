@@ -25,6 +25,7 @@
         "plain": "plain"
       }
     },
-    "road_osm_low": 1
+    "road_osm_low": 1,
+    "tunnel_min_zoom": 13
   }
 }

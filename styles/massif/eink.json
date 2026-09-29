@@ -5506,7 +5506,7 @@
         ]
       ],
       "layout": {
-        "line-cap": "round",
+        "line-cap": "butt",
         "line-join": "round",
         "line-sort-key": [
           "match",

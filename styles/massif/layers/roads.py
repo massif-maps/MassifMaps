@@ -53,8 +53,10 @@ def case_color(c, key='case'):
     return ['match', get('class'), 'motorway', c['motorway-' + key], 'trunk', c['trunk-' + key], c['road-' + key]]
 
 
-def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None, layout=None, fill_opacity=None):
+def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None, layout=None, fill_opacity=None,
+              case_cap=None):
     layout = layout or {'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY}
+    case_layout = {**layout, 'line-cap': case_cap} if case_cap else layout
     # e-ink orders the roads by the weight of their outline, having no colour to do it with
     casing = scaled(casing, c.get('casing-scale', 1))
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
@@ -64,7 +66,7 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     if fill_opacity is not None:
         fill_paint['line-opacity'] = fill_opacity
     return [
-        layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, filter=filter, layout=layout,
+        layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, filter=filter, layout=case_layout,
               paint=case_paint, emissive=0),
         layer(id, 'line', 'transportation', minzoom=minzoom, filter=filter, layout=layout,
               paint=fill_paint, emissive=EMISSIVE),
@@ -165,4 +167,6 @@ def bridges(v):
     bridge = ['==', get('brunnel'), 'bridge']
     return (paths(c, bridge, 'bridge-') +
             road_pair(c, 'road-bridge', ['all', in_class(CLASSES), bridge], 12, WIDTH,
-                      zoom_ramp(12, 0.8, 14, 1.2, 22, 3, base=1.5), case_key='bridge-case'))
+                      zoom_ramp(12, 0.8, 14, 1.2, 22, 3, base=1.5), case_key='bridge-case',
+                      # Standard's: a round casing rings the bridge's end over the road it lands on
+                      case_cap='butt'))

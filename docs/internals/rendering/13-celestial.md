@@ -49,6 +49,12 @@ hides it, for free, with no extra work.
   explicit direction list covers the rest, and `setSegments` reads that list as **disjoint pairs**
   instead of a path — a figure drawn between fixed directions (the demo's constellation lines) is
   then ONE object: one draw call, one clickable thing, one name.
+- **Images** are a 16×16-cell mesh per object, each vertex `normalize(M·[u, v, 1])` where `M` maps
+  the three anchors' bitmap coordinates to their directions (`CelestialImageGrid.h`, Stellarium's
+  art transform). A plane seen from its centre bends straight bitmap lines into great circles, so a
+  figure 60° across stays true. Drawn first, with the sprite program (`u_luminanceAlpha` switches
+  brightness-as-opacity on); textures live in a `BitmapTextureCache`, unlike sprites, which upload
+  per frame — a 512² artwork re-uploaded with mipmaps every frame is not free.
 - **Depth**: depth-TESTED, never depth-WRITING. An infinitely distant object is parked just inside
   the far plane, so everything the map draws is nearer and covers it, and it never occludes
   anything itself.

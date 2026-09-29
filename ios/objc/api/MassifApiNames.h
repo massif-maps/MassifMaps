@@ -118,7 +118,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyBigEndian;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBillboardOcclusionEnabled;
 /** Returns the billboard/label terrain occlusion tolerance. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBillboardOcclusionTolerance;
-/** Returns the bitmap of the sprite. */
+/** Returns the bitmap of the image. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBitmap;
 /** Returns the bitmap scaling factor. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyBitmapScale;
@@ -504,6 +504,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyLogEventListener;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLong;
 /** Returns the long click duration in seconds. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLongClickDuration;
+/** Returns whether the bitmap's brightness is read as its opacity. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLuminanceAlpha;
 /** Returns the color of the main light. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMainLightColor;
 /** Returns the direction of the main light. */
@@ -1080,6 +1082,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodRemoveFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodScreenToMap;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSet;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetAnchorPoint;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetAnchors;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCircle;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
@@ -1143,6 +1146,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsBundle;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsDir;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsZip;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialArc;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialImage;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialLabel;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeCelestialSprite;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeEffectPostprocess;

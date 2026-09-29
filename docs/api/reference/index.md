@@ -28,7 +28,7 @@ Generated from the same table the SDK resolves `set`, `get`, `call` and `create`
 | `data` | [Data](data.md) | 1 |
 | `projection` | [Projections](projection.md) | 1 |
 | `bitmap` | [Bitmaps](bitmap.md) | 0 |
-| `celestial` | [Celestial](celestial.md) | 3 |
+| `celestial` | [Celestial](celestial.md) | 4 |
 
 Plus [value types](types.md) — what a property, payload or result can be — and every [enum](enums.md).
 

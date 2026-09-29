@@ -122,12 +122,39 @@ label that sits on its direction; the default (0, -1) is the middle of its botto
 `haloColor` + `haloWidth`. Sizes are density-independent pixels; the bitmap is rebuilt only when the
 text, the style or the screen density changes.
 
+## Images
+
+`CelestialImage` lays a bitmap on the sky, e.g. a constellation's artwork: three points of the
+bitmap are pinned to three directions and the rest follows, drawn as a mesh on the sky sphere, so
+it turns and stretches with the sky instead of facing the camera. The anchors are
+`[u, v, azimuth, altitude]` each, `u`/`v` 0..1 across the bitmap with `v` down from the top — three
+stars of the figure, placed like any other direction:
+
+```js
+const bear = massif.create('celestial', 'art.UMa', {
+  type: 'image', bitmap: { type: 'url', url: 'file:///…/ursa-major.png' },
+  luminanceAlpha: true, color: '#bfdbfe40'
+});
+massif.call(bear, 'setAnchors', [[
+  26 / 512, 75 / 512, alkaidAz, alkaidAlt,
+  452 / 512, 272 / 512, muUMaAz, muUMaAlt,
+  258 / 512, 394 / 512, phecdaAz, phecdaAlt
+]]);
+```
+
+The mapping is Stellarium's: the three anchors fix a plane, and a point of the bitmap is its spot on
+that plane seen from the observer, so Stellarium's `image.anchors` work as they are.
+`luminanceAlpha` reads the bitmap's brightness as its opacity and `color` as its hue — Stellarium's
+art is grey on black with no alpha, and that way it shows as light on a night sky or as ink on a
+pale one. The bitmap is uploaded once and kept, so re-anchoring every few seconds as the sky turns
+costs no upload. An image is not clickable.
+
 ## Draw order
 
 A celestial layer draws in the same pass as the vector layers' labels, so the **layer order** is
 the z order: a celestial layer below a labelled vector layer goes under its labels, one above it
 goes over them. Two layers split one sky into a path under the place names and a sun and its
-times over them. Within a layer, curves draw first and sprites on top. The map in front still
+times over them. Within a layer, images draw first, then curves, then sprites on top. The map in front still
 hides both, whatever the order: the depth test against the terrain does not depend on it.
 
 `occludedByMap = false` takes an object out of that depth test: it draws over the map. A label

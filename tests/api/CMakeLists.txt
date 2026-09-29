@@ -254,6 +254,8 @@ add_executable(api_tests
   PrefetchOrderTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
+  # Same: CelestialImageGrid.h is a sky image's bitmap-to-direction mapping and nothing else.
+  CelestialImageGridTest.cpp
   # Same: KineticStep.h is the per-frame fraction of a kinetic delta, and nothing else.
   KineticStepTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.

@@ -254,6 +254,7 @@ static const char* const kNames[] = {
     "logEventListener",
     "long",
     "longClickDuration",
+    "luminanceAlpha",
     "mainLightColor",
     "mainLightDirection",
     "mapPos",

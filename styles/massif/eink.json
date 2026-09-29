@@ -2557,6 +2557,11 @@
           "hsl(0, 0%, 100%)",
           "primary",
           "hsl(0, 0%, 100%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
           "hsl(0, 0%, 100%)"
         ],
         "line-width": [
@@ -3901,6 +3906,11 @@
           "hsl(0, 0%, 100%)",
           "primary",
           "hsl(0, 0%, 100%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
           "hsl(0, 0%, 100%)"
         ],
         "line-width": [
@@ -4412,6 +4422,11 @@
           "hsl(0, 0%, 100%)",
           "primary",
           "hsl(0, 0%, 100%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
           "hsl(0, 0%, 100%)"
         ],
         "line-width": [
@@ -5766,6 +5781,11 @@
           "hsl(0, 0%, 100%)",
           "primary",
           "hsl(0, 0%, 100%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
           "hsl(0, 0%, 100%)"
         ],
         "line-width": [

@@ -62,11 +62,12 @@ STREETS = {
     'halo-night': 'hsl(0, 0%, 5%)',
     'label-night': 'hsl(0, 0%, 92%)',
     'housenumber': 'hsl(20, 0%, 50%)',
-    # warm hierarchy, ours rather than Standard's grey-blue: a motorway should read at a glance
-    'motorway': '#f5c98a', 'motorway-case': '#c08a3e', 'motorway-bridge-case': '#a0712e',
-    'trunk': '#fadfa4', 'trunk-case': '#c9a24a', 'trunk-bridge-case': '#a8863a',
-    'primary': '#fdf0c4',
-    'road': '#ffffff', 'road-case': '#c3bfb4', 'road-bridge-case': '#9d988c',
+    # Standard's grey-blue, stepped by class the way MapTiler steps its yellows: the busier the road,
+    # the deeper its fill; a casing 10 points darker, a bridge's 10 more
+    'motorway': 'hsl(214, 23%, 70%)', 'motorway-case': 'hsl(214, 23%, 60%)', 'motorway-bridge-case': 'hsl(214, 23%, 50%)',
+    'trunk': 'hsl(235, 20%, 70%)', 'trunk-case': 'hsl(235, 20%, 60%)', 'trunk-bridge-case': 'hsl(235, 20%, 50%)',
+    'primary': 'hsl(224, 26%, 74%)', 'secondary': 'hsl(224, 25%, 82%)',
+    'road': 'hsl(224, 20%, 90%)', 'road-case': 'hsl(224, 22%, 72%)', 'road-bridge-case': 'hsl(224, 25%, 60%)',
     'path': 'hsl(295, 10%, 97%)',
     'path-z16': 'hsl(295, 10%, 93%)',
     'path-case': 'hsl(0, 10%, 80%)',

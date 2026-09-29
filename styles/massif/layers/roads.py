@@ -45,7 +45,8 @@ EMISSIVE = ['match', get('class'), ['motorway', 'trunk'], 0.6, 0.4]
 
 
 def fill_color(c):
-    return ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'], c['road']]
+    return ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
+            ['secondary', 'tertiary'], c.get('secondary', c['road']), c['road']]
 
 
 def case_color(c, key='case'):

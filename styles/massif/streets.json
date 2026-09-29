@@ -2241,10 +2241,10 @@
             "class"
           ],
           "motorway",
-          "#c08a3e",
+          "hsl(214, 23%, 60%)",
           "trunk",
-          "#c9a24a",
-          "#c3bfb4"
+          "hsl(235, 20%, 60%)",
+          "hsl(224, 22%, 72%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -2576,12 +2576,17 @@
             "class"
           ],
           "motorway",
-          "#f5c98a",
+          "hsl(214, 23%, 70%)",
           "trunk",
-          "#fadfa4",
+          "hsl(235, 20%, 70%)",
           "primary",
-          "#fdf0c4",
-          "#ffffff"
+          "hsl(224, 26%, 74%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
+          "hsl(224, 20%, 90%)"
         ],
         "line-width": [
           "interpolate",
@@ -3755,10 +3760,10 @@
             "class"
           ],
           "motorway",
-          "#c08a3e",
+          "hsl(214, 23%, 60%)",
           "trunk",
-          "#c9a24a",
-          "#c3bfb4"
+          "hsl(235, 20%, 60%)",
+          "hsl(224, 22%, 72%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -3920,12 +3925,17 @@
             "class"
           ],
           "motorway",
-          "#f5c98a",
+          "hsl(214, 23%, 70%)",
           "trunk",
-          "#fadfa4",
+          "hsl(235, 20%, 70%)",
           "primary",
-          "#fdf0c4",
-          "#ffffff"
+          "hsl(224, 26%, 74%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
+          "hsl(224, 20%, 90%)"
         ],
         "line-width": [
           "interpolate",
@@ -4083,10 +4093,10 @@
             "class"
           ],
           "motorway",
-          "#c08a3e",
+          "hsl(214, 23%, 60%)",
           "trunk",
-          "#c9a24a",
-          "#c3bfb4"
+          "hsl(235, 20%, 60%)",
+          "hsl(224, 22%, 72%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -4431,12 +4441,17 @@
             "class"
           ],
           "motorway",
-          "#f5c98a",
+          "hsl(214, 23%, 70%)",
           "trunk",
-          "#fadfa4",
+          "hsl(235, 20%, 70%)",
           "primary",
-          "#fdf0c4",
-          "#ffffff"
+          "hsl(224, 26%, 74%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
+          "hsl(224, 20%, 90%)"
         ],
         "line-width": [
           "interpolate",
@@ -5546,10 +5561,10 @@
             "class"
           ],
           "motorway",
-          "#a0712e",
+          "hsl(214, 23%, 50%)",
           "trunk",
-          "#a8863a",
-          "#9d988c"
+          "hsl(235, 20%, 50%)",
+          "hsl(224, 25%, 60%)"
         ],
         "line-gap-width": [
           "interpolate",
@@ -5785,12 +5800,17 @@
             "class"
           ],
           "motorway",
-          "#f5c98a",
+          "hsl(214, 23%, 70%)",
           "trunk",
-          "#fadfa4",
+          "hsl(235, 20%, 70%)",
           "primary",
-          "#fdf0c4",
-          "#ffffff"
+          "hsl(224, 26%, 74%)",
+          [
+            "secondary",
+            "tertiary"
+          ],
+          "hsl(224, 25%, 82%)",
+          "hsl(224, 20%, 90%)"
         ],
         "line-width": [
           "interpolate",
@@ -5986,7 +6006,7 @@
         ]
       ],
       "paint": {
-        "line-color": "#9d988c",
+        "line-color": "hsl(224, 25%, 60%)",
         "line-gap-width": [
           "interpolate",
           [

@@ -194,7 +194,7 @@ EINK.update({
     'road-label': _K, 'road-label-halo': _W, 'road-label-night': _K, 'road-label-halo-night': _W,
     'label': _K, 'label-night': _K, 'halo': _W, 'halo-night': _W, 'label-soft': 'hsl(0, 0%, 25%)',
     'label-natural': 'hsl(0, 0%, 15%)', 'label-park': 'hsl(0, 0%, 15%)', 'label-airport': _K,
-    'housenumber': 'hsl(0, 0%, 35%)', 'oneway': _K,
+    'housenumber': 'hsl(0, 0%, 35%)', 'oneway': _K, 'oneway-arrow': 'dark',
 })
 
 VARIANTS = {'streets': STREETS, 'outdoor': OUTDOOR, 'topo': TOPO, 'hybrid': HYBRID, 'eink': EINK}

@@ -169,13 +169,16 @@ def ground(v):
 
 def oneway(c):
     base = ['all', in_class(CLASSES), ['!=', get('class'), 'motorway']]
-    return [layer('oneway' + suffix, 'symbol', 'transportation', minzoom=16,
+    # its own layer per arrow colour: an icon that differs by variant is data-driven, and a data-driven
+    # icon converts to a shield, which drops the line placement
+    arrow = c.get('oneway-arrow', 'white')
+    return [layer('oneway' + ('' if arrow == 'white' else '-' + arrow) + suffix, 'symbol', 'transportation', minzoom=16,
                   filter=base + [['==', get('oneway'), value]],
                   layout={'symbol-placement': 'line', 'symbol-spacing': 200, 'icon-image': icon,
                           'icon-size': zoom_ramp(16, 0.6, 18, 1), 'icon-rotation-alignment': 'map',
                           'icon-allow-overlap': True, 'icon-ignore-placement': True},
                   paint={'icon-opacity': 0.8}, emissive={'icon-emissive-strength': 1})
-            for suffix, value, icon in (('', 1, 'oneway'), ('-reverse', -1, 'oneway-reverse'))]
+            for suffix, value, icon in (('', 1, 'oneway-' + arrow), ('-reverse', -1, 'oneway-reverse-' + arrow))]
 
 
 def bridges(v):

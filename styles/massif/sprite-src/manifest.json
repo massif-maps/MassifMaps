@@ -6,6 +6,8 @@
     "shield-us-highway":    { "stretchX": [[10, 14]], "content": [5, 5.6, 19, 15.8] }
   },
   "variants": {
+    "oneway":         { "white": { "STROKE": "#ffffff" }, "dark": { "STROKE": "#1a1a1a" } },
+    "oneway-reverse": { "white": { "STROKE": "#ffffff" }, "dark": { "STROKE": "#1a1a1a" } },
     "shield-plate": {
       "neutral": { "FILL": "#f6f4ef", "STROKE": "#6d6a63" },
       "red":     { "FILL": "#c8102e", "STROKE": "#8d0b20" },

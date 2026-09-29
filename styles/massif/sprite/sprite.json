@@ -15,7 +15,7 @@
     "pixelRatio": 1,
     "visible": true
   },
-  "oneway-reverse": {
+  "oneway-reverse-white": {
     "x": 454,
     "y": 1338,
     "width": 16,
@@ -23,9 +23,25 @@
     "pixelRatio": 1,
     "visible": true
   },
-  "oneway": {
+  "oneway-reverse-dark": {
     "x": 472,
     "y": 1338,
+    "width": 16,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "oneway-white": {
+    "x": 490,
+    "y": 1338,
+    "width": 16,
+    "height": 8,
+    "pixelRatio": 1,
+    "visible": true
+  },
+  "oneway-dark": {
+    "x": 0,
+    "y": 1388,
     "width": 16,
     "height": 8,
     "pixelRatio": 1,
@@ -72,8 +88,8 @@
     "visible": true
   },
   "pattern-park": {
-    "x": 490,
-    "y": 1338,
+    "x": 18,
+    "y": 1388,
     "width": 8,
     "height": 8,
     "pixelRatio": 1,
@@ -104,8 +120,8 @@
     "visible": true
   },
   "pattern-water": {
-    "x": 500,
-    "y": 1338,
+    "x": 28,
+    "y": 1388,
     "width": 12,
     "height": 4,
     "pixelRatio": 1,

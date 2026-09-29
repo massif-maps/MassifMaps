@@ -31,7 +31,7 @@ const POI_DISC = /<circle cx="24" cy="24" r="22\.5" fill="#ffffff" stroke="#9a9a
 const POI_GLYPH_FILL = 'fill="#333333"';
 // Maki's strokes are ~1 unit wide and read thin at a POI's size; a stroke in the glyph's own colour
 // thickens every one alike, in the neutral sprite the SDK splits and the baked one MapLibre draws.
-const POI_GLYPH_BOLD = 0.6;
+const POI_GLYPH_BOLD = 0.35;
 
 function boldGlyph(svg, colour) {
     return svg.replace(POI_GLYPH_FILL, `fill="${colour}" stroke="${colour}" stroke-width="${POI_GLYPH_BOLD}" stroke-linejoin="round"`);

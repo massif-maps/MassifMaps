@@ -4792,7 +4792,7 @@
       }
     },
     {
-      "id": "oneway",
+      "id": "oneway-dark",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4838,7 +4838,7 @@
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 200,
-        "icon-image": "oneway",
+        "icon-image": "oneway-dark",
         "icon-size": [
           "interpolate",
           [
@@ -4866,7 +4866,7 @@
       }
     },
     {
-      "id": "oneway-reverse",
+      "id": "oneway-dark-reverse",
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation",
@@ -4912,7 +4912,7 @@
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 200,
-        "icon-image": "oneway-reverse",
+        "icon-image": "oneway-reverse-dark",
         "icon-size": [
           "interpolate",
           [

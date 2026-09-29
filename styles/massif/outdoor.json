@@ -6189,7 +6189,7 @@
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 200,
-        "icon-image": "oneway",
+        "icon-image": "oneway-white",
         "icon-size": [
           "interpolate",
           [
@@ -6263,7 +6263,7 @@
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 200,
-        "icon-image": "oneway-reverse",
+        "icon-image": "oneway-reverse-white",
         "icon-size": [
           "interpolate",
           [

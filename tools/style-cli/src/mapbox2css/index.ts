@@ -1519,6 +1519,17 @@ function layerDeclarations(
             continue;
         }
 
+        // A circle's RADIUS is a marker's WIDTH: carried as it was, every circle drew at half its size.
+        if (name === 'circle-radius') {
+            const translated = tryTranslate(value, name, layer.id, coverage);
+            if (translated === null) continue;
+            // and a circle never collides in MapLibre: a marker that did would vanish under a label
+            out.push(`marker-width: (2 * ${translated});`, 'marker-allow-overlap: true;');
+            coverage.emit('marker-width');
+            coverage.emit('marker-allow-overlap');
+            continue;
+        }
+
         if (name === 'text-letter-spacing') {
             const spacing = ems(value, layer, coverage, name);
             if (spacing === null) continue;

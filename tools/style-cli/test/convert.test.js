@@ -477,3 +477,10 @@ test('a zoom an app sets is a selector on a parameter, not a when() per feature'
     assert.match(filtered, /\[zoom >= 'param::track_min_zoom'\]/);
     assert.doesNotMatch(filtered, /when\(/);
 });
+
+test('a circle\'s radius becomes a marker\'s width, which is a diameter', () => {
+    const out = convert({ layers: [{ id: 'dot', type: 'circle', source: 'openmaptiles', 'source-layer': 'poi',
+        paint: { 'circle-radius': 5, 'circle-color': '#ff0000' } }] }, table, NO_PALETTE).mss;
+    assert.match(out, /marker-width: \(2 \* 5\);/);
+    assert.match(out, /marker-allow-overlap: true;/, 'a circle never collides');
+});

@@ -551,6 +551,9 @@ and each becomes a different thing:
 | the disc | the shield's icon PLATE | `shield-icon-background-fill` ← `background` |
 | the ring | that plate's border | `shield-icon-background-border-fill` ← `background-stroke` |
 
+A `circle` layer becomes markers: `circle-radius` is emitted doubled as `marker-width`, which is a
+diameter, and with `marker-allow-overlap` on, since a MapLibre circle never collides.
+
 The plate's corner and ring — stated as `radius` / `background-stroke-width` or measured off the
 artwork — are the artwork's pixels at icon-size 1, so they are emitted times `icon-size`. Carried as
 they were, Massif's POIs (icon-size 0.4, ring 3) drew a 3 px ring where MapLibre draws 1.2, and the

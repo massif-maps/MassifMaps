@@ -770,6 +770,11 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             mapBlock.push(`${HEIGHT_VIEW_SCALE}: ${HEIGHT_TILT_RAMP};`);
         }
     }
+    // Lit here or by the renderer at colour evaluation, the 2D colours carry the light either way;
+    // left to the building defaults, a style with no `lights` had its ground lit a second time.
+    if ((options.liveLight || lights !== undefined) && !mapBlock.some((d) => d.startsWith('colors-prelit:'))) {
+        mapBlock.push('colors-prelit: 1;');
+    }
     // The MEDIAN index, not the first. `road` has 82 layers spanning indices 3 to 130 in Mapbox
     // Standard, and its FIRST is one early tunnel layer - ordering by that sank all 82 beneath
     // landuse, so the landuse polygons painted over every road. The median puts a source-layer

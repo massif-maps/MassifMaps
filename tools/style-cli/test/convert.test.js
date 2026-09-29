@@ -62,6 +62,12 @@ test('--ao-follows-height fades the ground AO on the ramp that lays the building
     assert.match(height, ramp);
 });
 
+test('a live-lit style says its colours are pre-lit, lights or not', () => {
+    // Without it terrain lighting shades the ground again under the grading the renderer already gave it.
+    assert.match(convert(style, table, { ...NO_PALETTE, liveLight: true }).mss, /Map \{[^}]*colors-prelit: 1;/);
+    assert.doesNotMatch(convert(style, table, NO_PALETTE).mss, /colors-prelit/);
+});
+
 test('an extrusion opacity over the pitch stays live, as a ramp over the tilt', () => {
     // pitch 20 -> tilt 70, pitch 50 -> tilt 40: the keys flip and the stops run in reverse.
     const faded = JSON.parse(JSON.stringify(style));

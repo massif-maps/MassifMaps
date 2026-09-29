@@ -484,3 +484,15 @@ test('a circle\'s radius becomes a marker\'s width, which is a diameter', () => 
     assert.match(out, /marker-width: \(2 \* 5\);/);
     assert.match(out, /marker-allow-overlap: true;/, 'a circle never collides');
 });
+
+test('under lights a wall\'s foot takes gl-js\'s faux AO, not the unlit vertical gradient', () => {
+    const lit = JSON.parse(JSON.stringify(style));
+    lit.lights = [{ id: 'ambient', type: 'ambient', properties: { intensity: 0.8 } },
+        { id: 'sun', type: 'directional', properties: { intensity: 0.2, direction: [180, 20] } }];
+    const buildings = lit.layers.find((layer) => layer.type === 'fill-extrusion');
+    buildings.paint['fill-extrusion-ambient-occlusion-intensity'] = 0.15;
+    const { mss } = convert(lit, table, NO_PALETTE);
+    // 1 - (1 - 0.08 * 0.15) * (1 - 0.9 * 0.15) = 0.1454, to two places
+    assert.match(mss, /building-vertical-gradient: 0\.15;/);
+    assert.match(mss, /building-vertical-gradient-height: 6;/);
+});

@@ -743,7 +743,8 @@ resolves the triple once, for the text and the icon separately:
 | point (or unset) | map | — | `point` |
 | line / line-center | map | map | `line` |
 | line / line-center | viewport | map | `billboard-line` |
-| line / line-center | — | viewport | `billboard-line-repeat` |
+| line | — | viewport | `billboard-line-repeat` |
+| line-center | viewport / map | viewport | `billboard` / `point`: one label at the line's middle, wrapped at `text-max-width` (MapLibre keeps it on one line) |
 
 MapTiler's topo-v4 sets `text-pitch-alignment: viewport` on all 17 of its line-placed layers, so
 dropping the alignments left every road name lying flat on the terrain.

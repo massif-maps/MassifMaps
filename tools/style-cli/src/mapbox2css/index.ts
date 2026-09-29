@@ -472,7 +472,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         // layer only - Standard's indoor walls state their own ambient occlusion and come first,
         // so reading every extrusion gave the whole map the shading of an indoor floor plan.
         if (layer.type === 'fill-extrusion' && BUILDING_LAYER.test(layer['source-layer'] ?? '')) {
-            mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage, options.buildingHeightRamp, options.aoFollowsHeight));
+            mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage, options.buildingHeightRamp, options.aoFollowsHeight, lights !== undefined));
         }
 
         // The only 3D model worth standing in for is a TREE: Standard draws the whole `tree`
@@ -1136,8 +1136,18 @@ function applyMassifExtras(layer: MapboxLayer): MapboxLayer {
     } as MapboxLayer;
 }
 
-function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean, aoFollowsHeight?: boolean): string[] {
+function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean, aoFollowsHeight?: boolean, lit?: boolean): string[] {
     const out: string[] = [];
+    // Under lights gl-js ignores the vertical gradient and darkens a wall's foot with its faux AO
+    // (fill_extrusion.fragment.glsl): (1 - 0.08 I)(1 - 0.9 I) at the foot, nearly gone ~6 m up at its
+    // 3 m wall radius. The SDK's linear ramp over that height is the closest it draws.
+    const wallAO = layer.paint?.['fill-extrusion-ambient-occlusion-intensity'];
+    if (lit && typeof wallAO === 'number' && wallAO > 0 && !seen.has('building-vertical-gradient')) {
+        seen.add('building-vertical-gradient');
+        out.push(`building-vertical-gradient: ${round(1 - (1 - 0.08 * wallAO) * (1 - 0.9 * wallAO))};`,
+            'building-vertical-gradient-height: 6;');
+        coverage.emit('building-vertical-gradient');
+    }
     for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
         // `fill-extrusion-edge-radius` is a LAYOUT property, not a paint one - reading only paint
         // dropped Standard's 0.4 bevel silently.

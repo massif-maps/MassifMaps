@@ -559,6 +559,7 @@ const char* massif_property_name(massif_property property);
 #define MASSIF_METHOD_GET_EXTERNAL_DATA_SOURCE_NAMES "getExternalDataSourceNames"
 #define MASSIF_METHOD_GET_FEATURE "getFeature"
 #define MASSIF_METHOD_GET_INSTRUCTION "getInstruction"
+#define MASSIF_METHOD_GET_LEGEND "getLegend"
 #define MASSIF_METHOD_GET_META_DATA_ELEMENT "getMetaDataElement"
 #define MASSIF_METHOD_GET_POINTS "getPoints"
 #define MASSIF_METHOD_GET_STYLE_PARAMETER "getStyleParameter"

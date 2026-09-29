@@ -90,6 +90,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "text"; }
+
     protected:
 
         static bool segmentIntersectRectangle(double a_rectangleMinX, double a_rectangleMinY, double a_rectangleMaxX, double a_rectangleMaxY,

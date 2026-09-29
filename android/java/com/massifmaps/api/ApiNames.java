@@ -1063,6 +1063,7 @@ public final class ApiNames {
     public static final String METHOD_GET_EXTERNAL_DATA_SOURCE_NAMES = "getExternalDataSourceNames";
     public static final String METHOD_GET_FEATURE = "getFeature";
     public static final String METHOD_GET_INSTRUCTION = "getInstruction";
+    public static final String METHOD_GET_LEGEND = "getLegend";
     public static final String METHOD_GET_META_DATA_ELEMENT = "getMetaDataElement";
     public static final String METHOD_GET_POINTS = "getPoints";
     public static final String METHOD_GET_STYLE_PARAMETER = "getStyleParameter";

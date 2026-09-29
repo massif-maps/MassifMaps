@@ -25,6 +25,50 @@ namespace massif::mvt {
         return it->second;
     }
 
+    std::vector<std::shared_ptr<const Symbolizer>> Style::findFeatureSymbolizers(const std::vector<std::shared_ptr<const Rule>>& rules, const ExpressionContext& exprContext) const {
+        PredicateEvaluator predEvaluator(exprContext, nullptr);
+        bool anyMatch = false;
+        std::vector<std::shared_ptr<const Symbolizer>> symbolizers;
+        for (const std::shared_ptr<const Rule>& rule : rules) {
+            const std::shared_ptr<const Filter>& filter = rule->getFilter();
+
+            // Filter matching logic
+            bool match = true;
+            switch (filter ? filter->getType() : Filter::Type::FILTER) {
+            case Filter::Type::FILTER:
+                switch (_filterMode) {
+                case Style::FilterMode::FIRST:
+                    if (anyMatch) {
+                        match = false;
+                    }
+                    else if (filter && filter->getPredicate()) {
+                        match = std::visit(predEvaluator, *filter->getPredicate());
+                    }
+                    break;
+                case Style::FilterMode::ALL:
+                    if (filter && filter->getPredicate()) {
+                        match = std::visit(predEvaluator, *filter->getPredicate());
+                    }
+                    break;
+                }
+                anyMatch = anyMatch || match;
+                break;
+            case Filter::Type::ELSEFILTER:
+                match = !anyMatch;
+                break;
+            case Filter::Type::ALSOFILTER:
+                match = anyMatch;
+                break;
+            }
+
+            // If match, add all rule symbolizers to the symbolizer list
+            if (match) {
+                symbolizers.insert(symbolizers.end(), rule->getSymbolizers().begin(), rule->getSymbolizers().end());
+            }
+        }
+        return symbolizers;
+    }
+
     void Style::optimizeRules() {
         if (_filterMode != FilterMode::FIRST) {
             return;

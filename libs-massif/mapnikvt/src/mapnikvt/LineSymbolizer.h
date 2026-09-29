@@ -39,6 +39,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "line"; }
+
     protected:
         static std::shared_ptr<const std::vector<cglib::vec2<float>>> parseArrowPath(const std::string& path, float boxLength, float boxWidth, float scale, float rotation);
         static bool isConvexArrowPath(const std::vector<cglib::vec2<float>>& points);

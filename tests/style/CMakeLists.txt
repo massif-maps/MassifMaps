@@ -3,6 +3,7 @@
 # weight ../README.md keeps out of this suite. Symbolizer.cpp itself is the property binding only.
 set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/LayerConfigResolver.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/LegendResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Symbolizer.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Map.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Style.cpp"
@@ -43,6 +44,7 @@ add_executable(style_tests
   ValueJSONTest.cpp
   AnchorLabelIdTest.cpp
   SymbolizerPropertyTest.cpp
+  LegendResolverTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

@@ -18,6 +18,7 @@ void testFontNames();
 void testValueJSON();
 void testAnchorLabelId();
 void testSymbolizerProperty();
+void testLegendResolver();
 
 int main() {
     testLayerConfig();
@@ -32,6 +33,7 @@ int main() {
     testValueJSON();
     testAnchorLabelId();
     testSymbolizerProperty();
+    testLegendResolver();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

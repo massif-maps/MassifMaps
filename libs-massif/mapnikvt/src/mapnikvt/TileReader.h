@@ -54,7 +54,6 @@ namespace massif::mvt {
         std::shared_ptr<Symbolizer::FeatureProcessor> createSelectionFeatureProcessor(const std::shared_ptr<const Symbolizer>& symbolizer, const SelectionParameter& selectionParameter, std::uint64_t stateKey, ExpressionContext& exprContext) const;
 
         std::vector<std::shared_ptr<const Rule>> preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext) const;
-        std::vector<std::shared_ptr<const Symbolizer>> findFeatureSymbolizers(const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext) const;
 
         virtual std::shared_ptr<vt::TileBackground> createTileBackground(const vt::TileId& tileId, const ExpressionContext& exprContext) const = 0;
 
@@ -77,7 +76,6 @@ namespace massif::mvt {
         const std::shared_ptr<const vt::TileTransformer> _transformer;
         const SymbolizerContext& _symbolizerContext;
         const std::shared_ptr<Logger> _logger;
-        const std::shared_ptr<const Filter> _trueFilter;
         const std::regex* _styleFilter = nullptr;
         // Per LAYER for the life of this reader, which is one tile: the anchor pass reads the whole
         // layer, and a layer two extruding styles draw would otherwise read it twice.

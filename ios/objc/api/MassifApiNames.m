@@ -547,6 +547,7 @@ MassifMethod const MassifMethodGetExternalChildLayer = @"getExternalChildLayer";
 MassifMethod const MassifMethodGetExternalDataSourceNames = @"getExternalDataSourceNames";
 MassifMethod const MassifMethodGetFeature = @"getFeature";
 MassifMethod const MassifMethodGetInstruction = @"getInstruction";
+MassifMethod const MassifMethodGetLegend = @"getLegend";
 MassifMethod const MassifMethodGetMetaDataElement = @"getMetaDataElement";
 MassifMethod const MassifMethodGetPoints = @"getPoints";
 MassifMethod const MassifMethodGetStyleParameter = @"getStyleParameter";

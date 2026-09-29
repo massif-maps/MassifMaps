@@ -38,6 +38,9 @@ namespace massif::mvt {
         // Whether the layer needs the shared extrusion anchor pass - see buildExtrusionAnchors.
         virtual bool needsExtrusionAnchors() const { return false; }
 
+        // What a legend calls this symbolizer ("line", "text"...); empty for one that draws no feature.
+        virtual std::string getTypeName() const { return std::string(); }
+
     protected:
         explicit Symbolizer(std::shared_ptr<Logger> logger) : _logger(std::move(logger)) {
             bindProperty("comp-op", &_compOp);

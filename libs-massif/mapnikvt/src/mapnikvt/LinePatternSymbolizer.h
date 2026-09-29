@@ -22,6 +22,8 @@ namespace massif::mvt {
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
+
+        virtual std::string getTypeName() const override { return "line-pattern"; }
         
     protected:
         static constexpr float PATTERN_SCALE = 0.75f;

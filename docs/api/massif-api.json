@@ -4731,6 +4731,18 @@
         },
         {
           "cppClass": "massif::MBVectorTileDecoder",
+          "name": "getLegend",
+          "args": [
+            {
+              "name": "spec",
+              "type": "json"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MBVectorTileDecoder",
           "name": "getStyleParameter",
           "args": [
             {

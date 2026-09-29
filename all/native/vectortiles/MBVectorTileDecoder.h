@@ -138,6 +138,16 @@ namespace massif {
         void setJSONStyleParameters(const std::string& params);
 
         /**
+         * Resolves a legend spec against the current style and style parameter values: every item is a
+         * synthetic feature, and comes back as the swatch the style draws it with (lines, fill, icon, plate, text).
+         * See the Legends feature page for the spec and the result.
+         * @param spec The legend spec as JSON. Empty means the legend.json beside the style project.
+         * @return The legend as JSON, without the items the style does not draw; empty if the style ships no legend.
+         * @throws std::invalid_argument If the spec is malformed.
+         */
+        std::string getLegend(const std::string& spec) const;
+
+        /**
          * Returns the ordered style layer names as declared by the style (project JSON "layers", or Mapnik XML Layers),
          * i.e. the draw order. CompositeVectorTileLayer places external sources by it: a source whose name is not
          * in this list is not drawn.

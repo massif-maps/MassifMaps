@@ -34,6 +34,8 @@
 // because a spec has no way to say "these bytes" - and without it a decoder built from a spec
 // loses the labels of every converted MapBox style, which all name DIN Pro.
 !method(massif::MBVectorTileDecoder, addFallbackFont, arg(font, handle), returns(void))
+// The style's legend, resolved against the live parameters. No spec reads the style's own legend.json.
+!method(massif::MBVectorTileDecoder, getLegend, arg(spec, json), returns(json))
 // And as a property bag, which is what an app writes: set(style, "params.water_color", "#0af").
 // setStyleParameter answers whether the style declares the parameter, so an undeclared one is
 // refused rather than dropped.
@@ -52,6 +54,7 @@
 %std_exceptions(massif::MBVectorTileDecoder::setStyleParameter)
 %std_exceptions(massif::MBVectorTileDecoder::setStyleParameters)
 %std_exceptions(massif::MBVectorTileDecoder::setJSONStyleParameters)
+%std_exceptions(massif::MBVectorTileDecoder::getLegend)
 %ignore massif::MBVectorTileDecoder::isCartoCSSLayerNamesIgnored;
 %ignore massif::MBVectorTileDecoder::setCartoCSSLayerNamesIgnored;
 %ignore massif::MBVectorTileDecoder::getLayerNameOverride;

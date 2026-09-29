@@ -47,6 +47,8 @@ namespace massif::mvt {
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
+        virtual std::string getTypeName() const override { return "markers"; }
+
     protected:
         static constexpr int DEFAULT_CIRCLE_SIZE = 10;
         static constexpr int DEFAULT_ARROW_WIDTH = 28;

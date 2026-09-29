@@ -188,8 +188,15 @@ sky.onCelestialClick((e) => {
 });
 ```
 
-A tap aimed at the sky has no map position at all; the SDK now asks the layers with the ray alone in
-that case, instead of dropping the touch as it used to.
+A tap aimed at the sky has no map position at all; the SDK asks the layers with the ray alone in
+that case, instead of dropping the touch as it used to. If that hits nothing, `map.clicked` still
+does not fire - there is no ground position to report - so every celestial layer's listener gets
+`onSkyClicked` instead, surface API `sky.clicked` (consumable; `celestialObject` is null, `azimuth` and
+`altitude` are where the tap aimed). The usual use is clearing a selection:
+
+```js
+sky.onSkyClick(() => clearSelection());
+```
 
 ## Looking up: the camera
 

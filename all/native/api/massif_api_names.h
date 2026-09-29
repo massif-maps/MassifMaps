@@ -608,6 +608,7 @@ const char* massif_property_name(massif_property property);
 #define MASSIF_EVENT_MAP_INTERACTION "map.interaction"
 #define MASSIF_EVENT_MAP_MOVED "map.moved"
 #define MASSIF_EVENT_MAP_STABLE "map.stable"
+#define MASSIF_EVENT_SKY_CLICKED "sky.clicked"
 #define MASSIF_EVENT_VECTORELEMENT_CLICKED "vectorelement.clicked"
 #define MASSIF_EVENT_VECTORTILE_CLICKED "vectortile.clicked"
 

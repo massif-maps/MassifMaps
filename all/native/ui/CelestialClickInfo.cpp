@@ -11,6 +11,14 @@ namespace massif {
     {
     }
 
+    CelestialClickInfo::CelestialClickInfo(const ClickInfo& clickInfo, float azimuth, float altitude) :
+        _clickInfo(clickInfo),
+        _celestialObject(),
+        _azimuth(azimuth),
+        _altitude(altitude)
+    {
+    }
+
     CelestialClickInfo::~CelestialClickInfo() {
     }
 

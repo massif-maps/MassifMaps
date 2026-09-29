@@ -1534,9 +1534,9 @@ export interface PropertyTypes {
         'width': number;
     };
     'massif::CelestialClickInfo': {
-        /** (read-only) Returns the altitude of the clicked object at the time of the click. */
+        /** (read-only) Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
         readonly 'altitude': number;
-        /** (read-only) Returns the azimuth of the clicked object at the time of the click. */
+        /** (read-only) Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at. */
         readonly 'azimuth': number;
         /** (read-only) Returns the clicked object. */
         readonly 'celestialObject': Handle;
@@ -11938,6 +11938,7 @@ export interface EventTypes {
     };
     'massif::CelestialLayer': {
         'celestial.clicked': 'massif::CelestialClickInfo';
+        'sky.clicked': 'massif::CelestialClickInfo';
     };
     'massif::CelestialObject': {
     };

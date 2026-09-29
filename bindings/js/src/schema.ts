@@ -536,7 +536,7 @@ export const METHODS: { [cls: string]: string } = {
  * whether the SDK asks the listener if the event was consumed.
  */
 export const EVENTS: { [cls: string]: { [event: string]: { payload: string; consume: boolean } } } = {
-    'massif::CelestialLayer': { 'celestial.clicked': { payload: 'massif::CelestialClickInfo', consume: true } },
+    'massif::CelestialLayer': { 'celestial.clicked': { payload: 'massif::CelestialClickInfo', consume: true }, 'sky.clicked': { payload: 'massif::CelestialClickInfo', consume: true } },
     'massif::Options': { 'map.clicked': { payload: 'massif::MapClickInfo', consume: false }, 'map.idle': { payload: '', consume: false }, 'map.interaction': { payload: 'massif::MapInteractionInfo', consume: false }, 'map.moved': { payload: 'massif::MapMoveInfo', consume: false }, 'map.stable': { payload: 'massif::MapMoveInfo', consume: false } },
     'massif::PersistentCacheTileDataSource': { 'download.completed': { payload: '', consume: false }, 'download.failed': { payload: 'massif::TileDownloadInfo', consume: false }, 'download.progress': { payload: 'massif::TileDownloadInfo', consume: false }, 'download.started': { payload: 'massif::TileDownloadInfo', consume: false } },
     'massif::VectorLayer': { 'vectorelement.clicked': { payload: 'massif::VectorElementClickInfo', consume: true } },

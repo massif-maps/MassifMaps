@@ -1763,7 +1763,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the altitude of the clicked object at the time of the click."
+          "doc": "Returns the altitude of the clicked object at the time of the click, or the one the click aimed at."
         },
         {
           "name": "azimuth",
@@ -1772,7 +1772,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the azimuth of the clicked object at the time of the click."
+          "doc": "Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at."
         },
         {
           "name": "celestialObject",
@@ -2083,6 +2083,12 @@
         {
           "cppClass": "massif::CelestialLayer",
           "name": "celestial.clicked",
+          "payload": "massif::CelestialClickInfo",
+          "consumable": true
+        },
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "sky.clicked",
           "payload": "massif::CelestialClickInfo",
           "consumable": true
         }

@@ -1518,9 +1518,9 @@ export interface PropertyTypes {
   "massif::CelestialClickInfo": {
     /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
     [key: `celestialObject.metaData.${string}`]: Json;
-    /** (read-only) Returns the altitude of the clicked object at the time of the click. */
+    /** (read-only) Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
     readonly "altitude": number;
-    /** (read-only) Returns the azimuth of the clicked object at the time of the click. */
+    /** (read-only) Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at. */
     readonly "azimuth": number;
     /** (read-only) Returns the clicked object. */
     readonly "celestialObject": Handle<"massif::CelestialObject">;
@@ -9043,6 +9043,7 @@ export interface EventTypes {
   };
   "massif::CelestialLayer": {
     "celestial.clicked": Handle<"massif::CelestialClickInfo">;
+    "sky.clicked": Handle<"massif::CelestialClickInfo">;
   };
   "massif::CelestialObject": {
   };

@@ -595,6 +595,7 @@ MassifEvent const MassifEventMapIdle = @"map.idle";
 MassifEvent const MassifEventMapInteraction = @"map.interaction";
 MassifEvent const MassifEventMapMoved = @"map.moved";
 MassifEvent const MassifEventMapStable = @"map.stable";
+MassifEvent const MassifEventSkyClicked = @"sky.clicked";
 MassifEvent const MassifEventVectorelementClicked = @"vectorelement.clicked";
 MassifEvent const MassifEventVectortileClicked = @"vectortile.clicked";
 MassifKind const MassifKindAssets = @"assets";

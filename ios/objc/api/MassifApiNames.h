@@ -38,7 +38,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAccuracy;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAction;
 /** Returns the address of the result. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAddress;
-/** Returns the altitude of the clicked object at the time of the click. */
+/** Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAltitude;
 /** Returns the ambient light color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAmbientColor;
@@ -88,7 +88,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenRiseDuration;
 /** Returns the tilt at or above which the terrain renders flat. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenTilt;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutocomplete;
-/** Returns the azimuth of the clicked object at the time of the click. */
+/** Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAzimuth;
 /** Returns the blue component of this map color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyB;
@@ -1117,6 +1117,7 @@ FOUNDATION_EXPORT MassifEvent const MassifEventMapIdle;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapInteraction;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapMoved;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapStable;
+FOUNDATION_EXPORT MassifEvent const MassifEventSkyClicked;
 FOUNDATION_EXPORT MassifEvent const MassifEventVectorelementClicked;
 FOUNDATION_EXPORT MassifEvent const MassifEventVectortileClicked;
 

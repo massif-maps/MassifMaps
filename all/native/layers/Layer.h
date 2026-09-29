@@ -225,6 +225,8 @@ namespace massif {
         
         virtual void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const = 0;
         virtual bool processClick(const ClickInfo& clickInfo, const RayIntersectedElement& intersectedElement, const ViewState& viewState) const = 0;
+        // A click aimed at the sky that hit nothing on any layer; only sky layers answer it.
+        virtual bool processSkyClick(const ClickInfo& clickInfo, const cglib::ray3<double>& ray, const ViewState& viewState) const { return false; }
     
         virtual void registerDataSourceListener() = 0;
         virtual void unregisterDataSourceListener() = 0;

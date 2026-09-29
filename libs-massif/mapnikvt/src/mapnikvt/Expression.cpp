@@ -276,6 +276,21 @@ namespace massif::mvt {
         return false;
     }
 
+    bool InterpolateExpression::yieldsColor(const Expression& expr) {
+        if (auto val = std::get_if<Value>(&expr)) {
+            vt::Color color;
+            auto str = std::get_if<std::string>(val);
+            return str && tryParseColor(*str, color);
+        }
+        if (auto interp = std::get_if<std::shared_ptr<InterpolateExpression>>(&expr)) {
+            return (*interp)->isColor();
+        }
+        if (auto tertiary = std::get_if<std::shared_ptr<TertiaryExpression>>(&expr)) {
+            return yieldsColor((*tertiary)->getExpression2()) || yieldsColor((*tertiary)->getExpression3());
+        }
+        return false;
+    }
+
     /** The key positions, when every one of them is a constant - a computed key cannot be clamped. */
     std::optional<std::pair<float, float>> InterpolateExpression::constantKeyRange(const std::vector<Expression>& keyFrames) {
         std::optional<std::pair<float, float>> range;
@@ -367,6 +382,10 @@ namespace massif::mvt {
             Value val = std::visit(ExpressionEvaluator(context, nullptr), expr);
             if (auto str = std::get_if<std::string>(&val)) {
                 vt::Color color = parseColor(*str);
+                colorKeyFramesList.emplace_back(cglib::vec<float, 5>{ { key, color[0], color[1], color[2], color[3] } });
+            }
+            else if (yieldsColor(expr)) {
+                vt::Color color = vt::Color::fromValue(ValueConverter<unsigned int>::convert(val));
                 colorKeyFramesList.emplace_back(cglib::vec<float, 5>{ { key, color[0], color[1], color[2], color[3] } });
             }
             else {

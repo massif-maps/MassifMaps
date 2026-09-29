@@ -2,18 +2,22 @@
   "comment": "Boxes are in the SVG's own pixels; the sprite build scales them per pixel ratio.",
   "icons": {
     "shield-plate":         { "stretchX": [[9, 15]], "content": [3, 4.2, 21, 15.8] },
-    "shield-us-interstate": { "stretchX": [[9, 15]], "content": [4, 7.4, 20, 17.4] },
-    "shield-us-highway":    { "stretchX": [[10, 14]], "content": [5, 5.6, 19, 15.8] }
+    "shield-exit":          { "stretchX": [[9, 15]], "content": [2, 3.5, 22, 14.5] },
+    "shield-us-interstate-2": { "content": [3, 7.5, 17, 17] },
+    "shield-us-interstate-3": { "content": [3, 7.5, 23, 17] },
+    "shield-us-highway-2":    { "content": [3, 5, 17, 14.5] },
+    "shield-us-highway-3":    { "content": [3, 5, 23, 14.5] }
   },
   "variants": {
     "oneway":         { "white": { "STROKE": "#ffffff" }, "dark": { "STROKE": "#1a1a1a" } },
     "oneway-reverse": { "white": { "STROKE": "#ffffff" }, "dark": { "STROKE": "#1a1a1a" } },
     "shield-plate": {
-      "neutral": { "FILL": "#f6f4ef", "STROKE": "#6d6a63" },
-      "red":     { "FILL": "#c8102e", "STROKE": "#8d0b20" },
-      "yellow":  { "FILL": "#f2c500", "STROKE": "#8a7100" },
-      "blue":    { "FILL": "#1b4b9c", "STROKE": "#123566" },
-      "green":   { "FILL": "#0a6b3d", "STROKE": "#064226" }
+      "neutral": { "FILL": "#ffffff", "STROKE": "#1b1d27" },
+      "mono":    { "FILL": "#ffffff", "STROKE": "#000000" },
+      "red":     { "FILL": "#e8474b", "STROKE": "#ffffff" },
+      "yellow":  { "FILL": "#ffe266", "STROKE": "#1b1d27" },
+      "blue":    { "FILL": "#4a63c9", "STROKE": "#ffffff" },
+      "green":   { "FILL": "#1f9e4c", "STROKE": "#ffffff" }
     }
   }
 }

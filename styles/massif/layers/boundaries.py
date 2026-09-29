@@ -1,11 +1,12 @@
-from lib import get, layer, zoom_ramp
+from lib import gate, get, layer, zoom_ramp
 
 
 def layers(v):
     c = v.palette
     land = ['!=', get('maritime'), 1]
     level = lambda n: ['==', get('admin_level'), n]
-    return [
+    sub = ('boundary-minor', 'boundary-state')
+    out = [
         layer('boundary-country-halo', 'line', 'boundary', minzoom=3,
               filter=['all', level(2), land],
               paint={'line-color': c['boundary-halo'], 'line-width': zoom_ramp(3, 4, 12, 8),
@@ -33,3 +34,8 @@ def layers(v):
                      'line-dasharray': ['step', ['zoom'], ['literal', [3, 2, 5]], 7, ['literal', [2, 1.5]]]},
               emissive=0.8),
     ]
+    for lay in out:
+        gate(lay, v, 'show_boundaries')
+        if lay['id'] in sub:
+            gate(lay, v, 'sub_boundaries')
+    return out

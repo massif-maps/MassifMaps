@@ -1,4 +1,4 @@
-from lib import by_hour, get, in_class, layer, zoom_ramp
+from lib import by_hour, gate, get, in_class, layer, zoom_ramp
 
 SLEEPERS = ['step', ['zoom'], ['literal', [0.1, 15]], 16, ['literal', [0.1, 1]], 18, ['literal', [0.05, 0.5]]]
 
@@ -18,19 +18,31 @@ def pair(c, id, filter, prefix=''):
     ]
 
 
+def emphasis(c, filter):
+    """`emphasis_rails`, Alpimaps' switch: a main line (no `service`, so no siding or yard) drawn dark
+    and wide, for a map read along the railway. Hidden in MapLibre, which has no config in a filter."""
+    return [layer('rail-emphasis', 'line', 'transportation', minzoom=6,
+                  filter=['all', filter, ['!', ['has', 'service']]],
+                  layout={'visibility': 'none'},
+                  paint={'line-color': c['rail-emphasis'], 'line-width': zoom_ramp(6, 1, 12, 2, 16, 3.5, 20, 7, base=1.3)},
+                  metadata={'massif:layout': {'visibility': 'visible'},
+                            'massif:filter': ['==', ['config', 'emphasis_rails'], 1]}, emissive=0.5)]
+
+
 def ground(v):
     c = v.palette
     surface = ['!', ['in', get('brunnel'), ['literal', ['tunnel', 'bridge']]]]
-    return (pair(c, 'rail', ['all', ['==', get('class'), 'rail'], surface]) +
-            pair(c, 'tram', ['all', ['==', get('class'), 'transit'], surface]))
+    rail = ['all', ['==', get('class'), 'rail'], surface]
+    return (emphasis(c, rail) + pair(c, 'rail', rail) +
+            [gate(lay, v, 'show_tram') for lay in pair(c, 'tram', ['all', ['==', get('class'), 'transit'], surface])])
 
 
 def tunnels(v):
     c = v.palette
-    return [layer('rail-tunnel', 'line', 'transportation', minzoom=13,
-                  filter=['all', in_class(['rail', 'transit']), ['==', get('brunnel'), 'tunnel']],
-                  paint={'line-color': c['rail'], 'line-width': zoom_ramp(13, 0.5, 18, 2, base=1.5),
-                         'line-dasharray': [2, 2], 'line-opacity': 0.5})]
+    return [gate(layer('rail-tunnel', 'line', 'transportation', minzoom=13,
+                       filter=['all', in_class(['rail', 'transit']), ['==', get('brunnel'), 'tunnel']],
+                       paint={'line-color': c['rail'], 'line-width': zoom_ramp(13, 0.5, 18, 2, base=1.5),
+                              'line-dasharray': [2, 2], 'line-opacity': 0.5}), v, 'show_underground')]
 
 
 def bridges(v):
@@ -44,7 +56,7 @@ def bridges(v):
                   filter=['all', in_class(['rail', 'transit']), bridge],
                   paint={'line-color': c['land'], 'line-width': zoom_ramp(13, 2, 18, 8, 22, 40, base=1.5)})] + \
         pair(c, 'rail', ['all', ['==', get('class'), 'rail'], bridge], 'bridge-') + \
-        pair(c, 'tram', ['all', ['==', get('class'), 'transit'], bridge], 'bridge-')
+        [gate(lay, v, 'show_tram') for lay in pair(c, 'tram', ['all', ['==', get('class'), 'transit'], bridge], 'bridge-')]
 
 
 def overhead(v):

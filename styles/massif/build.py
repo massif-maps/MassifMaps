@@ -1,6 +1,6 @@
 """Write the Massif style family from the shared layer modules.
 
-    python3 styles/massif/build.py              # every variant's MapLibre style, and family.json
+    python3 styles/massif/build.py              # every variant's MapLibre style, legend/, and family.json
     python3 styles/massif/build.py --convert    # and the SDK project, into carto/
 
 Each variant is a standalone MapLibre style (<variant>.json) - what the reference pane draws and
@@ -20,6 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from layers import boundaries, buildings, imagery, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
 from lib import FONTS  # noqa: E402
+from params import PARAMS  # noqa: E402
+import legend  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLI = os.path.join(HERE, '..', '..', 'tools', 'style-cli', 'dist', 'cli.js')
@@ -27,16 +29,18 @@ CONVERT = ['--fold-casings', '--tile-draw-size', '512', '--live-light']
 
 
 class Variant:
-    def __init__(self, name, title, parts, sources=(), **flags):
+    def __init__(self, name, title, parts, sources=(), params=None, **flags):
         self.name = name
         self.title = title
         self.parts = parts
+        self.params = {k: (params or {}).get(k, spec['default']) for k, spec in PARAMS.items()}
         self.palette = PALETTES[name]
         self.sources = {k: SOURCES[k] for k in ('openmaptiles', 'bathymap', *sources)}
         self.flags = flags
 
     def layers(self):
         return [lay for part in self.parts for lay in part(self)]
+
 
 
 SOURCES = {
@@ -52,7 +56,7 @@ SOURCES = {
 
 STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, rail.tunnels,
            roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges, rail.overhead,
-           boundaries.layers, buildings.layers, labels.low, shields.layers, pois.layers, road_labels.layers,
+           boundaries.layers, buildings.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
            labels.places]
 
 # bottom to top; among the labels, the later a layer the higher its placement priority. The first
@@ -60,25 +64,29 @@ STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
 OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
            outdoor.contours, rail.tunnels, roads.tunnels, outdoor.routes, roads.ground, rail.ground, roads.bridges,
            rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels,
-           labels.low, shields.layers, pois.mountain, pois.layers, road_labels.layers, labels.places]
+           labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, outdoor.sac_labels,
+           road_labels.layers, labels.places]
+
+# e-ink carries everything outdoor does but the relief and the route bands, which grey into mud
+EINK = [p for p in OUTDOOR if p not in (outdoor.hillshade, outdoor.routes)]
 
 HYBRID = [land.background, imagery.layers, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges,
-          rail.bridges, rail.overhead, boundaries.layers, labels.low, shields.layers, pois.layers, road_labels.layers,
+          rail.bridges, rail.overhead, boundaries.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
           labels.places]
+
+# a walker's map brings the campsites in with the huts
+OUTDOOR_PARAMS = {'campsite_min_zoom': 13}
 
 VARIANTS = {v.name: v for v in [
     Variant('streets', 'Massif Streets', STREETS),
-    Variant('outdoor', 'Massif Outdoor', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
-    Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), trails=True),
+    Variant('outdoor', 'Massif Outdoor', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS,
+            trails=True),
+    Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS, trails=True),
     Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite',), dark_ground=True),
-    Variant('eink', 'Massif E-ink', STREETS, mono=True),
+    Variant('eink', 'Massif E-ink', EINK, sources=('contours',), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1},
+            mono=True, trails=True),
 ]}
 
-POI_RANKING = {'default': 'category', 'values': ['category', 'rank']}
-BUILDING_OPACITY = {'default': 0.6}
-POI_STYLE = {'default': 'badge', 'values': ['badge', 'plain']}
-# where the tracks and paths start, an app's to move (Alpimaps shows tracks from 13)
-ZOOMS = {'track_min_zoom': {'default': 12}, 'path_min_zoom': {'default': 12}}
 
 
 def document(name, layers, metadata, schema, sources):
@@ -95,9 +103,15 @@ def document(name, layers, metadata, schema, sources):
 
 
 def maplibre_style(v):
-    return document(v.title, v.layers(), {'massif:variant': v.name, 'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', *ZOOMS]},
-                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY, **ZOOMS},
-                    v.sources)
+    layers = v.layers()
+    for lay in layers:
+        # maplibre has no parameter in a zoom test: the variant's default becomes the layer's minzoom,
+        # floored by the layer's own as the SDK's two tests are
+        param = lay.get('metadata', {}).get('massif:minzoom-param')
+        if param:
+            lay['minzoom'] = max(lay.get('minzoom', 0), v.params[param])
+    return document(v.title, layers, {'massif:variant': v.name, 'massif:live-config': list(PARAMS)},
+                    {k: {**spec, 'default': v.params[k]} for k, spec in PARAMS.items()}, v.sources)
 
 
 FIXED = ('id', 'type', 'source', 'source-layer', 'minzoom', 'maxzoom', 'filter')
@@ -179,9 +193,9 @@ def family_style():
     # the default palette's own names for its colours and fonts, so variables.mss says @motorway
     own = {k: v for k, v in VARIANTS[names[0]].palette.items() if isinstance(v, str)}
     own.update({'font-' + role: sdk for role, (_, sdk) in FONTS.items()})
-    return document('Massif', layers, {'massif:live-config': ['poiRanking', 'poiStyle', 'building_opacity', 'variant', *ZOOMS],
+    return document('Massif', layers, {'massif:live-config': [*PARAMS, 'variant'],
                                        'massif:palette-names': own},
-                    {'poiRanking': POI_RANKING, 'poiStyle': POI_STYLE, 'building_opacity': BUILDING_OPACITY, **ZOOMS,
+                    {**PARAMS,
                      'variant': {'default': names[0], 'values': names}},
                     {k: s for v in VARIANTS.values() for k, s in v.sources.items()})
 
@@ -207,8 +221,10 @@ def main(args):
         if whens:
             sys.exit('%d when() in carto/style.mss - rewrite the layer so it brackets:\n  %s' % (len(whens), '\n  '.join(whens)))
         spec = {'values': {n: n for n in VARIANTS}}
-        for name in VARIANTS:
-            project = {'extends': './project.json', 'styleparameters': {'variant': {**spec, 'default': name}}}
+        for name, v in VARIANTS.items():
+            params = {'variant': {**spec, 'default': name}}
+            params.update({k: value for k, value in v.params.items() if value != PARAMS[k]['default']})
+            project = {'extends': './project.json', 'styleparameters': params}
             open(os.path.join(HERE, 'carto', name + '.json'), 'w').write(json.dumps(project, indent=2) + '\n')
         # the override examples are child projects of this one, so they sit beside it
         for example in sorted(os.listdir(os.path.join(HERE, 'examples'))):
@@ -216,7 +232,8 @@ def main(args):
             for f in sorted(os.listdir(folder)):
                 if f.endswith(('.json', '.mss')):
                     shutil.copy(os.path.join(folder, f), os.path.join(HERE, 'carto', f))
-        print('carto/ + ' + ', '.join(n + '.json' for n in VARIANTS) + ' + examples')
+        legend.write()
+        print('carto/ + ' + ', '.join(n + '.json' for n in VARIANTS) + ' + legend.json + examples')
 
 
 if __name__ == '__main__':

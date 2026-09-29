@@ -8,6 +8,12 @@
     "border": 3
   },
   "classes": {
+    "adit": {
+      "disc": "hsl(110, 70%, 28%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
     "aerialway": {
       "disc": "hsl(225, 60%, 58%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -51,6 +57,12 @@
       "border": 3
     },
     "aquarium": {
+      "disc": "hsl(320, 85%, 60%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "archaeological_site": {
       "disc": "hsl(320, 85%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
@@ -134,6 +146,12 @@
       "radius": 21,
       "border": 3
     },
+    "bird_hide": {
+      "disc": "hsl(110, 70%, 28%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
     "bus": {
       "disc": "hsl(225, 60%, 58%)",
       "glyph": "hsl(0, 0%, 100%)",
@@ -166,6 +184,12 @@
     },
     "castle": {
       "disc": "hsl(320, 85%, 60%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "cave_entrance": {
+      "disc": "hsl(110, 70%, 28%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -220,7 +244,7 @@
     },
     "drinking_water": {
       "disc": null,
-      "glyph": "hsl(210, 20%, 43%)",
+      "glyph": "hsl(200, 85%, 45%)",
       "radius": 21,
       "border": 0
     },
@@ -250,6 +274,18 @@
     },
     "florist": {
       "disc": "hsl(210, 75%, 53%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "fort": {
+      "disc": "hsl(320, 85%, 60%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "fountain": {
+      "disc": "hsl(320, 85%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -507,7 +543,7 @@
       "border": 3
     },
     "spring": {
-      "disc": "hsl(110, 70%, 28%)",
+      "disc": "hsl(200, 85%, 45%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -591,13 +627,25 @@
       "border": 0
     },
     "water": {
-      "disc": "hsl(110, 70%, 28%)",
+      "disc": "hsl(200, 85%, 45%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "water_point": {
+      "disc": "hsl(200, 85%, 45%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
     },
     "waterfall": {
       "disc": "hsl(110, 70%, 28%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "watering_place": {
+      "disc": "hsl(200, 85%, 45%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3
@@ -610,6 +658,12 @@
     },
     "wilderness_hut": {
       "disc": "hsl(250, 75%, 60%)",
+      "glyph": "hsl(0, 0%, 100%)",
+      "radius": 21,
+      "border": 3
+    },
+    "windmill": {
+      "disc": "hsl(320, 85%, 60%)",
       "glyph": "hsl(0, 0%, 100%)",
       "radius": 21,
       "border": 3

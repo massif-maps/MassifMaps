@@ -6,7 +6,7 @@ key on per layer to fold it into one project.json table - see the style's README
 import json
 from collections import OrderedDict
 
-from lib import by_hour, get, layer
+from lib import by_hour, gate, get, layer
 
 # Standard's poi-label text-color, read off mapbox/standard: night (brightness 0.25) and day (0.3).
 CATEGORY = OrderedDict([
@@ -18,6 +18,8 @@ CATEGORY = OrderedDict([
     ('park_like', {'disc': 'hsl(110, 70%, 28%)', 'night': 'hsl(110, 55%, 65%)', 'day': 'hsl(110, 70%, 28%)'}),
     ('medical', {'disc': 'hsl(0, 90%, 60%)', 'night': 'hsl(0, 70%, 70%)', 'day': 'hsl(0, 90%, 60%)'}),
     ('education', {'disc': 'hsl(30, 50%, 38%)', 'night': 'hsl(30, 50%, 70%)', 'day': 'hsl(30, 50%, 38%)'}),
+    # ours: drinking water and springs in the water's own blue, so a walker reads "water" at a glance
+    ('water', {'disc': 'hsl(200, 85%, 45%)', 'night': 'hsl(200, 80%, 72%)', 'day': 'hsl(200, 85%, 40%)'}),
     # Standard draws transit in its own layer and its own blue; this style keeps that.
     ('transit', {'disc': 'hsl(225, 60%, 58%)', 'night': 'hsl(225, 55%, 78%)', 'day': 'hsl(225, 60%, 48%)'}),
     ('default', {'disc': 'hsl(210, 20%, 43%)', 'night': 'hsl(210, 20%, 70%)', 'day': 'hsl(210, 20%, 43%)'}),
@@ -27,16 +29,18 @@ CLASSES = {
     'food_and_drink': ['bar', 'cafe', 'fast_food', 'restaurant', 'ice_cream', 'sushi'],
     'store_like': ['alcohol_shop', 'bakery', 'beer', 'butcher', 'clothing_store', 'florist',
                    'furniture', 'gift', 'grocery', 'hairdresser', 'laundry', 'shop'],
-    'arts_and_entertainment': ['amusement_park', 'aquarium', 'art_gallery', 'attraction', 'castle',
-                               'cinema', 'monument', 'museum', 'music', 'ruins', 'theatre', 'zoo'],
+    'arts_and_entertainment': ['amusement_park', 'aquarium', 'archaeological_site', 'art_gallery', 'attraction',
+                               'castle', 'cinema', 'fort', 'fountain', 'monument', 'museum', 'music', 'ruins',
+                               'theatre', 'windmill', 'zoo'],
     'commercial_services': ['alpine_hut', 'atm', 'bank', 'bicycle', 'bicycle_rental', 'car',
                             'embassy', 'fire_station', 'fuel', 'lodging', 'parking',
                             'parking_garage', 'police', 'post', 'prison', 'town_hall', 'wilderness_hut'],
     'sport_and_leisure': ['american_football', 'baseball', 'basketball', 'cricket', 'golf',
                           'nightclub', 'pitch', 'skiing', 'soccer', 'stadium', 'swimming', 'tennis'],
-    'park_like': ['beach', 'campsite', 'cemetery', 'dog_park', 'garden', 'mountain', 'park',
-                  'playground', 'ranger_station', 'spring', 'viewpoint', 'volcano', 'water', 'waterfall',
-                  'wetland'],
+    # adit, cave_entrance, fort...: Alpimaps' planetiler keeps OSM's value where OpenMapTiles has no class
+    'park_like': ['adit', 'beach', 'bird_hide', 'campsite', 'cave_entrance', 'cemetery', 'dog_park', 'garden',
+                  'mountain', 'park', 'playground', 'ranger_station', 'viewpoint', 'volcano', 'waterfall', 'wetland'],
+    'water': ['drinking_water', 'spring', 'water', 'water_point', 'watering_place'],
     'medical': ['dentist', 'doctors', 'hospital', 'pharmacy', 'veterinary'],
     'education': ['college', 'library', 'school'],
     # Standard has no religion category and neither does Liberty; both leave it the neutral grey.
@@ -112,16 +116,16 @@ def shape_match(key):
     return out
 
 
-def day_color():
+def day_color(fixed=None):
     """The same table, at day brightness: a literal colour maplibre can parse."""
-    return flat_match(lambda cat: CATEGORY[cat]['day'], CATEGORY['default']['day'])
+    return flat_match(lambda cat: CATEGORY[cat]['day'], CATEGORY['default']['day'], fixed=fixed)
 
 
-def night_color():
-    return flat_match(lambda cat: CATEGORY[cat]['night'], CATEGORY['default']['night'])
+def night_color(fixed=None):
+    return flat_match(lambda cat: CATEGORY[cat]['night'], CATEGORY['default']['night'], fixed=fixed)
 
 
-def text_color():
+def text_color(fixed=None):
     """Per category, and following the hour.
 
     The ramp is OUTSIDE and the class table inside, not the other way round: a stop whose value is a
@@ -129,18 +133,20 @@ def text_color():
     and becomes a per-feature ternary chain. Same picture, one lookup instead of ten comparisons.
     """
     def at(key):
-        return flat_match(lambda cat: CATEGORY[cat][key], CATEGORY['default'][key])
+        return flat_match(lambda cat: CATEGORY[cat][key], CATEGORY['default'][key], fixed=fixed)
     return ['interpolate', ['linear'], ['measure-light', 'brightness'],
             0.25, at('night'), 0.3, at('day')]
 
 
-def flat_match(value_of, default, furniture=None, keep_furniture=False):
+def flat_match(value_of, default, furniture=None, keep_furniture=False, fixed=None):
     """ONE match on `class`, which is the shape mapbox2css folds into a project.json table.
 
     Nesting a second match inside it - a subclass override, say - defeats the fold, and the rule
     becomes a fifteen-deep per-feature ternary instead of a lookup. Street furniture is therefore a
     branch of this same match rather than a wrapper around it.
     """
+    if fixed:
+        return value_of(fixed)
     out = ['match', ['get', 'class']]
     if furniture is not None:
         out.append(sorted(NO_BACKGROUND))
@@ -170,15 +176,16 @@ CATEGORY_LAYERS = [
                       'telephone']),
     ('poi-amenity', 17, ['bicycle', 'bicycle_rental', 'car', 'fuel', 'parking', 'parking_garage']),
     ('poi-bus', 16, ['bus']),
-    ('poi-attraction', 16, ['amusement_park', 'aquarium', 'attraction']),
-    ('poi-cultural', 16, ['art_gallery', 'castle', 'monument', 'museum', 'ruins']),
+    ('poi-attraction', 16, ['amusement_park', 'aquarium', 'attraction']),  # but a viewpoint: see MOUNTAIN_LAYERS
+    ('poi-cultural', 16, ['archaeological_site', 'art_gallery', 'castle', 'fort', 'fountain', 'monument', 'museum',
+                          'ruins', 'windmill']),
     ('poi-sport', 16, ['american_football', 'baseball', 'basketball', 'cricket', 'golf', 'pitch', 'skiing',
                        'soccer', 'stadium', 'swimming', 'tennis']),
-    ('poi-outdoor', 16, ['beach', 'dog_park', 'garden', 'mountain', 'park', 'playground', 'ranger_station',
-                         'viewpoint', 'volcano', 'water', 'waterfall', 'wetland', 'zoo']),
+    ('poi-outdoor', 16, ['adit', 'beach', 'bird_hide', 'cave_entrance', 'dog_park', 'garden', 'mountain', 'park',
+                         'playground', 'ranger_station', 'viewpoint', 'volcano', 'water', 'waterfall', 'wetland', 'zoo']),
     ('poi-food', 16, ['bar', 'cafe', 'fast_food', 'restaurant']),
     ('poi-cemetery', 15, ['cemetery']),
-    ('poi-lodging', 15, ['alpine_hut', 'campsite', 'lodging', 'picnic_site', 'shelter']),
+    ('poi-lodging', 15, ['alpine_hut', 'lodging', 'picnic_site', 'shelter']),
     ('poi-public', 15, ['atm', 'bank', 'cinema', 'embassy', 'fire_station', 'information', 'library', 'music',
                         'police', 'post', 'prison', 'theatre', 'town_hall']),
     ('poi-worship', 15, ['place_of_worship']),
@@ -188,7 +195,8 @@ CATEGORY_LAYERS = [
     ('poi-airport', 12, ['airfield', 'airport', 'heliport']),
 ]
 
-ICON = ['match', get('subclass'), ['florist', 'furniture'], get('subclass'), get('class')]
+# a viewpoint is an attraction to OpenMapTiles: its own glyph at every zoom (a ruin keeps the castle, as Standard)
+ICON = ['match', get('subclass'), ['florist', 'furniture', 'viewpoint'], get('subclass'), get('class')]
 
 
 # Standard's night POI: the disc takes the category's night colour, and the ring and the glyph go
@@ -196,9 +204,11 @@ ICON = ['match', get('subclass'), ['florist', 'furniture'], get('subclass'), get
 NIGHT_INK = 'hsl(0, 0%, 12%)'
 
 
-def per_class(value_of, default):
+def per_class(value_of, default, fixed=None):
     """ONE flat match on class, grouping the classes that share a value: every branch a constant,
-    which is the shape mapbox2css folds into a project.json table."""
+    which is the shape mapbox2css folds into a project.json table. `fixed`: one category's value."""
+    if fixed:
+        return value_of(None, fixed)
     groups = {}
     for cls in sorted(set(CLASS_TO_CATEGORY) | set(NO_BACKGROUND)):
         value = value_of(cls, CLASS_TO_CATEGORY.get(cls, 'default'))
@@ -210,18 +220,18 @@ def per_class(value_of, default):
     return out + [default]
 
 
-def icon_params():
+def icon_params(fixed=None):
     # `transparent`, not `none`: the decoder's parseColor knows the CSS names and that one, and
     # throws on anything else - a bad colour kills the whole feature processor.
     bare = lambda cls: cls in NO_BACKGROUND
     disc = lambda key: per_class(lambda cls, cat: 'transparent' if bare(cls) else CATEGORY[cat][key],
-                                 CATEGORY['default'][key])
-    ring = lambda ink: per_class(lambda cls, cat: 'transparent' if bare(cls) else ink, ink)
+                                 CATEGORY['default'][key], fixed)
+    ring = lambda ink: per_class(lambda cls, cat: 'transparent' if bare(cls) else ink, ink, fixed)
     # a glyph with no disc under it is drawn in the category colour, not white on it
-    glyph = lambda ink, key: per_class(lambda cls, cat: CATEGORY[cat][key] if bare(cls) else ink, ink)
+    glyph = lambda ink, key: per_class(lambda cls, cat: CATEGORY[cat][key] if bare(cls) else ink, ink, fixed)
     # poiStyle `plain`: OSM's look, every glyph bare in its category colour like the furniture
     plain = lambda badge, bare_value: ['match', ['config', 'poiStyle'], 'plain', bare_value, badge]
-    tinted = lambda key: per_class(lambda cls, cat: CATEGORY[cat][key], CATEGORY['default'][key])
+    tinted = lambda key: per_class(lambda cls, cat: CATEGORY[cat][key], CATEGORY['default'][key], fixed)
     return {'background': plain(by_hour(disc('night'), disc('disc')), 'transparent'),
             'background-stroke': plain(by_hour(ring(NIGHT_INK), ring('hsl(0, 0%, 100%)')), 'transparent'),
             'icon': plain(by_hour(glyph(NIGHT_INK, 'night'), glyph('hsl(0, 0%, 100%)', 'disc')),
@@ -249,7 +259,8 @@ NAME = ['coalesce', get('name'), get('name_int')]
 SHELTER_NAME = ['case', ['==', get('shelter_type'), 'public_transport'], '', NAME]
 
 
-def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAME):
+def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAME, overlap=False, scale=1,
+              category=None):
     layout = {
         # The reference pane names the BAKED sprite, the SDK the neutral one it splits and
         # recolours: a sprite with the colour already in it has no plate mapbox2css can measure.
@@ -265,38 +276,46 @@ def poi_layer(id, minzoom, filter, ranking, v, icon=ICON, maxzoom=None, text=NAM
         'text-radial-offset': 1.0,
         'text-justify': 'auto',
         'text-optional': True,
+        **({'icon-allow-overlap': True} if overlap else {}),
     }
     # on imagery the ground is dark by day as well, so the label keeps its night pair
     dark = v.flags.get('dark_ground', False)
     mono = v.flags.get('mono', False)
-    massif_layout = {'icon-image': ['image', icon, {'params': mono_params() if mono else icon_params()}]}
+    massif_layout = {'icon-image': ['image', icon, {'params': mono_params() if mono else icon_params(category)}]}
     # a bare glyph fills the disc's box: at the badge's size it reads half OSM's 14 px icon
-    massif_layout['icon-size'] = 0.4 if mono else ['match', ['config', 'poiStyle'], 'plain', 0.6, 0.4]
+    massif_layout['icon-size'] = 0.4 * scale if mono else ['match', ['config', 'poiStyle'], 'plain', 0.6 * scale, 0.4 * scale]
     if ranking == 'rank':
         # maplibre draws the default mode; the SDK turns these back on through massif:layout
         layout['visibility'] = 'none'
         massif_layout['visibility'] = 'visible'
     return layer(id, 'symbol', 'poi', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
-                 paint={'text-color': MONO_INK if mono else night_color() if dark else day_color(),
+                 paint={'text-color': MONO_INK if mono else night_color(category) if dark else day_color(category),
                         'text-halo-color': HALO_NIGHT if dark else HALO_DAY, 'text-halo-width': HALO_WIDTH},
                  metadata={'massif:params': ['icon-image', 'text-color'],
                            'massif:layout': massif_layout,
                            # maplibre rejects ["config", ...] in a filter, so the switch rides here
                            **({'massif:filter': ['==', ['config', 'poiRanking'], ranking]} if ranking else {}),
-                           'massif:paint': {'text-color': MONO_INK if mono else night_color() if dark else text_color(),
+                           'massif:paint': {'text-color': MONO_INK if mono else night_color(category) if dark else text_color(category),
                                             'text-halo-color': HALO_NIGHT if dark else by_hour(HALO_NIGHT, HALO_DAY)}})
 
 
-# A walker's POIs, from the zoom a hike is planned at. Each stops where its category layer takes
-# over; a bivouac and a spring have none, so they carry on.
+# A walker's POIs, each until its category layer takes over, water from `water_min_zoom`.
 # data-driven even for the hut layer: a constant icon-image is not one mapbox2css recolours
 MOUNTAIN_ICON = ['match', get('class'), ['lodging', 'wilderness_hut'], 'alpine_hut', 'spring', 'water', get('class')]
+# the viewpoint first, so a cave or a ruin beside it wins the collision; at every zoom, in nature's
+# green as the sprite bakes it, where its class (attraction) would colour it pink
 MOUNTAIN_LAYERS = [
-    ('poi-mountain-water', 14, 18, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON),
-    ('poi-mountain-shelter', 13, 15, ['==', get('class'), 'shelter'], MOUNTAIN_ICON),
-    ('poi-mountain', 12, None, ['in', get('class'), ['literal', ['spring', 'wilderness_hut']]], MOUNTAIN_ICON),
+    ('poi-mountain-viewpoint', 14, None, ['==', get('subclass'), 'viewpoint'], ICON, None),
+    ('poi-mountain-sight', 14, 16, ['in', get('class'), ['literal', ['adit', 'archaeological_site', 'castle',
+                                                                      'cave_entrance', 'fort', 'waterfall']]], ICON, None),
+    ('poi-mountain-picnic', 13, 15, ['==', get('class'), 'picnic_site'], MOUNTAIN_ICON, None),
+    ('poi-mountain-shelter', 13, 15, ['all', ['==', get('class'), 'shelter'],
+                                      ['!=', get('shelter_type'), 'public_transport']], MOUNTAIN_ICON, None),
+    ('poi-mountain-water', 12, 18, ['==', get('class'), 'drinking_water'], MOUNTAIN_ICON, 'water_min_zoom'),
+    ('poi-mountain-spring', 12, None, ['==', get('class'), 'spring'], MOUNTAIN_ICON, 'water_min_zoom'),
+    ('poi-mountain', 12, None, ['==', get('class'), 'wilderness_hut'], MOUNTAIN_ICON, None),
     # OpenMapTiles files a hut under lodging, whose glyph is a bed
-    ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON),
+    ('poi-mountain-hut', 12, 15, ['==', get('subclass'), 'alpine_hut'], MOUNTAIN_ICON, None),
 ]
 
 
@@ -305,14 +324,51 @@ def shelter_text(id):
 
 
 def mountain(v):
-    return [poi_layer(id, minzoom, filter, None, v, icon=icon, maxzoom=maxzoom, text=shelter_text(id))
-            for id, minzoom, maxzoom, filter, icon in MOUNTAIN_LAYERS]
+    out = []
+    for id, minzoom, maxzoom, filter, icon, param in MOUNTAIN_LAYERS:
+        lay = poi_layer(id, minzoom, filter, None, v, icon=icon, maxzoom=maxzoom, text=shelter_text(id),
+                        category='park_like' if id == 'poi-mountain-viewpoint' else None)
+        if param:
+            lay['metadata']['massif:minzoom-param'] = param
+        if param == 'water_min_zoom':
+            # `highlight_drinking_water` draws these in water_highlight() instead
+            gate(lay, v, 'highlight_drinking_water', 0)
+        out.append(lay)
+    return out
+
+
+def campsites(v):
+    """From `campsite_min_zoom`, a caravan site only with `show_caravan_site`; each twice, placed
+    with and without `campsite_allow_overlap`, since overlap is decided per layer."""
+    camp = ['==', get('class'), 'campsite']
+    out = []
+    for id, filter, switch in (('poi-campsite', ['all', camp, ['!=', get('subclass'), 'caravan_site']], None),
+                               ('poi-caravan-site', ['all', camp, ['==', get('subclass'), 'caravan_site']],
+                                'show_caravan_site')):
+        for overlap in (0, 1):
+            lay = poi_layer(id + ('-overlap' if overlap else ''), 12, filter, None, v, overlap=bool(overlap))
+            lay['metadata']['massif:minzoom-param'] = 'campsite_min_zoom'
+            gate(lay, v, 'campsite_allow_overlap', overlap)
+            if switch:
+                gate(lay, v, switch)
+            out.append(lay)
+    return out
+
+
+def water_highlight(v):
+    """`highlight_drinking_water`, Alpimaps': water points larger and never hidden by another label"""
+    lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], None, v,
+                    icon=MOUNTAIN_ICON, overlap=True, scale=1.4)
+    lay['metadata']['massif:minzoom-param'] = 'water_min_zoom'
+    return [gate(lay, v, 'highlight_drinking_water')]
 
 
 def layers(v):
-    return ([poi_layer(id, minzoom, filter, 'rank', v) for id, minzoom, filter in RANK_LAYERS] +
-            [poi_layer(id, minzoom, ['in', get('class'), ['literal', classes]], 'category', v, text=shelter_text(id))
-             for id, minzoom, classes in CATEGORY_LAYERS])
+    return ([poi_layer(id, minzoom, filter, 'rank', v) for id, minzoom, filter in RANK_LAYERS] + campsites(v) +
+            [poi_layer(id, minzoom, ['all', ['in', get('class'), ['literal', classes]],
+                                     *([['!=', get('subclass'), 'viewpoint']] if 'attraction' in classes else [])],
+                       'category', v, text=shelter_text(id))
+             for id, minzoom, classes in CATEGORY_LAYERS] + water_highlight(v))
 
 
 def write_sprite_palette(path):

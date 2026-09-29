@@ -80,3 +80,38 @@ def scaled(expr, k):
         body = expr[2:-1]
         return expr[:2] + [x if i % 2 == 0 else scaled(x, k) for i, x in enumerate(body)] + [scaled(expr[-1], k)]
     return expr
+
+
+def from_zoom(expr, z):
+    """A width ramp that is 0 below zoom z and follows expr's own stops from z on."""
+    stops = [(expr[i], expr[i + 1]) for i in range(3, len(expr), 2) if expr[i] >= z]
+    return expr[:3] + [z - 1, 0] + [x for stop in stops for x in stop]
+
+
+def gate(lay, v, name, value=1):
+    """Draw a layer only while parameter `name` is `value`. The SDK tests it per tile; MapLibre,
+    which has no config in a filter, draws the layer if the variant's default is that value."""
+    meta = lay.setdefault('metadata', {})
+    test = ['==', ['config', name], value]
+    meta['massif:filter'] = ['all', meta['massif:filter'], test] if 'massif:filter' in meta else test
+    meta['massif:layout'] = {**meta.get('massif:layout', {}), 'visibility': 'visible'}
+    lay['layout'] = {**lay.get('layout', {}), 'visibility': 'visible' if v.params[name] == value else 'none'}
+    return lay
+
+
+def padded(expr, px):
+    """A width ramp with px added to every output, for a margin drawn under the line."""
+    if isinstance(expr, (int, float)):
+        return expr + px
+    if expr[0] == 'interpolate':
+        return expr[:3] + [x if i % 2 == 0 else padded(x, px) for i, x in enumerate(expr[3:])]
+    raise ValueError('padded: %s' % expr[0])
+
+
+def halo(c, id, filter, width, param):
+    """e-ink's white margin under a thin dashed way, so it still reads across a patterned wood"""
+    if 'line-halo' not in c:
+        return []
+    return [layer(id, 'line', 'transportation', minzoom=12, filter=filter, layout={'line-join': 'round'},
+                  paint={'line-color': c['line-halo'], 'line-width': padded(width, 2)},
+                  metadata={'massif:minzoom-param': param})]

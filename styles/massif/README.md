@@ -44,6 +44,10 @@ palette plus the modules it adds.
 - **Tracks by `tracktype`**, OSM Carto's ladder: grade1 solid, grade5 dotted, one layer per grade.
   `access` in `no`/`private` lays red dashes over the road, as MapTiler does. Our fork's
   `construction` flag and stock OMT's `*_construction` classes both draw.
+- **An unpaved minor or service road has a dashed casing** from z14, OSM Carto's convention, read
+  off `surface_detail` (gravel, ground, dirt...). Only Alpimaps' planetiler writes that field.
+- **Tracks and paths are named**, in italic and their own ink, from z14 and z15: the name, else the
+  ref (a greenway's `V 64`).
 - **Tunnels and bridges are their own passes**: a tunnel is the road at half opacity with a dashed
   casing, drawn under everything; a bridge is drawn after the rail it crosses, with a darker casing.
 - **Links** (OMT `ramp=1`) take Standard's `*_link` widths.
@@ -61,7 +65,7 @@ palette plus the modules it adds.
 **Low zoom comes from a second, optional archive.** The alpimaps bathymap (`global_landcover`:
 ESA WorldCover classes, `depth`: Natural Earth isobaths, z0-6) is the `bathymap` source, drawn the
 way Standard draws its own landcover and water-depth: generalised greens, white glaciers and a
-darker veil per isobath, handing over to OMT's landcover by crossfade over z7-9. The style names
+darker veil per isobath, handing over to OMT's landcover by crossfade over z8-9. The style names
 the source with no public URL - an app that ships the archive merges it into its main tiles
 (`MergedMBVTTileDataSource`), where the rules find the two layers by name; one that does not simply
 has no landcover below z7. `min_depth 0` is the whole ocean, which also paints the sea a regional
@@ -86,12 +90,18 @@ deeper woods (`OUTDOOR` in the palette):
 - **Trails by `sac_scale`**: red to T3, blue from T4, the dash tightening with the grade - one layer
   per grade, T5 and T6 apart so no filter holds two sets. Footways and cycleways keep the streets
   ribbon (`urban-path`).
+- **`mtb_scale` as a thin line beside the path** from z14, in a French VTT waymark's colour (0-1
+  green, 2 blue, 3 red, 4+ black) and a dash that tightens with the grade, so e-ink says it too.
 - **Cliffs**: our fork's `mountain_peak` cliff lines, MapTiler's edge plus offset teeth.
 - **Waymarked routes** from the optional `routes` source: a translucent band per class, wider for
   international and national networks.
 - **Peaks from z9**, the three most prominent per tile first.
-- **A walker's POIs early**: huts, bivouacs and springs from z12, shelters from z13, drinking water
-  from z14 - each until its ordinary POI layer takes over. A hut draws the hut glyph, where
+- **A walker's POIs early**, in every variant: huts and bivouacs from z12; shelters (not a bus
+  stop's), campsites and picnic sites from z13; viewpoints, caves, adits, ruins, castles, forts,
+  archaeological sites and waterfalls from z14, a viewpoint yielding to any of them and keeping its
+  own glyph and nature's green at every zoom (OpenMapTiles files it under `attraction`); drinking water
+  and springs from `water_min_zoom` - each until its ordinary POI layer takes over. Water points have their own
+  category, in the water's blue. A hut draws the hut glyph, where
   OpenMapTiles' `lodging` class would give it a bed.
 
 ## Topo
@@ -112,17 +122,28 @@ arrangement; POI names keep their category colour at its night lightness.
 
 ## E-ink
 
-The streets layers on a page of black, white and a few greys (`EINK`), with no night - a still page
-is read under a lamp, so every night value equals the day one. What colour says elsewhere is said
-here by texture and weight:
+Everything outdoor draws but the relief and the route bands, which grey into mud, on a page of
+black, white and a few greys (`EINK`), with no night - a still page is read under a lamp, so every
+night value equals the day one. What colour says elsewhere is said here by texture and weight:
 
 - **Patterns** from `sprite-src/pattern/`, the ones Alpimaps' e-ink style uses: openstreetmap-carto's
   trees, scrub, wetland, rock, beach, ice sheet, graves and hatching, baked to one grey at 45 %
-  alpha on a clear ground so a road still reads through them; sparse dots for grass and parks, ruled
-  lines plus a shoreline for water. A patterned fill is its own layer id (`landcover-wood-pattern`):
-  a paint property only some variants state cannot be merged into one rule.
+  alpha on a clear ground so a road still reads through them; dots for grass and parks. Each lays
+  over a flat grey fill from the zoom its texture says something (`PATTERNS` in `layers/land.py`,
+  Alpimaps' zooms: wood 11, rock and scree 12, wetland 13, parks and graves 14), because a pattern
+  is a textured fill per tile and at z8 a wood's trees are noise. A patterned fill is its own layer
+  id (`landcover-wood-pattern`), e-ink only.
+- **Ground stays white.** A class's flat grey fills only below the zoom its pattern starts, then
+  hands over to the pattern alone; the other fills are 95-97 % grey. Grey is kept for what has no
+  texture to say it.
+- **Every landcover and landuse polygon is edged**, landcover dotted as Swisstopo and IGN edge a
+  wood, so a clearing shows and the edge is not read as a contour.
+- **Water is ruled lines on white** inside a thin mid-grey shore - two dark shores around a plain
+  river read as a road. Rivers and streams are dashed grey lines, intermittent ones dotted.
 - **Roads** are white with black casings, their hierarchy carried by the casing's weight
-  (`casing-scale` 1.8); tracks and paths keep their dashes, in black.
+  (`casing-scale` 1.8). **Tracks and trails** are black, 1.6 times as wide as elsewhere, over a white
+  margin (`line-halo`) that keeps them readable across a patterned wood.
+- **Shields** are one white plate with a black ring, for every country.
 - **Buildings** are flat grey footprints with an outline at every zoom - no extrusion.
 - **POIs** are a black glyph on a white disc with a black ring, the same for every category; the
   MapLibre style names the neutral sprite rather than the colour-baked one.
@@ -130,6 +151,17 @@ here by texture and weight:
 A per-variant POI palette stays a lookup in the SDK project: the converter folds a `match` on the
 `variant` config into one set of tables per variant (`poi-*-eink-*`), picked by a per-draw
 parameter test.
+
+## Legends
+
+`build.py --convert` writes `carto/legend.json`, a legend SPEC read off the tables the layers are
+built from ([`legend.py`](legend.py)): roads, track grades, SAC and MTB grades, transport, water,
+land, mountain POIs, POI categories and road numbers, each a synthetic feature (source layer,
+geometry, fields, zoom). It holds no colours: the SDK (`MBVectorTileDecoder.getLegend`) and
+`massif-style legend carto/project.json --params variant=eink` resolve it against the compiled style
+with the live parameters, so the swatches follow the variant, the parameters and a user's `.mss`
+overrides, and an item a variant does not draw is dropped. One spec serves every variant. See
+[legends](../../docs/features/legends.md). Edit the table, never the legend.
 
 ## Style parameters an app sets
 
@@ -144,8 +176,36 @@ parameter test.
 - `poiStyle` — `badge` (Standard's disc) or `plain`: OpenStreetMap's look, every glyph bare in its
   category colour and drawn larger. It reads the class tables, so switching is a re-decode.
 - `poiRanking` — `category` or `rank`, see below.
-- `track_min_zoom`, `path_min_zoom` (12) — where tracks, and paths and trails, start. A threshold in
-  the selector (`massif:minzoom-param`), so moving it is a re-decode; Alpimaps would set 13.
+All of them are in [`params.py`](params.py), named as in Alpimaps' OSM style where it had one. A
+variant may state its own default (`Variant(params=...)`), written into `carto/<variant>.json` and,
+for a zoom, into the MapLibre file as the layer's `minzoom`. A switch is `lib.gate`: a selector the
+decoder prunes per tile, so flipping one is a re-decode; MapLibre, with no config in a filter, draws
+the variant's default.
+
+Zooms (a `massif:minzoom-param`; the layer's own `minzoom` is the floor an app can lower it to):
+
+- `track_min_zoom`, `path_min_zoom` (12) — tracks; paths and trails. Alpimaps would set 13.
+- `water_min_zoom` (14) — drinking water and springs; 12 to plan a hike by its water.
+- `campsite_min_zoom` (15; 13 on outdoor, topo, e-ink), `building_min_zoom` (14), `city_min_zoom`
+  (3, the city dots), `river_label_min_zoom` (13).
+- `forest_pattern_zoom` (11), `scrub_pattern_zoom` (12), `rock_pattern_zoom` (12),
+  `wetland_pattern_zoom` (13) — where e-ink's textures start.
+
+Switches (0/1):
+
+- `road_shields` (1), `show_boundaries` (1), `sub_boundaries` (1, states and communes).
+- `show_tram` (1), `show_underground` (1, rail and metro in tunnels), `emphasis_rails` (0: main
+  lines, no `service`, dark and wide from z6).
+- `highlight_drinking_water` (0) — water points larger and placed over any other label.
+- `show_caravan_site` (1), `campsite_allow_overlap` (0) — each campsite layer comes twice, with and
+  without overlap, since overlap is decided per layer.
+- `polygons_border` (0; 1 on e-ink) — every landcover (dotted) and landuse polygon edged.
+- `sac_scale_labels` (0; 1 on e-ink) — the SAC grade (T1..T6) on a small plate along each trail
+  from z14, where a dash alone is hard to read. A path with no `sac_scale` gets none.
+
+And `contour_opacity` (1), multiplied into the contour lines' own ramp — a redraw, not a re-decode.
+`_fontscale` needs no declaration: every style has it
+([style parameters](../../docs/features/style-parameters.md)).
 
 ## Shields: a sprite per colour, picked per feature
 
@@ -155,12 +215,22 @@ needed nowhere. Turning that into the SDK's own plate (`text-background-fill` an
 `-border-fill`, drawn with no sprite at all) is `mapbox2css`'s job, not the style's.
 
 `shield-plate.svg` is one drawing and the sprite build writes it once per colour from the
-`variants` block in `sprite-src/manifest.json`. `us-interstate` and `us-highway` keep real artwork,
-because there the outline *is* the shield.
+`variants` block in `sprite-src/manifest.json`, with Standard's rim: white round a coloured plate,
+near-black round a yellow or white one, so a plate stands off the road it sits on.
+
+`us-interstate` and `us-highway` are real artwork (MUTCD M1-1 and M1-4, redrawn), because there the
+outline *is* the shield: a shape does not stretch, so there is one sprite per ref length, as
+Standard has (`-2`, `-3`), picked by `ref_length`. A tileset without `ref_length` draws the wide one.
+They are generated by `sprite-src/us-shields.py`, to Standard's proportions: edit it, not the SVGs.
+Exit numbers are Standard's green plate, from z14.
 
 The colour comes from `iso_a2` and the ref's first letter: French `A`/`N` red, `D`/`M` yellow;
 German `A` blue, `B` yellow; British `M` blue, `A` green; Dutch `A` red, `N` yellow; Swiss, Italian
-and Spanish by class. `e-road` wins over the country. **`iso_a2` is read through a `coalesce`**, so
+and Spanish by class. An E-road is green and its own layer, BELOW the national plates: a ramp in the
+E-road's relation carries only its ref, and must not take the place of the motorway's `A 480`.
+Sized as Standard's: a 9 px ref on a plate barely taller than it, in lighter colours than the road
+signs, so a shield leaves the road its room. Least important first: exit numbers (from z14, as
+Standard), E-roads, then minor, primary and motorway plates, so an exit takes only what is left. **`iso_a2` is read through a `coalesce`**, so
 a tileset without it takes no country branch and every ref lands on the neutral plate — see
 [what the style needs from the tileset](../../docs/contributing/tileset-asks.md).
 
@@ -179,12 +249,13 @@ It is Mapbox Standard's shape now: a `line-gap-width` outline drawn OUTSIDE the 
 of 1 px at z14 reaching 2 by z22. That came with Standard's road widths and could not be separated
 from them — see "Taken from Mapbox Standard" below for why taking the widths alone looks wrong.
 
-**It does not stop at z15, where Standard stops it.** Standard's gate is there because a casing on a
-half-pixel road is all casing, but the fill ramp already fades a class in by WIDTH, so the casing can
-mirror its zero points and follow it all the way down: 0.5 px for motorway/trunk/primary at z3,
-nothing for the rest until they widen, everything cased by z12. Zoomed out that is what makes a road
-read as one line rather than a coloured thread — Liberty draws its casings from z5 for exactly that
-reason, and cutting them at z15 was the most visible thing lost when Standard's widths came in.
+**It starts at z14, as Standard's does** (Standard's layer is z15 with the opacity stepping in at
+14). Below that a road is its fill alone, and every class under a primary takes Standard's one
+grey-blue (`road-low`, 80 %): the lighter fill a street gets from z14 would vanish without its
+casing. It used to follow the fill down to z3, Liberty's way; over a city grid (Denver at z12) that
+drew every street as a dark outlined line and the grid read as mesh, where Standard's reads as a
+map. E-ink keeps Liberty's casings (`casing-low`): its roads are white on white, and the casing is
+all there is of them.
 
 **`--fold-casings` is a no-op for this style.** There is no casing/fill pair left to fold. It was
 already doing nothing before the change — the fold refuses a pair whose fill states a
@@ -276,7 +347,9 @@ and renamed from Maki's hyphens to the OMT `class` they answer to (`art-gallery`
 with eight that do not line up mapped by hand — `rail` for `railway`, `toilet` for `toilets`,
 `doctor` for `doctors`, and so on. Named by the class, `icon-image` is a plain `["get", "class"]`
 rather than a ninety-branch table, which the converter resolves through one style parameter per
-sprite. A class with no drawing simply draws its label, which is what Liberty does too.
+sprite. A class with no drawing simply draws its label, which is what Liberty does too. Maki has
+no cave, adit, fort, archaeological site, fountain, bird hide or windmill: those glyphs are
+openstreetmap-carto's (an adit takes the cave), on the same disc.
 
 **The icon sits on a disc, and ONE sprite carries every colour.** Each drawing is a white disc with
 a grey ring and a neutral glyph — three flats, which is what lets `extractIconPlate` split it: the
@@ -350,6 +423,11 @@ and neither lets a name beat either. Ours is by rank of what is lost: a shield r
 road and can be read a hundred metres further on; a POI is one place; a **street name is the only
 label that street will ever have**, and a street whose name a café keeps taking is unusable.
 
+A motorway or trunk is the exception: it is read by its ref, so its name (`road-label-major`) sits
+below the shields. The A480 through Grenoble is also *Avenue Gabrielle Giffard*, and that name took
+every slot its `A 480` could have had. A `place=locality` ranks below the shields too, a named spot
+rather than a settlement: *Échangeur du Rondeau* sat on the interchange where `A 480` belongs.
+
 The ordering is invisible in the output — nothing in the CartoCSS says "this was deliberate" — and
 the natural thing to do when adding a layer is to copy Liberty's order and inherit its answer.
 
@@ -384,7 +462,7 @@ copies it beside the project (`carto/custom.json`, preview: `?project=custom`).
 - **Rules**: a stylesheet listed AFTER `style.mss` adds its own; a new attachment (`::custom_...`)
   draws over the base without touching it.
 - **Parameters**: `styleparameters` merge key by key, so the child sets defaults
-  (`poiStyle: plain`, `building_opacity: 1`, `track_min_zoom: 13`) and declares its own for its rules
+  (`poiStyle: plain`, `building_opacity: 1`, `track_min_zoom: 13`, `water_min_zoom: 12`) and declares its own for its rules
   (`['param::highlight_cycleways' = 1]`). `styles` does not merge: it is restated whole.
 
 That is also how a variant of your own is made: the child IS the variant. A new `variant` value
@@ -406,7 +484,7 @@ Medium on that server, so its names draw Regular.
 
 `sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
 `shield-us-interstate` and `shield-us-highway` follow MUTCD M1-1 and M1-4 — US federal works, public
-domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki), **CC0** — a public-domain
+domain. `sprite-src/poi/` is [Maki](https://github.com/mapbox/maki) (seven glyphs openstreetmap-carto's), **CC0** — a public-domain
 dedication, so it carries no attribution requirement and no share-alike; it is credited here because
 it is worth crediting, not because it must be. Most of `sprite-src/pattern/` is
 [openstreetmap-carto](https://github.com/gravitystorm/openstreetmap-carto)'s, also **CC0**, recoloured.
@@ -421,24 +499,20 @@ MapTiler or Mapbox **style** is copied.
 
 - **A transit POI is not coloured or set beside its icon.** Liberty gives `airport`/`bus`/`rail`
   their own layer, in blue with the label to the right; here they take the ordinary POI treatment.
-- The country's colour needs `iso_a2` on `transportation_name`, and neither tileset carries it, so
-  every plate is still drawn neutral in the preview - except the UK's and Ireland's, whose networks
-  OpenMapTiles names itself (`gb-motorway`, `ie-national`, ...) — see
-  [what the style needs from the tileset](../../docs/contributing/tileset-asks.md). The branches
-  themselves convert.
+- The country's colour needs `iso_a2` on `transportation_name`. Alpimaps' planetiler writes it;
+  OpenFreeMap does not, so there every plate is neutral - except the UK's and Ireland's, whose
+  networks OpenMapTiles names itself (`gb-motorway`, `ie-national`, ...) — see
+  [what the style needs from the tileset](../../docs/contributing/tileset-asks.md).
 
 What the converted CartoCSS loses, seen side by side in [the preview](../../docs/contributing/style-preview.md):
 
-- **A US shield does not stretch to its ref.** `icon-text-fit` has no CartoCSS equivalent, and
-  `shield-us-interstate` / `shield-us-highway` are real artwork rather than generated plates, so a
-  long ref overruns the sprite instead of widening it. The generated plates are unaffected: they
-  are drawn from `text-background-*`, and `icon-text-fit-padding`'s `[1, 3, 1, 3]` arrives as
-  `text-background-padding-x: 3` / `-y: 1`.
-- **`symbol-avoid-edges` is dropped** on all six shield layers, so a shield can still land on a
+- **A plate's padding.** `icon-text-fit-padding`'s `[0.5, 2.5, 0.5, 2.5]` arrives as
+  `text-background-padding-x: 2.5` / `-y: 0.5`; the plates are drawn from `text-background-*`.
+- **`symbol-avoid-edges` is dropped** on every shield layer, so a shield can still land on a
   stub of road that MapLibre refuses to label. The zoom bands are the workaround, not a fix.
 - **`text-max-angle`** on all five road-name layers, so a name follows a sharper bend here than in
   MapLibre.
-- **Shields, thinned.** `shield-min-distance` is set from `shield-spacing` — 350 px here — because
+- **Shields, thinned.** `shield-min-distance` is set from `shield-spacing` — 400 px here — because
   the decoder restarts spacing per feature, so the culler is what stops a road cut into many ways
   carrying a shield on each ([style-tools](../../docs/contributing/style-tools.md), "How far apart
   labels stay"). That one groups per REF, so it says nothing about two DIFFERENT shields; what keeps

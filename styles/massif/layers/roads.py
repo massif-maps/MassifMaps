@@ -1,4 +1,4 @@
-from lib import get, in_class, layer, scaled, zoom_ramp
+from lib import from_zoom, get, halo, in_class, layer, scaled, zoom_ramp
 from layers import outdoor
 
 CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']
@@ -18,7 +18,8 @@ WIDTH = zoom_ramp(
     22, ['match', get('class'), ['motorway', 'trunk'], 300, 'primary', 280, ['secondary', 'tertiary'], 260, 'minor', 200, 100],
     base=1.5)
 
-# kept zoomed out, as Liberty does, but a hair: at 1 px of fill a full casing is all you see
+# Liberty's, kept zoomed out for e-ink, whose roads are white on white. Every other variant cases
+# a road from z14 only, as Standard does (road_pair): below that the fill alone says the class.
 CASING_WIDTH = zoom_ramp(
     3, ['match', get('class'), ['motorway', 'trunk'], 0.25, 0],
     6, ['match', get('class'), ['motorway', 'trunk'], 0.25, 'primary', 0.15, 0],
@@ -43,10 +44,19 @@ TRACK_GRADES = [('grade1', None), ('grade2', [5, 2]), ('grade3', [3, 2]), ('grad
 
 EMISSIVE = ['match', get('class'), ['motorway', 'trunk'], 0.6, 0.4]
 
+# OSM's loose surfaces, read off `surface_detail` (Alpimaps' planetiler keeps the raw tag there)
+UNPAVED = ['unpaved', 'compacted', 'fine_gravel', 'gravel', 'pebblestone', 'ground', 'dirt', 'earth', 'grass',
+           'grass_paver', 'mud', 'sand', 'rock', 'woodchips']
+
 
 def fill_color(c):
-    return ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
-            ['secondary', 'tertiary'], c.get('secondary', c['road']), c['road']]
+    # below z14, uncased, Standard's one grey-blue for every road under a primary: a fill near the
+    # ground's lightness would vanish without its casing
+    low = ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
+           c['road-low']]
+    return ['step', ['zoom'], low, 14,
+            ['match', get('class'), 'motorway', c['motorway'], 'trunk', c['trunk'], 'primary', c['primary'],
+             ['secondary', 'tertiary'], c.get('secondary', c['road']), c['road']]]
 
 
 def case_color(c, key='case'):
@@ -58,7 +68,7 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     layout = layout or {'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY}
     case_layout = {**layout, 'line-cap': case_cap} if case_cap else layout
     # e-ink orders the roads by the weight of their outline, having no colour to do it with
-    casing = scaled(casing, c.get('casing-scale', 1))
+    casing = scaled(casing if c.get('casing-low') else from_zoom(casing, 14), c.get('casing-scale', 1))
     case_paint = {'line-color': case_color(c, case_key), 'line-gap-width': width, 'line-width': casing}
     if dash:
         case_paint['line-dasharray'] = dash
@@ -112,13 +122,26 @@ def cycleway(c, brunnel_test, prefix=''):
                   emissive=0.6)]
 
 
+def unpaved(c, brunnel_test):
+    """OSM Carto's unpaved road: the casing broken into dashes, drawn by covering every other stretch
+    of it in the road's own fill. One layer per class: the class and the surface are two sets."""
+    casing = scaled(CASING_WIDTH, c.get('casing-scale', 1))
+    return [layer('road-unpaved-' + cls, 'line', 'transportation', minzoom=14,
+                  filter=['all', ['==', get('class'), cls], brunnel_test, ['in', get('surface_detail'), ['literal', UNPAVED]]],
+                  layout={'line-join': 'round'},
+                  paint={'line-color': c['road'], 'line-gap-width': WIDTH, 'line-width': casing,
+                         'line-dasharray': [2, 2]}, emissive=0.4)
+            for cls in ('minor', 'service')]
+
+
 def tracks(c, brunnel_test):
-    out = []
+    width = scaled(TRACK_WIDTH, c.get('track-scale', 1))
+    out = halo(c, 'track-halo', ['all', ['==', get('class'), 'track'], brunnel_test], width, 'track_min_zoom')
     for grade, dash in TRACK_GRADES + [('unknown', [3, 2])]:
         # Alpimaps' planetiler writes the grade's index in OSM's list (grade1 = 0), OpenMapTiles the name
         test = ['!', ['has', 'tracktype']] if grade == 'unknown' else \
             ['in', get('tracktype'), ['literal', [grade, int(grade[-1]) - 1]]]
-        paint = {'line-color': c['track'], 'line-width': TRACK_WIDTH}
+        paint = {'line-color': c['track'], 'line-width': width}
         if dash:
             paint['line-dasharray'] = dash
         out.append(layer('track-' + grade, 'line', 'transportation', minzoom=12,
@@ -131,7 +154,7 @@ def tracks(c, brunnel_test):
 def tunnels(v):
     c = v.palette
     tunnel = ['==', get('brunnel'), 'tunnel']
-    return (paths(c, tunnel, 'tunnel-', minzoom=16) +
+    return (paths(c, tunnel, 'tunnel-') +
             road_pair(c, 'road-tunnel', ['all', in_class(CLASSES), tunnel], 12, WIDTH, CASING_WIDTH,
                       dash=[3, 3], fill_opacity=0.5,
                       layout={'line-join': 'miter', 'line-cap': 'butt', 'line-sort-key': SORT_KEY}))
@@ -142,7 +165,8 @@ def ground(v):
     surface = ['!', ['in', get('brunnel'), ['literal', ['tunnel', 'bridge']]]]
     no_ramp = ['!=', get('ramp'), 1]
     trails = v.flags.get('trails', False)
-    return (paths(c, surface, trails=trails) + (outdoor.trails(c, surface) if trails else []) + tracks(c, surface) + [
+    return (paths(c, surface, trails=trails) + (outdoor.trails(c, surface) if trails else []) + tracks(c, surface)
+            + (outdoor.mtb(c, surface) if trails else []) + [
         layer('via-ferrata', 'line', 'transportation', minzoom=13,
               filter=['all', ['==', get('class'), 'via_ferrata'], ['!=', get('brunnel'), 'tunnel']],
               paint={'line-color': c['via-ferrata'], 'line-width': zoom_ramp(13, 1, 18, 2.5),
@@ -158,7 +182,7 @@ def ground(v):
     ] + road_pair(c, 'road-link', ['all', in_class(CLASSES), surface, ['==', get('ramp'), 1]], 12,
                   LINK_WIDTH, LINK_CASING)
       + road_pair(c, 'road', ['all', in_class(CLASSES), surface, no_ramp], 3, WIDTH, CASING_WIDTH)
-      + cycleway(c, surface) + [
+      + unpaved(c, surface) + cycleway(c, surface) + [
         # private and no-access ways: the casing's red dashes, the OSM convention MapTiler also draws
         layer('road-no-access', 'line', 'transportation', minzoom=15,
               filter=['all', ['!=', get('class'), 'path'], ['in', get('access'), ['literal', ['no', 'private']]]],

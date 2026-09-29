@@ -19,16 +19,18 @@ def low(v):
     outdoor = v.flags.get('trails', False)
     water = text(c, 'water-label', night_color='water')
     return [
+        # a named spot, not a settlement: it gives way to a shield, "Échangeur du Rondeau" to A 480
+        place('place-locality', ['locality'], 13, 18, zoom_ramp(13, 10, 16, 13), c, color='label-soft'),
         layer('housenumber', 'symbol', 'housenumber', minzoom=17,
               layout={'text-field': get('housenumber'), 'text-font': REGULAR,
                       'text-size': zoom_ramp(17, 10, 20, 13), 'text-padding': 3},
               **text(c, 'housenumber')),
-        layer('waterway-label', 'symbol', 'waterway', minzoom=13,
+        param(layer('waterway-label', 'symbol', 'waterway', minzoom=8,
               filter=['all', ['has', 'name'], in_class(['river', 'canal'])],
               layout={'symbol-placement': 'line', 'text-field': NAME, 'text-font': ITALIC,
                       'text-size': zoom_ramp(13, 12, 18, 16), 'text-letter-spacing': 0.05,
                       'text-max-angle': 30},
-              **water),
+              **water), 'river_label_min_zoom'),
         layer('stream-label', 'symbol', 'waterway', minzoom=15,
               filter=['all', ['has', 'name'], ['!', in_class(['river', 'canal'])]],
               layout={'symbol-placement': 'line', 'text-field': NAME, 'text-font': ITALIC,
@@ -79,12 +81,13 @@ def low(v):
                       'text-field': ['coalesce', get('iata'), NAME], 'text-font': BOLD, 'text-size': 12,
                       'text-anchor': 'top', 'text-offset': [0, 0.9], 'text-optional': True},
               **text(c, 'label-airport')),
-        layer('path-label', 'symbol', 'transportation_name', minzoom=15,
-              filter=['all', ['==', get('class'), 'path'], ['has', 'name']],
-              layout={'symbol-placement': 'line', 'text-field': NAME, 'text-font': REGULAR,
-                      'text-size': zoom_ramp(15, 10, 18, 12), 'text-max-angle': 30},
-              **text(c, 'label-natural')),
     ]
+
+
+def param(lay, name):
+    """the layer starts at parameter `name`'s zoom rather than its own minzoom"""
+    lay.setdefault('metadata', {})['massif:minzoom-param'] = name
+    return lay
 
 
 def place(id, classes, minzoom, maxzoom, size, c, font=REGULAR, color='label', extra=None, filter=None):
@@ -102,7 +105,7 @@ def places(v):
            'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.5,
            'text-justify': 'auto'}
     return [
-        place('place-hamlet', ['hamlet', 'locality', 'isolated_dwelling', 'farm'], 13, 18,
+        place('place-hamlet', ['hamlet', 'isolated_dwelling', 'farm'], 13, 18,
               zoom_ramp(13, 10, 16, 13), c, color='label-soft'),
         place('place-neighbourhood', ['neighbourhood', 'quarter'], 13, 17,
               zoom_ramp(13, 10, 16, 13), c, color='label-soft', extra={**soft, 'text-letter-spacing': 0.05}),
@@ -112,7 +115,8 @@ def places(v):
         place('place-town', ['town'], 8, 16, zoom_ramp(8, 11, 12, 16, 16, 20), c, font=MEDIUM),
         place('place-town-dot', ['town'], 6, 8, zoom_ramp(6, 10, 8, 11), c, extra=dot, font=MEDIUM),
         place('place-city', ['city'], 8, 15, zoom_ramp(8, 16, 12, 20, 15, 24), c, font=MEDIUM),
-        place('place-city-dot', ['city'], 3, 8, zoom_ramp(3, 11, 6, 14, 8, 16), c, extra=dot, font=MEDIUM),
+        param(place('place-city-dot', ['city'], 3, 8, zoom_ramp(3, 11, 6, 14, 8, 16), c, extra=dot, font=MEDIUM),
+              'city_min_zoom'),
         place('place-state', ['state', 'province'], 4, 9, zoom_ramp(4, 9, 9, 16), c, font=BOLD,
               color='label-soft', extra={**soft, 'text-letter-spacing': 0.15, 'text-max-width': 6}),
         # Standard sizes a country by its rank; OMT ranks 1-6, and Liechtenstein is not France

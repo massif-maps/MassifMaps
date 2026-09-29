@@ -16,11 +16,11 @@ CLASSES = [('built', 'lowzoom-built'), ('glacier', 'glacier-low'), ('swamp', 'we
 
 def landcover(v):
     """Standard draws its landcover to z12 and fades it out as the detailed landuse arrives; this one
-    hands over sooner, crossfading with OMT's landcover over z7-9 (land.py)."""
+    hands over sooner, crossfading with OMT's landcover over z8-9 (land.py)."""
     c = v.palette
     return [layer('lowzoom-' + cls, 'fill', 'global_landcover', source=SOURCE, maxzoom=9,
                   filter=['==', get('class'), cls],
-                  paint={'fill-color': c[key], 'fill-opacity': zoom_ramp(7, 1, 9, 0), 'fill-antialias': False},
+                  paint={'fill-color': c[key], 'fill-opacity': zoom_ramp(8, 1, 9, 0), 'fill-antialias': False},
                   emissive=0.2)
             for cls, key in CLASSES]
 

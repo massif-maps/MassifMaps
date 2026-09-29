@@ -32,6 +32,7 @@
         "on": 1
       }
     },
-    "track_min_zoom": 13
+    "track_min_zoom": 13,
+    "water_min_zoom": 12
   }
 }

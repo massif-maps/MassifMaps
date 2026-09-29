@@ -2,7 +2,7 @@
 waymarked routes. `dem`, `contours` and `routes` are optional sources like the bathymap - on the SDK
 the relief is an app layer (HillshadeRasterTileLayer) and the contours come from
 ContourTileDataSource or the prebaked archive, both with the `contour` layer's `ele` and `div`."""
-from lib import by_hour, get, in_class, layer, zoom_ramp
+from lib import by_hour, gate, get, halo, in_class, layer, scaled, zoom_ramp
 
 SAC = [
     # (id, sac_scale values, colour key, dash): red to T3, blue from T4, the dash tightening with it
@@ -21,6 +21,15 @@ SAC = [(id, values + [SAC_ORDER.index(v) for v in values], key, dash) for id, va
 TRAIL_WIDTH = zoom_ramp(12, 0.6, 15, 1.4, 18, 2.6, base=1.3)
 TRAILS = ['path', 'bridleway']
 
+# mtb:scale by the colour of a French VTT waymark, and a dash that says the same on e-ink;
+# a thin line beside the path rather than on it, which already says the hiking difficulty
+MTB = [
+    ('mtb-easy', ['0-', '0', '0+', '1-', '1', '1+'], 'mtb-easy', None),
+    ('mtb-medium', ['2-', '2', '2+'], 'mtb-medium', [4, 1.5]),
+    ('mtb-hard', ['3-', '3', '3+'], 'mtb-hard', [2, 1.5]),
+    ('mtb-extreme', ['4-', '4', '4+', '5-', '5', '5+', '6'], 'mtb-extreme', [1, 1.5]),
+]
+
 
 def hillshade(v):
     c = v.palette
@@ -36,16 +45,23 @@ def hillshade(v):
                                                 'visibleZoomRange': [0, 16]}}}]
 
 
+def faded(*stops):
+    """a contour opacity ramp, and the SDK's copy scaled by `contour_opacity`"""
+    live = [x if i % 2 == 0 else ['*', x, ['config', 'contour_opacity']] for i, x in enumerate(stops)]
+    return {'paint': {'line-opacity': zoom_ramp(*stops)}, 'metadata': {'massif:paint': {'line-opacity': zoom_ramp(*live)}}}
+
+
 def contours(v):
     c = v.palette
     major = ['>=', get('div'), 100]
+    minor, index = faded(12, 0.3, 14, 0.5), faded(11, 0.35, 14, 0.6)
     return [
         layer('contour', 'line', 'contour', source='contours', minzoom=12, filter=['<', get('div'), 100],
-              paint={'line-color': c['contour'], 'line-width': zoom_ramp(12, 0.4, 16, 0.9),
-                     'line-opacity': zoom_ramp(12, 0.3, 14, 0.5)}, emissive=0.3),
+              paint={'line-color': c['contour'], 'line-width': zoom_ramp(12, 0.4, 16, 0.9), **minor['paint']},
+              metadata=minor['metadata'], emissive=0.3),
         layer('contour-index', 'line', 'contour', source='contours', minzoom=11, filter=major,
-              paint={'line-color': c['contour-index'], 'line-width': zoom_ramp(11, 0.6, 16, 1.4),
-                     'line-opacity': zoom_ramp(11, 0.35, 14, 0.6)}, emissive=0.3),
+              paint={'line-color': c['contour-index'], 'line-width': zoom_ramp(11, 0.6, 16, 1.4), **index['paint']},
+              metadata=index['metadata'], emissive=0.3),
     ]
 
 
@@ -77,16 +93,47 @@ def cliffs(v):
 
 
 def trails(c, brunnel_test):
+    width = scaled(TRAIL_WIDTH, c.get('track-scale', 1))
+    out = halo(c, 'trail-halo', ['all', ['==', get('class'), 'path'], in_class(TRAILS, 'subclass'), brunnel_test],
+               width, 'path_min_zoom')
     # one layer per subclass: with both scale spellings the scale is a set, and two sets are a when()
-    return [layer(id + ('' if sub == 'path' else '-' + sub), 'line', 'transportation', minzoom=12,
+    return out + [layer(id + ('' if sub == 'path' else '-' + sub), 'line', 'transportation', minzoom=12,
                   filter=['all', ['==', get('subclass'), sub], brunnel_test,
                           ['in', get('sac_scale'), ['literal', values]] if id != 'trail-t1' else
                           ['!', ['in', get('sac_scale'), ['literal', [v for _, vs, _, _ in SAC[1:] for v in vs]]]]],
                   layout={'line-join': 'round'},
-                  paint={'line-color': c[key], 'line-width': TRAIL_WIDTH, 'line-dasharray': dash},
+                  paint={'line-color': c[key], 'line-width': width, 'line-dasharray': dash},
                   metadata={'massif:minzoom-param': 'path_min_zoom'},
                   emissive=0.4)
             for id, values, key, dash in SAC for sub in TRAILS]
+
+
+def sac_labels(v):
+    """`sac_scale_labels`, on for e-ink where a dash alone is hard to read: the grade (T1..T6) on a
+    small upright plate along the trail, as a road carries its number. A path with no scale gets none."""
+    c = v.palette
+    return [gate(layer(id + '-label' + ('' if sub == 'path' else '-' + sub), 'symbol', 'transportation', minzoom=14,
+                       filter=['all', ['==', get('subclass'), sub], ['in', get('sac_scale'), ['literal', values]]],
+                       layout={'symbol-placement': 'line', 'symbol-spacing': 300, 'symbol-avoid-edges': True,
+                               'icon-image': 'shield-plate-mono', 'icon-text-fit': 'both',
+                               'icon-text-fit-padding': [0.5, 2, 0.5, 2], 'text-field': 'T%d' % grade,
+                               'text-font': 'bold', 'text-size': 9, 'text-padding': 2,
+                               'text-rotation-alignment': 'viewport', 'icon-rotation-alignment': 'viewport'},
+                       paint={'text-color': c[key]}), v, 'sac_scale_labels')
+            for grade, (id, values, key, _) in enumerate(SAC, 1) for sub in TRAILS]
+
+
+def mtb(c, brunnel_test):
+    out = []
+    for id, values, key, dash in MTB:
+        paint = {'line-color': c[key], 'line-width': zoom_ramp(14, 0.8, 18, 2),
+                 'line-offset': zoom_ramp(14, 2.5, 18, 6, base=1.3)}
+        if dash:
+            paint['line-dasharray'] = dash
+        out.append(layer(id, 'line', 'transportation', minzoom=14,
+                         filter=['all', brunnel_test, ['in', get('mtb_scale'), ['literal', values]]],
+                         paint=paint, emissive=0.4))
+    return out
 
 
 def routes(v):

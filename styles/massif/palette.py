@@ -32,6 +32,7 @@ STREETS = {
     'rock': 'hsl(30, 10%, 88%)',
     'glacier': 'hsl(200, 70%, 95%)',
     'barrier': 'hsl(20, 10%, 70%)',
+    'landcover-outline': 'hsla(0, 0%, 0%, 0.3)',
     # low zoom, from Standard's landcover and water-depth
     'lowzoom-built': 'hsl(20, 12%, 91%)',
     'glacier-low': 'hsl(0, 0%, 100%)',
@@ -68,6 +69,7 @@ STREETS = {
     'trunk': 'hsl(235, 20%, 70%)', 'trunk-case': 'hsl(235, 20%, 60%)', 'trunk-bridge-case': 'hsl(235, 20%, 50%)',
     'primary': 'hsl(224, 26%, 74%)', 'secondary': 'hsl(224, 25%, 82%)',
     'road': 'hsl(224, 20%, 90%)', 'road-case': 'hsl(224, 22%, 72%)', 'road-bridge-case': 'hsl(224, 25%, 60%)',
+    'road-low': 'hsl(224, 25%, 80%)',
     'path': 'hsl(295, 10%, 97%)',
     'path-z16': 'hsl(295, 10%, 93%)',
     'path-case': 'hsl(0, 10%, 80%)',
@@ -81,10 +83,13 @@ STREETS = {
     'aerialway': 'hsl(225, 60%, 58%)',
     'rail': 'hsl(0, 0%, 65%)',
     'rail-night': 'hsl(0, 0%, 30%)',
+    'rail-emphasis': 'hsl(0, 0%, 35%)',
     'bridge-case': 'hsl(224, 25%, 70%)',
     'bridge-shadow': 'hsl(224, 25%, 60%)',
     'tunnel-case': 'hsl(224, 25%, 70%)',
     'oneway': 'hsl(224, 20%, 45%)',
+    'way-label': 'hsl(0, 0%, 35%)',
+    'track-label': 'hsl(30, 50%, 30%)',
 }
 
 # Outdoor: MapTiler outdoor's warmer ground and deeper woods, so relief and trails read on top
@@ -110,6 +115,10 @@ OUTDOOR = {
     'trail-alpine': 'hsl(215, 70%, 42%)',
     'route-hiking': 'hsl(330, 70%, 55%)',
     'route-bicycle': 'hsl(215, 80%, 55%)',
+    'mtb-easy': 'hsl(130, 60%, 35%)',
+    'mtb-medium': 'hsl(215, 80%, 45%)',
+    'mtb-hard': 'hsl(0, 75%, 45%)',
+    'mtb-extreme': 'hsl(0, 0%, 10%)',
 }
 
 # Topo: MapTiler topo's printed-map look - grey ground, olive woods, brown contours, a deeper water
@@ -151,7 +160,7 @@ HYBRID = {
     'trunk': 'hsla(45, 95%, 75%, 0.8)', 'trunk-case': 'hsla(35, 50%, 25%, 0.45)',
     'trunk-bridge-case': 'hsla(35, 50%, 20%, 0.55)',
     'primary': 'hsla(50, 90%, 85%, 0.7)',
-    'road': 'hsla(0, 0%, 100%, 0.55)', 'road-case': 'hsla(0, 0%, 0%, 0.25)',
+    'secondary': 'hsla(50, 90%, 92%, 0.6)', 'road': 'hsla(0, 0%, 100%, 0.55)', 'road-low': 'hsla(0, 0%, 100%, 0.55)', 'road-case': 'hsla(0, 0%, 0%, 0.25)',
     'road-bridge-case': 'hsla(0, 0%, 0%, 0.4)',
     'path': 'hsla(0, 0%, 100%, 0.4)', 'path-z16': 'hsla(0, 0%, 100%, 0.5)', 'path-case': 'hsla(0, 0%, 0%, 0.2)',
     'track': 'hsla(35, 70%, 75%, 0.8)',
@@ -163,34 +172,47 @@ HYBRID = {
     'label-soft': 'hsl(0, 0%, 90%)', 'label-natural': 'hsl(0, 0%, 92%)', 'label-park': 'hsl(100, 60%, 85%)',
     'label-airport': 'hsl(225, 80%, 88%)', 'water-label': 'hsl(200, 80%, 85%)', 'housenumber': 'hsl(0, 0%, 88%)',
     'oneway': 'hsl(0, 0%, 90%)',
+    'way-label': _WHITE, 'track-label': _WHITE,
 }
 
 # E-ink: black, white and a few greys, the classes told apart by pattern (sprite-src/pattern/) and
 # the roads by the weight of their outline. No night: a still page is read under a lamp.
 _K, _W = 'hsl(0, 0%, 0%)', 'hsl(0, 0%, 100%)'
-EINK = {k: v for k, v in STREETS.items()}
+EINK = {k: v for k, v in OUTDOOR.items()}
 EINK.update({
-    'land': _W, 'residential': 'hsl(0, 0%, 96%)', 'commercial': 'hsl(0, 0%, 93%)',
-    'industrial': 'hsl(0, 0%, 90%)', 'education': 'hsl(0, 0%, 95%)', 'hospital': 'hsl(0, 0%, 95%)',
-    'airport': 'hsl(0, 0%, 92%)', 'parking': 'hsl(0, 0%, 92%)', 'pitch': 'hsl(0, 0%, 94%)',
+    # the flat greys under the patterns, and alone below the zoom a pattern starts at
+    'wood': 'hsl(0, 0%, 92%)', 'wood-low': 'hsl(0, 0%, 93%)', 'scrub': 'hsl(0, 0%, 94%)',
+    'grass': 'hsl(0, 0%, 97%)', 'park': 'hsl(0, 0%, 95%)', 'wetland': 'hsl(0, 0%, 96%)',
+    'rock': 'hsl(0, 0%, 93%)', 'sand': 'hsl(0, 0%, 96%)', 'glacier': _W, 'cemetery': 'hsl(0, 0%, 95%)',
+    'military': 'hsl(0, 0%, 97%)', 'landcover-outline': 'hsl(0, 0%, 45%)',
+    'waterway': 'hsl(0, 0%, 40%)', 'water': _W, 'water-night': _W, 'shoreline': 'hsl(0, 0%, 50%)',
+    'line-halo': _W, 'track-scale': 1.6, 'trail': _K, 'trail-alpine': 'hsl(0, 0%, 25%)',
+    'mtb-easy': _K, 'mtb-medium': _K, 'mtb-hard': _K, 'mtb-extreme': _K,
+    'contour': 'hsl(0, 0%, 76%)', 'contour-index': 'hsl(0, 0%, 58%)', 'contour-label': 'hsl(0, 0%, 30%)',
+    'cliff': 'hsl(0, 0%, 20%)', 'way-label': _K, 'track-label': _K,
+})
+EINK.update({
+    'land': _W, 'residential': 'hsl(0, 0%, 97%)', 'commercial': 'hsl(0, 0%, 96%)',
+    'industrial': 'hsl(0, 0%, 95%)', 'education': 'hsl(0, 0%, 97%)', 'hospital': 'hsl(0, 0%, 97%)',
+    'airport': 'hsl(0, 0%, 95%)', 'parking': 'hsl(0, 0%, 95%)', 'pitch': 'hsl(0, 0%, 97%)',
     'pitch-line': 'hsl(0, 0%, 50%)', 'military-line': 'hsl(0, 0%, 30%)', 'farmland': _W,
     'national-park': 'hsl(0, 0%, 97%)', 'national-park-line': 'hsl(0, 0%, 35%)',
     'wood-low': 'hsl(0, 0%, 93%)', 'barrier': 'hsl(0, 0%, 40%)',
-    'water': 'hsl(0, 0%, 35%)', 'water-night': 'hsl(0, 0%, 35%)', 'water-label': _K,
+    'water-label': _K,
     'aeroway': 'hsl(0, 0%, 80%)',
     'lowzoom-built': 'hsl(0, 0%, 93%)', 'glacier-low': _W, 'wetland-low': 'hsl(0, 0%, 94%)',
     'crop-low': _W, 'scrub-low': 'hsl(0, 0%, 96%)', 'heath-low': 'hsl(0, 0%, 96%)',
-    'grass-low': 'hsl(0, 0%, 97%)', 'sand-low': 'hsl(0, 0%, 97%)', 'depth-200': 'hsl(0, 0%, 88%)',
-    'depth-7000': 'hsl(0, 0%, 80%)',
+    'grass-low': 'hsl(0, 0%, 97%)', 'sand-low': 'hsl(0, 0%, 97%)', 'depth-200': 'hsl(0, 0%, 96%)',
+    'depth-7000': 'hsl(0, 0%, 93%)',
     'motorway': _W, 'motorway-case': _K, 'motorway-bridge-case': _K,
     'trunk': _W, 'trunk-case': _K, 'trunk-bridge-case': _K,
-    'primary': _W, 'road': _W, 'road-case': 'hsl(0, 0%, 30%)', 'road-bridge-case': _K, 'casing-scale': 1.8,
+    'primary': _W, 'secondary': _W, 'road': _W, 'road-low': _W, 'casing-low': True, 'road-case': 'hsl(0, 0%, 30%)', 'road-bridge-case': _K, 'casing-scale': 1.8,
     'path': _W, 'path-z16': _W, 'path-case': 'hsl(0, 0%, 25%)', 'cycleway': 'hsl(0, 0%, 25%)',
-    'bridleway': 'hsl(0, 0%, 35%)', 'track': 'hsl(0, 0%, 20%)', 'via-ferrata': _K,
+    'bridleway': 'hsl(0, 0%, 35%)', 'track': _K, 'via-ferrata': _K,
     'no-access': 'hsla(0, 0%, 0%, 0.6)', 'construction': 'hsl(0, 0%, 60%)', 'ferry': 'hsl(0, 0%, 30%)',
     'aerialway': _K, 'rail': 'hsl(0, 0%, 15%)', 'rail-night': 'hsl(0, 0%, 15%)',
     'boundary-country': _K, 'boundary-state': 'hsl(0, 0%, 25%)', 'boundary-minor': 'hsl(0, 0%, 45%)',
-    'boundary-halo': 'hsl(0, 0%, 85%)', 'building': 'hsl(0, 0%, 82%)', 'building-outline': 'hsl(0, 0%, 40%)',
+    'boundary-halo': 'hsl(0, 0%, 85%)', 'building': 'hsl(0, 0%, 90%)', 'building-outline': 'hsl(0, 0%, 40%)',
     'road-label': _K, 'road-label-halo': _W, 'road-label-night': _K, 'road-label-halo-night': _W,
     'label': _K, 'label-night': _K, 'halo': _W, 'halo-night': _W, 'label-soft': 'hsl(0, 0%, 25%)',
     'label-natural': 'hsl(0, 0%, 15%)', 'label-park': 'hsl(0, 0%, 15%)', 'label-airport': _K,

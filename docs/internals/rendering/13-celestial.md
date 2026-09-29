@@ -29,8 +29,17 @@ An object is placed one of two ways (`CelestialObject`):
 
 Directions use the same frame as `LightOptions::getSunDirection` — x east, y north, z up, azimuth
 clockwise from north — so an application can hand a computed sun direction straight over. The
-renderer converts through `ProjectionSurface::calculateVector` at the focus point, so it is correct
-on a sphere as well as on a plane.
+renderer builds the world direction from the frame at the focus point (`SkyFrame`,
+`celestial/SkyDirection.h`), so it is correct on a sphere as well as on a plane, and a tap on empty
+sky is read back through the same frame (`CalculateSkyDirection`, what `sky.clicked` reports).
+
+**Normalise the axes, not the result.** On `SphericalProjectionSurface` the images of east, north
+and up through `calculateVector` are orthogonal but not equally long: up is `1/cos(lat)` longer
+(π vs 4.458 at Grenoble). `unit(calculateVector(dir))` therefore stretched the vertical component,
+`tan(drawn altitude) = tan(altitude) / cos(lat)` — every body, arc and image sat too high on the
+globe, 30° drawn at 39°. `SkyFrame` normalises each axis first, which makes the map a rotation;
+`tests/api/SkyDirectionTest.cpp` checks the drawn altitude against the surface normal and the
+angular separation of two directions. The plane was never affected: its three axes have length 1.
 
 ## Drawing
 

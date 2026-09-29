@@ -42,6 +42,10 @@
     <label>style</label>
     <input id="style-url" type="text" value="https://tiles.openfreemap.org/styles/liberty">
     <button id="reload">reload</button>
+    <select id="variant" title="a Massif variant: the page reloads on it, camera kept" style="display:none">
+      <option>streets</option><option>outdoor</option><option>topo</option><option>hybrid</option>
+      <option>eink</option><option value="custom">custom (example project)</option>
+    </select>
     <label><input id="sync" type="checkbox" checked> sync</label>
     <select id="local-set"></select>
     <button id="fit">fit local</button>
@@ -240,9 +244,35 @@ async function boot() {
   if (!localName) { $('err-r').style.display = 'block'; $('err-r').textContent = 'serve.py has no --mbtiles registered'; }
   sel.onchange = () => { localName = sel.value; load(); };
   await load();
+  setupVariant();
   if (ASKED.get('hour')) { $('hour').value = ASKED.get('hour'); postHour(); }
   if (ASKED.get('ref')) { $('ref').value = ASKED.get('ref'); showRef(); }
   if (ASKED.get('massif') === '1') $('massif-toggle').onclick();
+}
+
+/** A Massif style is one file per variant beside the others: switching reloads on the sibling. */
+function setupVariant() {
+  const url = $('style-url').value.trim();
+  const match = url.match(/\/styles\/massif\/([a-z]+)\.json$/);
+  if (!match) return;
+  const sel = $('variant');
+  sel.style.display = '';
+  sel.value = ASKED.get('project') === 'custom' ? 'custom' : match[1];
+  sel.onchange = () => {
+    const next = new URL(location.href);
+    const c = maps[0].getCenter();
+    next.searchParams.set('style', url.replace(/[a-z]+\.json$/, (sel.value === 'custom' ? 'streets' : sel.value) + '.json'));
+    if (sel.value === 'custom') next.searchParams.set('project', 'custom'); else next.searchParams.delete('project');
+    next.searchParams.set('lon', c.lng.toFixed(5));
+    next.searchParams.set('lat', c.lat.toFixed(5));
+    next.searchParams.set('zoom', maps[0].getZoom().toFixed(2));
+    next.searchParams.set('tilt', maps[0].getPitch().toFixed(1));
+    next.searchParams.set('rot', maps[0].getBearing().toFixed(1));
+    next.searchParams.set('hour', $('hour').value);
+    if ($('ref').value) next.searchParams.set('ref', $('ref').value);
+    if (massifStarted) next.searchParams.set('massif', '1');
+    location.href = next.href;
+  };
 }
 
 async function load() {

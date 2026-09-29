@@ -95,6 +95,10 @@ The `hour` slider (`?hour=21.5`) sets the Massif panes' day-cycle light — the 
 time on the equinox, at the camera — which is what lights a style's emissive layers, and moves the
 Standard reference to the matching preset: night before 6 and from 20:30, dawn to 8, dusk from 18.
 
+For a Massif style the bar gets a **variant** picker: the page reloads on the sibling file
+(`streets.json` → `eink.json`, …) with the camera, the hour, the reference and the Massif row kept;
+`custom` loads streets with `?project=custom`, the [override example](../../styles/massif/examples/custom/).
+
 The Massif panes cast building shadows the way Standard does, at its day depth (`shadowStrength` 1).
 Ours land on a terrain surface, so each pane carries a flat one (the Mapterhorn DEM at exaggeration
 0, never auto-flattened); `?shadows=0` drops it.

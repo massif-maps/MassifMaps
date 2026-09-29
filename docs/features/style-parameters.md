@@ -71,6 +71,10 @@ A parameter the style does not declare is refused there rather than dropped, whi
 difference worth knowing: `setStyleParameter` returns `false` for it, and the surface API turns
 that into `RESULT_UNKNOWN_PROPERTY`.
 
+Three scales every style has, declared or not: `_fontscale` (every label and icon, 1 by default),
+`_geometryscale` (1) and `_zoomlevelbias` (0). An app sets `_fontscale` on any style for its
+accessibility text size; changing one re-decodes the tiles.
+
 Runnable, on four platforms (live on the web): [the style parameters example](/examples#style-parameters).
 
 ## Reading them

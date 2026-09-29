@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="22" viewBox="0 0 20 22">
+  <!-- MUTCD M1-1, redrawn: a federal design, public domain. One width per ref length. -->
+  <defs><clipPath id="inside"><path d="M1 3.8Q1.1 1.6 2.6 0.9Q3.50 2.3 4.40 2.3L8.20 2.3Q9.10 2.3 10.00 0.9Q10.90 2.3 11.80 2.3L15.60 2.3Q16.50 2.3 17.40 0.9Q18.90 1.6 19 3.8L19 10C19 14.50 14.00 19.6 10.0 19.6C6.00 19.6 1 14.50 1 10Z"/></clipPath></defs>
+  <g clip-path="url(#inside)">
+    <rect width="20" height="22" fill="#475bcb"/>
+    <rect width="20" height="5" fill="#ec3f42"/>
+    <rect y="5" width="20" height="1" fill="#ffffff"/>
+  </g>
+  <path d="M1 3.8Q1.1 1.6 2.6 0.9Q3.50 2.3 4.40 2.3L8.20 2.3Q9.10 2.3 10.00 0.9Q10.90 2.3 11.80 2.3L15.60 2.3Q16.50 2.3 17.40 0.9Q18.90 1.6 19 3.8L19 10C19 14.50 14.00 19.6 10.0 19.6C6.00 19.6 1 14.50 1 10Z" fill="none" stroke="#ffffff" stroke-width="1.1" stroke-linejoin="round"/>
+</svg>

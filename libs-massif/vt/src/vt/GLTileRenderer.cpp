@@ -3783,8 +3783,10 @@ namespace massif::vt {
                     // The icon's plate is its background, so icon-opacity fades it LIVE with the glyph:
                     // that opacity is a zoom ramp, and baked at decode a hidden icon kept its disc.
                     float plateOpacity = (i == 1 && labelStyle->iconOpacityFunc ? evaluateFloatFunc(*labelStyle->iconOpacityFunc) : 1.0f);
-                    cglib::vec4<float> fillColor = lit(cglib::vec4<float>(plate.style.color.rgba())) * plateOpacity;
-                    cglib::vec4<float> borderColor = lit(cglib::vec4<float>(plate.style.borderColor.rgba())) * plateOpacity;
+                    Color plateFill = plate.style.colorFunc ? evaluateColorFunc(*plate.style.colorFunc) : plate.style.color;
+                    Color plateBorder = plate.style.borderColorFunc ? evaluateColorFunc(*plate.style.borderColorFunc) : plate.style.borderColor;
+                    cglib::vec4<float> fillColor = lit(cglib::vec4<float>(plateFill.rgba())) * plateOpacity;
+                    cglib::vec4<float> borderColor = lit(cglib::vec4<float>(plateBorder.rgba())) * plateOpacity;
                     int index = labelBatchParams.parameterCount - slots;
                     for (; index >= 0; index--) {
                         if (labelBatchParams.colorTable[index] == fillColor && labelBatchParams.widthTable[index] == size && labelBatchParams.strokeWidthTable[index] == 0

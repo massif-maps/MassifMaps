@@ -282,6 +282,10 @@ every label in the style, while the coverage report still counted their properti
 `pitch`, `distance-from-center` and `line-progress` therefore resolve to what a flat, centred view
 sees, the clause folds to `true`, and the filter around it drops it.
 
+One exception: an `interpolate` whose input is `["pitch"]` stays live and becomes a ramp over
+`[view::tilt]`, each key turned into `90 - pitch`. Neither MapBox nor maplibre has that in paint, so
+only a `massif:paint` value can state it — Massif fades its buildings that way.
+
 Folding is **conservative by construction**: a node is simplified only where a substitution actually
 happened. Without that rule it rewrote expressions in styles that have no config at all, and quietly
 removed four layers from a MapTiler style whose render was already verified.
@@ -462,6 +466,17 @@ style is unaffected: it states these in `paint`, where they are legal for it.
 `massif:filter` is the same hatch for a TEST maplibre refuses. It is ANDed onto the layer's own
 filter, and the one test that needs it is a live config — see below.
 
+`massif:minzoom-param` names a live config that holds the zoom a layer STARTS at, for an app to
+move (Alpimaps shows tracks from 13). Every band of the layer tests `[zoom >= 'param::track_min_zoom']`,
+a selector the decoder prunes per tile. The band starting AT the parameter's default drops its own
+start, so an app may go lower; a layer starting below its default keeps that floor (`[zoom >= 12]`
+beside the parameter), the lowest an app may go, and pays for decoding those tiles. A filter comparing
+`["zoom"]` with `["config", …]` brackets the same way; both need 512 px tiles (no zoom offset), and
+were a `when()` over `[view::zoom]`, read per feature, before.
+
+`massif:palette-names` (style metadata, name → literal) names the hoisted variables after the
+style's own palette, so an override file writes `@motorway` — see *Hoisting* below.
+
 ### A config the style keeps LIVE, and a filter that reads it
 
 Every `["config", name]` is normally folded to a constant before translation (see *Standard's
@@ -504,6 +519,12 @@ the better fade. Standard's ramp ends at 1, so a converted Standard is opaque ex
 One parameter covers every extrusion in the style. A style asking for two different alphas keeps the
 first and the coverage report says so; no source style does this.
 
+An opacity ramped over `["pitch"]` is not flattened: it is the style's own live fade (see above).
+Massif writes `5, ["config", "building_opacity"], 20, 1`, which becomes
+`linear([view::tilt], (70, 1), (85, [param::building_opacity]))` — the parameter looking straight
+down, so the tunnels show through, opaque once the camera leans in. A translucent frame takes the
+depth pre-pass path.
+
 ## A recolourable icon: the glyph is a field, the disc is a plate
 
 Mapbox Standard names its POI and transit icons `["image", <name>, { params: { background,
@@ -529,6 +550,14 @@ and each becomes a different thing:
 | the glyph | a distance field, `shield-file` + `shield-sdf` | `shield-icon-fill` ← the `icon` param |
 | the disc | the shield's icon PLATE | `shield-icon-background-fill` ← `background` |
 | the ring | that plate's border | `shield-icon-background-border-fill` ← `background-stroke` |
+
+A `circle` layer becomes markers: `circle-radius` is emitted doubled as `marker-width`, which is a
+diameter, and with `marker-allow-overlap` on, since a MapLibre circle never collides.
+
+The plate's corner and ring — stated as `radius` / `background-stroke-width` or measured off the
+artwork — are the artwork's pixels at icon-size 1, so they are emitted times `icon-size`. Carried as
+they were, Massif's POIs (icon-size 0.4, ring 3) drew a 3 px ring where MapLibre draws 1.2, and the
+disc a third wider with it.
 
 Which colour inside the disc is the *glyph* is the part that took two tries, because MapBox composes
 an icon as `icon-stroke` under `icon` and the sheet renders both:
@@ -612,6 +641,11 @@ at several depths:
 A **bare entry keeps every attachment no other entry claims**, so a project that splits nothing is
 unaffected and none of the existing styles change. This is a loader feature, not a converter one —
 a hand-written project can use it too.
+
+A layer with **no** bare entry draws its unclaimed attachments with its topmost entry, after that
+entry's own. A converted project names every attachment, so without this a child project's new
+rules (`custom_cycleway` in Massif's custom example, the OSM example's tracks) compiled and were
+never drawn: `extends` replaces `layers` whole, and the child would have had to restate 500 entries.
 
 `mapbox2css` emits one entry per RUN of consecutive attachments, which reproduces MapBox's order
 exactly and leaves a layer that interleaves with nothing on its bare entry. Standard goes from
@@ -709,7 +743,8 @@ resolves the triple once, for the text and the icon separately:
 | point (or unset) | map | — | `point` |
 | line / line-center | map | map | `line` |
 | line / line-center | viewport | map | `billboard-line` |
-| line / line-center | — | viewport | `billboard-line-repeat` |
+| line | — | viewport | `billboard-line-repeat` |
+| line-center | viewport / map | viewport | `billboard` / `point`: one label at the line's middle, wrapped at `text-max-width` (MapLibre keeps it on one line) |
 
 MapTiler's topo-v4 sets `text-pitch-alignment: viewport` on all 17 of its line-placed layers, so
 dropping the alignments left every road name lying flat on the terrain.
@@ -869,6 +904,10 @@ takes ONE pattern where MapBox takes a ramp. Two rules follow from that:
   cycleway dashes came out two and a half times too long with gaps to match. The `match`/`case`
   fallback is the width nearly every feature has; a piste is the exception, and one pattern cannot
   serve both.
+- **A width chosen per config value is read at its fallback too.** Massif's e-ink draws tracks 1.6×
+  wider, a `match` on `["config", "variant"]` around two ramps. That is no ramp to read, and the mean
+  of every number in both drew a grade2 track's `[5, 2]` as a 50 px dash where gl-js draws 5. The
+  other variants' dashes are exact; e-ink's come out 1/1.6 of their length.
 
 ### A PLAIN dash over a ramped width becomes one rule per zoom band
 
@@ -989,6 +1028,8 @@ the camera turns onto the map:
 building-height-view-scale: 1 - ([param::building_tilt_drop] * 0.01) * linear([view::tilt], (80, 0), (90, 1));
 ```
 
+It is emitted for every style with buildings, whether or not it states MapBox `lights`: gating it
+on them left `building_tilt_drop` declared and driving nothing in every maplibre-sourced style.
 It starts late (a 3D camera at tilt 55–75 is untouched). `building_tilt_drop` is a style parameter,
 a percentage defaulting to 90, so a flattened building keeps a tenth of its height — enough to read
 the storeys — and an app changes it with a redraw, not a re-decode.
@@ -1398,6 +1439,17 @@ palette meant to be tuned and not for the two-branch colour ramp on a road. `met
 every renderer, so a layer asking for it stays a valid MapLibre style, and every other converted
 style is byte-identical. `["icon-image"]` covers a recolourable icon's own params — the disc, its
 ring and the glyph — so an icon palette lands in the same place as the label's.
+
+A palette that follows the hour folds too: `["interpolate", …, ["measure-light", "brightness"], …]`
+whose every stop is such a `match` becomes one table per stop, read inside
+`linear([view::brightness], …)` — `poi-fill-b25-*` for the stop at 0.25, the last stop keeping the
+plain name. Keep the ramp OUTSIDE and the match inside; a match whose branches are ramps has no
+constant to tabulate and stays a ternary chain.
+
+A palette per VARIANT folds the same way: a `match` on a live config (`["config", "variant"]`, kept
+live through `massif:live-config`) whose every branch folds - a table, a brightness pair of tables
+or a constant - becomes one set of tables per branch (`poi-fill-eink-*`), picked by a
+`[param::variant]` test that costs one comparison per draw, then one lookup per feature.
 
 ### A set test's labels are constants, and a geometry name is a NUMBER
 

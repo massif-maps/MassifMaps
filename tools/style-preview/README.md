@@ -1,7 +1,9 @@
 # Style preview
 
 One style, two panes: OpenFreeMap on the left, a local `.mbtiles` on the right, cameras synced. The
-`gaps` panel lists what the style reads that the local tileset does not carry.
+`gaps` panel lists what the style reads that the local tileset does not carry, and the `reference`
+picker draws Mapbox Standard or a MapTiler style in the local pane's place, with the tokens read
+from `~/.mapbox_token` and `~/.maptiler_token`.
 
 ```sh
 python3 serve.py --mbtiles rhone-alpes=/path/to/rhone-alpes.mbtiles

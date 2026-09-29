@@ -260,18 +260,11 @@ uniform change, so without this, moving the hour on a running map moved the buil
 per-frame uniform — and left the ground exactly as it was. It is quantised to 64 steps per channel,
 so a whole day cycle re-bakes a few dozen times rather than every frame.
 
-### Known gap: a TRANSLUCENT extrusion has no path
+### A TRANSLUCENT extrusion takes a depth pre-pass
 
-The 3D pass runs with blending off and depth writes on — one opaque surface per pixel, which is
-what lets the extrusions occlude each other and what the shadow map is drawn against. A
-`building-fill-opacity` below 1 therefore has nowhere to go: the fractional alpha is written
-straight into the frame rather than composited, and a city drawn that way reads as a wash of
-half-buildings showing through one another.
-
-MapTiler Streets states `fill-extrusion-opacity: 0.4`, so this is not hypothetical. The converter
-clamps it to 1 and says so in its coverage report; drawn opaque is much the closer of the two
-answers. The real fix is a depth pre-pass — extrusions rendered depth-only first, then blended with
-`GL_EQUAL` and no depth write — so exactly one translucent surface survives per pixel. Not done.
+A `building-fill-opacity` below 1 is drawn depth-only first, then in colour with the depth pulled
+one unit towards the camera, so exactly one surface blends per pixel. See
+[the frame](01-frame.md) for the pass order.
 
 ## Cast shadows
 
@@ -309,7 +302,10 @@ Design points, each measured:
   `shadow-intensity` default, and with the share applied that is their shadow exactly rather than a
   maximum. Above 1 exaggerates; the product is clamped to 1 because the shaders read it as
   `mix(1, lit, strength)`, which a value past 1 would invert. The bench and the example panel let it
-  reach 2 for that reason.
+  reach 2 for that reason. The share is linear light while the shaders darken sRGB colours, so the
+  strength they get is `1 − (1 − share)^(1/2.2)` (`DayCycleLight::srgbShadowStrength`), gl-js's
+  `linearTosRGB`. Sent linear, a full shadow under Standard's day kept 0.8 of the ground where
+  gl-js keeps 0.91: twice the darkening, and the buildings' shadowed faces with it.
 
   What this fixed, on the `day-cycle-light` example at Paris (`shadowStrength 0.35`): the shadow map
   was still being drawn all night — cast from the 15° floor above, azimuth intact — so shadow blocks

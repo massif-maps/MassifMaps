@@ -17,13 +17,19 @@ export function resolvePlacement(layer: MapboxLayer, kind: 'text' | 'icon'): str
     const upright = pitch === 'viewport';
 
     if (!alongLine) return upright ? 'billboard' : 'point';
-    if (rotation === 'viewport') return 'billboard-line-repeat'; // upright and not turning with the line
+    // upright and not turning with the line; line-center's one label is a plain one at the line's middle
+    if (rotation === 'viewport') return placement === 'line-center' ? (upright ? 'billboard' : 'point') : 'billboard-line-repeat';
     return upright ? 'billboard-line' : 'line';
 }
 
-/** MapLibre lays a line-placed label out along the line and never wraps it. */
+/**
+ * MapLibre lays a line-placed label out along the line and never wraps it. An upright line-center
+ * label is one billboard here (resolvePlacement), so its text-max-width wraps it as a point's does;
+ * MapLibre keeps it on one line.
+ */
 export function followsLine(layer: MapboxLayer): boolean {
     const placement = enumOf(layer.layout?.['symbol-placement']);
+    if (placement === 'line-center' && ['billboard', 'point'].includes(resolvePlacement(layer, 'text'))) return false;
     return placement === 'line' || placement === 'line-center';
 }
 

@@ -18,6 +18,9 @@ void testFontNames();
 void testValueJSON();
 void testAnchorLabelId();
 void testSymbolizerProperty();
+void testBuiltinParameters();
+void testLineAnchors();
+void testMBVTSubtile();
 
 int main() {
     testLayerConfig();
@@ -32,6 +35,9 @@ int main() {
     testValueJSON();
     testAnchorLabelId();
     testSymbolizerProperty();
+    testBuiltinParameters();
+    testLineAnchors();
+    testMBVTSubtile();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

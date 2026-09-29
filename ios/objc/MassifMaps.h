@@ -74,6 +74,7 @@
 #import "MSFCelestialLayer.h"
 #import "MSFCelestialSprite.h"
 #import "MSFCelestialArc.h"
+#import "MSFCelestialImage.h"
 
 #import "MSFSolidLayer.h"
 #import "MSFRasterTileEventListener.h"

@@ -18,6 +18,7 @@
 
 namespace massif {
     class Bitmap;
+    class BitmapTextureCache;
     class CelestialLabel;
     class CelestialLayer;
     class CelestialObject;
@@ -31,8 +32,8 @@ namespace massif {
     class ViewState;
 
     /**
-     * Draws the objects of a CelestialLayer: sprites batched by bitmap, arcs widened in the vertex shader
-     * (line width is ignored on WebGL). Depth-tested but never depth-writing, so the map covers them;
+     * Draws the objects of a CelestialLayer: images as meshes on the sky sphere, sprites batched by
+     * bitmap, arcs widened in the vertex shader (line width is ignored on WebGL). Depth-tested but never depth-writing, so the map covers them;
      * occludedByMap off disables the test.
      */
     class CelestialRenderer {
@@ -69,6 +70,7 @@ namespace massif {
         bool buildLabel(const std::shared_ptr<CelestialLabel>& label, const ViewState& viewState, double distance, SpriteInstance& instance) const;
         void drawSprites(const std::vector<SpriteInstance>& instances, const ViewState& viewState);
         void drawArcs(const ViewState& viewState, float opacity);
+        void drawImages(const ViewState& viewState, float opacity);
         void calculateRayIntersectedArcs(const std::shared_ptr<CelestialLayer>& layer, const cglib::ray3<double>& ray, const cglib::vec3<double>& rayDir, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
 
         static const std::string SPRITE_VERTEX_SHADER;
@@ -81,10 +83,13 @@ namespace massif {
 
         // Fraction of the far plane an infinitely distant object sits at: behind the map, never clipped.
         static const double INFINITE_DISTANCE_FACTOR;
+        static const int IMAGE_SUBDIVISIONS;
+        static const unsigned int IMAGE_TEXTURE_CACHE_SIZE;
 
         std::shared_ptr<Shader> _spriteShader;
         std::string _fogShaderSource;   // the fog block both programs were built with
         std::shared_ptr<Shader> _arcShader;
+        std::shared_ptr<BitmapTextureCache> _imageTextureCache;
         std::weak_ptr<Options> _options;
         std::weak_ptr<MapRenderer> _mapRenderer;
 

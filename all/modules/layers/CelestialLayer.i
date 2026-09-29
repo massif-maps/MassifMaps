@@ -21,6 +21,7 @@
 
 !polymorphic_shared_ptr(massif::CelestialLayer, layers.CelestialLayer)
 !event(massif::CelestialLayer, celestial.clicked, payload(massif::CelestialClickInfo), consumable)
+!event(massif::CelestialLayer, sky.clicked, payload(massif::CelestialClickInfo), consumable)
 !spec(massif::CelestialLayer, layer, celestial)
 !method(massif::CelestialLayer, add, arg(object, handle), returns(void))
 !method(massif::CelestialLayer, remove, arg(object, handle), returns(bool))

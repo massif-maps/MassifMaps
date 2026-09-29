@@ -1763,7 +1763,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the altitude of the clicked object at the time of the click."
+          "doc": "Returns the altitude of the clicked object at the time of the click, or the one the click aimed at."
         },
         {
           "name": "azimuth",
@@ -1772,7 +1772,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the azimuth of the clicked object at the time of the click."
+          "doc": "Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at."
         },
         {
           "name": "celestialObject",
@@ -1813,6 +1813,46 @@
       "properties": [],
       "aliases": {},
       "methods": [],
+      "events": []
+    },
+    "massif::CelestialImage": {
+      "base": "massif::CelestialObject",
+      "properties": [
+        {
+          "name": "bitmap",
+          "type": "OBJECT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "graphics.Bitmap",
+          "objectClass": "massif::Bitmap",
+          "doc": "Returns the bitmap of the image."
+        },
+        {
+          "name": "luminanceAlpha",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the bitmap's brightness is read as its opacity."
+        }
+      ],
+      "aliases": {},
+      "methods": [
+        {
+          "cppClass": "massif::CelestialImage",
+          "name": "setAnchors",
+          "args": [
+            {
+              "name": "anchors",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialLabel": {
@@ -2043,6 +2083,12 @@
         {
           "cppClass": "massif::CelestialLayer",
           "name": "celestial.clicked",
+          "payload": "massif::CelestialClickInfo",
+          "consumable": true
+        },
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "sky.clicked",
           "payload": "massif::CelestialClickInfo",
           "consumable": true
         }
@@ -10875,6 +10921,18 @@
         ]
       ],
       [
+        "image",
+        "massif__CelestialImage",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
         "label",
         "massif__CelestialLabel",
         [
@@ -12773,6 +12831,7 @@
     "massif::CacheTileDataSource": "source",
     "massif::CartoCSSStyleSet": "styleset",
     "massif::CelestialArc": "celestial",
+    "massif::CelestialImage": "celestial",
     "massif::CelestialLabel": "celestial",
     "massif::CelestialLayer": "layer",
     "massif::CelestialObject": "celestial",
@@ -12982,6 +13041,16 @@
       "cppClass": "massif::CelestialArc",
       "kind": "celestial",
       "type": "arc",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialImage",
+      "kind": "celestial",
+      "type": "image",
       "aliases": {},
       "defaults": {},
       "constructors": [

@@ -462,14 +462,24 @@ namespace massif::vt {
             }
         }
         int stride = res + 1;
-        for (int j = 0; j < res; j++) {
-            for (int i = 0; i < res; i++) {
-                std::size_t a = static_cast<std::size_t>(j * stride + i);
-                std::size_t b = a + 1;
-                std::size_t c = a + stride + 1;
-                std::size_t d = a + stride;
-                indices.append(a, b, c);
-                indices.append(a, c, d);
+        // Bands of GRID_INDEX_BAND cells, not whole rows: a band's previous row is still in the
+        // post-transform vertex cache when the next one reuses it (performance-log.md, section 32).
+        for (int blockY = 0; blockY < GRID_CULL_BLOCKS; blockY++) {
+            for (int blockX = 0; blockX < GRID_CULL_BLOCKS; blockX++) {
+                int x0 = gridBlockStart(res, blockX), x1 = gridBlockStart(res, blockX + 1);
+                int y0 = gridBlockStart(res, blockY), y1 = gridBlockStart(res, blockY + 1);
+                for (int band = x0; band < x1; band += GRID_INDEX_BAND) {
+                    for (int j = y0; j < y1; j++) {
+                        for (int i = band; i < std::min(band + GRID_INDEX_BAND, x1); i++) {
+                            std::size_t a = static_cast<std::size_t>(j * stride + i);
+                            std::size_t b = a + 1;
+                            std::size_t c = a + stride + 1;
+                            std::size_t d = a + stride;
+                            indices.append(a, b, c);
+                            indices.append(a, c, d);
+                        }
+                    }
+                }
             }
         }
 

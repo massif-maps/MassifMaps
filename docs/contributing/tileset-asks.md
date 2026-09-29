@@ -21,11 +21,11 @@ carry has to fall back on its own — see [the shield fallback](#the-rule-for-a-
 
 | Field | Where | Buys |
 |---|---|---|
-| `network` | `transportation_name` | **road shields.** Commented out at `TransportationName.java:268`. Without it no shield can tell an interstate from a departmental road, and every ref falls to the neutral plate |
-| `iso_a2` | `transportation_name` | **shield colours per country.** A French `N` is red, a Dutch `N` is yellow, a Belgian `N` is blue; the ref's letter alone cannot separate them. MapTiler's `road_label` carries it for exactly this reason |
 | `maritime`, `class` | `boundary` | a coastline boundary cannot be told from a land one, so both draw the same |
 
-`network` is worth more than the shields. Stock OMT collapses the OSM route network onto a
+`network`, `iso_a2` and `shelter_type` were on this list and landed in
+[farfromrefug/planetiler-openmaptiles#11](https://github.com/farfromrefug/planetiler-openmaptiles/pull/11)
+(planetiler `3430a5b1`). `network` is worth more than the shields. Stock OMT collapses the OSM route network onto a
 14-value enum — `us-interstate`, `ca-transcanada`, `gb-motorway`, `e-road`, … — which has no French,
 German or Italian value at all. Emitting the **raw OSM `network`** (`FR:A-road`, `DE:BAB`) instead
 lets the style read the route class directly rather than guessing it from the ref's first letter,
@@ -38,12 +38,9 @@ per-country shields.
 |---|---|
 | `tree` | canopy dots. Both MapTiler v4 and Mapbox Standard carry one |
 | `street_furniture` | benches, crossings, traffic signals, drinking water, picnic tables |
-| `motorway_junction` | numbered exits, with their own plate |
-| `poi.network` | metro and RER roundels — the badge is per network, and `class`/`subclass` cannot name one |
 | `place.iso_a2` | country-keyed place labels |
 | `building.colour` | a mapped building colour instead of one flat fill |
-| `poi.agg_stop` | grouping the platforms of one station into a single label |
-| `expressway`, `horse`, `mtb_scale` | on `transportation`, all three commented out in the fork |
+| `expressway` | on `transportation`, commented out in the fork |
 
 ## Not wanted — do not add these
 
@@ -68,6 +65,11 @@ should use them where they are and cope where they are not.
 ## Already in the fork — do not re-add
 
 `transportation` carries `tracktype`, `sac_scale`, `surface_detail`, `difficulty`, `maxspeed`,
-`official`, `access`, `surface`, `oneway`, `toll`, `bicycle`, `foot`. There are `building_name`,
+`official`, `access`, `surface`, `oneway`, `toll`, `bicycle`, `foot`, `horse`, `mtb_scale`.
+`transportation_name` carries `network` (raw OSM, `FR:A-road`), `iso_a2`, and motorway exits as
+`subclass=junction` points. `poi` carries `shelter_type`, a transit stop's `network` and `agg_stop`.
+`tracktype` and `sac_scale` are written as their index in OSM's list (grade1 = 0, hiking = 0), where
+stock OpenMapTiles writes the name; the Massif styles accept both. `building.render_height` is left
+out when it is the 5 m default (stock writes 5), so a style reads it through a coalesce. There are `building_name`,
 `landcover_name` and `landuse_name` layers, and a `Route.java` for route relations. Contours and
 terrain-RGB are separate archives.

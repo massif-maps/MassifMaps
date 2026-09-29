@@ -190,7 +190,9 @@ namespace massif::vt {
         static constexpr float LINE_REVERSE_HYSTERESIS = 0.02f; // fraction of the run length
         static constexpr float LINE_VERTICAL_RUN_FRACTION = 0.2f; // |dx| below this fraction of the run counts as vertical
         static constexpr double PLACEMENT_ROOM_FACTOR = 1.25; // room the glyph run is given on the line, relative to its own length
-        static constexpr double PLACEMENT_SMOOTH_TEXT_FRACTION = 1.0 / 3.0; // line detail below this fraction of the text length is smoothed away before laying out glyphs
+        static constexpr double PLACEMENT_SIMPLIFY_TOLERANCE = 0.6; // glyph units: a DEM contour's cell zigzag is dropped; a street's bend (Rue du 19 Mars 1962, ~0.9 em off its chord at z15) is kept
+        // maplibre's window of 3/5 em the style's text-max-angle is summed over (get_anchors.ts)
+        static constexpr double PLACEMENT_ANGLE_WINDOW = 0.6; // glyph units
         static constexpr double SNAP_MOVE_EPSILON = 1.0e-9; // internal world units (1 unit ~ 38m); a 1px anchor drift is ~1e-4 at z15
         static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.1f; // min dot of view vector and surface normal (cos ~84deg: labels valid down to tilt ~6)
 
@@ -244,7 +246,7 @@ namespace massif::vt {
             long long localId;
             std::vector<Edge> edges;
             std::size_t index;
-            std::size_t sourceIndex; // index of the anchor segment in the SOURCE line, edges may be a smoothed copy of it
+            std::size_t sourceIndex; // index of the anchor segment in the SOURCE line, edges may be a simplified copy of it
             cglib::vec3<double> position;
             cglib::vec3<float> normal;
             cglib::vec3<float> xAxis;
@@ -387,8 +389,10 @@ namespace massif::vt {
         void buildBoxEnvelope(const cglib::bbox2<float>& glyphBBox, float scale, const cglib::vec2<float>& padding, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, std::array<cglib::vec3<float>, 4>& envelope) const;
 
         cglib::bbox3<double> calculateGeometryBBox(const ViewState& viewState) const;
-        static void smoothPlacementLine(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, double minEdgeLength, std::vector<cglib::vec3<double>>& smoothedVertices, std::size_t& smoothedIndex);
+        float calculateLineRunLength() const;
+        static void simplifyPlacementLine(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, double tolerance, std::vector<cglib::vec3<double>>& simplifiedVertices, std::size_t& simplifiedIndex);
         static void clampPlacementAnchor(const std::vector<cglib::vec3<double>>& vertices, double textLength, std::size_t& index, cglib::vec3<double>& position);
+        static bool checkPlacementMaxAngle(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, const cglib::vec3<double>& position, double textLength, double windowLength, double maxAngle);
         std::shared_ptr<const Placement> buildLinePlacement(const TileLine& tileLine, std::size_t index, const cglib::vec3<double>& position) const;
         std::shared_ptr<const Placement> getPlacement(const ViewState& viewState) const;
         std::shared_ptr<const Placement> findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints, const Placement* oldPlacement = nullptr) const;
@@ -425,10 +429,10 @@ namespace massif::vt {
         mutable bool _geometryBBoxValid = false;
         mutable cglib::bbox3<double> _geometryBBox = cglib::bbox3<double>::smallest();
 
-        // Length of the glyph run in world units at the view the placement was made for: the line
-        // detail worth following and the room the run needs both derive from it. Refreshed by
-        // updatePlacement, carried over by snapPlacement so a re-created label places the same way.
+        // Run length and glyph unit in world units at the view the placement was made for. Refreshed
+        // by updatePlacement, carried over by snapPlacement so a re-created label places the same way.
         double _placementTextLength = 0;
+        double _placementGlyphScale = 0;
 
         float _calloutOffset = 0.0f; // screen pixels along the camera up axis, CALLOUT only (see setCalloutOffset)
         float _calloutAnchorScreenY = 0.0f;

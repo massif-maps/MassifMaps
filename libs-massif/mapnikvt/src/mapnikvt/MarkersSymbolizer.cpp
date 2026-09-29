@@ -291,7 +291,9 @@ namespace massif::mvt {
                             pointProcessor = layerBuilder.createPointLabelProcessor(transformedStyle, glyphMap);
                             if (pointProcessor) {
                                     for (const auto& vertex : transformedPoints.second) {
-                                    long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
+                                    // With no feature id, every line's Nth repeat got the same id and merged: one
+                                    // street's arrow drawn at another's rotation. Keyed by its anchor instead.
+                                    long long generatedLabelId = (anchorLabelId ? combineAnchorId(labelId, tileId, vertex) : combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter));
                                     pointProcessor(localId, generatedLabelId, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                                     counter++;
                                 }

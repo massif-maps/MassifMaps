@@ -22,6 +22,7 @@ public final class MapEvents {
     public static final String INTERACTION = "map.interaction";
     public static final String VECTOR_TILE_CLICKED = "vectortile.clicked";
     public static final String VECTOR_ELEMENT_CLICKED = "vectorelement.clicked";
+    public static final String CELESTIAL_CLICKED = "celestial.clicked";
 
     /** Called on the thread the subscription asked for. */
     public interface Handler<E> {

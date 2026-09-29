@@ -52,6 +52,11 @@ Inherited from `Layer`:
 | `refresh` | — | void |
 | `remove` | object: handle | bool |
 
+| Event | Payload | Consumable |
+|---|---|---|
+| `celestial.clicked` | CelestialClickInfo | yes |
+| `sky.clicked` | CelestialClickInfo | yes |
+
 ## `"composite-vector"` — CompositeVectorTileLayer {#spec-composite-vector}
 
 ```json

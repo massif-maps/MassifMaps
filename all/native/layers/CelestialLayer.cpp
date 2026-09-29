@@ -1,7 +1,10 @@
 #include "CelestialLayer.h"
 #include "celestial/CelestialObject.h"
+#include "celestial/SkyDirection.h"
 #include "components/Exceptions.h"
+#include "graphics/ViewState.h"
 #include "layers/CelestialEventListener.h"
+#include "projections/ProjectionSurface.h"
 #include "renderers/CelestialRenderer.h"
 #include "renderers/MapRenderer.h"
 #include "renderers/components/RayIntersectedElement.h"
@@ -137,6 +140,17 @@ namespace massif {
         }
         std::shared_ptr<CelestialObject> object = intersectedElement.getElement<CelestialObject>();
         return listener->onCelestialObjectClicked(clickInfo, object);
+    }
+
+    bool CelestialLayer::processSkyClick(const ClickInfo& clickInfo, const cglib::ray3<double>& ray, const ViewState& viewState) const {
+        DirectorPtr<CelestialEventListener> listener = _celestialEventListener;
+        std::shared_ptr<ProjectionSurface> projectionSurface = viewState.getProjectionSurface();
+        if (!listener || !projectionSurface || !isVisible()) {
+            return false;
+        }
+        float azimuth = 0, altitude = 0;
+        CalculateSkyDirection(*projectionSurface, projectionSurface->calculateMapPos(viewState.getFocusPos()), ray.direction, azimuth, altitude);
+        return listener->onSkyClicked(clickInfo, azimuth, altitude);
     }
 
     void CelestialLayer::registerDataSourceListener() {

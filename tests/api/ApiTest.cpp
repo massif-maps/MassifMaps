@@ -73,6 +73,7 @@ void testAutoFlatten();
 void testCameraClearance();
 void testFlightPath();
 void testElevationNodeField();
+void testElevationGradient();
 void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeStandIn();
@@ -95,6 +96,8 @@ void testTerrainSurface();
 void testFlattenSwitchTimeline();
 void testViewDistance();
 void testFogPitchFade();
+void testCelestialImageGrid();
+void testSkyDirection();
 void testTerrainOcclusion();
 
 namespace {
@@ -459,6 +462,7 @@ int main() {
     testCameraClearance();
     testFlightPath();
     testElevationNodeField();
+    testElevationGradient();
     testDayCycleLight();
     testDrapeStackCuts();
     testDrapeStandIn();
@@ -481,6 +485,8 @@ int main() {
     testFlattenSwitchTimeline();
     testViewDistance();
     testFogPitchFade();
+    testCelestialImageGrid();
+    testSkyDirection();
     testTerrainOcclusion();
 
     std::printf("\n%d failure(s)\n", failures);

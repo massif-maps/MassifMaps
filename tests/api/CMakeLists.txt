@@ -246,6 +246,8 @@ add_executable(api_tests
   TerrainDecodeWaitTest.cpp
   # Same: ElevationNodeField.h is the mesh-node box filter over a texel callback.
   ElevationNodeFieldTest.cpp
+  # Same: ElevationGradient.h is the lit surfaces' forward differences and nothing else.
+  ElevationGradientTest.cpp
   # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.
   DayCycleLightTest.cpp
   # Same: PrefetchOrder.h is the DEM prefetch queue's distance metric and nothing else. It was
@@ -254,6 +256,8 @@ add_executable(api_tests
   PrefetchOrderTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
+  # Same: CelestialImageGrid.h is a sky image's bitmap-to-direction mapping and nothing else.
+  CelestialImageGridTest.cpp
   # Same: KineticStep.h is the per-frame fraction of a kinetic delta, and nothing else.
   KineticStepTest.cpp
   # Same: TileLODRule.h is maplibre's tile zoom function as two corrections, and nothing else.
@@ -261,6 +265,8 @@ add_executable(api_tests
   # The globe's surface against the planar one - the conventions terrain-on-globe rests on.
   # Needs the two projection surface sources added above.
   SphericalSurfaceTest.cpp
+  # The sky.clicked direction on both surfaces: SkyDirection.h and the two surfaces added above.
+  SkyDirectionTest.cpp
   # Same: TerrainElevationScale.h is metres-to-vertex-frame on a sphere and nothing else. Needs
   # vt's TileTransformer source added above.
   GlobeElevationScaleTest.cpp

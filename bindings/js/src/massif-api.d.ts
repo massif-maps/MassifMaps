@@ -67,7 +67,9 @@ export type ClassName =
     | 'massif::CacheTileDataSource'
     | 'massif::CartoCSSStyleSet'
     | 'massif::CelestialArc'
+    | 'massif::CelestialClickInfo'
     | 'massif::CelestialEventListener'
+    | 'massif::CelestialImage'
     | 'massif::CelestialLabel'
     | 'massif::CelestialLayer'
     | 'massif::CelestialObject'
@@ -358,6 +360,19 @@ export type CompositeSourceType =
     | 'COMPOSITE_SOURCE_TYPE_HILLSHADE'
     /** Another MBVT/protobuf source (including ContourTileDataSource), drawn at its style slot as its own child VectorTileLayer with the master decoder, so it overzooms independently via its own MaxOverzoomLevel. */
     | 'COMPOSITE_SOURCE_TYPE_VECTOR'
+    ;
+
+export type FlightEasing =
+    /** cubic-bezier(0.25, 0.1, 0.25, 1), the CSS "ease". The default, and mapbox-gl's. */
+    | 'FLIGHT_EASING_EASE'
+    /** No easing: the constant speed Van Wijk prescribes. Starts and stops abruptly. */
+    | 'FLIGHT_EASING_LINEAR'
+    /** cubic-bezier(0.42, 0, 1, 1). Gentle start, arrives at full speed. */
+    | 'FLIGHT_EASING_EASE_IN'
+    /** cubic-bezier(0, 0, 0.58, 1). Starts at full speed, comes to a stop. */
+    | 'FLIGHT_EASING_EASE_OUT'
+    /** cubic-bezier(0.42, 0, 0.58, 1). Symmetric, stronger than FLIGHT_EASING_EASE. */
+    | 'FLIGHT_EASING_EASE_IN_OUT'
     ;
 
 export type FreeRoamMode =
@@ -1499,6 +1514,10 @@ export interface PropertyTypes {
         readonly 'directionAnchored': boolean;
         /** (read-only) Returns the distance of a direction-anchored object. */
         readonly 'distance': number;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        'metaData': Record<string, Json>;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        [key: `metaData.${string}`]: Json;
         /** Returns whether the map in front hides the object. */
         'occludedByMap': boolean;
         /** (read-only) Returns the geographic position of a position-anchored object. */
@@ -1514,7 +1533,77 @@ export interface PropertyTypes {
         /** Returns the line width. */
         'width': number;
     };
+    'massif::CelestialClickInfo': {
+        /** (read-only) Returns the altitude of the clicked object at the time of the click, or the one the click aimed at. */
+        readonly 'altitude': number;
+        /** (read-only) Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at. */
+        readonly 'azimuth': number;
+        /** (read-only) Returns the clicked object. */
+        readonly 'celestialObject': Handle;
+        /** (read-only) Returns the altitude of a direction-anchored object. */
+        readonly 'celestialObject.altitude': number;
+        /** (read-only) Returns the azimuth of a direction-anchored object. */
+        readonly 'celestialObject.azimuth': number;
+        /** Returns the color of the object. */
+        'celestialObject.color': number;
+        /** (read-only) Returns true if the object is anchored by direction, false if by geographic position. */
+        readonly 'celestialObject.directionAnchored': boolean;
+        /** (read-only) Returns the distance of a direction-anchored object. */
+        readonly 'celestialObject.distance': number;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        'celestialObject.metaData': Record<string, Json>;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        [key: `celestialObject.metaData.${string}`]: Json;
+        /** Returns whether the map in front hides the object. */
+        'celestialObject.occludedByMap': boolean;
+        /** (read-only) Returns the geographic position of a position-anchored object. */
+        readonly 'celestialObject.position': Position;
+        /** (read-only) Returns the altitude of a position-anchored object. */
+        readonly 'celestialObject.positionAltitude': number;
+        /** Returns the visibility of the object. */
+        'celestialObject.visible': boolean;
+        /** (read-only) Returns the click info. */
+        readonly 'clickInfo': ClickInfo;
+        /** (read-only) Returns the click type. */
+        readonly 'clickType': 'CLICK_TYPE_SINGLE' | 'CLICK_TYPE_LONG' | 'CLICK_TYPE_DOUBLE' | 'CLICK_TYPE_DUAL' | number;
+    };
     'massif::CelestialEventListener': {
+    };
+    'massif::CelestialImage': {
+        /** (read-only) Returns the altitude of a direction-anchored object. */
+        readonly 'altitude': number;
+        /** (read-only) Returns the azimuth of a direction-anchored object. */
+        readonly 'azimuth': number;
+        /** Returns the bitmap of the image. */
+        'bitmap': Handle;
+        /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
+        readonly 'bitmap.bytesPerPixel': number;
+        /** (read-only) Returns the color format of this bitmap. */
+        readonly 'bitmap.colorFormat': 'COLOR_FORMAT_UNSUPPORTED' | 'COLOR_FORMAT_BGRA' | 'COLOR_FORMAT_RGBA_4444' | 'COLOR_FORMAT_RGB_565' | number;
+        /** (read-only) Returns the height of the bitmap. */
+        readonly 'bitmap.height': number;
+        /** (read-only) Returns the width of the bitmap. */
+        readonly 'bitmap.width': number;
+        /** Returns the color of the object. */
+        'color': number;
+        /** (read-only) Returns true if the object is anchored by direction, false if by geographic position. */
+        readonly 'directionAnchored': boolean;
+        /** (read-only) Returns the distance of a direction-anchored object. */
+        readonly 'distance': number;
+        /** Returns whether the bitmap's brightness is read as its opacity. */
+        'luminanceAlpha': boolean;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        'metaData': Record<string, Json>;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        [key: `metaData.${string}`]: Json;
+        /** Returns whether the map in front hides the object. */
+        'occludedByMap': boolean;
+        /** (read-only) Returns the geographic position of a position-anchored object. */
+        readonly 'position': Position;
+        /** (read-only) Returns the altitude of a position-anchored object. */
+        readonly 'positionAltitude': number;
+        /** Returns the visibility of the object. */
+        'visible': boolean;
     };
     'massif::CelestialLabel': {
         /** (read-only) Returns the altitude of a direction-anchored object. */
@@ -1545,6 +1634,10 @@ export interface PropertyTypes {
         'haloColor': number;
         /** Returns the halo width. */
         'haloWidth': number;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        'metaData': Record<string, Json>;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        [key: `metaData.${string}`]: Json;
         /** Returns whether the map in front hides the object. */
         'occludedByMap': boolean;
         /** (read-only) Returns the horizontal offset. */
@@ -1597,6 +1690,10 @@ export interface PropertyTypes {
         readonly 'directionAnchored': boolean;
         /** (read-only) Returns the distance of a direction-anchored object. */
         readonly 'distance': number;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        'metaData': Record<string, Json>;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        [key: `metaData.${string}`]: Json;
         /** Returns whether the map in front hides the object. */
         'occludedByMap': boolean;
         /** (read-only) Returns the geographic position of a position-anchored object. */
@@ -1631,6 +1728,10 @@ export interface PropertyTypes {
         readonly 'directionAnchored': boolean;
         /** (read-only) Returns the distance of a direction-anchored object. */
         readonly 'distance': number;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        'metaData': Record<string, Json>;
+        /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+        [key: `metaData.${string}`]: Json;
         /** Returns whether the map in front hides the object. */
         'occludedByMap': boolean;
         /** (read-only) Returns the geographic position of a position-anchored object. */
@@ -1784,7 +1885,7 @@ export interface PropertyTypes {
         readonly 'dataSource.projection.name': string;
         /** Returns the current frame number. */
         'frameNr': number;
-        /** Returns the current relative label blending speed. */
+        /** Returns the label blending speed, in full fades per second. */
         'labelBlendingSpeed': number;
         /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
         'labelPerspectiveScaling': number;
@@ -6241,7 +6342,7 @@ export interface PropertyTypes {
         readonly 'dataSource.projection.name': string;
         /** Returns the current frame number. */
         'frameNr': number;
-        /** Returns the current relative label blending speed. */
+        /** Returns the label blending speed, in full fades per second. */
         'labelBlendingSpeed': number;
         /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
         'labelPerspectiveScaling': number;
@@ -6701,7 +6802,7 @@ export interface PropertyTypes {
         readonly 'dataSource.projection.name': string;
         /** Returns the current frame number. */
         'frameNr': number;
-        /** Returns the current relative label blending speed. */
+        /** Returns the label blending speed, in full fades per second. */
         'labelBlendingSpeed': number;
         /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
         'labelPerspectiveScaling': number;
@@ -6958,7 +7059,13 @@ export interface PositionPaths {
     'massif::CelestialArc': {
         'position': true;
     };
+    'massif::CelestialClickInfo': {
+        'celestialObject.position': true;
+    };
     'massif::CelestialEventListener': {
+    };
+    'massif::CelestialImage': {
+        'position': true;
     };
     'massif::CelestialLabel': {
         'position': true;
@@ -7746,7 +7853,13 @@ export interface ObjectPaths {
     };
     'massif::CelestialArc': {
     };
+    'massif::CelestialClickInfo': {
+        'celestialObject': 'massif::CelestialObject';
+    };
     'massif::CelestialEventListener': {
+    };
+    'massif::CelestialImage': {
+        'bitmap': 'massif::Bitmap';
     };
     'massif::CelestialLabel': {
     };
@@ -8600,11 +8713,22 @@ export interface VariantPaths {
         'assetPackage.assetNames': true;
     };
     'massif::CelestialArc': {
+        'metaData': true;
         'position': true;
+    };
+    'massif::CelestialClickInfo': {
+        'celestialObject.metaData': true;
+        'celestialObject.position': true;
+        'clickInfo': true;
     };
     'massif::CelestialEventListener': {
     };
+    'massif::CelestialImage': {
+        'metaData': true;
+        'position': true;
+    };
     'massif::CelestialLabel': {
+        'metaData': true;
         'position': true;
     };
     'massif::CelestialLayer': {
@@ -8612,9 +8736,11 @@ export interface VariantPaths {
         'visibleZoomRange': true;
     };
     'massif::CelestialObject': {
+        'metaData': true;
         'position': true;
     };
     'massif::CelestialSprite': {
+        'metaData': true;
         'position': true;
     };
     'massif::ClickInfo': {
@@ -9658,12 +9784,30 @@ export interface CelestialSpec_arc {
     clickRadius?: number;
     /** Returns the color of the object. */
     color?: number;
+    /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+    metaData?: Record<string, Json>;
     /** Returns whether the map in front hides the object. */
     occludedByMap?: boolean;
     /** Returns the visibility of the object. */
     visible?: boolean;
     /** Returns the line width. */
     width?: number;
+}
+
+export interface CelestialSpec_image {
+    type: 'image';
+    /** Returns the bitmap of the image. */
+    bitmap?: Handle | string | Record<string, Json>;
+    /** Returns the color of the object. */
+    color?: number;
+    /** Returns whether the bitmap's brightness is read as its opacity. */
+    luminanceAlpha?: boolean;
+    /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+    metaData?: Record<string, Json>;
+    /** Returns whether the map in front hides the object. */
+    occludedByMap?: boolean;
+    /** Returns the visibility of the object. */
+    visible?: boolean;
 }
 
 export interface CelestialSpec_label {
@@ -9684,6 +9828,8 @@ export interface CelestialSpec_label {
     haloColor?: number;
     /** Returns the halo width. */
     haloWidth?: number;
+    /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+    metaData?: Record<string, Json>;
     /** Returns whether the map in front hides the object. */
     occludedByMap?: boolean;
     /** Returns the horizontal padding between the text and the plate's edge. */
@@ -9708,6 +9854,8 @@ export interface CelestialSpec_sprite {
     clickRadius?: number;
     /** Returns the color of the object. */
     color?: number;
+    /** Returns a copy of the meta data map. Changes to the copy are not reflected in the object. */
+    metaData?: Record<string, Json>;
     /** Returns whether the map in front hides the object. */
     occludedByMap?: boolean;
     /** Returns the screen size of the sprite. */
@@ -9718,7 +9866,7 @@ export interface CelestialSpec_sprite {
     visible?: boolean;
 }
 
-export type CelestialSpec = CelestialSpec_arc | CelestialSpec_label | CelestialSpec_sprite;
+export type CelestialSpec = CelestialSpec_arc | CelestialSpec_image | CelestialSpec_label | CelestialSpec_sprite;
 
 export interface EffectSpec_postprocess {
     type: 'postprocess';
@@ -10142,7 +10290,7 @@ export interface LayerSpec_composite_vector {
     cullDelay?: number;
     /** Returns the current frame number. */
     frameNr?: number;
-    /** Returns the current relative label blending speed. */
+    /** Returns the label blending speed, in full fades per second. */
     labelBlendingSpeed?: number;
     /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
     labelPerspectiveScaling?: number;
@@ -10382,7 +10530,7 @@ export interface LayerSpec_vector {
     cullDelay?: number;
     /** Returns the current frame number. */
     frameNr?: number;
-    /** Returns the current relative label blending speed. */
+    /** Returns the label blending speed, in full fades per second. */
     labelBlendingSpeed?: number;
     /** Returns how much of the perspective divide a label keeps as it recedes from the camera. */
     labelPerspectiveScaling?: number;
@@ -10965,6 +11113,7 @@ export interface SpecClass {
     };
     'celestial': {
         'arc': 'massif::CelestialArc';
+        'image': 'massif::CelestialImage';
         'label': 'massif::CelestialLabel';
         'sprite': 'massif::CelestialSprite';
     };
@@ -11089,7 +11238,7 @@ export interface MethodTypes {
     };
     'massif::BaseMapView': {
         fitBounds: { args: [bounds: Json, screenBounds: Json, integerZoom: boolean, resetRotation: boolean, resetTilt: boolean, durationSeconds: number]; result: void };
-        flyTo: { args: [pos: Position, zoom: number, rotation: number, tilt: number, climbHeight: number, durationSeconds: number]; result: void };
+        flyTo: { args: [pos: Position, zoom: number, rotation: number, tilt: number, climbHeight: number, durationSeconds: number, easing: string]; result: void };
         mapToScreen: { args: [pos: Position]; result: Json };
         moveCameraTo: { args: [pos: Position, zoom: number, rotation: number, tilt: number]; result: void };
         moveTo: { args: [pos: Position, zoom: number, rotation: number, tilt: number]; result: void };
@@ -11126,7 +11275,13 @@ export interface MethodTypes {
         setDirections: { args: [directions: Json]; result: void };
         setSegments: { args: [directions: Json]; result: void };
     };
+    'massif::CelestialClickInfo': {
+    };
     'massif::CelestialEventListener': {
+    };
+    'massif::CelestialImage': {
+        setAnchors: { args: [anchors: Json]; result: void };
+        setDirection: { args: [azimuth: number, altitude: number, distance: number]; result: void };
     };
     'massif::CelestialLabel': {
         setAnchorPoint: { args: [x: number, y: number]; result: void };
@@ -11773,11 +11928,17 @@ export interface EventTypes {
     };
     'massif::CelestialArc': {
     };
+    'massif::CelestialClickInfo': {
+    };
     'massif::CelestialEventListener': {
+    };
+    'massif::CelestialImage': {
     };
     'massif::CelestialLabel': {
     };
     'massif::CelestialLayer': {
+        'celestial.clicked': 'massif::CelestialClickInfo';
+        'sky.clicked': 'massif::CelestialClickInfo';
     };
     'massif::CelestialObject': {
     };

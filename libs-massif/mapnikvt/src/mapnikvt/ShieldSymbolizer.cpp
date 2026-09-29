@@ -210,11 +210,20 @@ namespace massif::mvt {
         vt::LabelLineAlign textLineAlign = parseLineAlign(_textHorizontalAlignment.getValue(exprContext));
         vt::LabelPlateStyle textPlate = getPlateStyle(symbolizerContext, exprContext);
         vt::LabelPlateStyle iconPlate;
-        iconPlate.color = vt::Color::fromColorOpacity(_iconBackgroundFill.getValue(exprContext), _iconBackgroundOpacity.getValue(exprContext));
+        iconPlate.color = vt::Color::fromColorOpacity(_iconBackgroundFill.getStaticValue(exprContext), _iconBackgroundOpacity.getValue(exprContext));
         iconPlate.radius = _iconBackgroundRadius.getValue(exprContext) * fontScale;
         iconPlate.padding = cglib::vec2<float>(_iconBackgroundPaddingX.getValue(exprContext) * fontScale, _iconBackgroundPaddingY.getValue(exprContext) * fontScale);
         iconPlate.size = cglib::vec2<float>(_iconBackgroundWidth.getValue(exprContext) * fontScale, _iconBackgroundHeight.getValue(exprContext) * fontScale);
-        iconPlate.borderColor = vt::Color::fromColorOpacity(_iconBackgroundBorderFill.getValue(exprContext), _iconBackgroundBorderOpacity.getValue(exprContext));
+        iconPlate.borderColor = vt::Color::fromColorOpacity(_iconBackgroundBorderFill.getStaticValue(exprContext), _iconBackgroundBorderOpacity.getValue(exprContext));
+        // A plate that follows the hour (a POI disc that darkens at night) is read per frame.
+        vt::ColorFunction iconBackgroundFillFunc = _iconBackgroundFillFuncBuilder.createColorOpacityFunction(_iconBackgroundFill.getFunction(exprContext), vt::FloatFunction(_iconBackgroundOpacity.getValue(exprContext)));
+        if (iconBackgroundFillFunc.function()) {
+            iconPlate.colorFunc = iconBackgroundFillFunc;
+        }
+        vt::ColorFunction iconBackgroundBorderFillFunc = _iconBackgroundBorderFillFuncBuilder.createColorOpacityFunction(_iconBackgroundBorderFill.getFunction(exprContext), vt::FloatFunction(_iconBackgroundBorderOpacity.getValue(exprContext)));
+        if (iconBackgroundBorderFillFunc.function()) {
+            iconPlate.borderColorFunc = iconBackgroundBorderFillFunc;
+        }
         iconPlate.borderWidth = _iconBackgroundBorderWidth.getValue(exprContext) * fontScale;
         bool textOptional = _textOptional.getValue(exprContext);
         std::vector<vt::Font::Glyph> iconGlyphs = buildIconGlyphs(font, symbolizerContext, exprContext, sizeStatic);

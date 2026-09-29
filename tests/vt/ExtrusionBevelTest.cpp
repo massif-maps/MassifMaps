@@ -45,11 +45,16 @@ namespace {
 
     // Every triangle the extrusion emits, in tile coordinates, with the height applied so the
     // chamfer band is separable from the walls below it.
-    std::vector<Tri> extrude(const Ring& ring, float edgeRadius, bool roundedRoof, float height) {
+    // Pixels per tile. At 256 a 0.4 m rounding on this tile is under a pixel and the corner wedges are
+    // skipped; at 4096 they are several pixels, so the cases below exercise them.
+    const float WEDGE_TILE_SIZE = 4096.0f;
+
+    std::vector<Tri> extrude(const Ring& ring, float edgeRadius, bool roundedRoof, float height, bool corners = true, float tileSize = WEDGE_TILE_SIZE) {
         auto transformer = std::make_shared<DefaultTileTransformer>(1.0f);
-        TileLayerBuilder builder("test", 0, PARIS_Z16, transformer, 256.0f, 1.0f);
+        TileLayerBuilder builder("test", 0, PARIS_Z16, transformer, tileSize, 1.0f);
         builder.setPolygon3DEdgeRadius(edgeRadius);
         builder.setPolygon3DRoundedRoof(roundedRoof);
+        builder.setPolygon3DEdgeCorners(corners);
 
         Polygon3DStyle style(ColorFunction(Color(1, 1, 1, 1)), std::optional<Transform>());
         TileLayerBuilder::Polygon3DProcessor processor = builder.createPolygon3DProcessor(style);
@@ -136,8 +141,8 @@ namespace {
         std::size_t triangles = 0;
     };
 
-    Report inspect(const Ring& ring, float edgeRadius, bool roundedRoof, float height) {
-        std::vector<Tri> triangles = extrude(ring, edgeRadius, roundedRoof, height);
+    Report inspect(const Ring& ring, float edgeRadius, bool roundedRoof, float height, bool corners = true, float tileSize = WEDGE_TILE_SIZE) {
+        std::vector<Tri> triangles = extrude(ring, edgeRadius, roundedRoof, height, corners, tileSize);
         Ring footprint = flipped(ring);
         Report report;
         report.triangles = triangles.size();
@@ -278,5 +283,27 @@ void testExtrusionBevel() {
         Report r = inspect(square(0.45f, 0.45f, SIDE), RADIUS, false, HEIGHT);
         TEST_CHECK(r.escape < 1.0e-4f, "no chamfer vertex escapes with a flat roof facet");
         TEST_CHECK(r.smallestArea2 > 0.0f, "a flat roof facet emits no degenerate triangle");
+    }
+
+    // Vertical corners off (the default): the wedges go, the roof chamfer stays, the building stays closed.
+    {
+        Ring footprint = square(0.45f, 0.45f, SIDE);
+        Report full = inspect(footprint, RADIUS, true, HEIGHT);
+        Report noCorners = inspect(footprint, RADIUS, true, HEIGHT, false);
+        TEST_CHECK(noCorners.triangles < full.triangles, "vertical corners off drops the corner wedges");
+        TEST_CHECK(noCorners.triangles > inspect(footprint, 0.0f, true, HEIGHT).triangles, "vertical corners off keeps the roof chamfer");
+        TEST_CHECK(noCorners.escape < 1.0e-4f, "no vertex escapes the footprint without vertical corners");
+        TEST_CHECK(noCorners.smallestArea2 > 0.0f, "no vertical corners emits no degenerate triangle");
+        // With nothing cut back, a wall runs to the footprint corner.
+        float gap = std::numeric_limits<float>::max();
+        cglib::vec2<float> corner = flipped(footprint)[0];
+        for (const Tri& t : extrude(footprint, RADIUS, true, HEIGHT, false)) {
+            for (const cglib::vec3<float>& v : { t.a, t.b, t.c }) {
+                gap = std::min(gap, cglib::length(cglib::vec2<float>(v(0), v(1)) - corner));
+            }
+        }
+        TEST_CHECK(gap < 1.0e-4f, "without vertical corners a wall reaches the footprint corner");
+        // Asked for, but 0.4 m is half a pixel on a 256 px z16 tile: skipped all the same.
+        TEST_CHECK(inspect(footprint, RADIUS, true, HEIGHT, true, 256.0f).triangles == noCorners.triangles, "vertical corners under a pixel are skipped even when asked for");
     }
 }

@@ -223,8 +223,8 @@ export type MassifEventData<C extends ClassName = any, E extends EventName<C> = 
          * Set this to true to claim the event: the SDK stops offering it to anything behind you -
          * later subscribers, and the map's own handling.
          *
-         * Only a CONSUMABLE event can be claimed - `vectortile.clicked` and
-         * `vectorelement.clicked`; `consumable` on this object says which. Setting it on anything
+         * Only a CONSUMABLE event can be claimed - `vectortile.clicked`, `vectorelement.clicked`,
+         * `celestial.clicked` and `sky.clicked`; `consumable` on this object says which. Setting it on anything
          * else is ignored, and warned about once rather than silently doing nothing.
          */
         consumed: boolean;
@@ -1159,6 +1159,11 @@ export class MassifLayer<C extends ClassName = any> extends MassifObject<C> {
             bridge.attachVectorTileEvents(native, this.handle);
         } else if (event === 'vectorelement.clicked') {
             bridge.attachVectorElementEvents(native, this.handle);
+        } else if (event === 'celestial.clicked' || event === 'sky.clicked') {
+            // One native bridge emits both: attaching a second would report every click twice.
+            if (!this.mBridged['celestial.clicked'] && !this.mBridged['sky.clicked']) {
+                bridge.attachCelestialEvents(native, this.handle);
+            }
         } else {
             return;
         }
@@ -1262,6 +1267,16 @@ export class MassifLayer<C extends ClassName = any> extends MassifObject<C> {
     /** `on('vectorelement.clicked', …)`, named - a marker or a popup the app added. */
     onElementClick(handler: (data: MassifEventData<'massif::VectorLayer', 'vectorelement.clicked'>) => void, options?: SubscribeOptions): Subscription {
         return this.subscribe('vectorelement.clicked' as EventName<C>, handler as never, options);
+    }
+
+    /** `on('celestial.clicked', …)`, named - an object of a celestial layer. Set `e.consumed` to claim the click. */
+    onCelestialClick(handler: (data: MassifEventData<'massif::CelestialLayer', 'celestial.clicked'>) => void, options?: SubscribeOptions): Subscription {
+        return this.subscribe('celestial.clicked' as EventName<C>, handler as never, options);
+    }
+
+    /** `on('sky.clicked', …)`, named - a tap on empty sky: it hit nothing, and has no ground position for `map.clicked`. */
+    onSkyClick(handler: (data: MassifEventData<'massif::CelestialLayer', 'sky.clicked'>) => void, options?: SubscribeOptions): Subscription {
+        return this.subscribe('sky.clicked' as EventName<C>, handler as never, options);
     }
 
     private requireMap(): MassifMap {

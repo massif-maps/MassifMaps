@@ -27,6 +27,7 @@ void testSpanDrapeLight();
 void testSpanResolver();
 void testSphericalTerrain();
 void testExtrusionOccluder();
+void testGridIndexOrder();
 void testRenderTileBlend();
 void testLabelSlice();
 void testLabelFade();
@@ -65,6 +66,7 @@ int main() {
     testSpanResolver();
     testSphericalTerrain();
     testExtrusionOccluder();
+    testGridIndexOrder();
     testRenderTileBlend();
     testLabelSlice();
     testLabelFade();

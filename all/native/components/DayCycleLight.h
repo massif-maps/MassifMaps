@@ -34,6 +34,17 @@ namespace massif {
         // direction drops, so the moon is folded into the ambient to match what Standard renders.
         static constexpr Setup NIGHT = { { 0.2745f, 0.3010f, 0.4115f }, 0.50f, { 0.2465f, 0.2683f, 0.3335f }, 0.50f };
 
+        // Standard's night directional light, [270, 20]: a moon in the west, 70 deg up. Buildings are lit
+        // by it once the sun is down, over Standard's own night ambient hsl(217,100%,11%) - the ground
+        // keeps NIGHT's folded ambient. Without it every face of a building took the same tone.
+        static constexpr float MOON_DIR[3] = { -0.3420f, 0.0f, 0.9397f };
+        static constexpr float NIGHT_BUILDING_AMBIENT[3] = { 0.0f, 0.0843f, 0.22f };
+
+        /** How far the buildings have gone over to the moon: 0 with the sun up, 1 from 8.6 deg under. */
+        static float moonWeight(float sunUp) {
+            return smoothStep(0.0f, 0.15f, -sunUp);
+        }
+
         /** One light anchored on a sun height. A list of these is the whole curve. */
         struct Stop {
             float altitude;
@@ -129,6 +140,13 @@ namespace massif {
             float ambient = luminance(light.ambient, light.ambientIntensity);
             float direct = luminance(light.direct, light.directIntensity) * std::max(0.0f, sunUp);
             return ambient + direct > 0.0f ? direct / (ambient + direct) : 0.0f;
+        }
+
+        // The strength the shaders take: they darken sRGB colours, and the share is linear light.
+        // gl-js's linearTosRGB(ambient / (ambient + direct)) for a fully shadowed ground.
+        static float srgbShadowStrength(const Setup& light, float sunUp, float strength) {
+            float linear = std::min(1.0f, strength * directShare(light, sunUp));
+            return 1.0f - std::pow(1.0f - linear, 1.0f / 2.2f);
         }
 
         /**

@@ -84,6 +84,7 @@ namespace massif {
 
         virtual void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
         virtual bool processClick(const ClickInfo& clickInfo, const RayIntersectedElement& intersectedElement, const ViewState& viewState) const;
+        virtual bool processSkyClick(const ClickInfo& clickInfo, const cglib::ray3<double>& ray, const ViewState& viewState) const;
 
         virtual void registerDataSourceListener();
         virtual void unregisterDataSourceListener();

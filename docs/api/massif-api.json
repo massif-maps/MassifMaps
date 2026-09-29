@@ -1753,11 +1753,106 @@
       ],
       "events": []
     },
+    "massif::CelestialClickInfo": {
+      "base": null,
+      "properties": [
+        {
+          "name": "altitude",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the altitude of the clicked object at the time of the click, or the one the click aimed at."
+        },
+        {
+          "name": "azimuth",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the azimuth of the clicked object at the time of the click, or the one the click aimed at."
+        },
+        {
+          "name": "celestialObject",
+          "type": "OBJECT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "celestial.CelestialObject",
+          "objectClass": "massif::CelestialObject",
+          "doc": "Returns the clicked object."
+        },
+        {
+          "name": "clickInfo",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::ClickInfo",
+          "doc": "Returns the click info."
+        },
+        {
+          "name": "clickType",
+          "type": "ENUM",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::ClickType::ClickType",
+          "enum": "massif::ClickType::ClickType",
+          "doc": "Returns the click type."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
     "massif::CelestialEventListener": {
       "base": null,
       "properties": [],
       "aliases": {},
       "methods": [],
+      "events": []
+    },
+    "massif::CelestialImage": {
+      "base": "massif::CelestialObject",
+      "properties": [
+        {
+          "name": "bitmap",
+          "type": "OBJECT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "graphics.Bitmap",
+          "objectClass": "massif::Bitmap",
+          "doc": "Returns the bitmap of the image."
+        },
+        {
+          "name": "luminanceAlpha",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the bitmap's brightness is read as its opacity."
+        }
+      ],
+      "aliases": {},
+      "methods": [
+        {
+          "cppClass": "massif::CelestialImage",
+          "name": "setAnchors",
+          "args": [
+            {
+              "name": "anchors",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::CelestialLabel": {
@@ -1984,7 +2079,20 @@
           "returnClass": null
         }
       ],
-      "events": []
+      "events": [
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "celestial.clicked",
+          "payload": "massif::CelestialClickInfo",
+          "consumable": true
+        },
+        {
+          "cppClass": "massif::CelestialLayer",
+          "name": "sky.clicked",
+          "payload": "massif::CelestialClickInfo",
+          "consumable": true
+        }
+      ]
     },
     "massif::CelestialObject": {
       "base": null,
@@ -2033,6 +2141,16 @@
           "position": false,
           "cppType": "double",
           "doc": "Returns the distance of a direction-anchored object."
+        },
+        {
+          "name": "metaData",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::map<std::string, massif::Variant>",
+          "indexed": "json",
+          "doc": "Returns a copy of the meta data map. Changes to the copy are not reflected in the object."
         },
         {
           "name": "occludedByMap",
@@ -10803,6 +10921,18 @@
         ]
       ],
       [
+        "image",
+        "massif__CelestialImage",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
         "label",
         "massif__CelestialLabel",
         [
@@ -12701,6 +12831,7 @@
     "massif::CacheTileDataSource": "source",
     "massif::CartoCSSStyleSet": "styleset",
     "massif::CelestialArc": "celestial",
+    "massif::CelestialImage": "celestial",
     "massif::CelestialLabel": "celestial",
     "massif::CelestialLayer": "layer",
     "massif::CelestialObject": "celestial",
@@ -12910,6 +13041,16 @@
       "cppClass": "massif::CelestialArc",
       "kind": "celestial",
       "type": "arc",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::CelestialImage",
+      "kind": "celestial",
+      "type": "image",
       "aliases": {},
       "defaults": {},
       "constructors": [
@@ -14663,6 +14804,33 @@
         "name": "COMPOSITE_SOURCE_TYPE_VECTOR",
         "value": 2,
         "doc": "Another MBVT/protobuf source (including ContourTileDataSource), drawn at its style slot as its own child VectorTileLayer with the master decoder, so it overzooms independently via its own MaxOverzoomLevel."
+      }
+    ],
+    "massif::FlightEasing::FlightEasing": [
+      {
+        "name": "FLIGHT_EASING_EASE",
+        "value": 0,
+        "doc": "cubic-bezier(0.25, 0.1, 0.25, 1), the CSS \"ease\". The default, and mapbox-gl's."
+      },
+      {
+        "name": "FLIGHT_EASING_LINEAR",
+        "value": 1,
+        "doc": "No easing: the constant speed Van Wijk prescribes. Starts and stops abruptly."
+      },
+      {
+        "name": "FLIGHT_EASING_EASE_IN",
+        "value": 2,
+        "doc": "cubic-bezier(0.42, 0, 1, 1). Gentle start, arrives at full speed."
+      },
+      {
+        "name": "FLIGHT_EASING_EASE_OUT",
+        "value": 3,
+        "doc": "cubic-bezier(0, 0, 0.58, 1). Starts at full speed, comes to a stop."
+      },
+      {
+        "name": "FLIGHT_EASING_EASE_IN_OUT",
+        "value": 4,
+        "doc": "cubic-bezier(0.42, 0, 0.58, 1). Symmetric, stronger than FLIGHT_EASING_EASE."
       }
     ],
     "massif::FreeRoamMode::FreeRoamMode": [

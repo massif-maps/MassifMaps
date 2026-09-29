@@ -102,6 +102,9 @@ namespace massif::vt {
             float metersToInternal = 0.0f; // meters -> world z units at the equator (exaggeration included)
             float mercatorYScale = 0.0f;   // world y -> mercator angle (for the per-vertex 1/cos(latitude) factor)
             float metersPerTexel = 0.0f;   // ground meters per texel at the equator (the 1/cos(latitude) stretch is per fragment)
+            GLuint gradientTextureId = 0;  // RG16F forward differences in meters, same texels (ElevationGradient); 0 = flat light
+            float minHeight = 1.0f;        // meters over the DEM raster, for culling; min > max = unknown
+            float maxHeight = 0.0f;
             // The DEM box-filtered to one texel per mesh node, which the vertex stage displaces from.
             // 0 = none: the vertex stage samples the full texture and aliases sub-cell relief.
             GLuint nodeTextureId = 0;
@@ -651,6 +654,10 @@ namespace massif::vt {
         void renderTileSurfaceFill(const TileId& tileId, const Color& color, bool lit = false);
         void renderDrapeTextures(const std::vector<RenderTile>& renderTiles);
         int renderTileSurfaceDrape(const TileId& tileId, float uvOffsetX, float uvOffsetY, float uvScale);
+        // Draws the surface, skipping the shared grid's blocks off screen when gridSurface; returns the indices drawn.
+        GLsizei drawSurfaceElements(const TileId& tileId, const TileSurface& surface, bool gridSurface) const;
+        // (first index, count) runs of the grid's blocks that can be on screen; all of it when unknown or not culled.
+        std::vector<std::pair<GLsizei, GLsizei>> visibleGridIndexRuns(const TileId& tileId, const TileSurface& gridSurface, bool culled) const;
         GLuint ensureDrapeTexture(const TileId& tileId);
         void releaseDrapeTexture(GLuint texture);
         void deleteDrapeResources();
@@ -909,6 +916,7 @@ namespace massif::vt {
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
         std::optional<std::regex> _rendererLayerFilter;
         std::optional<std::regex> _noDrapeLayerFilter;
+        mutable std::unordered_map<std::string, bool> _noDrapeLayerCache; // regex_match per call was a frame cost (performance-log.md, 32)
         std::optional<std::pair<int, int>> _rendererLayerIndexRange;
         std::optional<std::regex> _clickHandlerLayerFilter;
 

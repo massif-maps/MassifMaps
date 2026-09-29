@@ -76,6 +76,8 @@ namespace massif::vt {
         // halfway across the band, making it a facet with a tone of its own - a rim tracing every roof.
         // mapbox's fill-extrusion-rounded-roof.
         void setPolygon3DRoundedRoof(bool rounded) { _polygon3DRoundedRoof = rounded; }
+        // True also rounds the vertical corners where two walls meet, wherever that rounding reaches a pixel.
+        void setPolygon3DEdgeCorners(bool corners) { _polygon3DEdgeCorners = corners; }
         void setPolygonClipBox(const cglib::bbox2<float>& clipBox);
         // The point each extruded footprint reads its ground at, under the id the processor is called
         // with - one entry per footprint, since a merged source draws hundreds under one id. Every
@@ -97,6 +99,8 @@ namespace massif::vt {
 
     private:
         static constexpr unsigned int RESERVED_VERTICES = 4096;
+        // At twice the tile's size: a tile is drawn up to one zoom level past its own.
+        static constexpr float EDGE_CORNER_MIN_PIXELS = 1.0f;
 
         struct BuilderParameters {
             TileGeometry::Type type;
@@ -228,6 +232,7 @@ namespace massif::vt {
         float _polygon3DGroundStep = 0.0f;     // metres between subdivisions; 0 = the terrain grid cell
         float _polygon3DEdgeRadius = 0.0f;     // metres of bevel at the roof edge; 0 = hard edge
         bool _polygon3DRoundedRoof = true;     // false = the bevel is a flat facet with its own tone
+        bool _polygon3DEdgeCorners = false;
         // The skirt's own stream (see appendGroundSkirt), packed once by buildTileLayer.
         VertexArray<cglib::vec2<float>> _groundCoords;
         // (along, across, length) of the footprint segment this vertex belongs to, in units of the

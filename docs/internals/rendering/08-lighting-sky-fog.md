@@ -46,7 +46,7 @@ is **not** baked is drawn live into the 3D scene and was therefore the only thin
 kept its flat style colour: a `TerrainOptions.NoDrapeLayerFilter` layer (contours by default), and
 everything 2D when the drape is off. `GEOMETRY_LIGHT` in `renderTileGeometry` closes that — point,
 line and polygon programs multiply by the same normalised Lambert the surface uses, with N·L taken
-from the **terrain** normal (`terrainNdl`, the 3×3 DEM stencil), never from the geometry's own flat
+from the **terrain** normal (`terrainNdl`, [the DEM gradient](#the-terrain-normal-is-two-fetches)), never from the geometry's own flat
 normal. Extrusions are excluded: they light by their own model (see [Buildings](#buildings)).
 
 Shadows already worked this way, so the shading and the shadow now share one `ndl` per fragment
@@ -66,6 +66,27 @@ With shadows on it is free: the stencil was already being paid for the shadow's 
 shadows off the lighting is what pays for it, +1.2 ms of `layers` (+6% of the frame) — the price of
 a contour that shades like the ground under it. Cheaper normals were not tried: a different normal
 than the surface's would make the two disagree exactly where the eye compares them.
+
+### The terrain normal is two fetches
+
+The normal is tangram's quadratic DEM stencil. Evaluated per fragment it took nine elevation taps,
+the most expensive thing on the lit surface. Inside a texel that stencil's gradient is a linear ramp
+between the forward differences on the texel's two edges, so `ElevationGradient` (all/native/terrain)
+stores those differences per texel, RG16F in metres, built with the elevation texture on the encode
+worker. `terrainNormal` and `terrainNdl` read them half a texel back with linear filtering: two
+fetches, the same ramp along each axis exactly (tests/api/ElevationGradientTest.cpp), and a cross
+term that is now continuous across texel rows where the stencil's jumped.
+
+Crosscall, Grenoble 5.7245/45.1885 z17.2 tilt 45, `day-cycle-light --es hour 14.5`, mesh 128,
+continuous drags, interleaved APKs: 16.3–16.8 → 17.5–18.6 fps with shadows off, 11.1–11.2 →
+12.3–12.9 with shadows on. At Gavet 5.8804/45.0536 z14 tilt 45 `--es shadow 5` the two builds differ
+by more than 24/255 on 0.45% of the pixels, at shadow edges. The cost is memory: 4 bytes per DEM
+texel, about 1 MB per cached DEM tile.
+
+The day-cycle example shows almost none of the Lambert term itself, with or without this change:
+`--es terrainLight false` changes no pixel at Gavet at 17:30, nor at 10:00 with `--es ambient 0.2
+--es sunIntensity 1`. Not investigated here. What is visible is the
+slope term of the shadow, so that is the camera to compare normals at.
 
 ## A 2D colour's own emissive, and an hour-driven palette
 
@@ -239,18 +260,11 @@ uniform change, so without this, moving the hour on a running map moved the buil
 per-frame uniform — and left the ground exactly as it was. It is quantised to 64 steps per channel,
 so a whole day cycle re-bakes a few dozen times rather than every frame.
 
-### Known gap: a TRANSLUCENT extrusion has no path
+### A TRANSLUCENT extrusion takes a depth pre-pass
 
-The 3D pass runs with blending off and depth writes on — one opaque surface per pixel, which is
-what lets the extrusions occlude each other and what the shadow map is drawn against. A
-`building-fill-opacity` below 1 therefore has nowhere to go: the fractional alpha is written
-straight into the frame rather than composited, and a city drawn that way reads as a wash of
-half-buildings showing through one another.
-
-MapTiler Streets states `fill-extrusion-opacity: 0.4`, so this is not hypothetical. The converter
-clamps it to 1 and says so in its coverage report; drawn opaque is much the closer of the two
-answers. The real fix is a depth pre-pass — extrusions rendered depth-only first, then blended with
-`GL_EQUAL` and no depth write — so exactly one translucent surface survives per pixel. Not done.
+A `building-fill-opacity` below 1 is drawn depth-only first, then in colour with the depth pulled
+one unit towards the camera, so exactly one surface blends per pixel. See
+[the frame](01-frame.md) for the pass order.
 
 ## Cast shadows
 
@@ -288,7 +302,10 @@ Design points, each measured:
   `shadow-intensity` default, and with the share applied that is their shadow exactly rather than a
   maximum. Above 1 exaggerates; the product is clamped to 1 because the shaders read it as
   `mix(1, lit, strength)`, which a value past 1 would invert. The bench and the example panel let it
-  reach 2 for that reason.
+  reach 2 for that reason. The share is linear light while the shaders darken sRGB colours, so the
+  strength they get is `1 − (1 − share)^(1/2.2)` (`DayCycleLight::srgbShadowStrength`), gl-js's
+  `linearTosRGB`. Sent linear, a full shadow under Standard's day kept 0.8 of the ground where
+  gl-js keeps 0.91: twice the darkening, and the buildings' shadowed faces with it.
 
   What this fixed, on the `day-cycle-light` example at Paris (`shadowStrength 0.35`): the shadow map
   was still being drawn all night — cast from the 15° floor above, azimuth intact — so shadow blocks
@@ -418,6 +435,14 @@ Design points, each measured:
   *worse*), cascade count (1 cascade → 36.5%). None of them is the mechanism.
 - A tile with **no elevation yet casts nothing**: drawn flat it is a sea-level plane, which is not the
   terrain it stands for, and a receiver without elevation takes no shadow either.
+- **Casters read this frame's style.** The caster pass runs before the layers' `onDrawFrame`, which
+  is where a layer re-read its Map settings, so the extrusions cast at the previous frame's
+  `building-height-scale`. Standard ramps it 0 → 1 over z16 → z16.3; zooming out fast at ~4 fps
+  (tiles loading), one frame at z15.6 drew 56 buildings into the map at full height while the
+  screen drew none — the ground showed every building's shadow, dark footprints included, for a
+  frame (Crosscall, Grenoble, stepped 17.2 → 15.0). `TileLayer::prepareTerrainDrapeFrame` now pushes
+  the style environment first; three sweeps since, the caster and screen heights matched on every
+  frame.
 - The map is **snapped and cached** so a stationary camera does not re-render it. The cache is **per
   page**: each cascade's box is snapped to its own lattice, and the outer page — which holds most of
   the casters — keeps its matrix over far more camera movement than the near one. A page that is not
@@ -934,9 +959,9 @@ interpolated from the vertices.
 
 ### Rounded edges
 
-`building-edge-radius` (metres, **0 = off**, mapbox's default too) rounds an extrusion's edges in
-**both** directions — the horizontal one where a wall meets its roof, and the vertical one where two
-walls meet. `TileLayerBuilder::appendPolygon3DRing` is a port of mapbox's `fill_extrusion_bucket`
+`building-edge-radius` (metres, **0 = off**, mapbox's default too) rounds the horizontal edge where a
+wall meets its roof. `building-edge-corners: 1` also rounds the vertical one where two walls meet
+(off by default, see below). `TileLayerBuilder::appendPolygon3DRing` is a port of mapbox's `fill_extrusion_bucket`
 and the two roundings come from one construction:
 
 | | offset | direction |
@@ -968,7 +993,7 @@ the hole.
 **0.8 m matches mapbox** on Grenoble data; 2 m already reads as too soft.
 
 `building-rounded-roof: 0` holds the ROOF band at a side value of 64 — a flat rim facet — and does
-not touch the vertical corner, which always rolls. mapbox has no equivalent (their flag just zeroes
+not touch the vertical corner. mapbox has no equivalent (their flag just zeroes
 the roof drop in the vertex shader, `u_edge_radius`), so this is ours and the property name is taken
 literally.
 
@@ -981,7 +1006,25 @@ eaves sit on the original footprint — so a pitched-roof building keeps sharp v
 chamfer rows, 1 shared roof-ring vertex) and 11 triangles, against 16 vertices and 6 triangles for
 the old unshared-triangle walls plus mitred bevel. Vertices nearly halve **while** the feature is
 added, which is the number that matters here — this vertex stage does 5 `applyTerrain` calls per
-vertex. Extra fill is the chamfer surface itself. Not yet measured on device.
+vertex. Extra fill is the chamfer surface itself.
+
+**Measured** on the Crosscall, Grenoble z17.2 tilt 45, Standard at 0.4 m: 2.7× the extrusion indices
+of radius 0 (19.5k against 7.2k per render tile), and +5% fps shadows off / +8–16% shadows on when
+the radius goes to 0. Skipping the buildings' shadow cast or shadow receive (debug probes) did not
+shrink that gain, so it is the geometry, not the shadow map. The gradient knee row is not it either:
+at the default 20 m it adds 3.4% of the indices.
+
+**Vertical corners are opt-in, and skipped under a pixel.** Without `building-edge-corners` no wall is
+cut back: the walls meet at the corner and the two chamfers close at the shared roof vertex, so the
+roof rim stays. With it, a ring still skips its wedges (and corner triangles) when the rounding is
+under a pixel at twice the tile's size (`EDGE_CORNER_MIN_PIXELS`) — 0.4 m at 45° latitude is 0.95 px
+at twice a z17 tile, so z17 tiles never draw them and z18 tiles do. mapbox has no such gate:
+`fill_extrusion_bucket` fills every wedge at every zoom, so a converted style that wants its look
+sets `building-edge-corners: 1`.
+
+Same camera, a probe build dropping the wedges: indices 19.5k → 12.1k per render tile, 12.5 → 13.1
+fps shadows on, 16.55 → 17.2 off, and 0.05% of the pixels differ. At z19 the corner reads as a
+crease instead of a roll, which is what the setting buys back.
 
 Insetting is where this goes wrong, twice over, and both are worth knowing:
 

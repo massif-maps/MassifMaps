@@ -59,6 +59,7 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
         // pixels in index.ts; symbol-placement is one third of the placement, see placement.ts.
         'text-allow-overlap': 'text-allow-overlap',
         'symbol-spacing': 'text-spacing',
+        'text-max-angle': 'text-max-char-angle-delta',
         // Renamed to shield-occlusion-opacity with the rest of the rule when the layer is a
         // shield. icon-occlusion-opacity is folded into this one in index.ts - a label carries one.
         'text-occlusion-opacity': 'text-occlusion-opacity',
@@ -109,7 +110,6 @@ export const KNOWN_GAPS: Record<string, string> = {
     'fill-extrusion-pattern': 'no CartoCSS equivalent',
     'fill-extrusion-vertical-gradient': 'always on in the 3D lighting shader',
     'fill-extrusion-translate': 'screen-space translate has no equivalent',
-    'text-max-angle': 'no CartoCSS equivalent',
     'text-rotate': 'text-orientation would force the flat point placement (TextSymbolizer::getPlacement)',
     'text-line-height': 'a data-driven line height has no CartoCSS equivalent',
     'icon-offset': 'no CartoCSS equivalent',

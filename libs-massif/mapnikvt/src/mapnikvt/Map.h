@@ -86,6 +86,8 @@ namespace massif::mvt {
             FloatFunctionProperty buildingFadeOnAppear = FloatFunctionProperty(1.0f);
             // 0 makes the bevel a flat facet with its own tone instead of a rolled edge.
             FloatFunctionProperty buildingRoundedRoof = FloatFunctionProperty(1.0f);
+            // 0/1: also round the vertical corners, where that reaches a pixel (08-lighting-sky-fog.md).
+            FloatFunctionProperty buildingEdgeCorners = FloatFunctionProperty(0.0f);
             FloatFunctionProperty terrainLighting = FloatFunctionProperty(0.0f);   // 0/1: light the terrain with the sun
             // 0/1: the style's 2D colours ALREADY carry the scene light, so the ground must not be lit a
             // second time - a converted MapBox style folds mapbox's ground radiance into every colour at

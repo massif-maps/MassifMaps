@@ -42,11 +42,25 @@
     <label>style</label>
     <input id="style-url" type="text" value="https://tiles.openfreemap.org/styles/liberty">
     <button id="reload">reload</button>
+    <select id="variant" title="a Massif variant: the page reloads on it, camera kept" style="display:none">
+      <option>streets</option><option>outdoor</option><option>topo</option><option>hybrid</option>
+      <option>eink</option><option value="custom">custom (example project)</option><option value="osm">osm (example project)</option>
+    </select>
     <label><input id="sync" type="checkbox" checked> sync</label>
+    <label title="building shadows in the massif row; they cost the page most of its frame rate"><input id="shadows" type="checkbox"> shadows</label>
     <select id="local-set"></select>
     <button id="fit">fit local</button>
     <button id="gaps-toggle">gaps</button>
     <button id="massif-toggle">massif row</button>
+    <label title="the SDK panes' day-cycle light; the Standard reference takes the matching preset">hour
+      <input id="hour" type="range" min="0" max="24" step="0.25" value="12"></label><span id="hour-v">12:00</span>
+    <select id="ref" title="reference style drawn in place of the local pane">
+      <option value="">no reference</option>
+      <option>mapbox-standard</option><option>mapbox-standard-satellite</option>
+      <option>maptiler-streets-v4</option><option>maptiler-outdoor-v4</option>
+      <option>maptiler-topo-v4</option><option>maptiler-hybrid-v4</option>
+      <option>maptiler-openstreetmap</option>
+    </select>
   </div>
   <div id="maps">
     <div class="pane"><div class="tag" id="tag-l">maplibre — openfreemap</div>
@@ -55,6 +69,8 @@
     <div class="pane"><div class="tag" id="tag-r">maplibre — local</div>
       <div class="map" id="map-r"></div><div class="readout" id="ro-r"></div>
       <div class="err" id="err-r"></div></div>
+    <div class="pane hidden" id="pane-ref"><div class="tag" id="tag-ref"></div>
+      <iframe class="map" id="ref-frame"></iframe></div>
     <div class="pane hidden" id="pane-ml"><div class="tag">massif — openfreemap</div>
       <iframe class="map" id="massif-l"></iframe><div class="err" id="err-ml"></div></div>
     <div class="pane hidden" id="pane-mr"><div class="tag">massif — local</div>
@@ -76,7 +92,7 @@ const START = {
 };
 
 const $ = (id) => document.getElementById(id);
-let localName = null, localTileJSON = null, remoteTileJSON = null, styleJSON = null;
+let localName = null, localTileJSON = null, remoteTileJSON = null, styleJSON = null, tilesets = {};
 
 /** every vector source in the style points at one tileset; swap them all to `url`. */
 function retarget(style, url) {
@@ -196,7 +212,8 @@ function makeMap(container, style, errEl, readout) {
   const seen = new Set();
   map.on('error', (e) => {
     const msg = (e && e.error && e.error.message) || String(e);
-    if (seen.has(msg)) return;
+    // a style written for two tilesets reads layers only one carries; the gaps panel lists those
+    if (seen.has(msg) || /does not exist on source/.test(msg)) return;
     seen.add(msg);
     errEl.style.display = 'block';
     errEl.textContent = [...seen].slice(-8).join('\n');
@@ -221,13 +238,46 @@ function sync(a, b) {
 async function boot() {
   const asked = ASKED.get('style');
   if (asked) $('style-url').value = asked;
-  const sets = await (await fetch(ORIGIN + '/tilesets.json')).json();
+  const sets = tilesets = await (await fetch(ORIGIN + '/tilesets.json')).json();
   const sel = $('local-set');
   sel.innerHTML = Object.keys(sets).map((n) => `<option value="${n}">${n}</option>`).join('');
   localName = Object.keys(sets)[0];
   if (!localName) { $('err-r').style.display = 'block'; $('err-r').textContent = 'serve.py has no --mbtiles registered'; }
   sel.onchange = () => { localName = sel.value; load(); };
   await load();
+  setupVariant();
+  if (ASKED.get('hour')) { $('hour').value = ASKED.get('hour'); postHour(); }
+  if (ASKED.get('ref')) { $('ref').value = ASKED.get('ref'); showRef(); }
+  if (ASKED.get('massif') === '1') $('massif-toggle').onclick();
+}
+
+/** A Massif style is one file per variant beside the others: switching reloads on the sibling. */
+function setupVariant() {
+  const url = $('style-url').value.trim();
+  const match = url.match(/\/styles\/massif\/([a-z]+)\.json$/);
+  if (!match) return;
+  const sel = $('variant');
+  sel.style.display = '';
+  // the example projects extend the family, drawn from the streets variant
+  const EXAMPLES = ['custom', 'osm'];
+  sel.value = EXAMPLES.includes(ASKED.get('project')) ? ASKED.get('project') : match[1];
+  sel.onchange = () => {
+    const next = new URL(location.href);
+    const c = maps[0].getCenter();
+    const example = EXAMPLES.includes(sel.value);
+    next.searchParams.set('style', url.replace(/[a-z]+\.json$/, (example ? 'streets' : sel.value) + '.json'));
+    if (example) next.searchParams.set('project', sel.value); else next.searchParams.delete('project');
+    next.searchParams.set('lon', c.lng.toFixed(5));
+    next.searchParams.set('lat', c.lat.toFixed(5));
+    next.searchParams.set('zoom', maps[0].getZoom().toFixed(2));
+    next.searchParams.set('tilt', maps[0].getPitch().toFixed(1));
+    next.searchParams.set('rot', maps[0].getBearing().toFixed(1));
+    next.searchParams.set('hour', $('hour').value);
+    if ($('ref').value) next.searchParams.set('ref', $('ref').value);
+    if (massifStarted) next.searchParams.set('massif', '1');
+    if ($('shadows').checked) next.searchParams.set('shadows', '1'); else next.searchParams.delete('shadows');
+    location.href = next.href;
+  };
 }
 
 async function load() {
@@ -240,6 +290,10 @@ async function load() {
       styleJSON[key] = new URL(v, url).href;
     }
   }
+  // a source named by a bare file (`bathymap.json`) has no public host: it is one of ours, served here
+  for (const [name, src] of Object.entries(styleJSON.sources || {})) {
+    if (src.url && !/^([a-z]+:)?\/\//i.test(src.url) && tilesets[name]) src.url = ORIGIN + '/tiles/' + name + '.json';
+  }
   const localURL = ORIGIN + '/tiles/' + localName + '.json';
   const remoteURL = firstVectorURL(styleJSON);
 
@@ -250,6 +304,7 @@ async function load() {
           makeMap('map-r', retarget(styleJSON, localURL), $('err-r'), $('ro-r'))];
   if (camera) maps.forEach((m) => m.jumpTo(camera));
   sync(maps[0], maps[1]);
+  maps[0].on('move', postCamera);
   $('tag-l').textContent = 'openfreemap — ' + (remoteURL || 'style default');
   $('tag-r').textContent = 'local — ' + localName;
 
@@ -273,7 +328,12 @@ function firstVectorURL(style) {
  * the device make of it" for whatever the row above is showing.
  */
 let massifStarted = false;
-function startMassif() {
+let imageryURL = null;
+async function startMassif() {
+  // a hybrid's imagery is an app layer on the SDK too: the pane gets the raster's tile URL
+  const raster = (styleJSON.layers || []).find((l) => l.type === 'raster' && l.metadata?.['massif:sdk-layer']);
+  const src = raster && styleJSON.sources?.[raster.source];
+  imageryURL = src ? (src.tiles?.[0] ?? (await (await fetch(src.url)).json()).tiles?.[0]) : null;
   // ?carto= names another conversion of the same style - one built without --fold-casings, say -
   // so two runs of the converter can be compared over the same tiles without editing anything.
   const asked = ASKED.get('carto');
@@ -286,6 +346,7 @@ function startMassif() {
     // `carto`, not `project`: the web demo reads `project` off the query string itself, and would
     // take this URL for a folder name in its own filesystem. maxzoom is not optional - without it
     // the SDK asks for a tile deeper than the tileset goes instead of overzooming the last one.
+    const imagery = imageryURL;
     const query = new URLSearchParams({
       pane: id, carto: base, source,
       minzoom: tilesets[i].minzoom ?? 0, maxzoom: tilesets[i].maxzoom ?? 14,
@@ -306,19 +367,68 @@ function startMassif() {
       // The pane starts at the camera the URL asked for, not at north-up nadir: sync only fires
       // on a MOVE, so ?tilt= would otherwise not reach the massif row until something dragged.
       tilt: maps[0].getPitch(), rot: maps[0].getBearing(),
+      hour: $('hour').value,
+      // a family project holds every variant; the style says which one it is
+      // ?project=custom|osm loads carto/<project>.json, a child project, in place of the style's variant
+      ...(ASKED.get('project') ? { variant: ASKED.get('project') }
+        : styleJSON.metadata?.['massif:variant'] ? { variant: styleJSON.metadata['massif:variant'] } : {}),
+      // the relief is an app layer on the SDK; the style says how to set one up
+      ...hillshadeOf(styleJSON),
+      ...(imagery ? { imagery } : {}),
+      // off, no terrain for the building shadows to land on
+      shadows: $('shadows').checked ? 1 : 0,
     });
     $(id).src = `./massif-pane.html?${query}`;
   }
   massifStarted = true;
-  maps[0].on('move', () => {
-    if (!$('sync').checked) return;
-    const to = { center: maps[0].getCenter().toArray(), zoom: maps[0].getZoom(),
-                 bearing: maps[0].getBearing(), pitch: maps[0].getPitch() };
-    for (const id of ['massif-l', 'massif-r']) {
-      const frame = $(id).contentWindow;
-      if (frame) frame.postMessage({ massifCamera: to }, '*');
-    }
-  });
+}
+
+/** A reference style in the local pane's slot, fed the same camera as the massif row. */
+function showRef() {
+  const ref = $('ref').value;
+  $('map-r').parentElement.classList.toggle('hidden', !!ref);
+  $('pane-ref').classList.toggle('hidden', !ref);
+  for (const m of maps) m.resize();
+  if (!ref) { $('ref-frame').src = 'about:blank'; return; }
+  const c = maps[0].getCenter();
+  $('tag-ref').textContent = 'reference — ' + ref;
+  $('ref-frame').src = './ref-pane.html?' + new URLSearchParams({
+    ref, lon: c.lng, lat: c.lat, zoom: maps[0].getZoom(), pitch: maps[0].getPitch(),
+    bearing: maps[0].getBearing(), preset: ASKED.get('preset') ?? presetOf(Number($('hour').value)) });
+}
+
+/** Mapbox Standard's four presets over the hour, for the reference pane. */
+function presetOf(hour) {
+  return hour < 6 || hour >= 20.5 ? 'night' : hour < 8 ? 'dawn' : hour >= 18 ? 'dusk' : 'day';
+}
+
+function postHour() {
+  const hour = Number($('hour').value);
+  $('hour-v').textContent = `${Math.floor(hour)}:${String(Math.round((hour % 1) * 60)).padStart(2, '0')}`;
+  for (const id of ['massif-l', 'massif-r']) {
+    const frame = $(id).contentWindow;
+    if (frame) frame.postMessage({ massifHour: hour }, '*');
+  }
+  const ref = $('ref-frame').contentWindow;
+  if (ref) ref.postMessage({ refPreset: presetOf(hour) }, '*');
+}
+
+function postCamera() {
+  if (!$('sync').checked) return;
+  const to = { center: maps[0].getCenter().toArray(), zoom: maps[0].getZoom(),
+               bearing: maps[0].getBearing(), pitch: maps[0].getPitch() };
+  for (const id of ['massif-l', 'massif-r', 'ref-frame']) {
+    const frame = $(id).contentWindow;
+    if (frame) frame.postMessage({ massifCamera: to }, '*');
+  }
+}
+
+/** A style's hillshade as the SDK pane builds it: its DEM, and the layer settings it states. */
+function hillshadeOf(style) {
+  const layer = (style.layers || []).find((l) => l.type === 'hillshade' && l.metadata?.['massif:sdk-layer']);
+  const source = layer && style.sources?.[layer.source];
+  const dem = source?.tiles?.[0];
+  return dem ? { dem, demMaxZoom: source.maxzoom ?? 22, hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
 }
 
 function firstVectorTileURL(tilejson) {
@@ -342,6 +452,10 @@ $('massif-toggle').onclick = () => {
 };
 
 $('reload').onclick = load;
+$('ref').onchange = showRef;
+$('shadows').checked = ASKED.get('shadows') === '1';
+$('shadows').onchange = () => { if (massifStarted) startMassif(); };
+$('hour').oninput = postHour;
 $('fit').onclick = () => {
   if (!localTileJSON || !localTileJSON.bounds) return;
   maps.forEach((m) => m.fitBounds(localTileJSON.bounds, { duration: 0 }));

@@ -42,6 +42,11 @@ namespace massif::vt {
         // buildTileSurface it carries no per-tile world placement - it is drawn with each tile's own MVP
         // and terrain uniforms - so the mesh is built ONCE and reused, as tangram's raster grid is.
         std::shared_ptr<TileSurface> buildRegularGridSurface(int resolution) const;
+        static constexpr int GRID_INDEX_BAND = 6; // cells per index band: fits a 16-entry vertex cache
+        // The grid's indices come in GRID_CULL_BLOCKS^2 contiguous blocks, row by row from the tile's
+        // north edge (grid row 0), so a draw can skip the blocks off screen.
+        static constexpr int GRID_CULL_BLOCKS = 4;
+        static int gridBlockStart(int resolution, int block) { return resolution * block / GRID_CULL_BLOCKS; }
 
     private:
         using TileNeighbours = std::array<std::vector<TileId>, 4>; // left, right, up, down

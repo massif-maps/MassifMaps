@@ -21,6 +21,7 @@ namespace massif {
     class MapEventListener;
     class VectorTileEventListener;
     class VectorElementEventListener;
+    class CelestialEventListener;
 
     namespace api {
 
@@ -130,6 +131,12 @@ namespace massif {
          */
         static std::shared_ptr<VectorElementEventListener> createVectorElementEventBridge(
             int handle, const std::shared_ptr<VectorElementEventListener>& chained);
+
+        /**
+         * The same for a celestial layer's object clicks; install with setCelestialEventListener.
+         */
+        static std::shared_ptr<CelestialEventListener> createCelestialEventBridge(
+            int handle, const std::shared_ptr<CelestialEventListener>& chained);
 
     private:
         MassifInterop();

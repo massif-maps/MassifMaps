@@ -126,12 +126,13 @@ namespace massif::mvt {
             EXPONENTIAL
         };
         
-        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Expression> keyFrames, float base = 1.0f) : _method(method), _base(base), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _discrete(discreteKeyFrames(method, _keyFrames)), _keyRange(constantKeyRange(_keyFrames)), _fcurve(_discrete ? std::nullopt : buildConstantFCurve(method, _keyFrames)) { }
+        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Expression> keyFrames, float base = 1.0f) : _method(method), _base(base), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _color(std::any_of(_keyFrames.begin(), _keyFrames.end(), yieldsColor)), _discrete(discreteKeyFrames(method, _keyFrames)), _keyRange(constantKeyRange(_keyFrames)), _fcurve(_discrete ? std::nullopt : buildConstantFCurve(method, _keyFrames)) { }
 
         Method getMethod() const { return _method; }
         float getBase() const { return _base; }
         const Expression& getTimeExpression() const { return _timeExpr; }
         const std::vector<Expression>& getKeyFrames() const { return _keyFrames; }
+        bool isColor() const { return _color; }
 
         Value evaluate(float t, const ExpressionContext& context) const;
 
@@ -143,6 +144,7 @@ namespace massif::mvt {
         static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext& context);
         static std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> buildConstantFCurve(Method method, const std::vector<Expression>&);
         static bool discreteKeyFrames(Method method, const std::vector<Expression>&);
+        static bool yieldsColor(const Expression& expr);
 
         const Method _method;
         // Only meaningful for EXPONENTIAL; 1 is the linear case and is what every other method
@@ -150,6 +152,9 @@ namespace massif::mvt {
         const float _base;
         const Expression _timeExpr;
         const std::vector<Expression> _keyFrames;
+        // A curve over colours yields a colour's packed integer, which a curve around it must not
+        // take for a number: a `@primary: linear(...)` inside a zoom step drew the road transparent.
+        const bool _color;
         // A STEP over values that are neither numbers nor colours - mapbox writes line-join and
         // line-cap that way. There is no curve for those: see evaluateDiscrete.
         const bool _discrete;

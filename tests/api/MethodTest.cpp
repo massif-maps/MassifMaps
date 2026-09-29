@@ -415,11 +415,12 @@ void testCollections() {
     // The object-argument channel: what a method gets handed, and what it refuses.
     CallArgs args;
     Handle handle = NULL_HANDLE;
-    TEST_CHECK(CallArgs::parse("[7,-1,\"7\",4294967296]", args), "handle arguments parse");
+    TEST_CHECK(CallArgs::parse("[7,-1,\"7\",4294967296,-2147483649]", args), "handle arguments parse");
     TEST_CHECK(args.getHandle(0, handle) && handle == 7, "a handle is a number");
-    TEST_CHECK(!args.getHandle(1, handle), "a negative one is not a handle");
-    TEST_CHECK(!args.getHandle(2, handle), "nor a string");
+    TEST_CHECK(args.getHandle(1, handle) && handle == 0xffffffffu, "a negative one is the signed int Java and ObjC carry it as");
+    TEST_CHECK(!args.getHandle(2, handle), "a string is not a handle");
     TEST_CHECK(!args.getHandle(3, handle), "nor one that does not fit 32 bits");
+    TEST_CHECK(!args.getHandle(4, handle), "nor a negative one that does not fit 32 bits");
 
     TEST_CHECK(context->getObject(collection, "massif::FeatureCollection") != nullptr,
                "an object argument resolves as its base class");

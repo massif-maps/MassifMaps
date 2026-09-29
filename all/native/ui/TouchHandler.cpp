@@ -1,4 +1,5 @@
 #include "TouchHandler.h"
+#include "components/Layers.h"
 #include "components/Options.h"
 #include "graphics/ViewState.h"
 #include "terrain/ElevationManager.h"
@@ -1059,12 +1060,13 @@ namespace massif {
         bool groundHit = isValidScreenPosition(screenPos, viewState);
         std::vector<RayIntersectedElement> results;
         MapPos mapPos;
+        cglib::ray3<double> ray;
         if (groundHit) {
             updateGestureAnchorHeight(screenPos, viewState);
             mapPos = mapScreenPosition(screenPos, viewState);
             _mapRenderer->calculateRayIntersectedElements(mapPos, viewState, results);
         } else {
-            cglib::ray3<double> ray = calculateScreenRay(screenPos, viewState);
+            ray = calculateScreenRay(screenPos, viewState);
             if (std::isnan(cglib::norm(ray.direction))) {
                 return;
             }
@@ -1081,8 +1083,16 @@ namespace massif {
             }
         }
 
-        // Click was ignored by layers, call map event listener, unless it never reached the ground.
+        // Click was ignored by layers, call map event listener, unless it never reached the ground:
+        // then the sky layers report it instead, having no ground position to give.
         if (!groundHit) {
+            if (std::shared_ptr<Layers> layers = _mapRenderer->getLayers()) {
+                for (const std::shared_ptr<Layer>& layer : layers->getAll()) {
+                    if (layer->processSkyClick(clickInfo, ray, viewState)) {
+                        return;
+                    }
+                }
+            }
             return;
         }
         DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;

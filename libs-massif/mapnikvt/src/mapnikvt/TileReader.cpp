@@ -111,6 +111,7 @@ namespace massif::mvt {
                 tileLayerBuilder.setPolygon3DGroundStep((_map->getSettings().buildingAoGroundStep.getFunction(exprContext))(tileViewState));
                 tileLayerBuilder.setPolygon3DEdgeRadius((_map->getSettings().buildingEdgeRadius.getFunction(exprContext))(tileViewState));
                 tileLayerBuilder.setPolygon3DRoundedRoof((_map->getSettings().buildingRoundedRoof.getFunction(exprContext))(tileViewState) != 0.0f);
+                tileLayerBuilder.setPolygon3DEdgeCorners((_map->getSettings().buildingEdgeCorners.getFunction(exprContext))(tileViewState) != 0.0f);
                 tileLayerBuilder.setOpacityFunc(vt::FloatFunction(style->getOpacity()));
                 tileLayerBuilder.setCompOp(style->getCompOp());
                 processLayer(layer, style, rules, exprContext, selectionStateKey, tileLayerBuilder);

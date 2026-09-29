@@ -4,6 +4,7 @@
 #include "ui/MapMoveInfo.h"
 #include "ui/VectorTileClickInfo.h"
 #include "ui/VectorElementClickInfo.h"
+#include "ui/CelestialClickInfo.h"
 
 namespace massif { namespace api {
 
@@ -104,6 +105,26 @@ namespace massif { namespace api {
     bool VectorElementEventBridge::onVectorElementClicked(const std::shared_ptr<VectorElementClickInfo>& clickInfo) {
         bool chainedHandled = _chained ? _chained->onVectorElementClicked(clickInfo) : false;
         bool consumed = _emitter.emit("vectorelement.clicked", clickInfo, "massif::VectorElementClickInfo");
+        return chainedHandled || consumed;
+    }
+
+    CelestialEventBridge::CelestialEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                                               const std::shared_ptr<CelestialEventListener>& chained) :
+        _emitter(context, target), _chained(chained) {
+    }
+
+    CelestialEventBridge::~CelestialEventBridge() {
+    }
+
+    bool CelestialEventBridge::onCelestialObjectClicked(const ClickInfo& clickInfo, const std::shared_ptr<CelestialObject>& celestialObject) {
+        bool chainedHandled = _chained ? _chained->onCelestialObjectClicked(clickInfo, celestialObject) : false;
+        bool consumed = _emitter.emit("celestial.clicked", std::make_shared<CelestialClickInfo>(clickInfo, celestialObject), "massif::CelestialClickInfo");
+        return chainedHandled || consumed;
+    }
+
+    bool CelestialEventBridge::onSkyClicked(const ClickInfo& clickInfo, float azimuth, float altitude) {
+        bool chainedHandled = _chained ? _chained->onSkyClicked(clickInfo, azimuth, altitude) : false;
+        bool consumed = _emitter.emit("sky.clicked", std::make_shared<CelestialClickInfo>(clickInfo, azimuth, altitude), "massif::CelestialClickInfo");
         return chainedHandled || consumed;
     }
 

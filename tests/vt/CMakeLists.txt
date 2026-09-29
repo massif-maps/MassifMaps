@@ -35,6 +35,7 @@ add_executable(vt_tests
   # the geometry is built with. Needs TileTransformer.cpp, added below.
   SphericalTerrainTest.cpp
   ExtrusionOccluderTest.cpp
+  GridIndexOrderTest.cpp
   RenderTileBlendTest.cpp
   LabelSliceTest.cpp
   LabelFadeTest.cpp

@@ -312,6 +312,7 @@ namespace massif::css {
             { "building-grow-on-appear", &mvt::Map::Settings::buildingGrowOnAppear },
             { "building-fade-on-appear", &mvt::Map::Settings::buildingFadeOnAppear },
             { "building-rounded-roof", &mvt::Map::Settings::buildingRoundedRoof },
+            { "building-edge-corners", &mvt::Map::Settings::buildingEdgeCorners },
             { "terrain-lighting", &mvt::Map::Settings::terrainLighting },
             { "colors-prelit", &mvt::Map::Settings::colorsPrelit },
             { "building-emissive-strength", &mvt::Map::Settings::buildingEmissive },
@@ -414,17 +415,26 @@ namespace massif::css {
         // layer can be drawn at several DEPTHS - a pedestrian area under the parks and its road casings
         // over them. A bare entry keeps every attachment no other entry claims.
         std::map<std::string, std::set<std::string>> claimedAttachments;
-        for (const std::string& entry : layerNames) {
+        // A layer every entry names an attachment of draws its unclaimed ones (a child project's new
+        // rules) with its topmost entry: dropped, an extending project could add nothing to it.
+        std::map<std::string, std::size_t> unclaimedEntry;
+        std::set<std::string> bareLayers;
+        for (std::size_t i = 0; i < layerNames.size(); i++) {
+            const std::string& entry = layerNames[i];
             std::size_t sep = entry.find("::");
             if (sep != std::string::npos) {
                 claimedAttachments[entry.substr(0, sep)].insert(entry.substr(sep));
+                unclaimedEntry[entry.substr(0, sep)] = i;
+            } else {
+                bareLayers.insert(entry);
             }
         }
 
         // Compile and build layers. Compiling is the expensive step and does not depend on the
         // attachment, so a layer named by several entries is compiled once.
         std::map<std::string, std::vector<AttachmentStyle>> compiledLayers;
-        for (const std::string& entry : layerNames) {
+        for (std::size_t entryIndex = 0; entryIndex < layerNames.size(); entryIndex++) {
+            const std::string& entry = layerNames[entryIndex];
             std::size_t sep = entry.find("::");
             std::string layerName = entry.substr(0, sep == std::string::npos ? entry.size() : sep);
             std::string attachment = sep == std::string::npos ? std::string() : entry.substr(sep);
@@ -451,19 +461,21 @@ namespace massif::css {
 
             auto claimedIt = claimedAttachments.find(layerName);
 
-            // Create style for each attachment this entry draws
+            // Create style for each attachment this entry draws, its own first
+            bool takesUnclaimed = !attachment.empty() && bareLayers.count(layerName) == 0 && unclaimedEntry[layerName] == entryIndex;
             std::vector<std::string> styleNames;
-            for (const AttachmentStyle& attachmentStyle : compiledIt->second) {
-                bool drawnHere = attachment.empty()
-                    ? claimedIt == claimedAttachments.end() || claimedIt->second.count(attachmentStyle.attachment) == 0
-                    : attachmentStyle.attachment == attachment;
-                if (!drawnHere) {
-                    continue;
+            for (int pass = 0; pass < (takesUnclaimed ? 2 : 1); pass++) {
+                for (const AttachmentStyle& attachmentStyle : compiledIt->second) {
+                    bool unclaimed = claimedIt == claimedAttachments.end() || claimedIt->second.count(attachmentStyle.attachment) == 0;
+                    bool drawnHere = pass == 1 ? unclaimed : (attachment.empty() ? unclaimed : attachmentStyle.attachment == attachment);
+                    if (!drawnHere) {
+                        continue;
+                    }
+                    std::string styleName = layerName + attachmentStyle.attachment;
+                    std::shared_ptr<mvt::Style> style = buildStyle(attachmentStyle, styleName);
+                    map->addStyle(style);
+                    styleNames.push_back(styleName);
                 }
-                std::string styleName = layerName + attachmentStyle.attachment;
-                std::shared_ptr<mvt::Style> style = buildStyle(attachmentStyle, styleName);
-                map->addStyle(style);
-                styleNames.push_back(styleName);
             }
             if (styleNames.empty()) {
                 if (!attachment.empty()) {

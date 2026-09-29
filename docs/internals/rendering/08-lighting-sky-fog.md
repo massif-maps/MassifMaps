@@ -281,7 +281,10 @@ Design points, each measured:
   `shadow-intensity` default, and with the share applied that is their shadow exactly rather than a
   maximum. Above 1 exaggerates; the product is clamped to 1 because the shaders read it as
   `mix(1, lit, strength)`, which a value past 1 would invert. The bench and the example panel let it
-  reach 2 for that reason.
+  reach 2 for that reason. The share is linear light while the shaders darken sRGB colours, so the
+  strength they get is `1 − (1 − share)^(1/2.2)` (`DayCycleLight::srgbShadowStrength`), gl-js's
+  `linearTosRGB`. Sent linear, a full shadow under Standard's day kept 0.8 of the ground where
+  gl-js keeps 0.91: twice the darkening, and the buildings' shadowed faces with it.
 
   What this fixed, on the `day-cycle-light` example at Paris (`shadowStrength 0.35`): the shadow map
   was still being drawn all night — cast from the 15° floor above, azimuth intact — so shadow blocks

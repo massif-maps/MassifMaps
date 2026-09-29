@@ -139,6 +139,15 @@ namespace {
         // share exactly the directional intensity.
         TEST_CHECK(nearly(DayCycleLight::directShare(DayCycleLight::DAY, 1.0f), 0.2f),
                    "a white 0.8/0.2 light at zenith leaves a fifth of itself to a shadow");
+        // what the ground keeps is sRGB: gl-js's 0.909 under Standard's day at zenith, not the linear 0.8
+        TEST_CHECK(nearly(1.0f - DayCycleLight::srgbShadowStrength(DayCycleLight::DAY, 1.0f, 1.0f), std::pow(0.8f, 1.0f / 2.2f)),
+                   "a full shadow keeps the ambient's share in sRGB");
+        // under the map, buildings go over to Standard's moon, a unit direction 70 degrees up in the west
+        const float* moon = DayCycleLight::MOON_DIR;
+        TEST_CHECK(nearly(moon[0] * moon[0] + moon[1] * moon[1] + moon[2] * moon[2], 1.0f) && nearly(moon[2], std::sin(70.0f * 3.14159265f / 180.0f)),
+                   "the moon is Standard's [270, 20]");
+        TEST_CHECK(DayCycleLight::moonWeight(sunUp(10.0f)) == 0.0f && DayCycleLight::moonWeight(sunUp(-9.0f)) == 1.0f,
+                   "no moon while the sun is up, all of it once the sun is well under");
 
         // The bug this exists for: below the horizon there is no direct light, so there is no
         // shadow to cast, at any strength. Without it the shadow map was still drawn all night -

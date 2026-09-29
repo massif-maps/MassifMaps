@@ -1,5 +1,6 @@
 #include "TileLayerBuilder.h"
 #include "SpanGeometry.h"
+#include "ExtrusionOccluder.h"
 
 #include <array>
 
@@ -1284,6 +1285,10 @@ namespace massif::vt {
         auto geometry = std::make_shared<TileGeometry>(type, _geomScale, styleParameters, vertexGeomLayoutParams, std::move(compressedVertexGeometry), std::move(compressedIndices), std::move(compressedIds), std::move(compressedGeoPosIndexes));
         if (!featureStyleRanges.empty()) {
             geometry->setFeatureStyleRanges(std::move(featureStyleRanges), _styleState, _stateKey);
+        }
+        // Here, on the decode thread: the upload releases the indices the label ray tests need.
+        if (type == TileGeometry::Type::POLYGON3D && spanInfos.empty()) {
+            geometry->setOccluder(ExtrusionOccluder::build(*geometry));
         }
         // One record per span piece: the vertices arrive grouped by feature, so a run of equal
         // info IS a piece.

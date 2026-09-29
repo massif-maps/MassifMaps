@@ -615,35 +615,6 @@ namespace massif {
         return false;
     }
 
-    void TileRenderer::setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            tileRenderer->setLabelOcclusionDepth(depthTexture, occluderSize);
-        }
-    }
-
-    bool TileRenderer::isLabelOcclusionWanted() const {
-        if (_textOcclusionOpacity.load() < 1.0f) {
-            return true;
-        }
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            return tileRenderer->hasStyledLabelOcclusion();
-        }
-        return false;
-    }
-
-    int TileRenderer::renderLabelOcclusionDepth() {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
-            return tileRenderer->renderLabelOcclusionDepth();
-        }
-        return 0;
-    }
-
     int TileRenderer::renderGroundAOMask() {
         std::lock_guard<std::mutex> lock(_mutex);
 

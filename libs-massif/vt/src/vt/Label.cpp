@@ -920,7 +920,7 @@ namespace massif::vt {
 
     // attrib(0) is the run: 2 = icon, 0/1 = text/secondary, which have their own opacity.
     std::int8_t Label::runOpacity(const cglib::vec4<std::int8_t>& attrib) const {
-        return static_cast<std::int8_t>((attrib(0) == 2 ? _opacity : _textOpacity) * 127.0f);
+        return static_cast<std::int8_t>((attrib(0) == 2 ? _opacity : _textOpacity) * _occlusion * 127.0f);
     }
 
     void Label::buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
@@ -1032,7 +1032,7 @@ namespace massif::vt {
                 std::int16_t sv0 = static_cast<std::int16_t>(row.t0), sv1 = static_cast<std::int16_t>(row.t1);
                 texCoords.append(cglib::vec2<std::int16_t>(su0, sv0), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su0, sv1));
 
-                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * 127.0f), offsetMode(cameraAxes));
+                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>((textPlate ? _textOpacity : _opacity) * _occlusion * 127.0f), offsetMode(cameraAxes));
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 const cglib::vec2<float> corners[4] = {
@@ -1079,7 +1079,7 @@ namespace massif::vt {
         }
         texCoords.copy(lineTexCoords, 0, lineTexCoords.size());
         for (const cglib::vec4<std::int8_t>& attrib : lineAttribs) {
-            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), offsetMode(true)));
+            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * _occlusion * 127.0f), offsetMode(true)));
         }
         for (std::uint16_t idx : lineIndices) {
             indices.append(idx + indexOffset);

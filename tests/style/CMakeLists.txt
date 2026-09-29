@@ -39,6 +39,7 @@ add_executable(style_tests
   InterpolateExpressionTest.cpp
   DataDrivenPropertyTest.cpp
   ViewStatePropertyTest.cpp
+  ContextFoldTest.cpp
   FontNamesTest.cpp
   ValueJSONTest.cpp
   AnchorLabelIdTest.cpp

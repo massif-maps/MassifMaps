@@ -22,6 +22,7 @@
 #include "TileBitmap.h"
 #include "TileSurface.h"
 #include "TileSurfaceBuilder.h"
+#include "ExtrusionOccluder.h"
 #include "GLExtensions.h"
 
 #include <memory>
@@ -189,19 +190,10 @@ namespace massif::vt {
         bool isGroundAOBakeable() const;
         // Draws the visible contact-shadow quads under MIN blending into one mask; returns the draw count.
         int renderGroundAOMask();
-        // Whole-label fade against a screen depth texture of 3D occluders (mapbox's model); 0 = off.
-        // occluderSize: the square sampled around the anchor, in screen pixels.
-        void setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize);
         // Default opacity an occluded label keeps, 1 = no occlusion; TileLabel::Style::occlusionOpacity wins.
         void setLabelOcclusionOpacity(float occludedOpacity);
-        // True when some style layer asks for occlusion even though the default does not.
-        bool hasStyledLabelOcclusion() const;
         // Whether the visible tiles draw a background, a bitmap or a geometry, rather than labels alone.
         bool hasGroundContent() const;
-        // Draws visible extrusions into the bound depth target; returns the draw count. No ground:
-        // labels are tested against it on the CPU (TileRenderer::setLabelOcclusionTest).
-        int renderLabelOcclusionDepth();
-
         // The contact-shadow mask in one drape tile's frame, so it follows the terrain. Changes no GL state.
         int bakeGroundAOMask(const TileId& targetTileId);
         // Turns this renderer into a paint baker (see TerrainPaint); only under a cross-layer drape target.
@@ -479,10 +471,8 @@ namespace massif::vt {
             std::array<cglib::vec4<float>, MAX_PARAMETERS> colorTable;
             std::array<float, MAX_PARAMETERS> widthTable;
             std::array<float, MAX_PARAMETERS> strokeWidthTable;
-            // What an occluded label keeps; per batch, being a style-layer property, not a per-style slot.
-            float occlusionOpacity;
 
-            LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), glyphRenderSize(64), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable(), occlusionOpacity(1.0f) { }
+            LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), glyphRenderSize(64), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
         };
 
         // Frames between sweeps for expired owners: a sweep walks every cached entry to free a VBO sooner.
@@ -847,12 +837,22 @@ namespace massif::vt {
         bool _groundAOMaskPass = false; // set only while the mask is being drawn
         // Anchor depths meet the half-resolution buffer within rounding: mapbox's offset, and a ramp to
         // fade rather than switch.
-        static constexpr float LABEL_OCCLUSION_DEPTH_OFFSET = -0.0001f;
-        static constexpr float LABEL_OCCLUSION_DEPTH_RAMP = 0.0033f;
-        GLuint _labelOcclusionTexture = 0;    // 0 = labels are not occluded by 3D content
-        float _labelOcclusionSize = 30.0f;    // screen pixels sampled around a label's anchor
+        // Whole-label fade behind extrusions, ray-tested on the CPU against their meshes (06-labels.mdx).
+        float calculateLabelVisibility(const Label& label);
+        struct FrameOccluder {
+            const ExtrusionOccluder* occluder;
+            const TileGeometry* geometry;
+            cglib::vec3<double> origin; // tile frame: world = origin + (x, y) * scale, z world
+            double scale;
+            double heightScale;         // world z per height unit, with the building's grow-in
+            cglib::bbox3<double> bounds;
+        };
+        static constexpr float LABEL_OCCLUSION_SIZE_PIXELS = 30.0f; // the square sampled around an anchor
+        // Where a ray stops short of its target: a label on a roof is not hidden by that roof.
+        static constexpr float LABEL_OCCLUSION_MARGIN_METERS = 1.0f;
         float _labelOcclusionOpacity = 1.0f;  // what an occluded label keeps; 1 = no occlusion
-        bool _labelOcclusionStyled = false;   // ... or some style layer sets its own
+        std::vector<FrameOccluder> _frameOccluders;
+        bool _frameOccludersValid = false;
         bool _groundAOBakePass = false; // set only while the ground AO mask is a drape bake
         TerrainPaint _terrainPaint;
         bool _terrainPaintOnGround = false;      // the paint replaces the ground fill (see setTerrainPaintOnGround)

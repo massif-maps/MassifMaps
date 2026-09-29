@@ -14,6 +14,7 @@ void testExpressionRoundTrip();
 void testDataDrivenProperty();
 void testInterpolateExpression();
 void testViewStateProperty();
+void testContextFold();
 void testFontNames();
 void testValueJSON();
 void testAnchorLabelId();
@@ -31,6 +32,7 @@ int main() {
     testDataDrivenProperty();
     testInterpolateExpression();
     testViewStateProperty();
+    testContextFold();
     testFontNames();
     testValueJSON();
     testAnchorLabelId();

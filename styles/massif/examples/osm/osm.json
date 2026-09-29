@@ -17,6 +17,15 @@
         "eink": "eink"
       }
     },
-    "track_min_zoom": 24
+    "track_min_zoom": 24,
+    "poiStyle": {
+      "default": "plain",
+      "values": {
+        "badge": "badge",
+        "plain": "plain"
+      }
+    },
+    "building_min_zoom": 15,
+    "lighting": 0
   }
 }

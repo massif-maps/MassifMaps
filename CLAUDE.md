@@ -20,6 +20,8 @@ below — read the page, do not re-derive it.
 | `android/`, `ios/`, `dotnet/`, `winphone/` | Platform glue |
 | `scripts/` | Build scripts; `scripts/android-dev` is the demo/bench |
 | `tools/style-cli/` | `massif-style` CLI (`css2xml`, `mvt2xml`, `mapbox2css`) |
+| `styles/massif/` | the Massif style family (generator; MapLibre + CartoCSS flavours) |
+| `tools/style-preview/` | the style dev page: MapLibre and the SDK side by side, Mapbox reference |
 | `docs/` | **All documentation, one tree**, published at massif-maps.github.io/MassifMaps |
 | `website/` | Docusaurus shell only; it reads `../docs` |
 
@@ -28,6 +30,8 @@ below — read the page, do not re-derive it.
 | Need | Path |
 |---|---|
 | **the demo app, intent extras, renderer debugging, screenshots** | [`docs/contributing/demo-app.md`](docs/contributing/demo-app.md) |
+| **how a style looks** (Massif, a converted style): the style dev page | the [style-preview](.claude/skills/style-preview/SKILL.md) skill, [`docs/contributing/style-preview.md`](docs/contributing/style-preview.md) |
+| building and releasing the Massif styles | [`docs/contributing/massif-style-release.md`](docs/contributing/massif-style-release.md), `BUILDING.md` |
 | how a render subsystem works | [`docs/internals/rendering/`](docs/internals/rendering/index.mdx) |
 | whole-SDK map, threads, data flow | [`docs/internals/index.mdx`](docs/internals/index.mdx) |
 | what was measured and what failed | [`docs/internals/performance-log.md`](docs/internals/performance-log.md) |

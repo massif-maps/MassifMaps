@@ -135,6 +135,11 @@ OUTDOOR = {
     'mtb-extreme': 'hsl(0, 0%, 10%)',
 }
 
+# every variant carries the relief and the contours, off by default but outdoor and topo's: an app
+# turns them on
+STREETS.update({k: OUTDOOR[k] for k in ('relief', 'hillshade-shadow', 'hillshade-highlight', 'hillshade-accent',
+                                         'contour', 'contour-index', 'contour-label')})
+
 # Topo: MapTiler topo's printed-map look - grey ground, olive woods, brown contours, a deeper water
 # and a stronger relief - over the outdoor layers, so on the SDK it is colours and no new rule
 TOPO = {
@@ -191,6 +196,7 @@ HYBRID = {
     'label-airport': 'hsl(225, 80%, 88%)', 'water-label': 'hsl(200, 80%, 85%)', 'housenumber': 'hsl(0, 0%, 88%)',
     'oneway': 'hsl(0, 0%, 90%)',
     'way-label': _WHITE, 'track-label': _WHITE,
+    'contour': 'hsla(0, 0%, 100%, 0.45)', 'contour-index': 'hsla(0, 0%, 100%, 0.65)', 'contour-label': _WHITE,
 }
 
 # E-ink: black, white and a few greys, the classes told apart by pattern (sprite-src/pattern/) and
@@ -207,6 +213,7 @@ EINK.update({
     'line-halo': _W, 'track-scale': 1.6, 'trail': _K, 'trail-alpine': 'hsl(0, 0%, 25%)',
     'mtb-easy': _K, 'mtb-medium': _K, 'mtb-hard': _K, 'mtb-extreme': _K,
     'contour': 'hsl(0, 0%, 76%)', 'contour-index': 'hsl(0, 0%, 58%)', 'contour-label': 'hsl(0, 0%, 30%)',
+    'hillshade-shadow': 'hsl(0, 0%, 30%)', 'hillshade-highlight': _W, 'hillshade-accent': 'hsl(0, 0%, 45%)',
     'cliff': 'hsl(0, 0%, 20%)', 'way-label': _K, 'track-label': _K,
 })
 EINK.update({

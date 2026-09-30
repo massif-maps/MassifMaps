@@ -16,8 +16,8 @@ CLASSES = [('built', 'lowzoom-built'), ('glacier', 'glacier-low'), ('swamp', 'we
 
 def landcover(v):
     """Standard draws its landcover to z12 and fades it out as the detailed landuse arrives; this one
-    hands over sooner, crossfading with OMT's landcover over z7.8-8 (land.py). The archive must reach
-    z7 for the fade to show: tiled to z6, it stops at z7 whatever the style says."""
+    hands over sooner, crossfading with OMT's landcover over z7.8-8 (land.py). The z6 archive is
+    overzoomed to z8, by MapLibre and by MergedMBVTTileDataSource alike."""
     c = v.palette
     return [layer('lowzoom-' + cls, 'fill', 'global_landcover', source=SOURCE, maxzoom=8,
                   filter=['==', get('class'), cls],

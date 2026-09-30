@@ -15,6 +15,7 @@ on:
       - 'website/**'
       - 'docs/**'
       - 'scripts/docs/**'
+      - 'styles/massif/**'
       - '.github/workflows/docs.yml'
   release:
     types: [published]
@@ -158,6 +159,11 @@ jobs:
           gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name web-site \
             --dir website/static
           ls -l website/static/preview website/static/massif
+      # the MapLibre Massif styles the site serves, from every massif-styles-v* release
+      - name: Massif styles
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 styles/massif/release/site.py website/static/styles/massif --repo "$GITHUB_REPOSITORY"
       - name: Install & build site
         working-directory: website
         # GITHUB_TOKEN lifts the anonymous rate limit for the roadmap issue fetch.

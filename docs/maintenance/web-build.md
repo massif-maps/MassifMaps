@@ -465,6 +465,28 @@ loads: it draws nothing until the page asks for a map. `massif-demo` is the benc
 `web/demo/serve.py --dir .` and open `/web/module/` (the low-level binding) or
 `/dist/web/examples/run.html?id=display-a-map` (the typed API).
 
+### Variants
+
+A release ships two modules side by side: `standard` as `massif-web.*`, and `full` as
+`massif-web-full.*`, which a page picks with `createMap(canvas, { variant: 'full' })`:
+
+```sh
+python3 scripts/build-web.py --profile standard --configuration Release
+python3 scripts/build-web.py --profile full --variant full --configuration Release
+```
+
+`--variant` sets the target's `OUTPUT_NAME` (`SDK_WEB_MODULE_NAME`) and builds in its own
+`build/web-<variant>`. The name is fixed at link time, not by renaming files afterwards: the loader
+carries the `.wasm` and `.data` names, and the pthread workers start from the loader's own URL.
+
+| Module | `.wasm` | gzip | brotli |
+|---|---|---|---|
+| `massif-web` (`standard`) | 6.43 MB | 2.48 MB | 1.85 MB |
+| `massif-web-full` (`full`) | 8.55 MB | 3.18 MB | 2.34 MB |
+
+Measured 2026-09-30, `Release`. The npm tarball grows from about 3 MB to 6.4 MB; a page still
+downloads one module. `lite` is 1.53 MB brotli, too close to `standard` to ship as a third one.
+
 - **The typed API is the NativeScript plugin's**, moved to `bindings/js` (`@massif-maps/api`) with
   the platform behind a `NativeBridge`. `web/js/bridge.mjs` is the web's: the C ABI, with the
   view, options and layers as tokens `massifAdopt` resolves. `web/js/index.mjs` is `createMap`.

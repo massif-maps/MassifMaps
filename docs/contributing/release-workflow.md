@@ -33,7 +33,8 @@ The workflow file is
 ## The web SDK in a release
 
 `build.yml`'s `build-web` job builds the web SDK next to the Android and iOS ones, from the same
-version input:
+version input - twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`
+([variants](../maintenance/web-build.md#variants)):
 
 - `MassifMaps-web-<version>.zip` on the GitHub release: `dist/web`, the files an app serves.
 - npm `@massif-maps/api` (`bindings/js`), then `@massif-maps/web` (`dist/web`, which depends on

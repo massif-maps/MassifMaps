@@ -466,11 +466,15 @@ if(EMSCRIPTEN)
     # /fonts in the virtual filesystem. web/fonts is TRACKED - without it no label draws at all.
     "SHELL:--preload-file ${SDK_BASE_DIR}/web/fonts@/fonts")
 
-  # The module apps load (web/module): no map until the page creates one.
+  # The module apps load (web/module): no map until the page creates one. A variant is renamed
+  # here, not afterwards: emscripten writes the .wasm, .data and worker file names into the loader.
+  if(NOT SDK_WEB_MODULE_NAME)
+    set(SDK_WEB_MODULE_NAME "massif-web")
+  endif()
   add_executable(massif-web "${SDK_BASE_DIR}/web/module/main.cpp")
   target_link_libraries(massif-web massif)
   target_link_options(massif-web PRIVATE ${SDK_WEB_LINK_OPTIONS})
-  set_target_properties(massif-web PROPERTIES SUFFIX ".mjs")
+  set_target_properties(massif-web PROPERTIES SUFFIX ".mjs" OUTPUT_NAME "${SDK_WEB_MODULE_NAME}")
 endif()
 
 if(EMSCRIPTEN AND BUILD_WEB_DEMO)

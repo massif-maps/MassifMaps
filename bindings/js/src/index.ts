@@ -1767,7 +1767,7 @@ export class MapCamera {
         const tilt = options.tilt ?? this.tilt();
         const seconds = this.take(options.duration);
         if (seconds > 0) {
-            this.view.call('flyTo', pos, zoom, rotation, tilt, options.climbHeight ?? 0, seconds);
+            this.view.call('flyTo', pos, zoom, rotation, tilt, options.climbHeight ?? 0, seconds, '');
         } else {
             this.view.call('moveTo', pos, zoom, rotation, tilt);
         }

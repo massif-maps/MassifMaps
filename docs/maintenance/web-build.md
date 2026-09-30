@@ -397,6 +397,21 @@ The cost: mimalloc adds 57 KB of `.wasm` (21 KB brotli) and grows the wasm heap 
 170-205 MB for the same session. The `-O2` hot libraries add 761 KB (146 KB brotli) for about 20%
 less decode and frame CPU.
 
+The same on the `standard` profile CI ships (1.68 -> 1.85 MB brotli), before and after both
+changes, with the example also given terrain at tilt 45 (sun 225/30), then shadows 0.35:
+
+| `standard` | flat | terrain | terrain + shadows |
+|---|---|---|---|
+| map filled | 6.2 s -> **1.0 s** | 14.4-18.4 s -> **1.4-1.6 s** | never, see below |
+| frame CPU p90, pan | 45-51 -> **4.1-4.9 ms** | 56-62 -> **8.8-10.4 ms** | 79-93 -> **11-15 ms** |
+| frame interval p90, pan | 48-54 -> **11.8 ms** | 65-72 -> **9.7-11.7 ms** | 85-98 -> **12.6-16.5 ms** |
+| wasm heap | 144 -> 171 MB | 297-358 -> 424-426 MB | 515-612 -> 512-611 MB |
+
+With shadows on, the vector tiles are fetched and decoded **in a loop** on both builds - 699 to
+8392 requests for 17-19 tiles - so the map never settles; the shadow pan numbers were taken with
+that loop running. It is a separate bug from the allocator, and not web-only: `day-cycle-light` on
+the Android emulator loaded its centre tile 353 times in 2.5 minutes, the iOS simulator 13 times.
+
 ### Isolation on GitHub Pages
 
 The docs site is on GitHub Pages, which serves no custom headers at all — so the threaded module

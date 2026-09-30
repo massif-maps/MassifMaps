@@ -127,22 +127,19 @@ first emcc build did not.
 
 ## Releasing
 
-[`.github/workflows/release-style-tools.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/release-style-tools.yml),
-`workflow_dispatch` with `version` and `publish` inputs — the same shape as
-[`build.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/build.yml).
+The style tools ship with the SDK, on its version.
+[`.github/workflows/release-style-tools.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/release-style-tools.yml)
+builds and packs, on pull requests and when
+[`build.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/build.yml)
+calls it:
 
 1. **build-wasm** — checkout with submodules, install emsdk, fetch Boost headers, build, upload the
    two artifacts.
 2. **package** — `gen-cartocss-properties.py --check`, build and test the TypeScript, smoke-test the
-   wasm subcommand, pack the tarball. Also runs on pull requests.
-3. **publish** (only with `publish`) — `npm publish --provenance`, and attach the same wasm to a
-   `style-tools-v<version>` GitHub Release for anyone not using npm.
+   wasm subcommand, pack the tarball with `scripts/npm-packages.py`.
 
-Two things this repository does not have yet and this workflow is the first to need:
-
-- an **`NPM_TOKEN`** secret. `@massif-maps/types` under `bindings/typescript/` is `private: true`
-  and has never been published, so nothing has authenticated to npm from here before.
-- `permissions: id-token: write` on the publishing job, which is what `--provenance` signs with.
+`build.yml`'s `publish-npm` job then publishes the tarball with the SDK's other npm packages, and
+attaches the wasm to the `v<version>` release for anyone not using npm.
 
 Boost comes from [`.github/actions/prepare-boost`](https://github.com/massif-maps/MassifMaps/blob/master/.github/actions/prepare-boost/action.yml),
 the same action `build.yml` uses, so the wasm is built against the **same Boost as the SDK**. That

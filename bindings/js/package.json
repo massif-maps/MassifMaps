@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "description": "The typed Massif Maps surface API, shared by the web and NativeScript bindings",
   "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/massif-maps/MassifMaps.git",
+    "directory": "bindings/js"
+  },
+  "homepage": "https://massif-maps.github.io/MassifMaps/docs/getting-started/web",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

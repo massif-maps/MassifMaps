@@ -14,7 +14,7 @@ export const Platforms = [
     icon: '🤖',
     status: 'supported',
     languages: ['Java', 'Kotlin'],
-    distribution: 'JitPack — `com.github.massif-maps:MassifMaps`',
+    distribution: 'JitPack — `com.github.massif-maps:MassifMaps-android-aar`',
     minVersion: 'Android 5.0 (API 21)+, OpenGL ES 2.0',
     docs: '/docs/getting-started/installation#android',
     api: 'pathname:///MassifMaps/api/android/',

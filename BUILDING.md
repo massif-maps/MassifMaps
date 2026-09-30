@@ -72,6 +72,10 @@ following instructions use 'standard' profile as an example.
 In order to make SDK binaries as small as possible, 'lite' profile can be used. This profile disables
 geocoding, routing and offline support, but resulting binaries are about 40% smaller.
 
+Every combination builds, but some features need a second profile: the `MultiOSMOffline*`
+geocoding services exist only with 'packagemanager' too, and 'valhalla' adds nothing without
+'routing'. A class is generated only when every `_MASSIF_*_SUPPORT` on its guard line is defined.
+
 ## Building process
 Be patient - full build will take 1+ hours. You can speed it up by limiting architectures and platforms where it is built.
 

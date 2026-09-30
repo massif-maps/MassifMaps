@@ -235,8 +235,7 @@ def transformSwigFile(sourcePath, outPath, moduleDirs, headerDirs):
   stl_wrapper = False
   for line in lines_in:
 
-    match = re.search(r'(?:^\s*(?:#ifdef )(_MASSIF_[^\s]*_SUPPORT)$|(?:defined\((_MASSIF_[^\s]*_SUPPORT)\)))', line)
-    if match:
+    for match in re.finditer(r'(?:^\s*(?:#ifdef )(_MASSIF_[^\s]*_SUPPORT)$|(?:defined\((_MASSIF_[^\s]*_SUPPORT)\)))', line):
       if(match.group(1) and not match.group(1) in argsDefines ):
         print("ignoredSourceFiles %s for define: %s" % (sourcePath, match.group(1)))
         ignoredSourceFiles.append(sourcePath)

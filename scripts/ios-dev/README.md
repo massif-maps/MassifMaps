@@ -12,7 +12,12 @@ gradle gives on Android.
 ./bootstrap.sh device           # arm64 device
 PROFILE=lite ./bootstrap.sh     # a different feature profile
 PROFILE_RENDER=1 ./bootstrap.sh # per-frame timings, android-dev's -PprofileRender
+NATIVE_OPT=0 ./bootstrap.sh     # an -O0 SDK, to step through native code
 ```
+
+The SDK builds at `-O2 -g` even in Debug, as android-dev's `-PnativeOpt` does. At `-O0` a Massif
+tile decodes in ~8 s instead of ~0.5 s, and an example freezes the gallery for seconds while it
+parses its style on the main thread - every example looks broken.
 
 `PROFILE_RENDER=1` compiles in `MASSIF_FRAME_PROFILER` and `MASSIF_VT_RENDER_STATS` — the per-frame
 section timings and the vt draw/label/tile counters, printed as `PROF` and `RenderStats` lines.

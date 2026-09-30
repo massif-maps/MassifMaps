@@ -11,6 +11,7 @@
 
 #include <vt/FontNames.h>
 
+using massif::vt::fontFaceMatches;
 using massif::vt::parseFontNames;
 
 namespace {
@@ -35,4 +36,11 @@ void testFontNames() {
 
     // An unknown prefix is not a tag: the whole entry stays, colon included.
     TEST_CHECK(join(parseFontNames("wasm:Inter")) == "wasm:Inter", "an unknown prefix stays part of the name");
+
+    // HelveticaNeue.ttc, as iOS hands it over for every one of its twelve faces.
+    TEST_CHECK(fontFaceMatches("Helvetica Neue Bold", "Helvetica Neue", "Bold", "HelveticaNeue-Bold"), "a style's bold is the collection's bold face");
+    TEST_CHECK(!fontFaceMatches("Helvetica Neue Bold", "Helvetica Neue", "Regular", "HelveticaNeue"), "face 0 is not the bold");
+    TEST_CHECK(!fontFaceMatches("Helvetica Neue Bold", "Helvetica Neue", "Bold Italic", "HelveticaNeue-BoldItalic"), "the bold italic is not the bold");
+    TEST_CHECK(fontFaceMatches("Helvetica Neue", "Helvetica Neue", "Regular", "HelveticaNeue"), "a bare family is its regular face");
+    TEST_CHECK(fontFaceMatches("HelveticaNeue-Italic?size=48", "Helvetica Neue", "Italic", "HelveticaNeue-Italic"), "a PostScript name matches, its query ignored");
 }

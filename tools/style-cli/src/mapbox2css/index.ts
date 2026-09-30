@@ -183,7 +183,7 @@ export interface ConvertOptions {
      * at. A name the face has no glyph for draws no icon - country artwork (RER, a metro roundel)
      * has no font equivalent and is deliberately lost, which is the point of the mode.
      */
-    iconFont?: { face: string; glyphs: Map<string, string> };
+    iconFont?: { face: string; glyphs: Map<string, string>; size?: number };
     /** Retarget the style's source layers at another tile schema - see schema.ts. */
     schema?: Schema;
     /** Which vocabulary the style's own source layers are in. Detected from them when unset. */
@@ -483,6 +483,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             return;
         }
 
+        // CartoCSS draws no raster: a hillshade becomes a composite slot the app fills with its DEM
+        // (CompositeVectorTileLayer), configured with the values `massif:sdk-layer` tuned for the SDK.
+        if (layer.type === 'hillshade' && emitHillshadeSlot(layer, index)) {
+            return;
+        }
+
         const symbolizer = LAYER_SYMBOLIZER[layer.type];
         if (!symbolizer) {
             coverage.drop(`layer type "${layer.type}"`, 'unsupported layer type', layer.id);
@@ -687,6 +693,29 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             stops.push([zoom, stop]);
         }
         return stops.length >= 2 ? stops : null;
+    }
+
+    function emitHillshadeSlot(layer: MapboxLayer, layerIndex: number): boolean {
+        const sdk = (layer.metadata as Record<string, Json> | undefined)?.['massif:sdk-layer'] as Record<string, Json> | undefined;
+        if (!sdk || typeof sdk !== 'object' || sdk.type !== 'hillshade') return false;
+        const declarations: string[] = [];
+        for (const [key, property] of [['opacity', 'hillshade-opacity'], ['exaggeration', 'hillshade-exaggeration']] as const) {
+            if (sdk[key] === undefined) continue;
+            const value = tryTranslate(sdk[key] as Json, property, layer.id, coverage);
+            if (value !== null) declarations.push(`${property}: ${value};`);
+        }
+        const range = Array.isArray(sdk.visibleZoomRange) ? sdk.visibleZoomRange as number[] : [];
+        let selector: string;
+        try {
+            selector = `#${layer.id}${[...zoomPredicates(range[0] || layer.minzoom, range[1] ?? layer.maxzoom),
+                ...translateFilter(layer.filter ?? null)].join('')}`;
+        } catch (error) {
+            coverage.drop(`filter on "${layer.id}"`, describe(error), layer.id);
+            return true;
+        }
+        blocks.push({ selector, owner: layer.id, declarations });
+        drawOrder.push({ sourceLayer: layer.id, attachment: '', index: layerIndex });
+        return true;
     }
 
     function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
@@ -3147,22 +3176,48 @@ function fontShieldDeclarations(layer: MapboxLayer, image: Json, coverage: Cover
     coverage.emit('shield-icon-name');
     coverage.emit('shield-icon-face-name');
 
-    // MapBox's icon-size SCALES a sprite; a glyph is sized in pixels, and 0 - the property's own
-    // default - already means "the label's size". So only a size that is not 1 is written, as that
-    // multiple of the text size.
-    const size = representativeScale(layer.layout?.['icon-size']);
-    if (size !== 1) {
-        const px = round(size * representativeScale(layer.layout?.['text-size'], DEFAULT_TEXT_SIZE));
-        out.push(`shield-icon-size: ${px};`);
+    // MapBox's icon-size SCALES a sprite; a glyph is sized in pixels. Given --icon-font-size, the
+    // glyph's height in sprite pixels, it scales the same way; otherwise as a multiple of the text size.
+    const sized = translateExpression(layer.layout?.['icon-size'] ?? 1);
+    if (font.size !== undefined) {
+        out.push(`shield-icon-size: ((${sized}) * ${font.size});`);
         coverage.emit('shield-icon-size');
+    } else {
+        const size = representativeScale(layer.layout?.['icon-size']);
+        if (size !== 1) {
+            out.push(`shield-icon-size: ${round(size * representativeScale(layer.layout?.['text-size'], DEFAULT_TEXT_SIZE))};`);
+            coverage.emit('shield-icon-size');
+        }
     }
 
     emitTranslated(out, coverage, layer, 'icon-color', 'shield-icon-fill', undefined, false);
     emitTranslated(out, coverage, layer, 'icon-opacity', 'shield-icon-opacity', undefined, false);
     emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
     emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
+    // A recolourable badge keeps its disc: the plate measured off the sheet, as the sprite path does.
+    const plate = layer.layout?.[ICON_PARAMS] !== undefined ? fontPlateSample(options) : null;
+    if (plate) out.push(...iconPlateDeclarations(layer, plate, sized, coverage, options));
     out.push(...variableAnchorDeclarations(layer, coverage, options));
     return out;
+}
+
+const fontPlates = new WeakMap<ConvertOptions, ExtractedIcon | null>();
+
+/** The first badge of the sheet that splits into a disc and a glyph, measured once per conversion. */
+function fontPlateSample(options: ConvertOptions): ExtractedIcon | null {
+    if (!options.sprites || !options.iconFont) return null;
+    if (!fontPlates.has(options)) {
+        let found: ExtractedIcon | null = null;
+        for (const name of options.iconFont.glyphs.keys()) {
+            const icon = extractIconPlate(options.sprites.sheets, name, options.sprites.outDir);
+            if (icon?.plate) {
+                found = icon;
+                break;
+            }
+        }
+        fontPlates.set(options, found);
+    }
+    return fontPlates.get(options)!;
 }
 
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */

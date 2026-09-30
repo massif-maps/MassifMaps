@@ -67,11 +67,15 @@ tasks.register('copyExampleSources', Copy) {
 
 // Style projects ship as zips, which is what ZippedAssetPackage reads. The SOURCE stays a plain
 // folder so it is diffable and editable; the zip is a build product, never committed.
+// The Massif styles are the committed styles/massif/carto (the release workflow keeps it current), zipped
+// as styles/massif.zip, so the examples run the repo's style offline.
 tasks.register('zipStyleProjects') {
-    description = 'Zips each app/src/main/style-projects/<name> into assets/styles/<name>.zip'
+    description = 'Zips each app/src/main/style-projects/<name>, and styles/massif/carto, into assets/styles/'
     def sourceDir = file('src/main/style-projects')
+    def massifDir = rootProject.file('../../styles/massif/carto')
     def outDir = layout.buildDirectory.dir('generated/exampleSources/styles')
     inputs.dir(sourceDir).optional()
+    inputs.dir(massifDir)
     outputs.dir(outDir)
     doLast {
         outDir.get().asFile.mkdirs()
@@ -79,6 +83,7 @@ tasks.register('zipStyleProjects') {
             ant.zip(destfile: new File(outDir.get().asFile, "${project.name}.zip"),
                     basedir: project)
         }
+        ant.zip(destfile: new File(outDir.get().asFile, 'massif.zip'), basedir: massifDir)
     }
 }
 

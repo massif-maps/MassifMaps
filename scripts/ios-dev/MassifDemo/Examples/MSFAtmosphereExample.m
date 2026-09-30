@@ -81,10 +81,11 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
 
     [map style:@"hybrid"
           spec:[[MSFSpec of:@"mbvt"]
-                  set:@"project" value:[[MSFSpec of:@"project"]
+                  set:@"project" value:[[[MSFSpec of:@"project"]
                       set:@"assets" value:[[MSFSpec of:@"zip"]
                           set:@"data" value:[[MSFSpec of:@"url"]
-                              set:@"url" value:@"assets://styles/hybrid.zip"]]]]
+                              set:@"url" value:@"assets://styles/massif.zip"]]]
+                      set:@"name" value:@"hybrid"]]
          error:nil];
     [map addLayer:@"labels"
              spec:[[[MSFSpec of:@"vector"]

@@ -76,12 +76,12 @@ public class Terrain3DExample extends MapExample {
                     .set("maxZoom", 18)
                     .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))));
 
-        // Roads, place names and summits ON TOP, from a style project with no background of its
-        // own - see app/src/main/style-projects/hybrid.
+        // Roads, place names and summits ON TOP: Massif's hybrid variant has no background of its own.
         map.style("hybrid", Spec.of("mbvt")
             .set("project", Spec.of("project")
                 .set("assets", Spec.of("zip")
-                    .set("data", Spec.of("url").set("url", "assets://styles/hybrid.zip")))));
+                    .set("data", Spec.of("url").set("url", "assets://styles/massif.zip")))
+                .set("name", "hybrid")));
         map.addLayer("labels", Spec.of("vector")
             .set("source", Spec.of("persistent-cache")
                 .set("databasePath", host.cachePath("openfreemap.db"))

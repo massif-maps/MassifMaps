@@ -63,6 +63,7 @@
 %ignore massif::MBVectorTileDecoder::decodeFeatures;
 %ignore massif::MBVectorTileDecoder::decodeTile;
 %ignore massif::MBVectorTileDecoder::getMapSettings;
+%ignore massif::MBVectorTileDecoder::getStyleLayerStyleNames;
 %ignore massif::MBVectorTileDecoder::getSymbolizerContextSettings;
 %ignore massif::MBVectorTileDecoder::setPixelScale;
 %ignore massif::MBVectorTileDecoder::setTileSize;

@@ -98,11 +98,18 @@ Standard reference to the matching preset: night before 6 and from 20:30, dawn t
 
 For a Massif style the bar gets a **variant** picker: the page reloads on the sibling file
 (`streets.json` → `eink.json`, …) with the camera, the hour, the reference and the Massif row kept;
-`custom` loads streets with `?project=custom`, the [override example](../../styles/massif/examples/custom/).
+`custom` and `osm` load streets with `?project=custom|osm`, the
+[extension examples](../styles/massif-extending.md).
 
-The Massif panes cast building shadows the way Standard does, at its day depth (`shadowStrength` 1).
-Ours land on a terrain surface, so each pane carries a flat one (the Mapterhorn DEM at exaggeration
-0, never auto-flattened); `?shadows=0` drops it.
+The Massif panes cast building shadows the way Standard does, at its day depth (`shadowStrength` 1),
+when the **shadows** box is ticked (`?shadows=1`); off by default, since the shadow pass costs the page
+most of its frame rate. Ours land on a terrain surface, so each pane then carries a flat one (the
+Mapterhorn DEM at exaggeration 0, never auto-flattened).
+
+`?compare=<project folder>` puts **another CartoCSS project** in the left Massif pane, over the local
+tiles, against the style's own on the right; `&compareVariant=<name>` picks its `<name>.json`. A
+release flavour (`?compare=/styles/massif/dist/cartocss-iconfont`), an older conversion, or another
+app's style mounted under `--styles` (Alpimaps' OSM style is how the OSM example was matched).
 
 The tokens are read by `serve.py` from `~/.mapbox_token` and `~/.maptiler_token`
 (`--mapbox-token`, `--maptiler-token` to point elsewhere) and served to the page at `/tokens.json`,

@@ -43,6 +43,12 @@ version input:
 A run with `publish` off keeps the zip as a workflow artefact instead. What the package contains
 and how an app hosts it: [the web guide](/docs/getting-started/web).
 
+## The Massif styles
+
+`release-styles.yml` releases `styles/massif` on its own version (`massif-styles-v<version>`): npm
+`@massif-maps/styles`, one zip per flavour, and a redeploy of this site, which serves the MapLibre
+styles under `/styles/massif/`. See [Massif style release](massif-style-release.md).
+
 ## One-time setup
 
 Enable Pages for the repository:

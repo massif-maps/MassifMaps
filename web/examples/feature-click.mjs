@@ -1,10 +1,10 @@
 /** Reading the feature under a tap, without parsing a tile. */
-import { alpineStyle, vectorTiles } from './shared.mjs';
+import { massifStyle, vectorTiles } from './shared.mjs';
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
-  const base = map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: alpineStyle() });
+  const base = map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: await massifStyle(map) });
   map.camera().moveTo([5.7245, 45.1885], { zoom: 14.5 });
 
   base.onFeatureClick((e) => {

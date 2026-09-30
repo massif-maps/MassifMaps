@@ -1,5 +1,6 @@
 #include "FontManager.h"
 #include "Font.h"
+#include "FontNames.h"
 #include "GlyphMap.h"
 
 #include <atomic>
@@ -167,6 +168,26 @@ namespace massif::vt {
         return remaining;
     }
 
+    /**
+     * The face of a collection (.ttc) that the name asks for. iOS hands over the whole collection
+     * for any of its faces, and face 0 emboldened is not the collection's own bold.
+     */
+    FT_Long findCollectionFace(FT_Library library, const std::vector<unsigned char>& data, FT_Long numFaces, const std::string& name) {
+        for (FT_Long index = 0; index < numFaces; index++) {
+            FT_Face face = nullptr;
+            if (FT_New_Memory_Face(library, data.data(), static_cast<FT_Long>(data.size()), index, &face) != 0) {
+                continue;
+            }
+            const char* postScriptName = FT_Get_Postscript_Name(face);
+            bool matches = fontFaceMatches(name, face->family_name ? face->family_name : "", face->style_name ? face->style_name : "", postScriptName ? postScriptName : "");
+            FT_Done_Face(face);
+            if (matches) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
     class FontManagerFont : public Font {
     public:
         explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::string& name, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont, int glyphRenderSize) : _library(library), _name(name), _baseFont(baseFont), _glyphMap(glyphMap), _glyphRenderSize(glyphRenderSize), _face(nullptr), _font(nullptr) {
@@ -174,6 +195,13 @@ namespace massif::vt {
 
             if (data) {
                 int error = FT_New_Memory_Face(_library->getLibrary(), data->data(), static_cast<FT_Long>(data->size()), 0, &_face);
+                if (error == 0 && _face->num_faces > 1) {
+                    if (FT_Long index = findCollectionFace(_library->getLibrary(), *data, _face->num_faces, name)) {
+                        FT_Done_Face(_face);
+                        _face = nullptr;
+                        error = FT_New_Memory_Face(_library->getLibrary(), data->data(), static_cast<FT_Long>(data->size()), index, &_face);
+                    }
+                }
                 if (error == 0) {
                     int renderSize = _glyphRenderSize - GLYPH_RENDER_SPREAD;
                     error = FT_Set_Char_Size(_face, 0, static_cast<int>(renderSize * 64.0f), 0, 0);

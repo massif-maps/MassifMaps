@@ -133,6 +133,14 @@ itself, later groups on internal `VectorTileLayer`s over the base source, with t
 drawn between them in painter order. The style background is drawn once by the bottom group. This
 works in **2D and over [3D terrain](/docs/features/3d-terrain)**.
 
+### A vector slot at several depths
+
+A project may list one source layer several times, one attachment per entry, so it draws at several
+depths - Massif's `contour::contour_index`, `contour::contour` under the roads and
+`contour::contour_label` among the names. A `VECTOR` slot of that name draws each entry's own styles
+where the entry stands, through a child layer per depth; consecutive entries share one. A slot listed
+once keeps its single child.
+
 ## Known limitations & follow-ups
 
 - Each style-layer group (groups = external slots + 1) builds only its own styles, but parses the

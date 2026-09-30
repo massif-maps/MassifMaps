@@ -1,6 +1,5 @@
 package com.massifmaps.MassifDemo.examples.styles;
 
-import com.massifmaps.MassifDemo.BuildConfig;
 import com.massifmaps.MassifDemo.examples.ExampleHost;
 import com.massifmaps.MassifDemo.examples.ExampleInfo;
 import com.massifmaps.MassifDemo.examples.MapExample;
@@ -27,22 +26,14 @@ import com.massifmaps.api.Position;
 public class DayCycleLightExample extends MapExample {
 
     /**
-     * Mapbox Standard reads MAPBOX's own vector tiles - its layers name mapbox-streets-v8 source
-     * layers, so no other tileset can feed it. A demo cannot ship a token, so the build takes one
-     * from ~/.mapbox_token (app/build.gradle); without that file this stays the placeholder and
-     * the Mapbox style loads no tiles at all.
-     */
-    private static final String MAPBOX_TOKEN =
-        BuildConfig.MAPBOX_TOKEN.isEmpty() ? "<your-mapbox-access-token>" : BuildConfig.MAPBOX_TOKEN;
-
-    /**
-     * The two styles, both converted by `massif-style mapbox2css --live-light`: the colours stay as
-     * the style authored them and the `*-emissive-strength` values ride along, for the SDK to light
-     * at draw time. That is what leaves ONE palette covering every hour.
+     * Massif's variants, one project converted with `--live-light`: the colours stay as authored and
+     * the `*-emissive-strength` values ride along for the SDK to light at draw time - ONE palette
+     * for every hour. E-ink inverts at night instead of dimming.
      */
     private static final String[][] STYLES = {
-        { "Mapbox Standard", "mapbox-standard" },
-        { "MapTiler Streets", "maptiler-streets" },
+        { "Massif streets", "streets" },
+        { "Massif outdoor", "outdoor" },
+        { "Massif e-ink", "eink" },
     };
 
     /**
@@ -138,7 +129,7 @@ public class DayCycleLightExample extends MapExample {
     private static final double AUTO_FLATTEN_PARALLAX = 2.0;
 
     /**
-     * Both style projects declare this parameter; only Mapbox Standard's Map block reads it. At 80
+     * Every converted style declares this parameter, and its Map block reads it. At 80
      * a building keeps a fifth of its height at tilt 90 - still legible as a building, where the
      * project's own default of 90 reads as flat once the camera is that far over.
      */
@@ -216,7 +207,9 @@ public class DayCycleLightExample extends MapExample {
             @Override
             public void run() {
                 style = (style + 1) % STYLES.length;
-                buildLayer(DayCycleLightExample.this.host.map());
+                // A variant is a style PARAMETER of the one project: the tiles re-decode, nothing reloads.
+                DayCycleLightExample.this.host.map().layer("basemap").call("tileDecoder.setStyleParameter",
+                    "variant", STYLES[style][1]).close();
                 DayCycleLightExample.this.host.caption(describe());
             }
         });
@@ -275,42 +268,28 @@ public class DayCycleLightExample extends MapExample {
                     : "Auto 2D/3D off: the map stays 3D all the way to 90°.");
             }
         });
-        host.caption("Two styles, two formulas: the hour picks the light, the curve picks the look. "
+        host.caption("Three variants, two formulas: the hour picks the light, the curve picks the look. "
                    + "Zoom out past z15, or tilt to 90, and the buildings lie down.");
     }
 
-    /**
-     * The basemap. Each style needs the tiles it was written against - Standard names mapbox's own
-     * source layers, MapTiler Streets names OpenMapTiles ones, and neither reads the other's.
-     */
+    /** The basemap: the Massif project, its variant a style parameter set by the Style button. */
     private void buildLayer(MassifMap map) {
-        // Off the stack AND out of the registry: an id is unique, so rebuilding "basemap" without
-        // this fails with RESULT_DUPLICATE_ID.
-        map.removeLayer("basemap");
-        boolean mapbox = style == 0;
-        Spec source = mapbox
-            ? Spec.of("http")
-                .set("url", "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2"
-                          + "/{z}/{x}/{y}.vector.pbf?access_token=" + MAPBOX_TOKEN)
-                .set("maxZoom", 16)
-            : Spec.of("http")
-                .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
-                .set("maxZoom", 14)
-                .set("HTTPHeaders", Spec.object().set("User-Agent", "MassifMapsExamples/1.0"));
-
         map.addLayer("basemap", Spec.of("vector")
-            // Cached on disk in front of the server: both are other people's tiles, and a demo that
-            // gets panned around re-fetches the same ones on every run.
+            // Cached on disk in front of the server: openfreemap is a free service, and a demo that
+            // gets panned around re-fetches the same tiles on every run.
             .set("source", Spec.of("persistent-cache")
-                .set("databasePath", host.cachePath(mapbox ? "mapbox-vector.db" : "openfreemap.db"))
+                .set("databasePath", host.cachePath("openfreemap.db"))
                 .set("capacity", 100 * 1024 * 1024)
-                .set("source", source))
+                .set("source", Spec.of("http")
+                    .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
+                    .set("maxZoom", 14)
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", "MassifMapsExamples/1.0"))))
             .set("style", Spec.of("mbvt")
                 .set("project", Spec.of("project")
                     .set("assets", Spec.of("zip")
-                        .set("data", Spec.of("url")
-                            .set("url", "assets://styles/" + STYLES[style][1] + ".zip"))))));
-        applyTiltDrop(); // a rebuilt layer is a fresh decoder, back on the style's own default
+                        .set("data", Spec.of("url").set("url", "assets://styles/massif.zip")))
+                    .set("name", STYLES[style][1]))));
+        applyTiltDrop();
     }
 
     /**

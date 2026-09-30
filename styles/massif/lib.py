@@ -158,6 +158,23 @@ def gate(lay, v, name, value=1):
     return lay
 
 
+def fold_config(expr, params):
+    """`['config', name]` replaced by the parameter's value, and a match on a constant by its branch:
+    MapLibre has no config expression, so its styles carry the variant's defaults."""
+    if not isinstance(expr, list):
+        return {k: fold_config(v, params) for k, v in expr.items()} if isinstance(expr, dict) else expr
+    if len(expr) == 2 and expr[0] == 'config':
+        return params[expr[1]]
+    expr = [fold_config(x, params) for x in expr]
+    if expr[0] == 'match' and not isinstance(expr[1], (list, dict)):
+        for i in range(2, len(expr) - 1, 2):
+            labels = expr[i] if isinstance(expr[i], list) else [expr[i]]
+            if expr[1] in labels:
+                return expr[i + 1]
+        return expr[-1]
+    return expr
+
+
 def padded(expr, px):
     """A width ramp with px added to every output, for a margin drawn under the line."""
     if isinstance(expr, (int, float)):

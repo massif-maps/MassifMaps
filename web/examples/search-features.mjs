@@ -1,5 +1,5 @@
 /** Searching the vector tiles the map is already showing, and pinning what comes back. */
-import { alpineStyle, vectorTiles } from './shared.mjs';
+import { massifStyle, vectorTiles } from './shared.mjs';
 
 const CENTRE = [5.7245, 45.1885];
 /** Degrees around the centre. A search with NO geometry scans the whole world at its zoom. */
@@ -9,10 +9,10 @@ function corner(dLon, dLat) {
   return [CENTRE[0] + dLon, CENTRE[1] + dLat];
 }
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
-  map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: alpineStyle() });
+  map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: await massifStyle(map) });
   map.camera().moveTo(CENTRE, { zoom: 13.5 });
 
   // Built FROM THE LAYER, sharing its source and decoder. `{ type: 'vectortile', layer }` has a

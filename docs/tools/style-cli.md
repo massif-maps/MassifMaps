@@ -57,6 +57,7 @@ Flags:
 | `--strict` | exit non-zero if any MapBox property was dropped |
 | `--shield-anchors [sides]` | let a POI name take the first **free** side of its icon, and draw the icon alone when none is (`shield-anchors` + `shield-text-optional`). Sides in preference order, default `right,left,top,bottom`; a layer stating its own `text-variable-anchor` keeps it |
 | `--icon-font FACE`<br/>`--icon-font-map FILE` | draw every **shield** icon as a glyph of an icon font instead of a sprite, so the style ships one font rather than a sheet of PNGs. `FILE` maps `icon-image` names onto that face's characters (`{"mountain": ""}`, `"U+E90A"` and `59658` all read). A name it has no glyph for draws no icon, so country artwork is lost; a **marker** — a oneway arrow, a crossing — keeps its sprite |
+| `--icon-font-size PX` | the height in sprite pixels a glyph fills at `icon-size` 1, so `icon-size` scales the glyph as it scaled the sprite; unset, the glyph is a multiple of `text-size` |
 
 `massif-style mapbox2css --help` lists the rest.
 

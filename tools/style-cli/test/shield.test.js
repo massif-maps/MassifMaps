@@ -364,6 +364,14 @@ test('--icon-font draws a shield icon as a glyph, and needs no sprite sheet at a
     assert.ok(!out.includes('shield-sdf'));
 });
 
+test('--icon-font-size scales a glyph by icon-size, as the sprite it replaces', () => {
+    const iconFont = { face: 'osm', glyphs: new Map([['mountain', '']]), size: 27 };
+    const out = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'mountain', 'icon-size': 0.4 }, {})] },
+    TABLE, { ...NO_PALETTE, iconFont }).mss;
+    assert.match(out, /shield-icon-size: \(\(0\.4\) \* 27\);/);
+});
+
 test('a per-feature icon name reaches the font through the same parameter table', () => {
     const iconFont = { face: 'osm', glyphs: new Map([['mountain', ''], ['cafe', '']]) };
     const { mss: out, project } = convert({ layers: [symbol(

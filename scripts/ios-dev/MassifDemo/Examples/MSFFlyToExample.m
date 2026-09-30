@@ -19,25 +19,28 @@
     return @"fly-to";
 }
 
-/** OSM's tile usage policy: a real app identifies itself, or the tiles come back as 403s. */
+/** A tile server wants to know who is asking: a real app identifies itself. */
 static NSString * const kUserAgent =
     @"MassifMapsExamples/1.0 (+https://github.com/massif-maps/MassifMaps)";
 
 - (void)startWithHost:(id<MSFExampleHost>)host {
     MSFMassifMap *map = host.map;
 
+    // The Massif streets style (styles/massif/carto, bundled by the build as styles/massif.zip) over
+    // OpenFreeMap's vector tiles, cached on disk: a free service a demo would re-fetch every run.
     [map addLayer:@"basemap"
-             spec:[[MSFSpec of:@"raster"]
-                     // Cached on disk in front of the server: OSM's tiles are a free service run
-                     // on donations, and a demo that gets panned around re-fetches the same ones
-                     // on every run.
+             spec:[[[MSFSpec of:@"vector"]
                      set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
-                         set:@"databasePath" value:[host cachePath:@"osm-raster.db"]]
+                         set:@"databasePath" value:[host cachePath:@"openfreemap.db"]]
                          set:@"capacity" value:@(100 * 1024 * 1024)]
                          set:@"source" value:[[[[MSFSpec of:@"http"]
-                             set:@"url" value:@"https://tile.openstreetmap.org/{z}/{x}/{y}.png"]
-                             set:@"maxZoom" value:@19]
+                             set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
+                             set:@"maxZoom" value:@14]
                              set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]]
+                     set:@"style" value:[[MSFSpec of:@"mbvt"] set:@"project" value:[[[MSFSpec of:@"project"]
+                         set:@"assets" value:[[MSFSpec of:@"zip"] set:@"data" value:[[MSFSpec of:@"url"]
+                             set:@"url" value:@"assets://styles/massif.zip"]]]
+                         set:@"name" value:@"streets"]]]
             error:nil];
     [map.camera moveTo:[MSFPosition positionWithLng:5.7245 lat:45.1885] zoom:6];
 

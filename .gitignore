@@ -1,5 +1,6 @@
 build
 /dist
+/styles/*/dist*/
 /extensions
 /generated
 /prebuilt
@@ -33,5 +34,4 @@ boost*
 /web/demo/peaks-style.js
 
 # Written by `massif-style mapbox2css` from the style JSON beside it, never by hand.
-/styles/*/carto/
 /styles/massif/family.json

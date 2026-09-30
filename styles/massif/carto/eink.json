@@ -1,0 +1,19 @@
+{
+  "extends": "./project.json",
+  "styleparameters": {
+    "variant": {
+      "values": {
+        "streets": "streets",
+        "outdoor": "outdoor",
+        "topo": "topo",
+        "hybrid": "hybrid",
+        "eink": "eink"
+      },
+      "default": "eink"
+    },
+    "polygons_border": 1,
+    "lighting": 0,
+    "sac_scale_labels": 1,
+    "campsite_min_zoom": 13
+  }
+}

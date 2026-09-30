@@ -1,0 +1,15 @@
+{
+  "extends": "./project.json",
+  "styleparameters": {
+    "variant": {
+      "values": {
+        "streets": "streets",
+        "outdoor": "outdoor",
+        "topo": "topo",
+        "hybrid": "hybrid",
+        "eink": "eink"
+      },
+      "default": "streets"
+    }
+  }
+}

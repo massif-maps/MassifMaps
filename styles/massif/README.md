@@ -520,6 +520,18 @@ Roboto on Android, and the web build's preloaded Roboto behind `sans-serif`. Roa
 names are Medium, as in Standard; water Italic; shields and states Bold. MapLibre has no Noto
 Medium on that server, so its names draw Regular.
 
+## Releases
+
+`release/release.py` packages every flavour — MapLibre, CartoCSS, compiled, and both again with the POI icons
+drawn from a font — and `release-styles.yml` publishes them (npm `@massif-maps/styles`, a
+`massif-styles-v*` GitHub release, the website's `/styles/massif/`). Users' side:
+[docs/styles/massif.mdx](../../docs/styles/massif.mdx); the pipeline:
+[docs/contributing/massif-style-release.md](../../docs/contributing/massif-style-release.md).
+The MapLibre variants carry every parameter at its default: `build.py` folds each `["config", …]`
+out of the paint, since MapLibre has no such expression and refuses the whole style over one.
+`demo/` loads the MapLibre flavour from the website, npm, a local release or this folder. The style
+is MIT-0 (`LICENSE`): use it for anything, no notice required.
+
 ## Licensing
 
 `sprite-src/map/` — peak, city dots, oneway arrows — is drawn for this project.
@@ -529,7 +541,7 @@ dedication, so it carries no attribution requirement and no share-alike; it is c
 it is worth crediting, not because it must be. Most of `sprite-src/pattern/` is
 [openstreetmap-carto](https://github.com/gravitystorm/openstreetmap-carto)'s, also **CC0**, recoloured.
 Everything else is drawn for this project. No
-MapTiler or Mapbox **style** is copied.
+MapTiler or Mapbox **style** is copied. The style itself is [MIT-0](LICENSE).
 
 ## Owed
 

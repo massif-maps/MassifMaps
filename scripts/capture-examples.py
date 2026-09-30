@@ -9,6 +9,10 @@ example, then re-run gen-examples.py so the manifest records the capture.
   python3 scripts/capture-examples.py                 # every example
   python3 scripts/capture-examples.py markers fly-to  # only these
   python3 scripts/capture-examples.py --settle 40     # slow network / cold caches
+  python3 scripts/capture-examples.py --web http://localhost:3000/MassifMaps/massif/examples/run
+      # the web gallery in headless Chromium (web/demo/bench.mjs) - no device needed
+  python3 scripts/capture-examples.py --ios <simulator udid> terrain-3d
+      # the iOS demo on a booted simulator, for what the web build lacks (search, detailed terrain)
 
 Tiles need time to settle before a screenshot means anything - network, then cache, then label
 placement. The default is deliberately generous; a capture that looks empty needs MORE, not a
@@ -20,6 +24,8 @@ import json
 import os
 import subprocess
 import sys
+
+here = os.path.dirname(os.path.abspath(__file__))
 
 try:
   from PIL import Image
@@ -73,6 +79,41 @@ def capture(device, identifier, outPath, settle, width, aspect):
   return True
 
 
+def captureWeb(runUrl, identifier, outPath, settle, width, aspect):
+  # 960x480 CSS pixels at 2x: about the map an Android landscape capture shows, at its label size.
+  bench = os.path.join(here, '../web/demo/bench.mjs')
+  hideChrome = "document.querySelectorAll('.example-controls,.example-caption').forEach(e => e.remove()); 'ok'"
+  os.makedirs(os.path.dirname(outPath), exist_ok=True)
+  done = subprocess.run(['node', bench, '--url', '%s?id=%s' % (runUrl, identifier), '--width', '960',
+                         '--height', '600', '--scale', '2', '--wait', str(settle * 1000),
+                         '--eval', hideChrome, '--out', outPath], capture_output=True, text=True)
+  if done.returncode != 0 or not os.path.exists(outPath):
+    print('  %-18s FAILED: %s' % (identifier, (done.stderr or done.stdout).strip()[-300:]))
+    return False
+  size = shrink(outPath, width, aspect)
+  print('  %-18s %s (%d KB)' % (identifier, os.path.basename(outPath), size // 1024))
+  return True
+
+
+def captureIos(udid, identifier, outPath, settle, width, aspect):
+  bundle = 'com.massifmaps.MassifDemo'
+  subprocess.run(['xcrun', 'simctl', 'terminate', udid, bundle], capture_output=True)
+  started = subprocess.run(['xcrun', 'simctl', 'launch', udid, bundle, '-example', identifier, '-ui', 'false'],
+                           capture_output=True, text=True)
+  if started.returncode != 0:
+    print('  %-18s FAILED to start: %s' % (identifier, started.stderr.strip()))
+    return False
+  subprocess.run(['sleep', str(settle)])
+  os.makedirs(os.path.dirname(outPath), exist_ok=True)
+  if subprocess.run(['xcrun', 'simctl', 'io', udid, 'screenshot', outPath], capture_output=True).returncode != 0:
+    print('  %-18s FAILED to screenshot' % identifier)
+    return False
+  subprocess.run(['xcrun', 'simctl', 'terminate', udid, bundle], capture_output=True)
+  size = shrink(outPath, width, aspect)
+  print('  %-18s %s (%d KB)' % (identifier, os.path.basename(outPath), size // 1024))
+  return True
+
+
 def shrink(path, width, aspect):
   """
   A centred horizontal band, then a thumbnail.
@@ -97,10 +138,11 @@ def shrink(path, width, aspect):
   return os.path.getsize(path)
 
 
-here = os.path.dirname(os.path.abspath(__file__))
 parser = argparse.ArgumentParser()
 parser.add_argument('ids', nargs='*', help='example ids; every one in the manifest by default')
 parser.add_argument('--device', default='', help='adb device id, when more than one is attached')
+parser.add_argument('--web', default='', help="the web gallery's run page; captures there instead of on a device")
+parser.add_argument('--ios', default='', help='a booted simulator udid; captures the iOS demo there')
 parser.add_argument('--settle', type=int, default=30,
                     help='seconds to let tiles and labels settle before capturing')
 parser.add_argument('--width', type=int, default=800, help='thumbnail width in pixels')
@@ -126,13 +168,22 @@ if not wanted:
 
 shotDir = os.path.join(os.path.dirname(args.manifest), 'screenshots')
 print('Capturing %d example(s), %d s settle each:' % (len(wanted), args.settle))
-landscape(args.device, True)
-failed = [example['id'] for example in wanted
-          if not capture(args.device, example['id'],
-                         os.path.join(shotDir, example['id'] + '.png'), args.settle,
-                         args.width, args.aspect)]
-adb(args.device, 'shell', 'am', 'force-stop', PACKAGE)
-landscape(args.device, False)
+if args.ios:
+  failed = [example['id'] for example in wanted
+            if not captureIos(args.ios, example['id'], os.path.join(shotDir, example['id'] + '.png'),
+                              args.settle, args.width, args.aspect)]
+elif args.web:
+  failed = [example['id'] for example in wanted
+            if not captureWeb(args.web, example['id'], os.path.join(shotDir, example['id'] + '.png'),
+                              args.settle, args.width, args.aspect)]
+else:
+  landscape(args.device, True)
+  failed = [example['id'] for example in wanted
+            if not capture(args.device, example['id'],
+                           os.path.join(shotDir, example['id'] + '.png'), args.settle,
+                           args.width, args.aspect)]
+  adb(args.device, 'shell', 'am', 'force-stop', PACKAGE)
+  landscape(args.device, False)
 
 if failed:
   print('%d failed: %s' % (len(failed), ', '.join(failed)))

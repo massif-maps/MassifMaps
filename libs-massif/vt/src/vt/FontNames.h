@@ -16,6 +16,12 @@ namespace massif::vt {
      * unquoted and trimmed. Entries tagged for another platform ("android:Roboto", "ios:...") are dropped.
      */
     std::vector<std::string> parseFontNames(const std::string& names);
+
+    /**
+     * Whether a face of a font collection (.ttc) is the one a name asks for: "Helvetica Neue Bold"
+     * is the face named HelveticaNeue-Bold, not face 0. Case, spaces, dashes and a query are ignored.
+     */
+    bool fontFaceMatches(const std::string& requested, const std::string& familyName, const std::string& styleName, const std::string& postScriptName);
 }
 
 #endif

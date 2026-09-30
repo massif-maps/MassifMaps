@@ -1,0 +1,160 @@
+name: Release Massif styles
+
+# Packages styles/massif in every flavour (maplibre, cartocss, compiled, icon font), publishes
+# @massif-maps/styles and a massif-styles-vX.Y.Z GitHub release, then redeploys the website, which
+# serves the MapLibre styles. See docs/contributing/massif-style-release.md.
+
+on:
+  # CI for the styles: every flavour built and the MapLibre styles validated. `publish` has no value
+  # on a pull_request event, so nothing is published from here.
+  pull_request:
+    paths:
+      - 'styles/massif/**'
+      - 'tools/style-sprite/**'
+      - 'tools/style-cli/src/**'
+      - '.github/workflows/release-styles.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version number (no leading v)'
+        required: true
+      publish:
+        description: 'Publish to npm and create the GitHub release?'
+        default: false
+        required: true
+        type: boolean
+
+env:
+  VERSION: ${{ inputs.version || '0.0.0-ci' }}
+  SITE: https://massif-maps.github.io/MassifMaps/styles/massif
+
+jobs:
+  build-wasm:
+    name: Build massif-style.wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 1
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+      # the same Boost as release-style-tools.yml, for the same reason (see there)
+      - name: Prepare Boost
+        uses: ./.github/actions/prepare-boost
+      - name: Build wasm
+        working-directory: libs-massif/cartocss/util
+        run: |
+          emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=MinSizeRel
+          emmake make -C build-wasm -j"$(nproc)" massif-style
+      - uses: actions/upload-artifact@v4
+        with:
+          name: massif-style-wasm
+          path: |
+            libs-massif/cartocss/util/build-wasm/massif-style.wasm
+            libs-massif/cartocss/util/build-wasm/massif-style.mjs
+          if-no-files-found: error
+
+  package:
+    name: Build every flavour
+    needs: [build-wasm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/download-artifact@v4
+        with:
+          name: massif-style-wasm
+          path: tools/style-cli/wasm
+
+      - name: Build the tools
+        run: |
+          npm ci --prefix tools/style-cli
+          npm run build --prefix tools/style-cli
+          npm ci --prefix tools/style-sprite
+
+      # the MapLibre variants and the CartoCSS project are generated AND committed - the examples
+      # build from carto/ - so a change that forgot to regenerate them fails here
+      - name: Check the committed styles are current
+        working-directory: styles/massif
+        run: |
+          python3 build.py --convert
+          git status --porcelain -- . ':!dist' ':!family.json'
+          git diff --quiet -- . && test -z "$(git status --porcelain -- carto)"
+
+      - name: Install playwright
+        run: |
+          npm ci --prefix styles/massif/release
+          npx --prefix styles/massif/release playwright install --with-deps chromium
+
+      # every flavour, the npm package and the screenshots; the website URL is the default base
+      - name: Package
+        run: python3 styles/massif/release/release.py "$VERSION" --screenshots
+
+      - name: Validate the MapLibre styles
+        run: npx --yes -p @maplibre/maplibre-gl-style-spec@26 gl-style-validate styles/massif/dist/maplibre/*.json
+
+      - name: Report
+        run: |
+          echo "### Massif styles $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          { echo '```'; ls -lh styles/massif/dist/*.zip; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: massif-styles
+          path: |
+            styles/massif/dist/*.zip
+            styles/massif/dist/npm
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: [package]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+      - uses: actions/download-artifact@v4
+        with:
+          name: massif-styles
+          path: dist
+
+      - name: Publish to npm
+        working-directory: dist/npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "massif-styles-v$VERSION" --repo "$GITHUB_REPOSITORY" \
+            --title "Massif styles $VERSION" \
+            --notes "Massif map styles $VERSION: streets, outdoor, topo, hybrid and e-ink. npm: @massif-maps/styles@$VERSION. MapLibre: $SITE/v$VERSION/streets.json. Docs: https://massif-maps.github.io/MassifMaps/docs/styles/massif" \
+            dist/*.zip
+
+      # a release made with GITHUB_TOKEN triggers no workflow, so the site is redeployed by hand
+      - name: Redeploy the website
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docs.yml --repo "$GITHUB_REPOSITORY" --ref master

@@ -2323,9 +2323,9 @@ cull, and both lived in the 10 MB preloading LRU. They decode to 0.4-1.6 MB each
 each arrival evicted another member of the set and the next cull refetched it. The view's own tiles
 (0.9-3.9 MB each, 39 MB here) were never affected: the visible cache is 512 MB.
 
-Fix: the tiles a frame uses - view, label band, casters - are held in the visible cache
-([02-tiles.md](rendering/02-tiles.md#substitution-preloading-caching)). Same driver, same tree,
-two runs each:
+Fix, first version: the tiles a frame uses - view, label band, casters - are held in the visible
+cache ([02-tiles.md](rendering/02-tiles.md#substitution-preloading-caching)). Same driver, same
+tree, two runs each:
 
 | | load requests (unique) | pan requests | last frame |
 |---|---|---|---|
@@ -2335,13 +2335,31 @@ two runs each:
 | fix, no terrain | 30 (4) / 28 (4) | 14 / 13 | 6.1 s / 6.2 s |
 
 Not web-only: the same C++ and the same cache sizes run everywhere. A parallel session counted
-`day-cycle-light` (terrain + shadows, Grenoble z15.5 tilt 45) on master: the Android emulator loaded
-the centre z14 tile 353 times, the iOS simulator 13 times. With the fix (same session, one run each,
-loads counted over 2-3 min): Android 770 -> 220 loads for ~180 tiles, the centre tile 353 -> 23, app
-CPU 165-264% for minutes -> 0% from 15 s; iOS simulator 128 -> 200 loads, 108 -> 136 tiles, the
-centre tile 13 -> 23, idle from ~60 s in both. Why iOS loads more is not explained. No real device yet.
-The preloading ring (off by default) still lives in the 10 MB cache and would loop the same way
-once larger than it.
+`day-cycle-light` (terrain + shadows, Paris z17.2 tilt 45) on master: the Android emulator loaded
+the centre z14 tile 353 times. On the first version of the fix: Android 770 -> 220 loads, centre
+tile 353 -> 23, CPU 165-264% -> 0% from 15 s. The iOS simulator read 128 -> 200 loads, which looked
+like a regression.
+
+It was not, and the second version came out of checking. Probed per map tile on the iPhone 16 Pro
+simulator (`SCFPROBE` fetch/load/put lines, one run each; the parallel count had mixed in a Mapbox
+example still retrying 401s, and its master run happened not to loop much):
+
+| iOS simulator, day-cycle-light | loads / map tiles | loaded more than once | last load |
+|---|---|---|---|
+| master | 202 / 64 | 23 tiles, up to 10 times | still loading at 112 s |
+| first fix (label band + casters held at refresh) | 63 / 63 | 0 | 28 s |
+| same, another run | 92 / 64 | 16 tiles, up to 3 times | 52 s |
+| second fix (every arrival lands in the visible cache) | 63 / 63 | 0 | 19 s |
+
+The 92-load run: arrivals still landed in the 10 MB preloading cache and were held only at the next
+refresh. Culls ran about 1 s apart there, three 1.3 MB tiles arrived in between into a cache already
+full, and pushed each other out before any refresh held them. Now every fetch lands in the visible
+cache and a refresh moves out what no cull uses. The preloading ring is held the same way; before, a
+7-tile ring filled the preloading cache to 9.8 of its 10 MB at Grenoble, one tile from looping.
+
+Web, second fix, probed: every map tile loads exactly once in `style-parameters-shadows` (36),
+with preloading on (41) and in `day-cycle-light` at z17.2 in an iPhone-sized viewport (45, once
+the z18 contact-shadow clip was fixed as well, see the next entry). No real device run.
 
 ## 35. A z18 tile carried every contact shadow of its z14 source (2026-09-30)
 

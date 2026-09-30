@@ -53,7 +53,7 @@
                      set:@"style" value:@"alpine"]
             error:nil];
 
-    [map eventProjection:@"EPSG:4326"];
+    map.eventProjection = @"EPSG:4326";
     [map.camera moveTo:[MSFPosition positionWithLng:6.8652 lat:45.8326] zoom:11];
 
     // Every camera change, whatever caused it - 47 to 159 a second during a drag, which is exactly

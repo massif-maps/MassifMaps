@@ -161,14 +161,14 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
     // A TERRAIN, for the shadows. Cast shadows are drawn from the drape pass and land on the
     // terrain surface - with no terrain there is no surface to receive them and nothing casts at
     // all, however high shadowStrength goes. Paris is flat, so this is here for the light.
-    [[map terrain:[[MSFSpec of:@"terrain"]
+    [[map terrainWithSpec:[[MSFSpec of:@"terrain"]
         set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
             set:@"databasePath" value:[host cachePath:@"mapterhorn-dem.db"]]
             set:@"capacity" value:@(200 * 1024 * 1024)]
             set:@"source" value:[[[[MSFSpec of:@"http"]
                 set:@"url" value:@"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]
                 set:@"maxZoom" value:@16]
-                set:@"metaData" value:[[MSFSpec object] set:@"dem_encoding" value:@"terrarium"]]]]]
+                set:@"metaData" value:[[MSFSpec object] set:@"dem_encoding" value:@"terrarium"]]]] error:nil]
         // The auto 2D/3D thresholds are the SDK's defaults, set out loud because the toggle below
         // is what an app turns them off with.
         apply:[[[[[MSFSpec object] set:@"exaggeration" value:@1] set:@"cameraClearance" value:@40]
@@ -177,7 +177,7 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
 
     // The curve is only read while this is on; off, the style's and the app's own sun colours
     // stand, which is what every map did before the curve existed.
-    [map light:[[[[[[MSFSpec of:@"light"]
+    [map lightWithSpec:[[[[[[MSFSpec of:@"light"]
         set:@"dayCycleLightsEnabled" value:@YES]
         set:@"sunOverridingStyle" value:@YES]
         // Without this the ground is never lit, and the shadow multiply lives in the same block -
@@ -189,7 +189,7 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
         // and swing round as the hour is swept - and fade out as it sets, because the SDK scales
         // this by how much of the light is direct. 1 is the physical depth.
         set:@"shadowStrength" value:@1.0]
-        set:@"shadowSoftness" value:@1.2]];
+        set:@"shadowSoftness" value:@1.2] error:nil];
 
     // A sky, because the hour is the whole example: the atmosphere is integrated against the SAME
     // sun, so it reddens and darkens with the slider without a value of its own. Options starts

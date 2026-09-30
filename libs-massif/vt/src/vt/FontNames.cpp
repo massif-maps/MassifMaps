@@ -59,6 +59,16 @@ namespace massif::vt {
             }
             return std::string();
         }
+
+        std::string normalizeFontName(const std::string& name) {
+            std::string normalized;
+            for (char c : name.substr(0, name.find('?'))) {
+                if (std::isalnum(static_cast<unsigned char>(c))) {
+                    normalized.append(1, static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+                }
+            }
+            return normalized;
+        }
     }
 
     std::vector<std::string> parseFontNames(const std::string& names) {
@@ -80,5 +90,15 @@ namespace massif::vt {
             }
         }
         return fontNames;
+    }
+
+    bool fontFaceMatches(const std::string& requested, const std::string& familyName, const std::string& styleName, const std::string& postScriptName) {
+        std::string name = normalizeFontName(requested);
+        if (name.empty()) {
+            return false;
+        }
+        std::string family = normalizeFontName(familyName);
+        std::string style = normalizeFontName(styleName);
+        return name == normalizeFontName(postScriptName) || name == family + style || (style == "regular" && name == family);
     }
 }

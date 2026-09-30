@@ -279,10 +279,10 @@ only builds and packs; `build.yml` publishes its tarball.
    `npm install` does not pick them up), tags JitPack and the Swift package `6.1.0-rc.1`, and does
    not touch `CHANGELOG.md`. Styles: `release-styles.yml` with `1.2.0-rc.1` does the same for them.
 3. **Test every package** from the registries:
-   - Android: `implementation 'com.github.massif-maps:MassifMaps-android-aar:6.1.0-rc.1'`, and
-     `...:6.1.0-rc.1:routing@aar` for the routing library
-   - iOS: `https://github.com/massif-maps/MassifMaps-ios-swift`, *Exact version* `6.1.0-rc.1`,
-     products `MassifMaps` and `ValhallaRouting`
+   - Android: `scripts/release-check/android` — the AAR from JitPack
+     (`com.github.massif-maps:MassifMaps-android-aar:6.1.0-rc.1`) and its `routing` variant
+   - iOS: `scripts/release-check/ios` — the Swift package at *Exact version* `6.1.0-rc.1`: the map
+     products, and `ValhallaRouting` beside `MassifMapsCore`
    - npm: `scripts/release-check` — `npm install` takes the `next` tag; `npm run check` (api, both web
      modules, style-tools compiling and converting the styles), `npm run serve` (a map from
      `@massif-maps/web` in the Massif style, `?variant=full`)

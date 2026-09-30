@@ -1,7 +1,11 @@
 ---
 title: GeoJSON Vector Tiling
 sidebar_position: 12
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # GeoJSON Vector Tiling
 
@@ -15,13 +19,7 @@ The source exists upstream; the fork rebuilt its tiler on **[geojson-vt](https:/
 per-tile scan of every feature.
 :::
 
-<figure class="docs-figure">
-
-![5000 GeoJSON routes tiled and styled over the base map](/img/features/geojson-tiling.jpg)
-
-<figcaption>5000 short routes (165k points) served from one <code>GeoJSONVectorTileDataSource</code>, tiled at runtime and styled with CartoCSS over the base map and 3D terrain. Captured at z12.6, tilt 60.</figcaption>
-
-</figure>
+<LiveExample id="geojson-line" />
 
 ## Usage
 

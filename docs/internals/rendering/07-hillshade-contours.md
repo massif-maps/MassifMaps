@@ -80,6 +80,60 @@ textures then, `MAX_CACHED_TEXTURES` = 128 now). `debug.massif.paintdetail 0..4`
 builds ([runtime switches](10-performance.md#runtime-switches-no-rebuild)). Fixing the cost is the
 elevation-texture port described in [04-terrain.md](04-terrain.md#the-elevation-texture).
 
+## Slope units against MapLibre
+
+`HillshadeRasterTileLayer::createVectorTile` scales the DEM into tile pixels and boosts it below z15
+exactly as MapLibre's `hillshade_prepare.fragment.glsl` does; `NormalMapBuilder` bakes the Sobel/8
+slope and the Mercator `cos(lat)` into the normal. At `heightScale` 1 the normal therefore carries
+MapLibre's derivative, which `tests/vt/NormalMapSlopeTest.cpp` pins. The lighting shader
+(`TileRenderer::LIGHTING_SHADER_NORMALMAP`) is MapLibre's `hillshade.fragment.glsl` with
+`u_intensity` = the layer's contrast = MapLibre's `hillshade-exaggeration`, and `u_exaggeration` an
+extra multiplier MapLibre does not have. The mapping for apps is in
+[the feature page](../../features/hillshade.md#matching-maplibre).
+
+**The default `heightScale` is 0.05**, a twentieth of MapLibre's slope, chosen by eye for the demo's
+IGOR shading over imagery. A style tuned in MapLibre and copied as `exaggeration` draws twenty times
+flatter.
+
+**MapLibre changed its own strength.** Up to 5.1, `getElevation` returned `dot(data, u_unpack) / 4.0`
+and the slope was `atan(1.25 * length(deriv))`; with the hillshade methods it lost the `/ 4.0` and
+became `atan(0.625 * length(deriv))`. The newer one is twice as strong for the same paint. The SDK
+ports the newer one.
+
+Measured in the style preview (web build, MapLibre 5.24 pane beside the SDK pane, 1024×694 readback
+right after each frame; relief = mean luminance the hillshade takes off, with it minus without,
+Matterhorn; correlation of the two relief maps):
+
+| scene | view zoom | DEM zoom SDK / MapLibre | MapLibre | SDK | ratio | correlation |
+|---|---|---|---|---|---|---|
+| white ground, hillshade only | 13.2 | 13 / 13 | 55.01 | 54.71 | 0.995 | 0.989 |
+| full Massif outdoor, `#hillshade` slot | 13.2 | 13 / 13 | 33.24 | 31.48 | 0.947 | 0.922 |
+| full Massif outdoor, `#hillshade` slot | 12.6 | 12 / 13 | 26.54 | 28.41 | 1.07 | 0.932 |
+
+The last row is the tile zoom: at `tileDrawSize` 512 the SDK floors the view zoom where MapLibre
+rounds it, so between x.5 and x+1 it shades one DEM level coarser, with the larger below-z15 boost.
+Kept on purpose: rounding would change which tiles every raster layer loads.
+
+**A composite hillshade slot draws exactly like a stand-alone layer**: the same values give a
+bit-identical frame. The "composite is 5× weaker" report of 2026-09-30 was the style preview's
+stand-alone layer, built with no `dem_encoding`: the Terrarium DEM went through the Terrain-RGB
+decoder (base unit 0.1 m against 1/256 m), 25.6× the slope.
+
+**Slot colours were dropped.** The CartoCSS translator writes a colour as `rgb(r,g,b)` /
+`rgba(...)`, and `CompositeVectorTileLayer` only read `#hex`, so every `hillshade-*-color` fell back
+to black / white / black: grey shading, up to 1.44× darker than the brown the style asked for (255
+against 177 luminance of headroom). It now reads them through `mvt::tryParseColor`, which returns
+`rgba()` premultiplied — the layer divides that back out. The facade still reads only `#hex` or an
+ARGB number, so `massif:sdk-layer` writes hex.
+
+**Two measurement traps**, both of which produced numbers that looked like findings:
+
+- `tileDrawSize` changes the SDK's view SCALE, not only the tiles it picks: at 256 the SDK at a
+  given zoom number shows a level more ground than MapLibre at the same number (correlation 0.36
+  against 0.98 at 512). An SDK/MapLibre comparison is valid only once the two relief maps correlate.
+- Mean darkness depends on how much steep ground is in the frame, so numbers from panes of
+  different sizes do not compare.
+
 ## Contour lines
 
 Drawn as a fragment block on the terrain draw, from the same DEM: distance to the nearest contour in

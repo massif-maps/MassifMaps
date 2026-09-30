@@ -28,12 +28,13 @@ Every release ships the same files two ways:
 
 | File | Size (gzip) | What it is |
 |---|---|---|
-| `massif-web.wasm` | 2.2 MB | the SDK (the `standard` profile) |
+| `massif-web.wasm` | 2.5 MB | the SDK (the `standard` profile) |
 | `massif-web.mjs` | 46 KB | its emscripten loader, which also starts its worker threads |
 | `massif-web.data` | 255 KB | the fonts the build carries (Roboto, regular and bold) |
 | `massif-maps.bundle.mjs` | 29 KB | `createMap` and the typed API in one file, for a page with no bundler |
 | `index.mjs`, `bridge.mjs`, `massif.mjs` | | the same, unbundled, for a bundler; `massif.mjs` is the low-level binding |
 | `coi-serviceworker.js` | | cross-origin isolation for a host that cannot send headers ([below](#hosting)) |
+| `massif-web-full.wasm` | 3.2 MB | the `full` variant, with its own `.mjs` and `.data` ([below](#the-full-variant)) |
 
 Serve them **from your own origin**, all from one directory: the loader starts the SDK's worker
 threads from its own URL, and a browser only starts a worker from the page's origin.
@@ -60,6 +61,15 @@ threads from its own URL, and a browser only starts a worker from the page's ori
 `massif-web.mjs` when it is not beside the script that imports it - which is the case under a
 bundler (copy the three `massif-web.*` files to your static assets and pass their URL). The
 emscripten module itself is `map.module`, for its virtual filesystem.
+
+### The full variant
+
+The package carries two builds of the SDK. `createMap(canvas, { variant: 'full' })` loads
+`massif-web-full.*` instead: the `full` profile, the same as the Android and iOS `full` artifacts,
+with offline routing (Valhalla), geocoding and offline packages. A page downloads only the module
+it loads, so the default stays at `standard`'s size; `full` costs about 490 KB more over the wire
+(brotli). Under a bundler, copy the `massif-web-full.*` files too, or pass `moduleUrl`, which wins
+over `variant`. On `standard`, creating one of those objects fails with `MM_UNKNOWN_TYPE`.
 
 ## Hosting
 
@@ -116,8 +126,9 @@ The [peak finder example](/examples#peak-finder) keeps its elevation and summit 
   place yet.
 - **Events arrive on the page's thread, after the fact.** A handler cannot claim an event
   (`consumed` has no effect), so a click also reaches the handlers after it.
-- **What the `standard` profile leaves out:** routing, geocoding and offline packages. Tiles,
-  terrain, styles, labels, the persistent cache and search over loaded features are in.
+- **What the default `standard` module leaves out:** routing, geocoding and offline packages -
+  [the full variant](#the-full-variant) has them. Tiles, terrain, styles, labels, the persistent
+  cache and search over loaded features are in both.
 - **Fonts.** The build carries Roboto; a style that names `sans-serif`, Arial or Helvetica gets it.
   Text elements and celestial labels are drawn by the browser, so any web font the page has loaded
   works there.

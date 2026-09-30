@@ -74,6 +74,10 @@ A profile picks the features compiled in; profiles are defined in `scripts/build
 and combine with `+` (`standard+valhalla`). Releases ship `full`, `standard` and `lite`. `lite`
 drops geocoding, routing and offline packages and is about 40% smaller.
 
+Every combination builds, but some features need a second profile: the `MultiOSMOffline*`
+geocoding services exist only with `packagemanager` too, and `valhalla` adds nothing without
+`routing`. A class is generated only when every `_MASSIF_*_SUPPORT` on its guard line is defined.
+
 ## Native SDK
 
 ```
@@ -130,10 +134,12 @@ python build-winphone.py --profile standard               # Visual Studio 2022 +
 
 ```
 python3 scripts/build-web.py --profile standard --configuration Release --build-version 6.1.0 [--build-demo]
+python3 scripts/build-web.py --profile full --variant full --configuration Release --build-version 6.1.0
 ```
 
-Emscripten on `PATH`, or `--emsdk DIR`. Writes `dist/web`; [`npm-packages.py`](#npm-packages) turns
-it into `@massif-maps/web`. Details: [docs/maintenance/web-build.md](docs/maintenance/web-build.md).
+Emscripten on `PATH`, or `--emsdk DIR`. Writes `dist/web`: `massif-web.*` (standard, the default)
+and `massif-web-full.*`, which `createMap(canvas, { variant: 'full' })` loads.
+[`npm-packages.py`](#npm-packages) turns it into `@massif-maps/web`. Details: [docs/maintenance/web-build.md](docs/maintenance/web-build.md).
 
 ## Generated API bindings
 
@@ -200,7 +206,7 @@ python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 | Package | Version | `pack` needs first |
 |---|---|---|
 | `@massif-maps/api` | SDK | nothing |
-| `@massif-maps/web` | SDK, depends on `@massif-maps/api` at the same version | `dist/web` ([Web SDK](#web-sdk)) |
+| `@massif-maps/web` | SDK, depends on `@massif-maps/api` at the same version | `dist/web`, both variants ([Web SDK](#web-sdk)) |
 | `@massif-maps/style-tools` | SDK | `tools/style-cli/wasm/massif-style.{mjs,wasm}` ([Style tools](#style-tools)) |
 | `@massif-maps/styles` | its own, only with `--styles-version` | nothing |
 

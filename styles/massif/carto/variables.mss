@@ -61,6 +61,14 @@
 @grass_low: hsl(90, 60%, 89%);
 @halo_night: hsl(0, 0%, 5%);
 @heath_low: hsl(90, 50%, 90%);
+@hillshade_accent_color: #957e50;
+@hillshade_accent_color_2: #737373;
+@hillshade_accent_color_3: #847362;
+@hillshade_highlight_color: #e9e8e2;
+@hillshade_highlight_color_2: #faf8f5;
+@hillshade_shadow_color: #595959;
+@hillshade_shadow_color_2: #4c4c4c;
+@hillshade_shadow_color_3: #544c45;
 @hospital: hsl(0, 50%, 92%);
 @housenumber: hsl(20, 0%, 50%);
 @housenumber_fill: hsl(0, 0%, 88%);

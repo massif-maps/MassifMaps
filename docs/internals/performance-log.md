@@ -2294,3 +2294,34 @@ drags per measurement, fps from the `PROF` windows. Mesh resolution was kept at 
   build and master measure the same side by side, so it is the bench (shadows switched on by
   broadcast after launch), not a regression.
 
+
+## 33. The web build queued every tile decode on one malloc lock (2026-09-30)
+
+Web `style-parameters` example (Massif streets, badge POIs, Grenoble z15.5): 6.1-6.5 s to fill,
+pan frames at a 47-53 ms p90. The site ran a `RelWithDebInfo` module (354 MB), but a `Release` one
+filled exactly as slowly. Profiling every pthread over DevTools showed the decode workers mostly in
+`__pthread_mutex_timedlock` / `emscripten_futex_wake` under `TileReader::readTile`, reached through
+malloc and free, and the main thread busy-waiting on the same lock from expression evaluation.
+
+Linking mimalloc: fill 1.1 s, worker CPU 11.7 -> 1.85 s, pan p90 12 ms. Building the hot libraries
+`-O2` on the web as well: another ~20% off decode and frame CPU. Numbers, method and cost in
+[the web build](../maintenance/web-build.md#the-allocator).
+
+Ruled out: badge POIs (6.2 vs 6.3 s plain), the build configuration, and the web build in general -
+`display-a-map`, the same style at z11, fills in 1.1 s under either allocator.
+
+## 35. A z18 tile carried every contact shadow of its z14 source (2026-09-30)
+
+Found while checking the tile refetch fix (#280) on the web build at Paris z17.2 tilt 45 in an iPhone-sized viewport (402 x
+874 at 3x): the loop went on with every fix in, and the visible cache sat at its 512 MB ceiling. Per
+tile, z17 tiles decoded to 1.1 MB and z18 tiles to 54 MB, 33 geometries of 65535 indices each, all
+`POLYGON3DGROUND` - the building contact shadow, which the Massif style turns on from z18
+(`building-ao-ground-radius`). Roughly 3600 footprints' skirts per tile at ~10 quads each: the whole z14 source, which
+overzoom hands to every z18 tile derived from it.
+
+`appendGroundSkirt` clips per footprint, but its bounding box was default-constructed: cglib's
+`bbox` has no initialiser, so the box grew from whatever the stack held. With zeros there it
+reaches back to the tile's origin and keeps every footprint down and right of the tile - the host
+test reproduces exactly that. `bbox2<float>::smallest()` fixes it. z18 tiles 54 -> 1.6 MB;
+the same scene loads 45 map tiles once each and stops at 35 s. The iOS simulator drew that camera
+at z17 and never hit it; no device checked.

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Massif style preview</title>
-<link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-<script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <style>
   html, body { margin: 0; height: 100%; font: 13px/1.4 system-ui, sans-serif; }
   #app { display: flex; flex-direction: column; height: 100%; }
@@ -436,7 +436,9 @@ function hillshadeOf(style) {
     && l.layout?.visibility !== 'none');
   const source = layer && style.sources?.[layer.source];
   const dem = source?.tiles?.[0];
-  return dem ? { dem, demMaxZoom: source.maxzoom ?? 22, hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
+  // MapLibre's own default encoding; the SDK needs it named, or it reads Terrarium as Terrain-RGB (25.6x the slope)
+  return dem ? { dem, demMaxZoom: source.maxzoom ?? 22, demEncoding: source.encoding ?? 'mapbox',
+    hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
 }
 
 function firstVectorTileURL(tilejson) {

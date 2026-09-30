@@ -20,7 +20,8 @@ def detectEmscripten(args):
 def buildWebLib(args):
   version = getVersion(args.buildversion, args.buildnumber) if args.configuration == 'Release' else 'Devel'
   baseDir = getBaseDir()
-  buildDir = getBuildDir('web')
+  moduleName = 'massif-web-%s' % args.variant if args.variant else 'massif-web'
+  buildDir = getBuildDir('web-%s' % args.variant if args.variant else 'web')
   distDir = getDistDir('web')
   defines = ["-D%s" % define for define in args.defines.split(';') if define]
   options = ["-D%s" % option for option in args.cmakeoptions.split(';') if option]
@@ -40,6 +41,7 @@ def buildWebLib(args):
     "-DSDK_CPP_DEFINES=%s" % " ".join(defines),
     "-DSDK_VERSION='%s'" % version,
     "-DSDK_PLATFORM='Web'",
+    "-DSDK_WEB_MODULE_NAME=%s" % moduleName,
     '%s/scripts/build' % baseDir
   ]):
     return False
@@ -49,12 +51,14 @@ def buildWebLib(args):
     '--config', args.configuration,
   ]):
     return False
-  if not (makedirs(distDir) and copyfile('%s/libmassif.a' % buildDir, '%s/libmassif.a' % distDir)):
+  if not makedirs(distDir):
+    return False
+  if not args.variant and not copyfile('%s/libmassif.a' % buildDir, '%s/libmassif.a' % distDir):
     return False
   # The module apps load; website/static/massif is where the site's live examples load it from.
   if args.website and not makedirs('%s/website/static/massif' % baseDir):
     return False
-  for name in ['massif-web.mjs', 'massif-web.wasm', 'massif-web.data']:
+  for name in ['%s.%s' % (moduleName, ext) for ext in ['mjs', 'wasm', 'data']]:
     if not copyfile('%s/%s' % (buildDir, name), '%s/%s' % (distDir, name)):
       return False
     if args.website and not copyfile('%s/%s' % (buildDir, name), '%s/website/static/massif/%s' % (baseDir, name)):
@@ -92,6 +96,7 @@ parser.add_argument('--configuration', dest='configuration', default='Release', 
 parser.add_argument('--build-number', dest='buildnumber', default='', help='Build sequence number, goes to version str')
 parser.add_argument('--build-version', dest='buildversion', default='%s-devel' % SDK_VERSION, help='Build version, goes to distributions')
 parser.add_argument('--build-demo', dest='builddemo', default=False, action='store_true', help='Also link web/demo into web/demo/massif-demo.mjs')
+parser.add_argument('--variant', dest='variant', default='', help="Build the module as massif-web-<variant> beside the default one, e.g. 'full' with --profile full")
 parser.add_argument('--website', dest='website', default=False, action='store_true', help='Also copy the modules into website/static for the /preview page and the live examples')
 args = parser.parse_args()
 args.defines += ';' + getProfile(args.profile).get('defines', '')

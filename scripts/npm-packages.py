@@ -68,8 +68,8 @@ def pack_api(version, out):
 
 def pack_web(version, out):
     dist = os.path.join(ROOT, 'dist', 'web')
-    require([os.path.join(dist, 'massif-web.wasm')],
-            'build the module first: python3 scripts/build-web.py --profile standard --configuration Release')
+    require([os.path.join(dist, 'massif-web.wasm'), os.path.join(dist, 'massif-web-full.wasm')],
+            'build both variants first (BUILDING.md, "Web SDK")')
     require([os.path.join(ROOT, 'bindings', 'js', 'dist', 'index.js')], 'pack api first')
     builder = os.path.join(ROOT, 'web', 'package')
     run(['npm', 'ci'], builder)

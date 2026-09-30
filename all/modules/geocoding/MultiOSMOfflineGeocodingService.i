@@ -6,7 +6,7 @@
 
 %module(directors="1") MultiOSMOfflineGeocodingService
 
-#if defined(_MASSIF_GEOCODING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT)
+#if defined(_MASSIF_GEOCODING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT) && defined(_MASSIF_PACKAGEMANAGER_SUPPORT)
 
 !proxy_imports(massif::MultiOSMOfflineGeocodingService, geocoding.GeocodingService, geocoding.GeocodingRequest, geocoding.GeocodingResult, projections.Projection)
 

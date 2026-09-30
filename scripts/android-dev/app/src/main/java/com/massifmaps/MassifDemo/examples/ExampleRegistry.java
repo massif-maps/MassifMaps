@@ -16,14 +16,17 @@ public final class ExampleRegistry {
         com.massifmaps.MassifDemo.examples.styles.MassifVariantsExample.class,
         com.massifmaps.MassifDemo.examples.styles.StyleParametersExample.class,
         com.massifmaps.MassifDemo.examples.styles.DayCycleLightExample.class,
+        com.massifmaps.MassifDemo.examples.styles.LabelStylingExample.class,
         com.massifmaps.MassifDemo.examples.terrain.Terrain3DExample.class,
         com.massifmaps.MassifDemo.examples.terrain.Switch2D3DExample.class,
         com.massifmaps.MassifDemo.examples.terrain.AtmosphereExample.class,
+        com.massifmaps.MassifDemo.examples.terrain.CelestialObjectsExample.class,
         com.massifmaps.MassifDemo.examples.terrain.PeakFinderExample.class,
         com.massifmaps.MassifDemo.examples.annotations.MarkersExample.class,
         com.massifmaps.MassifDemo.examples.interaction.FeatureClickExample.class,
         com.massifmaps.MassifDemo.examples.interaction.MapEventsExample.class,
         com.massifmaps.MassifDemo.examples.search.SearchFeaturesExample.class,
+        com.massifmaps.MassifDemo.examples.search.ManeuverArrowsExample.class,
     };
 
     private ExampleRegistry() {

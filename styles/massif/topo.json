@@ -2457,8 +2457,12 @@
       "metadata": {
         "massif:sdk-layer": {
           "type": "hillshade",
-          "exaggeration": 0.5,
-          "opacity": 0.55,
+          "hillshadeMethod": "STANDARD",
+          "contrast": 0.5,
+          "heightScale": 1,
+          "shadowColor": "#595959",
+          "highlightColor": "#e9e8e2",
+          "accentColor": "#957e50",
           "visibleZoomRange": [
             0,
             16

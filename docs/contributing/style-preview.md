@@ -123,6 +123,8 @@ A family project (see `styles/massif/README.md`) is drawn as the variant the sty
 `metadata["massif:variant"]` - the pane loads `carto/<variant>.json`. A style with a hillshade layer
 carrying `massif:sdk-layer` gets a `HillshadeRasterTileLayer` built from those settings above the
 Massif pane's base layer, since the SDK draws relief as a layer of its own and not from CartoCSS.
+Its DEM gets the style source's `encoding` as `dem_encoding`; the MapLibre panes are on 5.24, whose
+hillshade is the one the SDK ports ([Matching MapLibre](../features/hillshade.md#matching-maplibre)).
 
 `--remote NAME=URL` serves a hosted TileJSON at `/tiles/NAME.json`, fetched by the server so a key
 never reaches the style: `--remote satellite=https://api.maptiler.com/tiles/satellite-v2/tiles.json?key={maptiler}`

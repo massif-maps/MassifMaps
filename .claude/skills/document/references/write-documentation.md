@@ -87,7 +87,7 @@ One page per subsystem, scope stated at the top, cross-links instead of repetiti
 ## User-facing docs — `docs/features/`, `docs/guides/`, `docs/getting-started/`
 
 - Show the app-facing call, not the C++ internals: the option, its default, its unit, and a short snippet. Link to the internals page for the mechanism.
-- Screenshots come from the demo app via `scripts/docs/capture-screenshots.sh` into `website/static/img/features/` — reference existing images rather than inventing paths.
+- A feature with a live web example embeds it (`<LiveExample id="…" />`, page front matter `mdx: {format: mdx}`) instead of a screenshot — [docs-site.md](../../../../docs/contributing/docs-site.md#screenshots). Otherwise screenshots come from the demo app via `scripts/docs/capture-screenshots.sh` into `website/static/img/features/` — reference existing images rather than inventing paths.
 - `docs/guides/*.mdx` are **authored**. They used to be converted from the legacy CARTO sources; the converter and its inputs are gone, and the CARTO-service-only guides with them.
 - **A feature page shows the surface API too.** The object-API snippet is not enough — add the `Spec`/property-path form, and link the generated [`docs/api/reference/`](../../../../docs/api/reference/) page for the full key list. When the class has no spec factory, say so and show `adopt` rather than inventing a `type`.
 - `docs/api/reference/` and `docs/examples/examples.json` are **generated** (`scripts/gen-api-docs.py`, `scripts/gen-examples.py`). Never hand-edit either; fix the generator or the `.i` declaration.

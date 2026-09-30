@@ -80,7 +80,8 @@
         if (params.get('dem')) {
       const hillshade = pane.massif.create('layer', 'preview.hillshade', {
         ...JSON.parse(params.get('hillshade') || '{"type": "hillshade"}'),
-        source: { type: 'http', url: params.get('dem'), maxZoom: Number(params.get('demMaxZoom') || 22) } });
+        source: { type: 'http', url: params.get('dem'), maxZoom: Number(params.get('demMaxZoom') || 22),
+                  metaData: { dem_encoding: params.get('demEncoding') || 'mapbox' } } });
       pane.massif.call(pane.massif.find('layers', 'map'), 'insert', [1, hillshade]);
     }
     // Standard casts building shadows on a flat map; ours land on a terrain surface, so the pane gets

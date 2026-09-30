@@ -34,8 +34,10 @@ The workflow file is
 
 `build.yml` builds the web SDK and the style tools next to Android and iOS, from the same version:
 
-- `build-web`: `MassifMaps-web-<version>.zip` on the GitHub release (`dist/web`, the files an app
-  serves), and the `@massif-maps/api` and `@massif-maps/web` tarballs.
+- `build-web`: the web module twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`
+  ([variants](../maintenance/web-build.md#variants)); `MassifMaps-web-<version>.zip` on the GitHub
+  release (`dist/web`, the files an app serves), and the `@massif-maps/api` and `@massif-maps/web`
+  tarballs.
 - `style-tools` calls `release-style-tools.yml`: the style compiler wasm and the
   `@massif-maps/style-tools` tarball.
 - `publish-npm`, once every platform has built: attaches the wasm to the release and publishes the

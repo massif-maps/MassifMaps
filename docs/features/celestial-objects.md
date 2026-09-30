@@ -1,7 +1,11 @@
 ---
 title: Objects in the Sky
 sidebar_position: 8
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Objects in the Sky
 
@@ -15,13 +19,7 @@ a moon** — the layer knows directions, sizes and colours; the astronomy lives 
 notes: [`docs/internals/rendering/13-celestial.md`](/docs/internals/rendering/celestial).
 :::
 
-<figure class="docs-figure">
-
-![Constellation figures and star names drawn in the sky](/img/features/star-sky.jpg)
-
-<figcaption>Constellation figures (segmented arcs) and star names over Grenoble, in the demo's star-sky mode: no map layers, terrain off, transparent clear colour.</figcaption>
-
-</figure>
+<LiveExample id="celestial-objects" />
 
 ## Anchoring
 

@@ -2,7 +2,11 @@
 title: Introduction
 sidebar_position: 1
 slug: /intro
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Massif Maps
 
@@ -13,7 +17,7 @@ location-based services on mobile devices — smartphones and tablets. It ships 
 flexible vector-tile renderer, multiple built-in routing engines (street and indoor), plus
 built-in geocoding and reverse geocoding.
 
-![Massif Maps](/img/massif-animated.gif)
+<LiveExample id="display-a-map" />
 
 ## Why this fork?
 

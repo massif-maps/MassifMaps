@@ -106,6 +106,15 @@ public final class Massif {
         return MassifApi.findObject(kind, id) != 0;
     }
 
+    /**
+     * An object already registered under an id, or null - the map's own view is "view" under the
+     * map's id. It is the registered object itself: closing it drops the id.
+     */
+    public static MassifObject find(String kind, String id) {
+        int handle = MassifApi.findObject(kind, id);
+        return handle == 0 ? null : new MassifObject(handle, kind, id);
+    }
+
     /** Drops an id. Handles held elsewhere go stale rather than dangling. */
     public static boolean destroy(String kind, String id) {
         return MassifApi.unregisterObject(kind, id);

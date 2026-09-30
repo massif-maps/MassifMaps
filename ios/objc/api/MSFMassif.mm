@@ -270,6 +270,11 @@ static NSString * const kAbsent = @"\0massif:absent";
     return [MSFMassifApi findObject:kind objectId:objectId] != 0;
 }
 
++ (MSFMassifObject *)find:(NSString *)kind objectId:(NSString *)objectId {
+    int handle = [MSFMassifApi findObject:kind objectId:objectId];
+    return handle ? [[MSFMassifObject alloc] initWithHandle:handle kind:kind objectId:objectId] : nil;
+}
+
 + (BOOL)destroy:(NSString *)kind objectId:(NSString *)objectId {
     return [MSFMassifApi unregisterObject:kind objectId:objectId];
 }

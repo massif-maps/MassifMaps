@@ -496,3 +496,17 @@ test('under lights a wall\'s foot takes gl-js\'s faux AO, not the unlit vertical
     assert.match(mss, /building-vertical-gradient: 0\.15;/);
     assert.match(mss, /building-vertical-gradient-height: 6;/);
 });
+
+test('a hillshade with SDK values becomes a composite slot at its own depth', () => {
+    const hillshade = {
+        id: 'hillshade', type: 'hillshade', source: 'dem', maxzoom: 16,
+        metadata: { 'massif:sdk-layer': { type: 'hillshade', exaggeration: 0.35, opacity: 0.55, visibleZoomRange: [0, 16] } },
+    };
+    const contour = { id: 'contour', type: 'line', 'source-layer': 'contour', paint: { 'line-color': '#a08060' } };
+    const out = convert({ layers: [hillshade, contour] }, table, NO_PALETTE);
+    assert.match(out.mss, /#hillshade\[zoom < \d+\] \{\s*hillshade-opacity: 0\.55;\s*hillshade-exaggeration: 0\.35;/);
+    // TOP -> BOTTOM: the contours over the relief, as the style draws them.
+    assert.deepEqual(JSON.parse(out.project).layers, ['contour', 'hillshade']);
+    // Without the SDK values there is nothing to configure a slot with: dropped, as before.
+    assert.doesNotMatch(convert({ layers: [{ ...hillshade, metadata: {} }] }, table, NO_PALETTE).mss, /#hillshade/);
+});

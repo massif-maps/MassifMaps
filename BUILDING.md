@@ -271,7 +271,9 @@ only builds and packs; `build.yml` publishes its tarball.
 
 ## Pre-release, then release
 
-1. **Pack locally** and try the tarballs ([npm packages](#npm-packages)).
+1. **Pack locally** and try the tarballs ([npm packages](#npm-packages)) with
+   [`scripts/release-check`](scripts/release-check/README.md): `npm install --no-save` them there,
+   `npm run check`, `npm run serve`.
 2. **Pre-release from CI**: run `build.yml` with version `6.1.0-rc.1`, `publish` on, `prerelease` on.
    It makes a GitHub *prerelease*, publishes the npm packages under the `next` dist-tag (a plain
    `npm install` does not pick them up), tags JitPack and the Swift package `6.1.0-rc.1`, and does
@@ -281,9 +283,9 @@ only builds and packs; `build.yml` publishes its tarball.
      `...:6.1.0-rc.1:routing@aar` for the routing library
    - iOS: `https://github.com/massif-maps/MassifMaps-ios-swift`, *Exact version* `6.1.0-rc.1`,
      products `MassifMaps` and `ValhallaRouting`
-   - web: `npm install @massif-maps/web@next`
-   - style tools: `npx @massif-maps/style-tools@next --help`
-   - styles: `npm install @massif-maps/styles@next`
+   - npm: `scripts/release-check` — `npm install` takes the `next` tag; `npm run check` (api, both web
+     modules, style-tools compiling and converting the styles), `npm run serve` (a map from
+     `@massif-maps/web` in the Massif style, `?variant=full`)
    - NativeScript: the demo with `massifSDKVersion=6.1.0-rc.1`
 4. **Release**: the same run with version `6.1.0` and `prerelease` off. npm `latest`, the full
    `CHANGELOG.md` entry since the last final release, a regular GitHub release.

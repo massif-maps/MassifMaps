@@ -1,0 +1,16 @@
+{
+  "name": "massif-release-check",
+  "private": true,
+  "description": "Consumes the published @massif-maps packages the way an app does - see README.md",
+  "type": "module",
+  "scripts": {
+    "check": "node check.mjs",
+    "serve": "node serve.mjs"
+  },
+  "dependencies": {
+    "@massif-maps/api": "next",
+    "@massif-maps/style-tools": "next",
+    "@massif-maps/styles": "next",
+    "@massif-maps/web": "next"
+  }
+}

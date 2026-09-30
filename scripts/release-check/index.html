@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Massif Maps release check</title>
+  <style>
+    body { margin: 0; font: 13px system-ui, sans-serif; }
+    #map { width: 100%; height: 100vh; display: block; }
+    #status { position: absolute; top: 8px; left: 8px; background: #fffe; padding: 8px 10px; border-radius: 6px; white-space: pre; }
+    .fail { color: #c00; }
+  </style>
+</head>
+<body>
+<canvas id="map"></canvas>
+<div id="status"></div>
+<script type="importmap">{ "imports": { "@massif-maps/web": "/massif/massif-maps.bundle.mjs" } }</script>
+<script type="module">
+  import { create, createMap } from '@massif-maps/web';
+
+  const params = new URLSearchParams(location.search);
+  const variant = params.get('variant') ?? 'standard';
+  const styleName = params.get('style') ?? 'streets';
+  const status = document.getElementById('status');
+  const report = (ok, text) => {
+    const line = document.createElement('div');
+    line.textContent = `${ok ? 'ok  ' : 'FAIL'}  ${text}`;
+    if (!ok) line.className = 'fail';
+    status.append(line);
+  };
+
+  // The Massif CartoCSS project from @massif-maps/styles, copied into the module's filesystem.
+  async function massifStyle(map) {
+    const base = '/styles/cartocss/';
+    const folder = '/massif-style';
+    const project = await (await fetch(base + 'project.json')).json();
+    const texts = await Promise.all(project.styles.map((name) => fetch(base + name).then((r) => r.text())));
+    const images = new Set(Object.values(project.styleparameters ?? {}).filter((v) => typeof v === 'string' && /\.(png|jpg|svg)$/.test(v)));
+    for (const text of texts) for (const m of text.matchAll(/[\w./-]+\.(?:png|jpg|svg)/g)) images.add(m[0]);
+    const names = ['project.json', `${styleName}.json`, ...project.styles, ...images];
+    for (const name of names) {
+      const r = await fetch(base + name);
+      if (!r.ok) continue;
+      const file = `${folder}/${name}`;
+      map.module.FS.mkdirTree(file.slice(0, file.lastIndexOf('/')));
+      map.module.FS.writeFile(file, new Uint8Array(await r.arrayBuffer()));
+    }
+    return { type: 'mbvt', project: { type: 'project', assets: { type: 'dir', path: folder }, name: styleName } };
+  }
+
+  try {
+    report(crossOriginIsolated, `crossOriginIsolated ${crossOriginIsolated}`);
+    const map = await createMap(document.getElementById('map'), variant === 'full' ? { variant } : {});
+    report(true, `createMap, variant ${variant}`);
+    map.addLayer('basemap', {
+      type: 'vector',
+      source: { type: 'http', url: 'https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf', maxZoom: 14 },
+      style: await massifStyle(map),
+    });
+    report(true, `Massif ${styleName} style from @massif-maps/styles`);
+    map.camera().moveTo([6.8652, 45.8326], { zoom: 11 });
+
+    // Offline routing is compiled into the full module only.
+    let routing = true;
+    try { create('routing', 'check', { type: 'multi-valhalla-offline' }); } catch { routing = false; }
+    report(routing === (variant === 'full'), `offline routing ${routing ? 'present' : 'absent'}, as ${variant} should be`);
+  } catch (e) {
+    report(false, e.message ?? String(e));
+  }
+</script>
+</body>
+</html>

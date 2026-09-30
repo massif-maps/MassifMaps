@@ -7,7 +7,9 @@ export interface CreateMapOptions {
     id?: string;
     /** What positions read and write in. Defaults to `EPSG:4326`, plain `[lon, lat]`. */
     projection?: string;
-    /** Where massif-web.mjs is. Defaults to beside this package's own files. */
+    /** `full` loads massif-web-full.mjs, which adds routing, geocoding and offline packages. */
+    variant?: 'full';
+    /** Where massif-web.mjs is. Defaults to beside this package's own files; wins over `variant`. */
     moduleUrl?: string;
     /** Anything else goes to the emscripten module factory (print, printErr, locateFile...). */
     [option: string]: unknown;

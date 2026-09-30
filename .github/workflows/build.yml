@@ -621,6 +621,7 @@ jobs:
         run: |
           . "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           python3 scripts/build-web.py --profile standard --configuration Release --build-version "$VERSION"
+          python3 scripts/build-web.py --profile full --variant full --configuration Release --build-version "$VERSION"
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*

@@ -2294,3 +2294,18 @@ drags per measurement, fps from the `PROF` windows. Mesh resolution was kept at 
   build and master measure the same side by side, so it is the bench (shadows switched on by
   broadcast after launch), not a regression.
 
+
+## 33. The web build queued every tile decode on one malloc lock (2026-09-30)
+
+Web `style-parameters` example (Massif streets, badge POIs, Grenoble z15.5): 6.1-6.5 s to fill,
+pan frames at a 47-53 ms p90. The site ran a `RelWithDebInfo` module (354 MB), but a `Release` one
+filled exactly as slowly. Profiling every pthread over DevTools showed the decode workers mostly in
+`__pthread_mutex_timedlock` / `emscripten_futex_wake` under `TileReader::readTile`, reached through
+malloc and free, and the main thread busy-waiting on the same lock from expression evaluation.
+
+Linking mimalloc: fill 1.1 s, worker CPU 11.7 -> 1.85 s, pan p90 12 ms. Building the hot libraries
+`-O2` on the web as well: another ~20% off decode and frame CPU. Numbers, method and cost in
+[the web build](../maintenance/web-build.md#the-allocator).
+
+Ruled out: badge POIs (6.2 vs 6.3 s plain), the build configuration, and the web build in general -
+`display-a-map`, the same style at z11, fills in 1.1 s under either allocator.

@@ -19,26 +19,29 @@ python3 web/demo/serve.py            # http://localhost:8088
 Add `--website` to put the same module under `website/static/preview`, which is what the
 documentation site's [style preview](../tools/style-preview.md) page runs.
 
-Size, measured with emscripten 6.0.9 on the `lite` profile:
+Size, measured with emscripten 6.0.9 on the `lite` profile (the `Release` `.wasm` rows re-measured
+2026-09-30, after [the allocator](#the-allocator) and the `-O2` hot libraries):
 
 | Artefact | `Release` | `RelWithDebInfo` |
 |---|---|---|
-| `.wasm` | **4.47 MB** | 348.9 MB |
-| `.wasm` gzipped | **1.74 MB** | — |
-| `.wasm` brotli | **1.30 MB** | — |
+| `.wasm` | **5.78 MB** | 354 MB |
+| `.wasm` gzipped | **2.19 MB** | — |
+| `.wasm` brotli | **1.61 MB** | — |
 | `.mjs` loader | 265 KB | 429 KB |
 
 **DWARF is the whole difference**: `RelWithDebInfo` is 78x the size and is a development artefact
 only - never quote it, and never deploy it. Over the wire the number that matters is the compressed
-one, and GitHub Pages serves brotli, so the module costs about **1.3 MB**.
+one, and GitHub Pages serves brotli, so the module costs about **1.6 MB**.
 
 A preloaded font adds its own `.data` file on top (3.0 MB for the bench's fonts and styles; Roboto
 alone is 306 KB).
 
 ### What has been tried on size, and what it cost
 
-`Release` compiles with `-Oz`. Two things that look like free wins are not, both measured on the
-same tree:
+`Release` compiles with `-Oz`, except the libraries a tile decode and a frame run in (`vt`,
+`mapnikvt`, `cartocss`, `freetype`, `tess2`, `zlib`, `brotli`, `zstd`), which are `-O2` as on Android
+and iOS - measured in [the allocator](#the-allocator). The table below predates that. Two things
+that look like free wins are not, both measured on the same tree:
 
 | | `.wasm` | gzipped | brotli |
 |---|---|---|---|
@@ -364,6 +367,35 @@ Two rules follow from that split, and both cost a debugging session to find:
   `emscripten_async_run_in_main_runtime_thread`. Calling it directly from a worker does nothing at
   all: the first frame draws, the flag stays set, and the map is frozen with tiles arriving behind
   it.
+
+### The allocator
+
+The build links **mimalloc** (`-sMALLOC=mimalloc`). emscripten's default, dlmalloc, takes one global
+lock for every `malloc` and `free`, and a tile decode is mostly small allocations: the decode
+workers queue on it, and so does the main thread - which cannot block in the browser, so it
+busy-waits (`_emscripten_get_now` on top of a main-thread profile) and the frame stalls with it.
+Sparse tiles never show it; a city at z15 does.
+
+Measured 2026-09-30, the `style-parameters` example (Massif streets, badge POIs, Grenoble z15.5)
+and `display-a-map` (the same style at Mont Blanc z11), Chromium headless on Metal (M5 Pro), 8
+pthreads, `lite` `Release`. "Filled" is the last frame of the load; the pan is three 600 px drags.
+CPU comes from the DevTools sampling profiler on every worker, with idle futex waits removed.
+
+| style-parameters | dlmalloc | mimalloc | mimalloc + `-O2` hot libs |
+|---|---|---|---|
+| map filled | 6.1-6.5 s | 1.09-1.12 s | **1.00-1.02 s** |
+| worker CPU, load | 11.6-11.8 s | 1.8-1.9 s | **1.4-1.55 s** |
+| main thread busy, pan | 9.7-10.3 s | 3.9-4.6 s | **3.2 s** |
+| frame CPU p90, pan | 41-51 ms | 4.8-5.4 ms | **3.9-4.0 ms** |
+| frame interval p90, pan | 47-53 ms | 11.6-12.1 ms | 11.5-11.7 ms |
+
+`display-a-map` fills in ~1.1 s with either allocator: city density is the trigger, the lock the
+multiplier. Badge or plain POIs change the dlmalloc fill by nothing (6.2 vs 6.3 s), and
+`RelWithDebInfo` fills no faster than `Release` under dlmalloc, so neither was the cause.
+
+The cost: mimalloc adds 57 KB of `.wasm` (21 KB brotli) and grows the wasm heap from 144 MB to
+170-205 MB for the same session. The `-O2` hot libraries add 761 KB (146 KB brotli) for about 20%
+less decode and frame CPU.
 
 ### Isolation on GitHub Pages
 

@@ -1760,14 +1760,14 @@ export class MapCamera {
      * is immediate, and works before the map has drawn - which is when a screen usually points
      * its camera.
      */
-    moveTo(position: AnyPosition, options: { zoom?: number; rotation?: number; tilt?: number; climbHeight?: number; duration?: number } = {}): this {
+    moveTo(position: AnyPosition, options: { zoom?: number; rotation?: number; tilt?: number; climbHeight?: number; duration?: number; easing?: 'ease' | 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' } = {}): this {
         const pos = toPosition(position);
         const zoom = options.zoom ?? this.zoom();
         const rotation = options.rotation ?? this.rotation();
         const tilt = options.tilt ?? this.tilt();
         const seconds = this.take(options.duration);
         if (seconds > 0) {
-            this.view.call('flyTo', pos, zoom, rotation, tilt, options.climbHeight ?? 0, seconds);
+            this.view.call('flyTo', pos, zoom, rotation, tilt, options.climbHeight ?? 0, seconds, options.easing ?? 'ease');
         } else {
             this.view.call('moveTo', pos, zoom, rotation, tilt);
         }

@@ -29,8 +29,10 @@ about 40% smaller.
 | Android | `com.github.massif-maps:MassifMaps-android-aar:<version>:routing@aar` | JitPack, or the `.aar` on the release |
 | iOS | `ValhallaRouting`, a product of the `MassifMaps-ios-swift` package | Swift Package Manager |
 
-Its own native library (`libvalhalla_routing.so`), so it installs beside any map variant. See the
-[routing guide](/docs/guides/routing).
+Valhalla routing for an app that has no map, or a map without routing: the `full` map variant
+already routes offline. On Android it installs beside any map variant (its own classes and
+`libvalhalla_routing.so`). On iOS pair it with `MassifMapsCore` or `MassifMapsLite`, never
+`MassifMaps`: both define the same `MSF` routing classes. See the [routing guide](/docs/guides/routing).
 
 ## JavaScript and TypeScript
 

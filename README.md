@@ -186,7 +186,9 @@ In Xcode, go to **File › Add Packages…** and enter:
 https://github.com/massif-maps/MassifMaps-ios-swift
 ```
 
-The `ValhallaRouting` library is included as a separate product. Import it in your target:
+The `ValhallaRouting` library is included as a separate product, alone or beside `MassifMapsCore` /
+`MassifMapsLite` (not `MassifMaps`, the full profile, which defines the same routing classes). Import
+it in your target:
 
 ```swift
 import ValhallaRouting

@@ -77,10 +77,10 @@ def updatePublicHeader(filename):
   with open(filename, 'w') as f:
     f.writelines(lines)
 
-def buildModuleMap(filename, publicHeaders):
+def buildModuleMap(filename, publicHeaders, umbrella='%s/%s.h' % (FRAMEWORK_NAME, FRAMEWORK_NAME)):
   with open(filename, 'w') as f:
     f.write('module %s {\n' % FRAMEWORK_NAME)
-    f.write('    umbrella header "%s/%s.h"\n' % (FRAMEWORK_NAME, FRAMEWORK_NAME))
+    f.write('    umbrella header "%s"\n' % umbrella)
     # f.write('    link "c++"\n')
     # f.write('    link "z"\n')
     # for header in publicHeaders:
@@ -108,7 +108,9 @@ def copyXCFrameworkHeaders(args, baseDir, outputDir):
     return False
   updateUmbrellaHeader('%s/%s.h' % (destDir, FRAMEWORK_NAME), args.defines)
 
-  return buildModuleMap('%s/module.modulemap' % outputDir, publicHeaders)
+  # In Headers/<name>/, not Headers/: an app copies every xcframework's Headers into one include/,
+  # where two root module maps collide (MassifMapsCore beside ValhallaRouting).
+  return buildModuleMap('%s/%s/module.modulemap' % (outputDir, FRAMEWORK_NAME), publicHeaders, '%s.h' % FRAMEWORK_NAME)
 
 def buildIOSLib(args, baseArch, outputDir=None):
   platform, arch = getPlatformArch(baseArch)
@@ -172,6 +174,7 @@ def buildIOSXCFramework(args, baseArchs, outputDir=None):
   frameworkOptions = []
 
   headersDir = getFinalBuildDir('routing-ios', 'Headers')
+  shutil.rmtree(headersDir, True)
   makedirs(headersDir)
   if not copyXCFrameworkHeaders(args, baseDir, headersDir):
     return False

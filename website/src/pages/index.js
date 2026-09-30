@@ -4,7 +4,6 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import {Platforms, StatusLabels} from '@site/src/data/platforms';
-import styles from './index.module.css';
 
 function HomepagePlatforms() {
   return (

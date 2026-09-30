@@ -1,7 +1,11 @@
 ---
 title: Sky, Sun & Shadows
 sidebar_position: 7
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Sky, Sun and Shadows
 
@@ -9,13 +13,7 @@ One directional light and one shader sky, shared by the ground, the terrain, the
 fog — so the map, the horizon and the haze all agree on where the sun is.
 
 
-<figure class="docs-figure">
-
-![3D terrain lit by a low sun, under the shader sky](/img/features/sun-lighting.jpg)
-
-<figcaption>Terrain lit by a sun 10° above the horizon (azimuth 100°), under the built-in sky gradient. Captured from the <code>scripts/android-dev</code> demo.</figcaption>
-
-</figure>
+<LiveExample id="atmosphere" />
 
 ## The sun
 

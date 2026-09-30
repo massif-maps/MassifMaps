@@ -1,7 +1,11 @@
 ---
 title: Navigation Maneuver Arrows
 sidebar_position: 13
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Navigation Maneuver Arrows
 
@@ -16,13 +20,7 @@ route the same way but draws the head as a symbol. Technical notes:
 [`docs/internals/rendering/15-maneuver-arrows.md`](/docs/internals/rendering/maneuver-arrows).
 :::
 
-<figure class="docs-figure">
-
-![Maneuver arrows of every shape over a city map](/img/features/maneuver-arrows.jpg)
-
-<figcaption>The demo's arrow gallery — right and left 90°, slight and sharp turns, a U-turn and a roundabout — each a synthetic route run through the real builder. Captured at z15.4.</figcaption>
-
-</figure>
+<LiveExample id="maneuver-arrows" />
 
 ## Building the geometry
 

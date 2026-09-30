@@ -1,7 +1,11 @@
 ---
 title: Post-processing Effects
 sidebar_position: 9
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Post-processing Effects
 
@@ -15,13 +19,7 @@ the shader is a string the app supplies. Technical notes:
 [`docs/internals/rendering/14-post-process.md`](/docs/internals/rendering/post-process).
 :::
 
-<figure class="docs-figure">
-
-![Ink outlines over a shaded relief surface](/img/features/peakfinder.jpg)
-
-<figcaption>The demo's relief look: the terrain drawn as a shaded surface (<code>TerrainOptions.setSurfaceShaderSource</code>) with an ink-outline post-process effect on top, no tile layers. Camera z13.2, tilt 25.</figcaption>
-
-</figure>
+<LiveExample id="peak-finder" />
 
 ## Attaching an effect
 

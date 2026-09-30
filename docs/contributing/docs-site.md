@@ -185,10 +185,20 @@ the language sources, then run `javadoc` / `jazzy`. They need the SWIG fork and 
 host with `jazzy` installed — the CI workflow sets these up automatically. See each script's header
 for prerequisites.
 
-## Screenshots & videos {#screenshots}
+## Live examples, screenshots & videos {#screenshots}
 
-Feature pages reference images under `website/static/img/features/`. The terrain / hillshade /
-contour shots and the pan video there were captured from the `scripts/android-dev` demo:
+A feature with a live web example shows **that**, not a capture: give the page `mdx: {format: mdx}` in
+its front matter (a `.md` stays a `.md`, so the links to it hold) and embed the gallery example by id:
+
+```mdx
+import LiveExample from '@site/src/components/LiveExample';
+
+<LiveExample id="terrain-3d" />
+```
+
+The id must be a `live` entry of `docs/examples/examples.json`; the build fails otherwise. A page
+whose feature has no web example keeps a still under `website/static/img/features/`. Those shots
+were captured from the `scripts/android-dev` demo:
 
 ```bash
 # Boot an emulator / connect a device, then (the extras are BenchActivity's launch extras):

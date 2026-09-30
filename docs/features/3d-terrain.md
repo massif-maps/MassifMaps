@@ -1,30 +1,18 @@
 ---
 title: 3D Terrain
 sidebar_position: 1
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # 3D Terrain
 
 Render the map draped over **real elevation**, with correct depth occlusion (near ridges hide
 far slopes), fill draping and fast zooming.
 
-<figure class="docs-figure">
-
-![3D terrain over the Chartreuse massif, Grenoble](/img/features/terrain-hero.jpg)
-
-<figcaption>3D terrain over the Chartreuse massif above Grenoble — hillshade relief, contour lines and a route line draped onto the surface. Captured from the <code>scripts/android-dev</code> demo.</figcaption>
-
-</figure>
-
-<figure class="docs-figure">
-
-<video controls muted loop playsinline width="360" poster="/MassifMaps/img/features/terrain-3d.jpg">
-  <source src="/MassifMaps/img/features/terrain-demo.mp4" type="video/mp4" />
-</video>
-
-<figcaption>Panning across the tilted 3D terrain (demo capture).</figcaption>
-
-</figure>
+<LiveExample id="terrain-3d" />
 
 ## How it works
 

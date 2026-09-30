@@ -1,14 +1,10 @@
 /**
- * @title Peak finder
- * @section terrain
- * @order 90
  * A panorama drawn as peakfinder.com draws it: the terrain as ink on paper from a shader, every
  * summit named along the skyline, and the sun's path with its rise and set over the ridges. Drag to
  * look around, tap a name, then fly to it.
  */
 import { find } from '@massif-maps/web';
-import { RELIEF_DEPTH_OUTLINE_SHADER, RELIEF_SURFACE_SHADER } from './peak-finder/relief-shaders.js';
-import { peaksStyle } from './peak-finder/peaks-style.js';
+import { INK_SHADER, LABEL, SURFACE_SHADER, labelBand, summitsStyle } from './peak-finder/look.mjs';
 import { createChrome, toCompass } from './peak-finder/chrome.mjs';
 import { createSky } from './peak-finder/sun.mjs';
 
@@ -25,10 +21,6 @@ const INK = {
 };
 // The surface: ridge ink capped by the light, and a touch of hillshade after the cap.
 const SURFACE = { uAmbient: 0.06, uInkCap: 0.3, uRidgeInkStrength: 0.3, uHillshade: 0.15 };
-// White paper, black ink: the palette is constants in the shaders, so it is written into the source.
-const COLOURS = { uPaperColor: [1, 1, 1, 1], uInkColor: [0, 0, 0, 1], uShadeColor: [0, 0, 0, 1] };
-const withColours = (shader) => Object.entries(COLOURS).reduce((glsl, [name, rgba]) =>
-  glsl.replace(new RegExp(`const vec4 ${name} = vec4\\([^)]*\\);`), `const vec4 ${name} = vec4(${rgba.join(', ')});`), shader);
 
 export default async function start(host) {
   const map = host.map;
@@ -36,7 +28,7 @@ export default async function start(host) {
   const num = (name, fallback) => (query.has(name) ? Number(query.get(name)) : fallback);
   // The viewpoint: Grenoble, 400 m up, looking east at Belledonne - rotation is minus the heading.
   const view = { lat: num('lat', 45.1885), lon: num('lon', 5.7245), eye: num('elevation', 400), rotation: num('rotation', -100), tilt: num('tilt', -4), fov: num('fov', 46) };
-  const label = { layout: 'band', band: 0.12, angle: 45, size: 13, occlusion: 0.15 };
+  const label = { ...LABEL };
 
   // Tile caches in IndexedDB, as an app keeps them on disk: loaded before the sources open them.
   await mountCache(map.module, '/cache');
@@ -53,7 +45,7 @@ export default async function start(host) {
     meshResolution: 171, tileEdgeStitchingEnabled: false, subdivideDistance: 70, maxZoom: 17,
     viewDistance: 173000, meshCacheSize: 640, normalSampleDistance: 40, postProcessDownscale: 1,
     // The picture is the surface shader, so nothing is draped over it; the one layer is billboards.
-    surfaceShaderSource: withColours(RELIEF_SURFACE_SHADER), backgroundColor: '#ffffff',
+    surfaceShaderSource: SURFACE_SHADER, backgroundColor: '#ffffff',
     sharedGroundEnabled: false, drapeFillsEnabled: false, drapeLinesEnabled: false,
     billboardOcclusionEnabled: true, billboardOcclusionTolerance: label.occlusion, maxTileZoomCoarsening: 4,
   });
@@ -67,7 +59,7 @@ export default async function start(host) {
   map.camera();
   const mapView = find('view', `${map.id}:view`, 'massif::BaseMapView');
   const ink = map.object('effect', 'relief', {
-    type: 'postprocess', name: 'relief', fragmentShader: withColours(RELIEF_DEPTH_OUTLINE_SHADER), terrainDepthRequired: true,
+    type: 'postprocess', name: 'relief', fragmentShader: INK_SHADER, terrainDepthRequired: true,
   });
   for (const [name, value] of Object.entries(INK)) {
     ink.call('setFloatParameter', name, value);
@@ -117,16 +109,18 @@ export default async function start(host) {
   const skyBelow = map.add(map.buildLayer('sky', { type: 'celestial' }), 0);
   const skyAbove = map.addLayer('sky.top', { type: 'celestial' });
   let ground = await groundElevation(view);
+  // Placed again once the ground is known: an eye placed before the viewpoint's elevation arrived
+  // stays where it was put until the camera next moves.
+  Object.assign(view, { rotation: map.camera().rotation(), tilt: map.camera().tilt() });
+  placeCamera();
   let generation = 0;
   let current = null;
   let selectedKey = '';
   const rebuildPeaks = () => {
     generation += 1;
-    const css = peaksStyle({
-      eyeElevation: ground + view.eye, textAngle: label.angle, textSize: label.size, band: label.band, topOffset: label.band,
-      pinTop: label.layout === 'top', followSkyline: label.layout === 'skyline', minDistance: 1, persistPasses: 10, maxRows: 1,
-    }).replace('  text-name: [name];', "  text-name: [name];\n  text-face-name: 'Roboto';");
-    const style = map.style(`peaks.style.${generation}`, { type: 'mbvt', cartocss: { type: 'cartocss', css: withSelection(css) } });
+    label.band = labelBand(label, host.root.clientHeight);
+    const css = summitsStyle(label, ground + view.eye);
+    const style = map.style(`peaks.style.${generation}`, { type: 'mbvt', cartocss: { type: 'cartocss', css } });
     style.set('params.selected_peak', selectedKey);
     const layer = map.add(map.buildLayer(`peaks.layer.${generation}`, {
       type: 'vector', source: summits.handle, style: style.handle, preloading: true,
@@ -200,12 +194,6 @@ export default async function start(host) {
   };
   tick();
 }
-
-/** The selected summit's name bold and blue: a style parameter compared with each summit. */
-const withSelection = (css) => "Map { param-selected_peak: ''; }\n@selected: [name] + '|' + [ele] = [param::selected_peak];\n" + css
-  .replace("text-face-name: 'Roboto';", "text-face-name: @selected ? 'Roboto-Bold' : 'Roboto';")
-  .replace(/\n {2}text-fill: ([^;]+);/, '\n  text-fill: @selected ? #2f4f9e : $1;')
-  .replace(/text-placement-priority: ([^;]+);/, 'text-placement-priority: @selected ? 100000 : $1;');
 
 async function mountCache(module, path) {
   module.FS.mkdir(path);

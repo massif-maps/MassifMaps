@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build, pack and publish every Massif Maps npm package.
 
-    python3 scripts/npm-packages.py pack 7.0.0-rc.1 [--only api,web] [--styles-version 1.2.0]
+    python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web] [--styles-version 1.2.0]
     python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 
 `pack` writes one tarball per package into dist/npm; `publish` publishes the tarballs found there,
@@ -156,7 +156,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('pack', help='build every package and npm pack it')
-    p.add_argument('version', help='SDK version, no leading v (7.0.0, 7.0.0-rc.1)')
+    p.add_argument('version', help='SDK version, no leading v (6.1.0, 6.1.0-rc.1)')
     p.add_argument('--only', help='comma-separated subset of: ' + ', '.join(PACKAGES))
     p.add_argument('--styles-version', help='also pack @massif-maps/styles at this version')
     p.add_argument('--out', default=OUT)

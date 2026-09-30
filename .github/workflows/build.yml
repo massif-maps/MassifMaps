@@ -14,7 +14,7 @@ on:
         required: true
         type: boolean
       prerelease:
-        description: "Pre-release: GitHub prerelease and npm dist-tag next (version like 7.0.0-rc.1)"
+        description: "Pre-release: GitHub prerelease and npm dist-tag next (version like 6.1.0-rc.1)"
         default: false
         required: true
         type: boolean
@@ -879,6 +879,8 @@ jobs:
           }
           dependencies {
               implementation 'com.github.massif-maps:MassifMaps-android-aar:${VERSION}'
+              // the standalone routing library
+              implementation 'com.github.massif-maps:MassifMaps-android-aar:${VERSION}:routing@aar'
           }
           \`\`\`
 

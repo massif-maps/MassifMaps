@@ -91,7 +91,7 @@ writes ~1 GB of objects. Measured on one arm64 Release build with a warm cache: 
 
 ```
 python swigpp-java.py --profile standard --swig ../mobile-swig/swig
-python build-android.py --profile standard --build-aar --configuration=Release --build-version 7.0.0
+python build-android.py --profile standard --build-aar --configuration=Release --build-version 6.1.0
 ```
 
 `--android-abi arm64-v8a` builds one ABI only. The demo app, `scripts/android-dev`, builds the SDK
@@ -101,7 +101,7 @@ from source: [demo app](docs/contributing/demo-app.md).
 
 ```
 python swigpp-objc.py --profile standard --swig ../mobile-swig/swig
-python build-ios.py --profile standard --configuration=Release --build-xcframework --use-metalangle --build-version 7.0.0
+python build-ios.py --profile standard --configuration=Release --build-xcframework --use-metalangle --build-version 6.1.0
 ```
 
 The demo app is `scripts/ios-dev`.
@@ -111,8 +111,8 @@ The demo app is `scripts/ios-dev`.
 Valhalla routing without the map view — no SWIG step:
 
 ```
-python build-routing-android.py --configuration=Release --build-version 7.0.0
-python build-routing-ios.py --configuration=Release --build-xcframework --build-version 7.0.0
+python build-routing-android.py --configuration=Release --build-version 6.1.0
+python build-routing-ios.py --configuration=Release --build-xcframework --build-version 6.1.0
 ```
 
 ### Xamarin and UWP
@@ -129,7 +129,7 @@ python build-winphone.py --profile standard               # Visual Studio 2022 +
 ## Web SDK
 
 ```
-python3 scripts/build-web.py --profile standard --configuration Release --build-version 7.0.0 [--build-demo]
+python3 scripts/build-web.py --profile standard --configuration Release --build-version 6.1.0 [--build-demo]
 ```
 
 Emscripten on `PATH`, or `--emsdk DIR`. Writes `dist/web`; [`npm-packages.py`](#npm-packages) turns
@@ -193,7 +193,7 @@ built and released: [docs/contributing/massif-style-release.md](docs/contributin
 One script builds and packs every npm package, locally and in CI:
 
 ```
-python3 scripts/npm-packages.py pack 7.0.0-rc.1 [--only api,web,style-tools] [--styles-version 1.2.0-rc.1]
+python3 scripts/npm-packages.py pack 6.1.0-rc.1 [--only api,web,style-tools] [--styles-version 1.2.0-rc.1]
 python3 scripts/npm-packages.py publish [--tag next] [--dry-run]
 ```
 
@@ -210,8 +210,8 @@ version and `latest` otherwise; in GitHub Actions it adds `--provenance`. To try
 app before anything reaches npm:
 
 ```
-npm install /path/to/dist/npm/massif-maps-api-7.0.0-rc.1.tgz /path/to/dist/npm/massif-maps-web-7.0.0-rc.1.tgz
-npm install -g /path/to/dist/npm/massif-maps-style-tools-7.0.0-rc.1.tgz && massif-style --help
+npm install /path/to/dist/npm/massif-maps-api-6.1.0-rc.1.tgz /path/to/dist/npm/massif-maps-web-6.1.0-rc.1.tgz
+npm install -g /path/to/dist/npm/massif-maps-style-tools-6.1.0-rc.1.tgz && massif-style --help
 ```
 
 `@massif-maps/types` (`bindings/typescript`), `tools/style-sprite` and `web/package` are private
@@ -262,18 +262,20 @@ npm publishing needs the `NPM_TOKEN` secret and the `@massif-maps` npm organisat
 ## Pre-release, then release
 
 1. **Pack locally** and try the tarballs ([npm packages](#npm-packages)).
-2. **Pre-release from CI**: run `build.yml` with version `7.0.0-rc.1`, `publish` on, `prerelease` on.
+2. **Pre-release from CI**: run `build.yml` with version `6.1.0-rc.1`, `publish` on, `prerelease` on.
    It makes a GitHub *prerelease*, publishes the npm packages under the `next` dist-tag (a plain
-   `npm install` does not pick them up), tags JitPack and the Swift package `7.0.0-rc.1`, and does
+   `npm install` does not pick them up), tags JitPack and the Swift package `6.1.0-rc.1`, and does
    not touch `CHANGELOG.md`. Styles: `release-styles.yml` with `1.2.0-rc.1` does the same for them.
 3. **Test every package** from the registries:
-   - Android: `implementation 'com.github.massif-maps:MassifMaps-android-aar:7.0.0-rc.1'`
-   - iOS: `https://github.com/massif-maps/MassifMaps-ios-swift`, *Exact version* `7.0.0-rc.1`
+   - Android: `implementation 'com.github.massif-maps:MassifMaps-android-aar:6.1.0-rc.1'`, and
+     `...:6.1.0-rc.1:routing@aar` for the routing library
+   - iOS: `https://github.com/massif-maps/MassifMaps-ios-swift`, *Exact version* `6.1.0-rc.1`,
+     products `MassifMaps` and `ValhallaRouting`
    - web: `npm install @massif-maps/web@next`
    - style tools: `npx @massif-maps/style-tools@next --help`
    - styles: `npm install @massif-maps/styles@next`
-   - NativeScript: the demo with `massifSDKVersion=7.0.0-rc.1`
-4. **Release**: the same run with version `7.0.0` and `prerelease` off. npm `latest`, the full
+   - NativeScript: the demo with `massifSDKVersion=6.1.0-rc.1`
+4. **Release**: the same run with version `6.1.0` and `prerelease` off. npm `latest`, the full
    `CHANGELOG.md` entry since the last final release, a regular GitHub release.
 
 The run refuses a version below an existing `v` tag. npm publishes only after every platform built,

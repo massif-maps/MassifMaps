@@ -14,7 +14,7 @@ and the NativeScript plugin have their own.
 | Platform | Package | Get it |
 |---|---|---|
 | Android | `com.github.massif-maps:MassifMaps-android-aar` — variants `full` (default), `core`, `lite` | JitPack, or the `.aar` on the release — [install](installation.md#android) |
-| iOS | `massif-maps/MassifMaps-ios-swift`, one product per variant | Swift Package Manager, or the xcframework zip on the release — [install](installation.md#ios) |
+| iOS | `massif-maps/MassifMaps-ios-swift` — products `MassifMaps` (full), `MassifMapsCore`, `MassifMapsLite` | Swift Package Manager, or the xcframework zip on the release — [install](installation.md#ios) |
 | Web | `@massif-maps/web` | npm, or `MassifMaps-web-<version>.zip` on the release — [web guide](web.md) |
 | NativeScript | `@nativescript-community/ui-massifmaps` | npm — [install](installation.md#javascript-through-an-integration) |
 | Xamarin, UWP | — | build from source ([BUILDING.md](https://github.com/massif-maps/MassifMaps/blob/master/BUILDING.md)) |
@@ -26,10 +26,11 @@ about 40% smaller.
 
 | Platform | Package | Get it |
 |---|---|---|
-| Android | `massif-routing-android-<version>.aar` | the release; not on JitPack yet |
+| Android | `com.github.massif-maps:MassifMaps-android-aar:<version>:routing@aar` | JitPack, or the `.aar` on the release |
 | iOS | `ValhallaRouting`, a product of the `MassifMaps-ios-swift` package | Swift Package Manager |
 
-See the [routing guide](/docs/guides/routing).
+Its own native library (`libvalhalla_routing.so`), so it installs beside any map variant. See the
+[routing guide](/docs/guides/routing).
 
 ## JavaScript and TypeScript
 
@@ -51,6 +52,6 @@ Also attached to each `v<version>` GitHub release:
 
 ## Pre-releases
 
-A release candidate (`7.0.0-rc.1`) is a GitHub *prerelease*, and its npm packages carry the `next`
+A release candidate (`6.1.0-rc.1`) is a GitHub *prerelease*, and its npm packages carry the `next`
 dist-tag: `npm install @massif-maps/web@next`. JitPack and Swift Package Manager take the version
 explicitly. A plain install never picks a pre-release.

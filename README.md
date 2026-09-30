@@ -78,7 +78,7 @@ See [`website/README.md`](website/README.md) for what works in the dev server vs
 | Web SDK | [`@massif-maps/web`](https://www.npmjs.com/package/@massif-maps/web) | npm, or the web zip on the release |
 | Typed JavaScript API | [`@massif-maps/api`](https://www.npmjs.com/package/@massif-maps/api) | npm |
 | NativeScript plugin | [`@nativescript-community/ui-massifmaps`](https://www.npmjs.com/package/@nativescript-community/ui-massifmaps) | npm |
-| Routing library | `massif-routing-android-<version>.aar`, `ValhallaRouting` | the release; Swift Package Manager |
+| Routing library | `com.github.massif-maps:MassifMaps-android-aar` variant `routing`; `ValhallaRouting` | JitPack; Swift Package Manager |
 | Style tools (`massif-style`) | [`@massif-maps/style-tools`](https://www.npmjs.com/package/@massif-maps/style-tools) | npm; `css2xml` binaries on the release |
 | Massif styles | [`@massif-maps/styles`](https://www.npmjs.com/package/@massif-maps/styles) | npm, or the `massif-styles-v*` release |
 | Xamarin, UWP | — | build from source |
@@ -134,8 +134,8 @@ repositories {
 dependencies {
     // Full map SDK (optional if you only need routing)
     implementation 'com.github.massif-maps:MassifMaps-android-aar:5.0.0'
-    // Standalone routing library
-    implementation 'com.github.massif-maps:MassifMaps-valhalla-routing:5.0.0'
+    // Standalone routing library: the routing variant of the same artifact
+    implementation 'com.github.massif-maps:MassifMaps-android-aar:5.0.0:routing@aar'
 }
 ```
 

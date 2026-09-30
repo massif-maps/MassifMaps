@@ -18,16 +18,17 @@ def generate_jitpack_yml(version, profiles, include_routing=True):
         template = string.Template(template_file.read())
 
     profiles = [p.strip() for p in (profiles or "").split(',') if p.strip()]
-    routing_aar_url = (
-        "%s/releases/download/v%s/%s" % (REPO_URL, version, getRoutingAndroidAarDistName(version))
-        if include_routing else ""
-    )
+    variants = [getVariant(p) for p in profiles]
+    aar_urls = ["%s/releases/download/v%s/%s" % (REPO_URL, version, getAndroidAarDistName(version, p)) for p in profiles]
+    # The routing library rides along as one more classifier: ...:<version>:routing@aar
+    if include_routing:
+        variants.append('routing')
+        aar_urls.append("%s/releases/download/v%s/%s" % (REPO_URL, version, getRoutingAndroidAarDistName(version)))
     jitpack_content = template.safe_substitute({
-        'version':       version,
-        'variants':      ','.join(getVariant(p) for p in profiles),
-        'aarUrls':       ','.join("%s/releases/download/v%s/%s" % (REPO_URL, version, getAndroidAarDistName(version, p)) for p in profiles),
-        'repo_url':      REPO_URL,
-        'routingAarUrl': routing_aar_url,
+        'version':  version,
+        'variants': ','.join(variants),
+        'aarUrls':  ','.join(aar_urls),
+        'repo_url': REPO_URL,
     })
 
     with open(output_path, 'w') as output_file:

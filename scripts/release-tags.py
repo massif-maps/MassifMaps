@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check a release tag against the repo's vX.Y.Z tags, and print the release it follows.
 
-    python3 scripts/release-tags.py v7.0.0-rc.1 >> "$GITHUB_OUTPUT"    # previous=v6.0.2
+    python3 scripts/release-tags.py v6.1.0-rc.1 >> "$GITHUB_OUTPUT"    # previous=v6.0.2
 
 Fails when a higher v-tag exists. `previous` is the last final release below the tag, so a release
 candidate's notes, and the final release after it, both list everything since that release.

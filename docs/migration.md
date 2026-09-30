@@ -61,8 +61,9 @@ grep -rl 'NT[A-Z]' Sources/ | xargs sed -i '' -E 's/\bNT([A-Z][A-Za-z0-9]*)/MSF\
 | Gradle artifact | `com.carto:carto-mobile-sdk` | `com.massifmaps:massif` |
 | Gradle artifact (routing-lib) | `com.akylas.routing:valhalla-routing` | `com.massifmaps:valhalla-routing` |
 
-On JitPack the resolvable coordinate is `com.github.massif-maps:MassifMaps-android-aar:<tag>` — JitPack
-overrides the declared `groupId`, so the package name and the coordinate differ by design.
+On JitPack the resolvable coordinate is `com.github.massif-maps:MassifMaps-android-aar:<tag>`, and the
+routing-lib is its `routing` variant (`...:<tag>:routing@aar`) — JitPack overrides the declared
+`groupId`, so the package name and the coordinate differ by design.
 
 ## C++ (only if you build from source or embed the core)
 

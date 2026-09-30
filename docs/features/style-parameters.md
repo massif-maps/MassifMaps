@@ -1,7 +1,11 @@
 ---
 title: Live Style Parameters
 sidebar_position: 11
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Live Style Parameters (`param::`)
 
@@ -15,13 +19,7 @@ Table parameters and the repaint paths were added in PRs
 [#76](https://github.com/massif-maps/MassifMaps/pull/76).
 :::
 
-<figure class="docs-figure">
-
-![One route highlighted by a style parameter](/img/features/style-parameter-selection.jpg)
-
-<figcaption>The demo's selection bench: 12 routes from one GeoJSON source, one of them selected. Setting <code>selected_id</code> changes its colour and width with a repaint — no tile is decoded again.</figcaption>
-
-</figure>
+<LiveExample id="style-parameters" />
 
 ## Declaring and setting
 

@@ -1,6 +1,10 @@
 ---
 sidebar_position: 25
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Lighting a map by the hour
 
@@ -11,6 +15,8 @@ redraw.
 
 This page is the two halves of that: what a **style** has to say for its colours to be lit at all,
 and how an **app** replaces the curve that decides what the light is at a given hour.
+
+<LiveExample id="day-cycle-light" />
 
 ## The short version
 

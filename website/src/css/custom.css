@@ -887,6 +887,16 @@
   font-size: 0.9rem;
 }
 
+.liveExample {
+  margin: 1.25rem 0;
+}
+
+.liveExample figcaption {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
 .exampleDetailSource {
   margin: 0.75rem 0 0;
   font-size: 0.9rem;

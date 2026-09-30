@@ -1,7 +1,11 @@
 ---
 title: Labels, Shields & Font Icons
 sidebar_position: 10
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Labels, Shields and Font Icons
 
@@ -15,13 +19,7 @@ Added in PRs [#57](https://github.com/massif-maps/MassifMaps/pull/57) and
 Technical notes: [`docs/internals/rendering/06-labels.mdx`](/docs/internals/rendering/labels).
 :::
 
-<figure class="docs-figure">
-
-![POI names placed on the free side of font icons](/img/features/shield-labels.jpg)
-
-<figcaption>~2300 live POI labels: each name takes the first free side of its icon, and falls back to the icon alone where nothing fits (<code>shield-text-optional</code>). Icons are single SDF glyphs of an icon font.</figcaption>
-
-</figure>
+<LiveExample id="label-styling" />
 
 ## Anchored shields: the name takes a free side
 

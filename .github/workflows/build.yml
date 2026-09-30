@@ -717,10 +717,12 @@ jobs:
           cd mobile-sdk-android-aar
           mv -f ../dist/android/jitpack.yml ./
           git add jitpack.yml
-          git commit -m "Automated update jitpack.yml for version ${{ github.event.inputs.version }} and profile $PROFILES_CSV"
+          git commit -m "Automated update jitpack.yml for version ${{ github.event.inputs.version }} and profile $PROFILES_CSV" || true
           git push origin main
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          # -f: a re-run after a failed release rebuilt the zips, and a tag left on the first run's
+          # commit pins stale URLs and checksums (the 6.0.2 Swift package never resolved).
+          git tag -f ${{ github.event.inputs.version }}
+          git push -f origin ${{ github.event.inputs.version }}
       
       - name: Download ios checksum artifacts
         uses: actions/download-artifact@v4
@@ -818,8 +820,10 @@ jobs:
           git add Package.swift
           git commit -m "Automated update Package.swift from workflow for new release" || true
           git push origin main
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          # -f: a re-run after a failed release rebuilt the zips, and a tag left on the first run's
+          # commit pins stale URLs and checksums (the 6.0.2 Swift package never resolved).
+          git tag -f ${{ github.event.inputs.version }}
+          git push -f origin ${{ github.event.inputs.version }}
 
   update-release:
     runs-on: ubuntu-latest

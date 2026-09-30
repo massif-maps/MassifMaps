@@ -2359,7 +2359,20 @@ cache and a refresh moves out what no cull uses. The preloading ring is held the
 
 Web, second fix, probed: every map tile loads exactly once in `style-parameters-shadows` (36),
 with preloading on (41) and in `day-cycle-light` at z17.2 in an iPhone-sized viewport (45, once
-the z18 contact-shadow clip was fixed as well, see the next entry). No real device run.
+the z18 contact-shadow clip was fixed as well, see the next entry).
+
+Device, HLTE556N (Adreno 610), `day-cycle-light`, probed per map tile, one run each, 110 s, warm
+persistent cache; the master build already has the §35 clip:
+
+| | loads / map tiles | last load | app CPU at 60 / 90 / 110 s |
+|---|---|---|---|
+| master, z17.2 | 119 / 47 | still loading at 111 s | 215 / 368 / 451 % |
+| this fix, z17.2 | 49 / 47 | 43 s | 0 / 0 / 0 % |
+| master, z18.5 | 117 / 47 | still loading at 110 s | 258 / 203 / 231 % |
+| this fix, z18.5 | 47 / 44 | 38 s | 0 / 0 / 0 % |
+
+The only repeats left with the fix are the z1 world tiles, cancelled once as the camera leaves the
+start view.
 
 ## 35. A z18 tile carried every contact shadow of its z14 source (2026-09-30)
 
@@ -2375,4 +2388,5 @@ overzoom hands to every z18 tile derived from it.
 reaches back to the tile's origin and keeps every footprint down and right of the tile - the host
 test reproduces exactly that. `bbox2<float>::smallest()` fixes it. z18 tiles 54 -> 1.6 MB;
 the same scene loads 45 map tiles once each and stops at 35 s. The iOS simulator drew that camera
-at z17 and never hit it; no device checked.
+at z17 and never hit it. On the HLTE556N at z18.5, without the clip: z18 tiles 35.7 MB on average
+(40.6 max); with it, 1.6 MB.

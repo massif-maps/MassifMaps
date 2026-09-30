@@ -290,8 +290,10 @@ only builds and packs; `build.yml` publishes its tarball.
 4. **Release**: the same run with version `6.1.0` and `prerelease` off. npm `latest`, the full
    `CHANGELOG.md` entry since the last final release, a regular GitHub release.
 
-The run refuses a version below an existing `v` tag. npm publishes only after every platform built,
-so a failed build never leaves a version taken on npm.
+The run refuses a version below an existing `v` tag. Order: every build, then the GitHub release
+made public (notes from `scripts/release-notes.py`), then the JitPack and Swift package tags and npm.
+A failure before the release is public deletes the draft; after it, nothing is rolled back — re-run
+the failed job: the tags are forced and npm skips a version it already has.
 
 ## After a release
 

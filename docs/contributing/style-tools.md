@@ -138,8 +138,8 @@ calls it:
 2. **package** — `gen-cartocss-properties.py --check`, build and test the TypeScript, smoke-test the
    wasm subcommand, pack the tarball with `scripts/npm-packages.py`.
 
-`build.yml`'s `publish-npm` job then publishes the tarball with the SDK's other npm packages, and
-attaches the wasm to the `v<version>` release for anyone not using npm.
+`build.yml` then attaches the wasm to the `v<version>` release for anyone not using npm
+(`update-release`) and publishes the tarball with the SDK's other npm packages (`publish-npm`).
 
 Boost comes from [`.github/actions/prepare-boost`](https://github.com/massif-maps/MassifMaps/blob/master/.github/actions/prepare-boost/action.yml),
 the same action `build.yml` uses, so the wasm is built against the **same Boost as the SDK**. That

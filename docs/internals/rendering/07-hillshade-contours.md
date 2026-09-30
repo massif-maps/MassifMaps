@@ -80,6 +80,49 @@ textures then, `MAX_CACHED_TEXTURES` = 128 now). `debug.massif.paintdetail 0..4`
 builds ([runtime switches](10-performance.md#runtime-switches-no-rebuild)). Fixing the cost is the
 elevation-texture port described in [04-terrain.md](04-terrain.md#the-elevation-texture).
 
+## Slope units against MapLibre
+
+`HillshadeRasterTileLayer::createVectorTile` scales the DEM into tile pixels and boosts it below z15
+exactly as MapLibre's `hillshade_prepare.fragment.glsl` does; `NormalMapBuilder` bakes the Sobel/8
+slope and the Mercator `cos(lat)` into the normal. At `heightScale` 1 the normal therefore carries
+MapLibre's derivative, which `tests/vt/NormalMapSlopeTest.cpp` pins. The lighting shader
+(`TileRenderer::LIGHTING_SHADER_NORMALMAP`) is MapLibre's `hillshade.fragment.glsl` with
+`u_intensity` = the layer's contrast = MapLibre's `hillshade-exaggeration`, and `u_exaggeration` an
+extra multiplier MapLibre does not have. The mapping for apps is in
+[the feature page](../../features/hillshade.md#matching-maplibre).
+
+**The default `heightScale` is 0.05**, a twentieth of MapLibre's slope, chosen by eye for the demo's
+IGOR shading over imagery. A style tuned in MapLibre and copied as `exaggeration` draws twenty times
+flatter.
+
+**MapLibre changed its own strength.** Up to 5.1, `getElevation` returned `dot(data, u_unpack) / 4.0`
+and the slope was `atan(1.25 * length(deriv))`; with the hillshade methods it lost the `/ 4.0` and
+became `atan(0.625 * length(deriv))`. The newer one is twice as strong for the same paint. The SDK
+ports the newer one.
+
+Measured on the web build, 2048×1536 readback right after the frame, white background, water
+excluded, mean darkness (255 − luminance) / its standard deviation, same DEM tile zoom on both
+sides:
+
+| camera | MapLibre 5.1 | MapLibre 5.24 | SDK, `heightScale` 1, `exaggeration` 0.5 | SDK, `exaggeration` 1 |
+|---|---|---|---|---|
+| Matterhorn, z12.6 | 17.60 / 19.16 | 31.11 / 27.86 | 17.43 / 18.98 | 30.88 / 27.67 |
+| Massif Central (2.75, 45.15), z12.6 | 6.81 / 7.35 | 14.06 / 14.35 | 6.78 / 7.31 | 13.99 / 14.28 |
+
+**A composite hillshade slot draws exactly like a stand-alone layer**: the same values give a
+bit-identical frame (0.932 / 1.134 both, Matterhorn, over white). The "composite is 5× weaker"
+report of 2026-09-30 was the style preview's stand-alone layer, built with no `dem_encoding`: the
+Terrarium DEM went through the Terrain-RGB decoder (base unit 0.1 m against 1/256 m), 25.6× the
+slope. The composite's draw path, config binding and FBO/opacity path were not involved.
+
+**Still open: the full Massif outdoor style.** In the style preview (Matterhorn, z12.6, luminance the
+relief takes off the whole pane), the `#hillshade` slot with this mapping takes 48.2, the stand-alone
+layer 48.9 and MapLibre 5.24 25.4. Part of that is the DEM zoom: at `tileDrawSize` 512 the SDK
+floors the view zoom (z12 DEM) where MapLibre rounds it (z13), so it shades a coarser DEM with the
+larger below-z15 boost; at `tileDrawSize` 256 (z13, as MapLibre) the slot takes 38.1. The remaining
+1.5× does not show on a white background, where the two agree within 1%, and the draw order around
+the slot is the same on both sides.
+
 ## Contour lines
 
 Drawn as a fragment block on the terrain draw, from the same DEM: distance to the nearest contour in

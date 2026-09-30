@@ -51,8 +51,8 @@ if (ref.startsWith('mapbox-')) {
   if (preset) map.on('style.load', () => map.setConfigProperty('basemap', 'lightPreset', preset));
 } else {
   if (!tokens.maptiler) fail('no ~/.maptiler_token');
-  await load('https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js',
-             'https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css');
+  await load('https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js',
+             'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css');
   map = new maplibregl.Map({ container: 'map', ...camera, attributionControl: false,
     style: `https://api.maptiler.com/maps/${ref.slice(9)}/style.json?key=${tokens.maptiler}` });
 }

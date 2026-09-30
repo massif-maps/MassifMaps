@@ -699,9 +699,11 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         const sdk = (layer.metadata as Record<string, Json> | undefined)?.['massif:sdk-layer'] as Record<string, Json> | undefined;
         if (!sdk || typeof sdk !== 'object' || sdk.type !== 'hillshade') return false;
         const declarations: string[] = [];
-        for (const [key, property] of [['opacity', 'hillshade-opacity'], ['exaggeration', 'hillshade-exaggeration']] as const) {
+        for (const [key, property] of HILLSHADE_SLOT_PROPERTIES) {
             if (sdk[key] === undefined) continue;
-            const value = tryTranslate(sdk[key] as Json, property, layer.id, coverage);
+            // the layer's enum name; the slot's parser takes it lower-case
+            const raw = key === 'hillshadeMethod' && typeof sdk[key] === 'string' ? (sdk[key] as string).toLowerCase() : sdk[key];
+            const value = tryTranslate(raw as Json, property, layer.id, coverage);
             if (value !== null) declarations.push(`${property}: ${value};`);
         }
         const range = Array.isArray(sdk.visibleZoomRange) ? sdk.visibleZoomRange as number[] : [];
@@ -3649,6 +3651,18 @@ function firstFontName(value: Json): Json | undefined {
     }
     return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined;
 }
+
+/** `massif:sdk-layer` keys (HillshadeRasterTileLayer properties) and the slot property each becomes. */
+const HILLSHADE_SLOT_PROPERTIES = [
+    ['opacity', 'hillshade-opacity'],
+    ['exaggeration', 'hillshade-exaggeration'],
+    ['contrast', 'hillshade-contrast'],
+    ['heightScale', 'hillshade-height-scale'],
+    ['hillshadeMethod', 'hillshade-method'],
+    ['shadowColor', 'hillshade-shadow-color'],
+    ['highlightColor', 'hillshade-highlight-color'],
+    ['accentColor', 'hillshade-accent-color'],
+] as const;
 
 function tryTranslate(value: Json, name: string, layerId: string, coverage: Coverage): string | null {
     const notes: string[] = [];

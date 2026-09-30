@@ -232,6 +232,9 @@ The rules `CLAUDE.md` states in short form, with what produced them:
 - **A ported constant is only portable if its UNITS are.** mapbox's shadow bias is a fraction of
   *their* light box; against ours it was a 3 km bias that erased every shadow. Check the quantity
   the number is a fraction of.
+- **Compare against the version you ported.** MapLibre's hillshade doubled its strength between 5.1
+  and the release that added `hillshade-method`; a style preview on 5.1 made the SDK's exact port
+  look 2× too strong ([07](07-hillshade-contours.md#slope-units-against-maplibre)).
 
 Checked out read-only for comparison: `/Volumes/dev/carto/maplibre-gl-js`,
 `/Volumes/dev/carto/maplibre-native` (terrain, hillshade; no shadows), `/Volumes/dev/carto/tangram-ng`

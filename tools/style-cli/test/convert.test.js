@@ -510,3 +510,20 @@ test('a hillshade with SDK values becomes a composite slot at its own depth', ()
     // Without the SDK values there is nothing to configure a slot with: dropped, as before.
     assert.doesNotMatch(convert({ layers: [{ ...hillshade, metadata: {} }] }, table, NO_PALETTE).mss, /#hillshade/);
 });
+
+test('a hillshade slot carries the settings that match the MapLibre paint', () => {
+    const hillshade = {
+        id: 'hillshade', type: 'hillshade', source: 'dem', maxzoom: 16,
+        metadata: { 'massif:sdk-layer': { type: 'hillshade', hillshadeMethod: 'STANDARD', contrast: 0.35, heightScale: 1,
+            shadowColor: '#544d45', highlightColor: '#faf8f5', accentColor: '#847362', visibleZoomRange: [0, 16] } },
+    };
+    const mss = convert({ layers: [hillshade] }, table, NO_PALETTE).mss;
+    assert.match(mss, /hillshade-contrast: 0\.35;/);
+    assert.match(mss, /hillshade-height-scale: 1;/);
+    // CompositeVectorTileLayer's parser only knows the lower-case names
+    assert.match(mss, /hillshade-method: '?standard'?;/);
+    assert.match(mss, /hillshade-shadow-color: #544d45;/);
+    assert.match(mss, /hillshade-highlight-color: #faf8f5;/);
+    assert.match(mss, /hillshade-accent-color: #847362;/);
+    assert.doesNotMatch(mss, /hillshade-exaggeration/);
+});

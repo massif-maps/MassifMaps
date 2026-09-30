@@ -82,6 +82,26 @@ Every property and its enum values: [`hillshade` in the layer reference](/docs/a
 | `setShadowColor` / `setAccentColor` / `setHighlightColor` | Tint the shadow / accent / highlight bands. |
 | `setIlluminationMapRotationEnabled(bool)` | Rotate the light with the map. |
 
+## Matching MapLibre
+
+The defaults are not MapLibre's. To draw what a MapLibre `hillshade` layer draws from the same DEM:
+
+| MapLibre paint | `HillshadeRasterTileLayer` |
+|---|---|
+| `hillshade-exaggeration` | `contrast`, same number (not `exaggeration`) |
+| `hillshade-method` (default `standard`) | `hillshadeMethod`, `STANDARD` |
+| `hillshade-shadow-color` / `-highlight-color` / `-accent-color` | `shadowColor` / `highlightColor` / `accentColor` |
+| — (the true slope) | `heightScale` `1`, `exaggeration` `1` |
+
+`heightScale` defaults to `0.05`, a twentieth of MapLibre's slope; `exaggeration` multiplies on top of
+it. Measured at the Matterhorn and in the Massif Central, this mapping and MapLibre 5.24 give the
+same shading within 1%. MapLibre up to 5.1 divided the elevation by 4 before the slope
+([internals](../internals/rendering/07-hillshade-contours.md#slope-units-against-maplibre)), so against
+those versions it is `exaggeration` `0.5`.
+
+The DEM source must name its encoding with `dem_encoding`. Without it the tiles are read as Mapbox
+Terrain-RGB, and a Terrarium DEM (Mapterhorn, AWS) then shades 25.6 times too steep.
+
 ## Shader contours
 
 The hillshade layer can also draw **contour lines in the fragment shader** from the same

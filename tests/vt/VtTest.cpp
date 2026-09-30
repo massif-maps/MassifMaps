@@ -34,6 +34,7 @@ void testLabelFade();
 void testLayerContentFlags();
 void testViewStateMatrix();
 void testLabelNormalBuild();
+void testNormalMapSlope();
 void testCollisionPadding();
 void testLabelAnchorAlign();
 void testLabelElevationAnchor();
@@ -73,6 +74,7 @@ int main() {
     testLayerContentFlags();
     testViewStateMatrix();
     testLabelNormalBuild();
+    testNormalMapSlope();
     testCollisionPadding();
     testLabelAnchorAlign();
     testLabelElevationAnchor();

@@ -125,6 +125,12 @@ The fork also adds `HillshadeRasterTileLayer.getExaggeration()` / `setExaggerati
 per-frame relief factor applied as a shader uniform (no re-decode, default `1.0`), which is what
 lets `hillshade-exaggeration` animate without a tile rebuild.
 
+A hillshade slot draws exactly what a stand-alone `HillshadeRasterTileLayer` draws with the same
+values. The CartoCSS `hillshade-exaggeration` is that layer's `exaggeration`, **not** MapLibre's
+property of the same name: to match a MapLibre style, see
+[Matching MapLibre](hillshade.md#matching-maplibre)
+(`hillshade-contrast`, `hillshade-method: standard`, `hillshade-height-scale: 1`).
+
 ## How it renders
 
 The tile-build-time `rendererLayerFilter` means one renderer can't be re-filtered per frame, so

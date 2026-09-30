@@ -40,9 +40,12 @@ def hillshade(v):
                        'hillshade-shadow-color': c['hillshade-shadow'],
                        'hillshade-highlight-color': c['hillshade-highlight'],
                        'hillshade-accent-color': c['hillshade-accent']},
-             # what an app gives its HillshadeRasterTileLayer to match: CartoCSS cannot draw a raster
-             'metadata': {'massif:sdk-layer': {'type': 'hillshade', 'exaggeration': c['relief'], 'opacity': 0.55,
-                                                'visibleZoomRange': [0, 16]}}}]
+             # the HillshadeRasterTileLayer drawing the same as the paint above: MapLibre's exaggeration is its
+             # contrast, and heightScale 1 is MapLibre's slope (docs/features/hillshade.md#matching-maplibre)
+             'metadata': {'massif:sdk-layer': {'type': 'hillshade', 'hillshadeMethod': 'STANDARD', 'contrast': c['relief'],
+                                                'heightScale': 1, 'shadowColor': c['hillshade-shadow'],
+                                                'highlightColor': c['hillshade-highlight'],
+                                                'accentColor': c['hillshade-accent'], 'visibleZoomRange': [0, 16]}}}]
 
 
 def faded(*stops):

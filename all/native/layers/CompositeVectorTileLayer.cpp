@@ -805,8 +805,14 @@ namespace massif {
             }
 
             if (decodeZoomChanged) {
-                if (const mvt::Value* v = getValue("height-scale")) { hillshade->setHeightScale(valueToFloat(*v, 1.0f)); }
-                if (const mvt::Value* v = getValue("contrast")) { hillshade->setContrast(valueToFloat(*v, 0.5f)); }
+                if (const mvt::Value* v = getValue("height-scale")) {
+                    float heightScale = valueToFloat(*v, 1.0f);
+                    if (changed("height-scale", heightScale)) { hillshade->setHeightScale(heightScale); }
+                }
+                if (const mvt::Value* v = getValue("contrast")) {
+                    float contrast = valueToFloat(*v, 0.5f);
+                    if (changed("contrast", contrast)) { hillshade->setContrast(contrast); }
+                }
                 if (const mvt::Value* v = getValue("contour-interval")) {
                     float interval = valueToFloat(*v, 0.0f);
                     hillshade->setContourEnabled(interval > 0.0f);

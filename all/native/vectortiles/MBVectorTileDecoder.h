@@ -154,6 +154,11 @@ namespace massif {
          * @return The ordered style layer names.
          */
         std::vector<std::string> getStyleLayerNames() const;
+        /**
+         * The style names each entry of getStyleLayerNames draws, in the same order. A project may list a layer
+         * several times, one attachment per entry, to draw it at several depths.
+         */
+        std::vector<std::vector<std::string> > getStyleLayerStyleNames() const;
 
         /**
          * Evaluates the config symbolizers (raster / hillshade / contour) of the named style layer at the given view zoom

@@ -207,6 +207,8 @@ namespace massif {
             DrawItemKind kind;
             std::string slot;                  // DRAW_ITEM_EXTERNAL
             std::shared_ptr<Layer> groupLayer; // DRAW_ITEM_VT_GROUP; a Layer so protected virtuals are reachable via friend
+            // DRAW_ITEM_EXTERNAL of a vector slot the style lists at several depths: this entry's styles only.
+            std::shared_ptr<Layer> slotLayer;
         };
 
         static std::shared_ptr<ElevationDecoder> resolveElevationDecoder(const std::shared_ptr<TileDataSource>& dataSource);
@@ -216,6 +218,7 @@ namespace massif {
         void wireChild(const std::shared_ptr<Layer>& child);
         void unwireChild(const std::shared_ptr<Layer>& child);
         std::shared_ptr<Layer> makeGroupLayer(const std::string& filter);
+        std::shared_ptr<Layer> makeSlotLayer(const ExternalSource& source, const std::vector<std::string>& styleNames);
         void rebuildDrawItems();
         /** A slot's resolved config, memoised per (zoom, decoder version). Caller holds _sourceMutex. */
         mvt::ResolvedLayerConfig resolveLayerConfigCached(const std::shared_ptr<MBVectorTileDecoder>& decoder, const std::string& slot, float viewZoom);
@@ -232,6 +235,8 @@ namespace massif {
         const ExternalSource& getExternalSource(const std::string& name) const;
         // A source the style's 'layers' gives no slot is neither loaded nor draped.
         bool isDrawnSlot(const std::string& name) const;
+        // Drawn by its own child, rather than by one slot layer per depth. Caller holds _sourceMutex.
+        bool isDrawnByChild(const std::string& name) const;
         void applyConfig(const ExternalSource& source, const mvt::ResolvedLayerConfig& config, const ViewState& viewState);
         // Applies '#name' values to ContourTileDataSource generation parameters, off the render thread (loadData).
         // Only changed values are re-applied, to avoid reload loops.

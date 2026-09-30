@@ -195,7 +195,7 @@ if(SINGLE_LIBRARY)
   foreach(SDK_SUBPROJECT IN ITEMS ${SDK_SUBPROJECTS})
     set(SUBPROJECT_FLAGS "${${SDK_SUBPROJECT}_FLAGS}")
     if(CMAKE_BUILD_TYPE MATCHES "Release|RELEASE")
-      if(ANDROID OR APPLE)
+      if(ANDROID OR APPLE OR EMSCRIPTEN)
         if(SDK_SUBPROJECT MATCHES "^(zstd)$" AND APPLE)
             set(SUBPROJECT_FLAGS ${SUBPROJECT_FLAGS} "-fno-modules")
         endif()
@@ -446,6 +446,9 @@ if(EMSCRIPTEN)
   set(SDK_WEB_LINK_OPTIONS
     "-pthread" "-fwasm-exceptions"
     "-sPTHREAD_POOL_SIZE=8"
+    # dlmalloc has one global lock: the decode workers and the main thread queue on it, 5x slower
+    # fill in a city - see docs/maintenance/web-build.md#the-allocator.
+    "-sMALLOC=mimalloc"
     "-sMIN_WEBGL_VERSION=2" "-sMAX_WEBGL_VERSION=2" "-sFULL_ES3"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sMODULARIZE=1" "-sEXPORT_ES6=1"

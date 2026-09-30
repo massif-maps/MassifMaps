@@ -58,6 +58,9 @@ public interface ExampleHost {
      */
     float option(String key, float fallback);
 
+    /** How far down the map the screen's own bar reaches, in pixels; 0 with the chrome hidden. */
+    int topInset();
+
     /** Runs something on the UI thread after a delay, cancelled when the example stops. */
     void postDelayed(Runnable action, long millis);
 

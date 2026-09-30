@@ -33,6 +33,8 @@
 @class MSFMapRenderer;
 @class MSFBaseMapView;
 @class MSFOptions;
+// With its underlying type, as MSFBaseMapView.h defines it: ObjC++ refuses an enum forward-declared without one.
+enum MSFFlightEasing : NSInteger;
 
 /**
  * MapView is a view class supporting map rendering and interaction.

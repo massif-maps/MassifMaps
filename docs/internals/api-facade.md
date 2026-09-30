@@ -1006,6 +1006,15 @@ together on `close`/`-detach`, and the failure mode when one is left behind is s
 build correctly while `camera().moveTo` drives the CLOSED screen's map view and the visible map
 never leaves its default camera.
 
+**`Massif.find(kind, id)` / `+[MSFMassif find:objectId:]`** hand back what is already registered,
+as NativeScript's and the web's `find` do — the map's view is one (`find("view", map.options().id())`),
+for what the camera sugar does not wrap: `moveCameraTo`, `mapRenderer.postProcessEffect`. It is the
+registered object, not a reference: closing it drops the id.
+
+**`MassifLayer.moveTo` removes before it inserts.** `Layers::insert` does not take a layer out
+first, so the binding's own move used to leave the layer on the stack twice — the peak finder's
+summit names then never drew at all.
+
 ### The sugar's own value types
 
 `Position`, `Bounds`, `ScreenPoint`, `ScreenRect` (`MSFPosition` … on iOS) are **hand-written and

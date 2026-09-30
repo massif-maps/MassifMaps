@@ -461,6 +461,12 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     }
 
     @Override
+    public int topInset() {
+        View bar = findViewById(R.id.exampleBar);
+        return bar.getVisibility() == View.VISIBLE ? bar.getBottom() : 0;
+    }
+
+    @Override
     public void postDelayed(Runnable action, long millis) {
         ui.postDelayed(action, millis);
     }

@@ -902,10 +902,10 @@ static const DemoFeature LAYER_ORDER[] = {
     }
     [_skyOptions setEnabled:[DemoConfig boolFor:@"sky"]];
     NSString* skyType = [DemoConfig stringFor:@"skyType"];
-    [_skyOptions setType:[skyType isEqualToString:@"gradient"] ? MSFSkyTypeSkyTypeGradient : MSFSkyTypeSkyTypeAtmosphere];
+    [_skyOptions setType:[skyType isEqualToString:@"gradient"] ? MSF_SKY_TYPE_GRADIENT : MSF_SKY_TYPE_ATMOSPHERE];
     NSString* skyQuality = [DemoConfig stringFor:@"skyQuality"];
-    [_skyOptions setQuality:[skyQuality isEqualToString:@"low"] ? MSFSkyQualitySkyQualityLow
-                     : [skyQuality isEqualToString:@"high"] ? MSFSkyQualitySkyQualityHigh : MSFSkyQualitySkyQualityMedium];
+    [_skyOptions setQuality:[skyQuality isEqualToString:@"low"] ? MSF_SKY_QUALITY_LOW
+                     : [skyQuality isEqualToString:@"high"] ? MSF_SKY_QUALITY_HIGH : MSF_SKY_QUALITY_MEDIUM];
     [_skyOptions setAtmosphereSunIntensity:[DemoConfig floatFor:@"skyAtmoSun"]];
     [_skyOptions setAtmosphereLuminance:[DemoConfig floatFor:@"skyAtmoLum"]];
     // In the relief view the sky is part of the palette: a light one over the paper, a night one

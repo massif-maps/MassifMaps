@@ -138,6 +138,12 @@ NS_SWIFT_NAME(Massif)
 
 + (BOOL)has:(NSString *)kind objectId:(NSString *)objectId;
 
+/**
+ * An object already registered under an id, or nil - the map's own view is "view" under the map's
+ * id. It is the registered object itself: -destroy drops the id.
+ */
++ (nullable MSFMassifObject *)find:(NSString *)kind objectId:(NSString *)objectId;
+
 /** Drops an id. Handles held elsewhere go stale rather than dangling. */
 + (BOOL)destroy:(NSString *)kind objectId:(NSString *)objectId;
 

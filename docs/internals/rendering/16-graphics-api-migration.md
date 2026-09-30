@@ -349,6 +349,11 @@ Two traps, both of which a `-fsyntax-only` check passes straight through:
   *context*, but the shaders are GLSL ES 1.00 until Phase 3, and in ESSL 1.00 it is still an
   extension. `commonFsh` keeps `#extension GL_OES_standard_derivatives : enable` under
   `!defined(ESSL3)`; only the runtime probe went away.
+- **`all/native`'s `Shader` always translates to ESSL 3.00, so its sources carry no `#extension`.**
+  The translated header ends in a `layout (...) out` declaration, and an `#extension` after any
+  statement is a compile error. The terrain surface prefix enabled derivatives under
+  `#ifdef GL_OES_standard_derivatives`; ANGLE Metal defines that macro on an ES 3.0 context, so every
+  custom surface shader (the peak finder's) failed on iOS and fell back to the background colour.
 
 `vt::GLExtensions` survives as a near-empty class holding the anisotropic probe. Deleting it would
 change `GLTileRenderer`'s constructor, which is beyond this phase — fold it in whenever that

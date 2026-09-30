@@ -51,6 +51,9 @@ NS_ASSUME_NONNULL_BEGIN
 /** A short message. Use sparingly - a caption is usually the better place. */
 - (void)toast:(NSString *)text;
 
+/** How far down the map the screen's own bar reaches, in points; 0 with the chrome hidden. */
+@property (nonatomic, readonly) CGFloat topInset;
+
 /** Runs something on the main queue after a delay, cancelled when the example stops. */
 - (void)after:(NSTimeInterval)seconds run:(void (^)(void))action;
 

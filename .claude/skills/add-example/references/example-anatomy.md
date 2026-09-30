@@ -31,6 +31,7 @@ everywhere, spelled per platform:
 | button | `host.button(label, Runnable)` | `[host button:label action:^{}]` | `host.button(label, fn)` |
 | toggle | `host.toggle(label, on, OnToggle)` | `[host toggle:label on: action:^(BOOL){}]` | `host.toggle(label, on, fn)` |
 | delay | `host.postDelayed(r, ms)` | `[host after:s run:^{}]` | `host.after(ms, fn)` |
+| top bar the map runs under | `host.topInset()` (px) | `host.topInset` (pt) | none: the map sits below the action bar |
 | cache dir | `host.cachePath(name)` | `[host cachePath:name]` | `cached()` in `shared.ts` |
 
 Android's `onStart` runs on a **worker** thread (building a layer decodes a style, which would be an

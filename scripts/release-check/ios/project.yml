@@ -1,0 +1,36 @@
+# The published Swift package used as apps would: a map product on its own, and the standalone
+# routing product beside MassifMapsCore (full repeats its classes, so never full + routing).
+# `./generate.sh [version] [product]` writes the project.
+name: ReleaseCheck
+options:
+  bundleIdPrefix: com.massifmaps
+  deploymentTarget:
+    iOS: "13.0"
+packages:
+  MassifMaps:
+    url: https://github.com/massif-maps/MassifMaps-ios-swift
+    exactVersion: ${MASSIF_VERSION}
+settings:
+  GENERATE_INFOPLIST_FILE: YES
+  INFOPLIST_KEY_UILaunchScreen_Generation: YES
+targets:
+  MapCheck:
+    type: application
+    platform: iOS
+    sources: [Sources/Map, Sources/Shared]
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.massifmaps.releasecheck.map
+    dependencies:
+      - package: MassifMaps
+        product: ${MASSIF_PRODUCT}
+  RoutingCheck:
+    type: application
+    platform: iOS
+    sources: [Sources/Routing, Sources/Shared]
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.massifmaps.releasecheck.routing
+    dependencies:
+      - package: MassifMaps
+        product: MassifMapsCore
+      - package: MassifMaps
+        product: ValhallaRouting

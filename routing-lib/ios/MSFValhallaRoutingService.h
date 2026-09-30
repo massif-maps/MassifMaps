@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * A geographic coordinate (WGS-84).
  */
-@interface MSFLatLon : NSObject
+__attribute__ ((visibility("default"))) @interface MSFLatLon : NSObject
 @property (nonatomic, assign) double lat;
 @property (nonatomic, assign) double lon;
 + (instancetype)lat:(double)lat lon:(double)lon;
@@ -30,7 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Set @c profile to override the service-level costing model for this request.
  * If @c customJSON is supplied its top-level keys are merged into the request.
  */
-@interface MSFRoutingRequest : NSObject
+__attribute__ ((visibility("default"))) @interface MSFRoutingRequest : NSObject
 /** Ordered list of MSFLatLon waypoints. */
 @property (nonatomic, copy) NSArray<MSFLatLon *> *points;
 /** Optional costing model override (e.g. @"auto", @"pedestrian", @"bicycle"). */
@@ -47,7 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * Set @c profile to override the service-level costing model for this request.
  */
-@interface MSFRouteMatchingRequest : NSObject
+__attribute__ ((visibility("default"))) @interface MSFRouteMatchingRequest : NSObject
 /** Ordered GPS trace points. */
 @property (nonatomic, copy) NSArray<MSFLatLon *> *points;
 /** GPS accuracy in metres (0 = use Valhalla default). */
@@ -76,7 +76,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * All routing methods are synchronous and must be called from a background thread.
  */
-@interface MSFValhallaRoutingService : NSObject
+__attribute__ ((visibility("default"))) @interface MSFValhallaRoutingService : NSObject
 
 /**
  * Initialise with an optional array of MBTiles file paths.
@@ -186,7 +186,7 @@ typedef NSString * _Nullable (^MSFHTTPPostHandler)(NSString *url,
  *
  * All routing methods are synchronous; call them from a background thread.
  */
-@interface MSFValhallaOnlineRoutingService : NSObject
+__attribute__ ((visibility("default"))) @interface MSFValhallaOnlineRoutingService : NSObject
 
 /**
  * Initializer for use when the library is built with ROUTING_WITH_HTTP_CLIENT=ON.

@@ -12,7 +12,8 @@
   },
   "files": [
     "dist",
-    "wasm",
+    "wasm/massif-style.mjs",
+    "wasm/massif-style.wasm",
     "README.md"
   ],
   "repository": {

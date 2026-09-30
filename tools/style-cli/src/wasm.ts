@@ -23,8 +23,8 @@ export async function loadStyleModule(): Promise<StyleModule> {
     const dir = CANDIDATES.find((c) => existsSync(join(c, 'massif-style.mjs')));
     if (!dir) {
         throw new WasmMissing(
-            'massif-style.mjs not found. Build it from the libs-massif submodule, or download it ' +
-            'from a style-tools-v* release into tools/style-cli/wasm/. ' +
+            'massif-style.mjs not found. Build it from libs-massif/cartocss, or download it ' +
+            'from a v* SDK release into tools/style-cli/wasm/. ' +
             'See docs/contributing/style-tools.md.',
         );
     }

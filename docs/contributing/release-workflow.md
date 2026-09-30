@@ -30,19 +30,25 @@ GitHub Pages:
 The workflow file is
 [`.github/workflows/docs.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/docs.yml).
 
-## The web SDK in a release
+## The npm packages in an SDK release
 
-`build.yml`'s `build-web` job builds the web SDK next to the Android and iOS ones, from the same
-version input - twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`
-([variants](../maintenance/web-build.md#variants)):
+`build.yml` builds the web SDK and the style tools next to Android and iOS, from the same version:
 
-- `MassifMaps-web-<version>.zip` on the GitHub release: `dist/web`, the files an app serves.
-- npm `@massif-maps/api` (`bindings/js`), then `@massif-maps/web` (`dist/web`, which depends on
-  it at the same version), with provenance. Publishing needs the `NPM_TOKEN` secret, which
-  `release-style-tools.yml` already uses.
+- `build-web`: the web module twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`
+  ([variants](../maintenance/web-build.md#variants)); `MassifMaps-web-<version>.zip` on the GitHub
+  release (`dist/web`, the files an app serves), and the `@massif-maps/api` and `@massif-maps/web`
+  tarballs.
+- `style-tools` calls `release-style-tools.yml`: the style compiler wasm and the
+  `@massif-maps/style-tools` tarball.
+- `publish-npm`, once every platform has built: attaches the wasm to the release and publishes the
+  three tarballs with `scripts/npm-packages.py publish`, `@massif-maps/api` first, with provenance.
+  npm trusts the workflow itself (trusted publishing, set per package on npmjs.com), so there is
+  no npm token.
 
-A run with `publish` off keeps the zip as a workflow artefact instead. What the package contains
-and how an app hosts it: [the web guide](/docs/getting-started/web).
+With `prerelease` on, the GitHub release is a prerelease and npm gets the `next` dist-tag instead
+of `latest`. A run with `publish` off keeps the zip and the tarballs as workflow artefacts. The same
+script packs the tarballs locally: [BUILDING.md](https://github.com/massif-maps/MassifMaps/blob/master/BUILDING.md#npm-packages).
+What the web package contains and how an app hosts it: [the web guide](/docs/getting-started/web).
 
 ## The Massif styles
 

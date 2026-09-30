@@ -10,6 +10,8 @@ Always use the latest version from the
 [Releases page](https://github.com/massif-maps/MassifMaps/releases). The version below is an example.
 :::
 
+Every package, variant and release asset is listed in [Packages](packages.md).
+
 ## Android
 
 Add JitPack and the dependency to your app's `build.gradle`:

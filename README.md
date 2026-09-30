@@ -69,6 +69,23 @@ See [`website/README.md`](website/README.md) for what works in the dev server vs
 * Android 3.0 or later on all Android devices
 * Windows 10 Mobile or Windows 10 for Windows-based devices
 
+## Packages
+
+| Part | Package | Get it |
+|---|---|---|
+| Android SDK | `com.github.massif-maps:MassifMaps-android-aar` — `full`, `core`, `lite` | JitPack, or the `.aar` on the [release](https://github.com/massif-maps/MassifMaps/releases) |
+| iOS SDK | `massif-maps/MassifMaps-ios-swift` | Swift Package Manager, or the xcframework on the release |
+| Web SDK | [`@massif-maps/web`](https://www.npmjs.com/package/@massif-maps/web) | npm, or the web zip on the release |
+| Typed JavaScript API | [`@massif-maps/api`](https://www.npmjs.com/package/@massif-maps/api) | npm |
+| NativeScript plugin | [`@nativescript-community/ui-massifmaps`](https://www.npmjs.com/package/@nativescript-community/ui-massifmaps) | npm |
+| Routing library | `com.github.massif-maps:MassifMaps-android-aar` variant `routing`; `ValhallaRouting` | JitPack; Swift Package Manager |
+| Style tools (`massif-style`) | [`@massif-maps/style-tools`](https://www.npmjs.com/package/@massif-maps/style-tools) | npm; `css2xml` binaries on the release |
+| Massif styles | [`@massif-maps/styles`](https://www.npmjs.com/package/@massif-maps/styles) | npm, or the `massif-styles-v*` release |
+| Xamarin, UWP | — | build from source |
+
+Versions, variants and release assets: [Packages](https://massif-maps.github.io/MassifMaps/docs/getting-started/packages).
+How each one is built and released: [BUILDING.md](BUILDING.md).
+
 ## Installing and building
 
 ### Android
@@ -117,8 +134,8 @@ repositories {
 dependencies {
     // Full map SDK (optional if you only need routing)
     implementation 'com.github.massif-maps:MassifMaps-android-aar:5.0.0'
-    // Standalone routing library
-    implementation 'com.github.massif-maps:MassifMaps-valhalla-routing:5.0.0'
+    // Standalone routing library: the routing variant of the same artifact
+    implementation 'com.github.massif-maps:MassifMaps-android-aar:5.0.0:routing@aar'
 }
 ```
 
@@ -169,7 +186,9 @@ In Xcode, go to **File › Add Packages…** and enter:
 https://github.com/massif-maps/MassifMaps-ios-swift
 ```
 
-The `ValhallaRouting` library is included as a separate product. Import it in your target:
+The `ValhallaRouting` library is included as a separate product, alone or beside `MassifMapsCore` /
+`MassifMapsLite` (not `MassifMaps`, the full profile, which defines the same routing classes). Import
+it in your target:
 
 ```swift
 import ValhallaRouting

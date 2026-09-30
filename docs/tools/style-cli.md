@@ -19,7 +19,7 @@ SDK run the SDK's own code compiled to WebAssembly — there is no second implem
 
 :::caution Not released yet
 The package is built and tested in CI but has not been published to npm. Until it is, take
-`massif-style.mjs` and `massif-style.wasm` from a `style-tools-v*`
+`massif-style.mjs` and `massif-style.wasm` from an SDK
 [release](https://github.com/massif-maps/MassifMaps/releases), or build it from
 [`tools/style-cli/`](https://github.com/massif-maps/MassifMaps/tree/master/tools/style-cli).
 :::

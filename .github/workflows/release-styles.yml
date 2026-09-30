@@ -138,11 +138,12 @@ jobs:
           name: massif-styles
           path: dist
 
+      # Trusted publishing (OIDC, no token): @massif-maps/styles names this workflow on npmjs.com.
       - name: Publish to npm
         working-directory: dist/npm
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm install -g npm@^11.5.1
+          npm publish --provenance --access public --tag ${{ contains(inputs.version, '-') && 'next' || 'latest' }}
 
       - name: GitHub release
         env:
@@ -151,7 +152,7 @@ jobs:
           gh release create "massif-styles-v$VERSION" --repo "$GITHUB_REPOSITORY" \
             --title "Massif styles $VERSION" \
             --notes "Massif map styles $VERSION: streets, outdoor, topo, hybrid and e-ink. npm: @massif-maps/styles@$VERSION. MapLibre: $SITE/v$VERSION/streets.json. Docs: https://massif-maps.github.io/MassifMaps/docs/styles/massif" \
-            dist/*.zip
+            ${{ contains(inputs.version, '-') && '--prerelease' || '' }} dist/*.zip
 
       # a release made with GITHUB_TOKEN triggers no workflow, so the site is redeployed by hand
       - name: Redeploy the website

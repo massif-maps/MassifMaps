@@ -133,10 +133,11 @@ if(ANDROID)
   )
   set(SDK_SRC_FILES "${SDK_SRC_FILES}" "${SDK_ANDROID_SRC_FILES}")
 elseif(APPLE)
+  # routing-lib/ios is flat: a */ level here matched nothing and shipped a library without its API.
   file(GLOB SDK_IOS_SRC_FILES
-    "${ROUTING_SRC_DIR}/ios/*/*.cpp"
-    "${ROUTING_SRC_DIR}/ios/*/*.mm"
-    "${ROUTING_SRC_DIR}/ios/*/*.h"
+    "${ROUTING_SRC_DIR}/ios/*.m"
+    "${ROUTING_SRC_DIR}/ios/*.mm"
+    "${ROUTING_SRC_DIR}/ios/*.h"
   )
   set(SDK_SRC_FILES "${SDK_SRC_FILES}" "${SDK_IOS_SRC_FILES}")
 endif()

@@ -34,7 +34,7 @@ from it. Users' side: [Massif](../styles/massif.mdx). How the style itself is wr
 (cd tools/style-cli && npm ci && npm run build)
 (cd tools/style-sprite && npm ci)
 (cd styles/massif/release && npm ci && npx playwright install chromium)   # screenshots only
-# the style compiler as wasm, for the compiled flavours: from a style-tools-v* release, or
+# the style compiler as wasm, for the compiled flavours: from an SDK v* release, or
 (cd libs-massif/cartocss/util && emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=MinSizeRel \
    && emmake make -C build-wasm massif-style && cp build-wasm/massif-style.{mjs,wasm} ../../../tools/style-cli/wasm/)
 
@@ -115,7 +115,7 @@ npm provenance.
    wasm, every flavour and the screenshots, validates, uploads it all as an artefact. Nothing is
    published.
 2. **Actions → Release Massif styles → Run workflow**, `version` (no `v`) and `publish` on:
-   - npm `@massif-maps/styles@<version>` (`dist/npm`, provenance, `NPM_TOKEN`);
+   - npm `@massif-maps/styles@<version>` (`dist/npm`, provenance, trusted publishing — no token);
    - GitHub release `massif-styles-v<version>` with every zip and `massif-screenshots-<version>.zip`;
    - `docs.yml` dispatched, since a release made with `GITHUB_TOKEN` triggers no workflow.
 

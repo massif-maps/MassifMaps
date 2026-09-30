@@ -1,11 +1,9 @@
-name: Release style tools CLI
+name: Style tools CLI
 
-# Builds massif-style to WebAssembly, wraps it in @massif-maps/style-tools and publishes.
-# See docs/contributing/style-tools.md for why the tool is split TypeScript + wasm.
+# Builds massif-style to WebAssembly and packs @massif-maps/style-tools. build.yml calls it and
+# publishes the tarball on the SDK version. docs/contributing/style-tools.md: why TypeScript + wasm.
 
 on:
-  # CI for the package: builds the wasm and runs the full smoke test. `publish` has no value on a
-  # pull_request event, so the publish job below cannot fire from here.
   pull_request:
     paths:
       - 'tools/style-cli/**'
@@ -13,15 +11,12 @@ on:
       - 'libs-massif/**'
       - '.github/workflows/release-style-tools.yml'
   workflow_dispatch:
+  workflow_call:
     inputs:
       version:
         description: 'version number (no leading v)'
         required: true
-      publish:
-        description: "Publish to npm and attach to a GitHub Release?"
-        default: false
-        required: true
-        type: boolean
+        type: string
 
 env:
   PACKAGE_DIR: tools/style-cli
@@ -74,8 +69,6 @@ jobs:
     name: Build and test the npm package
     needs: [build-wasm]
     runs-on: ubuntu-latest
-    outputs:
-      TARBALL: ${{ steps.pack.outputs.tarball }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -116,69 +109,10 @@ jobs:
           node dist/cli.js mapbox2css test/fixtures/style.json /tmp/mapbox2css --validate
 
       - name: Set version and pack
-        id: pack
-        working-directory: ${{ env.PACKAGE_DIR }}
-        run: |
-          npm version "${{ inputs.version || '0.0.0' }}" --no-git-tag-version --allow-same-version
-          TARBALL=$(npm pack --silent)
-          echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
+        run: python3 scripts/npm-packages.py pack "${{ inputs.version || '0.0.0-devel' }}" --only style-tools
 
       - uses: actions/upload-artifact@v4
         with:
           name: style-tools-tarball
-          path: ${{ env.PACKAGE_DIR }}/*.tgz
+          path: dist/npm/*.tgz
           if-no-files-found: error
-
-  publish:
-    name: Publish
-    needs: [build-wasm, package]
-    if: inputs.publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write   # create the release, upload the asset
-      id-token: write   # npm provenance
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 1
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
-          registry-url: 'https://registry.npmjs.org'
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: massif-style-wasm
-          path: ${{ env.PACKAGE_DIR }}/wasm
-
-      - name: Build
-        working-directory: ${{ env.PACKAGE_DIR }}
-        run: |
-          npm ci
-          npm run build
-          npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
-
-      - name: Publish to npm
-        working-directory: ${{ env.PACKAGE_DIR }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --provenance --access public
-
-      # Separate tag namespace from the SDK's own vX.Y.Z, so a tool release never looks like an SDK one.
-      - name: Create release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: style-tools-v${{ inputs.version }}
-          name: style-tools v${{ inputs.version }}
-          draft: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Attach the wasm
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "style-tools-v${{ inputs.version }}" \
-            "${PACKAGE_DIR}/wasm/massif-style.wasm" \
-            "${PACKAGE_DIR}/wasm/massif-style.mjs" \
-            --clobber

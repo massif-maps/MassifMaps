@@ -127,6 +127,13 @@ What each piece is:
   two-finger rotation, two-finger tilt and the kinetic handlers are all off in this mode: they are
   map gestures and this scheme has none of them.
 - **`FreeRoamLookSensitivity`** is the turn in degrees per inch of drag (default 90).
+- **Height**: every frame the eye stands `TerrainOptions::FocusLift` over the ground **under the
+  camera** (`MapRenderer::settleEyeGround`), never the focus's. When that ground is not cached yet the
+  renderer requests the eye's own DEM tile and holds; its arrival redraws and places the eye. This
+  rule used to wait for the *focus* ground, and nothing requested the eye's tile. At a panorama the
+  eye's tile is off screen, so on a cold cache an eye placed before its DEM loaded stayed where it
+  was put until the next gesture. `calculateHorizon` had the same gap: it returned no skyline and
+  requested nothing.
 
 ### Panning speed on a tilted view
 

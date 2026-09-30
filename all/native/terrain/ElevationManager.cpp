@@ -220,6 +220,7 @@ namespace massif {
             return horizon;
         }
         std::shared_ptr<ElevationTileGrid> eyeGrid = getGridForInternalPos(eye.getX(), eye.getY(), LoadMode::CACHED_ONLY);
+        requestTileGridAt(eye.getX(), eye.getY(), eyeGrid ? eyeGrid->getTile().getZoom() : -1, 2);
         if (!eyeGrid) {
             return horizon;
         }
@@ -615,6 +616,13 @@ namespace massif {
             }
         }
         _prefetchCondition.notify_one();
+    }
+
+    void ElevationManager::requestTileGridAt(double internalX, double internalY, int resolvedZoom, int priority) const {
+        MapTile tile = getDataTile(getTileForInternalPos(internalX, internalY));
+        if (resolvedZoom < tile.getZoom()) {
+            requestTileGrid(tile, priority);
+        }
     }
 
     void ElevationManager::setPrefetchFocus(double internalX, double internalY) const {

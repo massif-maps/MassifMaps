@@ -1,4 +1,5 @@
 """Expression helpers shared by every layer module."""
+import colorsys
 import re
 
 SOURCE = 'openmaptiles'
@@ -25,6 +26,12 @@ def by_hour(night, day):
 
 
 HSL = re.compile(r'^(hsla?\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*)([\d.]+)(%.*)$')
+
+
+def hex_color(hsl):
+    """'hsl(h, s%, l%)' as '#rrggbb', the only colour spelling the SDK facade reads"""
+    h, s, l = (float(x) for x in re.findall(r'[\d.]+', hsl)[:3])
+    return '#%02x%02x%02x' % tuple(round(c * 255) for c in colorsys.hls_to_rgb(h / 360, l / 100, s / 100))
 
 
 def inverted(expr):

@@ -2,7 +2,7 @@
 waymarked routes. `dem`, `contours` and `routes` are optional sources like the bathymap - on the SDK
 the relief is an app layer (HillshadeRasterTileLayer) and the contours come from
 ContourTileDataSource or the prebaked archive, both with the `contour` layer's `ele` and `div`."""
-from lib import by_hour, gate, get, halo, in_class, layer, scaled, zoom_ramp
+from lib import by_hour, gate, get, halo, hex_color, in_class, layer, scaled, zoom_ramp
 
 SAC = [
     # (id, sac_scale values, colour key, dash): red to T3, blue from T4, the dash tightening with it
@@ -43,9 +43,10 @@ def hillshade(v):
              # the HillshadeRasterTileLayer drawing the same as the paint above: MapLibre's exaggeration is its
              # contrast, and heightScale 1 is MapLibre's slope (docs/features/hillshade.md#matching-maplibre)
              'metadata': {'massif:sdk-layer': {'type': 'hillshade', 'hillshadeMethod': 'STANDARD', 'contrast': c['relief'],
-                                                'heightScale': 1, 'shadowColor': c['hillshade-shadow'],
-                                                'highlightColor': c['hillshade-highlight'],
-                                                'accentColor': c['hillshade-accent'], 'visibleZoomRange': [0, 16]}}}]
+                                                'heightScale': 1, 'shadowColor': hex_color(c['hillshade-shadow']),
+                                                'highlightColor': hex_color(c['hillshade-highlight']),
+                                                'accentColor': hex_color(c['hillshade-accent']),
+                                                'visibleZoomRange': [0, 16]}}}]
 
 
 def faded(*stops):

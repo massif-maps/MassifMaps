@@ -410,13 +410,13 @@ Map {
   polygon-pattern-emissive-strength: 0;
 }
 #landcover[zoom >= 12]['mapnik::geometry_type' = 3]['param::polygons_border' = 1]['param::variant' != 'hybrid']::landcover_outline {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @line_stroke_4)) : @landcover_outline);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @landcover_outline);
   line-width: linear([view::zoom], (12, 0.6), (16, 1));
   line-dasharray: 0.8,1.6;
   line-emissive-strength: 0;
 }
 #landuse[zoom >= 13]['mapnik::geometry_type' = 3][class != 'residential'][class != 'suburb'][class != 'quarter'][class != 'neighbourhood']['param::polygons_border' = 1]['param::variant' != 'hybrid']::landuse_outline {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @line_stroke_4)) : @landcover_outline);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @landcover_outline);
   line-width: linear([view::zoom], (13, 0.4), (16, 0.8));
   line-emissive-strength: 0;
 }
@@ -427,11 +427,11 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #landuse[zoom >= 15][class = 'pitch']['param::variant' != 'hybrid']::pitch_outline_b1 {
-  line-color: (([param::variant] = 'eink') ? @outline_stroke_2 : @pitch_line);
+  line-color: (([param::variant] = 'eink') ? @outline_stroke_3 : @pitch_line);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
 #landuse[zoom >= 15][class = 'playground']['param::variant' != 'hybrid']::pitch_outline_b2 {
-  line-color: (([param::variant] = 'eink') ? @outline_stroke_2 : @pitch_line);
+  line-color: (([param::variant] = 'eink') ? @outline_stroke_3 : @pitch_line);
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
 #landcover[zoom >= 15][class = 'barrier']['param::variant' != 'hybrid']::barrier {
@@ -535,17 +535,17 @@ Map {
   polygon-pattern-emissive-strength: 0;
 }
 #water[zoom >= 8][brunnel != 'tunnel']['param::variant' = 'eink']::water_outline {
-  line-color: @outline_stroke_2;
+  line-color: @outline_stroke_3;
   line-width: linear([view::zoom], (8, 0.3), (16, 0.8));
   line-emissive-strength: 0;
 }
 #aeroway[zoom >= 11]['mapnik::geometry_type' = 3]['param::variant' != 'hybrid']::aeroway_area {
-  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @aeroway);
+  polygon-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_5), (0.3, @line_stroke_6)) : @aeroway);
   polygon-opacity: linear([view::zoom], (10, 0), (11, 1));
   polygon-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
 }
 #aeroway[zoom >= 9]['mapnik::geometry_type' = 2]['param::variant' != 'hybrid']::aeroway_line {
-  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_7)) : @aeroway);
+  line-color: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_5), (0.3, @line_stroke_6)) : @aeroway);
   line-width: exponential(1.5, [view::zoom], (9, (([class] = 'runway') ? 1 : 0.5)), (18, (([class] = 'runway') ? 80 : 20)));
   line-opacity: linear([view::zoom], (10, 0), (11, 1));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
@@ -569,9 +569,9 @@ Map {
   hillshade-contrast: (([param::variant] = 'topo') ? 0.5 : 0.35);
   hillshade-height-scale: 1;
   hillshade-method: 'standard';
-  hillshade-shadow-color: (([param::variant] = 'topo') ? @rail_emphasis : (([param::variant] = 'eink') ? @road_label_halo_night : @hillshade_shadow));
-  hillshade-highlight-color: (([param::variant] = 'topo') ? @hillshade_highlight_color : (([param::variant] = 'eink') ? @glacier_low : @hillshade_highlight));
-  hillshade-accent-color: (([param::variant] = 'topo') ? @hillshade_accent_color : (([param::variant] = 'eink') ? @line_stroke_4 : @hillshade_accent));
+  hillshade-shadow-color: (([param::variant] = 'topo') ? @hillshade_shadow_color : (([param::variant] = 'eink') ? @hillshade_shadow_color_2 : @hillshade_shadow_color_3));
+  hillshade-highlight-color: (([param::variant] = 'topo') ? @hillshade_highlight_color : (([param::variant] = 'eink') ? @road_background_fill : @hillshade_highlight_color_2));
+  hillshade-accent-color: (([param::variant] = 'topo') ? @hillshade_accent_color : (([param::variant] = 'eink') ? @hillshade_accent_color_2 : @hillshade_accent_color_3));
 }
 #contour[zoom >= 12][div < 100]::contour {
   line-color: (([param::variant] = 'topo') ? @contour_stroke : (([param::variant] = 'hybrid') ? @contour_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_stroke_3), (0.3, @contour_stroke_4)) : @contour)));
@@ -580,34 +580,34 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #contour[zoom >= 11][div >= 100]::contour_index {
-  line-color: (([param::variant] = 'topo') ? @contour_index_stroke : (([param::variant] = 'hybrid') ? @contour_index_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_index_stroke_3), (0.3, @line_stroke_9)) : @contour_index)));
+  line-color: (([param::variant] = 'topo') ? @contour_index_stroke : (([param::variant] = 'hybrid') ? @contour_index_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_index_stroke_3), (0.3, @line_stroke_8)) : @contour_index)));
   line-width: linear([view::zoom], (11, 0.6), (16, 1.4));
   line-opacity: linear([view::zoom], (11, (0.35 * [param::contour_opacity])), (14, (0.6 * [param::contour_opacity])));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #transportation[zoom >= 13][zoom < 16][brunnel = 'tunnel'][class = 'rail']['param::show_underground' = 1]::rail_tunnel_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 1.38,1.38;
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][brunnel = 'tunnel'][class = 'rail']['param::show_underground' = 1]::rail_tunnel_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 2.85,2.85;
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 13][zoom < 16][brunnel = 'tunnel'][class = 'transit']['param::show_underground' = 1]::rail_tunnel_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 1.38,1.38;
   line-opacity: @tunnel_stroke_opacity;
   line-emissive-strength: 0;
 }
 #transportation[zoom >= 16][brunnel = 'tunnel'][class = 'transit']['param::show_underground' = 1]::rail_tunnel_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_8), (0.3, @label)) : @rail));
+  line-color: (([param::variant] = 'hybrid') ? @rail_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @label)) : @rail));
   line-width: exponential(1.5, [view::zoom], (13, 0.5), (18, 2));
   line-dasharray: 2.85,2.85;
   line-opacity: @tunnel_stroke_opacity;
@@ -615,7 +615,7 @@ Map {
 }
 #transportation[zoom >= 15][class = 'path'][brunnel = 'tunnel'][subclass != 'steps']::tunnel_path_casing {
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_4 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-gap-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (22, 2));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
@@ -628,7 +628,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][class = 'path'][subclass = 'steps'][brunnel = 'tunnel']::tunnel_steps {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_4 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 1.51,1.51;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -854,7 +854,7 @@ Map {
 }
 #transportation[zoom >= 15][class = 'path'][subclass != 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']['param::variant' != 'outdoor']['param::variant' != 'topo']['param::variant' != 'eink']::path_casing {
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : @path_case);
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_4 : @path_case);
   line-gap-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (22, 2));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
@@ -867,7 +867,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][class = 'path'][subclass = 'steps'][brunnel != 'tunnel'][brunnel != 'bridge']::steps {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_4 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 1.51,1.51;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -3269,7 +3269,7 @@ Map {
 }
 #transportation[zoom >= 15][class = 'path'][brunnel = 'bridge'][subclass != 'steps']::bridge_path_casing {
   line-join: 'round';
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_4 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-gap-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-width: exponential(1.5, [view::zoom], (14, 0.5), (18, 1), (22, 2));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.15);
@@ -3282,7 +3282,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
 }
 #transportation[zoom >= 14][class = 'path'][subclass = 'steps'][brunnel = 'bridge']::bridge_steps {
-  line-color: (([param::variant] = 'hybrid') ? @line_stroke_5 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
+  line-color: (([param::variant] = 'hybrid') ? @line_stroke_4 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke), (0.3, @road_label)) : @path_case));
   line-width: exponential(1.5, [view::zoom], (12, 0), (15, 1), (18, 6), (22, 80));
   line-dasharray: 1.51,1.51;
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.25);
@@ -3461,13 +3461,13 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 1);
 }
 #mountain_peak[zoom >= 13][class = 'cliff']['mapnik::geometry_type' = 2]::cliff {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_5)) : @cliff));
   line-width: linear([view::zoom], (13, 0.6), (18, 1.6));
   line-opacity: linear([view::zoom], (13, 0.5), (16, 0.9));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #mountain_peak[zoom >= 15][zoom < 18][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_5)) : @cliff));
   line-width: linear([view::zoom], (15, 2), (20, 6));
   line-offset: (0 - (linear([view::zoom], (15, 1.2), (20, 3.5))));
   line-dasharray: 0.64,3.2;
@@ -3475,7 +3475,7 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #mountain_peak[zoom >= 18][class = 'cliff']['mapnik::geometry_type' = 2]::cliff_teeth_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_7), (0.3, @line_stroke_6)) : @cliff));
+  line-color: (([param::variant] = 'hybrid') ? @cliff_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @line_stroke_6), (0.3, @line_stroke_5)) : @cliff));
   line-width: linear([view::zoom], (15, 2), (20, 6));
   line-offset: (0 - (linear([view::zoom], (15, 1.2), (20, 3.5))));
   line-dasharray: 1.04,5.2;
@@ -3483,35 +3483,35 @@ Map {
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.3);
 }
 #boundary[zoom >= 3][admin_level = 2][maritime != 1]['param::show_boundaries' = 1]::boundary_country_halo {
-  line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @line_stroke_8)) : @boundary_halo));
+  line-color: (([param::variant] = 'hybrid') ? @bridge_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @label), (0.3, @line_stroke_7)) : @boundary_halo));
   line-width: linear([view::zoom], (3, 4), (12, 8));
   line-opacity: linear([view::zoom], (3, 0), (4, 0.5));
   line-blur: linear([view::zoom], (3, 0), (12, 2));
   line-emissive-strength: 0;
 }
 #boundary[zoom >= 10][zoom < 13][admin_level = 6][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b1 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @line_stroke_4)) : @boundary_minor));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.6), (16, 1.5));
   line-dasharray: 2.47,1.65;
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #boundary[zoom >= 13][admin_level = 6][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b2 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @line_stroke_4)) : @boundary_minor));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.6), (16, 1.5));
   line-dasharray: 3.83,2.55;
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #boundary[zoom >= 10][zoom < 13][admin_level = 8][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b3 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @line_stroke_4)) : @boundary_minor));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.4), (16, 1));
   line-dasharray: 1.65,1.1;
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
   line-emissive-strength: (([param::lighting] = 0) ? 1 : 0.5);
 }
 #boundary[zoom >= 13][admin_level = 8][maritime != 1]['param::show_boundaries' = 1]['param::sub_boundaries' = 1]::boundary_minor_b4 {
-  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @line_stroke_4)) : @boundary_minor));
+  line-color: (([param::variant] = 'hybrid') ? @boundary_minor_stroke : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @outline_stroke), (0.3, @outline_stroke_2)) : @boundary_minor));
   line-width: linear([view::zoom], (10, 0.4), (16, 1));
   line-dasharray: 2.55,1.7;
   line-opacity: linear([view::zoom], (10, 0), (11, 0.7));
@@ -3550,7 +3550,7 @@ Map {
   line-emissive-strength: 0;
 }
 #building[zoom >= 'param::building_min_zoom'][zoom >= 15]['param::buildings'>1]['param::variant' != 'hybrid']::building_3d {
-  building-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night)) : linear([view::brightness], (0.25, @line_stroke_9), (0.3, @building_3d_fill)));
+  building-fill: (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @building_stroke), (0.3, @road_label_night)) : linear([view::brightness], (0.25, @line_stroke_8), (0.3, @building_3d_fill)));
   building-height: (([render_height]) ?? (5));
   building-min-height: (([render_min_height]) ?? (0));
   building-fill-opacity: linear([view::tilt], (70, 1), (85, [param::building_opacity]));

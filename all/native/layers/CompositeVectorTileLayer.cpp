@@ -22,6 +22,7 @@
 
 #include <mapnikvt/Value.h>
 #include <mapnikvt/LayerConfigResolver.h>
+#include <mapnikvt/ParserUtils.h>
 
 namespace massif {
 
@@ -33,30 +34,21 @@ namespace massif {
             return defaultValue;
         }
 
+        // Every colour a style sheet can write: hex only turned an hsl() or @variable shade black.
         Color parseColorValue(const mvt::Value& value, const Color& defaultValue) {
-            const std::string* str = std::get_if<std::string>(&value);
-            if (!str || str->empty() || (*str)[0] != '#') {
+            vt::Color color;
+            if (auto packed = std::get_if<long long>(&value)) {
+                color = vt::Color::fromValue(static_cast<unsigned int>(*packed));
+            } else if (auto str = std::get_if<std::string>(&value); !str || !mvt::tryParseColor(*str, color)) {
                 return defaultValue;
             }
-            std::string hex = str->substr(1);
-            unsigned long packed = 0;
-            try {
-                packed = std::stoul(hex, nullptr, 16);
-            } catch (const std::exception&) {
-                return defaultValue;
+            // mvt returns rgba() - the translator's spelling of a translucent colour - premultiplied.
+            auto str = std::get_if<std::string>(&value);
+            if (str && str->compare(0, 5, "rgba(") == 0 && color.alpha() > 0.0f) {
+                color = vt::Color(color[0] / color.alpha(), color[1] / color.alpha(), color[2] / color.alpha(), color.alpha());
             }
-            if (hex.size() == 6) {
-                return Color(static_cast<unsigned char>((packed >> 16) & 0xff),
-                             static_cast<unsigned char>((packed >> 8) & 0xff),
-                             static_cast<unsigned char>(packed & 0xff), 255);
-            }
-            if (hex.size() == 8) {
-                return Color(static_cast<unsigned char>((packed >> 24) & 0xff),
-                             static_cast<unsigned char>((packed >> 16) & 0xff),
-                             static_cast<unsigned char>((packed >> 8) & 0xff),
-                             static_cast<unsigned char>(packed & 0xff));
-            }
-            return defaultValue;
+            std::array<std::uint8_t, 4> rgba = color.rgba8();
+            return Color(rgba[0], rgba[1], rgba[2], rgba[3]);
         }
 
         RasterTileFilterMode::RasterTileFilterMode parseFilterMode(const std::string& mode) {

@@ -3665,9 +3665,9 @@
           "hillshadeMethod": "STANDARD",
           "contrast": 0.35,
           "heightScale": 1,
-          "shadowColor": "hsl(0, 0%, 30%)",
-          "highlightColor": "hsl(0, 0%, 100%)",
-          "accentColor": "hsl(0, 0%, 45%)",
+          "shadowColor": "#4c4c4c",
+          "highlightColor": "#ffffff",
+          "accentColor": "#737373",
           "visibleZoomRange": [
             0,
             16

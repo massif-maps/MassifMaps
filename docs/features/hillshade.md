@@ -94,10 +94,13 @@ The defaults are not MapLibre's. To draw what a MapLibre `hillshade` layer draws
 | — (the true slope) | `heightScale` `1`, `exaggeration` `1` |
 
 `heightScale` defaults to `0.05`, a twentieth of MapLibre's slope; `exaggeration` multiplies on top of
-it. Measured at the Matterhorn and in the Massif Central, this mapping and MapLibre 5.24 give the
-same shading within 1%. MapLibre up to 5.1 divided the elevation by 4 before the slope
-([internals](../internals/rendering/07-hillshade-contours.md#slope-units-against-maplibre)), so against
-those versions it is `exaggeration` `0.5`.
+it. Measured against MapLibre 5.24 at the same camera and DEM zoom, this mapping shades within 0.5%
+([internals](../internals/rendering/07-hillshade-contours.md#slope-units-against-maplibre)).
+MapLibre up to 5.1 divided the elevation by 4 before the slope and doubled the slope factor, so
+against those versions it is `exaggeration` `0.5`.
+
+The facade reads a colour as `"#rrggbb"`, `"#rrggbbaa"` or an ARGB number; `hsl()` is not read. A
+CartoCSS slot reads any CSS colour.
 
 The DEM source must name its encoding with `dem_encoding`. Without it the tiles are read as Mapbox
 Terrain-RGB, and a Terrarium DEM (Mapterhorn, AWS) then shades 25.6 times too steep.

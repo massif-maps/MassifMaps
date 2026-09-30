@@ -11,16 +11,16 @@ import com.massifmaps.api.Position;
 import com.massifmaps.api.Spec;
 
 /**
- * The 2D/3D switch on the map an app actually ships: a composite layer carrying the demo's own
- * OSM style, a hillshade and contours over one shared DEM, with shadows on top. Everything that
- * costs something when the ground moves is in the frame at once, which is the point - the switch
- * is cheap on a raster basemap with a toy style, and that is not what an app sees.
+ * The 2D/3D switch on the map an app actually ships: a composite layer carrying Massif outdoor, a
+ * hillshade and contours over one shared DEM, with shadows on top. Everything that costs something
+ * when the ground moves is in the frame at once, which is the point - the switch is cheap on a
+ * raster basemap with a toy style, and that is not what an app sees.
  */
 @ExampleInfo(
     id = "terrain-2d-3d",
     title = "2D / 3D switch",
-    description = "One flag switches a composite layer - a full OSM style, hillshade and contours "
-                + "over one shared DEM - between flat and 3D terrain. Full switch decides whether a "
+    description = "One flag switches a composite layer - Massif outdoor, hillshade and contours over "
+                + "one shared DEM - between flat and 3D terrain. Full switch decides whether a "
                 + "flat map still pays for 3D, auto by tilt lets a tilt gesture do the switching, "
                 + "match flight drives the terrain off the camera's own clock, and shadows show what "
                 + "the switch costs with a shadow pass in the frame.",
@@ -77,25 +77,25 @@ public class Switch2D3DExample extends MapExample {
         this.host = host;
         this.map = host.map();
 
-        // ONE DEM behind all three consumers - the terrain mesh, the hillshade slot and the
-        // contour generator - so a tile is fetched, cached and decoded once. Given an id because
-        // the specs below reference it by name.
+        // ONE DEM behind all three consumers - the terrain mesh, the hillshade slot and the contour
+        // generator - so a tile is fetched, cached and decoded once. Given an id because the specs
+        // below reference it by name.
         MassifSource dem = map.source("dem", dem(host));
-        // Contours are GENERATED from that DEM, as ordinary vector tiles carrying 'ele' and 'div'.
-        MassifSource contours = map.source("contours", Spec.of("contour").set("source", "dem"));
+        // Contours are GENERATED from that DEM, as vector tiles carrying 'ele' and 'div'. Every 20 m:
+        // Massif draws each line under an index, and 10 m turns a steep face into a brown mesh.
+        MassifSource contours = map.source("contours",
+            Spec.of("contour").set("source", "dem").set("baseInterval", 20));
 
-        // The demo app's own OSM style, a real one: 23 layers over nine .less files, its own fonts
-        // and shields, and `hillshade` and `contour` already among its layers. A `bundle` package
-        // is the APK's assets on Android and the app bundle's files on iOS.
-        map.style("osm", Spec.of("mbvt")
+        // ONE project for every Massif variant (styles/massif/carto, bundled as assets/styles/massif.zip).
+        map.style("massif", Spec.of("mbvt")
             .set("project", Spec.of("project")
-                .set("assets", Spec.of("bundle").set("path", "style"))
-                .set("name", "osm")));
+                .set("assets", Spec.of("zip")
+                    .set("data", Spec.of("url").set("url", "assets://styles/massif.zip")))
+                .set("name", "outdoor")));
 
-        // A composite layer weaves the two external sources into the STYLE's own layer order:
-        // base.json lists "hillshade" and "contour" between `transportation` and
-        // `transportation_name`, so the relief goes under the road casings and the contour labels
-        // compete with the road names for a slot - which is the ordering an app actually ships.
+        // A composite layer weaves the two sources into the STYLE's own layer order: Massif lists
+        // "hillshade" under the contour lines, the lines under the roads, and the contour labels again
+        // among the names - each entry drawn at its own depth.
         MassifLayer base = map.addLayer("basemap", Spec.of("composite-vector")
             .set("source", Spec.of("persistent-cache")
                 .set("databasePath", host.cachePath("openfreemap.db"))
@@ -104,13 +104,10 @@ public class Switch2D3DExample extends MapExample {
                     .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
                     .set("maxZoom", 14)
                     .set("HTTPHeaders", Spec.object().set("User-Agent", UA))))
-            .set("style", "osm"));
-        // The slot NAME is the style layer name. Hillshade needs no elevation decoder passed: it
-        // reads dem_encoding off the source, which is where the terrain reads it too. Its own
-        // `#hillshade[zoom>=4][zoom<=19]` config rule is what bounds it.
+            .set("style", "massif"));
+        // The slot NAME is the style layer name. The style's `#hillshade` rule carries the relief the
+        // variant was tuned with, and gives it outdoor and topo only.
         base.call("addExternalDataSource", "hillshade", dem.handle(), SOURCE_HILLSHADE);
-        // A VECTOR slot carries no config symbolizer - the style's ordinary line and text rules
-        // zoom-filter it in the decode, and terrain.less starts the coarse divisors at zoom 12.
         base.call("addExternalDataSource", "contour", contours.handle(), SOURCE_VECTOR);
 
         map.terrain(Spec.of("terrain").set("source", "dem"))

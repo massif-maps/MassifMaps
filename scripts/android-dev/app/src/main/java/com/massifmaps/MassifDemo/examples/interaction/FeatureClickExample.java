@@ -27,10 +27,12 @@ public class FeatureClickExample extends MapExample {
     public void onStart(final ExampleHost host) {
         MassifMap map = host.map();
 
-        map.style("alpine", Spec.of("mbvt")
+        // Massif streets: styles/massif/carto, bundled by the build as assets/styles/massif.zip.
+        map.style("massif", Spec.of("mbvt")
             .set("project", Spec.of("project")
                 .set("assets", Spec.of("zip")
-                    .set("data", Spec.of("url").set("url", "assets://styles/alpine.zip")))));
+                    .set("data", Spec.of("url").set("url", "assets://styles/massif.zip")))
+                .set("name", "streets")));
 
         MassifLayer base = map.addLayer("basemap", Spec.of("vector")
             // Cached on disk in front of the server: openfreemap is a free service, and a demo
@@ -42,7 +44,7 @@ public class FeatureClickExample extends MapExample {
                     .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
                     .set("maxZoom", 14)
                     .set("HTTPHeaders", Spec.object().set("User-Agent", "MassifMapsExamples/1.0"))))
-            .set("style", "alpine"));
+            .set("style", "massif"));
 
         map.camera().moveTo(new Position(5.7245, 45.1885), 14.5f);
 

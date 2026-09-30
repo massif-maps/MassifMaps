@@ -65,14 +65,14 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
                              set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]]
             error:nil];
 
-    // Roads, place names and summits ON TOP, from a style project with no background of its own -
-    // see scripts/android-dev/app/src/main/style-projects/hybrid.
+    // Roads, place names and summits ON TOP: Massif's hybrid variant has no background of its own.
     [map style:@"hybrid"
           spec:[[MSFSpec of:@"mbvt"]
-                  set:@"project" value:[[MSFSpec of:@"project"]
+                  set:@"project" value:[[[MSFSpec of:@"project"]
                       set:@"assets" value:[[MSFSpec of:@"zip"]
                           set:@"data" value:[[MSFSpec of:@"url"]
-                              set:@"url" value:@"assets://styles/hybrid.zip"]]]]
+                              set:@"url" value:@"assets://styles/massif.zip"]]]
+                      set:@"name" value:@"hybrid"]]
          error:nil];
     [map addLayer:@"labels"
              spec:[[[MSFSpec of:@"vector"]

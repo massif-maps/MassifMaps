@@ -35,12 +35,14 @@ static NSArray *corner(double dLon, double dLat) {
 - (void)startWithHost:(id<MSFExampleHost>)host {
     MSFMassifMap *map = host.map;
 
-    [map style:@"alpine"
+    // Massif streets: styles/massif/carto, bundled by the build as styles/massif.zip.
+    [map style:@"massif"
           spec:[[MSFSpec of:@"mbvt"]
-                  set:@"project" value:[[MSFSpec of:@"project"]
+                  set:@"project" value:[[[MSFSpec of:@"project"]
                       set:@"assets" value:[[MSFSpec of:@"zip"]
                           set:@"data" value:[[MSFSpec of:@"url"]
-                              set:@"url" value:@"assets://styles/alpine.zip"]]]]
+                              set:@"url" value:@"assets://styles/massif.zip"]]]
+                      set:@"name" value:@"streets"]]
          error:nil];
 
     [map addLayer:@"basemap"
@@ -55,7 +57,7 @@ static NSArray *corner(double dLon, double dLat) {
                              set:@"maxZoom" value:@14]
                              set:@"HTTPHeaders" value:[[MSFSpec object]
                                  set:@"User-Agent" value:@"MassifMapsExamples/1.0"]]]]
-                     set:@"style" value:@"alpine"]
+                     set:@"style" value:@"massif"]
             error:nil];
 
     [map.camera moveTo:[MSFPosition positionWithLng:kCentreLon lat:kCentreLat] zoom:13.5];

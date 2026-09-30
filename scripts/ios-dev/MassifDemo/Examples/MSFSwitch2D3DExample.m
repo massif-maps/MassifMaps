@@ -5,10 +5,10 @@
 #import "api/MSFMassifObject.h"
 
 /**
- * The 2D/3D switch on the map an app actually ships: a composite layer carrying the demo's own OSM
- * style, a hillshade and contours over one shared DEM, with shadows on top. Everything that costs
- * something when the ground moves is in the frame at once, which is the point - the switch is cheap
- * on a raster basemap with a toy style, and that is not what an app sees.
+ * The 2D/3D switch on the map an app actually ships: a composite layer carrying Massif outdoor, a
+ * hillshade and contours over one shared DEM, with shadows on top. Everything that costs something
+ * when the ground moves is in the frame at once, which is the point - the switch is cheap on a
+ * raster basemap with a toy style, and that is not what an app sees.
  *
  * The Objective-C twin of the Android example with the same id - see
  * scripts/android-dev/.../examples/terrain/Switch2D3DExample.java.
@@ -75,24 +75,25 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
     // generator - so a tile is fetched, cached and decoded once. Given an id because the specs
     // below reference it by name.
     MSFMassifSource *demSource = [_map source:@"dem" spec:dem(host) error:nil];
-    // Contours are GENERATED from that DEM, as ordinary vector tiles carrying 'ele' and 'div'.
+    // Contours are GENERATED from that DEM, as vector tiles carrying 'ele' and 'div'. Every 20 m:
+    // Massif draws each line under an index, and 10 m turns a steep face into a brown mesh.
     MSFMassifSource *contours =
-        [_map source:@"contours" spec:[[MSFSpec of:@"contour"] set:@"source" value:@"dem"] error:nil];
+        [_map source:@"contours" spec:[[[MSFSpec of:@"contour"] set:@"source" value:@"dem"]
+                                           set:@"baseInterval" value:@20] error:nil];
 
-    // The demo app's own OSM style, a real one: 23 layers over nine .less files, its own fonts and
-    // shields, and `hillshade` and `contour` already among its layers. A `bundle` package is the
-    // app bundle's files on iOS and the APK's assets on Android.
-    [_map style:@"osm"
+    // ONE project for every Massif variant (styles/massif/carto, bundled as styles/massif.zip).
+    [_map style:@"massif"
            spec:[[MSFSpec of:@"mbvt"]
                    set:@"project" value:[[[MSFSpec of:@"project"]
-                       set:@"assets" value:[[MSFSpec of:@"bundle"] set:@"path" value:@"style"]]
-                       set:@"name" value:@"osm"]]
+                       set:@"assets" value:[[MSFSpec of:@"zip"]
+                           set:@"data" value:[[MSFSpec of:@"url"]
+                               set:@"url" value:@"assets://styles/massif.zip"]]]
+                       set:@"name" value:@"outdoor"]]
           error:nil];
 
-    // A composite layer weaves the two external sources into the STYLE's own layer order: base.json
-    // lists "hillshade" and "contour" between `transportation` and `transportation_name`, so the
-    // relief goes under the road casings and the contour labels compete with the road names for a
-    // slot - which is the ordering an app actually ships.
+    // A composite layer weaves the two sources into the STYLE's own layer order: Massif lists
+    // "hillshade" under the contour lines, the lines under the roads, and the contour labels again
+    // among the names - each entry drawn at its own depth.
     MSFMassifLayer *base = [_map addLayer:@"basemap"
               spec:[[[MSFSpec of:@"composite-vector"]
                       set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
@@ -103,15 +104,12 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
                               set:@"maxZoom" value:@14]
                               set:@"HTTPHeaders" value:[[MSFSpec object]
                                   set:@"User-Agent" value:kUserAgent]]]]
-                      set:@"style" value:@"osm"]
+                      set:@"style" value:@"massif"]
              error:nil];
-    // The slot NAME is the style layer name. Hillshade needs no elevation decoder passed: it reads
-    // dem_encoding off the source, which is where the terrain reads it too. Its own
-    // `#hillshade[zoom>=4][zoom<=19]` config rule is what bounds it.
+    // The slot NAME is the style layer name. The style's `#hillshade` rule carries the relief the
+    // variant was tuned with, and gives it outdoor and topo only.
     [[base call:@"addExternalDataSource"
            args:@[@"hillshade", @(demSource.handle), @(kSourceHillshade)] error:nil] destroy];
-    // A VECTOR slot carries no config symbolizer - the style's ordinary line and text rules
-    // zoom-filter it in the decode, and terrain.less starts the coarse divisors at zoom 12.
     [[base call:@"addExternalDataSource"
            args:@[@"contour", @(contours.handle), @(kSourceVector)] error:nil] destroy];
 

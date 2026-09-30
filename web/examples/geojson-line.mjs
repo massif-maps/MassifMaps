@@ -1,5 +1,5 @@
 /** A GeoJSON document served AS vector tiles, through the ordinary style and renderer. */
-import { osmRaster } from './shared.mjs';
+import { massifStyle, vectorTiles } from './shared.mjs';
 
 /** A stretch of the Tour du Mont Blanc, plus the huts along it. */
 const ROUTE = {
@@ -47,10 +47,10 @@ const STYLE = [
   '}',
 ].join('\n');
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
-  map.addLayer('basemap', { type: 'raster', source: osmRaster() });
+  map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: await massifStyle(map) });
 
   // The source re-tiles whatever it is given, so replacing the document later is one call
   // rather than a layer rebuild.

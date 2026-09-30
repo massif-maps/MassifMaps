@@ -143,6 +143,11 @@ def publish(args):
     if 'web' in found and 'api' not in found:
         print('warning: publishing @massif-maps/web without @massif-maps/api - its dependency must already be on npm')
     for key, tgz in found.items():
+        published = subprocess.run(['npm', 'view', f'{PACKAGES[key]}@{versions[key]}', 'version'],
+                                   capture_output=True, text=True).stdout.strip()
+        if published == versions[key]:
+            print(f'{PACKAGES[key]}@{versions[key]} is already on npm, skipped')
+            continue
         tag = args.tag or ('next' if '-' in versions[key] else 'latest')
         cmd = ['npm', 'publish', tgz, '--access', 'public', '--tag', tag]
         if os.environ.get('GITHUB_ACTIONS') == 'true':

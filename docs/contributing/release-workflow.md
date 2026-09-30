@@ -40,8 +40,10 @@ The workflow file is
   tarballs.
 - `style-tools` calls `release-style-tools.yml`: the style compiler wasm and the
   `@massif-maps/style-tools` tarball.
-- `publish-npm`, once every platform has built: attaches the wasm to the release and publishes the
-  three tarballs with `scripts/npm-packages.py publish`, `@massif-maps/api` first, with provenance.
+- `update-release`, once every platform has built: attaches the wasm, writes the notes and makes
+  the release public.
+- `publish-npm`, after that: publishes the three tarballs with `scripts/npm-packages.py publish`,
+  `@massif-maps/api` first, with provenance, skipping a version npm already has.
   npm trusts the workflow itself (trusted publishing, set per package on npmjs.com), so there is
   no npm token.
 

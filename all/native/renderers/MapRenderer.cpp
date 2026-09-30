@@ -931,13 +931,9 @@ namespace massif {
 
     /**
      * A cached read answers from a coarse ancestor until the eye's own tile loads, so standing on each answer moved the
-     * whole panorama once per level. The eye's tile is requested at once, and a change of level is a glide, not a step.
+     * whole panorama once per level. A change of level is a glide, not a step.
      */
     double MapRenderer::settleEyeGround(const ElevationManager& elevationManager, const MapPos& cameraMapPos, double groundZ, int groundZoom, float deltaSeconds) {
-        MapTile groundTile = elevationManager.getDataTile(elevationManager.getTileForInternalPos(cameraMapPos.getX(), cameraMapPos.getY()));
-        if (groundZoom < groundTile.getZoom()) {
-            elevationManager.requestTileGrid(groundTile, 2);
-        }
         // A coarser answer for the same spot is whichever grid the lookup read last, not new ground.
         double metre = elevationManager.getDisplayScale(cameraMapPos.getY());
         bool sameSpot = _eyeGroundZoom >= 0 && std::abs(cameraMapPos.getX() - _eyeGroundX) < metre && std::abs(cameraMapPos.getY() - _eyeGroundY) < metre;
@@ -1383,13 +1379,23 @@ namespace massif {
                 {
                     MapPos focusMapPos = projectionSurface->calculateMapPos(_viewState.getFocusPos());
                     MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());
+                    double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ(); // invariant under the lift
+                    // App lift on top, kept out of `follow` so it cannot feed its own input.
+                    double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY()) + _animationHandler.getFlightLift();
                     double terrainZ = 0;
-                    if (elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), terrainZ)) {
+                    if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
+                        // The ground under the camera, never the focus's: at a panorama the focus is far off, often uncached.
+                        double groundZ = 0;
+                        int groundZoom = -1;
+                        bool groundKnown = elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), groundZ, groundZoom);
+                        elevationManager->requestTileGridAt(cameraMapPos.getX(), cameraMapPos.getY(), groundZoom, 2);
+                        if (groundKnown) {
+                            _viewState.setFocusHeight(settleEyeGround(*elevationManager, cameraMapPos, groundZ, groundZoom, deltaSeconds) - orbitHeight + lift);
+                        }
+                    } else if (elevationManager->getDisplayHeightCached(focusMapPos.getX(), focusMapPos.getY(), terrainZ)) {
                         // Measured with the focus pinned, so the lift cannot feed back into its input.
                         double cameraTerrainZ = terrainZ;
-                        int cameraGroundZoom = -1;
-                        elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ, cameraGroundZoom);
-                        double orbitHeight = cameraMapPos.getZ() - focusMapPos.getZ(); // invariant under the lift
+                        elevationManager->getDisplayHeightCached(cameraMapPos.getX(), cameraMapPos.getY(), cameraTerrainZ);
                         double pinnedCameraZ = terrainZ + orbitHeight;
                         double clearanceFloor = focusTerrainOptions->getCameraClearance() * elevationManager->getDisplayScale(cameraMapPos.getY());
                         double maxZoomOrbit = _viewState.getOrbitDistance(_options->getZoomRange().getMax()) / _viewState.worldPerInternal();
@@ -1398,17 +1404,9 @@ namespace massif {
                         double follow = CameraClearance::focusFollow(pinnedCameraZ - cameraTerrainZ, minHeight);
                         // Never below the shell: raising keeps the user's tilt and zoom.
                         double shellFocusZ = CameraClearance::shellCameraZ(cameraTerrainZ, maxZoomOrbit, clearanceFloor, clearanceFraction) - orbitHeight;
-                        // App lift on top, kept out of `follow` so it cannot feed its own input.
-                        double lift = focusTerrainOptions->getFocusLift() * elevationManager->getDisplayScale(focusMapPos.getY()) + _animationHandler.getFlightLift();
-                        // First person stands on the ground under the camera; the far focus ground would bob the eye.
-                        if (_options->getFreeRoamMode() == FreeRoamMode::FREE_ROAM_MODE_FIRST_PERSON) {
-                            double groundZ = settleEyeGround(*elevationManager, cameraMapPos, cameraTerrainZ, cameraGroundZoom, deltaSeconds);
-                            _viewState.setFocusHeight(groundZ - orbitHeight + lift);
-                        } else {
-                            _eyeGroundZoom = -1;
-                            _eyeGroundOffset = 0;
-                            _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
-                        }
+                        _eyeGroundZoom = -1;
+                        _eyeGroundOffset = 0;
+                        _viewState.setFocusHeight(std::max(terrainZ * follow, shellFocusZ) + lift);
                     }
                 }
                 MapPos cameraMapPos = projectionSurface->calculateMapPos(_viewState.getCameraPos());

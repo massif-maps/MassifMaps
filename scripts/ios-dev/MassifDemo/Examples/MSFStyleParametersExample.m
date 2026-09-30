@@ -5,7 +5,7 @@
 #import "api/MSFMassifObject.h"
 
 /**
- * A CartoCSS style project, and the two kinds of runtime parameter it can declare.
+ * A style's runtime parameters, and the two kinds a style can declare: Massif's own, changed live.
  *
  * The Objective-C twin of the Android example with the same id - see
  * scripts/android-dev/.../examples/styles/StyleParametersExample.java.
@@ -13,40 +13,26 @@
 @interface MSFStyleParametersExample : NSObject <MSFExample>
 @end
 
-@implementation MSFStyleParametersExample {
-    NSUInteger _water;
-}
+@implementation MSFStyleParametersExample
 
 + (NSString *)exampleId {
     return @"style-parameters";
 }
 
-static NSArray<NSString *> *waterColours(void) {
-    return @[ @"#8fb8d8", @"#2f6f4f", @"#7f5af0" ];
-}
-
 - (void)startWithHost:(id<MSFExampleHost>)host {
     MSFMassifMap *map = host.map;
 
-    // The style project is a zip in the bundle: alpine.json (which declares the parameters) plus
-    // style.mss, zipped from scripts/android-dev/app/src/main/style-projects/alpine by the
-    // project's own build phase - the same folder the Android demo zips into its assets.
-    //
     // Registered under an id of its own rather than inlined in the layer spec, because the example
-    // talks to it afterwards - a layer's style property cannot be read back as a handle. A spec key
-    // that is a STRING is looked up in the registry, which is what "style": "alpine" below does.
-    //
-    // The parameters are part of the spec, so the style is built with them already applied rather
-    // than being corrected on the first frame.
-    MSFMassifObject *style = [map style:@"alpine"
+    // talks to it afterwards - a layer's style property cannot be read back as a handle. The params
+    // are part of the spec, so the first frame is already right.
+    MSFMassifObject *style = [map style:@"massif"
                                    spec:[[[MSFSpec of:@"mbvt"]
-                                           set:@"project" value:[[MSFSpec of:@"project"]
+                                           set:@"project" value:[[[MSFSpec of:@"project"]
                                                set:@"assets" value:[[MSFSpec of:@"zip"]
                                                    set:@"data" value:[[MSFSpec of:@"url"]
-                                                       set:@"url" value:@"assets://styles/alpine.zip"]]]]
-                                           set:@"params" value:[[[MSFSpec object]
-                                               set:@"water_color" value:waterColours()[0]]
-                                               set:@"show_buildings" value:@"true"]]
+                                                       set:@"url" value:@"assets://styles/massif.zip"]]]
+                                               set:@"name" value:@"streets"]]
+                                           set:@"params" value:[[MSFSpec object] set:@"poiStyle" value:@"badge"]]
                                   error:nil];
 
     [map addLayer:@"basemap"
@@ -61,28 +47,29 @@ static NSArray<NSString *> *waterColours(void) {
                              set:@"maxZoom" value:@14]
                              set:@"HTTPHeaders" value:[[MSFSpec object]
                                  set:@"User-Agent" value:@"MassifMapsExamples/1.0"]]]]
-                     set:@"style" value:@"alpine"]
+                     set:@"style" value:@"massif"]
             error:nil];
 
-    [map.camera moveTo:[MSFPosition positionWithLng:5.7245 lat:45.1885] zoom:13.5];
+    [map.camera moveTo:[MSFPosition positionWithLng:5.7245 lat:45.1885] zoom:15.5];
 
-    [host button:@"Water colour" action:^{
-        self->_water = (self->_water + 1) % waterColours().count;
+    [host toggle:@"POI discs" on:YES action:^(BOOL on) {
         // A style parameter is a PROPERTY: the rest of the path is the parameter's name.
-        // LIVE: the decoded tiles already point at this value, so it swaps and redraws.
-        [style set:@"params.water_color" value:waterColours()[self->_water]];
+        // LIVE: the decoded tiles point at this value, so the discs come and go with a redraw.
+        [style set:@"params.poiStyle" value:on ? @"badge" : @"plain"];
     }];
-    [host toggle:@"Buildings" on:YES action:^(BOOL on) {
-        // In a FILTER: this decides what the tile contains, so every tile decodes again.
-        [style set:@"params.show_buildings" value:on ? @"true" : @"false"];
+    [host toggle:@"Boundaries" on:YES action:^(BOOL on) {
+        // In a FILTER: this decides what the tile contains, so every tile decodes again. A string,
+        // converted against the DECLARED default - 1 here, so "0" becomes the number 0.
+        [style set:@"params.show_boundaries" value:on ? @"1" : @"0"];
     }];
-    [host button:@"Night" action:^{
+    [host button:@"Walker" action:^{
         // Several at once, in ONE crossing - which is what a theme swap is.
-        [style apply:[[MSFSpec object] set:@"params" value:[[[MSFSpec object]
-            set:@"water_color" value:@"#0b2b4a"]
-            set:@"show_buildings" value:@"false"]]];
+        [style apply:[[MSFSpec object] set:@"params" value:[[[[MSFSpec object]
+            set:@"highlight_drinking_water" value:@"1"]
+            set:@"path_min_zoom" value:@"12"]
+            set:@"sac_scale_labels" value:@"1"]]];
     }];
-    [host caption:@"Two parameters, two costs: a colour swaps live, a filter re-decodes."];
+    [host caption:@"Two parameters, two costs: a value swaps live, a filter re-decodes."];
 }
 
 @end

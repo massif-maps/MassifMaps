@@ -121,5 +121,5 @@ def spec():
     return {'title': 'Massif', 'sections': sections}
 
 
-def write():
-    open(os.path.join(HERE, 'carto', 'legend.json'), 'w').write(json.dumps(spec(), indent=2, ensure_ascii=False) + '\n')
+def write(out=os.path.join(HERE, 'carto')):
+    open(os.path.join(out, 'legend.json'), 'w').write(json.dumps(spec(), indent=2, ensure_ascii=False) + '\n')

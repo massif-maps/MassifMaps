@@ -73,7 +73,10 @@
 - (instancetype)moveTo:(int)index {
     MSFLayer *target = self.layer;
     if (target && _map) {
-        [[_map.view getLayers] insert:index layer:target];
+        // insert does not take a layer out first: without the remove it is on the stack twice.
+        MSFLayers *layers = [_map.view getLayers];
+        [layers remove:target];
+        [layers insert:MIN(index, [layers count]) layer:target];
     }
     return self;
 }

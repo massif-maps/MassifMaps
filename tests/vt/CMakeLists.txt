@@ -18,6 +18,7 @@ add_executable(vt_tests
   LabelPerspectiveTest.cpp
   ExtrusionCornerTest.cpp
   ExtrusionBevelTest.cpp
+  ExtrusionGroundSkirtClipTest.cpp
   LineJoinTest.cpp
   ExtrusionBaseTest.cpp
   ExtrusionFloorTest.cpp
@@ -42,6 +43,7 @@ add_executable(vt_tests
   LayerContentFlagsTest.cpp
   ViewStateMatrixTest.cpp
   LabelNormalBuildTest.cpp
+  NormalMapSlopeTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/SpanResolver.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"
@@ -55,6 +57,7 @@ add_executable(vt_tests
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/GlyphMap.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/StrokeMap.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/BitmapManager.cpp"
+  "${SDK_BASE_DIR}/libs-massif/vt/src/vt/NormalMapBuilder.cpp"
   ${TESS2_SOURCES}
   ${BIDI_SOURCES})
 

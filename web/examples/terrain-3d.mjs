@@ -1,18 +1,18 @@
 /** The flagship: satellite imagery draped over 3D terrain, with roads and summits on top. */
-import { demTiles, overlayStyle, satelliteTiles, vectorTiles } from './shared.mjs';
+import { demTiles, massifStyle, satelliteTiles, vectorTiles } from './shared.mjs';
 
 // Looking SOUTH at the Matterhorn from high over Zermatt: low enough a tilt to see the pyramid,
 // high enough not to drop into the slope. Tilt 90 is straight down here, so a landscape is LOW.
 const VIEW = [7.6586, 45.9763];
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
   // Imagery underneath.
   map.addLayer('satellite', { type: 'raster', source: satelliteTiles() });
 
-  // Roads, place names and summits ON TOP, from a style with no background of its own.
-  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: overlayStyle() });
+  // Roads, place names and summits ON TOP: Massif's hybrid variant has no background of its own.
+  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: await massifStyle(map, 'hybrid') });
 
   // apply, not three sets: one crossing for the whole group. viewDistanceFactor is in multiples
   // of the camera-to-focus distance; cameraClearance is lowered from 200 m to sit among the peaks.

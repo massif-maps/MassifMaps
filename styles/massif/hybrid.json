@@ -50,6 +50,21 @@
       "type": "raster",
       "url": "satellite.json",
       "tileSize": 512
+    },
+    "dem": {
+      "type": "raster-dem",
+      "tiles": [
+        "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"
+      ],
+      "encoding": "terrarium",
+      "tileSize": 512,
+      "maxzoom": 16
+    },
+    "contours": {
+      "type": "vector",
+      "url": "contours.json",
+      "minzoom": 11,
+      "maxzoom": 14
     }
   },
   "sprite": "sprite/sprite",
@@ -100,6 +115,226 @@
           "type": "raster",
           "below": true
         }
+      }
+    },
+    {
+      "id": "hillshade",
+      "type": "hillshade",
+      "source": "dem",
+      "maxzoom": 16,
+      "paint": {
+        "hillshade-exaggeration": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.44999999999999996,
+          14,
+          0.35,
+          16,
+          0
+        ],
+        "hillshade-shadow-color": "hsl(30, 10%, 30%)",
+        "hillshade-highlight-color": "hsl(40, 30%, 97%)",
+        "hillshade-accent-color": "hsl(30, 15%, 45%)"
+      },
+      "metadata": {
+        "massif:sdk-layer": {
+          "type": "hillshade",
+          "hillshadeMethod": "STANDARD",
+          "contrast": 0.35,
+          "heightScale": 1,
+          "shadowColor": "#544c45",
+          "highlightColor": "#faf8f5",
+          "accentColor": "#847362",
+          "visibleZoomRange": [
+            0,
+            16
+          ]
+        }
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "id": "contour",
+      "type": "line",
+      "source": "contours",
+      "source-layer": "contour",
+      "minzoom": 12,
+      "filter": [
+        "<",
+        [
+          "get",
+          "div"
+        ],
+        100
+      ],
+      "paint": {
+        "line-color": "hsla(0, 0%, 100%, 0.45)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.4,
+          16,
+          0.9
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.3,
+          14,
+          0.5
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-opacity": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            12,
+            [
+              "*",
+              0.3,
+              [
+                "config",
+                "contour_opacity"
+              ]
+            ],
+            14,
+            [
+              "*",
+              0.5,
+              [
+                "config",
+                "contour_opacity"
+              ]
+            ]
+          ],
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.3
+          ]
+        }
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "id": "contour-index",
+      "type": "line",
+      "source": "contours",
+      "source-layer": "contour",
+      "minzoom": 11,
+      "filter": [
+        ">=",
+        [
+          "get",
+          "div"
+        ],
+        100
+      ],
+      "paint": {
+        "line-color": "hsla(0, 0%, 100%, 0.65)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0.6,
+          16,
+          1.4
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0.35,
+          14,
+          0.6
+        ]
+      },
+      "metadata": {
+        "massif:paint": {
+          "line-opacity": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "zoom"
+            ],
+            11,
+            [
+              "*",
+              0.35,
+              [
+                "config",
+                "contour_opacity"
+              ]
+            ],
+            14,
+            [
+              "*",
+              0.6,
+              [
+                "config",
+                "contour_opacity"
+              ]
+            ]
+          ],
+          "line-emissive-strength": [
+            "match",
+            [
+              "config",
+              "lighting"
+            ],
+            0,
+            1,
+            0.3
+          ]
+        }
+      },
+      "layout": {
+        "visibility": "none"
       }
     },
     {
@@ -672,219 +907,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -1135,219 +1246,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -2959,219 +2946,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -3461,219 +3324,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -3968,219 +3707,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -4441,219 +4056,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -4869,219 +4360,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -5348,219 +4715,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -5794,219 +5037,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -6269,219 +5388,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -6673,219 +5668,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -7177,219 +6048,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -8875,219 +7622,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -9320,219 +7943,95 @@
           [
             "match",
             [
-              "config",
-              "road_osm_low"
+              "get",
+              "class"
+            ],
+            [
+              "motorway",
+              "trunk"
             ],
             1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              0.85,
-              0
-            ],
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1,
-              "primary",
-              0.4,
-              0
-            ]
+            "primary",
+            0.4,
+            0
           ],
           8,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.14,
-              "primary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.3,
-              "primary",
-              1.1,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.3,
+            "primary",
+            1.1,
+            0
           ],
           9,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.4,
-              "primary",
-              1.5,
-              "secondary",
-              1,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.6,
-              "primary",
-              1.4,
-              "secondary",
-              0.6,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.6,
+            "primary",
+            1.4,
+            "secondary",
+            0.6,
+            0
           ],
           10,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.82,
-              [
-                "primary",
-                "secondary"
-              ],
-              2,
-              "tertiary",
-              0.35,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              1.94,
-              "primary",
-              1.74,
-              "secondary",
-              0.94,
-              "tertiary",
-              0.46,
-              "minor",
-              0.11,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            1.94,
+            "primary",
+            1.74,
+            "secondary",
+            0.94,
+            "tertiary",
+            0.46,
+            "minor",
+            0.11,
+            0
           ],
           11,
           [
             "match",
             [
-              "config",
-              "road_osm_low"
-            ],
-            1,
-            [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.34,
-              "primary",
-              2.33,
-              "secondary",
-              2.07,
-              "tertiary",
-              0.95,
-              0
+              "get",
+              "class"
             ],
             [
-              "match",
-              [
-                "get",
-                "class"
-              ],
-              [
-                "motorway",
-                "trunk"
-              ],
-              2.44,
-              "primary",
-              2.24,
-              "secondary",
-              1.44,
-              "tertiary",
-              1.16,
-              "minor",
-              0.26,
-              0
-            ]
+              "motorway",
+              "trunk"
+            ],
+            2.44,
+            "primary",
+            2.24,
+            "secondary",
+            1.44,
+            "tertiary",
+            1.16,
+            "minor",
+            0.26,
+            0
           ],
           12,
           [
@@ -11035,6 +9534,93 @@
       },
       "layout": {
         "visibility": "visible"
+      }
+    },
+    {
+      "id": "contour-label",
+      "type": "symbol",
+      "source": "contours",
+      "source-layer": "contour",
+      "minzoom": 13,
+      "filter": [
+        ">=",
+        [
+          "get",
+          "div"
+        ],
+        100
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "to-string",
+          [
+            "get",
+            "ele"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Italic"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          9,
+          17,
+          11
+        ],
+        "text-padding": 4,
+        "text-max-angle": 25,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(0, 0%, 0%, 0.75)",
+        "text-halo-width": 1
+      },
+      "metadata": {
+        "massif:paint": {
+          "text-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsl(0, 0%, 100%)",
+            0.3,
+            "hsl(0, 0%, 100%)"
+          ],
+          "text-halo-color": [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "measure-light",
+              "brightness"
+            ],
+            0.25,
+            "hsla(0, 0%, 0%, 0.75)",
+            0.3,
+            "hsla(0, 0%, 0%, 0.75)"
+          ],
+          "text-occlusion-opacity": 0
+        },
+        "massif:layout": {
+          "text-font": [
+            "ios:Helvetica Neue Italic, Roboto Italic, sans-serif Italic"
+          ]
+        }
       }
     },
     {

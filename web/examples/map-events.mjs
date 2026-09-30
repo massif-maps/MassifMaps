@@ -1,10 +1,10 @@
 /** The camera event an app should hang its data refresh on, and how to tell whose move it was. */
-import { alpineStyle, vectorTiles } from './shared.mjs';
+import { massifStyle, vectorTiles } from './shared.mjs';
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
-  map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: alpineStyle() });
+  map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: await massifStyle(map) });
   map.camera().moveTo([6.8652, 45.8326], { zoom: 11 });
 
   let moves = 0;

@@ -1,5 +1,5 @@
 /** Flying between places, moving everything in one flight. */
-import { osmRaster } from './shared.mjs';
+import { massifStyle, vectorTiles } from './shared.mjs';
 
 const PLACES = [
   { name: 'Mont Blanc', at: [6.8652, 45.8326], zoom: 12.5, rotation: 0, tilt: 60 },
@@ -7,10 +7,10 @@ const PLACES = [
   { name: 'Verdon', at: [6.332, 43.75], zoom: 13, rotation: -30, tilt: 70 },
 ];
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
-  map.addLayer('basemap', { type: 'raster', source: osmRaster() });
+  map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: await massifStyle(map) });
   map.camera().moveTo([5.7245, 45.1885], { zoom: 6 });
 
   for (const place of PLACES) {

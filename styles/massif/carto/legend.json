@@ -1,0 +1,838 @@
+{
+  "title": "Massif",
+  "sections": [
+    {
+      "id": "roads",
+      "label": "Roads",
+      "zoom": 15,
+      "items": [
+        {
+          "id": "motorway",
+          "label": "Motorway",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "motorway"
+          }
+        },
+        {
+          "id": "trunk",
+          "label": "Trunk road",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "trunk"
+          }
+        },
+        {
+          "id": "primary",
+          "label": "Primary road",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "primary"
+          }
+        },
+        {
+          "id": "secondary",
+          "label": "Secondary road",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "secondary"
+          }
+        },
+        {
+          "id": "minor",
+          "label": "Minor road",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "minor"
+          }
+        },
+        {
+          "id": "unpaved",
+          "label": "Unpaved road",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "minor",
+            "surface": "unpaved",
+            "surface_detail": "unpaved"
+          }
+        },
+        {
+          "id": "no-access",
+          "label": "Private or no access",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "service",
+            "access": "no"
+          }
+        },
+        {
+          "id": "cycleway",
+          "label": "Cycleway",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "cycleway"
+          }
+        },
+        {
+          "id": "path",
+          "label": "Path, footway",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "footway"
+          }
+        }
+      ]
+    },
+    {
+      "id": "tracks",
+      "label": "Tracks",
+      "zoom": 15,
+      "items": [
+        {
+          "id": "track-grade1",
+          "label": "Track, paved or solid",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "track",
+            "tracktype": "grade1"
+          },
+          "attachment": "^(track_halo|track_grade1)(_b[0-9]+)?$"
+        },
+        {
+          "id": "track-grade2",
+          "label": "Track, gravel",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "track",
+            "tracktype": "grade2"
+          },
+          "attachment": "^(track_halo|track_grade2)(_b[0-9]+)?$"
+        },
+        {
+          "id": "track-grade3",
+          "label": "Track, mixed",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "track",
+            "tracktype": "grade3"
+          },
+          "attachment": "^(track_halo|track_grade3)(_b[0-9]+)?$"
+        },
+        {
+          "id": "track-grade4",
+          "label": "Track, mostly soft",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "track",
+            "tracktype": "grade4"
+          },
+          "attachment": "^(track_halo|track_grade4)(_b[0-9]+)?$"
+        },
+        {
+          "id": "track-grade5",
+          "label": "Track, soft",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "track",
+            "tracktype": "grade5"
+          },
+          "attachment": "^(track_halo|track_grade5)(_b[0-9]+)?$"
+        },
+        {
+          "id": "track-unknown",
+          "label": "Track, surface unknown",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "track"
+          },
+          "attachment": "^(track_halo|track_unknown)(_b[0-9]+)?$"
+        }
+      ]
+    },
+    {
+      "id": "trails",
+      "label": "Hiking difficulty (SAC scale)",
+      "zoom": 15,
+      "items": [
+        {
+          "id": "sac-t1",
+          "label": "T1 hiking",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "sac_scale": "hiking"
+          },
+          "attachment": "^(trail_halo|trail_t1)(_b[0-9]+)?$"
+        },
+        {
+          "id": "sac-t2",
+          "label": "T2 mountain hiking",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "sac_scale": "mountain_hiking"
+          },
+          "attachment": "^(trail_halo|trail_t2)(_b[0-9]+)?$"
+        },
+        {
+          "id": "sac-t3",
+          "label": "T3 demanding mountain hiking",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "sac_scale": "demanding_mountain_hiking"
+          },
+          "attachment": "^(trail_halo|trail_t3)(_b[0-9]+)?$"
+        },
+        {
+          "id": "sac-t4",
+          "label": "T4 alpine hiking",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "sac_scale": "alpine_hiking"
+          },
+          "attachment": "^(trail_halo|trail_t4)(_b[0-9]+)?$"
+        },
+        {
+          "id": "sac-t5",
+          "label": "T5 demanding alpine hiking",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "sac_scale": "demanding_alpine_hiking"
+          },
+          "attachment": "^(trail_halo|trail_t5)(_b[0-9]+)?$"
+        },
+        {
+          "id": "sac-t6",
+          "label": "T6 difficult alpine hiking",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "sac_scale": "difficult_alpine_hiking"
+          },
+          "attachment": "^(trail_halo|trail_t6)(_b[0-9]+)?$"
+        }
+      ]
+    },
+    {
+      "id": "mtb",
+      "label": "Mountain bike difficulty (beside the path)",
+      "zoom": 15,
+      "items": [
+        {
+          "id": "mtb-easy",
+          "label": "MTB 0-1 easy",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "mtb_scale": "0"
+          },
+          "attachment": "^(mtb_easy)(_b[0-9]+)?$"
+        },
+        {
+          "id": "mtb-medium",
+          "label": "MTB 2 medium",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "mtb_scale": "2"
+          },
+          "attachment": "^(mtb_medium)(_b[0-9]+)?$"
+        },
+        {
+          "id": "mtb-hard",
+          "label": "MTB 3 hard",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "mtb_scale": "3"
+          },
+          "attachment": "^(mtb_hard)(_b[0-9]+)?$"
+        },
+        {
+          "id": "mtb-extreme",
+          "label": "MTB 4-6 extreme",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "path",
+            "subclass": "path",
+            "mtb_scale": "4"
+          },
+          "attachment": "^(mtb_extreme)(_b[0-9]+)?$"
+        }
+      ]
+    },
+    {
+      "id": "transport",
+      "label": "Transport",
+      "zoom": 15,
+      "items": [
+        {
+          "id": "rail",
+          "label": "Railway",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "rail",
+            "subclass": "rail"
+          }
+        },
+        {
+          "id": "aerialway",
+          "label": "Cable car, ski lift",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "aerialway",
+            "subclass": "cable_car"
+          }
+        },
+        {
+          "id": "ferry",
+          "label": "Ferry",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "ferry"
+          }
+        },
+        {
+          "id": "via-ferrata",
+          "label": "Via ferrata",
+          "layer": "transportation",
+          "geometry": "line",
+          "properties": {
+            "class": "via_ferrata"
+          }
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "label": "Water",
+      "zoom": 14,
+      "items": [
+        {
+          "id": "water",
+          "label": "Lake, river",
+          "layer": "water",
+          "geometry": "polygon",
+          "properties": {
+            "class": "lake"
+          }
+        },
+        {
+          "id": "stream",
+          "label": "Stream",
+          "layer": "waterway",
+          "geometry": "line",
+          "properties": {
+            "class": "stream"
+          }
+        },
+        {
+          "id": "stream-intermittent",
+          "label": "Intermittent stream",
+          "layer": "waterway",
+          "geometry": "line",
+          "properties": {
+            "class": "stream",
+            "intermittent": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "land",
+      "label": "Land",
+      "zoom": 14,
+      "items": [
+        {
+          "id": "farmland",
+          "label": "Farmland",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "farmland"
+          }
+        },
+        {
+          "id": "grass",
+          "label": "Grass, meadow",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "grass"
+          }
+        },
+        {
+          "id": "wood",
+          "label": "Forest",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "wood"
+          }
+        },
+        {
+          "id": "wetland",
+          "label": "Wetland",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "wetland"
+          }
+        },
+        {
+          "id": "sand",
+          "label": "Sand",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "sand"
+          }
+        },
+        {
+          "id": "rock",
+          "label": "Rock, scree",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "rock"
+          }
+        },
+        {
+          "id": "glacier",
+          "label": "Glacier",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "ice"
+          }
+        },
+        {
+          "id": "scrub",
+          "label": "Scrub",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "grass",
+            "subclass": "scrub"
+          }
+        },
+        {
+          "id": "park",
+          "label": "Park",
+          "layer": "landcover",
+          "geometry": "polygon",
+          "properties": {
+            "class": "grass",
+            "subclass": "park"
+          }
+        },
+        {
+          "id": "residential",
+          "label": "Residential",
+          "layer": "landuse",
+          "geometry": "polygon",
+          "properties": {
+            "class": "residential"
+          }
+        },
+        {
+          "id": "commercial",
+          "label": "Commercial",
+          "layer": "landuse",
+          "geometry": "polygon",
+          "properties": {
+            "class": "commercial"
+          }
+        },
+        {
+          "id": "industrial",
+          "label": "Industrial",
+          "layer": "landuse",
+          "geometry": "polygon",
+          "properties": {
+            "class": "industrial"
+          }
+        },
+        {
+          "id": "cemetery",
+          "label": "Cemetery",
+          "layer": "landuse",
+          "geometry": "polygon",
+          "properties": {
+            "class": "cemetery"
+          }
+        },
+        {
+          "id": "military",
+          "label": "Military area",
+          "layer": "landuse",
+          "geometry": "polygon",
+          "properties": {
+            "class": "military"
+          }
+        }
+      ]
+    },
+    {
+      "id": "outdoor",
+      "label": "Mountain",
+      "zoom": 14,
+      "items": [
+        {
+          "id": "peak",
+          "label": "Summit",
+          "layer": "mountain_peak",
+          "geometry": "point",
+          "properties": {
+            "class": "peak",
+            "name": "Grand Veymont",
+            "ele": 2341,
+            "rank": 1
+          }
+        },
+        {
+          "id": "alpine-hut",
+          "label": "Alpine hut",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "lodging",
+            "subclass": "alpine_hut",
+            "name": "Refuge"
+          }
+        },
+        {
+          "id": "shelter",
+          "label": "Shelter",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "shelter",
+            "subclass": "shelter",
+            "name": "Cabane"
+          }
+        },
+        {
+          "id": "viewpoint",
+          "label": "Viewpoint",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "attraction",
+            "subclass": "viewpoint",
+            "name": "Belvédère"
+          }
+        },
+        {
+          "id": "cave",
+          "label": "Cave",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "cave_entrance",
+            "name": "Grotte"
+          }
+        },
+        {
+          "id": "ruins",
+          "label": "Ruins",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "castle",
+            "subclass": "ruins",
+            "name": "Ruines"
+          }
+        },
+        {
+          "id": "spring",
+          "label": "Spring",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "spring",
+            "subclass": "spring"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pois",
+      "label": "Places of interest",
+      "zoom": 17,
+      "items": [
+        {
+          "id": "poi-food_and_drink",
+          "label": "Food and drink",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "restaurant",
+            "subclass": "restaurant",
+            "name": "Food and drink",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-store_like",
+          "label": "Shops",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "shop",
+            "subclass": "shop",
+            "name": "Shops",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-arts_and_entertainment",
+          "label": "Culture",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "museum",
+            "subclass": "museum",
+            "name": "Culture",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-commercial_services",
+          "label": "Services",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "bank",
+            "subclass": "bank",
+            "name": "Services",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-sport_and_leisure",
+          "label": "Sport",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "stadium",
+            "subclass": "stadium",
+            "name": "Sport",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-park_like",
+          "label": "Nature, parks",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "park",
+            "subclass": "park",
+            "name": "Nature, parks",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-medical",
+          "label": "Health",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "pharmacy",
+            "subclass": "pharmacy",
+            "name": "Health",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-education",
+          "label": "Education",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "school",
+            "subclass": "school",
+            "name": "Education",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-water",
+          "label": "Drinking water",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "drinking_water",
+            "subclass": "drinking_water",
+            "name": "Drinking water",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-transit",
+          "label": "Transport",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "bus",
+            "subclass": "bus",
+            "name": "Transport",
+            "rank": 1
+          }
+        },
+        {
+          "id": "poi-default",
+          "label": "Other",
+          "layer": "poi",
+          "geometry": "point",
+          "properties": {
+            "class": "place_of_worship",
+            "subclass": "place_of_worship",
+            "name": "Other",
+            "rank": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "shields",
+      "label": "Road numbers",
+      "zoom": 13,
+      "items": [
+        {
+          "id": "shield-red",
+          "label": "Motorway, national road (FR, NL)",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "motorway",
+            "ref": "A 7",
+            "iso_a2": "FR"
+          }
+        },
+        {
+          "id": "shield-yellow",
+          "label": "Departmental road (FR), B road (DE)",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "secondary",
+            "ref": "D 902",
+            "iso_a2": "FR"
+          }
+        },
+        {
+          "id": "shield-blue",
+          "label": "Motorway (DE, GB, ES)",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "motorway",
+            "ref": "A 9",
+            "iso_a2": "DE"
+          }
+        },
+        {
+          "id": "shield-e-road",
+          "label": "European route",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "motorway",
+            "ref": "E 15",
+            "network": "e-road"
+          }
+        },
+        {
+          "id": "shield-neutral",
+          "label": "Other road number",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "primary",
+            "ref": "12"
+          }
+        },
+        {
+          "id": "shield-us-interstate",
+          "label": "Interstate (US)",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "motorway",
+            "ref": "95",
+            "network": "us-interstate",
+            "ref_length": 2
+          }
+        },
+        {
+          "id": "shield-us-highway",
+          "label": "US highway",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "trunk",
+            "ref": "101",
+            "network": "us-highway",
+            "ref_length": 3
+          }
+        },
+        {
+          "id": "shield-exit",
+          "label": "Motorway exit",
+          "layer": "transportation_name",
+          "geometry": "line",
+          "properties": {
+            "class": "motorway",
+            "subclass": "junction",
+            "ref": "12"
+          },
+          "zoom": 15
+        }
+      ]
+    }
+  ]
+}

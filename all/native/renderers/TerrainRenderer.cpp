@@ -2318,12 +2318,8 @@ namespace massif {
 
     const std::string TerrainRenderer::TERRAIN_SURFACE_FRAGMENT_SHADER_PREFIX = R"GLSL(
         #version 100
-        // Screen-space derivatives for a surface shader that wants them (dFdx, fwidth): an extension
-        // must be enabled before any statement, so a custom shader appended below cannot ask itself.
-        // It tests GL_OES_standard_derivatives before using them.
-        #ifdef GL_OES_standard_derivatives
-        #extension GL_OES_standard_derivatives : enable
-        #endif
+        // No derivatives #extension: Shader translates to ESSL 3.00, where dFdx/fwidth are core and the
+        // directive, landing after the translated header, fails the compile (ANGLE Metal defines the macro).
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         precision highp float;
         #else

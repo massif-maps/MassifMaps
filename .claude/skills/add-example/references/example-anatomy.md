@@ -31,6 +31,7 @@ everywhere, spelled per platform:
 | button | `host.button(label, Runnable)` | `[host button:label action:^{}]` | `host.button(label, fn)` |
 | toggle | `host.toggle(label, on, OnToggle)` | `[host toggle:label on: action:^(BOOL){}]` | `host.toggle(label, on, fn)` |
 | delay | `host.postDelayed(r, ms)` | `[host after:s run:^{}]` | `host.after(ms, fn)` |
+| top bar the map runs under | `host.topInset()` (px) | `host.topInset` (pt) | none: the map sits below the action bar |
 | cache dir | `host.cachePath(name)` | `[host cachePath:name]` | `cached()` in `shared.ts` |
 
 Android's `onStart` runs on a **worker** thread (building a layer decodes a style, which would be an
@@ -72,15 +73,27 @@ people's free services, and a demo that gets panned around re-fetches the same t
 
 ```java
 .set("source", Spec.of("persistent-cache")
-    .set("databasePath", host.cachePath("osm-raster.db"))
+    .set("databasePath", host.cachePath("openfreemap.db"))
     .set("capacity", 100 * 1024 * 1024)
     .set("source", Spec.of("http").set("url", "…")))
 ```
 
 Share the database name across examples that use the same server — they then warm each other's
-cache. NativeScript centralises this in `demo-snippets/svelte/examples/shared.ts` (`osmRaster`,
-`vectorTiles`, `satelliteTiles`, `demTiles`); Android and iOS spell it inline, because an example
+cache. NativeScript centralises this in `demo-snippets/svelte/examples/shared.ts` (`vectorTiles`,
+`satelliteTiles`, `demTiles`); Android and iOS spell it inline, because an example
 file there is read as documentation and an indirection would hide the pattern.
+
+## The basemap is Massif
+
+Every example draws the [Massif](../../../../docs/styles/massif.mdx) style over OpenFreeMap's vector
+tiles, streets unless it needs another variant (hybrid over imagery for terrain, outdoor for relief).
+Android and iOS bundle the committed `styles/massif/carto` as `assets://styles/massif.zip` (gradle's
+`zipStyleProjects`, the Xcode pre-build script) and name the variant:
+`project: {assets: {zip, data: {url: assets://styles/massif.zip}}, name: 'streets'}`. The web and
+NativeScript fetch the published project with `massifStyle(map, variant)` / `massifStyle(variant)` in
+their `shared` module. Relief is a `hillshade` layer of its own (CartoCSS draws no raster), and
+generated contours are merged into the base tiles with `merged-mbvt` - Massif draws `contour` at
+three depths, which one composite slot cannot (`terrain-2d-3d`).
 
 The encoding stays on the **HTTP** source, not on the cache in front of it — a wrapper source with
 no map of its own answers with its wrapped source's.

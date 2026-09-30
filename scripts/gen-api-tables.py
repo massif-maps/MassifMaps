@@ -268,10 +268,8 @@ def parseModule(sourcePath, defines, pattern):
     for line in f:
       line = line.rstrip('\n')
 
-      match = SUPPORT_DEFINE.search(line)
-      if match:
-        define = match.group(1) or match.group(2)
-        if define not in defines:
+      for match in SUPPORT_DEFINE.finditer(line):
+        if (match.group(1) or match.group(2)) not in defines:
           return None
 
       if line.strip() == '%{':

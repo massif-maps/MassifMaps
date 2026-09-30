@@ -1,0 +1,9 @@
+{
+  "name": "@massif-maps/styles-release",
+  "private": true,
+  "description": "What release.py --screenshots needs; the published package is written into dist/npm",
+  "type": "module",
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

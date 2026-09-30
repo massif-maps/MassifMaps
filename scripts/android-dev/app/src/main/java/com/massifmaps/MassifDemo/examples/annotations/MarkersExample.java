@@ -22,7 +22,7 @@ import com.massifmaps.api.Position;
     order = 10)
 public class MarkersExample extends MapExample {
 
-    /** OSM's tile usage policy: a real app identifies itself, or the tiles come back as 403s. */
+    /** A tile server wants to know who is asking: a real app identifies itself. */
     private static final String UA = "MassifMapsExamples/1.0 (+https://github.com/massif-maps/MassifMaps)";
 
     /** name, lon, lat, metres */
@@ -39,18 +39,19 @@ public class MarkersExample extends MapExample {
     public void onStart(ExampleHost host) {
         final MassifMap map = host.map();
 
-        map.addLayer("basemap", Spec.of("raster")
-            // Cached on disk in front of the server: OSM's tiles are a free service run on
-            // donations, and a demo that gets panned around re-fetches the same ones every run.
+        // The Massif streets style (styles/massif/carto, bundled by the build as assets/styles/massif.zip)
+        // over OpenFreeMap's vector tiles, cached on disk: a free service a demo would re-fetch every run.
+        map.addLayer("basemap", Spec.of("vector")
             .set("source", Spec.of("persistent-cache")
-                .set("databasePath", host.cachePath("osm-raster.db"))
+                .set("databasePath", host.cachePath("openfreemap.db"))
                 .set("capacity", 100 * 1024 * 1024)
                 .set("source", Spec.of("http")
-                    .set("url", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
-                    .set("maxZoom", 19)
-                    // OSM's tile policy REQUIRES an identifying User-Agent; without one the server
-                    // answers 403 and every tile comes back as an error image.
-                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))));
+                    .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
+                    .set("maxZoom", 14)
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA))))
+            .set("style", Spec.of("mbvt").set("project", Spec.of("project")
+                .set("assets", Spec.of("zip").set("data", Spec.of("url").set("url", "assets://styles/massif.zip")))
+                .set("name", "streets"))));
 
         // One style object shared by every marker - what matters once there are thousands of them.
         // A "style" key that is a STRING is looked up by id; an object would be built inline.

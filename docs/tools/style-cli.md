@@ -57,11 +57,19 @@ Flags:
 | `--strict` | exit non-zero if any MapBox property was dropped |
 | `--shield-anchors [sides]` | let a POI name take the first **free** side of its icon, and draw the icon alone when none is (`shield-anchors` + `shield-text-optional`). Sides in preference order, default `right,left,top,bottom`; a layer stating its own `text-variable-anchor` keeps it |
 | `--icon-font FACE`<br/>`--icon-font-map FILE` | draw every **shield** icon as a glyph of an icon font instead of a sprite, so the style ships one font rather than a sheet of PNGs. `FILE` maps `icon-image` names onto that face's characters (`{"mountain": ""}`, `"U+E90A"` and `59658` all read). A name it has no glyph for draws no icon, so country artwork is lost; a **marker** — a oneway arrow, a crossing — keeps its sprite |
+| `--icon-font-size PX` | the height in sprite pixels a glyph fills at `icon-size` 1, so `icon-size` scales the glyph as it scaled the sprite; unset, the glyph is a multiple of `text-size` |
 
 `massif-style mapbox2css --help` lists the rest.
 
 **Every conversion prints a coverage report** naming each property it could not carry and how often
 it appeared. That is the number to read: a translation is not "done" because it produced files.
+
+**A `hillshade` layer becomes a composite slot** when its `metadata["massif:sdk-layer"]` states the
+`HillshadeRasterTileLayer` settings: `opacity`, `exaggeration`, `contrast`, `heightScale`,
+`hillshadeMethod` and the three colours become the matching `hillshade-*` properties of a `#<id>`
+rule. The paint itself is not read — MapLibre's `hillshade-exaggeration` is the layer's `contrast`
+([Matching MapLibre](../features/hillshade.md#matching-maplibre)). Without the metadata the layer is
+dropped.
 
 ### What it cannot carry
 

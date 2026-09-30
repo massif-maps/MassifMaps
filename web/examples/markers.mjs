@@ -1,5 +1,5 @@
 /** Markers and a popup, both described entirely by JSON - no style builder anywhere. */
-import { osmRaster } from './shared.mjs';
+import { massifStyle, vectorTiles } from './shared.mjs';
 
 const SUMMITS = [
   { name: 'Mont Blanc', at: [6.8652, 45.8326], metres: 4808 },
@@ -10,10 +10,10 @@ const SUMMITS = [
 
 let popup = null;
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
-  map.addLayer('basemap', { type: 'raster', source: osmRaster() });
+  map.addLayer('basemap', { type: 'vector', source: vectorTiles(), style: await massifStyle(map) });
 
   // ONE style object shared by every marker - what matters once there are thousands of
   // them. A `style` key that is a STRING is looked up by id; an object is built inline.

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Massif style preview</title>
-<link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-<script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <style>
   html, body { margin: 0; height: 100%; font: 13px/1.4 system-ui, sans-serif; }
   #app { display: flex; flex-direction: column; height: 100%; }
@@ -71,7 +71,7 @@
       <div class="err" id="err-r"></div></div>
     <div class="pane hidden" id="pane-ref"><div class="tag" id="tag-ref"></div>
       <iframe class="map" id="ref-frame"></iframe></div>
-    <div class="pane hidden" id="pane-ml"><div class="tag">massif — openfreemap</div>
+    <div class="pane hidden" id="pane-ml"><div class="tag" id="tag-ml">massif — openfreemap</div>
       <iframe class="map" id="massif-l"></iframe><div class="err" id="err-ml"></div></div>
     <div class="pane hidden" id="pane-mr"><div class="tag">massif — local</div>
       <iframe class="map" id="massif-r"></iframe><div class="err" id="err-mr"></div></div>
@@ -340,16 +340,20 @@ async function startMassif() {
   const base = new URL(asked ?? 'carto', $('style-url').value.trim()).href;
   const centre = maps[0].getCenter();
   const tilesets = [remoteTileJSON, localTileJSON];
+  // ?compare=<project folder URL>[&compareVariant=<name>] puts another CartoCSS project in the left
+  // pane, over the LOCAL tiles: a release flavour, an older build, another app's style.
+  const compare = ASKED.get('compare');
   for (const [i, id] of ['massif-l', 'massif-r'].entries()) {
-    const source = firstVectorTileURL(tilesets[i]);
+    const side = compare && i === 0 ? 1 : i;
+    const source = firstVectorTileURL(tilesets[side]);
     if (!source) continue;
     // `carto`, not `project`: the web demo reads `project` off the query string itself, and would
     // take this URL for a folder name in its own filesystem. maxzoom is not optional - without it
     // the SDK asks for a tile deeper than the tileset goes instead of overzooming the last one.
     const imagery = imageryURL;
     const query = new URLSearchParams({
-      pane: id, carto: base, source,
-      minzoom: tilesets[i].minzoom ?? 0, maxzoom: tilesets[i].maxzoom ?? 14,
+      pane: id, carto: compare && i === 0 ? new URL(compare, location.href).href : base, source,
+      minzoom: tilesets[side].minzoom ?? 0, maxzoom: tilesets[side].maxzoom ?? 14,
       // The pane is handed a MapLibre camera, so it adopts MapLibre's conventions: the 512-pixel
       // tile the zoom NUMBER is calibrated on, and the refinement density the SDK otherwise sets a
       // full level finer. The dpi it reads off the display is already right - measured against
@@ -370,7 +374,8 @@ async function startMassif() {
       hour: $('hour').value,
       // a family project holds every variant; the style says which one it is
       // ?project=custom|osm loads carto/<project>.json, a child project, in place of the style's variant
-      ...(ASKED.get('project') ? { variant: ASKED.get('project') }
+      ...(compare && i === 0 ? (ASKED.get('compareVariant') ? { variant: ASKED.get('compareVariant') } : {})
+        : ASKED.get('project') ? { variant: ASKED.get('project') }
         : styleJSON.metadata?.['massif:variant'] ? { variant: styleJSON.metadata['massif:variant'] } : {}),
       // the relief is an app layer on the SDK; the style says how to set one up
       ...hillshadeOf(styleJSON),
@@ -380,6 +385,7 @@ async function startMassif() {
     });
     $(id).src = `./massif-pane.html?${query}`;
   }
+  if (compare) $('tag-ml').textContent = `compare — ${compare}${ASKED.get('compareVariant') ? ' / ' + ASKED.get('compareVariant') : ''} (local tiles)`;
   massifStarted = true;
 }
 
@@ -423,12 +429,16 @@ function postCamera() {
   }
 }
 
-/** A style's hillshade as the SDK pane builds it: its DEM, and the layer settings it states. */
+/** A style's hillshade as the SDK pane builds it: its DEM, and the layer settings it states. A hidden one
+ *  (Massif's relief outside outdoor and topo) is left for an app to turn on. */
 function hillshadeOf(style) {
-  const layer = (style.layers || []).find((l) => l.type === 'hillshade' && l.metadata?.['massif:sdk-layer']);
+  const layer = (style.layers || []).find((l) => l.type === 'hillshade' && l.metadata?.['massif:sdk-layer']
+    && l.layout?.visibility !== 'none');
   const source = layer && style.sources?.[layer.source];
   const dem = source?.tiles?.[0];
-  return dem ? { dem, demMaxZoom: source.maxzoom ?? 22, hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
+  // MapLibre's own default encoding; the SDK needs it named, or it reads Terrarium as Terrain-RGB (25.6x the slope)
+  return dem ? { dem, demMaxZoom: source.maxzoom ?? 22, demEncoding: source.encoding ?? 'mapbox',
+    hillshade: JSON.stringify(layer.metadata['massif:sdk-layer']) } : {};
 }
 
 function firstVectorTileURL(tilejson) {

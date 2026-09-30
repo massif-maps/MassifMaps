@@ -20,8 +20,15 @@ a list to update.
 
 A web port runs live on the site: the gallery frames `web/examples/run.html?id=<id>`, which loads
 the web SDK and calls the file's default export with a host (`web/examples/host.mjs`, the twin of
-the NativeScript `host.ts`). An example only the web can show - the peak finder - carries its own
-`@title`, `@section` and `@order` in its header comment, and has no Android file.
+the NativeScript `host.ts`). An example only the web can show carries its own `@title`, `@section`
+and `@order` in its header comment, and has no Android file.
+
+Generated text an example shares is written by a generator, not copied by hand. The peak finder's
+shaders and summit CartoCSS come from `web/examples/peak-finder/look.mjs`;
+`node scripts/gen-peak-finder-assets.mjs` writes them to
+`scripts/android-dev/app/src/main/assets/peak-finder/` (which `scripts/ios-dev/project.yml` bundles
+too) and to the NativeScript demo's `examples/peak-finder/look.ts`. Re-run it after regenerating
+the web modules.
 
 The website shows one code tab per platform that has ported the id, and `gen-examples.py` reports
 how many of each there are.
@@ -108,8 +115,15 @@ silently a no-op there.
 ```bash
 python3 scripts/capture-examples.py                    # every example
 python3 scripts/capture-examples.py terrain-3d markers # only these
+python3 scripts/capture-examples.py --web http://localhost:3000/MassifMaps/massif/examples/run
+python3 scripts/capture-examples.py --ios <simulator udid> search-features
 python3 scripts/gen-examples.py                        # record them in the manifest
 ```
+
+The default captures on an Android device over adb. `--web` drives the web gallery in headless
+Chromium (`web/demo/bench.mjs`, no device, 960x480 at 2x); the web module has no search and its
+terrain frames stay coarse, so `search-features` and the 3D examples come from `--ios`, a booted
+simulator running the demo.
 
 They land in `docs/examples/screenshots/<id>.png` — **one home**, shipped inside the APK as an
 asset for the gallery grid and read from the same place by the website.

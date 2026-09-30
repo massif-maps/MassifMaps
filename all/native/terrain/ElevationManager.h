@@ -200,6 +200,12 @@ namespace massif {
         void requestTileGrid(const MapTile& dataTile, int priority) const;
 
         /**
+         * Requests the finest elevation tile under a point unless 'resolvedZoom' (a cached read's, -1 for none)
+         * already is it. A cached read only finds what others loaded; off screen, nothing else loads it.
+         */
+        void requestTileGridAt(double internalX, double internalY, int resolvedZoom, int priority) const;
+
+        /**
          * Sets the camera focus (internal coordinates) the prefetch queue drains nearest-first from, within a
          * priority. Read at dequeue, so a pan re-orders what is already waiting. Until set, newest first.
          */

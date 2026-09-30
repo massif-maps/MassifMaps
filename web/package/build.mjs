@@ -58,6 +58,7 @@ writeFileSync(path.join(out, 'package.json'), JSON.stringify({
     './massif.mjs': './massif.mjs',
     './coi-serviceworker.js': './coi-serviceworker.js',
     './massif-web.mjs': './massif-web.mjs',
+    './massif-web-full.mjs': './massif-web-full.mjs',
   },
   files: ['*.mjs', '*.wasm', '*.data', '*.d.ts', 'coi-serviceworker.js'],
   sideEffects: false,

@@ -53,6 +53,8 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             {"mountain": "\\ue90a"} or {"mountain": "U+E90A"} or {"mountain": 59658}.
                             A name absent from it draws no icon, so country artwork (an RER
                             roundel, a national motorway plate) is lost - that is the trade
+      --icon-font-size PX   the height in sprite pixels a glyph fills at icon-size 1, so icon-size
+                            scales a glyph as it scales the sprite; unset, a multiple of text-size
       --schema NAME         retarget the style's source layers at another tile schema.
                             'openmaptiles' is the only target. A MapTiler planet_v4 style
                             becomes the OpenMapTiles layer plus the class filter that
@@ -160,7 +162,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'tile-draw-size', 'fonts', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config', 'spec', 'params', 'out', 'svg', 'lang']);
+const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'icon-font-size', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'tile-draw-size', 'fonts', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config', 'spec', 'params', 'out', 'svg', 'lang']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -275,7 +277,8 @@ async function mapbox2css(args: string[]): Promise<number> {
     if (face && mapFile) {
         const glyphs = readGlyphMap(mapFile);
         if (glyphs === null) return 2;
-        iconFont = { face, glyphs };
+        const size = flags.get('icon-font-size');
+        iconFont = { face, glyphs, ...(size !== undefined ? { size: Number(size) } : {}) };
         process.stdout.write(`Icon font "${face}": ${glyphs.size} glyph(s).\n`);
     }
 

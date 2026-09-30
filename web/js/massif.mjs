@@ -371,13 +371,14 @@ export function canvasSelector(canvas, id = 'map') {
 }
 
 /**
- * Loads the SDK module. `moduleUrl` defaults to massif-web.mjs beside this file; `options` go to
- * the emscripten factory (print, printErr, locateFile...).
+ * Loads the SDK module. `moduleUrl` defaults to massif-web.mjs beside this file, or
+ * massif-web-<variant>.mjs for a `variant` such as 'full'; `options` go to the emscripten factory
+ * (print, printErr, locateFile...).
  */
 // Not a literal in new URL(): a bundler would take that for an asset to bundle.
-const MODULE_FILE = 'massif-web.mjs';
+const MODULE_NAME = 'massif-web';
 
-export async function loadModule({ moduleUrl = new URL(MODULE_FILE, import.meta.url).href, ...options } = {}) {
+export async function loadModule({ variant, moduleUrl = new URL(`${MODULE_NAME}${variant ? `-${variant}` : ''}.mjs`, import.meta.url).href, ...options } = {}) {
   // webpackIgnore: a bundler must not inline the module, its pthread workers import it by URL.
   const { default: factory } = await import(/* webpackIgnore: true */ moduleUrl);
   const base = new URL('.', new URL(moduleUrl, location.href)).href;

@@ -18,6 +18,8 @@
 /static/preview
 # The same for the SDK module the live examples load.
 /static/massif
+# The MapLibre Massif styles, from the releases: styles/massif/site.py
+/static/styles
 
 # Misc
 .DS_Store

@@ -1,5 +1,5 @@
 /** Everything the sky and the fog can do, on one map: scattering, a day cycle, stars, and peaks clear of a valley haze. */
-import { demTiles, overlayStyle, satelliteTiles, vectorTiles } from './shared.mjs';
+import { demTiles, massifStyle, satelliteTiles, vectorTiles } from './shared.mjs';
 
 /** Looking south at the Matterhorn from over Zermatt - see terrain-3d for the framing. */
 const VIEW = [7.6586, 45.9763];
@@ -101,7 +101,7 @@ const CUSTOM_SKY = `
     }
 `;
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
   let moment = 2; // start at dusk: it is what shows the scattering off best
@@ -111,7 +111,7 @@ export default function start(host) {
   let customSky = false;
 
   map.addLayer('satellite', { type: 'raster', source: satelliteTiles() });
-  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: overlayStyle() });
+  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: await massifStyle(map, 'hybrid') });
 
   map.terrain({ type: 'terrain', source: demTiles() }).apply({
     exaggeration: 1.25,

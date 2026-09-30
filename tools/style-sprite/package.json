@@ -4,10 +4,16 @@
   "private": true,
   "description": "Pack a folder of SVGs into a MapLibre sprite sheet",
   "type": "module",
-  "bin": { "massif-sprite": "build.mjs" },
-  "engines": { "node": ">=20" },
+  "bin": {
+    "massif-sprite": "build.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "svg2ttf": "^6.1.0",
+    "svgicons2svgfont": "^15.0.1"
   }
 }

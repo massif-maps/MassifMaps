@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Massif styles — release check</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font: 13px system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  #bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px; background: #1c1f24; color: #d7dde6; }
+  #bar input[type=text] { width: 7em; }
+  #map { flex: 1; }
+  #url { font-family: ui-monospace, monospace; color: #9fb4cc; }
+  #err { color: #ff9b9b; }
+  a { color: #9fc7ff; }
+</style>
+</head>
+<body>
+<!-- The MapLibre styles as a user gets them: website, npm (unpkg), a local release (../dist), the repo.
+     Served by tools/style-preview/serve.py; docs/contributing/massif-style-release.md. -->
+<div id="bar">
+  <label>from <select id="from">
+    <option value="site">website, latest</option>
+    <option value="site-v">website, version</option>
+    <option value="npm">npm (unpkg)</option>
+    <option value="dist">local release (../dist)</option>
+    <option value="repo">repo (../*.json)</option>
+  </select></label>
+  <label>version <input id="version" type="text" placeholder="1.0.0 / next"></label>
+  <label>variant <select id="variant">
+    <option>streets</option><option>outdoor</option><option>topo</option><option>hybrid</option><option>eink</option>
+  </select></label>
+  <label title="the release's JSON names the website's sprite; a build that is not deployed yet serves it beside the JSON"><input id="sprite" type="checkbox" checked> sprite beside the JSON</label>
+  <label title="hybrid's imagery is a placeholder in the release"><input id="satellite" type="checkbox" checked> EOX imagery for hybrid</label>
+  <span id="url"></span>
+  <span id="sdk"></span>
+  <span id="err"></span>
+</div>
+<div id="map"></div>
+<script>
+  const SITE = 'https://massif-maps.github.io/MassifMaps/styles/massif';
+  const SATELLITE = {
+    type: 'raster', tileSize: 256, maxzoom: 15,
+    tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg'],
+    attribution: '<a href="https://s2maps.eu">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 & 2017)',
+  };
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  for (const key of ['from', 'version', 'variant']) if (params.get(key)) $(key).value = params.get(key);
+
+  // the folder the chosen build's <variant>.json and sprite/ sit in
+  function folder() {
+    const v = $('version').value.trim();
+    switch ($('from').value) {
+      case 'site': return SITE;
+      case 'site-v': return `${SITE}/v${v}`;
+      case 'npm': return `https://unpkg.com/@massif-maps/styles@${v || 'latest'}/maplibre`;
+      case 'dist': return new URL('../dist/maplibre', location.href).href;
+      default: return new URL('..', location.href).href.replace(/\/$/, '');
+    }
+  }
+
+  // the CartoCSS flavours of the same build, drawn by the SDK in the style preview's compare pane
+  function sdkLinks() {
+    const v = $('version').value.trim();
+    const base = $('from').value === 'npm' ? `https://unpkg.com/@massif-maps/styles@${v || 'latest'}`
+      : $('from').value === 'dist' ? '/styles/massif/dist' : null;
+    if (!base) return '';
+    const c = map.getCenter();
+    const open = (flavour) => `/?style=${encodeURIComponent(location.origin + '/styles/massif/streets.json')}&massif=1` +
+      `&compare=${encodeURIComponent(base + '/' + flavour)}&compareVariant=${$('variant').value}` +
+      `&lon=${c.lng.toFixed(5)}&lat=${c.lat.toFixed(5)}&zoom=${map.getZoom().toFixed(2)}`;
+    return `SDK: <a href="${open('cartocss')}">cartocss</a> · <a href="${open('cartocss-iconfont')}">cartocss-iconfont</a>`;
+  }
+
+  const map = new maplibregl.Map({ container: 'map', style: { version: 8, sources: {}, layers: [] },
+    center: [Number(params.get('lon') || 5.7245), Number(params.get('lat') || 45.1885)], zoom: Number(params.get('zoom') || 13), hash: true });
+  map.addControl(new maplibregl.NavigationControl());
+  map.on('error', (e) => {
+    const message = e.error?.message ?? String(e.error);
+    if (!/does not exist on source/.test(message)) $('err').textContent = message;
+  });
+
+  async function load() {
+    $('err').textContent = '';
+    const url = `${folder()}/${$('variant').value}.json`;
+    $('url').innerHTML = `<a href="${url}">${url}</a>`;
+    $('sdk').innerHTML = sdkLinks();
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${response.status} ${url}`);
+      const style = await response.json();
+      if ($('sprite').checked) style.sprite = `${folder()}/sprite/sprite`;
+      if ($('satellite').checked && style.sources.satellite) style.sources.satellite = SATELLITE;
+      map.setStyle(style);
+    } catch (error) {
+      $('err').textContent = String(error);
+    }
+  }
+  for (const id of ['from', 'version', 'variant', 'sprite', 'satellite']) $(id).addEventListener('change', load);
+  map.on('moveend', () => { $('sdk').innerHTML = sdkLinks(); });
+  load();
+</script>
+</body>
+</html>

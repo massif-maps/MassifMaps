@@ -323,6 +323,18 @@ namespace massif {
         return names;
     }
 
+    std::vector<std::vector<std::string> > MBVectorTileDecoder::getStyleLayerStyleNames() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        std::vector<std::vector<std::string> > styleNames;
+        if (_map) {
+            for (const std::shared_ptr<mvt::Layer>& layer : _map->getLayers()) {
+                styleNames.push_back(layer->getStyleNames());
+            }
+        }
+        return styleNames;
+    }
+
     mvt::ResolvedLayerConfig MBVectorTileDecoder::resolveLayerConfig(const std::string& layerName, float viewZoom) const {
         std::lock_guard<std::mutex> lock(_mutex);
 

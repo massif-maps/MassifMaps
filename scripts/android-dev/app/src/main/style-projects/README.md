@@ -4,6 +4,10 @@ Each folder here is zipped into `assets/styles/<name>.zip` by the `zipStyleProje
 and read by `ZippedAssetPackage`. The **folder** is the source — diffable and editable; the zip is a
 build product and is never committed.
 
+The examples no longer read these: they draw Massif, the committed `styles/massif/carto`, zipped by
+the same task into `assets/styles/massif.zip`. What is left here serves the demo's
+`--es styleAssetZip <name>` extra, the bench against Mapbox Standard among them.
+
 `alpine` and `hybrid` are ours, written by hand.
 
 ## `mapbox-standard` and `maptiler-streets` are placeholders
@@ -22,8 +26,8 @@ flattened city does not keep a dark ring around every footprint. It is opt-in: w
 shadow outlives the walls is the style's call. The checked-in `mapbox-standard/style.mss` predates
 the flag and does not carry it yet - it takes a re-run against Mapbox's own `standard.json`.
 
-They are here so the `day-cycle-light` example can be run and the light curve judged against a real
-map. **They are to be replaced by open-licensed equivalents**, for two reasons:
+They were here so the `day-cycle-light` example could be judged against a real map; that example now
+draws Massif, and they stay for the bench. **They are to be replaced by open-licensed equivalents**, for two reasons:
 
 - the 595 icons in `mapbox-standard/icons` and `icons-glyph` are Mapbox's, and `maptiler-streets`
   carries MapTiler's — neither is ours to redistribute;

@@ -29,19 +29,14 @@
 }
 
 /**
- * Mapbox Standard reads MAPBOX's own vector tiles - its layers name mapbox-streets-v8 source
- * layers, so no other tileset can feed it. Put your own token here; a demo cannot ship one.
- */
-static NSString *const kMapboxToken = @"<your-mapbox-access-token>";
-
-/**
- * The two styles, both converted by `massif-style mapbox2css --live-light`: the colours stay as the
- * style authored them and the `*-emissive-strength` values ride along, for the SDK to light at draw
- * time. That is what leaves ONE palette covering every hour.
+ * Massif's variants, one project converted with `--live-light`: the colours stay as authored and the
+ * `*-emissive-strength` values ride along for the SDK to light at draw time - ONE palette for every
+ * hour. E-ink inverts at night instead of dimming.
  */
 static NSArray<NSArray<NSString *> *> *styles(void) {
-    return @[ @[ @"Mapbox Standard", @"mapbox-standard" ],
-              @[ @"MapTiler Streets", @"maptiler-streets" ] ];
+    return @[ @[ @"Massif streets", @"streets" ],
+              @[ @"Massif outdoor", @"outdoor" ],
+              @[ @"Massif e-ink", @"eink" ] ];
 }
 
 /**
@@ -114,7 +109,7 @@ static const double kAutoFlattenTilt = 88.0;
 static const double kAutoFlattenParallax = 2.0;
 
 /**
- * Both style projects declare this parameter; only Mapbox Standard's Map block reads it. At 80 a
+ * Every converted style declares this parameter, and its Map block reads it. At 80 a
  * building keeps a fifth of its height at tilt 90 - still legible as a building, where the
  * project's own default of 90 reads as flat once the camera is that far over.
  */
@@ -161,14 +156,14 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
     // A TERRAIN, for the shadows. Cast shadows are drawn from the drape pass and land on the
     // terrain surface - with no terrain there is no surface to receive them and nothing casts at
     // all, however high shadowStrength goes. Paris is flat, so this is here for the light.
-    [[map terrain:[[MSFSpec of:@"terrain"]
+    [[map terrainWithSpec:[[MSFSpec of:@"terrain"]
         set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
             set:@"databasePath" value:[host cachePath:@"mapterhorn-dem.db"]]
             set:@"capacity" value:@(200 * 1024 * 1024)]
             set:@"source" value:[[[[MSFSpec of:@"http"]
                 set:@"url" value:@"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]
                 set:@"maxZoom" value:@16]
-                set:@"metaData" value:[[MSFSpec object] set:@"dem_encoding" value:@"terrarium"]]]]]
+                set:@"metaData" value:[[MSFSpec object] set:@"dem_encoding" value:@"terrarium"]]]] error:nil]
         // The auto 2D/3D thresholds are the SDK's defaults, set out loud because the toggle below
         // is what an app turns them off with.
         apply:[[[[[MSFSpec object] set:@"exaggeration" value:@1] set:@"cameraClearance" value:@40]
@@ -177,7 +172,7 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
 
     // The curve is only read while this is on; off, the style's and the app's own sun colours
     // stand, which is what every map did before the curve existed.
-    [map light:[[[[[[MSFSpec of:@"light"]
+    [map lightWithSpec:[[[[[[MSFSpec of:@"light"]
         set:@"dayCycleLightsEnabled" value:@YES]
         set:@"sunOverridingStyle" value:@YES]
         // Without this the ground is never lit, and the shadow multiply lives in the same block -
@@ -189,7 +184,7 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
         // and swing round as the hour is swept - and fade out as it sets, because the SDK scales
         // this by how much of the light is direct. 1 is the physical depth.
         set:@"shadowStrength" value:@1.0]
-        set:@"shadowSoftness" value:@1.2]];
+        set:@"shadowSoftness" value:@1.2] error:nil];
 
     // A sky, because the hour is the whole example: the atmosphere is integrated against the SAME
     // sun, so it reddens and darkens with the slider without a value of its own. Options starts
@@ -202,7 +197,11 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
 
     [host button:@"Style" action:^{
         self->_style = (self->_style + 1) % styles().count;
-        [self buildLayer:self->_host.map];
+        // A variant is a style PARAMETER of the one project: the tiles re-decode, nothing reloads.
+        MSFMassifObject *result = [[self->_host.map layer:@"basemap"] call:@"tileDecoder.setStyleParameter"
+                                                                      args:@[ @"variant", styles()[self->_style][1] ]
+                                                                     error:nil];
+        [result destroy];
         [self caption];
     }];
     [host button:@"Formula" action:^{
@@ -242,44 +241,32 @@ static void sunPosition(double hour, double *altitude, double *azimuth) {
             ? @"Auto 2D/3D on: tilt past 88 degrees and the map renders flat."
             : @"Auto 2D/3D off: the map stays 3D all the way to 90 degrees."];
     }];
-    [host caption:@"Two styles, two formulas: the hour picks the light, the curve picks the look. "
+    [host caption:@"Three variants, two formulas: the hour picks the light, the curve picks the look. "
                    "Zoom out past z15, or tilt to 90, and the buildings lie down."];
 }
 
-/**
- * The basemap. Each style needs the tiles it was written against - Standard names mapbox's own
- * source layers, MapTiler Streets names OpenMapTiles ones, and neither reads the other's.
- */
+/** The basemap: the Massif project, its variant a style parameter set by the Style button. */
 - (void)buildLayer:(MSFMassifMap *)map {
-    // Off the stack AND out of the registry: an id is unique, so rebuilding "basemap" without this
-    // fails with a duplicate-id error.
-    [map removeLayer:@"basemap"];
-    BOOL mapbox = (_style == 0);
-    MSFSpec *source = mapbox
-        ? [[[MSFSpec of:@"http"]
-            set:@"url" value:[@"https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2"
-                              @"/{z}/{x}/{y}.vector.pbf?access_token=" stringByAppendingString:kMapboxToken]]
-            set:@"maxZoom" value:@16]
-        : [[[MSFSpec of:@"http"]
-            set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
-            set:@"maxZoom" value:@14];
+    MSFSpec *source = [[[MSFSpec of:@"http"]
+        set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
+        set:@"maxZoom" value:@14];
 
     [map addLayer:@"basemap"
              spec:[[[MSFSpec of:@"vector"]
-                 // Cached on disk in front of the server: both are other people's tiles, and a demo
-                 // that gets panned around re-fetches the same ones on every run.
+                 // Cached on disk in front of the server: openfreemap is a free service, and a demo
+                 // that gets panned around re-fetches the same tiles on every run.
                  set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
-                     set:@"databasePath" value:[_host cachePath:(mapbox ? @"mapbox-vector.db" : @"openfreemap.db")]]
+                     set:@"databasePath" value:[_host cachePath:@"openfreemap.db"]]
                      set:@"capacity" value:@(100 * 1024 * 1024)]
                      set:@"source" value:source]]
                  set:@"style" value:[[MSFSpec of:@"mbvt"]
-                     set:@"project" value:[[MSFSpec of:@"project"]
+                     set:@"project" value:[[[MSFSpec of:@"project"]
                          set:@"assets" value:[[MSFSpec of:@"zip"]
                              set:@"data" value:[[MSFSpec of:@"url"]
-                                 set:@"url" value:[NSString stringWithFormat:@"assets://styles/%@.zip",
-                                                   styles()[_style][1]]]]]]]
+                                 set:@"url" value:@"assets://styles/massif.zip"]]]
+                         set:@"name" value:styles()[_style][1]]]]
             error:nil];
-    [self applyTiltDrop]; // a rebuilt layer is a fresh decoder, back on the style's own default
+    [self applyTiltDrop];
 }
 
 /**

@@ -125,6 +125,12 @@ The fork also adds `HillshadeRasterTileLayer.getExaggeration()` / `setExaggerati
 per-frame relief factor applied as a shader uniform (no re-decode, default `1.0`), which is what
 lets `hillshade-exaggeration` animate without a tile rebuild.
 
+A hillshade slot draws exactly what a stand-alone `HillshadeRasterTileLayer` draws with the same
+values. The CartoCSS `hillshade-exaggeration` is that layer's `exaggeration`, **not** MapLibre's
+property of the same name: to match a MapLibre style, see
+[Matching MapLibre](hillshade.md#matching-maplibre)
+(`hillshade-contrast`, `hillshade-method: standard`, `hillshade-height-scale: 1`).
+
 ## How it renders
 
 The tile-build-time `rendererLayerFilter` means one renderer can't be re-filtered per frame, so
@@ -132,6 +138,14 @@ each style-layer *group* renders on its own stable-filtered layer: group 0 on th
 itself, later groups on internal `VectorTileLayer`s over the base source, with the external children
 drawn between them in painter order. The style background is drawn once by the bottom group. This
 works in **2D and over [3D terrain](/docs/features/3d-terrain)**.
+
+### A vector slot at several depths
+
+A project may list one source layer several times, one attachment per entry, so it draws at several
+depths - Massif's `contour::contour_index`, `contour::contour` under the roads and
+`contour::contour_label` among the names. A `VECTOR` slot of that name draws each entry's own styles
+where the entry stands, through a child layer per depth; consecutive entries share one. A slot listed
+once keeps its single child.
 
 ## Known limitations & follow-ups
 

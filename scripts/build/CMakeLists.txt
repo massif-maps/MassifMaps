@@ -195,7 +195,7 @@ if(SINGLE_LIBRARY)
   foreach(SDK_SUBPROJECT IN ITEMS ${SDK_SUBPROJECTS})
     set(SUBPROJECT_FLAGS "${${SDK_SUBPROJECT}_FLAGS}")
     if(CMAKE_BUILD_TYPE MATCHES "Release|RELEASE")
-      if(ANDROID OR APPLE)
+      if(ANDROID OR APPLE OR EMSCRIPTEN)
         if(SDK_SUBPROJECT MATCHES "^(zstd)$" AND APPLE)
             set(SUBPROJECT_FLAGS ${SUBPROJECT_FLAGS} "-fno-modules")
         endif()
@@ -446,6 +446,9 @@ if(EMSCRIPTEN)
   set(SDK_WEB_LINK_OPTIONS
     "-pthread" "-fwasm-exceptions"
     "-sPTHREAD_POOL_SIZE=8"
+    # dlmalloc has one global lock: the decode workers and the main thread queue on it, 5x slower
+    # fill in a city - see docs/maintenance/web-build.md#the-allocator.
+    "-sMALLOC=mimalloc"
     "-sMIN_WEBGL_VERSION=2" "-sMAX_WEBGL_VERSION=2" "-sFULL_ES3"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sMODULARIZE=1" "-sEXPORT_ES6=1"
@@ -463,11 +466,15 @@ if(EMSCRIPTEN)
     # /fonts in the virtual filesystem. web/fonts is TRACKED - without it no label draws at all.
     "SHELL:--preload-file ${SDK_BASE_DIR}/web/fonts@/fonts")
 
-  # The module apps load (web/module): no map until the page creates one.
+  # The module apps load (web/module): no map until the page creates one. A variant is renamed
+  # here, not afterwards: emscripten writes the .wasm, .data and worker file names into the loader.
+  if(NOT SDK_WEB_MODULE_NAME)
+    set(SDK_WEB_MODULE_NAME "massif-web")
+  endif()
   add_executable(massif-web "${SDK_BASE_DIR}/web/module/main.cpp")
   target_link_libraries(massif-web massif)
   target_link_options(massif-web PRIVATE ${SDK_WEB_LINK_OPTIONS})
-  set_target_properties(massif-web PROPERTIES SUFFIX ".mjs")
+  set_target_properties(massif-web PROPERTIES SUFFIX ".mjs" OUTPUT_NAME "${SDK_WEB_MODULE_NAME}")
 endif()
 
 if(EMSCRIPTEN AND BUILD_WEB_DEMO)

@@ -22,6 +22,7 @@
 
 #include <mapnikvt/Value.h>
 #include <mapnikvt/LayerConfigResolver.h>
+#include <mapnikvt/ParserUtils.h>
 
 namespace massif {
 
@@ -33,30 +34,21 @@ namespace massif {
             return defaultValue;
         }
 
+        // Every colour a style sheet can write: hex only turned an hsl() or @variable shade black.
         Color parseColorValue(const mvt::Value& value, const Color& defaultValue) {
-            const std::string* str = std::get_if<std::string>(&value);
-            if (!str || str->empty() || (*str)[0] != '#') {
+            vt::Color color;
+            if (auto packed = std::get_if<long long>(&value)) {
+                color = vt::Color::fromValue(static_cast<unsigned int>(*packed));
+            } else if (auto str = std::get_if<std::string>(&value); !str || !mvt::tryParseColor(*str, color)) {
                 return defaultValue;
             }
-            std::string hex = str->substr(1);
-            unsigned long packed = 0;
-            try {
-                packed = std::stoul(hex, nullptr, 16);
-            } catch (const std::exception&) {
-                return defaultValue;
+            // mvt returns rgba() - the translator's spelling of a translucent colour - premultiplied.
+            auto str = std::get_if<std::string>(&value);
+            if (str && str->compare(0, 5, "rgba(") == 0 && color.alpha() > 0.0f) {
+                color = vt::Color(color[0] / color.alpha(), color[1] / color.alpha(), color[2] / color.alpha(), color.alpha());
             }
-            if (hex.size() == 6) {
-                return Color(static_cast<unsigned char>((packed >> 16) & 0xff),
-                             static_cast<unsigned char>((packed >> 8) & 0xff),
-                             static_cast<unsigned char>(packed & 0xff), 255);
-            }
-            if (hex.size() == 8) {
-                return Color(static_cast<unsigned char>((packed >> 24) & 0xff),
-                             static_cast<unsigned char>((packed >> 16) & 0xff),
-                             static_cast<unsigned char>((packed >> 8) & 0xff),
-                             static_cast<unsigned char>(packed & 0xff));
-            }
-            return defaultValue;
+            std::array<std::uint8_t, 4> rgba = color.rgba8();
+            return Color(rgba[0], rgba[1], rgba[2], rgba[3]);
         }
 
         RasterTileFilterMode::RasterTileFilterMode parseFilterMode(const std::string& mode) {
@@ -311,14 +303,21 @@ namespace massif {
     }
 
     void CompositeVectorTileLayer::applyChildTileProperties(const ExternalSource& source) {
-        auto childLayer = std::dynamic_pointer_cast<TileLayer>(source.childLayer);
-        if (!childLayer) {
-            return;
+        std::vector<std::shared_ptr<TileLayer> > tileLayers { std::dynamic_pointer_cast<TileLayer>(source.childLayer) };
+        for (const DrawItem& item : _drawItems) {
+            if (item.slotLayer && item.slot == source.name) {
+                tileLayers.push_back(std::dynamic_pointer_cast<TileLayer>(item.slotLayer));
+            }
         }
-        childLayer->setPreloading(isPreloading());
-        childLayer->setZoomLevelBias(source.zoomLevelBiasSet ? source.zoomLevelBias : getZoomLevelBias());
-        if (source.maxOverzoomLevelSet) {
-            childLayer->setMaxOverzoomLevel(source.maxOverzoomLevel);
+        for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
+            if (!tileLayer) {
+                continue;
+            }
+            tileLayer->setPreloading(isPreloading());
+            tileLayer->setZoomLevelBias(source.zoomLevelBiasSet ? source.zoomLevelBias : getZoomLevelBias());
+            if (source.maxOverzoomLevelSet) {
+                tileLayer->setMaxOverzoomLevel(source.maxOverzoomLevel);
+            }
         }
     }
 
@@ -384,6 +383,24 @@ namespace massif {
         return child;
     }
 
+    std::shared_ptr<Layer> CompositeVectorTileLayer::makeSlotLayer(const ExternalSource& source, const std::vector<std::string>& styleNames) {
+        auto slotLayer = std::make_shared<VectorTileLayer>(source.dataSource, getTileDecoder());
+        std::string filter = "^(";
+        for (std::size_t i = 0; i < styleNames.size(); i++) {
+            filter += (i ? "|" : "") + styleNames[i];
+        }
+        slotLayer->setRendererLayerFilter(filter + ")$");
+        slotLayer->setMaxOverzoomLevel(source.dataSource->getMaxOverzoomLevel());
+        slotLayer->setLabelRenderOrder(getLabelRenderOrder());
+        slotLayer->setBuildingRenderOrder(getBuildingRenderOrder());
+        slotLayer->setVisibleZoomRange(source.childLayer->getVisibleZoomRange());
+        std::shared_ptr<Layer> child = slotLayer;
+        if (_componentsSet) {
+            wireChild(child);
+        }
+        return child;
+    }
+
     void CompositeVectorTileLayer::applyExternalChildZoomRange(const ExternalSource& source) {
         auto decoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(getTileDecoder());
         if (!decoder || !source.childLayer) {
@@ -419,6 +436,9 @@ namespace massif {
             if (item.groupLayer && _componentsSet) {
                 unwireChild(item.groupLayer);
             }
+            if (item.slotLayer && _componentsSet) {
+                unwireChild(item.slotLayer);
+            }
         }
         _drawItems.clear();
 
@@ -441,10 +461,28 @@ namespace massif {
             return s && s->childLayer;
         };
 
+        // A vector slot listed at several depths (lines under the roads, labels with the names) draws each
+        // entry's own styles where that entry stands; its child would draw all of them at every one.
+        std::vector<std::vector<std::string> > styleNames = decoder->getStyleLayerStyleNames();
+        std::map<std::string, int> occurrences;
+        for (const std::string& layerName : order) {
+            occurrences[layerName]++;
+        }
+
         std::vector<std::string> group;
         bool firstSlotSeen = false;
-        for (const std::string& layerName : order) {
+        std::map<std::size_t, std::vector<std::string> > depthStyleNames; // by draw item
+        for (std::size_t i = 0; i < order.size(); i++) {
+            const std::string& layerName = order[i];
             if (isChildSlot(layerName)) {
+                const ExternalSource* source = findExternalSource(layerName);
+                bool atDepths = source->type == CompositeSourceType::COMPOSITE_SOURCE_TYPE_VECTOR && occurrences[layerName] > 1 && i < styleNames.size();
+                // Consecutive entries of one slot are one depth: one layer, one decode.
+                if (atDepths && group.empty() && !_drawItems.empty() && depthStyleNames.count(_drawItems.size() - 1) > 0 && _drawItems.back().slot == layerName) {
+                    std::vector<std::string>& names = depthStyleNames[_drawItems.size() - 1];
+                    names.insert(names.end(), styleNames[i].begin(), styleNames[i].end());
+                    continue;
+                }
                 if (!firstSlotSeen) {
                     // Group 0 renders on this layer and alone draws the style background, once at the bottom.
                     VectorTileLayer::setRendererLayerFilter(buildFilterString(group, /*includeBackground=*/true));
@@ -453,10 +491,21 @@ namespace massif {
                     // Empty intermediate groups get no layer at all: nothing to fetch, decode or overpaint.
                     _drawItems.push_back({ DRAW_ITEM_VT_GROUP, std::string(), makeGroupLayer(buildFilterString(group)) });
                 }
+                if (atDepths) {
+                    depthStyleNames[_drawItems.size()] = styleNames[i];
+                }
                 _drawItems.push_back({ DRAW_ITEM_EXTERNAL, layerName, std::shared_ptr<Layer>() });
                 group.clear();
             } else {
                 group.push_back(layerName);
+            }
+        }
+        // Reverse, so erasing a depth that draws nothing leaves the indexes still to visit in place.
+        for (auto it = depthStyleNames.rbegin(); it != depthStyleNames.rend(); it++) {
+            if (it->second.empty()) {
+                _drawItems.erase(_drawItems.begin() + it->first);
+            } else {
+                _drawItems[it->first].slotLayer = makeSlotLayer(*findExternalSource(_drawItems[it->first].slot), it->second);
             }
         }
         if (!firstSlotSeen) {
@@ -469,6 +518,7 @@ namespace massif {
             if (s.childLayer && std::find(order.begin(), order.end(), s.name) == order.end()) {
                 Log::Warnf("CompositeVectorTileLayer: external source '%s' is not listed in the style 'layers' - it will not be drawn", s.name.c_str());
             }
+            applyChildTileProperties(s);
         }
         snapshotChildTileLayers();
     }
@@ -485,6 +535,9 @@ namespace massif {
         for (const DrawItem& item : _drawItems) {
             if (auto groupTileLayer = std::dynamic_pointer_cast<TileLayer>(item.groupLayer)) {
                 children.push_back(groupTileLayer);
+            }
+            if (auto slotTileLayer = std::dynamic_pointer_cast<TileLayer>(item.slotLayer)) {
+                children.push_back(slotTileLayer);
             }
         }
         std::lock_guard<std::mutex> lock(_childTileLayersMutex);
@@ -512,6 +565,9 @@ namespace massif {
             if (item.groupLayer) {
                 wireChild(item.groupLayer);
             }
+            if (item.slotLayer) {
+                wireChild(item.slotLayer);
+            }
         }
     }
 
@@ -527,13 +583,16 @@ namespace massif {
             std::lock_guard<std::recursive_mutex> lock(_sourceMutex);
             for (const ExternalSource& s : _externalSources) {
                 // A source the style's 'layers' never mentions is not drawn, so it must not fetch either.
-                if (s.childLayer && isDrawnSlot(s.name)) {
+                if (s.childLayer && isDrawnByChild(s.name)) {
                     loadLayers.push_back(s.childLayer);
                 }
             }
             for (const DrawItem& item : _drawItems) {
                 if (item.groupLayer) {
                     loadLayers.push_back(item.groupLayer);
+                }
+                if (item.slotLayer) {
+                    loadLayers.push_back(item.slotLayer);
                 }
             }
         }
@@ -555,6 +614,9 @@ namespace massif {
             if (item.groupLayer) {
                 item.groupLayer->offsetLayerHorizontally(offset);
             }
+            if (item.slotLayer) {
+                item.slotLayer->offsetLayerHorizontally(offset);
+            }
         }
     }
 
@@ -569,7 +631,7 @@ namespace massif {
             }
         }
         for (const DrawItem& item : _drawItems) {
-            if (item.groupLayer && item.groupLayer->isUpdateInProgress()) {
+            if ((item.groupLayer && item.groupLayer->isUpdateInProgress()) || (item.slotLayer && item.slotLayer->isUpdateInProgress())) {
                 return true;
             }
         }
@@ -617,6 +679,9 @@ namespace massif {
             if (item.groupLayer) {
                 item.groupLayer->calculateRayIntersectedElements(ray, viewState, results);
             }
+            if (item.slotLayer) {
+                item.slotLayer->calculateRayIntersectedElements(ray, viewState, results);
+            }
         }
     }
 
@@ -656,6 +721,15 @@ namespace massif {
         // Caller holds _sourceMutex. A source with no draw item is not in the style's 'layers'.
         for (const DrawItem& item : _drawItems) {
             if (item.kind == DRAW_ITEM_EXTERNAL && item.slot == name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositeVectorTileLayer::isDrawnByChild(const std::string& name) const {
+        for (const DrawItem& item : _drawItems) {
+            if (item.kind == DRAW_ITEM_EXTERNAL && item.slot == name && !item.slotLayer) {
                 return true;
             }
         }
@@ -723,8 +797,14 @@ namespace massif {
             }
 
             if (decodeZoomChanged) {
-                if (const mvt::Value* v = getValue("height-scale")) { hillshade->setHeightScale(valueToFloat(*v, 1.0f)); }
-                if (const mvt::Value* v = getValue("contrast")) { hillshade->setContrast(valueToFloat(*v, 0.5f)); }
+                if (const mvt::Value* v = getValue("height-scale")) {
+                    float heightScale = valueToFloat(*v, 1.0f);
+                    if (changed("height-scale", heightScale)) { hillshade->setHeightScale(heightScale); }
+                }
+                if (const mvt::Value* v = getValue("contrast")) {
+                    float contrast = valueToFloat(*v, 0.5f);
+                    if (changed("contrast", contrast)) { hillshade->setContrast(contrast); }
+                }
                 if (const mvt::Value* v = getValue("contour-interval")) {
                     float interval = valueToFloat(*v, 0.0f);
                     hillshade->setContourEnabled(interval > 0.0f);
@@ -847,7 +927,7 @@ namespace massif {
                         continue;
                     }
                 }
-                childLayer = source->childLayer;
+                childLayer = item.slotLayer ? item.slotLayer : source->childLayer;
             }
             if (childLayer) {
                 childLayer->collectDrapeLayers(drapeLayers, viewState);
@@ -870,7 +950,7 @@ namespace massif {
             } else if (const ExternalSource* source = findExternalSource(item.slot)) {
                 // A hidden child's labels would otherwise stay on screen and win culler slots.
                 if (source->childLayer && source->childLayer->isVisible()) {
-                    childLayer = source->childLayer;
+                    childLayer = item.slotLayer ? item.slotLayer : source->childLayer;
                 }
             }
             if (childLayer) {
@@ -914,8 +994,9 @@ namespace massif {
                 visible = config.visible;
             }
             if (visible) {
-                refresh = (terrain ? source->childLayer->onDrawFrame3D(deltaSeconds, billboardSorter, viewState)
-                                   : source->childLayer->onDrawFrame(deltaSeconds, billboardSorter, viewState)) || refresh;
+                const std::shared_ptr<Layer>& drawLayer = item.slotLayer ? item.slotLayer : source->childLayer;
+                refresh = (terrain ? drawLayer->onDrawFrame3D(deltaSeconds, billboardSorter, viewState)
+                                   : drawLayer->onDrawFrame(deltaSeconds, billboardSorter, viewState)) || refresh;
             }
         }
         return refresh;

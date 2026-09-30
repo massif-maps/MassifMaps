@@ -7,7 +7,7 @@
 #ifndef _MASSIF_MULTIOSMOFFILINEGEOCODINGSERVICE_H_
 #define _MASSIF_MULTIOSMOFFILINEGEOCODINGSERVICE_H_
 
-#if defined(_MASSIF_GEOCODING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT)
+#if defined(_MASSIF_GEOCODING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT) && defined(_MASSIF_PACKAGEMANAGER_SUPPORT)
 
 #include "geocoding/GeocodingService.h"
 #include "packagemanager/handlers/GeocodingPackageHandler.h"

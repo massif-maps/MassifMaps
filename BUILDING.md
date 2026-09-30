@@ -72,6 +72,10 @@ following instructions use 'standard' profile as an example.
 In order to make SDK binaries as small as possible, 'lite' profile can be used. This profile disables
 geocoding, routing and offline support, but resulting binaries are about 40% smaller.
 
+Every combination builds, but some features need a second profile: the `MultiOSMOffline*`
+geocoding services exist only with 'packagemanager' too, and 'valhalla' adds nothing without
+'routing'. A class is generated only when every `_MASSIF_*_SUPPORT` on its guard line is defined.
+
 ## Building process
 Be patient - full build will take 1+ hours. You can speed it up by limiting architectures and platforms where it is built.
 
@@ -120,6 +124,58 @@ python build-xamarin.py --profile standard ios
 python swigpp-csharp.py --profile standard winphone --swig ../mobile-swig/swig
 python build-winphone.py --profile standard
 ```
+
+## Web build
+```
+python3 scripts/build-web.py --profile standard --configuration Release --build-demo
+```
+Emscripten on `PATH` (or `--emsdk DIR`). Details: [docs/maintenance/web-build.md](docs/maintenance/web-build.md).
+
+# Building the style tools and the styles
+
+## Style tools (`massif-style`)
+```
+cd tools/style-cli && npm ci && npm run build
+```
+`mapbox2css` and `legend --svg` run from that alone. `css2xml` and `legend` also need the style
+compiler as wasm in `tools/style-cli/wasm/`: built by `release-style-tools.yml`, or with emscripten:
+```
+cd libs-massif/cartocss/util
+emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=MinSizeRel && emmake make -C build-wasm massif-style
+cp build-wasm/massif-style.{mjs,wasm} ../../../tools/style-cli/wasm/
+```
+Internals: [docs/contributing/style-tools.md](docs/contributing/style-tools.md).
+
+## The Massif styles
+```
+(cd tools/style-sprite && npm ci)                                # sprite sheet and icon font
+(cd styles/massif/release && npm ci && npx playwright install chromium)   # release screenshots
+cd styles/massif
+node ../../tools/style-sprite/build.mjs sprite-src sprite sprite   # after an SVG change
+python3 build.py              # the MapLibre variants
+python3 build.py --convert    # and the SDK CartoCSS project, into carto/
+python3 release/release.py 1.2.0 --screenshots   # every flavour, zipped, and the npm package, into dist/
+python3 release/release.py 1.2.0-rc.1 --npm next  # publish a prerelease from this machine
+```
+Look at a change in the style dev page: `python3 tools/style-preview/serve.py --mbtiles NAME=tiles.mbtiles`
+([docs/contributing/style-preview.md](docs/contributing/style-preview.md)). How the styles are
+built and released: [docs/contributing/massif-style-release.md](docs/contributing/massif-style-release.md).
+
+# Releasing
+
+Everything is released by a manually dispatched workflow (**Actions → Run workflow**), each with a
+`version` and a `publish` switch; with `publish` off it only builds, and keeps the result as an
+artefact.
+
+| What | Workflow | Tag | Publishes |
+|---|---|---|---|
+| SDK: Android, iOS, web | `build.yml` | `v<version>` | GitHub release (AAR, frameworks, web zip), npm `@massif-maps/api`, `@massif-maps/web` |
+| Style tools | `release-style-tools.yml` | `style-tools-v<version>` | npm `@massif-maps/style-tools`, draft GitHub release with the wasm |
+| Massif styles | `release-styles.yml`, or `styles/massif/release/release.py --npm TAG --github` from a machine | `massif-styles-v<version>` | npm `@massif-maps/styles`, GitHub release with one zip per flavour; redeploys the website |
+| Website and docs | `docs.yml` | — | GitHub Pages: runs on pushes to `docs/`, `website/`, `styles/massif/`, nightly and after a release |
+
+npm publishing needs the `NPM_TOKEN` secret. The documentation process:
+[docs/contributing/release-workflow.md](docs/contributing/release-workflow.md).
 
 # Usage
 * Documentation: https://massif-maps.github.io/MassifMaps/

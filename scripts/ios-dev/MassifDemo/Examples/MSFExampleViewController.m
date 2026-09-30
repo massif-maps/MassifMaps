@@ -320,6 +320,10 @@
     });
 }
 
+- (CGFloat)topInset {
+    return _topBar.hidden || !_topBar.superview ? 0 : CGRectGetMaxY([_topBar convertRect:_topBar.bounds toView:_mapView]);
+}
+
 - (void)after:(NSTimeInterval)seconds run:(void (^)(void))action {
     NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:seconds repeats:NO
                                                      block:^(NSTimer *t) { action(); }];

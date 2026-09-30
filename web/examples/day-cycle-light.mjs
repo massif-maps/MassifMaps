@@ -1,28 +1,8 @@
 /** The hour drives the whole palette, and the curve that decides how is the app's to replace. */
-import { demTiles, vectorTiles } from './shared.mjs';
+import { demTiles, massifStyle, vectorTiles } from './shared.mjs';
 
-// Android and iOS ship two CONVERTED styles (megabytes of sprites); like NativeScript, this port
-// carries a small inline CartoCSS and drops the style switch - the light API is the same.
-
-// `*-emissive-strength` is how much of a colour is EMITTED rather than lit. This SDK draws an
-// unstated colour as authored, so a style that wants to be lit by the hour has to say 0.
-const MSS = [
-  // The two building-height scales make the walls follow the CAMERA: they rise over z15 and
-  // sink to a fifth of their height as the tilt reaches 90, evaluated per frame.
-  'Map { background-color: #f4f1ec; background-emissive-strength: 0;',
-  '    building-height-scale: linear(([view::zoom] - 1), (15, 0), (15.3, 1));',
-  '    building-height-view-scale: 1 - 0.8 * linear([view::tilt], (80, 0), (90, 1));',
-  // The contact shadow fades on the SAME ramp that lays the walls down, or a flattened city
-  // keeps a dark ring around every footprint.
-  '    building-ao-intensity: 0.2 * (1 - 0.8 * linear([view::tilt], (80, 0), (90, 1))); }',
-  '#water { polygon-fill: #8fb8d8; polygon-emissive-strength: 0; }',
-  '#landcover { polygon-fill: #dbe8cc; polygon-opacity: 0.6; polygon-emissive-strength: 0; }',
-  '#building { polygon-fill: #d9d0c9; polygon-emissive-strength: 0; }',
-  '#building[zoom >= 15]::walls { building-height: [render_height]; building-fill: #d9d0c9;',
-  '    building-fill-opacity: 1; }',
-  '#transportation { line-color: #ffffff; line-emissive-strength: 0;',
-  '    line-width: linear([view::zoom], (10, 0.6), (16, 5)); line-join: round; line-cap: round; }',
-].join('\n');
+// Massif is written to be lit by the hour: every layer states Standard's emissive strength, so the
+// ground darkens at night while labels and lit streets keep their colour.
 
 // A curve is a list of lights anchored on SUN HEIGHTS, interpolated by the SDK. Nothing about this
 // one is a special case: the 2D grade, 3D sun and ambient all derive from whatever it returns.
@@ -100,7 +80,7 @@ function sunPosition(local) {
   return [altitude, azimuth];
 }
 
-export default function start(host) {
+export default async function start(host) {
   const map = host.map;
 
   // Keep a TILTED far field uniform: a low levels-on-screen decays the grazing term more
@@ -110,8 +90,7 @@ export default function start(host) {
   map.addLayer('basemap', {
     type: 'vector',
     source: vectorTiles(),
-    // A bare string here is looked up as a registered id, so the CartoCSS goes in a spec.
-    style: { type: 'mbvt', cartocss: { type: 'cartocss', css: MSS } },
+    style: await massifStyle(map),
   });
 
   // A TERRAIN, for the shadows: they land on the terrain surface, and with none nothing casts.

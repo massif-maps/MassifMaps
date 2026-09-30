@@ -496,3 +496,34 @@ test('under lights a wall\'s foot takes gl-js\'s faux AO, not the unlit vertical
     assert.match(mss, /building-vertical-gradient: 0\.15;/);
     assert.match(mss, /building-vertical-gradient-height: 6;/);
 });
+
+test('a hillshade with SDK values becomes a composite slot at its own depth', () => {
+    const hillshade = {
+        id: 'hillshade', type: 'hillshade', source: 'dem', maxzoom: 16,
+        metadata: { 'massif:sdk-layer': { type: 'hillshade', exaggeration: 0.35, opacity: 0.55, visibleZoomRange: [0, 16] } },
+    };
+    const contour = { id: 'contour', type: 'line', 'source-layer': 'contour', paint: { 'line-color': '#a08060' } };
+    const out = convert({ layers: [hillshade, contour] }, table, NO_PALETTE);
+    assert.match(out.mss, /#hillshade\[zoom < \d+\] \{\s*hillshade-opacity: 0\.55;\s*hillshade-exaggeration: 0\.35;/);
+    // TOP -> BOTTOM: the contours over the relief, as the style draws them.
+    assert.deepEqual(JSON.parse(out.project).layers, ['contour', 'hillshade']);
+    // Without the SDK values there is nothing to configure a slot with: dropped, as before.
+    assert.doesNotMatch(convert({ layers: [{ ...hillshade, metadata: {} }] }, table, NO_PALETTE).mss, /#hillshade/);
+});
+
+test('a hillshade slot carries the settings that match the MapLibre paint', () => {
+    const hillshade = {
+        id: 'hillshade', type: 'hillshade', source: 'dem', maxzoom: 16,
+        metadata: { 'massif:sdk-layer': { type: 'hillshade', hillshadeMethod: 'STANDARD', contrast: 0.35, heightScale: 1,
+            shadowColor: '#544d45', highlightColor: '#faf8f5', accentColor: '#847362', visibleZoomRange: [0, 16] } },
+    };
+    const mss = convert({ layers: [hillshade] }, table, NO_PALETTE).mss;
+    assert.match(mss, /hillshade-contrast: 0\.35;/);
+    assert.match(mss, /hillshade-height-scale: 1;/);
+    // CompositeVectorTileLayer's parser only knows the lower-case names
+    assert.match(mss, /hillshade-method: '?standard'?;/);
+    assert.match(mss, /hillshade-shadow-color: #544d45;/);
+    assert.match(mss, /hillshade-highlight-color: #faf8f5;/);
+    assert.match(mss, /hillshade-accent-color: #847362;/);
+    assert.doesNotMatch(mss, /hillshade-exaggeration/);
+});

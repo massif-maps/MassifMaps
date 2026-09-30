@@ -1,6 +1,6 @@
 """Write the Massif style family from the shared layer modules.
 
-    python3 styles/massif/build.py              # every variant's MapLibre style, legend/, and family.json
+    python3 styles/massif/build.py              # every variant's MapLibre style and family.json
     python3 styles/massif/build.py --convert    # and the SDK project, into carto/
 
 Each variant is a standalone MapLibre style (<variant>.json) - what the reference pane draws and
@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from layers import boundaries, buildings, imagery, labels, land, lowzoom, outdoor, pois, rail, road_labels, roads, shields, water  # noqa: E402
 from palette import VARIANTS as PALETTES  # noqa: E402
-from lib import FONTS, night_inverted, occlusion  # noqa: E402
+from lib import FONTS, fold_config, night_inverted, occlusion  # noqa: E402
 from params import PARAMS  # noqa: E402
 import legend  # noqa: E402
 
@@ -67,9 +67,9 @@ SOURCES = {
             'encoding': 'terrarium', 'tileSize': 512, 'maxzoom': 16},
 }
 
-STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, rail.tunnels,
-           roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges, rail.overhead,
-           outdoor.cliffs, boundaries.layers, buildings.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
+STREETS = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoom.depth, outdoor.hillshade,
+           outdoor.contours, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges, rail.bridges,
+           rail.overhead, outdoor.cliffs, boundaries.layers, buildings.layers, outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
            labels.places]
 
 # bottom to top; among the labels, the later a layer the higher its placement priority. The first
@@ -80,23 +80,25 @@ OUTDOOR = [land.background, lowzoom.landcover, land.layers, water.layers, lowzoo
            labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, outdoor.sac_labels,
            road_labels.layers, labels.places]
 
-# e-ink carries everything outdoor does but the relief and the route bands, which grey into mud
-EINK = [p for p in OUTDOOR if p not in (outdoor.hillshade, outdoor.routes)]
+# e-ink carries everything outdoor does but the route bands, which grey into mud
+EINK = [p for p in OUTDOOR if p is not outdoor.routes]
 
-HYBRID = [land.background, imagery.layers, rail.tunnels, roads.tunnels, roads.ground, rail.ground, roads.bridges,
-          rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
+HYBRID = [land.background, imagery.layers, outdoor.hillshade, outdoor.contours, rail.tunnels, roads.tunnels,
+          roads.ground, rail.ground, roads.bridges, rail.bridges, rail.overhead, outdoor.cliffs, boundaries.layers,
+          outdoor.contour_labels, labels.low, road_labels.major, shields.layers, pois.mountain, pois.layers, road_labels.layers,
           labels.places]
 
 # a walker's map brings the campsites in with the huts
 OUTDOOR_PARAMS = {'campsite_min_zoom': 13}
 
 VARIANTS = {v.name: v for v in [
-    Variant('streets', 'Massif Streets', STREETS),
+    Variant('streets', 'Massif Streets', STREETS, sources=('dem', 'contours')),
     Variant('outdoor', 'Massif Outdoor', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS,
-            trails=True),
-    Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS, trails=True),
-    Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite',), dark_ground=True),
-    Variant('eink', 'Massif E-ink', EINK, sources=('contours',), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1, 'lighting': 0},
+            trails=True, relief=True),
+    Variant('topo', 'Massif Topo', OUTDOOR, sources=('dem', 'contours', 'routes'), params=OUTDOOR_PARAMS, trails=True,
+            relief=True),
+    Variant('hybrid', 'Massif Hybrid', HYBRID, sources=('satellite', 'dem', 'contours'), dark_ground=True),
+    Variant('eink', 'Massif E-ink', EINK, sources=('dem', 'contours'), params={**OUTDOOR_PARAMS, 'polygons_border': 1, 'sac_scale_labels': 1, 'lighting': 0},
             mono=True, trails=True),
 ]}
 
@@ -115,6 +117,9 @@ def document(name, layers, metadata, schema, sources):
     }
 
 
+RELIEF_SOURCES = ('dem', 'contours')
+
+
 def maplibre_style(v):
     layers = v.layers()
     for lay in layers:
@@ -123,6 +128,12 @@ def maplibre_style(v):
         param = lay.get('metadata', {}).get('massif:minzoom-param')
         if param:
             lay['minzoom'] = max(lay.get('minzoom', 0), v.params[param])
+        for key in ('paint', 'layout', 'filter'):
+            if key in lay:
+                lay[key] = fold_config(lay[key], v.params)
+        # every variant carries the relief and the contours; an app shows them where they are off
+        if lay.get('source') in RELIEF_SOURCES and not v.flags.get('relief'):
+            lay['layout'] = {**lay.get('layout', {}), 'visibility': 'none'}
     return document(v.title, layers, {'massif:variant': v.name, 'massif:live-config': list(PARAMS)},
                     {k: {**spec, 'default': v.params[k]} for k, spec in PARAMS.items()}, v.sources)
 
@@ -237,6 +248,35 @@ def write(name, doc):
     open(os.path.join(HERE, name), 'w').write(json.dumps(doc, indent=2, ensure_ascii=False))
 
 
+def convert(out='carto', extra=()):
+    """The SDK project into `out` (relative to here): the converted family, one <variant>.json per
+    variant, the override examples beside it and the legend spec. Returns the coverage line."""
+    # generated whole: an icon a rule stopped naming must not linger in the committed carto/
+    shutil.rmtree(os.path.join(HERE, out), ignore_errors=True)
+    # the sprite URL resolves against the working directory, so the converter runs from here
+    report = subprocess.run(['node', CLI, 'mapbox2css', 'family.json', out, *CONVERT, *extra], cwd=HERE,
+                            capture_output=True, text=True, check=True).stdout
+    # a when() is evaluated per feature and blocks rule pruning: the family is written to need none
+    mss = open(os.path.join(HERE, out, 'style.mss')).read().splitlines()
+    whens = [line.split(' {')[0] for line in mss if 'when(' in line]
+    if whens:
+        sys.exit('%d when() in %s/style.mss - rewrite the layer so it brackets:\n  %s' % (len(whens), out, '\n  '.join(whens)))
+    spec = {'values': {n: n for n in VARIANTS}}
+    for name, v in VARIANTS.items():
+        params = {'variant': {**spec, 'default': name}}
+        params.update({k: value for k, value in v.params.items() if value != PARAMS[k]['default']})
+        project = {'extends': './project.json', 'styleparameters': params}
+        open(os.path.join(HERE, out, name + '.json'), 'w').write(json.dumps(project, indent=2) + '\n')
+    # the override examples are child projects of this one, so they sit beside it
+    for example in sorted(os.listdir(os.path.join(HERE, 'examples'))):
+        folder = os.path.join(HERE, 'examples', example)
+        for f in sorted(os.listdir(folder)):
+            if f.endswith(('.json', '.mss')):
+                shutil.copy(os.path.join(folder, f), os.path.join(HERE, out, f))
+    legend.write(os.path.join(HERE, out))
+    return next(line for line in report.splitlines() if line.startswith('Coverage'))
+
+
 def main(args):
     for name, v in VARIANTS.items():
         write(name + '.json', maplibre_style(v))
@@ -244,28 +284,7 @@ def main(args):
     write('family.json', family_style())
     pois.write_sprite_palette(os.path.join(HERE, 'sprite-src', 'poi-palette.json'))
     if '--convert' in args:
-        # the sprite URL resolves against the working directory, so the converter runs from here
-        report = subprocess.run(['node', CLI, 'mapbox2css', 'family.json', 'carto', *CONVERT], cwd=HERE,
-                                capture_output=True, text=True, check=True).stdout
-        print(next(line for line in report.splitlines() if line.startswith('Coverage')))
-        # a when() is evaluated per feature and blocks rule pruning: the family is written to need none
-        mss = open(os.path.join(HERE, 'carto', 'style.mss')).read().splitlines()
-        whens = [line.split(' {')[0] for line in mss if 'when(' in line]
-        if whens:
-            sys.exit('%d when() in carto/style.mss - rewrite the layer so it brackets:\n  %s' % (len(whens), '\n  '.join(whens)))
-        spec = {'values': {n: n for n in VARIANTS}}
-        for name, v in VARIANTS.items():
-            params = {'variant': {**spec, 'default': name}}
-            params.update({k: value for k, value in v.params.items() if value != PARAMS[k]['default']})
-            project = {'extends': './project.json', 'styleparameters': params}
-            open(os.path.join(HERE, 'carto', name + '.json'), 'w').write(json.dumps(project, indent=2) + '\n')
-        # the override examples are child projects of this one, so they sit beside it
-        for example in sorted(os.listdir(os.path.join(HERE, 'examples'))):
-            folder = os.path.join(HERE, 'examples', example)
-            for f in sorted(os.listdir(folder)):
-                if f.endswith(('.json', '.mss')):
-                    shutil.copy(os.path.join(folder, f), os.path.join(HERE, 'carto', f))
-        legend.write()
+        print(convert())
         print('carto/ + ' + ', '.join(n + '.json' for n in VARIANTS) + ' + legend.json + examples')
 
 

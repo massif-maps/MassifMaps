@@ -1,0 +1,78 @@
+---
+title: Massif
+description: "The Massif map styles — streets, outdoor, topo, hybrid and e-ink — for MapLibre and the Massif Maps SDK."
+sidebar_position: 1
+---
+
+import MassifStyleMap, {MassifScreenshots} from '@site/src/components/MassifStyleMap';
+
+# Massif
+
+Massif is a family of five map styles on [OpenMapTiles](https://openmaptiles.org/schema/) vector
+tiles, written once and published two ways: as **MapLibre / Mapbox GL** styles, and as a
+**CartoCSS** project for the Massif Maps SDK, where the variant and a dozen other choices are live
+style parameters.
+
+| Variant | For |
+|---|---|
+| `streets` | the everyday map: Mapbox Standard's look, POIs by category, 3D buildings |
+| `outdoor` | streets plus relief, contours, trails by SAC grade, MTB difficulty, waymarked routes |
+| `topo` | outdoor on a cooler, map-like ground |
+| `hybrid` | roads, labels and POIs over satellite imagery you supply (EOX's Sentinel-2 mosaic below) |
+| `eink` | black on white, patterns instead of colour, for e-paper screens; inverts at night |
+
+<MassifScreenshots />
+
+## Try it
+
+<MassifStyleMap />
+
+## Get it
+
+| Flavour | What it is | Where |
+|---|---|---|
+| **MapLibre** | `<variant>.json` + sprite | `https://massif-maps.github.io/MassifMaps/styles/massif/<variant>.json` (latest), `…/massif/v<version>/<variant>.json` (pinned) |
+| **CartoCSS** | the SDK project: `project.json`, one `<variant>.json` per variant, `.mss`, icons, `legend.json` | npm, GitHub release |
+| **CartoCSS compiled** | the same compiled to mapnik XML, one `<variant>.xml` per variant | npm, GitHub release |
+| **CartoCSS icon font** | the CartoCSS project with POI icons drawn from one bundled font (`MassifIcons.ttf`) instead of PNGs | npm, GitHub release |
+| **CartoCSS icon font compiled** | that compiled | npm, GitHub release |
+
+- **npm**: `npm install @massif-maps/styles` — one folder per flavour: `maplibre/`, `cartocss/`,
+  `cartocss-compiled/`, `cartocss-iconfont/`, `cartocss-iconfont-compiled/`.
+- **GitHub releases**: [`massif-styles-v*`](https://github.com/massif-maps/MassifMaps/releases), one
+  zip per flavour (`massif-<flavour>-<version>.zip`) and the screenshots.
+- **unpkg**, straight from npm: `https://unpkg.com/@massif-maps/styles@<version>/maplibre/<variant>.json`.
+
+Which CartoCSS flavour:
+
+- **Plain or compiled**: the same map. The plain project is parsed when the style loads, the
+  compiled XML is not — pick compiled for startup time, plain to read or [extend](massif-extending.md)
+  the style.
+- **Sprite or icon font**: the same POIs. The icon-font flavour ships one 25 KB font instead of a
+  folder of PNGs; road shields and markers keep their sprite either way.
+
+## Use it
+
+- [With MapLibre or Mapbox GL](massif-maplibre.md) — the style URL, and adding the optional
+  sources (bathymetry, contours, routes, satellite imagery).
+- [With the Massif Maps SDK](massif-sdk.md) — loading a flavour, picking the variant, the style
+  parameters, legends, merged archives.
+- [Extending it](massif-extending.md) — a child project of your own; the OpenStreetMap-coloured
+  example.
+
+## Data and credits
+
+The MapLibre styles read [OpenFreeMap](https://openfreemap.org/)'s OpenMapTiles planet and fonts,
+and [Mapterhorn](https://mapterhorn.com/)'s DEM for relief. Map data © OpenStreetMap contributors.
+POI icons are [Maki](https://github.com/mapbox/maki) and
+[openstreetmap-carto](https://github.com/gravitystorm/openstreetmap-carto), both CC0. The hybrid
+imagery on this page and in its screenshot is [Sentinel-2 cloudless](https://s2maps.eu) by EOX IT
+Services GmbH (contains modified Copernicus Sentinel data 2016 & 2017), CC BY 4.0 — the published
+hybrid style carries none.
+
+The style is [MIT-0](https://github.com/massif-maps/MassifMaps/blob/master/styles/massif/LICENSE):
+use, change and redistribute it for anything, with no notice required.
+
+How the style is written, and why it departs from its references where it does:
+[`styles/massif/README.md`](https://github.com/massif-maps/MassifMaps/blob/master/styles/massif/README.md).
+How it is built and released: [Massif style release](../contributing/massif-style-release.md).

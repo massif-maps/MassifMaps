@@ -6,6 +6,7 @@
 #   ./bootstrap.sh device           # arm64 device
 #   PROFILE=lite ./bootstrap.sh     # a different feature profile
 #   PROFILE_RENDER=1 ./bootstrap.sh # per-frame timings, the counterpart of -PprofileRender
+#   NATIVE_OPT=0 ./bootstrap.sh     # an -O0 SDK in Debug, to step through native code
 #
 # Re-run it after changing the profile or the platform. Day to day you do not: once the project
 # exists, build from Xcode or with 'xcodebuild -project MassifDemo.xcodeproj'.
@@ -34,6 +35,13 @@ PROFILER_DEFINES=""
 if [ -n "$PROFILE_RENDER" ]; then
   PROFILER_DEFINES="-DMASSIF_FRAME_PROFILER=1 -DMASSIF_VT_RENDER_STATS=1"
   echo "==> Render profiling ON"
+fi
+
+# The SDK's Debug is -O2 -g, as android-dev's '-PnativeOpt': at -O0 a Massif tile decodes ~13x
+# slower and an example opens after seconds of parsing its style on the main thread.
+DEBUG_FLAGS="-O2 -g"
+if [ "${NATIVE_OPT:-1}" = 0 ]; then
+  DEBUG_FLAGS="-O0 -g"
 fi
 
 if [ ! -x "$SWIG" ]; then
@@ -68,6 +76,8 @@ cmake -G Xcode $OPTIONS \
   -DCMAKE_OSX_ARCHITECTURES="$ARCH" \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
   -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_FLAGS_DEBUG="$DEBUG_FLAGS" \
+  -DCMAKE_CXX_FLAGS_DEBUG="$DEBUG_FLAGS" \
   -DINCLUDE_OBJC:BOOL=ON \
   -DSINGLE_LIBRARY:BOOL=ON \
   -DSHARED_LIBRARY:BOOL=OFF \

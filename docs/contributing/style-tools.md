@@ -1207,6 +1207,15 @@ Two things it does not cover, deliberately:
   a sheet of several hundred PNGs is the trade the mode is for;
 - a **marker** keeps its sprite. A oneway arrow or a crossing is not a label and has no glyph run.
 
+`--icon-font-size PX` is the height in **sprite** pixels a glyph fills at `icon-size` 1, so
+`shield-icon-size` becomes `icon-size × PX` and a zoom ramp on `icon-size` still scales the glyph as
+it scaled the sprite. Without it the glyph is sized as a multiple of `text-size`: Massif's POIs
+(`icon-size` 0.4) came out at 5.6 px instead of the 10.8 px glyph of their 19 px badge. A
+recolourable badge (a layer with `params`) keeps its disc: the sprite sheet, still read in this mode,
+is measured once for a plate (`fontPlateSample`), drawn by the SDK under the glyph with the same
+per-class colours as the sprite path. Massif's icon-font flavour is built this way
+([Massif style release](massif-style-release.md)).
+
 No MapTiler style uses a variable anchor today; `text-optional` alone covers 17 layers of
 streets-v4 and 25 of outdoor-v4. That is the common case, and it was the one the SDK dropped:
 `buildLabelVariants` returned early on an empty anchor list and so never reached the icon-only

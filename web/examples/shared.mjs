@@ -3,11 +3,6 @@
  * carry no User-Agent (a page cannot set one) and no disk cache (the browser's HTTP cache is it).
  */
 
-/** OpenStreetMap's raster tiles - what most of the basics examples sit on. */
-export function osmRaster() {
-  return { type: 'http', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxZoom: 19 };
-}
-
 /** OpenFreeMap's planet vector tiles, in the OpenMapTiles schema. */
 export function vectorTiles() {
   return { type: 'http', url: 'https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf', maxZoom: 14 };
@@ -23,49 +18,36 @@ export function demTiles() {
   return { type: 'http', url: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp', minZoom: 1, maxZoom: 16, metaData: { dem_encoding: 'terrarium' } };
 }
 
-/** A CartoCSS style for the OpenMapTiles schema, as an inline string. */
-export function alpineStyle() {
-  return {
-    type: 'mbvt',
-    cartocss: {
-      type: 'cartocss',
-      css: [
-        'Map { background-color: #f4f1ec; }',
-        '#water { polygon-fill: #9cc3e0; }',
-        '#landcover { polygon-fill: #dbe8cc; polygon-opacity: 0.5; }',
-        '#landuse { polygon-fill: #dddddd; polygon-opacity: 0.35; }',
-        '#building { polygon-fill: #d9d0c9; line-color: #c3b8ae; line-width: 0.6; }',
-        '#transportation { line-color: #ffffff; line-width: linear([view::zoom], (10, 0.6), (16, 5)); line-join: round; line-cap: round; }',
-        "#transportation['class'='motorway'] { line-color: #f6c667; line-width: linear([view::zoom], (8, 1.2), (16, 8)); }",
-        '#waterway { line-color: #9cc3e0; line-width: 1.2; }',
-        '#place::labels { text-name: [name]; text-face-name: "sans-serif"; text-size: 12; text-fill: #33302c; text-halo-fill: #ffffffcc; text-halo-radius: 1.5; }',
-        '#mountain_peak::labels { text-name: [name]; text-face-name: "sans-serif"; text-size: 11; text-fill: #6b4a2f; text-halo-fill: #ffffffcc; text-halo-radius: 1.5; }',
-      ].join('\n'),
-    },
-  };
-}
+// The Massif CartoCSS project (docs/styles/massif-sdk.md): the published copy beside these examples on
+// the site, which the release workflow keeps current; anywhere else, the site's.
+const MASSIF_SITE = 'https://massif-maps.github.io/MassifMaps/styles/massif/carto/';
+const MASSIF_VARIANTS = ['streets', 'outdoor', 'topo', 'hybrid', 'eink'];
+const IMAGE = /[\w./-]+\.(?:png|jpg|svg)/g;
 
-/** The same, with no background of its own, so it can be drawn over imagery or terrain. */
-export function overlayStyle() {
-  return {
-    type: 'mbvt',
-    cartocss: {
-      type: 'cartocss',
-      css: [
-        '#transportation { line-color: #ffffffcc; line-width: linear([view::zoom], (10, 0.5), (16, 4)); line-join: round; line-cap: round; }',
-        '#place::labels { text-name: [name]; text-face-name: "sans-serif"; text-size: 12; text-fill: #ffffff; text-halo-fill: #00000099; text-halo-radius: 2; }',
-        '#mountain_peak::labels { text-name: [name]; text-face-name: "sans-serif"; text-size: 12; text-fill: #ffffff; text-halo-fill: #00000099; text-halo-radius: 2; }',
-      ].join('\n'),
-    },
-  };
-}
-
-/** Writes a CartoCSS style project into the module's filesystem and returns its folder, for `{ type: 'dir' }`. */
-export function styleProject(map, name, files) {
-  const folder = `/massif-style/${name}`;
-  map.module.FS.mkdirTree(folder);
-  for (const [file, text] of Object.entries(files)) {
-    map.module.FS.writeFile(`${folder}/${file}`, text);
+/**
+ * Massif as an `mbvt` style spec for `variant`: the project is fetched into the module's filesystem
+ * once, and every variant is a style parameter of it (`style.set('params.variant', 'eink')`).
+ */
+export async function massifStyle(map, variant = 'streets') {
+  const folder = '/massif-style/massif';
+  if (!map.module.FS.analyzePath(`${folder}/project.json`).exists) {
+    let base = new URL('../../styles/massif/carto/', import.meta.url).href;
+    let project = await fetch(`${base}project.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!project) {
+      base = MASSIF_SITE;
+      project = await (await fetch(`${base}project.json`)).json();
+    }
+    const texts = await Promise.all(project.styles.map((name) => fetch(base + name).then((r) => r.text())));
+    const images = new Set(Object.values(project.styleparameters ?? {}).filter((v) => typeof v === 'string' && /\.(?:png|jpg|svg)$/.test(v)));
+    for (const text of texts) for (const match of text.matchAll(IMAGE)) images.add(match[0]);
+    const names = ['project.json', ...MASSIF_VARIANTS.map((v) => `${v}.json`), ...project.styles, ...images,
+                   ...(project.fonts ?? []).map((f) => `fonts/${f}`)];
+    const files = await Promise.all(names.map(async (name) => [name, new Uint8Array(await (await fetch(base + name)).arrayBuffer())]));
+    for (const [name, bytes] of files) {
+      const path = `${folder}/${name}`;
+      map.module.FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
+      map.module.FS.writeFile(path, bytes);
+    }
   }
-  return folder;
+  return { type: 'mbvt', project: { type: 'project', assets: { type: 'dir', path: folder }, name: variant } };
 }

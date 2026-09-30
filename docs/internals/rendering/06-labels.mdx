@@ -1084,6 +1084,12 @@ more ink in a label than it should have had.
 `usWeightClass`, not from `FT_STYLE_FLAG_BOLD`, because the flag only knows bold and a Medium file
 is 500; only the difference is emboldened, and only upwards, since an outline cannot be thinned.
 
+A font COLLECTION hides the same trap one level up. iOS resolves every Helvetica Neue name to the
+one file, `HelveticaNeue.ttc`, twelve faces with Regular first, and FreeType opens face 0 unless told
+otherwise: `"Helvetica Neue Bold"` came out as Regular emboldened by 1/8 em, three times FreeType's
+own amount, a heavy smear on every bold label. `findCollectionFace` opens the face whose PostScript
+name or family + style spells the request (`fontFaceMatches` in `FontNames.cpp`, host-tested).
+
 ## On the GL thread
 
 - **Fades.** `updateLabel` moves opacity toward `visible ? 1 : 0`; invisible-but-fading labels stay

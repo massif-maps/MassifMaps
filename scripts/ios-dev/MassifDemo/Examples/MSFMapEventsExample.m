@@ -30,12 +30,14 @@
 - (void)startWithHost:(id<MSFExampleHost>)host {
     MSFMassifMap *map = host.map;
 
-    [map style:@"alpine"
+    // Massif streets: styles/massif/carto, bundled by the build as styles/massif.zip.
+    [map style:@"massif"
           spec:[[MSFSpec of:@"mbvt"]
-                  set:@"project" value:[[MSFSpec of:@"project"]
+                  set:@"project" value:[[[MSFSpec of:@"project"]
                       set:@"assets" value:[[MSFSpec of:@"zip"]
                           set:@"data" value:[[MSFSpec of:@"url"]
-                              set:@"url" value:@"assets://styles/alpine.zip"]]]]
+                              set:@"url" value:@"assets://styles/massif.zip"]]]
+                      set:@"name" value:@"streets"]]
          error:nil];
 
     [map addLayer:@"basemap"
@@ -50,10 +52,10 @@
                              set:@"maxZoom" value:@14]
                              set:@"HTTPHeaders" value:[[MSFSpec object]
                                  set:@"User-Agent" value:@"MassifMapsExamples/1.0"]]]]
-                     set:@"style" value:@"alpine"]
+                     set:@"style" value:@"massif"]
             error:nil];
 
-    [map eventProjection:@"EPSG:4326"];
+    map.eventProjection = @"EPSG:4326";
     [map.camera moveTo:[MSFPosition positionWithLng:6.8652 lat:45.8326] zoom:11];
 
     // Every camera change, whatever caused it - 47 to 159 a second during a drag, which is exactly

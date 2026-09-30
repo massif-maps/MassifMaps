@@ -138,11 +138,12 @@ jobs:
           name: massif-styles
           path: dist
 
+      # Trusted publishing (OIDC, no token): @massif-maps/styles names this workflow on npmjs.com.
       - name: Publish to npm
         working-directory: dist/npm
-        run: npm publish --provenance --access public --tag ${{ contains(inputs.version, '-') && 'next' || 'latest' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm install -g npm@^11.5.1
+          npm publish --provenance --access public --tag ${{ contains(inputs.version, '-') && 'next' || 'latest' }}
 
       - name: GitHub release
         env:

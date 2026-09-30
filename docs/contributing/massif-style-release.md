@@ -115,7 +115,7 @@ npm provenance.
    wasm, every flavour and the screenshots, validates, uploads it all as an artefact. Nothing is
    published.
 2. **Actions → Release Massif styles → Run workflow**, `version` (no `v`) and `publish` on:
-   - npm `@massif-maps/styles@<version>` (`dist/npm`, provenance, `NPM_TOKEN`);
+   - npm `@massif-maps/styles@<version>` (`dist/npm`, provenance, trusted publishing — no token);
    - GitHub release `massif-styles-v<version>` with every zip and `massif-screenshots-<version>.zip`;
    - `docs.yml` dispatched, since a release made with `GITHUB_TOKEN` triggers no workflow.
 

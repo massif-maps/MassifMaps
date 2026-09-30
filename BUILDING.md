@@ -256,8 +256,12 @@ Every release is a manually dispatched workflow (**Actions → Run workflow**) w
 | NativeScript plugin | `npm run publish` in `integrations/nativescript` | its own | npm `@nativescript-community/ui-massifmaps` |
 | Website and docs | `docs.yml` | — | GitHub Pages, on pushes to `docs/`, `website/`, nightly and after a release |
 
-npm publishing needs the `NPM_TOKEN` secret and the `@massif-maps` npm organisation;
-`release-style-tools.yml` only builds and packs, `build.yml` publishes its tarball.
+CI publishes to npm by **trusted publishing** — no token: on npmjs.com, each package's *Settings →
+Trusted publishing* names GitHub Actions, `massif-maps/MassifMaps` and the workflow that publishes
+it: `build.yml` for `@massif-maps/api`, `web` and `style-tools`, `release-styles.yml` for
+`@massif-maps/styles`. A package must exist before it can be configured, so a new one is published
+once from a machine first (`npm-packages.py publish` after `npm login`). `release-style-tools.yml`
+only builds and packs; `build.yml` publishes its tarball.
 
 ## Pre-release, then release
 

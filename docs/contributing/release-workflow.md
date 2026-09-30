@@ -40,7 +40,8 @@ The workflow file is
   `@massif-maps/style-tools` tarball.
 - `publish-npm`, once every platform has built: attaches the wasm to the release and publishes the
   three tarballs with `scripts/npm-packages.py publish`, `@massif-maps/api` first, with provenance.
-  It needs the `NPM_TOKEN` secret.
+  npm trusts the workflow itself (trusted publishing, set per package on npmjs.com), so there is
+  no npm token.
 
 With `prerelease` on, the GitHub release is a prerelease and npm gets the `next` dist-tag instead
 of `latest`. A run with `publish` off keeps the zip and the tarballs as workflow artefacts. The same

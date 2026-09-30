@@ -674,10 +674,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/massif-style-wasm/*
+      # Trusted publishing (OIDC, no token): each package names this workflow on npmjs.com.
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: python3 scripts/npm-packages.py publish --tag ${{ github.event.inputs.prerelease == 'true' && 'next' || 'latest' }}
+        run: |
+          npm install -g npm@^11.5.1
+          python3 scripts/npm-packages.py publish --tag ${{ github.event.inputs.prerelease == 'true' && 'next' || 'latest' }}
 
   create-jitpack-swiftpackage-release:
     runs-on: ubuntu-latest

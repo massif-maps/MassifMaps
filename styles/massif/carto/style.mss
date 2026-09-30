@@ -566,8 +566,12 @@ Map {
   polygon-emissive-strength: 0;
 }
 #hillshade[zoom < 16] {
-  hillshade-opacity: 0.55;
-  hillshade-exaggeration: (([param::variant] = 'topo') ? 0.5 : 0.35);
+  hillshade-contrast: (([param::variant] = 'topo') ? 0.5 : 0.35);
+  hillshade-height-scale: 1;
+  hillshade-method: 'standard';
+  hillshade-shadow-color: (([param::variant] = 'topo') ? @hillshade_shadow_color : (([param::variant] = 'eink') ? @hillshade_shadow_color_2 : @hillshade_shadow_color_3));
+  hillshade-highlight-color: (([param::variant] = 'topo') ? @hillshade_highlight_color : (([param::variant] = 'eink') ? @road_background_fill : @hillshade_highlight_color_2));
+  hillshade-accent-color: (([param::variant] = 'topo') ? @hillshade_accent_color : (([param::variant] = 'eink') ? @hillshade_accent_color_2 : @hillshade_accent_color_3));
 }
 #contour[zoom >= 12][div < 100]::contour {
   line-color: (([param::variant] = 'topo') ? @contour_stroke : (([param::variant] = 'hybrid') ? @contour_stroke_2 : (([param::variant] = 'eink') ? linear([view::brightness], (0.25, @contour_stroke_3), (0.3, @contour_stroke_4)) : @contour)));

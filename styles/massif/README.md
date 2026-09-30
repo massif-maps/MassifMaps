@@ -94,8 +94,10 @@ deeper woods (`OUTDOOR` in the palette):
 
 - **Relief** from the Mapterhorn DEM (`dem`), faded out by z16 as Standard does. CartoCSS cannot
   draw a raster, so on the SDK it is the app's `HillshadeRasterTileLayer`; the layer's
-  `massif:sdk-layer` metadata says how to set it up (exaggeration 0.35, opacity 0.55, visible to
-  z16), and the preview builds exactly that, reading the DEM to the source's `maxzoom`.
+  `massif:sdk-layer` metadata says how to set it up to draw what the MapLibre paint draws
+  (`STANDARD`, contrast = the paint's exaggeration, heightScale 1, the same colours, visible to z16;
+  [Matching MapLibre](../../docs/features/hillshade.md#matching-maplibre)), and the preview builds
+  exactly that, reading the DEM to the source's `maxzoom` in its `encoding`.
 - **Contours** from the optional `contours` source (layer `contour`, `ele` and `div`: the prebaked
   archive or `ContourTileDataSource`, same schema): 10 m lines from z12, index lines (`div >= 100`)
   from z11, labelled from z13.

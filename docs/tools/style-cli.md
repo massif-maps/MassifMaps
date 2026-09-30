@@ -64,6 +64,13 @@ Flags:
 **Every conversion prints a coverage report** naming each property it could not carry and how often
 it appeared. That is the number to read: a translation is not "done" because it produced files.
 
+**A `hillshade` layer becomes a composite slot** when its `metadata["massif:sdk-layer"]` states the
+`HillshadeRasterTileLayer` settings: `opacity`, `exaggeration`, `contrast`, `heightScale`,
+`hillshadeMethod` and the three colours become the matching `hillshade-*` properties of a `#<id>`
+rule. The paint itself is not read — MapLibre's `hillshade-exaggeration` is the layer's `contrast`
+([Matching MapLibre](../features/hillshade.md#matching-maplibre)). Without the metadata the layer is
+dropped.
+
 ### What it cannot carry
 
 These are CartoCSS gaps, not converter bugs — the report names them one by one:

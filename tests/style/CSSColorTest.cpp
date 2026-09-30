@@ -12,6 +12,10 @@
 #include "TestCheck.h"
 
 #include <mapnikvt/CSSColorParser.h>
+#include <mapnikvt/ParserUtils.h>
+#include <cartocss/Color.h>
+
+#include <sstream>
 
 #include <string>
 
@@ -49,4 +53,16 @@ void testCSSColor() {
     TEST_CHECK(refused("#b8c6d"), "five digits are no colour");
     TEST_CHECK(refused("#"), "an empty code is no colour");
     TEST_CHECK(refused("marzipan"), "an unknown name is refused");
+
+    // A config colour (hillshade-shadow-color) reaches CompositeVectorTileLayer as the translator
+    // spells it, rgb()/rgba(), never #hex: a hex-only reader drew every such shade black.
+    std::stringstream opaque, translucent;
+    opaque << massif::css::Color::fromRGBA8(84, 77, 69, 255);
+    translucent << massif::css::Color::fromRGBA8(84, 77, 69, 128);
+    massif::vt::Color parsed;
+    TEST_CHECK(mvt::tryParseColor(opaque.str(), parsed) && parsed.rgba8() == (std::array<std::uint8_t, 4> { 84, 77, 69, 255 }),
+               "the translator's rgb() reads back as the same colour");
+    // parseColorValue divides it back out: the layer's colours are straight.
+    TEST_CHECK(mvt::tryParseColor(translucent.str(), parsed) && parsed.rgba8() == (std::array<std::uint8_t, 4> { 42, 39, 35, 128 }),
+               "its rgba() reads back premultiplied");
 }

@@ -115,8 +115,15 @@ silently a no-op there.
 ```bash
 python3 scripts/capture-examples.py                    # every example
 python3 scripts/capture-examples.py terrain-3d markers # only these
+python3 scripts/capture-examples.py --web http://localhost:3000/MassifMaps/massif/examples/run
+python3 scripts/capture-examples.py --ios <simulator udid> search-features
 python3 scripts/gen-examples.py                        # record them in the manifest
 ```
+
+The default captures on an Android device over adb. `--web` drives the web gallery in headless
+Chromium (`web/demo/bench.mjs`, no device, 960x480 at 2x); the web module has no search and its
+terrain frames stay coarse, so `search-features` and the 3D examples come from `--ios`, a booted
+simulator running the demo.
 
 They land in `docs/examples/screenshots/<id>.png` — **one home**, shipped inside the APK as an
 asset for the gallery grid and read from the same place by the website.

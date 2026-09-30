@@ -316,3 +316,4 @@ target_include_directories(api_tests PRIVATE
   "${SDK_BASE_DIR}/libs-external/tinyformat")
 
 add_test(NAME api COMMAND api_tests)
+add_test(NAME profile_guards COMMAND "${TEST_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/ProfileGuardTest.py" "${SDK_BASE_DIR}")

@@ -9,7 +9,7 @@
 #include "geocoding/ReverseGeocodingRequest.h"
 #include "geocoding/ReverseGeocodingService.h"
 
-#ifdef _MASSIF_OFFLINE_SUPPORT
+#if defined(_MASSIF_OFFLINE_SUPPORT) && defined(_MASSIF_PACKAGEMANAGER_SUPPORT)
 #include "geocoding/MultiOSMOfflineGeocodingService.h"
 #include "geocoding/MultiOSMOfflineReverseGeocodingService.h"
 #endif
@@ -78,7 +78,7 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-#ifdef _MASSIF_OFFLINE_SUPPORT
+#if defined(_MASSIF_OFFLINE_SUPPORT) && defined(_MASSIF_PACKAGEMANAGER_SUPPORT)
 
         /** add(path) / remove(path) - one .nutigeodb per downloaded area, found by scanning. */
         template <typename Service>
@@ -110,7 +110,7 @@ namespace massif { namespace api {
                                 &calculateAddresses);
         Methods::registerMethod("massif::ReverseGeocodingService", "calculateAddresses",
                                 &calculateReverseAddresses);
-#ifdef _MASSIF_OFFLINE_SUPPORT
+#if defined(_MASSIF_OFFLINE_SUPPORT) && defined(_MASSIF_PACKAGEMANAGER_SUPPORT)
         Methods::registerMethod("massif::MultiOSMOfflineGeocodingService", "add",
                                 &addDatabase<MultiOSMOfflineGeocodingService>);
         Methods::registerMethod("massif::MultiOSMOfflineGeocodingService", "remove",

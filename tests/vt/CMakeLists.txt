@@ -18,6 +18,7 @@ add_executable(vt_tests
   LabelPerspectiveTest.cpp
   ExtrusionCornerTest.cpp
   ExtrusionBevelTest.cpp
+  ExtrusionGroundSkirtClipTest.cpp
   LineJoinTest.cpp
   ExtrusionBaseTest.cpp
   ExtrusionFloorTest.cpp

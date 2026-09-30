@@ -2309,3 +2309,19 @@ Linking mimalloc: fill 1.1 s, worker CPU 11.7 -> 1.85 s, pan p90 12 ms. Building
 
 Ruled out: badge POIs (6.2 vs 6.3 s plain), the build configuration, and the web build in general -
 `display-a-map`, the same style at z11, fills in 1.1 s under either allocator.
+
+## 35. A z18 tile carried every contact shadow of its z14 source (2026-09-30)
+
+Found while checking the tile refetch fix (#280) on the web build at Paris z17.2 tilt 45 in an iPhone-sized viewport (402 x
+874 at 3x): the loop went on with every fix in, and the visible cache sat at its 512 MB ceiling. Per
+tile, z17 tiles decoded to 1.1 MB and z18 tiles to 54 MB, 33 geometries of 65535 indices each, all
+`POLYGON3DGROUND` - the building contact shadow, which the Massif style turns on from z18
+(`building-ao-ground-radius`). Roughly 3600 footprints' skirts per tile at ~10 quads each: the whole z14 source, which
+overzoom hands to every z18 tile derived from it.
+
+`appendGroundSkirt` clips per footprint, but its bounding box was default-constructed: cglib's
+`bbox` has no initialiser, so the box grew from whatever the stack held. With zeros there it
+reaches back to the tile's origin and keeps every footprint down and right of the tile - the host
+test reproduces exactly that. `bbox2<float>::smallest()` fixes it. z18 tiles 54 -> 1.6 MB;
+the same scene loads 45 map tiles once each and stops at 35 s. The iOS simulator drew that camera
+at z17 and never hit it; no device checked.

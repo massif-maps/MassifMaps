@@ -12,6 +12,7 @@ void testLineLabel();
 void testExtrusionCorner();
 void testExtrusionRingOrientation();
 void testExtrusionBevel();
+void testExtrusionGroundSkirtClip();
 void testLineJoinReach();
 void testExtrusionBase();
 void testExtrusionFloor();
@@ -52,6 +53,7 @@ int main() {
     testExtrusionCorner();
     testExtrusionRingOrientation();
     testExtrusionBevel();
+    testExtrusionGroundSkirtClip();
     testLineJoinReach();
     testExtrusionBase();
     testExtrusionFloor();

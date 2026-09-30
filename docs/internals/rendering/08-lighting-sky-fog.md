@@ -1117,6 +1117,11 @@ quad's four corners land on the surface but its interior interpolates linearly b
 quad over a 50 m wall cuts into a slope at one end and floats at the other. Across the wall the span
 is only `2 * radius`, so that direction needs no split.
 
+**Only a footprint that reaches the tile lays a skirt.** Under overzoom every z18 tile is handed the
+whole z14 source tile, so this clip is all that keeps a tile to its own buildings. Its bounding box
+was uninitialised until 2026-09-30, and z18 Paris tiles carried 55 MB of skirts each against 1.6 MB
+after the fix ([performance log](../performance-log.md#35-a-z18-tile-carried-every-contact-shadow-of-its-z14-source-2026-09-30)).
+
 #### Two paths, because neither covers both cases
 
 | | drape on (3D terrain) | drape off (2D, or terrain without drape) |

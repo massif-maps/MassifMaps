@@ -1447,7 +1447,7 @@ namespace massif::vt {
         // Only footprints that reach this TILE. The walls have always been clipped this way and the
         // shadow never was, so under overzoom - where one source tile's features are handed to every
         // target tile derived from it - each tile laid the shadow of every building in the source.
-        cglib::bbox2<float> bounds;
+        cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
         for (const cglib::vec2<float>& p : points) {
             bounds.add(p);
         }

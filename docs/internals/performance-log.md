@@ -2336,7 +2336,10 @@ two runs each:
 
 Not web-only: the same C++ and the same cache sizes run everywhere. A parallel session counted
 `day-cycle-light` (terrain + shadows, Grenoble z15.5 tilt 45) on master: the Android emulator loaded
-the centre z14 tile 353 times, the iOS simulator 13 times. The fix has NOT been run on a device.
+the centre z14 tile 353 times, the iOS simulator 13 times. With the fix (same session, one run each,
+loads counted over 2-3 min): Android 770 -> 220 loads for ~180 tiles, the centre tile 353 -> 23, app
+CPU 165-264% for minutes -> 0% from 15 s; iOS simulator 128 -> 200 loads, 108 -> 136 tiles, the
+centre tile 13 -> 23, idle from ~60 s in both. Why iOS loads more is not explained. No real device yet.
 The preloading ring (off by default) still lives in the 10 MB cache and would loop the same way
 once larger than it.
 

@@ -514,6 +514,10 @@ is `ShadowCasterRing::sunwardTiles`: from tile zoom 16, the visible tiles' neigh
 that overlap no visible tile. `MapRenderer::getShadowSunDir` hands the layers the sun of the last
 pass that drew shadows, so nothing is fetched while shadows are off.
 
+They are fetched as preloading tiles but cached like visible ones, or they and the label band evict
+each other from the 10 MB preloading cache and are refetched in a loop
+([02-tiles.md](02-tiles.md#substitution-preloading-caching)).
+
 They travel as `TileDrawData::isShadowCasterTile` to `GLTileRenderer::setVisibleTiles`, which gives
 them render tiles but no surface and no labels. The caster pass takes them without the per-cascade
 coverage test (they are next to the view by construction), and that test is now an intersection

@@ -374,6 +374,16 @@ reasonable can be ruinous multiplied together, and an app has no way to see that
   bucket and the preloading ring alike — and `GLTileRenderer::setVisibleTiles` takes that half as
   `labelOnlyTiles`: it joins `buildLabelMaps` and skips `buildTileSurfaces`/`buildRenderTiles`.
   Drawing them instead cost 4.3% of the frame rate on the Crosscall for pixels nobody sees.
+- **Two memory caches, split by use, not by bucket.** `VectorTileLayer` keeps the tiles the frame
+  uses in `_visibleCache` (512 MB, never meant to fill) and everything else in `_preloadingCache`
+  (10 MB LRU); `holdTilesInUse` (`layers/TileCacheHold.h`) moves them across on every refresh. "Used"
+  is the view, the label band and the shadow casters. Until 2026-09-30 only the view was held: the
+  label band and the casters, fetched as preloading tiles but asked for again by every cull, sat in
+  the 10 MB LRU, and once they outgrew it each arrival evicted another member, which the next cull
+  refetched — forever, with the map redrawing on each arrival. Grenoble z15.5 decodes to 0.4-3.9 MB a
+  tile; 8 label tiles plus 5 casters were ~16 MB
+  ([performance log](../performance-log.md#34-shadow-casters-and-the-label-band-refetched-forever-2026-09-30)).
+  The preloading ring (off by default) is still NOT held: a ring larger than 10 MB would loop the same way.
 - Tiles live in the layer's memory cache plus an optional persistent cache
   (`PersistentCacheTileDataSource`). The persistent cache is why a device re-run is not a cold run —
   `pm clear` is the only reliable reset ([10-performance.md](10-performance.md)).

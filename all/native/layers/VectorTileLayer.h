@@ -19,6 +19,7 @@
 #include <memory>
 #include <map>
 #include <regex>
+#include <unordered_set>
 
 #include <stdext/timed_lru_cache.h>
 
@@ -329,6 +330,7 @@ namespace massif {
 
         std::vector<long long> _visibleTileIds;
         std::vector<std::shared_ptr<TileDrawData> > _tempDrawDatas;
+        std::unordered_set<long long> _tempUsedTileIds; // _tempDrawDatas' tiles held in _visibleCache
 
         cache::timed_lru_cache<long long, TileInfo> _visibleCache;
         cache::timed_lru_cache<long long, TileInfo> _preloadingCache;

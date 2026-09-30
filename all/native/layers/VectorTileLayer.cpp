@@ -7,6 +7,7 @@
 #include "graphics/utils/BackgroundBitmapGenerator.h"
 #include "graphics/utils/SkyBitmapGenerator.h"
 #include "datasources/TileDataSource.h"
+#include "layers/TileCacheHold.h"
 #include "layers/TileStyleZoom.h"
 #include "layers/VectorTileEventListener.h"
 #include "projections/Projection.h"
@@ -403,6 +404,9 @@ namespace massif {
                     vtTileId = vt::TileId(closestTile.getZoom(), closestTile.getX() + (dx << closestTile.getZoom()), closestTile.getY() + (dy << closestTile.getZoom()));
                 }
                 _tempDrawDatas.push_back(std::make_shared<TileDrawData>(vtTileId, tile, closestTileId, preloadingTile, isCollectingShadowCasters()));
+                if (!preloadingTile || isCollectingShadowCasters() || isCollectingLabelTiles()) {
+                    _tempUsedTileIds.insert(closestTileId);
+                }
             }
         }
     }
@@ -411,22 +415,7 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         VT_STAT_CLOCK(holdClock);
 
-        std::unordered_set<long long> lastVisibleCacheTiles = _visibleCache.keys();
-        
-        for (const std::shared_ptr<TileDrawData>& drawData : _tempDrawDatas) {
-            if (!drawData->isPreloadingTile()) {
-                long long tileId = drawData->getTileId();
-                lastVisibleCacheTiles.erase(tileId);
-
-                if (!_visibleCache.exists(tileId) && _preloadingCache.exists(tileId)) {
-                    _preloadingCache.move(tileId, _visibleCache);
-                }
-            }
-        }
-        
-        for (long long tileId : lastVisibleCacheTiles) {
-            _visibleCache.move(tileId, _preloadingCache);
-        }
+        holdTilesInUse(_visibleCache, _preloadingCache, _tempUsedTileIds);
         
         if (!(isSynchronizedRefresh() && _fetchingTileTasks.getVisibleCount() > 0)) {
             std::vector<std::shared_ptr<TileDrawData>> drawDatas = _tempDrawDatas;
@@ -486,6 +475,7 @@ namespace massif {
             _visibleTileIds.push_back(drawData->getTileId());
         }
         _tempDrawDatas.clear();
+        _tempUsedTileIds.clear();
         VT_STAT_SPLIT(layerRefreshHoldNs, holdClock);
     }
     

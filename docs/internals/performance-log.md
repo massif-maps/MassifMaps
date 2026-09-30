@@ -2310,6 +2310,36 @@ Linking mimalloc: fill 1.1 s, worker CPU 11.7 -> 1.85 s, pan p90 12 ms. Building
 Ruled out: badge POIs (6.2 vs 6.3 s plain), the build configuration, and the web build in general -
 `display-a-map`, the same style at z11, fills in 1.1 s under either allocator.
 
+## 34. Shadow casters and the label band refetched forever (2026-09-30)
+
+Web `standard` Release, headless Chromium on a Metal GPU, `style-parameters` (Massif streets over
+OpenFreeMap, source max zoom 14) plus terrain and a light with `shadowStrength: 0.35`, Grenoble z15.5
+tilt 45. The driver loads the page twice, counts `.pbf` requests on the worker targets, then pans.
+
+With shadows on, vector tiles were fetched and decoded in a loop and the map never stopped drawing;
+`shadowStrength: 0` settled. A probe on every fetch and cache put showed why: the 8 label-band tiles
+and the 5 sunward caster tiles are both fetched as preloading tiles, both asked for again by every
+cull, and both lived in the 10 MB preloading LRU. They decode to 0.4-1.6 MB each, ~16 MB together, so
+each arrival evicted another member of the set and the next cull refetched it. The view's own tiles
+(0.9-3.9 MB each, 39 MB here) were never affected: the visible cache is 512 MB.
+
+Fix: the tiles a frame uses - view, label band, casters - are held in the visible cache
+([02-tiles.md](rendering/02-tiles.md#substitution-preloading-caching)). Same driver, same tree,
+two runs each:
+
+| | load requests (unique) | pan requests | last frame |
+|---|---|---|---|
+| master, shadows on | 499 (17) / 537 (19) | 126 / 150 | still drawing at the 125 s cutoff |
+| fix, shadows on | 59 (19) / 58 (19) | 14 / 10 | 38.3 s / 34.6 s |
+| master, no terrain | 32 (4) / 32 (4) | 19 / 20 | 6.1 s / 6.3 s |
+| fix, no terrain | 30 (4) / 28 (4) | 14 / 13 | 6.1 s / 6.2 s |
+
+Not web-only: the same C++ and the same cache sizes run everywhere. A parallel session counted
+`day-cycle-light` (terrain + shadows, Grenoble z15.5 tilt 45) on master: the Android emulator loaded
+the centre z14 tile 353 times, the iOS simulator 13 times. The fix has NOT been run on a device.
+The preloading ring (off by default) still lives in the 10 MB cache and would loop the same way
+once larger than it.
+
 ## 35. A z18 tile carried every contact shadow of its z14 source (2026-09-30)
 
 Found while checking the tile refetch fix (#280) on the web build at Paris z17.2 tilt 45 in an iPhone-sized viewport (402 x

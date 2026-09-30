@@ -437,7 +437,9 @@ namespace massif {
         std::vector<FetchTileInfo> fetchTileList;
         buildFetchTiles(_visibleTiles, false, fetchTileList);
         // Not gated on _preloading: label-band tiles let labels arrive drawn instead of fading in mid-screen.
+        _collectingLabelTiles = true;
         buildFetchTiles(_labelTiles, true, fetchTileList);
+        _collectingLabelTiles = false;
         _collectingShadowCasters = true;
         buildFetchTiles(_shadowCasterTiles, true, fetchTileList);
         _collectingShadowCasters = false;

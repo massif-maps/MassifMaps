@@ -415,6 +415,8 @@ class ProjectionSurface;
         virtual void calculateDrawData(const MapTile& visTile, const MapTile& closestTile, bool preloadingTile) = 0;
         // True while calculateDrawData is called for a shadow caster tile (see _shadowCasterTiles).
         bool isCollectingShadowCasters() const { return _collectingShadowCasters; }
+        // True while calculateDrawData is called for a label-band tile (see _labelTiles).
+        bool isCollectingLabelTiles() const { return _collectingLabelTiles; }
         virtual void refreshDrawData(const std::shared_ptr<CullState>& cullState, bool tilesChanged) = 0;
         
         virtual int getMinZoom() const = 0;
@@ -608,6 +610,7 @@ class ProjectionSurface;
         // it, never drawn (mapbox's extendTileCover towards the light).
         std::vector<MapTile> _shadowCasterTiles;
         bool _collectingShadowCasters = false; // calculateDrawData is building _shadowCasterTiles' draw data
+        bool _collectingLabelTiles = false;
         // Sticky once named: rebuilt each cull, a resolved tile would drop out, un-resolve its ends and be named again, forever.
         struct SpanReference {
             MapTile tile;

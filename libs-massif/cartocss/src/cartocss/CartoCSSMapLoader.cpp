@@ -492,7 +492,7 @@ namespace massif::css {
     }
 
     std::shared_ptr<mvt::Style> CartoCSSMapLoader::buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const {
-        auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.simplify, attachmentStyle.rules);
+        auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.simplify, attachmentStyle.rules, attachmentStyle.drawOnce);
         style->optimizeRules();
         return style;
     }
@@ -555,6 +555,10 @@ namespace massif::css {
                     else {
                         _logger->write(mvt::Logger::Severity::WARNING, "CompOp must be constant expression");
                     }
+                }
+                // Not a constant like the others: a style parameter may name the group, or none.
+                if (auto drawOnceProp = propertySet.findProperty("draw-once")) {
+                    attachmentStyle.drawOnce = translator.buildExpression(drawOnceProp->getExpression());
                 }
                 if (auto simplifyProp = propertySet.findProperty("simplify")) {
                     if (auto val = std::get_if<Value>(&simplifyProp->getExpression())) {

@@ -114,6 +114,7 @@ namespace massif::mvt {
                 tileLayerBuilder.setPolygon3DEdgeCorners((_map->getSettings().buildingEdgeCorners.getFunction(exprContext))(tileViewState) != 0.0f);
                 tileLayerBuilder.setOpacityFunc(vt::FloatFunction(style->getOpacity()));
                 tileLayerBuilder.setCompOp(style->getCompOp());
+                tileLayerBuilder.setDrawOnceGroup(ValueConverter<std::string>::convert(std::visit(ExpressionEvaluator(exprContext, nullptr), style->getDrawOnce())));
                 processLayer(layer, style, rules, exprContext, selectionStateKey, tileLayerBuilder);
 
                 std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();

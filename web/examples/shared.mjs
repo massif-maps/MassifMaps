@@ -90,7 +90,7 @@ export async function massifStyle(map, variant = 'streets') {
     const texts = await Promise.all(project.styles.map((name) => fetch(base + name).then((r) => r.text())));
     const images = new Set(Object.values(project.styleparameters ?? {}).filter((v) => typeof v === 'string' && /\.(?:png|jpg|svg)$/.test(v)));
     for (const text of texts) for (const match of text.matchAll(IMAGE)) images.add(match[0]);
-    const names = ['project.json', ...MASSIF_VARIANTS.map((v) => `${v}.json`), ...project.styles, ...images,
+    const names = ['project.json', 'legend.json', ...MASSIF_VARIANTS.map((v) => `${v}.json`), ...project.styles, ...images,
                    ...(project.fonts ?? []).map((f) => `fonts/${f}`)];
     const files = await Promise.all(names.map(async (name) => [name, new Uint8Array(await (await fetch(base + name)).arrayBuffer())]));
     for (const [name, bytes] of files) {

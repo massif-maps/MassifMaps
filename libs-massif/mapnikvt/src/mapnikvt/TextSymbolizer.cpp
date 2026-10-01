@@ -50,14 +50,14 @@ namespace massif::mvt {
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float pixelScale = symbolizerContext.getSettings().getPixelScale();
-        // The culler measures in DEVICE pixels, so this takes the pixel scale as emSizePixels does.
-        // dx/dy, halo-radius and wrap-width take fontScale alone, being in GLYPH units - left unscaled,
-        // a style's separation shrank to a third of what it asked for on a hi-dpi screen.
+        // minimum-distance is a gap the culler tests in DEVICE pixels, so it takes the pixel scale as emSizePixels
+        // does; left unscaled, a separation shrank to a third on a hi-dpi screen. dx/dy, halo-radius and wrap-width are GLYPH units.
         float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale * pixelScale;
-        float collisionPadding = _collisionPadding.getValue(exprContext) * fontScale * pixelScale;
+        float collisionPadding = _collisionPadding.getValue(exprContext) * fontScale; // grows the box in glyph units, scaled to pixels with it
         float maxAngle = _maxCharAngleDelta.getValue(exprContext) * boost::math::constants::pi<float>() / 180.0f;
         float maxDistance = _maxDistance.getValue(exprContext);
         float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
+        bool zElevate = _zElevate.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         float calloutScreenAnchor = _calloutScreenAnchor.getValue(exprContext);
         bool calloutBandFollow = _calloutBandFollow.getValue(exprContext);
@@ -206,7 +206,7 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, glyphSize, maxAngle, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutAnchorVisible, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, glyphSize, maxAngle, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, zElevate, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutBandFollow, calloutAnchorVisible, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, collisionPadding, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
             style.collisionPadding = collisionPadding;
             style.maxAngle = maxAngle;
@@ -217,6 +217,7 @@ namespace massif::mvt {
             if (occlusionOpacity >= 0.0f) {
                 style.occlusionOpacity = occlusionOpacity;
             }
+            style.zElevate = zElevate;
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!textProcessor) {

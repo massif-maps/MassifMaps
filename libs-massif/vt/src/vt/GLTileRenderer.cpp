@@ -1020,8 +1020,9 @@ namespace massif::vt {
         if (had && !_labelElevationProvider) {
             std::shared_ptr<const TileTransformer> transformer = _transformer;
             std::function<cglib::vec3<double>(const cglib::vec3<double>&)> flat = [transformer](const cglib::vec3<double>& pos) { return transformer->calculateElevatedPos(pos, 0.0); };
+            std::function<cglib::vec3<double>(const cglib::vec3<double>&)> flatRoof = roofAnchorFunc(flat);
             for (const std::shared_ptr<Label>& label : _labels) {
-                label->updateElevation(flat);
+                label->updateElevation(label->isZElevated() ? flatRoof : flat);
                 label->setElevationDirty(false);
             }
         }
@@ -1297,7 +1298,7 @@ namespace massif::vt {
         if (_labelElevationProvider && _labelAnchorOnCull) {
             markPendingLabelsDirty();
             for (const std::shared_ptr<Label>& label : _labels) {
-                if (label->isElevationDirty()) {
+                if (label->isElevationDirty() && !label->isZElevated()) {
                     dirtyLabels.push_back(label);
                 }
             }
@@ -1539,8 +1540,9 @@ namespace massif::vt {
         VT_STAT_SPLIT(prepTileBlendNs, prepClock);
         
         // Re-anchor only for elevation tiles landed since the last frame; NEW labels are anchored on
-        // the cull thread in setVisibleTiles, off the render thread.
-        if (_labelElevationProvider) {
+        // the cull thread in setVisibleTiles, off the render thread, all but those on roofs.
+        bool roofsMoved = refreshRoofSurfaces();
+        if (_labelElevationProvider || roofsMoved || !_roofSurfaces.empty()) {
             refresh = anchorDirtyLabels() || refresh;
             VT_STAT_SPLIT(prepElevUpdateNs, prepClock);
         }
@@ -4407,7 +4409,7 @@ namespace massif::vt {
             cglib::vec3<double> mercatorPos = transformer->calculateMercatorPos(pos);
             double height = 0;
             if (!(!chords.empty() && SpanResolver::chordHeightAt(chords, cglib::vec2<double>(mercatorPos(0) * scale, mercatorPos(1) * scale), height))) {
-                height = provider(mercatorPos);
+                height = provider ? provider(mercatorPos) : 0.0;
             }
             return transformer->calculateElevatedPos(pos, height);
         };
@@ -4420,11 +4422,13 @@ namespace massif::vt {
         markPendingLabelsDirty();
         VT_STAT_SPLIT(prepElevDirtyNs, anchorClock);
         std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc = labelAnchorFunc();
+        std::function<cglib::vec3<double>(const cglib::vec3<double>&)> roofFunc = roofAnchorFunc(anchorFunc);
         bool anchored = false;
         std::vector<std::shared_ptr<Label>> dirty;
         for (const std::shared_ptr<Label>& label : _labels) {
-            if (label->isElevationDirty()) {
-                label->updateElevation(anchorFunc);
+            // A flat map anchors nothing but the labels standing on roofs.
+            if (label->isElevationDirty() && (_labelElevationProvider || label->isZElevated())) {
+                label->updateElevation(label->isZElevated() ? roofFunc : anchorFunc);
                 label->setElevationDirty(false); // see the bulk path in setVisibleTiles
                 dirty.push_back(label);
                 anchored = true;
@@ -4452,7 +4456,8 @@ namespace massif::vt {
             double deck = 0;
             bool onDeck = !chords.empty() && label->calculateCenter(center)
                 && SpanResolver::chordHeightAt(chords, cglib::vec2<double>(center(0) * scale, center(1) * scale), deck);
-            label->setAbsoluteHeight(onDeck);
+            bool onRoof = label->isZElevated() && label->getAnchorPosition() && roofHeightAt(*label->getAnchorPosition());
+            label->setAbsoluteHeight(onDeck || onRoof);
         }
     }
 
@@ -5148,7 +5153,7 @@ namespace massif::vt {
 
     float GLTileRenderer::calculateLabelVisibility(const Label& label) {
         const cglib::vec3<double>* anchor = label.getAnchorPosition();
-        if (!anchor || _transformer->isSpherical()) {
+        if (!anchor || _transformer->isSpherical() || _viewState.tilt >= LABEL_OCCLUSION_MAX_TILT) {
             return 1.0f;
         }
         if (!_frameOccludersValid) {
@@ -5180,23 +5185,42 @@ namespace massif::vt {
             return 1.0f;
         }
 
+        // Tested from the roof of the building it stands in, if any: from the ground, its own roof hid it.
+        cglib::vec3<double> target = *anchor;
+        double margin = LABEL_OCCLUSION_MARGIN_METERS * _metersToInternal;
+        bool onRoof = false;
+        for (const FrameOccluder& frameOccluder : _frameOccluders) {
+            if (target(0) < frameOccluder.bounds.min(0) || target(0) > frameOccluder.bounds.max(0) || target(1) < frameOccluder.bounds.min(1) || target(1) > frameOccluder.bounds.max(1)) {
+                continue;
+            }
+            std::optional<double> roof = frameOccluder.occluder->roofAt((target(0) - frameOccluder.origin(0)) / frameOccluder.scale, (target(1) - frameOccluder.origin(1)) / frameOccluder.scale, *frameOccluder.geometry, frameOccluder.heightScale, frameOccluder.origin(2), !_extrusionElevationProvider);
+            if (roof && *roof > target(2) - margin) {
+                target(2) = std::max(target(2), *roof);
+                onRoof = true;
+            }
+        }
+        // Standing on its roof, as mapbox Standard's are, it is not occluded: at street tilt any roof a few metres
+        // taller in front hid the anchor while the billboard drew over it (06-labels.mdx).
+        if (onRoof && label.isZElevated()) {
+            return 1.0f;
+        }
+
         // Four rays, mapbox's square of taps: from the eye to the corners of the occluder square around
-        // the anchor, at the anchor's distance.
+        // the anchor, at the anchor's distance. On a roof the square stands on it: its lower half was inside.
         const cglib::vec3<double>& eye = _viewState.origin;
-        double distance = cglib::length(*anchor - eye);
+        double distance = cglib::length(target - eye);
         double pixel = 2.0 * distance / (_viewState.projectionMatrix(1, 1) * std::max(1, _screenHeight));
         double half = 0.5 * LABEL_OCCLUSION_SIZE_PIXELS * pixel;
         cglib::vec3<double> right = cglib::vec3<double>::convert(_viewState.orientation[0]) * half;
         cglib::vec3<double> up = cglib::vec3<double>::convert(_viewState.orientation[1]) * half;
-        double margin = LABEL_OCCLUSION_MARGIN_METERS * _metersToInternal;
         int visible = 0;
         for (int tap = 0; tap < 4; tap++) {
-            cglib::vec3<double> target = *anchor + right * (tap & 1 ? 1.0 : -1.0) + up * (tap & 2 ? 1.0 : -1.0);
-            cglib::vec3<double> dir = target - eye;
+            cglib::vec3<double> tapTarget = target + right * (tap & 1 ? 1.0 : -1.0) + up * (onRoof ? (tap & 2 ? 2.0 : 0.0) : (tap & 2 ? 1.0 : -1.0));
+            cglib::vec3<double> dir = tapTarget - eye;
             double length = cglib::length(dir);
             double t1 = (length > margin ? 1.0 - margin / length : 0.0);
-            double x0 = std::min(eye(0), target(0)), x1 = std::max(eye(0), target(0));
-            double y0 = std::min(eye(1), target(1)), y1 = std::max(eye(1), target(1));
+            double x0 = std::min(eye(0), tapTarget(0)), x1 = std::max(eye(0), tapTarget(0));
+            double y0 = std::min(eye(1), tapTarget(1)), y1 = std::max(eye(1), tapTarget(1));
             bool blocked = false;
             for (const FrameOccluder& frameOccluder : _frameOccluders) {
                 if (x1 < frameOccluder.bounds.min(0) || x0 > frameOccluder.bounds.max(0) || y1 < frameOccluder.bounds.min(1) || y0 > frameOccluder.bounds.max(1)) {
@@ -5204,7 +5228,7 @@ namespace massif::vt {
                 }
                 cglib::vec3<double> localOrigin((eye(0) - frameOccluder.origin(0)) / frameOccluder.scale, (eye(1) - frameOccluder.origin(1)) / frameOccluder.scale, eye(2));
                 cglib::vec3<double> localDir(dir(0) / frameOccluder.scale, dir(1) / frameOccluder.scale, dir(2));
-                if (frameOccluder.occluder->intersects(localOrigin, localDir, 0.0, t1, *frameOccluder.geometry, frameOccluder.heightScale, frameOccluder.origin(2))) {
+                if (frameOccluder.occluder->intersects(localOrigin, localDir, 0.0, t1, *frameOccluder.geometry, frameOccluder.heightScale, frameOccluder.origin(2), !_extrusionElevationProvider)) {
                     blocked = true;
                     break;
                 }
@@ -5212,6 +5236,72 @@ namespace massif::vt {
             visible += (blocked ? 0 : 1);
         }
         return visible * 0.25f;
+    }
+
+    bool GLTileRenderer::refreshRoofSurfaces() {
+        std::vector<RoofSurface> roofs;
+        if (_transformer->isSpherical()) {
+            bool moved = !_roofSurfaces.empty();
+            _roofSurfaces.clear();
+            _roofSignature = 0;
+            return moved;
+        }
+        float growth = buildingHeightScale(1.0f);
+        std::size_t signature = std::hash<float>()(growth) ^ (static_cast<std::size_t>(_extrusionBaseVersion.load(std::memory_order_relaxed)) << 1) ^ (_extrusionElevationProvider ? 1 : 0);
+        // Off-screen tiles too: the set then moves as tiles load, not with every pan.
+        forEachVisibleExtrusion(nullptr, true, [&](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+            if (!geometry->getOccluder() || !geometry->getSpanRecords().empty() || geometry->getStyleParameters().translate) {
+                return true;
+            }
+            cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId, 1.0f);
+            RoofSurface roof;
+            roof.geometry = geometry;
+            roof.origin = cglib::vec3<double>(tileMatrix(0, 3), tileMatrix(1, 3), tileMatrix(2, 3));
+            roof.scale = tileMatrix(0, 0);
+            roof.heightScale = growth / geometry->getVertexGeometryLayoutParameters().heightScale * tileMatrix(2, 2);
+            roof.bounds = _transformer->calculateTileBBox(renderLayer.sourceTileId);
+            if (roof.heightScale > 0) {
+                signature ^= std::hash<const void*>()(geometry.get()) + 0x9e3779b9 + (signature << 6) + (signature >> 2);
+                roofs.push_back(roof);
+            }
+            return true;
+        });
+        if (signature == _roofSignature) {
+            return false;
+        }
+        _roofSignature = signature;
+        _roofSurfaces = std::move(roofs);
+        for (const std::shared_ptr<Label>& label : _labels) {
+            if (label->isZElevated()) {
+                label->setElevationDirty(true);
+            }
+        }
+        return true;
+    }
+
+    std::optional<double> GLTileRenderer::roofHeightAt(const cglib::vec3<double>& pos) const {
+        std::optional<double> height;
+        for (const RoofSurface& roof : _roofSurfaces) {
+            if (pos(0) < roof.bounds.min(0) || pos(0) > roof.bounds.max(0) || pos(1) < roof.bounds.min(1) || pos(1) > roof.bounds.max(1)) {
+                continue;
+            }
+            std::optional<double> z = roof.geometry->getOccluder()->roofAt((pos(0) - roof.origin(0)) / roof.scale, (pos(1) - roof.origin(1)) / roof.scale, *roof.geometry, roof.heightScale, roof.origin(2), !_extrusionElevationProvider);
+            if (z && (!height || *z > *height)) {
+                height = z;
+            }
+        }
+        return height;
+    }
+
+    std::function<cglib::vec3<double>(const cglib::vec3<double>&)> GLTileRenderer::roofAnchorFunc(std::function<cglib::vec3<double>(const cglib::vec3<double>&)> anchorFunc) const {
+        return [this, anchorFunc](const cglib::vec3<double>& pos) {
+            cglib::vec3<double> anchored = anchorFunc(pos);
+            std::optional<double> roof = roofHeightAt(anchored);
+            if (roof && *roof > anchored(2)) {
+                anchored(2) = *roof;
+            }
+            return anchored;
+        };
     }
 
     bool GLTileRenderer::hasGroundContent() const {

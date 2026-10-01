@@ -1845,6 +1845,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-z-elevate",
+      "mapnik": "z-elevate",
+      "symbolizer": "shield",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "text-allow-overlap",
       "mapnik": "allow-overlap",
       "symbolizer": "text",
@@ -2481,6 +2491,16 @@
       "kind": "float",
       "type": "FloatProperty",
       "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-z-elevate",
+      "mapnik": "z-elevate",
+      "symbolizer": "text",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
       "live": false,
       "baked": false
     }

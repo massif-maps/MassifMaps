@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <cglib/vec.h>
@@ -25,16 +26,20 @@ namespace massif::vt {
         // Null for a geometry with no extruded triangle.
         static std::shared_ptr<const ExtrusionOccluder> build(const TileGeometry& geometry);
 
-        // Whether p(t) = origin + t * dir hits a triangle for t in (t0, t1). groundZ stands in for bases the
-        // geometry does not carry; a triangle on an unresolved base does not occlude.
-        bool intersects(const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ) const;
+        // Whether p(t) = origin + t * dir hits a triangle for t in (t0, t1). groundZ stands in for bases the geometry
+        // does not carry; an unresolved base occludes nothing, unless flatGround (no DEM: it never resolves).
+        bool intersects(const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ, bool flatGround = false) const;
+
+        // The highest roof over tile-local (x, y), world z, or none. What a label standing in a building is tested
+        // from, mapbox's symbol-z-elevate: from the ground its own roof hid it.
+        std::optional<double> roofAt(double x, double y, const TileGeometry& geometry, double heightScale, double groundZ, bool flatGround = false) const;
 
     private:
         static constexpr int GRID_SIZE = 32;
 
-        double vertexBase(const TileGeometry& geometry, std::uint32_t vertex, double groundZ) const;
-        double maxBase(const TileGeometry& geometry, double groundZ) const;
-        bool intersectsTriangle(std::uint32_t triangle, const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ) const;
+        double vertexBase(const TileGeometry& geometry, std::uint32_t vertex, double groundZ, bool flatGround) const;
+        double maxBase(const TileGeometry& geometry, double groundZ, bool flatGround) const;
+        bool intersectsTriangle(std::uint32_t triangle, const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ, bool flatGround) const;
 
         std::vector<float> _x, _y, _h;         // per vertex: tile-local position, raw height units
         std::vector<std::uint16_t> _triangles; // three vertex indices each

@@ -143,17 +143,24 @@ namespace massif::vt {
         bool indexed = variantIndex >= 0 && variantIndex < static_cast<int>(_variantBBoxes.size());
         cglib::bbox2<float> bbox = (indexed ? _variantBBoxes[variantIndex] : _glyphBBox);
         const cglib::bbox2<float>& textBBox = (indexed ? _variantTextBBoxes[variantIndex] : _textBBox);
-        auto expand = [&bbox, glyphScale](const cglib::bbox2<float>& part, const TileLabel::Style::Plate& plate) {
-            if (!plate.draws() || part.min(0) > part.max(0)) {
-                return;
+        for (const cglib::bbox2<float>& plated : { calculatePlatedPartBBox(textBBox, _style->textPlate, glyphScale), calculatePlatedPartBBox(_iconBBox, _style->iconPlate, glyphScale) }) {
+            if (plated.min(0) <= plated.max(0)) {
+                bbox.add(plated.min);
+                bbox.add(plated.max);
             }
-            // borderWidth is snapped to the plate's cell and 0 without a border: the box the quad uses.
-            cglib::bbox2<float> plateBox = calculatePlateBox(part, plate.style, plate.borderWidth, 1.0f, glyphScale);
-            bbox.add(plateBox.min);
-            bbox.add(plateBox.max);
-        };
-        expand(textBBox, _style->textPlate);
-        expand(_iconBBox, _style->iconPlate);
+        }
+        return bbox;
+    }
+
+    cglib::bbox2<float> Label::calculatePlatedPartBBox(const cglib::bbox2<float>& part, const TileLabel::Style::Plate& plate, float glyphScale) const {
+        if (!plate.draws() || part.min(0) > part.max(0)) {
+            return part;
+        }
+        // borderWidth is snapped to the plate's cell and 0 without a border: the box the quad uses.
+        cglib::bbox2<float> bbox = part;
+        cglib::bbox2<float> plateBox = calculatePlateBox(part, plate.style, plate.borderWidth, 1.0f, glyphScale);
+        bbox.add(plateBox.min);
+        bbox.add(plateBox.max);
         return bbox;
     }
 
@@ -641,7 +648,7 @@ namespace massif::vt {
         return std::min(maxFactor, std::max(0.05f, factor));
     }
 
-    bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const {
+    bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope, std::vector<std::array<cglib::vec3<float>, 4>>* glyphEnvelopes) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = calculateLabelScale(size, viewState, placement);
         if (!placement || scale <= 0) {
@@ -687,6 +694,41 @@ namespace massif::vt {
             envelope[2] = origin + xAxis * (maxX * scale) + yAxis * (maxY * scale);
             envelope[3] = origin + xAxis * (minX * scale) + yAxis * (maxY * scale);
 
+            if (glyphEnvelopes) {
+                glyphEnvelopes->clear();
+                auto emit = [&](const cglib::bbox2<float>& box) {
+                    float x0 = box.min(0) - glyphPadding, x1 = box.max(0) + glyphPadding, y0 = box.min(1) - glyphPadding, y1 = box.max(1) + glyphPadding;
+                    glyphEnvelopes->push_back({ origin + xAxis * (x0 * scale) + yAxis * (y0 * scale), origin + xAxis * (x1 * scale) + yAxis * (y0 * scale),
+                                                origin + xAxis * (x1 * scale) + yAxis * (y1 * scale), origin + xAxis * (x0 * scale) + yAxis * (y1 * scale) });
+                };
+                // Neighbouring glyphs share a box while it stays tight: a straight run is a few boxes, a diagonal one stays split.
+                cglib::bbox2<float> chunk = cglib::bbox2<float>::smallest();
+                float chunkArea = 0;
+                for (std::size_t i = 0; i + 3 < _cachedVertices.size(); i += 4) {
+                    cglib::bbox2<float> glyph = cglib::bbox2<float>::smallest();
+                    for (std::size_t k = i; k < i + 4; k++) {
+                        glyph.add(cglib::vec2<float>(_cachedVertices[k](0), _cachedVertices[k](1)));
+                    }
+                    float glyphArea = glyph.size()(0) * glyph.size()(1);
+                    if (chunk.min(0) <= chunk.max(0)) {
+                        cglib::bbox2<float> merged = chunk;
+                        merged.add(glyph.min);
+                        merged.add(glyph.max);
+                        if (merged.size()(0) * merged.size()(1) <= 1.2f * (chunkArea + glyphArea)) {
+                            chunk = merged;
+                            chunkArea += glyphArea;
+                            continue;
+                        }
+                        emit(chunk);
+                    }
+                    chunk = glyph;
+                    chunkArea = glyphArea;
+                }
+                if (chunk.min(0) <= chunk.max(0)) {
+                    emit(chunk);
+                }
+            }
+
             valid = valid && _cachedValid;
         }
         else {
@@ -719,14 +761,20 @@ namespace massif::vt {
         }
     }
 
-    bool Label::calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes) const {
+    bool Label::calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes, std::vector<std::vector<std::array<cglib::vec3<float>, 4>>>& partEnvelopes) const {
         // Only point labels have variants; a callout has a placement search of its own.
         if (_variantBBoxes.empty() || isLineRun() || _style->orientation == LabelOrientation::CALLOUT) {
             envelopes.resize(1);
-            return calculateEnvelope(size, buffer, viewState, envelopes[0]);
+            partEnvelopes.resize(1);
+            partEnvelopes[0].clear();
+            return calculateEnvelope(size, buffer, viewState, envelopes[0], isLineRun() ? &partEnvelopes[0] : nullptr);
         }
 
         envelopes.resize(_variantBBoxes.size());
+        partEnvelopes.resize(_variantBBoxes.size());
+        for (std::vector<std::array<cglib::vec3<float>, 4>>& parts : partEnvelopes) {
+            parts.clear();
+        }
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = calculateLabelScale(size, viewState, placement);
         if (!placement || scale <= 0) {
@@ -742,9 +790,15 @@ namespace massif::vt {
         float glyphScale = (size > 0 ? 1.0f / size : 0.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
+        bool hasIcon = _iconBBox.min(0) <= _iconBBox.max(0);
         for (std::size_t i = 0; i < _variantBBoxes.size(); i++) {
+            const cglib::bbox2<float>& textBBox = _variantTextBBoxes[i];
             cglib::bbox2<float> box = (glyphScale > 0 ? calculatePlatedBBox(static_cast<int>(i), glyphScale) : _variantBBoxes[i]);
             buildBoxEnvelope(box, scale, cglib::vec2<float>(padding, padding), origin, xAxis, yAxis, envelopes[i]);
+            if (glyphScale > 0 && hasIcon && _variants[i].drawText && textBBox.min(0) <= textBBox.max(0)) {
+                buildBoxEnvelope(calculatePlatedPartBBox(textBBox, _style->textPlate, glyphScale), scale, cglib::vec2<float>(padding, padding), origin, xAxis, yAxis, partEnvelopes[i].emplace_back());
+                buildBoxEnvelope(calculatePlatedPartBBox(_iconBBox, _style->iconPlate, glyphScale), scale, cglib::vec2<float>(padding, padding), origin, xAxis, yAxis, partEnvelopes[i].emplace_back());
+            }
         }
         return isSurfaceFacingView(viewState, *placement);
     }

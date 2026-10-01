@@ -160,6 +160,8 @@ namespace massif::vt {
         ViewState rankViewState = _viewState;
         // Reused across labels to avoid two heap allocations per label per pass.
         std::vector<std::array<cglib::vec3<float>, 4>> worldEnvelopes;
+        std::vector<std::vector<std::array<cglib::vec3<float>, 4>>> partEnvelopes;
+        CullRecord partRecord;
         std::vector<CullRecord> variants;
         VT_STAT_CLOCK(phaseClock);
         BatchLock labelLock(labelMutex, LABEL_LOCK_BATCH);
@@ -249,11 +251,17 @@ namespace massif::vt {
                     rankViewState.labelDistance = distance;
                     priority += (style->rankFunc)(rankViewState);
                 }
-                bool valid = label->calculateVariantEnvelopes(size, EXTRA_LABEL_BUFFER, _viewState, worldEnvelopes);
+                bool valid = label->calculateVariantEnvelopes(size, EXTRA_LABEL_BUFFER, _viewState, worldEnvelopes, partEnvelopes);
                 variants.clear();
-                for (const std::array<cglib::vec3<float>, 4>& worldEnvelope : worldEnvelopes) {
+                for (std::size_t i = 0; i < worldEnvelopes.size(); i++) {
                     CullRecord& record = variants.emplace_back();
-                    projectEnvelope(worldEnvelope, record);
+                    projectEnvelope(worldEnvelopes[i], record);
+                    for (const std::array<cglib::vec3<float>, 4>& part : partEnvelopes[i]) {
+                        projectEnvelope(part, partRecord);
+                        record.parts.push_back(partRecord.envelope);
+                        record.partBounds.push_back(partRecord.bounds);
+                        record.axisAligned = record.axisAligned && partRecord.axisAligned;
+                    }
                     // Snapshot the identity fields; the placement (and thus the local id) can be
                     // changed concurrently by tile updates once labelMutex is released.
                     record.localId = label->getLocalId();
@@ -355,7 +363,8 @@ namespace massif::vt {
 
             if (visible) {
                 VT_STAT_INC(cullerVisible);
-                if (groupId >= 0) {
+                // A road name behind a building is drawn at opacity 0, and it hid the POI on the roof in front.
+                if (groupId >= 0 && !label->isFullyOccluded()) {
                     addGridRecord(_recordGrid, labelInfo.cullRecord);
                 }
                 if (groupId > 0) {
@@ -423,10 +432,29 @@ namespace massif::vt {
 
     bool LabelCuller::testRecordOverlap(const CullRecord& record1, const CullRecord& record2, float buffer) {
         // Callers pass records whose bounds intersect; for two axis-aligned boxes that already is an overlap.
-        if (buffer <= 0 && record1.axisAligned && record2.axisAligned) {
-            return true;
+        if (record1.parts.empty() && record2.parts.empty()) {
+            if (buffer <= 0 && record1.axisAligned && record2.axisAligned) {
+                return true;
+            }
+            return testPolygonOverlap(record1.envelope, record2.envelope, buffer);
         }
-        return testPolygonOverlap(record1.envelope, record2.envelope, buffer);
+        std::size_t count1 = std::max<std::size_t>(1, record1.parts.size()), count2 = std::max<std::size_t>(1, record2.parts.size());
+        for (std::size_t part1 = 0; part1 < count1; part1++) {
+            const cglib::bbox2<float>& bounds1 = (record1.parts.empty() ? record1.bounds : record1.partBounds[part1]);
+            if (buffer <= 0 && !bounds1.inside(record2.bounds)) {
+                continue;
+            }
+            for (std::size_t part2 = 0; part2 < count2; part2++) {
+                const cglib::bbox2<float>& bounds2 = (record2.parts.empty() ? record2.bounds : record2.partBounds[part2]);
+                if (buffer <= 0 && !bounds1.inside(bounds2)) {
+                    continue;
+                }
+                if ((buffer <= 0 && record1.axisAligned && record2.axisAligned) || testPolygonOverlap(record1.parts.empty() ? record1.envelope : record1.parts[part1], record2.parts.empty() ? record2.envelope : record2.parts[part2], buffer)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     bool LabelCuller::testGridOverlap(const LabelInfo& labelInfo) const {

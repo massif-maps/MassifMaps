@@ -1680,6 +1680,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         _vtRenderer = glResourceManager->create<VTRenderer>(_tileTransformer);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
+            // Not only the shadow fit's: unset, the label occlusion margin was 0 and a roof hid its own label.
+            tileRenderer->setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE);
             tileRenderer->setVisibleTiles(_tiles, _labelOnlyTiles, {}, _shadowCasterTiles);
             // These tiles' placement pass found no GL renderer; see consumeLabelPlacementOwed.
             _labelPlacementOwed = !_tiles.empty();

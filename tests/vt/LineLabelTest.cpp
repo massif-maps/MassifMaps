@@ -118,6 +118,41 @@ namespace {
 void testLineLabel() {
     const float lineLength = 10.0f;
 
+    // A run round a BEND collides by its glyph boxes, as maplibre's by circles along it: the run's
+    // bounds took in the corner beside the street, and a POI standing there was dropped (Place Grenette, tilt 60).
+    {
+        std::shared_ptr<Label> label = buildPolylineLabel(buildGlyphs(8), densify({ cglib::vec2<float>(0, 0), cglib::vec2<float>(10, 0), cglib::vec2<float>(18.66f, 5) }, 1.0f), cglib::vec2<float>(10, 0));
+        ViewState viewState = buildViewState(20.0f, 2.0f);
+        label->updatePlacement(viewState);
+        std::array<cglib::vec3<float>, 4> envelope;
+        std::vector<std::array<cglib::vec3<float>, 4>> glyphs;
+        TEST_CHECK(label->calculateEnvelope(1.0f, 0.0f, viewState, envelope, &glyphs), "a run round a bend is laid out");
+        TEST_CHECK(glyphs.size() >= 2 && glyphs.size() <= 8, "a few boxes along it, glyphs merged where the box stays tight");
+        // Inside the corner, off the street.
+        cglib::vec2<double> beside(13.0 - viewState.origin(0), 0.0 - viewState.origin(1));
+        auto covers = [&beside](const std::array<cglib::vec3<float>, 4>& box) {
+            // a convex quad: the point is on the same side of all four edges
+            int sign = 0;
+            for (int k = 0; k < 4; k++) {
+                const cglib::vec3<float>& a = box[k];
+                const cglib::vec3<float>& b = box[(k + 1) % 4];
+                double cross = (b(0) - a(0)) * (beside(1) - a(1)) - (b(1) - a(1)) * (beside(0) - a(0));
+                int s = (cross > 0) - (cross < 0);
+                if (s != 0 && sign != 0 && s != sign) {
+                    return false;
+                }
+                sign = (s != 0 ? s : sign);
+            }
+            return true;
+        };
+        TEST_CHECK(covers(envelope), "the run's box covers the corner beside the street");
+        bool anyGlyph = false;
+        for (const std::array<cglib::vec3<float>, 4>& glyph : glyphs) {
+            anyGlyph = anyGlyph || covers(glyph);
+        }
+        TEST_CHECK(!anyGlyph, "no glyph box does");
+    }
+
     // A run that fits, anchored one glyph from the end of the line: the anchor is slid back until
     // the run fits (clampPlacementAnchor), and the run then has to stay INSIDE the line. The
     // anchor is what used to push the last glyphs past the end.

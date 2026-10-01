@@ -93,7 +93,7 @@ namespace massif::vt {
         return occluder;
     }
 
-    double ExtrusionOccluder::vertexBase(const TileGeometry& geometry, std::uint32_t vertex, double groundZ) const {
+    double ExtrusionOccluder::vertexBase(const TileGeometry& geometry, std::uint32_t vertex, double groundZ, bool flatGround) const {
         const TileGeometry::VertexGeometryLayoutParameters& params = geometry.getVertexGeometryLayoutParameters();
         const VertexArray<std::uint8_t>& vertexGeometry = geometry.getVertexGeometry();
         std::size_t offset = static_cast<std::size_t>(vertex) * params.vertexSize + params.baseOffset;
@@ -102,29 +102,29 @@ namespace massif::vt {
         }
         float base;
         std::memcpy(&base, vertexGeometry.data() + offset, sizeof(float));
-        return base;
+        return flatGround && base < -1.0e29f ? groundZ : base;
     }
 
-    double ExtrusionOccluder::maxBase(const TileGeometry& geometry, double groundZ) const {
+    double ExtrusionOccluder::maxBase(const TileGeometry& geometry, double groundZ, bool flatGround) const {
         if (geometry.getVertexGeometryLayoutParameters().baseOffset < 0) {
             return groundZ;
         }
-        unsigned int version = geometry.getBaseElevationVersion() * 2 + (geometry.isBaseResolved() ? 1 : 0);
+        unsigned int version = geometry.getBaseElevationVersion() * 4 + (geometry.isBaseResolved() ? 2 : 0) + (flatGround ? 1 : 0);
         if (version != _maxBaseVersion) {
             _maxBaseVersion = version;
             _maxBase = TileGeometry::UNRESOLVED_BASE;
             for (std::uint16_t v : _triangles) {
-                _maxBase = std::max(_maxBase, vertexBase(geometry, v, groundZ));
+                _maxBase = std::max(_maxBase, vertexBase(geometry, v, groundZ, flatGround));
             }
         }
         return _maxBase;
     }
 
-    bool ExtrusionOccluder::intersectsTriangle(std::uint32_t triangle, const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ) const {
+    bool ExtrusionOccluder::intersectsTriangle(std::uint32_t triangle, const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ, bool flatGround) const {
         cglib::vec3<double> p[3];
         for (int k = 0; k < 3; k++) {
             std::uint16_t v = _triangles[triangle * 3 + k];
-            double base = vertexBase(geometry, v, groundZ);
+            double base = vertexBase(geometry, v, groundZ, flatGround);
             if (base < -1.0e29) {
                 return false;
             }
@@ -152,11 +152,46 @@ namespace massif::vt {
         return t > t0 && t < t1;
     }
 
-    bool ExtrusionOccluder::intersects(const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ) const {
+    std::optional<double> ExtrusionOccluder::roofAt(double x, double y, const TileGeometry& geometry, double heightScale, double groundZ, bool flatGround) const {
+        int cx = static_cast<int>(std::floor((x - _minX) / _cellX)), cy = static_cast<int>(std::floor((y - _minY) / _cellY));
+        if (cx < 0 || cx >= GRID_SIZE || cy < 0 || cy >= GRID_SIZE) {
+            return std::nullopt;
+        }
+        std::optional<double> roof;
+        int cell = cy * GRID_SIZE + cx;
+        for (std::uint32_t i = _cellStart[cell]; i < _cellStart[cell + 1]; i++) {
+            std::uint32_t triangle = _cellTriangles[i];
+            double px[3], py[3], pz[3];
+            bool resolved = true;
+            for (int k = 0; k < 3; k++) {
+                std::uint16_t v = _triangles[triangle * 3 + k];
+                double base = vertexBase(geometry, v, groundZ, flatGround);
+                resolved = resolved && base > -1.0e29;
+                px[k] = _x[v];
+                py[k] = _y[v];
+                pz[k] = base + _h[v] * heightScale;
+            }
+            // A wall is edge-on from above, so only a roof has area here.
+            double det = (py[1] - py[2]) * (px[0] - px[2]) + (px[2] - px[1]) * (py[0] - py[2]);
+            if (!resolved || std::abs(det) < 1.0e-18) {
+                continue;
+            }
+            double a = ((py[1] - py[2]) * (x - px[2]) + (px[2] - px[1]) * (y - py[2])) / det;
+            double b = ((py[2] - py[0]) * (x - px[2]) + (px[0] - px[2]) * (y - py[2])) / det;
+            if (a < 0.0 || b < 0.0 || a + b > 1.0) {
+                continue;
+            }
+            double z = a * pz[0] + b * pz[1] + (1.0 - a - b) * pz[2];
+            roof = roof ? std::max(*roof, z) : z;
+        }
+        return roof;
+    }
+
+    bool ExtrusionOccluder::intersects(const cglib::vec3<double>& origin, const cglib::vec3<double>& dir, double t0, double t1, const TileGeometry& geometry, double heightScale, double groundZ, bool flatGround) const {
         // Only the stretch of the ray below the tallest roof can meet a wall. The walk is clipped; a hit
         // is judged against the caller's range, as a wall ON the grid's edge clips it to that very t.
         const double hitT0 = t0, hitT1 = t1;
-        double top = maxBase(geometry, groundZ) + _maxHeight * heightScale;
+        double top = maxBase(geometry, groundZ, flatGround) + _maxHeight * heightScale;
         if (dir(2) < 0) {
             t0 = std::max(t0, (top - origin(2)) / dir(2));
         } else if (dir(2) > 0) {
@@ -200,7 +235,7 @@ namespace massif::vt {
         while (cx >= 0 && cx < GRID_SIZE && cy >= 0 && cy < GRID_SIZE) {
             int cell = cy * GRID_SIZE + cx;
             for (std::uint32_t i = _cellStart[cell]; i < _cellStart[cell + 1]; i++) {
-                if (intersectsTriangle(_cellTriangles[i], origin, dir, hitT0, hitT1, geometry, heightScale, groundZ)) {
+                if (intersectsTriangle(_cellTriangles[i], origin, dir, hitT0, hitT1, geometry, heightScale, groundZ, flatGround)) {
                     return true;
                 }
             }

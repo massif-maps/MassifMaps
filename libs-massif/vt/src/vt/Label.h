@@ -67,6 +67,8 @@ namespace massif::vt {
 
         // What 3D occluders leave of the label this frame, multiplied into both opacities (1 = unoccluded).
         void setOcclusion(float occlusion) { _occlusion = occlusion; }
+        // Wholly hidden by 3D content on the last frame drawn: kept, but it claims no room from the labels in front.
+        bool isFullyOccluded() const { return _occlusion <= 0.0f; }
         // The anchor the occlusion rays aim at, world coordinates; null before placement.
         const cglib::vec3<double>* getAnchorPosition() const { return _placement ? &_placement->position : nullptr; }
 
@@ -146,15 +148,19 @@ namespace massif::vt {
 
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
-        bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
+        // glyphEnvelopes: a line run's glyph boxes, the shape maplibre collides it by; its bounds on a diagonal street claimed the blocks beside it.
+        bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope, std::vector<std::array<cglib::vec3<float>, 4>>* glyphEnvelopes = nullptr) const;
         // Envelopes of every variant in one call, sharing one placement; the single envelope when there are none.
-        bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes) const;
+        // envelopes: each variant's whole box. partEnvelopes: the boxes it collides by where one box claims more than it
+        // covers - a name and its icon apart, as maplibre tests them, or a line run's glyphs. Empty = the whole box.
+        bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes, std::vector<std::vector<std::array<cglib::vec3<float>, 4>>>& partEnvelopes) const;
         bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex, iconHaloStyleIndex, buildNormals); }
         bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1, int iconHaloStyleIndex = -1, bool buildNormals = true) const;
 
         // The glyph run follows the LINE the label is placed on, rather than sitting in a box on
         // its anchor. Both line orientations lay the same run out; they differ in the plane it is
         // laid out in (see isScreenLineRun).
+        bool isZElevated() const { return _style->zElevate; }
         bool isLineRun() const { return _style->orientation == LabelOrientation::LINE || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D; }
         // ... and this one lays it out on the CAMERA axes, so the text keeps its size and shape at
         // any tilt. 'line' lies flat on the surface instead, like the map it is drawn on.
@@ -385,6 +391,7 @@ namespace massif::vt {
         // The variant's content box grown by whatever its plates add around it - what the label
         // actually covers on screen, which is what the culler has to test.
         cglib::bbox2<float> calculatePlatedBBox(int variantIndex, float glyphScale) const;
+        cglib::bbox2<float> calculatePlatedPartBBox(const cglib::bbox2<float>& part, const TileLabel::Style::Plate& plate, float glyphScale) const;
         // The four corners a glyph box takes on the label's screen axes, style transform included.
         void buildBoxEnvelope(const cglib::bbox2<float>& glyphBBox, float scale, const cglib::vec2<float>& padding, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, std::array<cglib::vec3<float>, 4>& envelope) const;
 

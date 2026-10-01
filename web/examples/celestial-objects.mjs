@@ -45,8 +45,12 @@ export default async function start(host) {
   let siderealTime = 132;
   let turning = false;
 
-  map.addLayer('satellite', { type: 'raster', source: satelliteTiles() });
-  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: await massifStyle(map, 'hybrid') });
+  // Fetched before any layer exists: a layer added first draws the world view while this loads.
+  const labelStyle = await massifStyle(map, 'hybrid');
+  // One level finer: a draped tile is never finer than the camera's zoom, and the ground in front
+  // of a tilted camera is far closer than its focus.
+  map.addLayer('satellite', { type: 'raster', source: satelliteTiles(), zoomLevelBias: 1 });
+  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: labelStyle });
   map.terrain({ type: 'terrain', source: demTiles() }).apply({ viewDistanceFactor: 3, cameraClearance: 40 });
   map.sky({ type: 'sky', atmosphereLuminance: 2.4 });
   map.fog({ type: 'fog', rangeStart: 2, rangeEnd: 10, color: 0xff2a3450, highColor: 0xff1c2a4a, spaceColor: 0xff070b18, starIntensity: 0.6 });

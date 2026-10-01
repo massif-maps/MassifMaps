@@ -4,12 +4,12 @@ import { demTiles, massifStyle, vectorTiles } from './shared.mjs';
 /** What the 3D view looks AT. The viewpoint it is seen from is derived - see frameFlatStart. */
 const SUMMIT = [7.6586, 45.9763];
 
-const ZOOM = 12.5;
+const ZOOM = 12;
 /** One rotation for both states: a switch that also spun the map made it impossible to tell where you came out. */
 const ROTATION = 0;
 /** tilt 90 is straight down in this SDK, so 2D is 90 and a landscape view is a LOW tilt. */
 const TILT_2D = 90;
-const TILT_3D = 20;
+const TILT_3D = 38;
 /** The tilt the auto rule switches at, and its default. */
 const AUTO_TILT = 88;
 /** How often the matched ramp samples the flight. */

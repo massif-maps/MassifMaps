@@ -75,7 +75,7 @@ namespace massif {
 
 namespace {
     /** An app-supplied curve, read through the same interpolation the built-in one uses. */
-    DayCycleLight::Setup atSunHeight(const std::vector<LightStop>& stops, float altitudeDegrees) {
+    std::vector<DayCycleLight::Stop> curveOf(const std::vector<LightStop>& stops) {
         std::vector<DayCycleLight::Stop> curve;
         curve.reserve(stops.size());
         for (const LightStop& stop : stops) {
@@ -85,7 +85,7 @@ namespace {
                 { ambient.getR() / 255.0f, ambient.getG() / 255.0f, ambient.getB() / 255.0f }, stop.getAmbientIntensity(),
                 { sun.getR() / 255.0f, sun.getG() / 255.0f, sun.getB() / 255.0f }, stop.getSunIntensity() } });
         }
-        return DayCycleLight::atSunHeight(curve.data(), curve.size(), altitudeDegrees);
+        return curve;
     }
 
     Color colorOf(const float channels[3]) {
@@ -214,6 +214,7 @@ namespace {
             lighting.shadowCasterMargin = *env.shadowCasterMargin;
         }
 
+        std::optional<float> dayCycleBrightness;
         // A day cycle replaces the light colours from the sun height; the direction is its input.
         if (lightOptions && lightOptions->isDayCycleLightsEnabled()) {
             float altitude = std::asin(std::max(-1.0f, std::min(1.0f, lighting.sunDir(2)))) * static_cast<float>(Const::RAD_TO_DEG);
@@ -224,8 +225,13 @@ namespace {
             if (stops.empty()) {
                 stops = lightOptions->getDayCycleLightStops();
             }
-            DayCycleLight::Setup light = stops.empty() ? DayCycleLight::atSunHeight(altitude, rising)
-                                                       : atSunHeight(stops, altitude);
+            std::vector<DayCycleLight::Stop> curve = curveOf(stops);
+            if (curve.empty()) {
+                const DayCycleLight::Stop* builtIn = rising ? DayCycleLight::DAWN_CURVE : DayCycleLight::DUSK_CURVE;
+                curve.assign(builtIn, builtIn + 4);
+            }
+            DayCycleLight::Setup light = DayCycleLight::atSunHeight(curve.data(), curve.size(), altitude);
+            dayCycleBrightness = DayCycleLight::brightnessAtSunHeight(curve.data(), curve.size(), altitude);
             lighting.ambientColor = colorOf(light.ambient);
             lighting.ambientIntensity = light.ambientIntensity;
             lighting.sunColor = colorOf(light.direct);
@@ -248,7 +254,7 @@ namespace {
             float radiance[3];
             DayCycleLight::groundRadiance(light, lighting.sunDir(2), radiance);
             lighting.radiance = cglib::vec3<float>(radiance[0], radiance[1], radiance[2]);
-            lighting.brightness = DayCycleLight::brightness(light, lighting.sunDir(2));
+            lighting.brightness = dayCycleBrightness ? *dayCycleBrightness : DayCycleLight::brightness(light, lighting.sunDir(2));
             // A shadow hides only the direct light's share (0 below the horizon skips the caster pass).
             lighting.shadowStrength = DayCycleLight::srgbShadowStrength(light, lighting.sunDir(2), lighting.shadowStrength);
         }

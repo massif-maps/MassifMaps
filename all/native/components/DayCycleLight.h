@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <vector>
 
 namespace massif {
 
@@ -101,6 +102,43 @@ namespace massif {
         static Setup atSunHeight(float altitudeDegrees, bool rising) {
             const Stop* curve = rising ? DAWN_CURVE : DUSK_CURVE;
             return atSunHeight(curve, 4, altitudeDegrees);
+        }
+
+        static bool sameLight(const Setup& a, const Setup& b) {
+            for (int i = 0; i < 3; i++) {
+                if (a.ambient[i] != b.ambient[i] || a.direct[i] != b.direct[i]) {
+                    return false;
+                }
+            }
+            return a.ambientIntensity == b.ambientIntensity && a.directIntensity == b.directIntensity;
+        }
+
+        /**
+         * The curve `view::brightness` reads: a hold ramps towards the next light instead, so a palette ramped
+         * over 0.25-0.3 flips inside the hold (near the horizon), not where the hold ends (mid-afternoon).
+         */
+        static std::vector<Stop> brightnessCurve(const Stop* stops, std::size_t count) {
+            std::vector<Stop> curve;
+            for (std::size_t i = 0; i < count; i++) {
+                std::size_t end = i;
+                while (end + 1 < count && sameLight(stops[end + 1].light, stops[i].light)) {
+                    end++;
+                }
+                curve.push_back(stops[i]);
+                if (end > i && end + 1 < count) {
+                    curve.push_back({ stops[end].altitude, stops[end + 1].light });
+                } else if (end > i) {
+                    curve.push_back(stops[end]);
+                }
+                i = end;
+            }
+            return curve;
+        }
+
+        static float brightnessAtSunHeight(const Stop* stops, std::size_t count, float altitudeDegrees) {
+            std::vector<Stop> curve = brightnessCurve(stops, count);
+            float sunUp = std::sin(altitudeDegrees * (3.14159265358979323846f / 180.0f));
+            return brightness(atSunHeight(curve.data(), curve.size(), altitudeDegrees), sunUp);
         }
 
         /**

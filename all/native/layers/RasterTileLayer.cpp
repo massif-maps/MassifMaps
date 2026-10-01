@@ -5,6 +5,7 @@
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileBitmap.h"
 #include "layers/RasterTileEventListener.h"
+#include "layers/TileCacheHold.h"
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
 #include "renderers/MapRenderer.h"
@@ -264,25 +265,11 @@ namespace massif {
     void RasterTileLayer::refreshDrawData(const std::shared_ptr<CullState>& cullState, bool tilesChanged) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
-        // Get all tiles currently in the visible cache
-        std::unordered_set<long long> lastVisibleCacheTiles = _visibleCache.keys();
-        
-        // Remember unused tiles from the visible cache
+        std::unordered_set<long long> usedTileIds;
         for (const std::shared_ptr<TileDrawData>& drawData : _tempDrawDatas) {
-            if (!drawData->isPreloadingTile()) {
-                long long tileId = drawData->getTileId();
-                lastVisibleCacheTiles.erase(tileId);
-
-                if (!_visibleCache.exists(tileId) && _preloadingCache.exists(tileId)) {
-                    _preloadingCache.move(tileId, _visibleCache);
-                }
-            }
+            usedTileIds.insert(drawData->getTileId());
         }
-        
-        // Move all unused tiles from visible cache to preloading cache
-        for (long long tileId : lastVisibleCacheTiles) {
-            _visibleCache.move(tileId, _preloadingCache);
-        }
+        holdTilesInUse(_visibleCache, _preloadingCache, usedTileIds);
         
         // Update renderer if needed, run culler
         if (!(isSynchronizedRefresh() && _fetchingTileTasks.getVisibleCount() > 0)) {
@@ -479,16 +466,10 @@ namespace massif {
                 // Store the tile object, unless invalidated or tile transformer has changed.
                 if (!isInvalidated()) {
                     if (layer->getTileTransformer() == tileTransformer) { // extra check that the tile is created with correct transformer. Otherwise simply drop it.
-                        if (isPreloadingTile()) {
-                            layer->_preloadingCache.put(_tileId, tileInfo, tileInfo.getSize());
-                            if (tileData->getMaxAge() >= 0) {
-                                layer->_preloadingCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));
-                            }
-                        } else {
-                            layer->_visibleCache.put(_tileId, tileInfo, tileInfo.getSize());
-                            if (tileData->getMaxAge() >= 0) {
-                                layer->_visibleCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));
-                            }
+                        // A fetch is for a tile the cull uses: in the 10 MB preloading cache, arrivals evicted each other before the next refresh held them.
+                        layer->_visibleCache.put(_tileId, tileInfo, tileInfo.getSize());
+                        if (tileData->getMaxAge() >= 0) {
+                            layer->_visibleCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));
                         }
                     }
                 }

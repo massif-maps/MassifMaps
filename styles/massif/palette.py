@@ -174,6 +174,7 @@ TOPO = {
 _WHITE, _DARK = 'hsl(0, 0%, 100%)', 'hsla(0, 0%, 0%, 0.75)'
 HYBRID = {
     **STREETS,
+    'draw-once': True,
     'land': 'transparent',
     'cliff': 'hsla(0, 0%, 90%, 0.8)',
     'motorway': 'hsla(38, 95%, 70%, 0.85)', 'motorway-case': 'hsla(30, 60%, 25%, 0.5)',

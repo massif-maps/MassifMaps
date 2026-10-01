@@ -8,7 +8,7 @@
 <style>
   html, body { margin: 0; height: 100%; font: 13px/1.4 system-ui, sans-serif; }
   #app { display: flex; flex-direction: column; height: 100%; }
-  #bar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: #1c1f24; color: #ddd; }
+  #bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 10px; background: #1c1f24; color: #ddd; }
   #bar input[type=text] { flex: 1; min-width: 200px; padding: 4px 6px; border: 1px solid #444; border-radius: 3px;
                           background: #12151a; color: #ddd; font: inherit; }
   #bar button, #bar select { padding: 4px 8px; border: 1px solid #444; border-radius: 3px;
@@ -48,6 +48,8 @@
     </select>
     <label><input id="sync" type="checkbox" checked> sync</label>
     <label title="building shadows in the massif row; they cost the page most of its frame rate"><input id="shadows" type="checkbox"> shadows</label>
+    <label title="3D terrain in every pane: Mapterhorn under MapLibre and the SDK, Mapbox's own DEM under the reference"><input id="terrain" type="checkbox" autocomplete="off"> terrain</label>
+    <label title="a POI inside a 3D building drawn on its roof (the style's poi_on_roof); SDK panes only, MapLibre has no such property"><input id="poiroof" type="checkbox" autocomplete="off"> POIs on roofs</label>
     <select id="local-set"></select>
     <button id="fit">fit local</button>
     <button id="gaps-toggle">gaps</button>
@@ -196,14 +198,28 @@ function cameraLine(zoom, lon, lat, bearing, pitch) {
     `  rot ${bearing.toFixed(1)}  tilt ${pitch.toFixed(1)}`;
 }
 
+// Its own source, not the style's hillshade one: maplibre warns when one DEM drives both.
+const TERRAIN_DEM = { type: 'raster-dem', tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
+                      encoding: 'terrarium', tileSize: 512, maxzoom: 16 };
+
+// From `load` on: isStyleLoaded() stays false while any tile is still on its way.
+function applyTerrain(map) {
+  if (!map._terrainReady) return;
+  if (!$('terrain').checked) { map.setTerrain(null); return; }
+  if (!map.getSource('preview-dem')) map.addSource('preview-dem', TERRAIN_DEM);
+  map.setTerrain({ source: 'preview-dem', exaggeration: 1 });
+}
+
 function makeMap(container, style, errEl, readout) {
-  const map = new maplibregl.Map({ container, style, ...START, hash: false, attributionControl: false });
+  const map = new maplibregl.Map({ container, style, ...START, maxPitch: 85, hash: false,
+                                      attributionControl: false });
   const show = () => {
     const c = map.getCenter();
     readout.textContent = cameraLine(map.getZoom(), c.lng, c.lat, map.getBearing(), map.getPitch());
   };
   map.on('move', show);
   map.on('load', show);
+  map.on('load', () => { map._terrainReady = true; applyTerrain(map); });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
   // Kept on the map: an observer nothing holds a reference to is collectable, and once collected
   // it stops observing - which left the canvas at its old height when the Massif row opened.
@@ -236,6 +252,8 @@ function sync(a, b) {
 }
 
 async function boot() {
+  // here, not at load: the browser restores a checkbox's last state over the one the script set
+  $('terrain').checked = ASKED.get('terrain') === '1';
   const asked = ASKED.get('style');
   if (asked) $('style-url').value = asked;
   const sets = tilesets = await (await fetch(ORIGIN + '/tilesets.json')).json();
@@ -276,6 +294,8 @@ function setupVariant() {
     if ($('ref').value) next.searchParams.set('ref', $('ref').value);
     if (massifStarted) next.searchParams.set('massif', '1');
     if ($('shadows').checked) next.searchParams.set('shadows', '1'); else next.searchParams.delete('shadows');
+    if ($('terrain').checked) next.searchParams.set('terrain', '1'); else next.searchParams.delete('terrain');
+    if ($('poiroof').checked) next.searchParams.set('poiroof', '1'); else next.searchParams.delete('poiroof');
     location.href = next.href;
   };
 }
@@ -358,7 +378,9 @@ async function startMassif() {
       // tile the zoom NUMBER is calibrated on, and the refinement density the SDK otherwise sets a
       // full level finer. The dpi it reads off the display is already right - measured against
       // maplibre at one camera, both draw 4831.1 CSS pixels to the degree. ?dpi= overrides it.
-      tiledrawsize: 512, tilelodfactor: 1,
+      // ?tiledrawsize=256 runs the row as an app left on the SDK default, the zoom renumbered to match.
+      tiledrawsize: ASKED.get('tiledrawsize') ?? 512, zoomoffset: Math.log2(512 / Number(ASKED.get('tiledrawsize') ?? 512)),
+      tilelodfactor: 1,
       dpi: ASKED.get('dpi') ?? 0,
       // ?blendspeed=0 turns the tile cross-fade off, which is what maplibre does with vector
       // geometry. A cased road fades badly: its fill is near the background colour, so early in
@@ -372,6 +394,7 @@ async function startMassif() {
       // on a MOVE, so ?tilt= would otherwise not reach the massif row until something dragged.
       tilt: maps[0].getPitch(), rot: maps[0].getBearing(),
       hour: $('hour').value,
+      ...(standardRef() ? { standardsun: 1 } : {}),
       // a family project holds every variant; the style says which one it is
       // ?project=custom|osm loads carto/<project>.json, a child project, in place of the style's variant
       ...(compare && i === 0 ? (ASKED.get('compareVariant') ? { variant: ASKED.get('compareVariant') } : {})
@@ -382,6 +405,10 @@ async function startMassif() {
       ...(imagery ? { imagery } : {}),
       // off, no terrain for the building shadows to land on
       shadows: $('shadows').checked ? 1 : 0,
+      // not `terrain`: the web demo reads that one itself, as the URL of a DEM
+      ...($('terrain').checked ? { relief: 1 } : {}),
+      // ?styleparams=poi_on_roof=1,label_occlusion=0: the style's own parameters, SDK panes only
+      ...(styleParams() ? { styleparams: styleParams() } : {}),
     });
     $(id).src = `./massif-pane.html?${query}`;
   }
@@ -400,7 +427,8 @@ function showRef() {
   $('tag-ref').textContent = 'reference — ' + ref;
   $('ref-frame').src = './ref-pane.html?' + new URLSearchParams({
     ref, lon: c.lng, lat: c.lat, zoom: maps[0].getZoom(), pitch: maps[0].getPitch(),
-    bearing: maps[0].getBearing(), preset: ASKED.get('preset') ?? presetOf(Number($('hour').value)) });
+    bearing: maps[0].getBearing(), preset: ASKED.get('preset') ?? presetOf(Number($('hour').value)),
+    terrain: $('terrain').checked ? 1 : 0 });
 }
 
 /** Mapbox Standard's four presets over the hour, for the reference pane. */
@@ -408,12 +436,17 @@ function presetOf(hour) {
   return hour < 6 || hour >= 20.5 ? 'night' : hour < 8 ? 'dawn' : hour >= 18 ? 'dusk' : 'day';
 }
 
+// The SDK panes take Standard's day sun only beside the Standard reference (see massif-pane.html setHour).
+function standardRef() {
+  return $('ref').value.startsWith('mapbox-standard');
+}
+
 function postHour() {
   const hour = Number($('hour').value);
   $('hour-v').textContent = `${Math.floor(hour)}:${String(Math.round((hour % 1) * 60)).padStart(2, '0')}`;
   for (const id of ['massif-l', 'massif-r']) {
     const frame = $(id).contentWindow;
-    if (frame) frame.postMessage({ massifHour: hour }, '*');
+    if (frame) frame.postMessage({ massifStandardSun: standardRef(), massifHour: hour }, '*');
   }
   const ref = $('ref-frame').contentWindow;
   if (ref) ref.postMessage({ refPreset: presetOf(hour) }, '*');
@@ -461,10 +494,30 @@ $('massif-toggle').onclick = () => {
   startMassif();
 };
 
+function styleParams() {
+  return [ASKED.get('styleparams'), $('poiroof').checked ? 'poi_on_roof=1' : null].filter(Boolean).join(',');
+}
+
 $('reload').onclick = load;
-$('ref').onchange = showRef;
+$('ref').onchange = () => { showRef(); postHour(); };
 $('shadows').checked = ASKED.get('shadows') === '1';
-$('shadows').onchange = () => { if (massifStarted) startMassif(); };
+// Posted to the running panes: a pane restart reloads the whole SDK.
+const postToMassif = (message) => {
+  for (const id of ['massif-l', 'massif-r']) {
+    const frame = $(id);
+    if (frame && frame.contentWindow) frame.contentWindow.postMessage(message, '*');
+  }
+};
+const postScene = () => postToMassif({ massifScene: { relief: $('terrain').checked, shadows: $('shadows').checked } });
+$('shadows').onchange = postScene;
+$('poiroof').checked = ASKED.get('poiroof') === '1';
+$('poiroof').onchange = () => postToMassif({ massifStyleParams: `poi_on_roof=${$('poiroof').checked ? 1 : 0}` });
+$('terrain').onchange = () => {
+  maps.forEach(applyTerrain);
+  const ref = $('ref-frame').contentWindow;
+  if (ref) ref.postMessage({ refTerrain: $('terrain').checked }, '*');
+  postScene();
+};
 $('hour').oninput = postHour;
 $('fit').onclick = () => {
   if (!localTileJSON || !localTileJSON.bounds) return;

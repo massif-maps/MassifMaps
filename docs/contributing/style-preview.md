@@ -68,8 +68,9 @@ It is `VectorTileLayer::setLabelPerspectiveScaling`, and the A/B is only visible
 tilt 0 the whole map is one depth and every setting draws the same picture.
 
 `--tile-draw-size 512` because the panes run the SDK on maplibre's tile convention, where the zoom
-number already is maplibre's: converted at the default 256 every zoom stop fires a level late and
-the roads come out visibly thin against the row above.
+number already is maplibre's. The SDK shifts the style's zoom to whatever TileDrawSize the app draws
+at (the Map block's `tile-draw-size`, [style-tools](style-tools.md#a-zoom-stop-is-relative-to-a-tile-size)),
+so the panes and an app on the default 256 draw the same map.
 
 Three things about the web build shape this:
 
@@ -95,6 +96,8 @@ comparison: ours over OpenFreeMap, the reference, and the SDK row under both.
 The `hour` slider (`?hour=21.5`) sets the Massif panes' day-cycle light — the sun at that local solar
 time on the equinox, at the camera — which is what lights a style's emissive layers, and moves the
 Standard reference to the matching preset: night before 6 and from 20:30, dawn to 8, dusk from 18.
+Beside that reference the Massif panes hold Standard's day sun (azimuth 180, altitude 70) from 8 to 18,
+so shadows compare one for one; without it they follow the real sun at every hour.
 
 For a Massif style the bar gets a **variant** picker: the page reloads on the sibling file
 (`streets.json` → `eink.json`, …) with the camera, the hour, the reference and the Massif row kept;
@@ -105,6 +108,16 @@ The Massif panes cast building shadows the way Standard does, at its day depth (
 when the **shadows** box is ticked (`?shadows=1`); off by default, since the shadow pass costs the page
 most of its frame rate. Ours land on a terrain surface, so each pane then carries a flat one (the
 Mapterhorn DEM at exaggeration 0, never auto-flattened).
+
+The **terrain** box (`?terrain=1`) drapes every pane over real relief: the MapLibre panes over
+Mapterhorn, the Mapbox reference over its own DEM, the Massif panes at exaggeration 1. The Massif
+panes never auto-flatten either, so a top-down view keeps its shadows and ground AO. Every pane
+tilts to pitch 85, Mapbox's limit, past MapLibre's default 60.
+
+`?styleparams=poi_on_roof=1,label_occlusion=0` sets the style's own parameters on the Massif panes. The
+**POIs on roofs** box (`?poiroof=1`) adds `poi_on_roof=1` to them.
+The shadows, terrain and POIs-on-roofs boxes apply to the running Massif panes, without reloading
+them: once made, the terrain stays and goes flat (exaggeration 0) when both shadows and terrain are off.
 
 `?compare=<project folder>` puts **another CartoCSS project** in the left Massif pane, over the local
 tiles, against the style's own on the right; `&compareVariant=<name>` picks its `<name>.json`. A

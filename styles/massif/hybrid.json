@@ -483,6 +483,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "tunnel-path",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -587,6 +588,7 @@
       },
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
+        "massif:draw-once": "tunnel-path",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -1101,6 +1103,7 @@
       },
       "metadata": {
         "massif:minzoom-param": "tunnel_min_zoom",
+        "massif:draw-once": "road-tunnel",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -1408,6 +1411,7 @@
       },
       "metadata": {
         "massif:minzoom-param": "tunnel_min_zoom",
+        "massif:draw-once": "road-tunnel",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -1517,6 +1521,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "path",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -1630,6 +1635,7 @@
       },
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
+        "massif:draw-once": "path",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -2611,6 +2617,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-link",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -2798,6 +2805,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-link",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -3177,6 +3185,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-casing-low",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -3555,6 +3564,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-tunnel-casing-low",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -3892,6 +3902,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-brunnel-low",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -4212,6 +4223,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-brunnel-low",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -4545,6 +4557,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-tunnel-low",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -4871,6 +4884,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-tunnel-low",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -5222,6 +5236,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -5544,6 +5559,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -7296,6 +7312,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "bridge-path",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -7400,6 +7417,7 @@
       },
       "metadata": {
         "massif:minzoom-param": "path_min_zoom",
+        "massif:draw-once": "bridge-path",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -7790,6 +7808,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-bridge",
         "massif:paint": {
           "line-emissive-strength": [
             "match",
@@ -8095,6 +8114,7 @@
         ]
       },
       "metadata": {
+        "massif:draw-once": "road-bridge",
         "massif:paint": {
           "line-emissive-strength": [
             "match",

@@ -107,6 +107,10 @@ namespace massif::mvt {
             if (!style.getSimplify().empty()) {
                 styleNode.append_attribute("simplify").set_value(style.getSimplify().c_str());
             }
+            const Value* drawOnceValue = std::get_if<Value>(&style.getDrawOnce());
+            if (!(drawOnceValue && ValueConverter<std::string>::convert(*drawOnceValue).empty())) {
+                styleNode.append_attribute("draw-once").set_value(generateExpressionString(style.getDrawOnce(), true).c_str());
+            }
 
             switch (style.getFilterMode())
             {

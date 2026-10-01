@@ -104,6 +104,8 @@ public final class DemoConfig {
     public static boolean LAYER_CONTOUR_TILES = false;
     /** Stand-alone raster layer (OSM raster tiles by default). */
     public static boolean LAYER_SATELLITE = false;
+    /** Draw that raster UNDER the base map, as imagery under a hybrid style (--es satUnder true). */
+    public static boolean SATELLITE_UNDER_BASE = false;
     /** CustomRasterTileLayer running a hypsometric-tint shader over the raw DEM tiles. */
     public static boolean LAYER_HYPSO = false;
     /** Markers on summits + a line across the valley: the terrain occlusion / drape test set. */
@@ -1200,6 +1202,7 @@ public final class DemoConfig {
         LAYER_CONTOUR = DemoCfg.cfgBool("contourLayer", LAYER_CONTOUR);
         LAYER_CONTOUR_TILES = DemoCfg.cfgBool("contourTiles", LAYER_CONTOUR_TILES);
         LAYER_SATELLITE = DemoCfg.cfgBool("satLayer", LAYER_SATELLITE);
+        SATELLITE_UNDER_BASE = DemoCfg.cfgBool("satUnder", SATELLITE_UNDER_BASE);
         LAYER_HYPSO = DemoCfg.cfgBool("hypso", LAYER_HYPSO);
         LAYER_ELEMENTS = DemoCfg.cfgBool("elements", LAYER_ELEMENTS);
         LAYER_SPANS = DemoCfg.cfgBool("spans", LAYER_SPANS);

@@ -7,6 +7,7 @@
 #include "graphics/utils/BackgroundBitmapGenerator.h"
 #include "graphics/utils/SkyBitmapGenerator.h"
 #include "datasources/TileDataSource.h"
+#include "layers/TileCacheHold.h"
 #include "layers/TileStyleZoom.h"
 #include "layers/VectorTileEventListener.h"
 #include "projections/Projection.h"
@@ -411,22 +412,11 @@ namespace massif {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         VT_STAT_CLOCK(holdClock);
 
-        std::unordered_set<long long> lastVisibleCacheTiles = _visibleCache.keys();
-        
+        std::unordered_set<long long> usedTileIds;
         for (const std::shared_ptr<TileDrawData>& drawData : _tempDrawDatas) {
-            if (!drawData->isPreloadingTile()) {
-                long long tileId = drawData->getTileId();
-                lastVisibleCacheTiles.erase(tileId);
-
-                if (!_visibleCache.exists(tileId) && _preloadingCache.exists(tileId)) {
-                    _preloadingCache.move(tileId, _visibleCache);
-                }
-            }
+            usedTileIds.insert(drawData->getTileId());
         }
-        
-        for (long long tileId : lastVisibleCacheTiles) {
-            _visibleCache.move(tileId, _preloadingCache);
-        }
+        holdTilesInUse(_visibleCache, _preloadingCache, usedTileIds);
         
         if (!(isSynchronizedRefresh() && _fetchingTileTasks.getVisibleCount() > 0)) {
             std::vector<std::shared_ptr<TileDrawData>> drawDatas = _tempDrawDatas;
@@ -913,12 +903,8 @@ namespace massif {
                         }
                         if (spanReference) {
                             layer->_spanReferenceCache[_tileId] = tileInfo;
-                        } else if (isPreloadingTile()) {
-                            layer->_preloadingCache.put(_tileId, tileInfo, tileInfo.getSize());
-                            if (tileData->getMaxAge() >= 0) {
-                                layer->_preloadingCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));
-                            }
                         } else {
+                            // A fetch is for a tile the cull uses: in the 10 MB preloading cache, arrivals evicted each other before the next refresh held them.
                             layer->_visibleCache.put(_tileId, tileInfo, tileInfo.getSize());
                             if (tileData->getMaxAge() >= 0) {
                                 layer->_visibleCache.invalidate(_tileId, std::chrono::steady_clock::now() + std::chrono::milliseconds(tileData->getMaxAge()));

@@ -112,6 +112,12 @@ def major_only_below(expr, z):
     return out
 
 
+def draw_once(c, id, metadata=None):
+    """Hybrid's translucent roads and paths: each pixel drawn once per group, or a cap stacks over its
+    neighbour. A casing shares its fill's group, so it does not show through the fill either."""
+    return {**(metadata or {}), 'massif:draw-once': id} if c.get('draw-once') else metadata
+
+
 def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None, layout=None, fill_opacity=None,
               case_cap=None, maxzoom=None, minzoom_param=None):
     layout = layout or {'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY}
@@ -129,9 +135,9 @@ def road_pair(c, id, filter, minzoom, width, casing, case_key='case', dash=None,
     metadata = {'massif:minzoom-param': minzoom_param} if minzoom_param else None
     return [
         layer(id + '-casing', 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter,
-              layout=case_layout, paint=case_paint, emissive=0, metadata=metadata),
+              layout=case_layout, paint=case_paint, emissive=0, metadata=draw_once(c, id, metadata)),
         layer(id, 'line', 'transportation', minzoom=minzoom, maxzoom=maxzoom, filter=filter, layout=layout,
-              paint=fill_paint, emissive=EMISSIVE, metadata=metadata),
+              paint=fill_paint, emissive=EMISSIVE, metadata=draw_once(c, id, metadata)),
     ]
 
 
@@ -142,7 +148,7 @@ def low_casing(v, filter, id='road-casing-low', maxzoom=14):
     return [gate(layer(id, 'line', 'transportation', minzoom=9, maxzoom=maxzoom, filter=filter,
                        layout={'line-cap': 'round', 'line-join': 'round', 'line-sort-key': SORT_KEY},
                        paint={'line-color': case_color(c), 'line-gap-width': WIDTH, 'line-width': LOW_CASING_WIDTH},
-                       emissive=0), v, 'road_osm_low')]
+                       metadata=draw_once(c, id), emissive=0), v, 'road_osm_low')]
 
 
 def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
@@ -160,11 +166,11 @@ def paths(c, brunnel_test, prefix='', minzoom=12, trails=False):
         z, ['match', get('subclass'), 'bridleway', c['bridleway'], c[key]])])
     return [
         layer(walk_prefix + 'path-casing', 'line', 'transportation', minzoom=15, filter=walk,
-              layout={'line-join': 'round'},
+              metadata=draw_once(c, walk_prefix + 'path'), layout={'line-join': 'round'},
               paint={'line-color': c['path-case'], 'line-gap-width': PATH_WIDTH,
                      'line-width': zoom_ramp(14, 0.5, 18, 1, 22, 2, base=1.5)}, emissive=0.15),
         layer(walk_prefix + 'path', 'line', 'transportation', minzoom=minzoom, filter=walk,
-              metadata={'massif:minzoom-param': 'path_min_zoom'},
+              metadata=draw_once(c, walk_prefix + 'path', {'massif:minzoom-param': 'path_min_zoom'}),
               layout={'line-cap': 'round', 'line-join': 'round'},
               paint={'line-color': color, 'line-width': PATH_WIDTH}, emissive=0.25),
         layer(prefix + 'steps', 'line', 'transportation', minzoom=14, filter=steps,

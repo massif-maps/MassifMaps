@@ -257,6 +257,8 @@ add_executable(api_tests
   PrefetchOrderTest.cpp
   # Same: TileStyleZoom.h is the tile-zoom-to-style-zoom clamp and nothing else.
   TileStyleZoomTest.cpp
+  # Same: TileCacheHold.h is the visible/preloading cache split over stdext's LRU, nothing else.
+  TileCacheHoldTest.cpp
   # Same: CelestialImageGrid.h is a sky image's bitmap-to-direction mapping and nothing else.
   CelestialImageGridTest.cpp
   # Same: KineticStep.h is the per-frame fraction of a kinetic delta, and nothing else.

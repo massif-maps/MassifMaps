@@ -229,6 +229,13 @@ mapbox's night light sits 30° above the horizon whatever the hour, an artistic 
 cycle has the sun genuinely down, so the directional term is 0 and the value is 0.002 rather than
 0.0135. Both are far below the 0.25 stop every ramp starts at, so no ramp can tell them apart.
 
+**Under a day cycle, brightness does not read the light curve as is.** Dusk's hold (3° → 12°) keeps
+the blend dark until 12°, so the 0.25–0.3 band every palette ramp sits on fell at 26–28°, mid-
+afternoon, and the whole map flipped within a degree. `DayCycleLight::brightnessCurve` gives the
+hold's upper stop the next stop's light, for brightness only: the built-in dusk curve now crosses
+0.25 at 8.1° and 0.3 at 8.9°, and is above 0.41 from 12° up. Dawn crosses at -0.3° / 1.2°, as
+before. The colours, radiance and shadow strength still read the unmodified curve.
+
 Under `--live-light` the converter stops folding `measure-light` and emits `[view::brightness]`; the
 default mode still folds it, so nothing changes for a per-preset palette.
 
@@ -513,6 +520,10 @@ caster pass only had the tiles the layer draws. mapbox fetches extra caster tile
 is `ShadowCasterRing::sunwardTiles`: from tile zoom 16, the visible tiles' neighbours on the sun's side
 that overlap no visible tile. `MapRenderer::getShadowSunDir` hands the layers the sun of the last
 pass that drew shadows, so nothing is fetched while shadows are off.
+
+They are fetched as preloading tiles but cached like visible ones, or they and the label band evict
+each other from the 10 MB preloading cache and are refetched in a loop
+([02-tiles.md](02-tiles.md#substitution-preloading-caching)).
 
 They travel as `TileDrawData::isShadowCasterTile` to `GLTileRenderer::setVisibleTiles`, which gives
 them render tiles but no surface and no labels. The caster pass takes them without the per-cascade

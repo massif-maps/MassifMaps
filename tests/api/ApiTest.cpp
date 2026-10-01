@@ -88,6 +88,7 @@ void testFlattenSwitch();
 void testTerrainDecodeWait();
 void testPrefetchOrder();
 void testTileStyleZoom();
+void testTileCacheHold();
 void testKineticStep();
 void testTileLODRule();
 void testSphericalSurface();
@@ -478,6 +479,7 @@ int main() {
     testTerrainDecodeWait();
     testPrefetchOrder();
     testTileStyleZoom();
+    testTileCacheHold();
     testKineticStep();
     testTileLODRule();
     testSphericalSurface();

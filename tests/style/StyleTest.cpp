@@ -24,6 +24,7 @@ void testBuiltinParameters();
 void testLineAnchors();
 void testMBVTSubtile();
 void testZoomShift();
+void testDrawOnce();
 
 int main() {
     testLayerConfig();
@@ -44,6 +45,7 @@ int main() {
     testLineAnchors();
     testMBVTSubtile();
     testZoomShift();
+    testDrawOnce();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

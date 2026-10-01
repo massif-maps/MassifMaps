@@ -61,6 +61,7 @@ namespace massif::vt {
 
         void setCompOp(std::optional<CompOp> compOp);
         void setOpacityFunc(FloatFunction opacityFunc);
+        void setDrawOnceGroup(std::string group) { _drawOnceGroup = std::move(group); }
         void setClipBox(const cglib::bbox2<float>& clipBox);
         // Height in metres at which an extrusion wall gets an extra ring. The 3D lighting is per VERTEX,
         // so the facade gradient is a straight line from base to roof unless a vertex sits where the
@@ -199,6 +200,7 @@ namespace massif::vt {
 
         std::optional<CompOp> _compOp;
         FloatFunction _opacityFunc = FloatFunction(1.0f);
+        std::string _drawOnceGroup;
         cglib::bbox2<float> _clipBox = cglib::bbox2<float>(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f));
         cglib::bbox2<float> _polygonClipBox = cglib::bbox2<float>(cglib::vec2<float>(-0.001953125f, -0.001953125), cglib::vec2<float>(1.001953125f, 1.001953125f));
 

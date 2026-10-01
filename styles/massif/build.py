@@ -208,6 +208,10 @@ def family_style():
                 if k.endswith('-color') and k in t.get('paint', {}) and k not in t.get('metadata', {}).get('massif:paint', {}):
                     t.setdefault('metadata', {})
                     t['metadata']['massif:paint'] = {**t['metadata'].get('massif:paint', {}), k: t['paint'][k]}
+        # only hybrid draws its roads and paths once (roads.draw_once): the others merge in as no group
+        if any('massif:draw-once' in t.get('metadata', {}) for t in trees.values()):
+            for t in trees.values():
+                t.setdefault('metadata', {}).setdefault('massif:draw-once', '')
         for key in FIXED:
             if len({json.dumps(t.get(key)) for t in trees.values()}) > 1:
                 raise ValueError('%s: %s differs between variants - give each its own layer' % (id, key))

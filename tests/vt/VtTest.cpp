@@ -33,6 +33,7 @@ void testRenderTileBlend();
 void testLabelSlice();
 void testLabelFade();
 void testLayerContentFlags();
+void testDrawOnce();
 void testViewStateMatrix();
 void testLabelNormalBuild();
 void testNormalMapSlope();
@@ -75,6 +76,7 @@ int main() {
     testLabelSlice();
     testLabelFade();
     testLayerContentFlags();
+    testDrawOnce();
     testViewStateMatrix();
     testLabelNormalBuild();
     testNormalMapSlope();

@@ -67,7 +67,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -297,7 +300,12 @@ public class DemoMap {
      */
     public void rebuildLayers() {
         LayerVector vector = new LayerVector();
-        for (Feature feature : LAYER_ORDER) {
+        Feature[] order = LAYER_ORDER.clone();
+        if (DemoConfig.SATELLITE_UNDER_BASE) {
+            List<Feature> list = Arrays.asList(order);
+            Collections.swap(list, list.indexOf(Feature.BASE), list.indexOf(Feature.SATELLITE));
+        }
+        for (Feature feature : order) {
             if (!isEnabled(feature)) {
                 continue;
             }

@@ -12,6 +12,7 @@
 #include "components/DayCycleLight.h"
 
 #include <cmath>
+#include <vector>
 
 using namespace massif;
 
@@ -204,6 +205,58 @@ namespace {
                    "and the two straddle the 0.25 stop Standard's label ramps start at");
     }
 
+    void testThePaletteFlipsNearSunsetNotMidAfternoon() {
+        // The Massif style ramps its palette over brightness 0.25-0.3; read off the raw curve that band
+        // sat at 26-28 degrees, mid-afternoon, because dusk's hold ends at 12 and day only wins at 38.
+        const DayCycleLight::Stop* dusk = DayCycleLight::DUSK_CURVE;
+        TEST_CHECK(DayCycleLight::brightness(DayCycleLight::atSunHeight(dusk, 4, 20.0f), sunUp(20.0f)) < 0.25f,
+                   "the dusk curve's own light is still in the dark palette 20 degrees up");
+        bool day = true;
+        for (float altitude = 13.0f; altitude <= 38.0f; altitude += 0.5f) {
+            day = day && DayCycleLight::brightnessAtSunHeight(dusk, 4, altitude) >= 0.3f;
+        }
+        TEST_CHECK(day, "brightness stays in the day palette from 13 to 38 degrees");
+        TEST_CHECK(DayCycleLight::brightnessAtSunHeight(dusk, 4, 3.0f) < 0.25f,
+                   "and is in the dusk palette 3 degrees up");
+        bool monotone = true;
+        float previous = DayCycleLight::brightnessAtSunHeight(dusk, 4, -9.0f);
+        for (float altitude = -9.0f; altitude <= 38.0f; altitude += 0.25f) {
+            float current = DayCycleLight::brightnessAtSunHeight(dusk, 4, altitude);
+            // Night to dusk sags 0.0002 just under the horizon (the presets' own blend), far below any ramp.
+            monotone = monotone && current >= previous - 0.001f;
+            previous = current;
+        }
+        TEST_CHECK(monotone, "and never dims as the sun rises from -9 to 38");
+
+        // Only brightness reads the collapsed hold: the light itself is still dusk at 10 degrees.
+        TEST_CHECK(DayCycleLight::atSunHeight(dusk, 4, 10.0f).ambient[2] == DayCycleLight::DUSK.ambient[2],
+                   "the light colours keep the hold");
+        std::vector<DayCycleLight::Stop> collapsed = DayCycleLight::brightnessCurve(dusk, 4);
+        TEST_CHECK(collapsed.size() == 4 && collapsed[2].altitude == 12.0f &&
+                   DayCycleLight::sameLight(collapsed[2].light, DayCycleLight::DAY),
+                   "the hold's upper stop carries the next light");
+
+        // A run of three ramps from its first stop to its last, the middle one dropped.
+        DayCycleLight::Stop run[4] = { { 0.0f, DayCycleLight::DUSK }, { 5.0f, DayCycleLight::DUSK },
+                                       { 10.0f, DayCycleLight::DUSK }, { 30.0f, DayCycleLight::DAY } };
+        std::vector<DayCycleLight::Stop> runCurve = DayCycleLight::brightnessCurve(run, 4);
+        TEST_CHECK(runCurve.size() == 3 && runCurve[1].altitude == 10.0f &&
+                   DayCycleLight::sameLight(runCurve[1].light, DayCycleLight::DAY),
+                   "a longer hold ramps across its whole length");
+
+        // A hold at the top has nothing to ramp to, and a curve without a hold reads as before.
+        DayCycleLight::Stop top[3] = { { 0.0f, DayCycleLight::NIGHT }, { 10.0f, DayCycleLight::DAY }, { 30.0f, DayCycleLight::DAY } };
+        DayCycleLight::Stop noHold[3] = { { -9.0f, DayCycleLight::NIGHT }, { 5.0f, DayCycleLight::DUSK }, { 38.0f, DayCycleLight::DAY } };
+        bool same = true;
+        for (float altitude = -20.0f; altitude <= 60.0f; altitude += 0.5f) {
+            same = same && nearly(DayCycleLight::brightnessAtSunHeight(top, 3, altitude),
+                                  DayCycleLight::brightness(DayCycleLight::atSunHeight(top, 3, altitude), sunUp(altitude)), 1e-5f);
+            same = same && nearly(DayCycleLight::brightnessAtSunHeight(noHold, 3, altitude),
+                                  DayCycleLight::brightness(DayCycleLight::atSunHeight(noHold, 3, altitude), sunUp(altitude)), 1e-5f);
+        }
+        TEST_CHECK(same, "a curve without a hold below its top keeps its brightness");
+    }
+
     void testACustomCurveReplacesTheBuiltInOne() {
         // The built-in curve IS a stop list, so feeding its own stops back must reproduce it
         // exactly - that is what makes an app-supplied curve a replacement rather than a variant.
@@ -294,6 +347,7 @@ void testDayCycleLight() {
     testAPresetIsReachedExactlyOrNotAtAll();
     testTheSetupsSurviveBeingWrittenAsHex();
     testBrightnessMatchesMapboxsOwnPresets();
+    testThePaletteFlipsNearSunsetNotMidAfternoon();
     testTheAnchorsAreReachedExactly();
     testRisingPicksDawnOverDusk();
     testTheCurveIsContinuous();

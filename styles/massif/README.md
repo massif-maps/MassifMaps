@@ -144,6 +144,8 @@ only. On the SDK the imagery is the app's `RasterTileLayer` BELOW the vector lay
 (`massif:sdk-layer` says so). Roads are translucent lines (`HYBRID` palette) and every label is
 pale ink on a dark halo by day as by night - Standard satellite's and MapTiler hybrid's
 arrangement; POI names keep their category colour at its night lightness.
+Roads and paths carry `massif:draw-once` (casing with its fill), so the SDK blends a cap or a
+crossing once: no disc at a join. MapLibre has no such pass and still shows them.
 
 ## E-ink
 

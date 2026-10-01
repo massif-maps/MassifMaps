@@ -50,6 +50,7 @@ add_executable(style_tests
   LineAnchorsTest.cpp
   MBVTSubtileTest.cpp
   ZoomShiftTest.cpp
+  DrawOnceTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

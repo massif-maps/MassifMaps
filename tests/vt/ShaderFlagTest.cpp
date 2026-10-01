@@ -40,6 +40,7 @@ void testShaderFlags() {
         { ESSL3_FLAG, "ESSL3" },
         { SHADOW_HW_FLAG, "SHADOW_HW" },
         { GEOMETRY_LIGHT_FLAG, "GEOMETRY_LIGHT" },
+        { DRAW_ONCE_CORE_FLAG, "DRAW_ONCE_CORE" },
         { COVERAGE_FLAG, "COVERAGE" },
         { SPAN_FLAG, "SPAN" },
         { DRAPE_MASK_FLAG, "DRAPE_MASK" },

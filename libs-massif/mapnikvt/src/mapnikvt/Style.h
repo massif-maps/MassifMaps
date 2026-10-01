@@ -30,13 +30,15 @@ namespace massif::mvt {
             FIRST
         };
 
-        explicit Style(std::string name, float opacity, std::string imageFilters, std::optional<vt::CompOp> compOp, FilterMode filterMode, std::string simplify, std::vector<std::shared_ptr<const Rule>> rules);
+        explicit Style(std::string name, float opacity, std::string imageFilters, std::optional<vt::CompOp> compOp, FilterMode filterMode, std::string simplify, std::vector<std::shared_ptr<const Rule>> rules, Expression drawOnce = Value(std::string()));
 
         const std::string& getName() const { return _name; }
         float getOpacity() const { return _opacity; }
         const std::string& getImageFilters() const { return _imageFilters; }
         const std::string& getSimplify() const { return _simplify; }
         const std::optional<vt::CompOp>& getCompOp() const { return _compOp; }
+        // The draw-once group name, evaluated per tile (style parameters may pick it); "" = off.
+        const Expression& getDrawOnce() const { return _drawOnce; }
         FilterMode getFilterMode() const { return _filterMode; }
 
         const std::vector<std::shared_ptr<const Rule>>& getRules() const { return _rules; }
@@ -59,6 +61,7 @@ namespace massif::mvt {
         const std::optional<vt::CompOp> _compOp;
         const FilterMode _filterMode;
         std::vector<std::shared_ptr<const Rule>> _rules;
+        const Expression _drawOnce;
 
         mutable std::mutex _zoomRuleMapMutex;
         mutable bool _zoomRuleMapCalculated = false;

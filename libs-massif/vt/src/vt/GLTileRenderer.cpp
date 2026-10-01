@@ -3109,7 +3109,26 @@ namespace massif::vt {
             _terrainStyleLayerIndices.insert(it->first);
         }
         _terrainStyleLayersDrawn = static_cast<int>(_terrainStyleLayerIndices.size()); // the owner numbers the next renderer from here
+
+        // Without a spare stencil bit above the tile masks (or under a comp-op overlay) a group draws as plain layers.
+        bool drawOnceStencil = stencilBits >= 8 && tileStencilMap.size() < DRAW_ONCE_STENCIL_BIT;
+        auto drawOnceGroup = [drawOnceStencil](const std::vector<const RenderTileLayer*>& renderLayers) -> std::string {
+            if (!drawOnceStencil || renderLayers.empty() || renderLayers.front()->layer->getCompOp()) {
+                return std::string();
+            }
+            return renderLayers.front()->layer->getDrawOnceGroup();
+        };
+        std::vector<decltype(renderLayerMap)::iterator> layerOrder;
+        layerOrder.reserve(renderLayerMap.size());
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            layerOrder.push_back(it);
+        }
+        auto schedule = drawOnceSchedule(layerOrder, [&drawOnceGroup](decltype(renderLayerMap)::iterator it) {
+            return drawOnceGroup(it->second);
+        });
+
+        std::string activeDrawOnceGroup;
+        for (const auto& [it, drawOncePass] : schedule) {
             int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
             const std::vector<const RenderTileLayer*>& renderLayers = it->second;
             if (renderLayers.empty()) {
@@ -3123,6 +3142,31 @@ namespace massif::vt {
                 std::swap(layerOpacity, geometryOpacity);
             }
             CompOp layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
+
+            std::string layerDrawOnceGroup = drawOnceGroup(renderLayers);
+            if (layerDrawOnceGroup != activeDrawOnceGroup) {
+                if (!activeDrawOnceGroup.empty()) {
+                    if (maskStencilBits > 0) {
+                        // The stamps have their own bit: clearing it leaves the tile masks below intact.
+                        glStencilMask(DRAW_ONCE_STENCIL_BIT);
+                        glClearStencil(0);
+                        glClear(GL_STENCIL_BUFFER_BIT);
+                        glStencilMask(0);
+                    } else {
+                        glDisable(GL_STENCIL_TEST);
+                    }
+                }
+                if (!layerDrawOnceGroup.empty() && maskStencilBits == 0) {
+                    glEnable(GL_STENCIL_TEST);
+                    glStencilMask(255);
+                    glClearStencil(0);
+                    glClear(GL_STENCIL_BUFFER_BIT);
+                    glStencilMask(0);
+                    glStencilFunc(GL_EQUAL, 0, 255);
+                }
+                activeDrawOnceGroup = layerDrawOnceGroup;
+            }
+            _drawOncePass = drawOncePass;
 
             GLint currentFBO = 0;
             if (layer->getCompOp()) {
@@ -3237,7 +3281,7 @@ namespace massif::vt {
                 const std::vector<TileId>& groundTiles = collectGroundLeaves(renderLayer->targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
                     // Draped native backgrounds are baked into the surface texture already.
-                    if (drapedTile) {
+                    if (drapedTile || _drawOncePass == DrawOncePass::CORE) {
                         continue;
                     }
                     CompOp backgroundCompOp = CompOp::SRC_OVER;
@@ -3260,7 +3304,7 @@ namespace massif::vt {
 
                 for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer->layer->getBitmaps()) {
                     // Draped rasters (hillshade, imagery) are baked into the drape texture already.
-                    if (drapedTile) {
+                    if (drapedTile || _drawOncePass == DrawOncePass::CORE) {
                         continue;
                     }
                     CompOp bitmapCompOp = CompOp::SRC_OVER;
@@ -3380,6 +3424,10 @@ namespace massif::vt {
                 }
             }
         }
+        if (!activeDrawOnceGroup.empty() && maskStencilBits == 0) {
+            glDisable(GL_STENCIL_TEST);
+        }
+        _drawOncePass = DrawOncePass::NONE;
     }
     
     void GLTileRenderer::renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline) {
@@ -5025,21 +5073,19 @@ namespace massif::vt {
         });
 
         for (const RenderTile* renderTilePtr : coveringTiles) {
-            const RenderTile& renderTile = *renderTilePtr;
-            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
-                const RenderTileLayer& renderLayer = it->second;
+            auto bakes = [&](const RenderTileLayer& renderLayer) {
                 if (!(spanOnly ? hasSpanContent(renderLayer) : hasDrapeableContent(renderLayer))) {
-                    continue;
+                    return false;
                 }
                 // A coverage bake starts part-way up the stack: only units ABOVE the masked layer occlude.
                 if (renderLayer.layer->getLayerIndex() < fromStyleLayerIdx) {
-                    continue;
+                    return false;
                 }
                 // A render layer can be finer than its render tile (retained children) and outside this
                 // tile: it must COVER it too, or a neighbour's content bakes in.
-                if (!tileCovers(renderLayer.targetTileId, targetTileId)) {
-                    continue;
-                }
+                return tileCovers(renderLayer.targetTileId, targetTileId);
+            };
+            bakeLayersDrawOnce(*renderTilePtr, bakes, [&](const RenderTileLayer& renderLayer) {
                 // Backgrounds/rasters draw their target tile's mesh, geometry is in source tile coords;
                 // both may be coarser than this tile, hence a sub-rect each.
                 float geometryOpacity = calculateDrapeOpacity(renderLayer);
@@ -5047,11 +5093,11 @@ namespace massif::vt {
                 if (clipZoom) {
                     drapeOrtho = *clipZoom * drapeOrtho;
                 }
-                for (const std::shared_ptr<TileBackground>& background : (spanOnly ? std::vector<std::shared_ptr<TileBackground>>() : renderLayer.layer->getBackgrounds())) {
+                for (const std::shared_ptr<TileBackground>& background : (spanOnly || _drawOncePass == DrawOncePass::CORE ? std::vector<std::shared_ptr<TileBackground>>() : renderLayer.layer->getBackgrounds())) {
                     renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
                     bakedPrimitives++;
                 }
-                for (const std::shared_ptr<TileBitmap>& bitmap : (spanOnly ? std::vector<std::shared_ptr<TileBitmap>>() : renderLayer.layer->getBitmaps())) {
+                for (const std::shared_ptr<TileBitmap>& bitmap : (spanOnly || _drawOncePass == DrawOncePass::CORE ? std::vector<std::shared_ptr<TileBitmap>>() : renderLayer.layer->getBitmaps())) {
                     renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
                     bakedPrimitives++;
                 }
@@ -5081,12 +5127,71 @@ namespace massif::vt {
                         bakedPrimitives++;
                     }
                 }
-            }
+            });
         }
 
         _drapeMVPOverride = nullptr;
         checkGLError();
         return bakedPrimitives;
+    }
+
+    void GLTileRenderer::bakeLayersDrawOnce(const RenderTile& renderTile, const std::function<bool(const RenderTileLayer&)>& wanted, const std::function<void(const RenderTileLayer&)>& draw) {
+        bool anyGroup = false;
+        for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end() && !anyGroup; it++) {
+            anyGroup = !it->second.layer->getDrawOnceGroup().empty() && wanted(it->second);
+        }
+        if (!anyGroup) {
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                if (wanted(it->second)) {
+                    draw(it->second);
+                }
+            }
+            return;
+        }
+
+        // The drape FBO is colour only: a stencil the size of the bake joins it for this tile.
+        GLint viewport[4] = { 0, 0, 0, 0 };
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        cglib::vec2<int> size(viewport[2], viewport[3]);
+        if (_drapeStencilRB == 0 || _drapeStencilSize != size) {
+            if (_drapeStencilRB == 0) {
+                glGenRenderbuffers(1, &_drapeStencilRB);
+            }
+            glBindRenderbuffer(GL_RENDERBUFFER, _drapeStencilRB);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, size(0), size(1));
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
+            _drapeStencilSize = size;
+        }
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _drapeStencilRB);
+
+        std::vector<const RenderTileLayer*> layers;
+        for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+            if (wanted(it->second)) {
+                layers.push_back(&it->second);
+            }
+        }
+        std::string activeGroup;
+        for (const auto& [renderLayer, pass] : drawOnceSchedule(layers, [](const RenderTileLayer* layer) { return layer->layer->getDrawOnceGroup(); })) {
+            const std::string& group = renderLayer->layer->getDrawOnceGroup();
+            if (group != activeGroup) {
+                if (group.empty()) {
+                    glDisable(GL_STENCIL_TEST);
+                } else {
+                    glEnable(GL_STENCIL_TEST);
+                    glStencilMask(255);
+                    glClearStencil(0);
+                    glClear(GL_STENCIL_BUFFER_BIT);
+                    glStencilMask(0);
+                    glStencilFunc(GL_EQUAL, 0, 255);
+                }
+                activeGroup = group;
+            }
+            _drawOncePass = pass;
+            draw(*renderLayer);
+        }
+        _drawOncePass = DrawOncePass::NONE;
+        glDisable(GL_STENCIL_TEST);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, 0);
     }
 
     void GLTileRenderer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
@@ -5504,6 +5609,11 @@ namespace massif::vt {
         if (_drapeFBO != 0) {
             glDeleteFramebuffers(1, &_drapeFBO);
             _drapeFBO = 0;
+        }
+        if (_drapeStencilRB != 0) {
+            glDeleteRenderbuffers(1, &_drapeStencilRB);
+            _drapeStencilRB = 0;
+            _drapeStencilSize = cglib::vec2<int>(0, 0);
         }
     }
 
@@ -5927,23 +6037,21 @@ namespace massif::vt {
 
             // Full opacity, so the cached texture ignores the momentary fade blend; an ancestor-sourced
             // layer bakes through a sub-rect. Points, extrusions and labels stay live.
-            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
-                const RenderTileLayer& renderLayer = it->second;
-                if (!hasDrapeableContent(renderLayer)) {
-                    continue;
-                }
+            auto bakes = [&](const RenderTileLayer& renderLayer) {
                 // Only layers whose own tile covers this one, as in the cross-layer bake.
-                if (!tileCovers(renderLayer.targetTileId, targetTileId)) {
-                    continue;
-                }
+                return hasDrapeableContent(renderLayer) && tileCovers(renderLayer.targetTileId, targetTileId);
+            };
+            bakeLayersDrawOnce(renderTile, bakes, [&](const RenderTileLayer& renderLayer) {
                 // Backgrounds and rasters draw the target tile's mesh; their uv logic resolves overzoom.
                 float geometryOpacity = calculateDrapeOpacity(renderLayer);
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.targetTileId, targetTileId);
-                for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
-                    renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
-                }
-                for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
-                    renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
+                if (_drawOncePass != DrawOncePass::CORE) {
+                    for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
+                        renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
+                    }
+                    for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
+                        renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
+                    }
                 }
                 // Geometry is in SOURCE tile coords, so an overzoomed layer needs the sub-rect transform.
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
@@ -5952,7 +6060,7 @@ namespace massif::vt {
                         renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, geometry);
                     }
                 }
-            }
+            });
         }
 
         _drapeMVPOverride = nullptr;
@@ -6382,6 +6490,10 @@ namespace massif::vt {
         bool styleGapWidth = std::count(styleParams.gapWidthFuncs.begin(), styleParams.gapWidthFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
         bool styleBlur = std::count(styleParams.blurFuncs.begin(), styleParams.blurFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
         bool styleBorder = std::count(styleParams.borderWidthFuncs.begin(), styleParams.borderWidthFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
+        // The core pass stamps plain lines only; anything else in a draw-once group draws in the rim pass.
+        if (_drawOncePass == DrawOncePass::CORE && (geometry->getType() != TileGeometry::Type::LINE || styleBorder)) {
+            return;
+        }
 
         // Flat drape pass: no displacement, no depth bias, tile-local ortho MVP from the caller.
         bool flatDrape = (_drapeMVPOverride != nullptr);
@@ -6402,7 +6514,7 @@ namespace massif::vt {
             shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag());
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | (styleGapWidth ? GAPWIDTH_FLAG : 0) | (styleBlur ? BLUR_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0));
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | (styleGapWidth ? GAPWIDTH_FLAG : 0) | (styleBlur ? BLUR_FLAG : 0) | (_drawOncePass == DrawOncePass::CORE ? DRAW_ONCE_CORE_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0));
             break;
         case TileGeometry::Type::POLYGON:
             shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag() | (_spanResolver.isEnabled() && !geometry->getSpanRecords().empty() ? SPAN_FLAG : 0));
@@ -6697,10 +6809,23 @@ namespace massif::vt {
             }
         }
 
+        // mapbox's translucent line (draw_line.ts): the core stamps the stencil, so a pixel a cap or a
+        // crossing already covered is not blended twice; the rim pass then adds what is left.
+        bool corePass = (_drawOncePass == DrawOncePass::CORE);
+        if (corePass) {
+            glStencilMask(DRAW_ONCE_STENCIL_BIT);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_INVERT);
+        }
+
         glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
         VT_STAT_SPLIT(geomDrawNs, statClock);
         VT_STAT_INC(geometryDraws);
         VT_STAT_ADD(geometryIndices, geometry->getIndicesCount());
+
+        if (corePass) {
+            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+            glStencilMask(0);
+        }
 
         unbindGeometryVertexLayout(shaderProgram, geometry, compiledGeometry);
 

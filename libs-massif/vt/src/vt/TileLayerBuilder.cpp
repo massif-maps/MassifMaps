@@ -759,7 +759,7 @@ namespace massif::vt {
         packGeometry(geometryList);
         packGroundSkirt(geometryList);
 
-        return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList);
+        return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList, _drawOnceGroup);
     }
 
     void TileLayerBuilder::packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {

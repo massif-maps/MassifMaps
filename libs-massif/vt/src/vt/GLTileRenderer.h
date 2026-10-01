@@ -16,6 +16,7 @@
 #include "Tile.h"
 #include "TileId.h"
 #include "SpanResolver.h"
+#include "DrawOnceOrder.h"
 #include "TileTransformer.h"
 #include "TileBitmap.h"
 #include "TileBackground.h"
@@ -26,6 +27,7 @@
 #include "GLExtensions.h"
 
 #include <memory>
+#include <functional>
 #include <tuple>
 #include <optional>
 #include <array>
@@ -547,6 +549,9 @@ namespace massif::vt {
         // Shared body of bakeDrapeTile/bakeDrapeCoverage from fromStyleLayerIdx on; caller holds _mutex.
         // clipZoom premultiplies the bake matrix: the span drape scales the deck's bounds to the texture.
         int bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx, bool spanOnly = false, const cglib::mat4x4<float>* clipZoom = nullptr);
+        // A tile's baked layers that pass `wanted`, in draw-once order once one carries a group: the bound
+        // drape FBO then borrows _drapeStencilRB for the bake (see renderGeometry2D for the passes).
+        void bakeLayersDrawOnce(const RenderTile& renderTile, const std::function<bool(const RenderTileLayer&)>& wanted, const std::function<void(const RenderTileLayer&)>& draw);
         // A live layer's occlusion mask over a tile and the target -> mask uv transform. False without a
         // mask, or when the drape tile is finer than the target: one draw cannot sample several masks.
         bool resolveDrapeCoverageMask(const TileId& targetTileId, int styleLayerIdx, GLuint& texture, cglib::vec4<float>& uvTransform) const;
@@ -770,6 +775,8 @@ namespace massif::vt {
         float _terrainDrawLayerOffset = 0.0f;    // painter-order per-draw (proxy - layer) offset
         float _terrainLineClearance = 0.0f;      // world units a draped line clears the ground by, constant in metres at any range
         float _terrainDrawClearance = 0.0f;      // per-draw METRE-constant clearance in world units (applyDepthBias); non-zero only for content that chords over the ground
+        DrawOncePass _drawOncePass = DrawOncePass::NONE; // the draw-once pass the 2D layer being drawn is in
+        static constexpr GLuint DRAW_ONCE_STENCIL_BIT = 0x80; // tile mask values stay below it
         int _terrainLayerOrdinalBase = 0;        // first style-layer ordinal of this renderer in the stack
         std::set<int> _terrainStyleLayerIndices; // every style layer index this renderer has drawn - the stable order list
         int _terrainStyleLayersDrawn = 0;        // size of the order list above (the owner's dense numbering)
@@ -778,6 +785,8 @@ namespace massif::vt {
         SpanResolver _spanResolver;              // 3D bridges: unions, chords, bases (setSpansEnabled)
         int _drapeTextureSize = 512;             // per-tile drape texture resolution
         GLuint _drapeFBO = 0;                    // shared offscreen FBO for baking drape textures
+        GLuint _drapeStencilRB = 0;              // draw-once stencil for a bake, made on the first group
+        cglib::vec2<int> _drapeStencilSize = cglib::vec2<int>(0, 0);
         std::map<TileId, GLuint> _drapeTextures; // per-target-tile baked drape textures
         std::map<TileId, std::size_t> _drapeFingerprints; // what each cached texture was baked from; a change means it is stale
         std::vector<GLuint> _drapeTexturePool;   // recycled textures, so panning does not churn GL allocations

@@ -21,7 +21,7 @@
 namespace massif::vt {
     class TileLayer final {
     public:
-        explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) {
+        explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels, std::string drawOnceGroup = std::string()) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _drawOnceGroup(std::move(drawOnceGroup)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) {
             // Answered once here so the renderer's per-frame span pass can skip a layer - and, in a
             // style that uses no elevation-mode at all, every layer - without walking its geometry.
             // Same for the contact shadow: its search cannot stop early, so absence is the costly case.
@@ -42,6 +42,8 @@ namespace massif::vt {
         int getLayerIndex() const { return _layerIdx; }
         const std::optional<CompOp>& getCompOp() const { return _compOp; }
         const FloatFunction& getOpacityFunc() const { return _opacityFunc; }
+        /** Consecutive layers sharing a non-empty group draw each pixel once, as one translucent layer. */
+        const std::string& getDrawOnceGroup() const { return _drawOnceGroup; }
 
         const std::vector<std::shared_ptr<TileBackground>>& getBackgrounds() const { return _backgrounds; }
         const std::vector<std::shared_ptr<TileBitmap>>& getBitmaps() const { return _bitmaps; }
@@ -72,6 +74,7 @@ namespace massif::vt {
         const int _layerIdx;
         const std::optional<CompOp> _compOp;
         const FloatFunction _opacityFunc;
+        const std::string _drawOnceGroup;
         const std::vector<std::shared_ptr<TileBackground>> _backgrounds;
         const std::vector<std::shared_ptr<TileBitmap>> _bitmaps;
         const std::vector<std::shared_ptr<TileGeometry>> _geometries;

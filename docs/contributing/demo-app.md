@@ -64,7 +64,8 @@ older commit.
 ## Intent extras
 
 Standalone layers (`map` = the base map, `satLayer`, `hillshade`, `hypso`, `contourLayer`, `contourTiles`,
-`spans`, `routes`, `elements`, `bugs`) toggle with `--es <name> true|false`; the base map has `--es base plain|composite` and
+`spans`, `routes`, `elements`, `bugs`) toggle with `--es <name> true|false` (`--es satUnder true` puts the
+`satLayer` raster UNDER the base map, as a hybrid style's imagery); the base map has `--es base plain|composite` and
 `--es style dir|zip|inline|project`. `dir` reads the style from a FOLDER via `DirAssetPackage`
 (`/sdcard/alpimaps_mbtiles/osm`), falling back to `osm.zip` then to inline CartoCSS.
 

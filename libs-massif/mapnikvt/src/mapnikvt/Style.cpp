@@ -11,7 +11,7 @@
 #include <utility>
 
 namespace massif::mvt {
-    Style::Style(std::string name, float opacity, std::string imageFilters, std::optional<vt::CompOp> compOp, FilterMode filterMode, std::string simplify, std::vector<std::shared_ptr<const Rule>> rules) : _name(std::move(name)), _opacity(opacity), _imageFilters(std::move(imageFilters)), _compOp(std::move(compOp)), _filterMode(filterMode), _simplify(std::move(simplify)), _rules(std::move(rules)) {
+    Style::Style(std::string name, float opacity, std::string imageFilters, std::optional<vt::CompOp> compOp, FilterMode filterMode, std::string simplify, std::vector<std::shared_ptr<const Rule>> rules, Expression drawOnce) : _name(std::move(name)), _opacity(opacity), _imageFilters(std::move(imageFilters)), _compOp(std::move(compOp)), _filterMode(filterMode), _simplify(std::move(simplify)), _rules(std::move(rules)), _drawOnce(std::move(drawOnce)) {
     }
 
     const std::vector<std::shared_ptr<const Rule>>& Style::getZoomRules(int zoom) const {

@@ -269,36 +269,69 @@ from the dot product of consecutive binormals. What is load-bearing in it:
   skipped for a plain miter: tangram fans at every angle, but their line shader has no AA ramp and five
   near-degenerate slivers each carrying one is a visible seam.
 
-## Translucent layers: no single-blend pass (removed)
+## Translucent layers: draw-once groups (opt-in)
 
-A translucent style layer blends a pixel again wherever its geometry overlaps itself — a line whose
-vertices sit closer together than it is wide folds at every join, a route doubles back inside its own
-width — which reads as darker knots along the line.
+A translucent style layer blends a pixel again wherever its geometry overlaps itself: two ways
+meeting with round caps, a crossing, a cap inside the next way of the same road. It reads as a disc
+at every join (the Massif hybrid's roads over the imagery). MapLibre blends it twice too; Mapbox
+GL JS does not, for a constant `line-opacity`: `draw_line.ts` draws the layer twice through the stencil.
 
-A **single-blend stencil pass** used to suppress that: one spare stencil bit per layer,
-`glStencilOp(KEEP, KEEP, GL_INVERT)` marking each pixel as it was painted and a `GL_EQUAL` test
-rejecting the second fragment. It was **removed**, because "one blend per pixel" is not a property of
-a pixel but of a symbolizer, and the stencil cannot tell them apart:
+**The automatic pass was removed** once already, because "one blend per pixel" belongs to a
+symbolizer, not a pixel:
 
-- **A second symbolizer in the same layer is punched out.** A cartocss instance (`back/line-...`)
-  lives in the SAME attachment, so it is the same vt layer. With `back/line-opacity` set, the wide
-  back line paints first, flips the bit over its whole footprint, and the narrower main line — drawn
-  after, entirely inside it — is rejected everywhere. The reported symptom was "I see the back line,
-  I never see the line".
-- **Every internal join grows a seam.** The first fragment to reach a pixel owns it, so a
-  partial-coverage antialias edge can no longer be filled in by its neighbour. On a translucent
-  `line-width: 10` that reads as the line breaking at each vertex.
-- Tangram and maplibre have no equivalent pass. The same commit that added it also made the join
-  geometry **non-overlapping** (see the join section above), which is what actually removes the
-  common case; what is left is a line genuinely crossing itself, and every renderer blends that
-  twice.
+- **A second symbolizer in the same attachment is punched out.** `back/line-…` is the same vt layer;
+  the wide back line stamps its footprint first and the main line, inside it, is rejected
+  everywhere ("I see the back line, I never see the line").
+- **Every join grew a seam**: the first fragment owned a pixel, so a partly covered antialias edge
+  was never filled in by its neighbour.
 
-A style that really needs one composite still has the layer's own `opacity` + `comp-op`, which draws
-the layer opaque into the overlay buffer and composites it once: no seams, but a full-screen pass per
-layer, and that buffer carries no depth, so in 3D terrain the layer stops being occluded by ridges.
-Measured on an Adreno 610 while the pass existed (demo route, casing + fill, translucent, scripted
+So it came back **opt-in, per group**, as the CartoCSS style-level property `draw-once: '<group>'`
+(an expression: `param::` may pick it, `''` is off). `TileReader` evaluates it per tile into
+`TileLayer::getDrawOnceGroup()`. `renderGeometry2D` treats each run of CONSECUTIVE style layers with
+one group as one translucent layer (`vt/DrawOnceOrder.h`):
+
+- **Core pass**: every line of the run, top layer first, compiled with `DRAW_ONCE_CORE` (discard
+  below 0.99 coverage) and `glStencilOp(KEEP, KEEP, GL_INVERT)` on stencil bit `0x80` only, above the
+  tile mask values: a pixel gets the first, i.e. topmost, colour once. Non-line content waits.
+- **Rim pass**: the run again, plain shader (no `discard`, so the stencil rejects early), where the
+  bit is still clear: the antialiased edges, and everything that is not a plain line. Then the bit
+  alone is cleared (`glStencilMask(0x80)` + `glClear`); the tile masks under it are not redrawn.
+- Without tile masks (terrain, live lines) the stencil is cleared to 0 for the run. No stencil
+  buffer, 128 tile masks or more, or a `comp-op` overlay: the group draws as plain layers.
+- **Drape bake** (3D terrain, `DrapeLinesEnabled`): `bakeLayersDrawOnce` attaches a lazily made
+  `GL_STENCIL_INDEX8` renderbuffer, the size of the bake viewport, to whichever drape FBO is bound,
+  runs the same schedule per baked tile and detaches it. A tile with no group touches no stencil.
+
+Running each pass over the WHOLE run, not per draw, is what removed the seams; batch by batch the
+first batch's rim was already down, unstamped, when the next batch's core landed on it. Mapbox's
+threshold is 0.8: measured in the style preview (hybrid, Grenoble Rue Thiers, z17.6), a cap's
+0.8–1 coverage edge then claims pixels inside the next way and leaves a dotted ring where the disc
+was; 0.99 stamps only fully covered pixels and the ring is gone.
+
+A casing (`line-gap-width`) shares its fill's group: its round end otherwise shows through the next
+way's translucent fill as a ring. A second line symbolizer in ONE grouped attachment is still punched
+out, as above.
+
+**Cost, measured on the Crosscall HLTE556N** (Adreno 610, Release native, Massif from the bundled
+`massif.zip` over the Akylas tiles and Esri imagery, Grenoble 5.7245/45.1885 z16.5 tilt 45, scripted
+pan, `PROF` windows, APKs interleaved, two rounds, fps):
+
+| | flat, master | flat, draw-once | 3D terrain, master | 3D terrain, draw-once |
+|---|---|---|---|---|
+| streets | 17.4 / 17.2 | 17.6 / 17.7 | 17.1 / 17.3 | 18.6 / 17.3 |
+| hybrid | 20.8 / 20.2 | 16.5 / 16.7 | 21.7 / 21.5 | 20.8 / 19.7 |
+
+No group, no cost. Hybrid pays for drawing its roads twice: indices per frame 2.1M → 4.3M, draw
+calls 477 → 823 (~24 µs CPU each), GPU `layers` 7.9 → 14.2 ms. A first version also redrew the tile
+masks after every group and kept the `discard` in every line shader: 16.1 / 16.3 fps flat; moving the
+stamp to its own bit and the `discard` behind a define bought only 0.4 fps, so the second geometry pass
+is the bill. On terrain the lines bake into the drape, so only bakes pay.
+
+The other route is still a layer's own `opacity` + `comp-op`, which draws the layer opaque into the
+overlay buffer and composites it once: a full-screen pass per layer, no depth in 3D terrain. Measured
+on an Adreno 610 while the automatic pass existed (demo route, casing + fill, translucent, scripted
 pan, two reps of 25 one-second samples): **37.7 fps with the pass against 26.5 fps through the
-overlay buffer**, `layers` 2.43 vs 3.62 ms — that cost is what the overlay route still carries.
+overlay buffer**, `layers` 2.43 vs 3.62 ms.
 
 ## Lines over terrain
 

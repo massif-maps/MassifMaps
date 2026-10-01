@@ -111,6 +111,11 @@ The SDK exposes the same scalar as a view variable, so a style can do it too:
 0.478, dawn 0.396, dusk 0.027. It is resolved per frame, so a ramp over it follows the hour with no
 re-decode.
 
+With the day cycle on, it reads the curve with each **hold** (two stops with the same light, like
+dusk at 3° and 12°) ramping on to the next light instead. A palette ramped over 0.25–0.3, as the
+Massif styles are, then flips about 8–9° above a setting sun rather than mid-afternoon at 26–28°.
+The light colours still hold; a curve without a hold reads as before.
+
 ## Half two: the app replaces the curve
 
 `LightOptions.dayCycleLightStops` is a list of `LightStop`s — a light anchored on a sun height. The

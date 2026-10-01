@@ -387,6 +387,21 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
   bucket and the preloading ring alike — and `GLTileRenderer::setVisibleTiles` takes that half as
   `labelOnlyTiles`: it joins `buildLabelMaps` and skips `buildTileSurfaces`/`buildRenderTiles`.
   Drawing them instead cost 4.3% of the frame rate on the Crosscall for pixels nobody sees.
+- **Two memory caches, split by use, not by bucket.** A layer keeps every tile a cull asks for - the
+  view, the label band, the shadow casters and the preloading ring - in `_visibleCache` (512 MB,
+  never meant to fill), and only tiles no cull asks for any more in `_preloadingCache` (10 MB LRU).
+  A fetched tile always lands in the visible cache; `holdTilesInUse` (`layers/TileCacheHold.h`)
+  moves the unused ones out on every refresh. Until 2026-09-30 only the view was held and the other
+  kinds were cached by their fetch flag: once the label band and the casters outgrew 10 MB, each
+  arrival evicted another member of the set and the next cull refetched it, forever, with the map
+  redrawing on each arrival. Holding them at refresh alone was not enough either: on the iOS
+  simulator several arrivals landed between two culls and pushed each other out first
+  ([performance log](../performance-log.md#34-shadow-casters-and-the-label-band-refetched-forever-2026-09-30)).
+- **Preloading is a thin border now.** The label band already fetches the tiles within 20-100 px of
+  the screen edge; the ring (`PRELOADING_TILE_SCALE`, a tile grown by a quarter each side) adds the
+  next sliver: 5-8 tiles, +14-21% loads, at Grenoble z15.5 tilt 45. Neither maplibre nor mapbox
+  preload neighbours (they keep parents instead). Kept, off by default, for sources that are slow
+  to arrive or raster layers panned fast.
 - Tiles live in the layer's memory cache plus an optional persistent cache
   (`PersistentCacheTileDataSource`). The persistent cache is why a device re-run is not a cold run —
   `pm clear` is the only reliable reset ([10-performance.md](10-performance.md)).

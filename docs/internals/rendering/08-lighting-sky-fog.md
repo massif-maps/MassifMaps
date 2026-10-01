@@ -281,7 +281,7 @@ The caster pass draws **exactly the terrain surfaces that are about to be drawn 
 sun, into a packed-depth texture; the surface shader then looks itself up in it. Casters and
 receivers share one vertex shader and one elevation fetch, so the shadow geometry cannot disagree
 with the rendered geometry. The extrusion caster keeps the drawn extrusion's half-open tile clip
-too (`polygon3DShadowCasterFsh`): under overzoom every target tile holds the whole source geometry,
+too (`polygon3DShadowCasterFsh`): under overzoom every target tile holds whole every source part that reaches it,
 and an unclipped copy whose base has not resolved yet stood above the drawn building and shadowed
 its roof (a wedge with a texel ladder, Louvre Pyramid, 2026-09-03). A bridge deck casts only once
 its chord has resolved, the same gate the drawn pass applies: before that its vertices are half

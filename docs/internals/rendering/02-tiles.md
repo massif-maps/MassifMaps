@@ -345,6 +345,19 @@ whatever the app configured, it allows enough coarsening for the covered ground 
 `TERRAIN_COVER_TILE_BUDGET` (256) tiles, and logs when it does. Two settings that each look
 reasonable can be ruinous multiplied together, and an app has no way to see that coming.
 
+### Tiles below the frame, for buildings
+
+A tile is culled as a flat box on the ground, so one just below the bottom edge was dropped while its
+buildings rose into view: a tilted city showed roofless walls along the bottom of the screen. A layer
+that may hold extrusions (`castsExtrusionShadows`) adds mapbox's near-plane strip
+(`extendTileCoverToNearPlane`, ported in `layers/NearPlaneCover.h`): the tiles at the target zoom
+under the frustum's two bottom edges, from the near plane to the ground, within the 3x3 around the
+near corner, skipping any the cover already overlaps.
+
+Raising every tile's cull box by 100 m of building instead was tried first and dropped: it pulled in
+the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30 on the Crosscall
+(7.9 -> 6.8 fps, two interleaved pairs).
+
 ## Substitution, preloading, caching
 
 - `TileSubstitutionPolicy` decides whether a missing tile is stood in for by a parent/child.

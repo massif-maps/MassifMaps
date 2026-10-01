@@ -1,4 +1,5 @@
 #include "TileLayer.h"
+#include "layers/NearPlaneCover.h"
 #include "layers/TileLODRule.h"
 #include "layers/TileStyleZoom.h"
 #include "core/BinaryData.h"
@@ -855,10 +856,57 @@ namespace massif {
             }
         }
 
+        extendTilesToNearPlane(cullState->getViewState(), _dataSource->getDataExtent());
+
         sortTiles(_visibleTiles, cullState->getViewState(), false);
         sortTiles(_labelTiles, cullState->getViewState(), true);
         sortTiles(_preloadingTiles, cullState->getViewState(), true);
         calculateShadowCasterTiles();
+    }
+
+    void TileLayer::extendTilesToNearPlane(const ViewState& viewState, const MapBounds& dataExtent) {
+        std::shared_ptr<Options> options = getOptions();
+        if (!castsExtrusionShadows() || _visibleTiles.empty() || _targetTileZoom < getMinZoom() || !options || options->getRenderProjectionMode() != RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+            return;
+        }
+        int zoom = _targetTileZoom;
+        int numTiles = 1 << zoom;
+        std::shared_ptr<vt::TileTransformer> tileTransformer = getTileTransformer();
+        cglib::bbox3<double> world = tileTransformer->calculateTileBBox(vt::TileId(0, 0, 0));
+        double tileSize = (world.max(0) - world.min(0)) / numTiles;
+        bool yDown = tileTransformer->calculateTileBBox(vt::TileId(1, 0, 0)).center()(1) > world.center()(1);
+        auto toTiles = [&](const cglib::vec3<double>& pos) {
+            return cglib::vec3<double>((pos(0) - world.min(0)) / tileSize, (yDown ? world.max(1) - pos(1) : pos(1) - world.min(1)) / tileSize, pos(2) / tileSize);
+        };
+        cglib::mat4x4<double> invMVP = cglib::inverse(viewState.getModelviewProjectionMat());
+        auto corner = [&](double x, double z) {
+            cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(x, -1, z, 1), invMVP);
+            return toTiles(cglib::vec3<double>(p(0) / p(3), p(1) / p(3), p(2) / p(3)));
+        };
+        double groundZ = viewState.getFocusPos()(2) / tileSize;
+        std::vector<std::pair<int, int> > tiles;
+        for (double x : { -1.0, 1.0 }) {
+            cglib::vec3<double> nearPoint = corner(x, -1), farPoint = corner(x, 1);
+            cglib::vec2<double> ground;
+            if (NearPlaneCover::projectToGround(nearPoint, farPoint, groundZ, ground)) {
+                NearPlaneCover::edgeTiles(cglib::vec2<double>(nearPoint(0), nearPoint(1)), ground, numTiles, tiles);
+            }
+        }
+        for (const std::pair<int, int>& xy : tiles) {
+            vt::TileId tileId(zoom, xy.first, xy.second);
+            bool covered = false;
+            for (const MapTile& visible : _visibleTiles) {
+                covered = covered || tileId.intersects(vt::TileId(visible.getZoom(), visible.getX(), visible.getY()));
+            }
+            int tileMask = numTiles - 1;
+            if (covered || !calculateMapTileBounds(MapTile(xy.first & tileMask, tileMask - (xy.second & tileMask), zoom, 0)).intersects(dataExtent)) {
+                continue;
+            }
+            auto same = [&](const MapTile& tile) { return tile.getZoom() == zoom && tile.getX() == xy.first && tile.getY() == xy.second; };
+            _labelTiles.erase(std::remove_if(_labelTiles.begin(), _labelTiles.end(), same), _labelTiles.end());
+            _preloadingTiles.erase(std::remove_if(_preloadingTiles.begin(), _preloadingTiles.end(), same), _preloadingTiles.end());
+            _visibleTiles.emplace_back(xy.first, xy.second, zoom, _frameNr);
+        }
     }
 
     void TileLayer::calculateShadowCasterTiles() {

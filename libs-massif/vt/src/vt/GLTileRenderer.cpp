@@ -11,6 +11,7 @@
 #include "TerrainElevationScale.h"
 #include "BitmapManager.h"
 #include "RenderTileBlend.h"
+#include "GroundCover.h"
 #include "LabelCuller.h"
 #include "RenderStats.h"
 #include "ShadowBox.h"
@@ -5433,6 +5434,33 @@ namespace massif::vt {
             }
         }
         return false;
+    }
+
+    bool GLTileRenderer::coversGround(const cglib::frustum3<double>& frustum) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (!_renderTiles || _terrainMode || _transformer->isSpherical()) {
+            return false;
+        }
+        std::unordered_set<TileId> opaqueTiles;
+        for (const RenderTile& renderTile : *_renderTiles) {
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                const RenderTileLayer& renderLayer = it->second;
+                if (renderLayer.blend < 1.0f || !renderLayer.layer || renderLayer.layer->getCompOp() || (renderLayer.layer->getOpacityFunc())(_viewState) < 1.0f) {
+                    continue;
+                }
+                for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
+                    if (!background->getPattern() && background->getColorFunc()(_viewState).alpha() >= 1.0f) {
+                        opaqueTiles.insert(renderLayer.targetTileId);
+                    }
+                }
+            }
+        }
+        return coversVisibleGround(opaqueTiles, [this](const TileId& tileId) {
+            return _transformer->calculateTileBBox(tileId);
+        }, [&frustum](const cglib::bbox3<double>& bbox) {
+            return frustum.inside(bbox);
+        });
     }
 
     void GLTileRenderer::setLabelOcclusionOpacity(float occludedOpacity) {

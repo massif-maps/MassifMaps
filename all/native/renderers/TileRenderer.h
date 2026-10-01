@@ -138,6 +138,7 @@ namespace massif {
         bool isGroundAOActive() const;
         bool isGroundAOBakeable() const;
         bool hasGroundContent() const;
+        bool coversGround(const ViewState& viewState) const;
         int renderGroundAOMask();
         int bakeGroundAOMask(const vt::TileId& tileId);
         // Pushed before the shared terrain surface draws; onDrawFrame runs after it, a frame late.

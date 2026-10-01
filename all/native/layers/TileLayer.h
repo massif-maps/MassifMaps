@@ -498,6 +498,8 @@ class ProjectionSurface;
         bool isGroundAOBakeable() const;
         // Whether this layer's visible tiles draw anything on the ground, rather than labels alone.
         bool hasGroundContent() const;
+        // Whether its tiles paint, opaque, all the ground this view sees.
+        bool coversGround(const ViewState& viewState) const;
         int renderGroundAOMask();
         int bakeGroundAOMask(const vt::TileId& tileId);
         void setTerrainSunLighting(const ResolvedLighting& lighting);

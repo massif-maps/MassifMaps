@@ -30,6 +30,7 @@ void testSphericalTerrain();
 void testExtrusionOccluder();
 void testGridIndexOrder();
 void testRenderTileBlend();
+void testGroundCover();
 void testLabelSlice();
 void testLabelFade();
 void testLayerContentFlags();
@@ -73,6 +74,7 @@ int main() {
     testExtrusionOccluder();
     testGridIndexOrder();
     testRenderTileBlend();
+    testGroundCover();
     testLabelSlice();
     testLabelFade();
     testLayerContentFlags();

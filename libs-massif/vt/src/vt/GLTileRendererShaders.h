@@ -154,6 +154,8 @@ namespace massif::vt {
         // Terrain sun on undraped 2D geometry. Not TERRAIN_LIGHT: the surface shaders declare the
         // same uniforms themselves, and one name twice in a stage is a link error.
         GEOMETRY_LIGHT_FLAG = 4194304,
+        // A draw-once group's core pass (DrawOnceOrder.h): only fully covered line pixels, which stamp the stencil.
+        DRAW_ONCE_CORE_FLAG = 8388608,
         // Write coverage (alpha, replicated) instead of colour, to build a no-drape layer's
         // occlusion mask (docs/internals/rendering/04-terrain.md).
         COVERAGE_FLAG = 16777216,
@@ -292,6 +294,7 @@ namespace massif::vt {
         { OFFSET_FLAG,      "OFFSET" },
         { GAPWIDTH_FLAG,    "GAPWIDTH" },
         { BLUR_FLAG,        "BLUR" },
+        { DRAW_ONCE_CORE_FLAG, "DRAW_ONCE_CORE" },
         { SHADOW_RECEIVER_3D_FLAG, "SHADOW_RECEIVER_3D" },
         { PATTERN_FLAG,     "PATTERN" },
         { DERIVATIVES_FLAG, "DERIVATIVES" },
@@ -1988,6 +1991,12 @@ namespace massif::vt {
                 dist = min(dist, (d - vInnerWidth) * uAntialiasScale + ramp);
             }
             lowp float a = clamp(dist / ramp, 0.0, 1.0);
+        #ifdef DRAW_ONCE_CORE
+            // Full coverage only: mapbox's 0.8 lets a cap's soft edge claim pixels inside the next line.
+            if (a < 0.99) {
+                discard;
+            }
+        #endif
         #ifdef PATTERN
             lowp vec4 color = texture2D(uPattern, vUV) * vColor * a;
         #else

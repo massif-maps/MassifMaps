@@ -136,6 +136,10 @@ namespace massif::mvt {
             if (pugi::xml_attribute compOpAttr = styleNode.attribute("comp-op")) {
                 compOp = parseCompOp(compOpAttr.as_string());
             }
+            Expression drawOnce = Value(std::string());
+            if (pugi::xml_attribute drawOnceAttr = styleNode.attribute("draw-once")) {
+                drawOnce = parseExpression(drawOnceAttr.as_string(), true);
+            }
 
             Style::FilterMode filterMode = Style::FilterMode::ALL;
             if (styleNode.attribute("filter-mode")) {
@@ -219,7 +223,7 @@ namespace massif::mvt {
                 rules.push_back(rule);
             }
 
-            auto style = std::make_shared<Style>(styleName, opacity, imageFilters, compOp, filterMode, simplify, std::move(rules));
+            auto style = std::make_shared<Style>(styleName, opacity, imageFilters, compOp, filterMode, simplify, std::move(rules), std::move(drawOnce));
             map->addStyle(style);
         }
 

@@ -474,6 +474,11 @@ beside the parameter), the lowest an app may go, and pays for decoding those til
 `["zoom"]` with `["config", …]` brackets the same way; both need 512 px tiles (no zoom offset), and
 were a `when()` over `[view::zoom]`, read per feature, before.
 
+`massif:draw-once` names a group (or an expression picking one, `''` for none): every attachment the
+layer splits into gets `draw-once: <group>`, so the SDK draws the group's pixels once, as Mapbox draws
+a translucent line - see [the vt renderer](../internals/rendering/03-vt-renderer.md#translucent-layers-draw-once-groups-opt-in).
+MapLibre ignores it and blends overlaps twice.
+
 `massif:palette-names` (style metadata, name → literal) names the hoisted variables after the
 style's own palette, so an override file writes `@motorway` — see *Hoisting* below.
 

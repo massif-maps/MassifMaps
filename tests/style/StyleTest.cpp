@@ -23,6 +23,7 @@ void testLegendResolver();
 void testBuiltinParameters();
 void testLineAnchors();
 void testMBVTSubtile();
+void testDrawOnce();
 
 int main() {
     testLayerConfig();
@@ -42,6 +43,7 @@ int main() {
     testBuiltinParameters();
     testLineAnchors();
     testMBVTSubtile();
+    testDrawOnce();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

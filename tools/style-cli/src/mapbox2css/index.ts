@@ -746,6 +746,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 return declaration;
             });
         }
+        // On every attachment a sort key split the layer into, so a crossing between two of them
+        // is drawn once too - the renderer groups consecutive styles by this name.
+        const drawOnce = (layer.metadata as Record<string, Json> | undefined)?.['massif:draw-once'];
+        if (declarations.length > 0 && drawOnce !== undefined && drawOnce !== '') {
+            declarations = [...declarations, `draw-once: ${translateExpression(drawOnce)};`];
+        }
         if (declarations.length === 0) return;
 
         let selector: string;

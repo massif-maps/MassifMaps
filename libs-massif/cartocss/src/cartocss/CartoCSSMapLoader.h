@@ -58,6 +58,7 @@ namespace massif::css {
             std::string imageFilters;
             std::string simplify;
             std::optional<vt::CompOp> compOp;
+            mvt::Expression drawOnce = mvt::Value(std::string());
             std::vector<std::shared_ptr<const mvt::Rule>> rules;
         };
         

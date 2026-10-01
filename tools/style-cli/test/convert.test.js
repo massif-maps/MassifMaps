@@ -478,6 +478,23 @@ test('a zoom an app sets is a selector on a parameter, not a when() per feature'
     assert.doesNotMatch(filtered, /when\(/);
 });
 
+test('massif:draw-once names one group on every attachment a sort key splits the layer into', () => {
+    const road = (metadata) => ({ id: 'road', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
+        metadata, layout: { 'line-sort-key': ['match', ['get', 'class'], 'motorway', 2, 1] },
+        paint: { 'line-color': 'rgba(255, 255, 255, 0.5)' } });
+    const convertWith = (metadata) => convert({ metadata: { 'massif:live-config': ['variant'] },
+        schema: { variant: { default: 'streets', values: ['streets', 'hybrid'] } }, layers: [road(metadata)] },
+        table, NO_PALETTE).mss;
+
+    const constant = convertWith({ 'massif:draw-once': 'road' });
+    assert.equal(constant.match(/::road_b\d+ \{[^}]*draw-once: 'road';/g)?.length, 2);
+    // a family picks it per variant, so the other variants keep their plain lines
+    const picked = convertWith({ 'massif:draw-once': ['match', ['config', 'variant'], 'hybrid', 'road', ''] });
+    assert.match(picked, /draw-once: \(\(\[param::variant\] = 'hybrid'\) \? 'road' : ''\);/);
+    assert.doesNotMatch(convertWith(undefined), /draw-once/);
+    assert.doesNotMatch(convertWith({ 'massif:draw-once': '' }), /draw-once/);
+});
+
 test('a circle\'s radius becomes a marker\'s width, which is a diameter', () => {
     const out = convert({ layers: [{ id: 'dot', type: 'circle', source: 'openmaptiles', 'source-layer': 'poi',
         paint: { 'circle-radius': 5, 'circle-color': '#ff0000' } }] }, table, NO_PALETTE).mss;

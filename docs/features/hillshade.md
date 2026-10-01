@@ -1,7 +1,11 @@
 ---
 title: Hillshade
 sidebar_position: 4
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Hillshade (Shaded Relief)
 
@@ -9,13 +13,7 @@ sidebar_position: 4
 The fork extends it with multiple algorithms, smooth exaggeration, shader contours and a custom
 shader base class.
 
-<figure class="docs-figure">
-
-![Hillshade relief](/img/features/hillshade.jpg)
-
-<figcaption>Hillshade relief over a vector basemap, shaded from a terrarium DEM (demo capture).</figcaption>
-
-</figure>
+<LiveExample id="hillshade" />
 
 ## Basic usage
 

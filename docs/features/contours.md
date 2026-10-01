@@ -1,7 +1,11 @@
 ---
 title: On-the-fly Contours
 sidebar_position: 2
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # On-the-fly Contour Lines
 
@@ -13,13 +17,7 @@ Added in PR [#18](https://github.com/massif-maps/MassifMaps/pull/18). Two indepe
 a vector `ContourTileDataSource` and shader contours on `HillshadeRasterTileLayer`.
 :::
 
-<figure class="docs-figure">
-
-![Contour lines over shaded terrain](/img/features/contours.jpg)
-
-<figcaption>Contour lines over the Chartreuse foothills, drawn from a terrarium-encoded DEM and draped on the terrain surface (demo capture).</figcaption>
-
-</figure>
+<LiveExample id="contour-lines" />
 
 ## 1. `ContourTileDataSource` — vector contours
 

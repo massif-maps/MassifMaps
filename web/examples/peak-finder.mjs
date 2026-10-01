@@ -7,9 +7,7 @@ import { find } from '@massif-maps/web';
 import { INK_SHADER, LABEL, SURFACE_SHADER, labelBand, summitsStyle } from './peak-finder/look.mjs';
 import { createChrome, toCompass } from './peak-finder/chrome.mjs';
 import { createSky } from './peak-finder/sun.mjs';
-
-const DEM = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
-const SUMMITS = 'https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf';
+import { demTiles, vectorTiles } from './shared.mjs';
 
 // The ink pass: silhouettes only (operator 2), a heavier skyline. Uniforms left out read zero.
 const INK = {
@@ -30,17 +28,11 @@ export default async function start(host) {
   const view = { lat: num('lat', 45.1885), lon: num('lon', 5.7245), eye: num('elevation', 400), rotation: num('rotation', -100), tilt: num('tilt', -4), fov: num('fov', 46) };
   const label = { ...LABEL };
 
-  // Tile caches in IndexedDB, as an app keeps them on disk: loaded before the sources open them.
-  await mountCache(map.module, '/cache');
-
   // The terrain, and everything decided when its meshes are built: geo-three's cut (subdivide
   // distance 70, levels to 17) and mesh, no stitching, drawn 173 km out.
   const terrain = map.terrain({
     type: 'terrain',
-    source: {
-      type: 'persistent-cache', databasePath: '/cache/dem.db', metaData: { dem_encoding: 'terrarium' },
-      source: { type: 'http', url: DEM, maxZoom: 16, metaData: { dem_encoding: 'terrarium' } },
-    },
+    source: demTiles(),
     autoFlattenTilt: 0, autoFlattenParallax: 0,
     meshResolution: 171, tileEdgeStitchingEnabled: false, subdivideDistance: 70, maxZoom: 17,
     viewDistance: 173000, meshCacheSize: 640, normalSampleDistance: 40, postProcessDownscale: 1,
@@ -103,9 +95,7 @@ export default async function start(host) {
   // THE SUMMIT NAMES, as the app draws them: OpenMapTiles' mountain_peak, and a style that puts every
   // name in one row above the skyline. The eye's altitude is baked into the style's rank, so a new
   // viewpoint is a new style - and the selected summit is a style parameter, set on the live one.
-  const summits = map.source('peaks', {
-    type: 'persistent-cache', databasePath: '/cache/peaks.db', source: { type: 'http', url: SUMMITS, maxZoom: 14 },
-  });
+  const summits = map.source('peaks', vectorTiles());
   const skyBelow = map.add(map.buildLayer('sky', { type: 'celestial' }), 0);
   const skyAbove = map.addLayer('sky.top', { type: 'celestial' });
   let ground = await groundElevation(view);
@@ -195,28 +185,13 @@ export default async function start(host) {
   tick();
 }
 
-async function mountCache(module, path) {
-  module.FS.mkdir(path);
-  module.FS.mount(module.FS.filesystems.IDBFS, {}, path);
-  await new Promise((resolve) => module.FS.syncfs(true, resolve));
-  let syncing = false;
-  const persist = () => {
-    if (!syncing) {
-      syncing = true;
-      module.FS.syncfs(false, () => (syncing = false));
-    }
-  };
-  setInterval(persist, 10000);
-  addEventListener('pagehide', persist);
-}
-
 /** The ground under a viewpoint, off the DEM tile itself: the summit names rank by the eye's altitude. */
 async function groundElevation({ lat, lon }) {
   try {
     const tiles = 2 ** 12;
     const x = (lon + 180) / 360 * tiles;
     const y = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * tiles;
-    const url = DEM.replace('{z}', 12).replace('{x}', Math.floor(x)).replace('{y}', Math.floor(y));
+    const url = demTiles().source.url.replace('{z}', 12).replace('{x}', Math.floor(x)).replace('{y}', Math.floor(y));
     const bitmap = await createImageBitmap(await (await fetch(url)).blob());
     const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
     context.drawImage(bitmap, 0, 0);

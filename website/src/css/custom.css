@@ -942,3 +942,14 @@
   font-size: 0.82rem;
   color: var(--ifm-color-emphasis-600);
 }
+
+.homeShowcase .exampleLive iframe,
+.homeShowcase .exampleLiveWait {
+  aspect-ratio: 2 / 1;
+}
+
+.homeShowcaseCaption {
+  margin-top: 0.25rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+}

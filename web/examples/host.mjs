@@ -28,12 +28,12 @@ export function createHost(root, map) {
         action(on);
       });
     },
-    slider(label, min, max, value, action) {
+    slider(label, min, max, value, action, format = (number) => number.toFixed(2)) {
       const row = element('label', 'example-slider', bar);
       const text = element('span', '', row);
       const input = element('input', '', row);
       Object.assign(input, { type: 'range', min, max, step: (max - min) / 200, value });
-      const show = () => (text.textContent = `${label} ${Number(input.value).toFixed(2)}`);
+      const show = () => (text.textContent = `${label} ${format(Number(input.value))}`);
       show();
       input.addEventListener('input', () => {
         show();

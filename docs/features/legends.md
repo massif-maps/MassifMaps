@@ -2,7 +2,11 @@
 title: Legends
 description: "A map legend resolved from the live CartoCSS style: colours, widths and icons follow the style parameters."
 sidebar_position: 27
+mdx:
+  format: mdx
 ---
+
+import LiveExample from '@site/src/components/LiveExample';
 
 # Legends
 
@@ -14,6 +18,8 @@ Instead, it is a **spec** of synthetic features. The SDK resolves each one again
 style, the same way it decodes a real feature: it evaluates the rules and parameters and finds the
 draw order across every attachment. What comes back is the **swatch** the map draws that feature
 with. This works for any CartoCSS style.
+
+<LiveExample id="map-legend" />
 
 ## The spec — `legend.json`
 

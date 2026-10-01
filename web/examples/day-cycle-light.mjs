@@ -80,6 +80,11 @@ function sunPosition(local) {
   return [altitude, azimuth];
 }
 
+function clock(hours) {
+  const minutes = Math.floor(hours * 60);
+  return `${Math.floor(minutes / 60) % 24}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
 export default async function start(host) {
   const map = host.map;
 
@@ -111,9 +116,9 @@ export default async function start(host) {
     // Without this the ground is never lit, and the shadow multiply lives in the same
     // block - so the buildings cast nothing.
     terrainLightingEnabled: true,
-    // Buildings cast: a low sun is what the curve is most worth looking at, and it is also
-    // when the shadows are longest. They follow the same sun the curve reads.
-    shadowStrength: 0.35,
+    // Buildings cast, following the same sun the curve reads. Strength scales the sun's share of
+    // the light, which is small in Standard's day: below about 2 a shadow is hard to see.
+    shadowStrength: 3,
     shadowSoftness: 1.2,
   });
 
@@ -123,7 +128,7 @@ export default async function start(host) {
 
   applyFormula();
   applyHour();
-  map.camera().moveTo([LON, LAT], { zoom: 15.5, rotation: 20, tilt: 45 });
+  map.camera().moveTo([LON, LAT], { zoom: 15.6, rotation: 20, tilt: 35 });
 
   function applyFormula() {
     // An empty list is the built-in curve; stops replace it, and only a redraw follows. Both are
@@ -152,8 +157,7 @@ export default async function start(host) {
   }
 
   function caption() {
-    const minutes = Math.floor((hour % 1) * 60);
-    host.caption(`${Math.floor(hour)}:${String(minutes).padStart(2, '0')} - sun ${sunAltitude.toFixed(0)}° - ${light()} - ${FORMULAS[formula][0]}`);
+    host.caption(`${clock(hour)} - sun ${sunAltitude.toFixed(0)}° - ${light()} - ${FORMULAS[formula][0]}`);
   }
 
   host.button('Formula', () => {
@@ -167,7 +171,7 @@ export default async function start(host) {
     hour = value;
     applyHour();
     caption();
-  });
+  }, clock);
   // Straight to MapBox's own four, so the render can be held against theirs.
   host.button('Preset', () => {
     preset = (preset + 1) % PRESETS.length;
@@ -184,5 +188,5 @@ export default async function start(host) {
     });
     host.caption(on ? 'Auto 2D/3D on: tilt past 88° and the map renders flat.' : 'Auto 2D/3D off: the map stays 3D all the way to 90°.');
   });
-  host.caption('One palette, no night theme: the hour picks the light, the curve picks the look. ' + 'Zoom out past z15, or tilt to 90, and the buildings lie down.');
+  host.caption('One palette, no night theme: the hour picks the light, the curve picks the look. ' + 'Zoom out, or tilt to 90, and the buildings lie down.');
 }

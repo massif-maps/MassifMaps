@@ -240,6 +240,8 @@ public final class DemoConfig {
     /** Cap on how many more tiles a tilted view may load than a top-down one - maplibre's
      *  tileCountMaxMinRatio. Inert unless lodLevels asks for a gentler far field. '--es lodRatio 3'. */
     public static float TILE_LOD_COUNT_RATIO = 3f;
+    /** Options.FieldOfViewY; 0 = the SDK default (36.87, maplibre's). '--es fovY 70' was the old one. */
+    public static float FIELD_OF_VIEW_Y = 0f;
     /** reference | mobile | desktop - one call for TileLODFactor + the two above + the style zoom
      *  lift. Empty leaves the individual knobs alone. '--es lodProfile mobile'. */
     public static String TILE_LOD_PROFILE = "";
@@ -298,7 +300,7 @@ public final class DemoConfig {
      *  explicitly, so the extrusions' contact shadow baked into the drape is more than a texel
      *  wide: at 512 a drape texel is ~1.7 m on the ground and the shadow reaches under 1 m. */
     public static int TERRAIN_DRAPE_RESOLUTION = 1024;
-    /** TerrainOptions.DrapeCacheSize / DrapeWorkingSet: 0 = the SDK defaults (96 MB, 64 tiles). */
+    /** TerrainOptions.DrapeCacheSize / DrapeWorkingSet: 0 = the SDK defaults (192 MB, 64 tiles). */
     public static int TERRAIN_DRAPE_CACHE_SIZE = 0;
     public static int TERRAIN_DRAPE_WORKING_SET = 0;
     /** Style layers kept OUT of the drape bake and drawn live instead. They land on top of every
@@ -1027,6 +1029,9 @@ public final class DemoConfig {
     /** Drive the GL thread continuously instead of MapView's RENDERMODE_WHEN_DIRTY. */
     public static boolean CONTINUOUS_RENDER = false;
 
+    /** Frames drawn per second and the GL-thread draw time, top-left and in logcat ('fps' tag). */
+    public static boolean SHOW_FPS = false;
+
     public static boolean UI_ENABLED = true;
     /** PeakFinder-style relief outline post-process effect. */
     public static boolean RELIEF_OUTLINE = false;
@@ -1289,6 +1294,7 @@ public final class DemoConfig {
         TILE_THREAD_POOL_SIZE = DemoCfg.cfgInt("tilePool", TILE_THREAD_POOL_SIZE);
         TILE_LOD_FACTOR = DemoCfg.cfgFloat("lodFactor", TILE_LOD_FACTOR);
         TILE_LOD_LEVELS_ON_SCREEN = DemoCfg.cfgFloat("lodLevels", TILE_LOD_LEVELS_ON_SCREEN);
+        FIELD_OF_VIEW_Y = DemoCfg.cfgFloat("fovY", FIELD_OF_VIEW_Y);
         TILE_LOD_COUNT_RATIO = DemoCfg.cfgFloat("lodRatio", TILE_LOD_COUNT_RATIO);
         TILE_LOD_PROFILE = DemoCfg.cfgStr("lodProfile", TILE_LOD_PROFILE);
         TILE_STYLE_ZOOM_LIFT = DemoCfg.cfgInt("styleZoomLift", TILE_STYLE_ZOOM_LIFT);
@@ -1537,6 +1543,7 @@ public final class DemoConfig {
         // harness
         DEBUG_TILE_BORDERS = DemoCfg.cfgBool("tileBorders", DEBUG_TILE_BORDERS);
         CONTINUOUS_RENDER = DemoCfg.cfgBool("continuousRender", CONTINUOUS_RENDER);
+        SHOW_FPS = DemoCfg.cfgBool("showFps", SHOW_FPS);
         UI_ENABLED = DemoCfg.cfgBool("ui", UI_ENABLED);
         RELIEF_OUTLINE = DemoCfg.cfgBool("peakfinder", RELIEF_OUTLINE);
         RELIEF_OUTLINE_DELAY_MS = DemoCfg.cfgFloat("peakfinderDelay", RELIEF_OUTLINE_DELAY_MS);

@@ -391,10 +391,10 @@ def kindergarten(v):
 
 
 def water_highlight(v):
-    """`highlight_drinking_water`, Alpimaps': water points larger and never hidden by another label"""
+    """`highlight_drinking_water`, Alpimaps': water points larger, never hidden by another label, and
+    from z12 whatever `water_min_zoom` says"""
     lay = poi_layer('poi-water-highlight', 12, ['in', get('class'), ['literal', ['drinking_water', 'spring']]], None, v,
                     icon=MOUNTAIN_ICON, overlap=True, scale=1.4)
-    lay['metadata']['massif:minzoom-param'] = 'water_min_zoom'
     return [gate(lay, v, 'highlight_drinking_water')]
 
 

@@ -14,6 +14,7 @@
     "polygons_border": 1,
     "lighting": 0,
     "sac_scale_labels": 1,
+    "water_min_zoom": 13,
     "campsite_min_zoom": 13
   }
 }

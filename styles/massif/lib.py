@@ -133,10 +133,10 @@ def from_zoom(expr, z):
     return expr[:3] + [z - 1, 0] + [x for stop in stops for x in stop]
 
 
-# Standard's text-occlusion-opacity: what a label keeps while a 3D building hides its anchor. Line and
-# natural labels go (0), numbers on a road stay faint (0.1); POIs and places keep the layer default.
+# Standard's text-occlusion-opacity: what a label keeps while a 3D building hides its anchor. Line, natural
+# and (ours) POI labels go (0), numbers on a road stay faint (0.1); places keep the layer default.
 OCCLUSION = [(('road-label', 'path-label', 'track-label', 'waterway-label', 'stream-label', 'water-name',
-               'peak', 'contour-label', 'landcover-label', 'park-label', 'housenumber'), 0),
+               'peak', 'contour-label', 'landcover-label', 'park-label', 'housenumber', 'poi-'), 0),
              (('road-shield', 'road-exit-shield', 'trail-t'), 0.1)]
 
 
@@ -147,10 +147,21 @@ def occlusion(lay):
     for prefixes, value in OCCLUSION:
         if lay['id'].startswith(prefixes):
             meta = lay.setdefault('metadata', {})
+            # `label_occlusion` 0: nothing is hidden, and no ray is cast
+            value = ['match', ['config', 'label_occlusion'], 0, 1, value]
             meta['massif:paint'] = {**meta.get('massif:paint', {}), 'text-occlusion-opacity': value}
             if 'icon-image' in lay.get('layout', {}):
                 meta['massif:paint']['icon-occlusion-opacity'] = value
             break
+    return lay
+
+
+def on_roof(lay):
+    """`poi_on_roof` 1: a POI inside a 3D building stands on its roof (mapbox symbol-z-elevate), SDK-only"""
+    if lay['type'] == 'symbol' and lay['id'].startswith('poi-'):
+        meta = lay.setdefault('metadata', {})
+        meta['massif:layout'] = {**meta.get('massif:layout', {}),
+                                 'symbol-z-elevate': ['==', ['config', 'poi_on_roof'], 1]}
     return lay
 
 
@@ -192,6 +203,14 @@ def padded(expr, px):
         body = expr[2:-1]
         return expr[:2] + [x if i % 2 == 0 else padded(x, px) for i, x in enumerate(body)] + [padded(expr[-1], px)]
     raise ValueError('padded: %s' % expr[0])
+
+
+def wider_halo(lay, px):
+    """a label's halo px wider, for e-ink: a black word on a thin halo is lost over a dark pattern"""
+    paint = lay.get('paint', {})
+    if 'text-halo-width' in paint:
+        lay['paint'] = {**paint, 'text-halo-width': padded(paint['text-halo-width'], px)}
+    return lay
 
 
 def halo(c, id, filter, width, param):

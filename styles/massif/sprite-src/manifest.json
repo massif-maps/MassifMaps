@@ -9,8 +9,8 @@
     "shield-us-highway-3":    { "content": [3, 5, 23, 14.5] }
   },
   "variants": {
-    "oneway":         { "white": { "STROKE": "#ffffff" }, "dark": { "STROKE": "#1a1a1a" } },
-    "oneway-reverse": { "white": { "STROKE": "#ffffff" }, "dark": { "STROKE": "#1a1a1a" } },
+    "oneway":         { "ink": { "STROKE": "#3c4250", "HALO": "#ffffff" }, "dark": { "STROKE": "#1a1a1a", "HALO": "#ffffff" } },
+    "oneway-reverse": { "ink": { "STROKE": "#3c4250", "HALO": "#ffffff" }, "dark": { "STROKE": "#1a1a1a", "HALO": "#ffffff" } },
     "shield-plate": {
       "neutral": { "FILL": "#ffffff", "STROKE": "#1b1d27" },
       "mono":    { "FILL": "#ffffff", "STROKE": "#000000" },

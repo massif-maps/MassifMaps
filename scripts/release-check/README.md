@@ -1,7 +1,8 @@
 # Release check
 
-The npm packages consumed the way an app does — from npm or from `pack`'s tarballs, never from this
-repo's sources. Part of the pre-release steps in [BUILDING.md](../../BUILDING.md#pre-release-then-release).
+Every published package consumed the way an app does — from npm, JitPack and Swift Package Manager
+(or from `pack`'s tarballs), never from this repo's sources. The procedure, and what each check must
+print: [Testing a release](../../docs/contributing/release-testing.md).
 
 ```sh
 cd scripts/release-check

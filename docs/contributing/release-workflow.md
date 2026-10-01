@@ -32,6 +32,8 @@ The workflow file is
 
 ## The npm packages in an SDK release
 
+Testing what a run published, channel by channel: [Testing a release](release-testing.md).
+
 `build.yml` builds the web SDK and the style tools next to Android and iOS, from the same version:
 
 - `build-web`: the web module twice, `standard` as `massif-web.*` and `full` as `massif-web-full.*`

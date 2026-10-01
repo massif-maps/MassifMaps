@@ -74,6 +74,7 @@
 %ignore massif::TileLayer::setTerrainSunLighting;
 %ignore massif::TileLayer::setTerrainRenderOrder;
 %ignore massif::TileLayer::getBackgroundColor;
+%ignore massif::TileLayer::coversGround;
 %ignore massif::TileLayer::FetchTaskBase;
 %ignore massif::TileLayer::FetchingTiles;
 %ignore massif::TileLayer::DataSourceListener;

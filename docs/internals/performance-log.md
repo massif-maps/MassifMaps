@@ -2414,3 +2414,10 @@ The middle column is the trap: decode alone got faster, so 1.2 MB tiles now arri
 their uploads took the frames; master looked smoother only because nothing arrived. Static frames
 at z18 tilt 50 and z16.5 against master differ only in which labels win collisions.
 
+The MLT decoder got the same two steps afterwards. No MLT source runs on the device, so it was
+checked on the host with an ad-hoc harness (not in `tests/`: it needs mlt's encoder, which the build
+leaves out): a synthetic tile of merged multipoints, multilines and multipolygons plus single
+features, decoded for all 256 z18 children of its z14 tile by the old and the new decoder. New
+output = old output with out-of-clip parts removed, feature for feature (0 missing, 0 extra, 0
+differing); the unzoomed decode identical; 316 -> 43 ms, 17 MB -> 0.46 MB of dumped geometry.
+

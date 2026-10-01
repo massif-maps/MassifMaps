@@ -1,4 +1,5 @@
 #include "MLTFeatureDecoder.h"
+#include "MBVTGeometryBounds.h"
 #include "CompressionUtils.h"
 #include "Logger.h"
 
@@ -78,12 +79,53 @@ namespace massif::mvt {
                 }
             }, property);
         }
+
+        void addBounds(const mlt::CoordVec& coords, float scale, cglib::bbox2<float>& bounds) {
+            for (const mlt::Coordinate& coord : coords) {
+                bounds.add(cglib::vec2<float>(coord.x * scale, coord.y * scale));
+            }
+        }
+
+        cglib::bbox2<float> geometryBounds(const mlt::geometry::Geometry& geometry, float scale) {
+            cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
+            switch (geometry.type) {
+            case MLTGeometryType::POINT:
+                addBounds({ static_cast<const mlt::geometry::Point&>(geometry).getCoordinate() }, scale, bounds);
+                break;
+            case MLTGeometryType::MULTIPOINT:
+                addBounds(static_cast<const mlt::geometry::MultiPoint&>(geometry).getCoordinates(), scale, bounds);
+                break;
+            case MLTGeometryType::LINESTRING:
+                addBounds(static_cast<const mlt::geometry::LineString&>(geometry).getCoordinates(), scale, bounds);
+                break;
+            case MLTGeometryType::MULTILINESTRING:
+                for (const mlt::CoordVec& coords : static_cast<const mlt::geometry::MultiLineString&>(geometry).getLineStrings()) {
+                    addBounds(coords, scale, bounds);
+                }
+                break;
+            case MLTGeometryType::POLYGON:
+                for (const mlt::CoordVec& ring : static_cast<const mlt::geometry::Polygon&>(geometry).getRings()) {
+                    addBounds(ring, scale, bounds);
+                }
+                break;
+            case MLTGeometryType::MULTIPOLYGON:
+                for (const auto& rings : static_cast<const mlt::geometry::MultiPolygon&>(geometry).getPolygons()) {
+                    for (const mlt::CoordVec& ring : rings) {
+                        addBounds(ring, scale, bounds);
+                    }
+                }
+                break;
+            default:
+                break;
+            }
+            return bounds;
+        }
     }
 
     class MLTFeatureDecoder::MLTFeatureIterator : public massif::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit MLTFeatureIterator(const std::shared_ptr<const mlt::MapLibreTile>& tile, const mlt::Layer* layer, int layerIndex, const std::vector<std::string>& layerKeys, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MLTFeatureDecoder::GeometryCache>& geometryCache) :
-            _tile(tile), _layer(layer), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache)
+        explicit MLTFeatureIterator(const std::shared_ptr<const mlt::MapLibreTile>& tile, const mlt::Layer* layer, int layerIndex, const std::vector<std::string>& layerKeys, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MLTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<const std::vector<cglib::bbox2<float>>>& featureBounds = std::shared_ptr<const std::vector<cglib::bbox2<float>>>()) :
+            _tile(tile), _layer(layer), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureBounds(featureBounds)
         {
             _layerIndexOffset = static_cast<long long>(layerIndex) << 32;
             _scale = layer->getExtent() > 0 ? 1.0f / layer->getExtent() : 0.0f;
@@ -96,6 +138,7 @@ namespace massif::mvt {
                     _idKey = key;
                 }
             }
+            skipClipped();
         }
 
         bool findByLocalId(long long localId) {
@@ -112,6 +155,7 @@ namespace massif::mvt {
 
         virtual void advance() override {
             _index++;
+            skipClipped();
         }
 
         virtual long long getLocalId() const override {
@@ -212,16 +256,25 @@ namespace massif::mvt {
             if (!bbox.inside(_clipBox)) {
                 return std::shared_ptr<Geometry>();
             }
+            // Overzoomed, keep only the parts of a merged feature this tile shows (see MBVTFeatureDecoder).
+            auto partMissesClip = [this](const std::vector<cglib::vec2<float>>& vertices) {
+                return _featureBounds && !mbvtPartMeetsClip(vertices, _clipBox);
+            };
 
             std::shared_ptr<Geometry> geometry;
             switch (convertGeometryType(mltGeometry.type)) {
             case FeatureData::GeometryType::POINT_GEOMETRY:
+                verticesList.erase(std::remove_if(verticesList.begin(), verticesList.end(), partMissesClip), verticesList.end());
                 if (verticesList.empty()) {
                     return std::shared_ptr<Geometry>();
                 }
                 geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList)));
                 break;
             case FeatureData::GeometryType::LINE_GEOMETRY:
+                verticesList.erase(std::remove_if(verticesList.begin(), verticesList.end(), partMissesClip), verticesList.end());
+                if (verticesList.empty()) {
+                    return std::shared_ptr<Geometry>();
+                }
                 geometry = std::make_shared<Geometry>(LineGeometry(std::move(verticesList)));
                 break;
             case FeatureData::GeometryType::POLYGON_GEOMETRY: {
@@ -231,7 +284,12 @@ namespace massif::mvt {
                     for (std::size_t ringCount : polygonSizes) {
                         auto it0 = it;
                         std::advance(it, ringCount);
-                        polygons.emplace_back(std::make_move_iterator(it0), std::make_move_iterator(it));
+                        if (ringCount == 0 || !partMissesClip(*it0)) {
+                            polygons.emplace_back(std::make_move_iterator(it0), std::make_move_iterator(it));
+                        }
+                    }
+                    if (polygons.empty()) {
+                        return std::shared_ptr<Geometry>();
                     }
                     geometry = std::make_shared<Geometry>(PolygonGeometry(std::move(polygons)));
                 }
@@ -244,6 +302,15 @@ namespace massif::mvt {
         }
 
     private:
+        // The features getGeometry would clip away, skipped before any style rule reads their properties.
+        void skipClipped() {
+            if (_featureBounds) {
+                while (_index < _layer->getFeatures().size() && !mbvtBoundsMeetClip((*_featureBounds)[_index], _transform, _clipBox)) {
+                    _index++;
+                }
+            }
+        }
+
         std::vector<cglib::vec2<float>> convertCoords(const mlt::CoordVec& coords) const {
             std::vector<cglib::vec2<float>> vertices;
             vertices.reserve(coords.size());
@@ -266,6 +333,7 @@ namespace massif::mvt {
         const long long _tileIdOffset;
 
         mutable std::shared_ptr<MLTFeatureDecoder::GeometryCache> _geometryCache;
+        const std::shared_ptr<const std::vector<cglib::bbox2<float>>> _featureBounds;
     };
 
     MLTFeatureDecoder::MLTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger) :
@@ -375,7 +443,23 @@ namespace massif::mvt {
             geometryCache->reserve(layer.getFeatures().size());
         }
 
-        return std::make_shared<MLTFeatureIterator>(_tile, &layer, layerIndex, _layerKeys[layerIndex], fields, _transform, _clipBox, _featureIdOverride, _tileIdOffset, geometryCache);
+
+        // Overzoomed, the clip keeps a sliver of the source; without this every style filters every feature.
+        std::shared_ptr<const std::vector<cglib::bbox2<float>>> featureBounds;
+        if (_transform(0, 0) > 1.0f) {
+            std::shared_ptr<const std::vector<cglib::bbox2<float>>>& layerBounds = _layerFeatureBounds[layerIndex];
+            if (!layerBounds) {
+                float scale = layer.getExtent() > 0 ? 1.0f / layer.getExtent() : 0.0f;
+                auto bounds = std::make_shared<std::vector<cglib::bbox2<float>>>();
+                bounds->reserve(layer.getFeatures().size());
+                for (const mlt::Feature& feature : layer.getFeatures()) {
+                    bounds->push_back(geometryBounds(feature.getGeometry(), scale));
+                }
+                layerBounds = bounds;
+            }
+            featureBounds = layerBounds;
+        }
+        return std::make_shared<MLTFeatureIterator>(_tile, &layer, layerIndex, _layerKeys[layerIndex], fields, _transform, _clipBox, _featureIdOverride, _tileIdOffset, geometryCache, featureBounds);
     }
 
     bool MLTFeatureDecoder::findFeature(long long localId, std::string& layerName, Feature& feature) const {

@@ -411,7 +411,7 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
 Past a source's max zoom every target tile decodes its own copy of the source tile: at z18 over a
 z14 source that is up to 256 decodes of the same data, each clipped to its target plus a 1/8 tile
 buffer (`LayerFeatureDecoder`'s clip box). Two things keep that copy small
-(`mapnikvt/MBVTGeometryBounds.h`, MVT only):
+(`mapnikvt/MBVTGeometryBounds.h`, shared by the MVT and MLT decoders):
 
 - **Out-of-clip features are skipped before any rule reads them.** The clip used to run inside
   `getGeometry`, after every style had evaluated its filters on every feature of the source: 1.2 M

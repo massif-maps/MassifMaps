@@ -58,6 +58,7 @@ namespace massif::mvt {
         std::vector<std::vector<std::string>> _layerKeys; // property keys per layer, sorted for a stable order
 
         mutable std::pair<std::string, std::shared_ptr<GeometryCache>> _layerGeometryCache;
+        mutable std::map<int, std::shared_ptr<const std::vector<cglib::bbox2<float>>>> _layerFeatureBounds;
         mutable std::mutex _layerCacheMutex;
     };
 }

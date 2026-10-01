@@ -39,6 +39,7 @@ add_executable(vt_tests
   ExtrusionOccluderTest.cpp
   GridIndexOrderTest.cpp
   RenderTileBlendTest.cpp
+  GroundCoverTest.cpp
   LabelSliceTest.cpp
   LabelFadeTest.cpp
   LayerContentFlagsTest.cpp

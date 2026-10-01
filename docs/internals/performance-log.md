@@ -2390,3 +2390,25 @@ test reproduces exactly that. `bbox2<float>::smallest()` fixes it. z18 tiles 54 
 the same scene loads 45 map tiles once each and stops at 35 s. The iOS simulator drew that camera
 at z17 and never hit it. On the HLTE556N at z18.5, without the clip: z18 tiles 35.7 MB on average
 (40.6 max); with it, 1.6 MB.
+
+## 36. The background plane under a fully tiled 2D map (2026-10-01)
+
+`display-a-map` (OpenFreeMap + Massif streets since #276) on the HLTE556N, warm cache, `-PprofileRender`, 8
+pans per run. The map is GPU-bound, and `PROF GPU background` read ~6 ms a frame for a plane the tile
+backgrounds hide entirely; `setprop debug.massif.background 0` took Chamonix z15 from 26.6 to 31 fps.
+
+The plane is now skipped when the bottom tile layer's opaque, fully blended backgrounds cover the
+frustum's ground (`vt/GroundCover.h`). The first cut tested the world's edge with four huge boxes,
+which `frustum3::inside` reports as seen under any tilt, so tilted views never skipped; the edge is
+now a ring of root tiles walked at tile size.
+
+| camera | master fps | skip fps | `PROF GPU background` ms |
+|---|---|---|---|
+| Chamonix z15, top-down | 26.3-27.0 | 29.3-30.0 | 6 -> 0.5 |
+| Chamonix z15, tilt 50 | 25.9 | 29.1 | 5.9 -> 1.2 |
+| Mont Blanc z11, top-down | 25.0 | 24.5 | ~6 -> 0.8 |
+
+z11 gains nothing: the GPU time moves to the layers, as in the city camera of
+[10-performance.md](rendering/10-performance.md). Frames still drawing it are pans whose camera ran ahead of the
+last cull. Static frames against master: identical but for label placement.
+

@@ -196,6 +196,8 @@ namespace massif::vt {
         void setLabelOcclusionOpacity(float occludedOpacity);
         // Whether the visible tiles draw a background, a bitmap or a geometry, rather than labels alone.
         bool hasGroundContent() const;
+        // Whether fully blended, opaque tile backgrounds paint all the flat ground the frustum sees.
+        bool coversGround(const cglib::frustum3<double>& frustum) const;
         // The contact-shadow mask in one drape tile's frame, so it follows the terrain. Changes no GL state.
         int bakeGroundAOMask(const TileId& targetTileId);
         // Turns this renderer into a paint baker (see TerrainPaint); only under a cross-layer drape target.

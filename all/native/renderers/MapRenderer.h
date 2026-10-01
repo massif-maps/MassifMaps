@@ -237,6 +237,7 @@ namespace massif {
     private:
         // debug.massif.background 0 drops the map background plane. Android demo builds only.
         static bool isBackgroundEnabled();
+        bool isGroundCovered(const ViewState& viewState, bool skyDrawn, bool postProcessing) const;
         class OptionsListener : public Options::OnChangeListener {
         public:
             explicit OptionsListener(const std::shared_ptr<MapRenderer>& mapRenderer);

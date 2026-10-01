@@ -1522,7 +1522,7 @@ namespace massif {
         // Timed apart from the sky: the first section also absorbs GPU idle time (GpuFrameProfiler).
         FRAME_PROF_GPU_BEGIN(SECTION_BACKGROUND);
         // Measurement switch: tangram's background is only the clear colour (core/src/map.cpp).
-        if (isBackgroundEnabled()) {
+        if (isBackgroundEnabled() && !isGroundCovered(viewState, skyDrawn, static_cast<bool>(postProcessEffect))) {
             _backgroundRenderer.onDrawFrame(viewState, _frameFog, !skyDrawn);
         }
         VT_STAT_SPLIT(backgroundDrawNs, skyClock);
@@ -1587,6 +1587,19 @@ namespace massif {
         return true;
     }
 #endif
+
+    bool MapRenderer::isGroundCovered(const ViewState& viewState, bool skyDrawn, bool postProcessing) const {
+        // The tiles paint the style background themselves; the plane under them costs a full-screen pass.
+        if ((!skyDrawn && viewState.isSkyVisible()) || viewState.getHorizontalLayerOffsetDir() != 0) {
+            return false;
+        }
+        std::vector<std::shared_ptr<Layer> > layers = _layers->getAll();
+        if (layers.empty() || (postProcessing && !layers.front()->isPostProcessed())) {
+            return false;
+        }
+        auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layers.front());
+        return tileLayer && tileLayer->isVisible() && tileLayer->getOpacity() >= 1.0f && tileLayer->getVisibleZoomRange().inRange(viewState.getZoom()) && tileLayer->coversGround(viewState);
+    }
 
     void MapRenderer::onSurfaceDestroyed() {
         // This method may never be called (e.x Android)

@@ -204,6 +204,10 @@ The two experiments that settle it: dropping the background plane takes **22% of
 buys no fps**, while dropping the stencil masks removes **8% of the draws and buys 4%**. So on this
 camera fragments, triangles and shading are all free, and the only currency is the draw count.
 
+Where the GPU *is* the limit the plane matters: at Chamonix z15 the frame is GPU-bound and the plane
+was ~6 ms of it. It is now skipped whenever the tiles paint all the ground in view
+([01-frame.md](01-frame.md), [performance-log.md 36](../performance-log.md)).
+
 Acting on that: a style layer alternating patterned and plain polygon fills used to split into a
 draw per alternation — 48% of all geometry draws. Each style slot now carries a **pattern flag**
 instead, so both live in one draw ([03-vt-renderer.md](03-vt-renderer.md#what-splits-a-tiles-style-layer-into-several-draws)):

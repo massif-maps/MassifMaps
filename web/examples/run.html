@@ -25,6 +25,7 @@
   <script type="module">
     import { createMap } from '@massif-maps/web';
     import { createHost } from './host.mjs';
+    import { mountTileCaches } from './shared.mjs';
 
     const root = document.getElementById('root');
     const fail = (message) => {
@@ -44,6 +45,7 @@
         const map = await createMap(document.getElementById('map'));
         // For the console and for scripted captures (web/demo/bench.mjs).
         window.map = map;
+        await mountTileCaches(map.module);
         await example.default(createHost(root, map));
       } catch (error) {
         console.error(error);

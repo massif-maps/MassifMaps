@@ -113,7 +113,8 @@ map.addLayer('basemap', {
 });
 ```
 
-The [peak finder example](/examples#peak-finder) keeps its elevation and summit tiles this way.
+Every [example](/examples) on this site keeps its tiles this way, one IndexedDB database per
+source, shared between the examples (`web/examples/shared.mjs`).
 
 ## What differs from Android and iOS
 

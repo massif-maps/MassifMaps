@@ -47,6 +47,7 @@ namespace massif::mvt {
 
         mutable std::pair<std::string, std::shared_ptr<GeometryCache>> _layerGeometryCache;
         mutable std::pair<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCache;
+        mutable std::map<int, std::shared_ptr<const std::vector<cglib::bbox2<float>>>> _layerFeatureBounds;
         mutable std::mutex _layerCacheMutex;
     };
 }

@@ -23,6 +23,7 @@ void testLegendResolver();
 void testBuiltinParameters();
 void testLineAnchors();
 void testMBVTSubtile();
+void testMBVTGeometryBounds();
 void testZoomShift();
 void testDrawOnce();
 
@@ -44,6 +45,7 @@ int main() {
     testBuiltinParameters();
     testLineAnchors();
     testMBVTSubtile();
+    testMBVTGeometryBounds();
     testZoomShift();
     testDrawOnce();
 

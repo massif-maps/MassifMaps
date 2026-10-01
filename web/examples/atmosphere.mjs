@@ -1,7 +1,7 @@
 /** Everything the sky and the fog can do, on one map: scattering, a day cycle, stars, and peaks clear of a valley haze. */
 import { demTiles, massifStyle, satelliteTiles, vectorTiles } from './shared.mjs';
 
-/** Looking south at the Matterhorn from over Zermatt - see terrain-3d for the framing. */
+/** Looking south-west at the Matterhorn from over Zermatt - see terrain-3d for the framing. */
 const VIEW = [7.6586, 45.9763];
 
 // The colours the atmosphere is not responsible for - the FOG's own tint and the sky exposure.
@@ -110,8 +110,12 @@ export default async function start(host) {
   let atmosphere = true;
   let customSky = false;
 
-  map.addLayer('satellite', { type: 'raster', source: satelliteTiles() });
-  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: await massifStyle(map, 'hybrid') });
+  // Fetched before any layer exists: a layer added first draws the world view while this loads.
+  const labelStyle = await massifStyle(map, 'hybrid');
+  // One level finer: a draped tile is never finer than the camera's zoom, and the ground in front
+  // of a tilted camera is far closer than its focus.
+  map.addLayer('satellite', { type: 'raster', source: satelliteTiles(), zoomLevelBias: 1 });
+  map.addLayer('labels', { type: 'vector', source: vectorTiles(), style: labelStyle });
 
   map.terrain({ type: 'terrain', source: demTiles() }).apply({
     exaggeration: 1.25,
@@ -186,7 +190,7 @@ export default async function start(host) {
   }
 
   applyMoment();
-  map.camera().moveTo(VIEW, { zoom: 11.5, rotation: 180, tilt: 33 });
+  map.camera().moveTo(VIEW, { zoom: 11.6, rotation: 135, tilt: 14 });
 
   host.button('Time', () => {
     moment = (moment + 1) % MOMENTS.length;

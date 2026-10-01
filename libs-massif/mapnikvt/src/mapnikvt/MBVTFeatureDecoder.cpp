@@ -1,4 +1,5 @@
 #include "MBVTFeatureDecoder.h"
+#include "MBVTGeometryBounds.h"
 #include "CompressionUtils.h"
 #include "Logger.h"
 
@@ -22,8 +23,8 @@
 namespace massif::mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public massif::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
-            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureDataCache(featureDataCache)
+        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache, const std::shared_ptr<const std::vector<cglib::bbox2<float>>>& featureBounds = std::shared_ptr<const std::vector<cglib::bbox2<float>>>()) :
+            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureDataCache(featureDataCache), _featureBounds(featureBounds)
         {
             _layerIndexOffset = static_cast<long long>(layerIndex) << 32;
 
@@ -45,6 +46,7 @@ namespace massif::mvt {
                     _fieldKeys.push_back(i);
                 }
             }
+            skipClipped();
         }
 
         bool findByLocalId(long long localId) {
@@ -61,6 +63,7 @@ namespace massif::mvt {
 
         virtual void advance() override {
             _index++;
+            skipClipped();
         }
 
         virtual long long getLocalId() const override {
@@ -171,9 +174,15 @@ namespace massif::mvt {
             if (!bbox.inside(_clipBox)) {
                 return std::shared_ptr<Geometry>();
             }
+            // Sources merge features across their tile (one multipoint of every housenumber):
+            // overzoomed, keep only the parts this tile shows.
+            auto partMissesClip = [this](const std::vector<cglib::vec2<float>>& vertices) {
+                return _featureBounds && !mbvtPartMeetsClip(vertices, _clipBox);
+            };
 
             switch (_layer->features(_index).type()) {
             case vector_tile::Tile::POINT: {
+                    verticesList.erase(std::remove_if(verticesList.begin(), verticesList.end(), partMissesClip), verticesList.end());
                     if (!verticesList.empty()) {
                         auto geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList)));
                         _geometryCache->put(_index, geometry);
@@ -182,6 +191,10 @@ namespace massif::mvt {
                     return std::shared_ptr<Geometry>();
                 }
             case vector_tile::Tile::LINESTRING: {
+                    verticesList.erase(std::remove_if(verticesList.begin(), verticesList.end(), partMissesClip), verticesList.end());
+                    if (verticesList.empty()) {
+                        return std::shared_ptr<Geometry>();
+                    }
                     auto geometry = std::make_shared<Geometry>(LineGeometry(std::move(verticesList)));
                     _geometryCache->put(_index, geometry);
                     return geometry;
@@ -198,6 +211,12 @@ namespace massif::mvt {
                     }
                     else {
                         polygons.push_back(std::move(verticesList));
+                    }
+                    polygons.erase(std::remove_if(polygons.begin(), polygons.end(), [&partMissesClip](const PolygonGeometry::VerticesList& rings) {
+                        return rings.empty() || partMissesClip(rings.front());
+                    }), polygons.end());
+                    if (polygons.empty()) {
+                        return std::shared_ptr<Geometry>();
                     }
                     auto geometry = std::make_shared<Geometry>(PolygonGeometry(std::move(polygons)));
                     _geometryCache->put(_index, geometry);
@@ -314,6 +333,15 @@ namespace massif::mvt {
             }
         }
 
+        // The features getGeometry would clip away, skipped before any style rule reads their tags.
+        void skipClipped() {
+            if (_featureBounds) {
+                while (_index < _layer->features_size() && !mbvtBoundsMeetClip((*_featureBounds)[_index], _transform, _clipBox)) {
+                    _index++;
+                }
+            }
+        }
+
         static bool isRingCCW(const std::vector<cglib::vec2<float>>& vertices) {
             double area = 0;
             if (!vertices.empty()) {
@@ -339,6 +367,7 @@ namespace massif::mvt {
 
         mutable std::shared_ptr<MBVTFeatureDecoder::GeometryCache> _geometryCache;
         mutable std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>> _featureDataCache;
+        const std::shared_ptr<const std::vector<cglib::bbox2<float>>> _featureBounds;
     };
 
     MBVTFeatureDecoder::MBVTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger) :
@@ -426,7 +455,24 @@ namespace massif::mvt {
             featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
             featureDataCache->reserve(_tile->layers(layerIndex).features_size());
         }
-        return std::make_shared<MBVTFeatureIterator>(_tile, layerIndex, fields, _transform, _clipBox, _featureIdOverride, _tileIdOffset, geometryCache, featureDataCache);
+
+        // Overzoomed, the clip keeps a sliver of the source; without this every style filters every feature.
+        std::shared_ptr<const std::vector<cglib::bbox2<float>>> featureBounds;
+        if (_transform(0, 0) > 1.0f) {
+            std::shared_ptr<const std::vector<cglib::bbox2<float>>>& layerBounds = _layerFeatureBounds[layerIndex];
+            if (!layerBounds) {
+                const vector_tile::Tile::Layer& layer = _tile->layers(layerIndex);
+                auto bounds = std::make_shared<std::vector<cglib::bbox2<float>>>();
+                bounds->reserve(layer.features_size());
+                for (int i = 0; i < layer.features_size(); i++) {
+                    const vector_tile::Tile::Feature& feature = layer.features(i);
+                    bounds->push_back(mbvtGeometryBounds(feature.geometry_size(), [&feature](int j) { return static_cast<int>(feature.geometry(j)); }, 1.0f / layer.extent()));
+                }
+                layerBounds = bounds;
+            }
+            featureBounds = layerBounds;
+        }
+        return std::make_shared<MBVTFeatureIterator>(_tile, layerIndex, fields, _transform, _clipBox, _featureIdOverride, _tileIdOffset, geometryCache, featureDataCache, featureBounds);
     }
 
     bool MBVTFeatureDecoder::findFeature(long long localId, std::string& layerName, Feature& feature) const {

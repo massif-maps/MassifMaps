@@ -406,6 +406,28 @@ the whole band below the frame, ~14% of the frame rate at Grenoble z19.2 tilt 30
   (`PersistentCacheTileDataSource`). The persistent cache is why a device re-run is not a cold run —
   `pm clear` is the only reliable reset ([10-performance.md](10-performance.md)).
 
+## Overzoom: one source tile, many targets
+
+Past a source's max zoom every target tile decodes its own copy of the source tile: at z18 over a
+z14 source that is up to 256 decodes of the same data, each clipped to its target plus a 1/8 tile
+buffer (`LayerFeatureDecoder`'s clip box). Two things keep that copy small
+(`mapnikvt/MBVTGeometryBounds.h`, MVT only):
+
+- **Out-of-clip features are skipped before any rule reads them.** The clip used to run inside
+  `getGeometry`, after every style had evaluated its filters on every feature of the source: 1.2 M
+  feature x style evaluations per z18 tile at Grenoble, to keep ~300 features. Overzoomed, the
+  decoder now bounds each feature once per source layer and the iterator steps over the ones that
+  miss the clip.
+- **A merged feature keeps only the parts that reach the tile.** Sources such as OpenFreeMap merge
+  features across their tile: every housenumber of a z14 tile in one multipoint, footpaths into one
+  multi-line, ~250 buildings per multipolygon. The clip is per feature, so each z18 tile kept them
+  whole: 2657 housenumber labels and 300 KB of paths in a tile showing ten. Overzoomed, points, line
+  parts and polygons (outer ring) whose bounds miss the clip are dropped. A part that crosses the
+  tile is still kept whole; the per-vertex clip in the shaders handles the rest.
+
+The unclipped pass the extrusion anchors read is untouched. Measured in
+[performance-log.md 37](../performance-log.md).
+
 ## Geometry density: what gets subdivided, and why
 
 Draped content is baked flat into the drape texture, so it decodes at **source density**: with the

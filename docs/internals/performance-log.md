@@ -2412,3 +2412,26 @@ z11 gains nothing: the GPU time moves to the layers, as in the city camera of
 [10-performance.md](rendering/10-performance.md). Frames still drawing it are pans whose camera ran ahead of the
 last cull. Static frames against master: identical but for label placement.
 
+## 37. Every z18 tile re-filtered its whole z14 source (2026-10-01)
+
+`display-a-map` (OpenFreeMap, max zoom 14, Massif streets) on the HLTE556N at Grenoble
+`--es lon 5.7266 --es lat 45.1897 --es zoom 18 --es tilt 50`, warm persistent cache, `-PprofileRender`.
+Each visible z18 tile read the same z14 tile from the cache and decoded it for 1.5-2.3 s: parsing was
+10-90 ms, `readTile` the rest. Probed per tile: 1.2 M feature x style iterations, rule filters 1.9-2.1
+s, 10.7 k features passing them, ~300 kept by the clip, geometry 30 ms, symbolizers 100-200 ms. The
+tiles were still 1.2 MB each because the source merges features across its tile (2657 housenumber
+labels, 300 KB of paths per z18 tile).
+
+Fix in two steps ([02-tiles.md](rendering/02-tiles.md#overzoom-one-source-tile-many-targets)):
+
+| | master | skip out-of-clip features | + drop merged parts |
+|---|---|---|---|
+| decode per z18 tile | 1.5-2.3 s | 0.29-0.64 s | 0.19-0.24 s |
+| z18 tile resident | ~1.2 MB | ~1.2 MB (identical bytes) | 35-123 KB |
+| warm start, last tile load | 16-17 s | 7 s | 4.1-4.3 s |
+| pan fps (8 pans) / worst frame | 10.1-12.1 / 0.8-1.1 s | 3.1-3.9 / 0.9 s | 18.8-18.9 / 93-129 ms |
+
+The middle column is the trap: decode alone got faster, so 1.2 MB tiles now arrived DURING the pan and
+their uploads took the frames; master looked smoother only because nothing arrived. Static frames
+at z18 tilt 50 and z16.5 against master differ only in which labels win collisions.
+

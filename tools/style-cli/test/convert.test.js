@@ -172,7 +172,7 @@ test('a dash ramped over zoom still dashes, at the LAST stop that dashes', () =>
     assert.match(mss({ stops: [[14, [0.5, 0.5]], [18, [0.3, 0.1]]] }), /line-dasharray: 0.6,0.2;/);
     // [1, 0] has no gap - it IS a solid line - so the pattern below it is the one to draw.
     assert.match(mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [3, 2, 0.1, 2]]]),
-        /line-dasharray: 6,4,0.2,4;/);
+        /line-dasharray: 6,4,1,3.2;/);
     // ...and a ramp that only ever states a solid pattern writes no dash at all, rather than a
     // "dash" as long as the line width scaled it.
     assert.ok(!mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [1, 0]]]).includes('dasharray'));
@@ -197,30 +197,40 @@ test('a PLAIN dash over a ramped width becomes one rule per zoom band', () => {
     assert.match(out, /#road\[zoom >= 19\]::l_b2 \{/);
 });
 
-test('a dash a style RAMPS keeps its own stop zoom, and is not banded', () => {
-    // The stop the pattern begins at is already the targeted zoom to read the width at - Standard's
-    // stair treads depend on it. Banding on top of that would move it.
+// Each rule of a converted layer, as [selector, dasharray or null].
+const dashRules = (mss) => [...mss.matchAll(/^(#[^{]+)\{([^}]*)\}/gm)]
+    .map((m) => [m[1].trim(), (m[2].match(/line-dasharray: ([^;]+);/) ?? [])[1] ?? null]);
+
+test('a dash a style STEPS over zoom is a rule per step, solid where the step is', () => {
+    // Standard's stair treads: solid below z19, then a 0.1 dash. One rule drew the treads at every
+    // zoom; below the step the line is solid, so that band carries no dash at all.
     const steps = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
         'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 0, 18, 6, 22, 80],
         'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 19, ['literal', [0.1, 0.1]]],
     } };
-    const out = convert({ layers: [steps] }, table, NO_PALETTE).mss;
-    assert.equal([...out.matchAll(/line-dasharray:/g)].length, 1, 'one rule, not a band each');
-    assert.match(out, /line-dasharray: 1.51,1.51;/, 'width(19) = 15.1, as gl-js draws it there');
+    const rules = dashRules(convert({ layers: [steps] }, table, NO_PALETTE).mss);
+    // the SDK's zoom is mapbox's + 1, so z19 is written 20
+    assert.ok(rules.filter(([sel]) => /zoom < 20\]/.test(sel)).every(([, dash]) => dash === null), 'solid below the step');
+    const dashed = rules.filter(([, dash]) => dash !== null);
+    assert.ok(dashed.length >= 1 && dashed.every(([sel]) => /zoom >= (2[0-9])\]/.test(sel)), 'dashed from the step on');
 });
 
-test('a dash is scaled by the line width AT the zoom its stop starts', () => {
-    // MapBox dash lengths are multiples of the line width, and Standard's steps ramp that width to
-    // 80 px by z22: the mean of the stops is 43, so a 0.1 dash came out at 4.3 px where gl-js
-    // draws 1.5 - coarse bands instead of fine treads.
-    const steps = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
-        'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 0, 18, 6, 22, 80],
-        'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 17, ['literal', [0.2, 0.2]],
-            19, ['literal', [0.1, 0.1]]],
+test('a stepped dash takes each step pattern, scaled by the width inside its own band', () => {
+    // Standard's rail sleepers: [0.1, 15] to z16, [0.1, 1] to z18, [0.05, 0.5] past it, over a
+    // width running 2 px to 32. As one rule they were 0.3 px every 3 px at z20, a grey band.
+    const tracks = { id: 'l', type: 'line', 'source-layer': 'road', minzoom: 13, paint: {
+        'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 16, 2, 18, 6, 20, 16, 22, 32],
+        'line-dasharray': ['step', ['zoom'], ['literal', [0.1, 15]], 16, ['literal', [0.1, 1]],
+            18, ['literal', [0.05, 0.5]]],
     } };
-    const out = convert({ layers: [steps] }, table, NO_PALETTE).mss;
-    // width(19) = 15.1 for that ramp, and 0.1 of it is what gl-js draws there.
-    assert.match(out, /line-dasharray: 1.51,1.51;/);
+    const rules = dashRules(convert({ layers: [tracks] }, table, NO_PALETTE).mss);
+    const gaps = rules.map(([, dash]) => Number(dash.split(',')[1]));
+    // 0.1 x 2 px is a 0.2 px sleeper, widened to 1 px out of its 30 px gap
+    assert.equal(gaps[0], 29.2, 'below z16 the width is 2, so 15 widths is 30 px, less the pixel the sleeper takes');
+    assert.ok(rules.every(([, dash]) => Number(dash.split(',')[0]) >= 1), 'and no sleeper is drawn under a pixel');
+    assert.ok(gaps.length >= 3, 'a band per step');
+    for (let i = 2; i < gaps.length; i++) assert.ok(gaps[i] > gaps[i - 1], 'and the gap grows with the line past the steps');
+    assert.ok(gaps[gaps.length - 1] > 8, 'at z20+ a sleeper is metres apart, not a hatch');
 });
 
 test('a width whose stops are data-driven still scales the dash at that zoom', () => {
@@ -235,9 +245,10 @@ test('a width whose stops are data-driven still scales the dash at that zoom', (
             22, ['match', ['get', 'type'], ['piste'], 40, 20]],
         'line-dasharray': ['step', ['zoom'], ['literal', [1]], 16, ['literal', [1, 1]]],
     } };
-    const out = convert({ layers: [cycleway] }, table, NO_PALETTE).mss;
-    // width(16) = 0 + (16-12)/6 * 2 = 1.33 for the fallback branch, which is gl-js's own.
-    assert.match(out, /line-dasharray: 1.33,1.33;/);
+    const rules = dashRules(convert({ layers: [cycleway] }, table, NO_PALETTE).mss);
+    assert.equal(rules[0][1], null, 'solid below z16');
+    // the band from z16 reads the fallback branch in its middle: 0 + (17.5-12)/6 * 2 = 1.83
+    assert.equal(rules[1][1], '1.83,1.83');
 });
 
 test('a width chosen per config value scales the dash by its fallback ramp', () => {
@@ -526,4 +537,12 @@ test('a hillshade slot carries the settings that match the MapLibre paint', () =
     assert.match(mss, /hillshade-highlight-color: #faf8f5;/);
     assert.match(mss, /hillshade-accent-color: #847362;/);
     assert.doesNotMatch(mss, /hillshade-exaggeration/);
+});
+
+test('the Map block records the TileDrawSize its zoom numbers are written for', () => {
+    // The SDK shifts every zoom by log2(app / this): Massif is written for 512, and an app left on
+    // the default 256 drew every road a level wide until it did.
+    const style = { layers: [{ id: 'l', type: 'line', 'source-layer': 'road', paint: { 'line-width': 1 } }] };
+    assert.match(convert(style, table, { ...NO_PALETTE, tileDrawSize: 512 }).mss, /tile-draw-size: 512;/);
+    assert.match(convert(style, table, NO_PALETTE).mss, /tile-draw-size: 256;/);
 });

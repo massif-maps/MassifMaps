@@ -62,7 +62,7 @@ test('a font is named by the face, not by the layer that happens to use it', () 
 test('the Map background names itself, whatever else shares its colour', () => {
     const { mss, variables } = run([fill('Sand', '#f0f0f0')], '#f0f0f0');
     assert.match(variables, /@background: #f0f0f0;/);
-    assert.match(mss, /Map \{\n\s+background-color: @background;\n\}/);
+    assert.match(mss, /Map \{\n\s+background-color: @background;\n\s+tile-draw-size: 256;\n\}/);
 });
 
 test('a colour inside a zoom ramp is hoisted, the ramp is not', () => {

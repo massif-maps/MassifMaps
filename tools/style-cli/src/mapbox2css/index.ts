@@ -164,10 +164,10 @@ export interface ConvertOptions {
      */
     fonts?: string[];
     /**
-     * The Options::TileDrawSize the converted style will be DRAWN at, in dp. Every zoom stop and
+     * The Options::TileDrawSize the converted zoom numbers are written for, in dp. Every zoom stop and
      * zoom predicate is shifted by `log2(512 / tileDrawSize)`, because that is how far the SDK's
-     * zoom number sits from MapBox's. The default 256 is the SDK's; pass 512 for an app that
-     * adopted maplibre's convention, or its roads come out a level thin.
+     * zoom number sits from MapBox's. Recorded as the Map block's `tile-draw-size`, from which the
+     * SDK shifts the zoom again for an app drawing at another size.
      */
     tileDrawSize?: number;
     /**
@@ -814,6 +814,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     if ((options.liveLight || lights !== undefined) && !mapBlock.some((d) => d.startsWith('colors-prelit:'))) {
         mapBlock.push('colors-prelit: 1;');
     }
+    // The SDK shifts every zoom by log2(app / this), so the style holds whatever TileDrawSize the app picks.
+    mapBlock.push(`tile-draw-size: ${options.tileDrawSize ?? 256};`);
     // The MEDIAN index, not the first. `road` has 82 layers spanning indices 3 to 130 in Mapbox
     // Standard, and its FIRST is one early tunnel layer - ordering by that sank all 82 beneath
     // landuse, so the landuse polygons painted over every road. The median puts a source-layer
@@ -1528,6 +1530,15 @@ function layerDeclarations(
             continue;
         }
 
+        // On the roof of the 3D building the anchor stands in; a shield takes it through the rename below.
+        if (name === 'symbol-z-elevate') {
+            const translated = tryTranslate(value, name, layer.id, coverage);
+            if (translated === null) continue;
+            out.push(`text-z-elevate: ${translated};`);
+            coverage.emit('text-z-elevate');
+            continue;
+        }
+
         // MapBox places the LOWEST sort key first; CartoCSS's culler takes the highest priority.
         if (name === 'symbol-sort-key') continue; // folded into the layer's priority below
         if (name === 'line-sort-key') continue; // became this attachment's place in the order - see split.ts
@@ -1616,14 +1627,15 @@ function layerDeclarations(
                 coverage.drop(name, 'no literal dash pattern to take', layer.id);
                 continue;
             }
-            const { pattern, zoom } = dash;
+            const zoom = dash.zoom;
+            const pattern = (layer.dashZoom === undefined ? null : dashPatternAt(value as Json, layer.dashZoom)) ?? dash.pattern;
             // `[1, 0]` is MapBox's spelling of SOLID. Scaled by a line width it became a 430 px
             // "dash", which is a 430 px bitmap rasterized to draw an unbroken line.
             if (!pattern.some((v, i) => i % 2 === 1 && v > 0)) {
                 coverage.drop(name, 'the pattern has no gap, so the line is solid', layer.id);
                 continue;
             }
-            if (pattern !== value) {
+            if (pattern !== value && layer.dashZoom === undefined) {
                 // MapTiler ramps its path dashes over zoom and CartoCSS takes ONE pattern. The
                 // base (the widest band, and every stop below the first) is what is on screen at
                 // nearly every zoom; taking nothing left every footway drawn solid.
@@ -1642,7 +1654,7 @@ function layerDeclarations(
                 coverage.approximate(`line-dasharray scaled by ${round(scale)}, a zoom-driven ` +
                     'line-width read at one zoom: CartoCSS takes one dash pattern, not a ramp');
             }
-            out.push(`line-dasharray: ${pattern.map((v) => round(v * scale)).join(',')};`);
+            out.push(`line-dasharray: ${pixelDashes(pattern.map((v) => v * scale)).map(round).join(',')};`);
             coverage.emit('line-dasharray');
             continue;
         }
@@ -2186,47 +2198,101 @@ function dashPattern(value: Json): { pattern: number[]; zoom: number | null } | 
 function splitDashByZoom(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
     const dash = layer.paint?.['line-dasharray'];
     const width = dashWidth(layer.paint?.['line-width']);
-    if (dash === undefined || layer.dashZoom !== undefined || !Array.isArray(width)) return [layer];
-    const pattern = dashPattern(dash as Json);
-    // A dash the style RAMPS states the zoom its pattern begins at, and reading the width there is
-    // already the targeted answer - Standard's treads depend on it. Banding is for the plain
-    // literal dash, which has no zoom of its own to be read at.
-    if (pattern === null || pattern.zoom !== null) return [layer];
+    if (dash === undefined || layer.dashZoom !== undefined || dashPattern(dash as Json) === null) return [layer];
+    const zmin = layer.minzoom ?? 0;
+    const zmax = Math.min(layer.maxzoom ?? 24, 24);
+    // A dash the style STEPS over zoom is a rule per step: one pattern for all of them drew Standard's
+    // sleepers 0.3 px every 3 px at z20, a grey band, and a ferry dashed below the zoom its dash starts.
+    const cuts = new Set(dashSteps(dash as Json).filter((z) => z > zmin && z < zmax));
 
     // From the first stop that is actually DRAWN, not the first stop: a ramp starting at width 0 -
     // Liberty's rail hatchings start (14.5, 0) - has nothing to keep the dash in proportion to
     // below it. And no further than the last stop, above which the width is flat and a band would
     // read the same number twice.
-    const stops = rampStops(width as Json);
-    const lo = Math.floor(Math.max(layer.minzoom ?? 0, stops.find(([, w]) => w > 0)?.[0] ?? 0));
-    const hi = Math.ceil(Math.min(layer.maxzoom ?? 24, stops[stops.length - 1]?.[0] ?? 24, 24));
+    const stops = Array.isArray(width) ? rampStops(width as Json) : [];
+    const lo = Math.floor(Math.max(zmin, stops.find(([, w]) => w > 0)?.[0] ?? zmin));
+    const hi = Math.ceil(Math.min(zmax, stops[stops.length - 1]?.[0] ?? zmax));
     const wLo = rampAt(width as Json, lo);
     const wHi = rampAt(width as Json, hi);
-    if (hi - lo < 2 || !wLo || !wHi || wLo <= 0 || wHi <= 0) return [layer];
+    if (stops.length && hi - lo >= 2 && wLo && wHi && wLo > 0 && wHi > 0) {
+        // Cut where the width DOUBLES, rounding up: a band spanning a 2x range is at worst sqrt(2) out
+        // in the middle, which is the error this is willing to keep.
+        const bandCount = Math.min(MAX_DASH_BANDS, hi - lo, Math.ceil(Math.log2(Math.max(wHi / wLo, wLo / wHi))));
+        const step = Math.max(1, Math.round((hi - lo) / bandCount));
+        for (let at = lo + step; bandCount >= 2 && at < hi; at += step) cuts.add(at);
+    }
+    if (!cuts.size) return [layer];
 
-    // Cut where the width DOUBLES, rounding up: a band spanning a 2x range is at worst sqrt(2) out
-    // in the middle, which is the error this is willing to keep.
-    const ratio = Math.max(wHi / wLo, wLo / wHi);
-    const bandCount = Math.min(MAX_DASH_BANDS, hi - lo, Math.ceil(Math.log2(ratio)));
-    if (bandCount < 2) return [layer];
-
-    const step = Math.max(1, Math.round((hi - lo) / bandCount));
+    const edges = [zmin, ...[...cuts].sort((a, b) => a - b), zmax];
     const bands: MapboxLayer[] = [];
-    for (let from = lo; from < hi; from += step) {
-        const to = Math.min(hi, from + step);
+    for (let i = 0; i + 1 < edges.length; i++) {
+        const from = edges[i], to = edges[i + 1];
+        // The width is read in the middle of the band up to the ramp's last stop, past a stretch where
+        // it is 0 if it starts with one; the pattern anywhere inside, a band never straddles a step.
+        const b = Math.min(to, hi);
+        let dashZoom = from < b ? (from + b) / 2 : from;
+        if (stops.length && !((rampAt(width as Json, dashZoom) ?? 0) > 0) && Math.max(from, lo) < b) {
+            dashZoom = (Math.max(from, lo) + b) / 2;
+        }
         bands.push({
             ...layer,
             // The ends keep whatever the layer stated, so banding never narrows what it draws.
-            minzoom: from === lo ? layer.minzoom : from,
-            maxzoom: to >= hi ? layer.maxzoom : to,
-            dashZoom: (from + to) / 2,
+            minzoom: i === 0 ? layer.minzoom : from,
+            maxzoom: i + 2 === edges.length ? layer.maxzoom : to,
+            dashZoom,
         });
+    }
+    // Two solid bands in a row are one: a width cut means nothing where no dash is drawn.
+    const solid = (band: MapboxLayer) => !(dashPatternAt(dash as Json, band.dashZoom as number) ?? [0, 1]).some((v, i) => i % 2 === 1 && v > 0);
+    for (let i = bands.length - 1; i > 0; i--) {
+        if (solid(bands[i]) && solid(bands[i - 1])) {
+            bands[i - 1] = { ...bands[i - 1], maxzoom: bands[i].maxzoom };
+            bands.splice(i, 1);
+        }
     }
     if (bands.length < 2) return [layer];
     coverage.approximate(`line-dasharray on "${layer.id}" split into ${bands.length} zoom bands: a `
         + 'dash is a multiple of the line width and CartoCSS takes one pattern per rule, so a '
-        + 'ramped width needs a rule per band to stay in proportion');
+        + 'ramped width or a stepped dash needs a rule per band');
     return bands;
+}
+
+/**
+ * No dash under a pixel: drawn through a bitmap, a 0.5 px sleeper lights a pixel only where it happens to land,
+ * and Standard's rail at z19 came out as blobs. Each dash is widened to 1 px, its gap paying for it, so the
+ * period is kept.
+ */
+function pixelDashes(pattern: number[]): number[] {
+    const out = [...pattern];
+    for (let i = 0; i + 1 < out.length; i += 2) {
+        const grow = Math.max(0, 1 - out[i]);
+        const take = Math.min(grow, Math.max(0, out[i + 1] - 1));
+        out[i] += take;
+        out[i + 1] -= take;
+    }
+    return out;
+}
+
+/** The zooms a `step` dash switches pattern at. */
+function dashSteps(value: Json): number[] {
+    if (!Array.isArray(value) || value[0] !== 'step' || !Array.isArray(value[1]) || value[1][0] !== 'zoom') return [];
+    const out: number[] = [];
+    for (let i = 3; i + 1 < value.length; i += 2) {
+        if (typeof value[i] === 'number') out.push(value[i] as number);
+    }
+    return out;
+}
+
+/** The pattern a `step` dash draws at `zoom`, or null when it is not one. */
+function dashPatternAt(value: Json, zoom: number): number[] | null {
+    if (!dashSteps(value).length) return null;
+    const list = (node: Json) => (Array.isArray(node) && node[0] === 'literal' ? node[1] : node) as Json;
+    let at = list((value as Json[])[2]);
+    for (let i = 3; i + 1 < (value as Json[]).length; i += 2) {
+        if (((value as Json[])[i] as number) > zoom) break;
+        at = list((value as Json[])[i + 1]);
+    }
+    return Array.isArray(at) && at.every((v) => typeof v === 'number') ? at as number[] : null;
 }
 
 /**

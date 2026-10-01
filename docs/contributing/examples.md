@@ -21,7 +21,8 @@ a list to update.
 A web port runs live on the site: the gallery frames `web/examples/run.html?id=<id>`, which loads
 the web SDK and calls the file's default export with a host (`web/examples/host.mjs`, the twin of
 the NativeScript `host.ts`). An example only the web can show carries its own `@title`, `@section`
-and `@order` in its header comment, and has no Android file.
+and `@order` in its header comment, and has no Android file. `showcase.mjs` is the map on the
+site's front page, not a gallery example.
 
 Generated text an example shares is written by a generator, not copied by hand. The peak finder's
 shaders and summit CartoCSS come from `web/examples/peak-finder/look.mjs`;

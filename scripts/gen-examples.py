@@ -214,7 +214,7 @@ def nativeScriptExampleIds(nsDir):
 
 
 # Files in web/examples that are the framework, not examples.
-WEB_FRAMEWORK = {'host.mjs', 'shared.mjs'}
+WEB_FRAMEWORK = {'host.mjs', 'shared.mjs', 'showcase.mjs'}
 WEB_TAG = re.compile(r'^\s*\*\s*@(title|section|order)\s+(.+?)\s*$', re.M)
 
 

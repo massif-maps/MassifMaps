@@ -3,6 +3,7 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
+import {LiveMap} from '@site/src/components/LiveExample';
 import {Platforms, StatusLabels} from '@site/src/data/platforms';
 
 function HomepagePlatforms() {
@@ -26,6 +27,20 @@ function HomepagePlatforms() {
         </div>
         <p style={{textAlign: 'center', marginTop: '1.5rem'}}>
           <Link to="/platforms">Full support matrix →</Link>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function HomepageShowcase() {
+  return (
+    <section className="featureSection homeShowcase">
+      <div className="container">
+        <LiveMap example={{id: 'showcase', title: 'Grenoble in 3D'}} />
+        <p className="homeShowcaseCaption">
+          Grenoble and the Bastille, live in your browser: terrain, buildings, sun and shadows from
+          the web SDK. Drag to explore. <Link to="/examples">More examples →</Link>
         </p>
       </div>
     </section>
@@ -67,6 +82,7 @@ export default function Home() {
       description="Documentation for Massif Maps: installation, guides, feature docs and API reference for Android, iOS, the web and NativeScript.">
       <HomepageHeader />
       <main>
+        <HomepageShowcase />
         <HomepagePlatforms />
         <HomepageFeatures />
       </main>
